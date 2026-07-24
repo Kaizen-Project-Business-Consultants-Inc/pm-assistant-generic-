@@ -491,7 +491,7 @@ export function TaskFormModal({
               type="checkbox"
               checked={form.isMilestone}
               onChange={(e) => setForm((prev) => ({ ...prev, isMilestone: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
             />
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Mark as Milestone</span>
           </label>

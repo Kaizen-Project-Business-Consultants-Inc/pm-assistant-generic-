@@ -89,7 +89,7 @@ export function TimeLogForm({ taskId, scheduleId, projectId }: TimeLogFormProps)
           type="checkbox"
           checked={form.billable}
           onChange={(e) => setForm(p => ({ ...p, billable: e.target.checked }))}
-          className="rounded border-gray-300 text-primary-600"
+          className="rounded border-gray-300 dark:border-gray-600 text-primary-600"
         />
         Billable
       </label>

@@ -192,7 +192,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
           {/* Status bar */}
           <div className="flex items-center gap-3">
-            <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-500'}`}>
+            <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${STATUS_COLORS[item.status] || 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
               {item.status.replace('_', ' ')}
             </span>
             {!isTerminal && (

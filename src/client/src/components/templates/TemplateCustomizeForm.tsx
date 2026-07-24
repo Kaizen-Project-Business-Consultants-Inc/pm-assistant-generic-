@@ -304,7 +304,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
             </button>
 
             {taskSectionExpanded && (
-              <div className="max-h-52 overflow-y-auto border-t border-gray-200">
+              <div className="max-h-52 overflow-y-auto border-t border-gray-200 dark:border-gray-700">
                 {tasks.map((t) => {
                   const isSelected = selectedRefIds.has(t.refId);
                   const isMandatory = !!t.mandatory;
@@ -313,7 +313,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
                   return (
                     <label
                       key={t.refId}
-                      className={`flex items-center gap-2 px-1 py-1.5 ${indent} hover:bg-gray-50 cursor-pointer ${
+                      className={`flex items-center gap-2 px-1 py-1.5 ${indent} hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
                         t.isSummary ? 'bg-gray-50/50 dark:bg-gray-700/30' : ''
                       }`}
                     >
@@ -324,7 +324,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleTask(t.refId)}
-                          className="w-3.5 h-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0"
+                          className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 flex-shrink-0"
                         />
                       )}
                       <span

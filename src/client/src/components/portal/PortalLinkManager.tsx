@@ -136,14 +136,14 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center gap-2 mb-3">
           <Link className="w-4 h-4 text-primary-600" />
-          <h3 className="text-sm font-semibold text-gray-900">Client Portal Links</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Client Portal Links</h3>
         </div>
         <div className="animate-pulse space-y-2">
-          <div className="h-8 bg-gray-100 rounded" />
-          <div className="h-8 bg-gray-100 rounded" />
+          <div className="h-8 bg-gray-100 dark:bg-gray-700 rounded" />
+          <div className="h-8 bg-gray-100 dark:bg-gray-700 rounded" />
         </div>
       </div>
     );
@@ -151,23 +151,23 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center gap-2 mb-3">
           <Link className="w-4 h-4 text-primary-600" />
-          <h3 className="text-sm font-semibold text-gray-900">Client Portal Links</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Client Portal Links</h3>
         </div>
-        <p className="text-sm text-red-600">Failed to load portal links.</p>
+        <p className="text-sm text-red-600 dark:text-red-400">Failed to load portal links.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Link className="w-4 h-4 text-primary-600" />
-          <h3 className="text-sm font-semibold text-gray-900">Client Portal Links</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Client Portal Links</h3>
         </div>
         {!isSample && (
           <button
@@ -196,9 +196,9 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
 
       {/* Create Form */}
       {showCreateForm && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
               Link Label
             </label>
             <input
@@ -206,12 +206,12 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
               value={form.label}
               onChange={(e) => setForm({ ...form, label: e.target.value })}
               placeholder="e.g. Client Review Link"
-              className="w-full text-sm border border-gray-300 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               Permissions
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -223,13 +223,13 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
               ].map(({ key, label }) => (
                 <label
                   key={key}
-                  className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer"
+                  className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
                 >
                   <input
                     type="checkbox"
                     checked={form[key]}
                     onChange={(e) => setForm({ ...form, [key]: e.target.checked })}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
                   />
                   {label}
                 </label>
@@ -238,14 +238,14 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
               Expires At (optional)
             </label>
             <input
               type="date"
               value={form.expiresAt}
               onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
-              className="w-full text-sm border border-gray-300 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
 
@@ -257,7 +257,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
             {createMutation.isPending ? 'Creating...' : 'Create Portal Link'}
           </button>
           {createMutation.isError && (
-            <p className="text-xs text-red-600">
+            <p className="text-xs text-red-600 dark:text-red-400">
               Failed to create link. Please try again.
             </p>
           )}
@@ -266,7 +266,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
 
       {/* Links List */}
       {links.length === 0 ? (
-        <p className="text-xs text-gray-500 text-center py-4">
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-4">
           No portal links yet. Create one to share project status with clients.
         </p>
       ) : (
@@ -276,23 +276,23 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
               key={link.id}
               className={`p-2.5 rounded-lg border text-xs ${
                 link.is_active
-                  ? 'border-gray-200 bg-white'
-                  : 'border-gray-100 bg-gray-50 opacity-60'
+                  ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                  : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 opacity-60'
               }`}
             >
               {/* Top row: label + token */}
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">{link.label}</span>
-                  <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono">
+                  <span className="font-medium text-gray-900 dark:text-white">{link.label}</span>
+                  <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 font-mono">
                     {truncateToken(link.token)}
                   </code>
                 </div>
                 <span
                   className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
                     link.is_active
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-500'
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                   }`}
                 >
                   {link.is_active ? 'Active' : 'Inactive'}
@@ -300,7 +300,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
               </div>
 
               {/* Permissions + expiry */}
-              <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+              <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-2">
                 <span>{permissionSummary(link.permissions)}</span>
                 {link.expires_at && (
                   <span>
@@ -313,7 +313,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => copyLink(link.token, link.id)}
-                  className="flex items-center gap-1 px-2 py-1 rounded text-gray-600 hover:bg-primary-50 hover:text-primary-600 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 rounded text-gray-600 dark:text-gray-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                   title="Copy link"
                 >
                   {copiedId === link.id ? (
@@ -336,7 +336,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
                       isActive: !link.is_active,
                     })
                   }
-                  className="flex items-center gap-1 px-2 py-1 rounded text-gray-600 hover:bg-gray-100 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   title={link.is_active ? 'Deactivate' : 'Activate'}
                 >
                   {link.is_active ? (
@@ -364,7 +364,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
                     </button>
                     <button
                       onClick={() => setDeleteConfirmId(null)}
-                      className="px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                      className="px-2 py-1 rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
                     >
                       No
                     </button>
@@ -372,7 +372,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
                 ) : (
                   <button
                     onClick={() => setDeleteConfirmId(link.id)}
-                    className="flex items-center gap-1 px-2 py-1 rounded text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors ml-auto"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-colors ml-auto"
                     title="Delete"
                   >
                     <Trash2 className="w-3 h-3" />

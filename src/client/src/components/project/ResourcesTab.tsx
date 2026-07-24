@@ -222,7 +222,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
             <button
               key={tab.key}
               onClick={() => setActiveSubTab(tab.key)}
-              className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${activeSubTab === tab.key ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${activeSubTab === tab.key ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}

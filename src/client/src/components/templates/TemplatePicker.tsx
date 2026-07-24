@@ -29,11 +29,11 @@ interface TemplatePickerProps {
 type Step = 'category' | 'template' | 'preview' | 'customize' | 'scratch';
 
 const categories = [
-  { key: 'it', label: 'IT & Software', icon: Monitor, color: 'bg-blue-50 text-blue-600 border-blue-200' },
-  { key: 'construction', label: 'Construction', icon: Building2, color: 'bg-orange-50 text-orange-600 border-orange-200' },
-  { key: 'infrastructure', label: 'Infrastructure', icon: Landmark, color: 'bg-purple-50 text-purple-600 border-purple-200' },
-  { key: 'roads', label: 'Roads & Bridges', icon: Route, color: 'bg-green-50 text-green-600 border-green-200' },
-  { key: 'other', label: 'General', icon: Layout, color: 'bg-gray-50 text-gray-600 border-gray-200' },
+  { key: 'it', label: 'IT & Software', icon: Monitor, color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800' },
+  { key: 'construction', label: 'Construction', icon: Building2, color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800' },
+  { key: 'infrastructure', label: 'Infrastructure', icon: Landmark, color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800' },
+  { key: 'roads', label: 'Roads & Bridges', icon: Route, color: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800' },
+  { key: 'other', label: 'General', icon: Layout, color: 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600' },
 ];
 
 export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose }) => {
@@ -403,7 +403,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
               isSubmitting={scratchSubmitting}
               extraContent={
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                     <Upload className="w-3 h-3 inline mr-1" />
                     Import Schedule (optional)
                   </label>
@@ -421,7 +421,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                     </div>
                   ) : (
                     <div
-                      className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-primary-300 hover:bg-primary-50/30 transition-colors"
+                      className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-colors"
                       onClick={() => fileInputRef.current?.click()}
                       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                       onDrop={(e) => {

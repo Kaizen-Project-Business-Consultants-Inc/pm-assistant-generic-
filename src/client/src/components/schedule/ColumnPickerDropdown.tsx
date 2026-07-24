@@ -59,7 +59,7 @@ export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleG
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+        className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
         title="Choose columns"
       >
         <Settings2 className="w-3.5 h-3.5" />
@@ -83,7 +83,7 @@ export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleG
                       if (el) el.indeterminate = someVisible && !allVisible;
                     }}
                     onChange={() => onToggleGroup(group, !allVisible)}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer"
+                    className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer"
                   />
                   <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
                 </div>
@@ -103,7 +103,7 @@ export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleG
                         checked={visibleKeys.has(col.key)}
                         onChange={() => onToggle(col.key)}
                         disabled={isFixed}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                       <span
                         className="text-xs text-gray-700 dark:text-gray-300 flex-1 cursor-pointer"

@@ -112,13 +112,13 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
           <div className="flex gap-6">
             <button
               onClick={() => setSubTab('entries')}
-              className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'entries' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'entries' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
               <Clock className="w-4 h-4" /> Time Entries
             </button>
             <button
               onClick={() => setSubTab('comparison')}
-              className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'comparison' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'comparison' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
               <BarChart3 className="w-4 h-4" /> Actual vs Estimated
             </button>
@@ -211,7 +211,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
           </div>
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <input type="checkbox" checked={formBillable} onChange={(e) => setFormBillable(e.target.checked)} className="rounded border-gray-300" />
+              <input type="checkbox" checked={formBillable} onChange={(e) => setFormBillable(e.target.checked)} className="rounded border-gray-300 dark:border-gray-600" />
               Billable
             </label>
             <button

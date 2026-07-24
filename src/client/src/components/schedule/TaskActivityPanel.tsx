@@ -155,7 +155,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
   };
 
   return (
-    <div className="border-t border-gray-200 mt-4 pt-4">
+    <div className="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4">
       {/* Tabs */}
       <div className="flex gap-4 mb-3">
         <button
@@ -169,7 +169,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
           <MessageSquare className="w-3.5 h-3.5" />
           Comments
           {comments.length > 0 && (
-            <span className="bg-gray-100 text-gray-600 text-xs font-bold rounded-full px-1.5 py-0.5">
+            <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-full px-1.5 py-0.5">
               {comments.length}
             </span>
           )}
@@ -200,7 +200,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
                 onChange={handleCommentChange}
                 onKeyDown={handleCommentKeyDown}
                 placeholder="Write a comment... Use @ to mention"
-                className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
               {showMentions && filteredMentions.length > 0 && (
                 <div className="absolute left-0 right-0 bottom-full mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
@@ -262,7 +262,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-700">
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                       {comment.userName || 'User'}
                     </span>
                     <span className="text-xs text-gray-400">
@@ -276,7 +276,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
-                  <p className="text-xs text-gray-600 mt-0.5">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                     {comment.text.split(/(@\w+)/g).map((part: string, i: number) =>
                       part.startsWith('@') ? (
                         <span key={i} className="font-semibold text-primary-600 dark:text-primary-400">{part}</span>
@@ -307,8 +307,8 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
             <div key={entry.id} className="flex gap-2 items-start">
               <div className="mt-1 w-1.5 h-1.5 rounded-full bg-primary-400 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-600">
-                  <span className="font-medium text-gray-800">{entry.userName || 'System'}</span>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <span className="font-medium text-gray-800 dark:text-gray-200">{entry.userName || 'System'}</span>
                   {' '}
                   {entry.action} <span className="font-medium">{fieldLabels[entry.field] || entry.field}</span>
                   {entry.oldValue && entry.newValue && (

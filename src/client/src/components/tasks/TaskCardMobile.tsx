@@ -21,11 +21,11 @@ const statusCycle: Record<string, string> = {
 };
 
 const statusStyles: Record<string, string> = {
-  pending: 'bg-gray-100 text-gray-700',
-  in_progress: 'bg-blue-100 text-blue-700',
-  completed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-600',
-  blocked: 'bg-orange-100 text-orange-700',
+  pending: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
+  in_progress: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+  completed: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+  cancelled: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
+  blocked: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
 };
 
 const statusLabels: Record<string, string> = {
@@ -39,8 +39,8 @@ const statusLabels: Record<string, string> = {
 const priorityStyles: Record<string, string> = {
   critical: 'bg-red-500 text-white',
   high: 'bg-orange-500 text-white',
-  medium: 'bg-yellow-100 text-yellow-800',
-  low: 'bg-gray-100 text-gray-600',
+  medium: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400',
+  low: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400',
 };
 
 export const TaskCardMobile: React.FC<TaskCardMobileProps> = ({ task, onStatusCycle, onClick }) => {
@@ -133,13 +133,13 @@ export const TaskCardMobile: React.FC<TaskCardMobileProps> = ({ task, onStatusCy
 
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           {task.priority && (
-            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${priorityStyles[task.priority] || 'bg-gray-100 text-gray-600'}`}>
+            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${priorityStyles[task.priority] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
               {task.priority}
             </span>
           )}
           <button
             onClick={handleStatusTap}
-            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[task.status] || 'bg-gray-100 text-gray-700'}`}
+            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[task.status] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
           >
             {statusLabels[task.status] || task.status}
           </button>

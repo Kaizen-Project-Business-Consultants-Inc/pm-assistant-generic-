@@ -4,10 +4,10 @@ import { apiService } from '../../services/api';
 import { Send, Trash2, Users, AlertCircle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 
 const STATUS_BADGES: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700', icon: Clock },
-  accepted: { label: 'Accepted', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
-  expired: { label: 'Expired', color: 'bg-gray-100 text-gray-600', icon: XCircle },
-  revoked: { label: 'Revoked', color: 'bg-red-100 text-red-700', icon: XCircle },
+  pending: { label: 'Pending', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400', icon: Clock },
+  accepted: { label: 'Accepted', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400', icon: CheckCircle2 },
+  expired: { label: 'Expired', color: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400', icon: XCircle },
+  revoked: { label: 'Revoked', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400', icon: XCircle },
 };
 
 export function ViewerInvitePanel() {

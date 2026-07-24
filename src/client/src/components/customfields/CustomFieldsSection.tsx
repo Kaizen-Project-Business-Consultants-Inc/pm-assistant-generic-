@@ -122,7 +122,7 @@ export function CustomFieldsSection({ entityType, entityId, projectId }: CustomF
                     saveMutation.mutate([{ fieldId: field.id, boolean: e.target.checked }]);
                   }, 0);
                 }}
-                className="rounded border-gray-300 text-primary-600"
+                className="rounded border-gray-300 dark:border-gray-600 text-primary-600"
               />
               {field.fieldLabel}
             </label>
