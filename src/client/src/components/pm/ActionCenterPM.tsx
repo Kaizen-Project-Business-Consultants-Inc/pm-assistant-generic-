@@ -163,7 +163,6 @@ const TYPE_CONFIG = {
   Investigate: { icon: AlertTriangle, color: 'text-red-600 dark:text-red-400',    bg: 'bg-red-50 dark:bg-red-900/30',    badge: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' },
 };
 
-
 function AINextBestActions() {
   const navigate = useNavigate();
 
@@ -313,9 +312,6 @@ export function ActionCenterPM({ projects }: ActionCenterPMProps) {
         <div className="flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-gray-400" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Action Center</h3>
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 uppercase tracking-wide">
-            NEW
-          </span>
         </div>
         <Link
           to="/notifications"
