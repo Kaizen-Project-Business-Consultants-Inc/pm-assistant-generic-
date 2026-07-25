@@ -14,9 +14,9 @@ const features = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
       </svg>
     ),
-    accent: 'from-blue-500 to-cyan-400',
-    iconBg: 'bg-blue-500/10 text-blue-400',
-    cardBg: 'bg-[#111827]/70 border-blue-500/10 backdrop-blur-sm',
+    accent: 'from-primary-500 to-cyan-400',
+    iconBg: 'bg-primary-500/10 text-primary-400',
+    cardBg: 'bg-[#111827]/70 border-primary-500/10 backdrop-blur-sm',
   },
   {
     title: 'Monte Carlo Simulations',
@@ -26,9 +26,9 @@ const features = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
     ),
-    accent: 'from-blue-500 to-cyan-400',
-    iconBg: 'bg-cyan-500/10 text-cyan-400',
-    cardBg: 'bg-[#111827]/70 border-blue-500/10 backdrop-blur-sm',
+    accent: 'from-primary-500 to-cyan-400',
+    iconBg: 'bg-primary-500/10 text-primary-400',
+    cardBg: 'bg-[#111827]/70 border-primary-500/10 backdrop-blur-sm',
   },
   {
     title: 'Smart Risk Detection',
@@ -38,9 +38,9 @@ const features = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
       </svg>
     ),
-    accent: 'from-blue-500 to-cyan-400',
-    iconBg: 'bg-blue-500/10 text-blue-400',
-    cardBg: 'bg-[#111827]/70 border-blue-500/10 backdrop-blur-sm',
+    accent: 'from-primary-500 to-cyan-400',
+    iconBg: 'bg-primary-500/10 text-primary-400',
+    cardBg: 'bg-[#111827]/70 border-primary-500/10 backdrop-blur-sm',
   },
   {
     title: 'Meeting Intelligence',
@@ -50,9 +50,9 @@ const features = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
       </svg>
     ),
-    accent: 'from-blue-500 to-cyan-400',
-    iconBg: 'bg-cyan-500/10 text-cyan-400',
-    cardBg: 'bg-[#111827]/70 border-blue-500/10 backdrop-blur-sm',
+    accent: 'from-primary-500 to-cyan-400',
+    iconBg: 'bg-primary-500/10 text-primary-400',
+    cardBg: 'bg-[#111827]/70 border-primary-500/10 backdrop-blur-sm',
   },
   {
     title: 'Portfolio Dashboard',
@@ -62,9 +62,9 @@ const features = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
       </svg>
     ),
-    accent: 'from-blue-500 to-cyan-400',
-    iconBg: 'bg-blue-500/10 text-blue-400',
-    cardBg: 'bg-[#111827]/70 border-blue-500/10 backdrop-blur-sm',
+    accent: 'from-primary-500 to-cyan-400',
+    iconBg: 'bg-primary-500/10 text-primary-400',
+    cardBg: 'bg-[#111827]/70 border-primary-500/10 backdrop-blur-sm',
   },
   {
     title: 'Natural Language Queries',
@@ -74,9 +74,9 @@ const features = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
       </svg>
     ),
-    accent: 'from-blue-500 to-cyan-400',
-    iconBg: 'bg-cyan-500/10 text-cyan-400',
-    cardBg: 'bg-[#111827]/70 border-blue-500/10 backdrop-blur-sm',
+    accent: 'from-primary-500 to-cyan-400',
+    iconBg: 'bg-primary-500/10 text-primary-400',
+    cardBg: 'bg-[#111827]/70 border-primary-500/10 backdrop-blur-sm',
   },
 ];
 
@@ -413,7 +413,7 @@ function FeatureCard({ feature }: { feature: typeof features[number] }) {
 
   return (
     <div
-      className={`group relative rounded-2xl p-6 border hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-1 hover:z-40 transition-all duration-300 ${feature.cardBg}`}
+      className={`group relative rounded-2xl p-6 border hover:shadow-lg hover:shadow-primary-500/10 hover:-translate-y-1 hover:z-40 transition-all duration-300 ${feature.cardBg}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -468,7 +468,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-cyan-400 rounded-lg flex items-center justify-center shadow-lg shadow-primary-500/20">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
@@ -481,7 +481,7 @@ export const LandingPage: React.FC = () => {
               <Link to="/login" className="text-sm text-slate-400 hover:text-white transition-colors">Sign In</Link>
               <Link
                 to="/register"
-                className="text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-4 py-2 rounded-lg transition-all shadow-md shadow-blue-500/20"
+                className="text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-400 hover:from-primary-600 hover:to-cyan-500 px-4 py-2 rounded-lg transition-all shadow-md shadow-primary-500/20"
               >
                 Get Started
               </Link>
@@ -510,7 +510,7 @@ export const LandingPage: React.FC = () => {
             <div className="md:hidden border-t border-white/5 py-3 space-y-1">
               <Link to="/pricing" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Pricing</Link>
               <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Sign In</Link>
-              <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-cyan-400 rounded-lg text-center mt-2">Get Started</Link>
+              <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-400 rounded-lg text-center mt-2">Get Started</Link>
             </div>
           )}
         </div>
@@ -527,7 +527,7 @@ export const LandingPage: React.FC = () => {
             </span>
             <h1 className="text-4xl sm:text-5xl lg:text-[60px] font-extrabold text-white mt-5 leading-[1.04] tracking-tight">
               Manage projects<br />
-              <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary-400 to-cyan-400 bg-clip-text text-transparent">
                 smarter with AI
               </span>
             </h1>
@@ -538,7 +538,7 @@ export const LandingPage: React.FC = () => {
             <div className="flex items-center gap-3.5 mt-8">
               <Link
                 to="/register"
-                className="text-[15px] font-bold text-white bg-gradient-to-br from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 px-7 py-3.5 rounded-xl transition-all shadow-lg shadow-blue-500/35 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
+                className="text-[15px] font-bold text-white bg-gradient-to-br from-primary-500 to-cyan-400 hover:from-primary-600 hover:to-cyan-500 px-7 py-3.5 rounded-xl transition-all shadow-lg shadow-primary-500/35 hover:shadow-xl hover:shadow-primary-500/40 hover:-translate-y-0.5"
               >
                 Get Started Free
               </Link>
@@ -552,7 +552,7 @@ export const LandingPage: React.FC = () => {
             </div>
             <div className="flex items-center gap-5 mt-7 flex-wrap">
               {['No credit card', '14-day trial', 'Setup in minutes'].map((label) => (
-                <span key={label} className="flex items-center gap-2 text-[13px] text-slate-500">
+                <span key={label} className="flex items-center gap-2 text-[13px] text-slate-300">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
@@ -684,7 +684,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center mb-4 md:mb-0">
-              <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-cyan-400 rounded flex items-center justify-center">
+              <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-cyan-400 rounded flex items-center justify-center">
                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
@@ -697,7 +697,7 @@ export const LandingPage: React.FC = () => {
               <Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link>
             </div>
           </div>
-          <div className="mt-8 text-center text-xs text-slate-600">
+          <div className="mt-8 text-center text-xs text-slate-400">
             &copy; {new Date().getFullYear()} Kovarti PM. All rights reserved.
           </div>
         </div>

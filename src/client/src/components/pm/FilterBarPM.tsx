@@ -14,10 +14,10 @@ interface FilterBarPMProps {
 const selectBase =
   'rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 ' +
   'text-sm text-gray-700 dark:text-gray-200 px-3 py-2 focus:outline-none focus:ring-2 ' +
-  'focus:ring-teal-500 transition-colors cursor-pointer';
+  'focus:ring-primary-500 transition-colors cursor-pointer';
 
 const selectActive =
-  'border-teal-400 dark:border-teal-500 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300';
+  'border-primary-400 dark:border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300';
 
 export function FilterBarPM({
   search,
@@ -40,7 +40,7 @@ export function FilterBarPM({
             placeholder="Search projects or clients…"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
           />
         </div>
 
@@ -74,7 +74,7 @@ export function FilterBarPM({
           <button
             type="button"
             onClick={onClear}
-            className="inline-flex items-center gap-1 text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors"
+            className="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
           >
             <X className="w-3.5 h-3.5" />
             Clear

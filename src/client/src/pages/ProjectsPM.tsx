@@ -128,7 +128,7 @@ export function ProjectsPM() {
               <>
                 {projects.length} project{projects.length !== 1 ? 's' : ''}
                 {ownedCount > 0 && (
-                  <> · <span className="text-teal-600 dark:text-teal-400">{ownedCount} owned by you</span></>
+                  <> · <span className="text-primary-600 dark:text-primary-400">{ownedCount} owned by you</span></>
                 )}
               </>
             )}
@@ -146,7 +146,7 @@ export function ProjectsPM() {
           <button
             type="button"
             onClick={() => setTemplatePickerOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
             New Project
@@ -183,7 +183,7 @@ export function ProjectsPM() {
             <button
               type="button"
               onClick={clearFilters}
-              className="mt-3 text-sm text-teal-600 dark:text-teal-400 hover:underline"
+              className="mt-3 text-sm text-primary-600 dark:text-primary-400 hover:underline"
             >
               Clear filters
             </button>

@@ -82,7 +82,7 @@ export function IssuesCreatedVsResolvedChart({ scope }: Props) {
             <span className="text-xs text-gray-500">Created</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-teal-500" />
+            <span className="h-2 w-2 rounded-full bg-primary-500" />
             <span className="text-xs text-gray-500">Resolved</span>
           </div>
           <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${netChange > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>

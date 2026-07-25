@@ -176,7 +176,7 @@ export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
                       className="flex items-start gap-2.5 px-2 py-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                     >
                       {/* Unread dot */}
-                      <span className={`mt-1.5 h-1.5 w-1.5 rounded-full flex-shrink-0 ${isUnread ? 'bg-teal-500' : 'bg-transparent'}`} />
+                      <span className={`mt-1.5 h-1.5 w-1.5 rounded-full flex-shrink-0 ${isUnread ? 'bg-primary-500' : 'bg-transparent'}`} />
                       <div className="flex-1 min-w-0">
                         <p className={`text-xs truncate ${isUnread ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}>
                           {n.title || n.message || 'Notification'}

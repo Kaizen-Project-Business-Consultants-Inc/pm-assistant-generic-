@@ -15,7 +15,7 @@ const chipBg: Record<Color, string> = {
   green: 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400',
   amber: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
   red:   'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400',
-  teal:  'bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400',
+  teal:  'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400',
   gray:  'bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400',
 };
 
@@ -23,7 +23,7 @@ const dotBg: Record<Color, string> = {
   green: 'bg-green-500',
   amber: 'bg-amber-500',
   red:   'bg-red-500',
-  teal:  'bg-teal-500',
+  teal:  'bg-primary-500',
   gray:  'bg-gray-400',
 };
 

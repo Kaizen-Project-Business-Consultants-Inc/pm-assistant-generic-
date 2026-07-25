@@ -701,7 +701,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
           fullName="Earned Value"
           value={formatDollar(ev)}
           subtitle={`${pctOfBAC(ev, bac)} complete x BAC`}
-          colorClass="text-teal-600 dark:text-teal-400"
+          colorClass="text-primary-600 dark:text-primary-400"
           tooltip={getInputCardTooltip('EV', ev, bac, ev, pv, ac, cpi, spi)}
         />
         <InputCard

@@ -228,7 +228,7 @@ export function AdminSystemPage() {
               <ConfigCard icon={Hash} label="Max Tokens" value={data.aiConfig.maxTokens.toLocaleString()} color="border-l-amber-500" />
               <ConfigCard icon={Coins} label="Monthly Token Budget" value={data.aiConfig.monthlyTokenBudget.toLocaleString()} color="border-l-yellow-500" />
               <ConfigCard icon={DollarSign} label="Input Pricing" value={`$${data.aiConfig.pricingInput}/M tokens`} color="border-l-emerald-500" />
-              <ConfigCard icon={DollarSign} label="Output Pricing" value={`$${data.aiConfig.pricingOutput}/M tokens`} color="border-l-teal-500" />
+              <ConfigCard icon={DollarSign} label="Output Pricing" value={`$${data.aiConfig.pricingOutput}/M tokens`} color="border-l-primary-500" />
             </div>
           </div>
 

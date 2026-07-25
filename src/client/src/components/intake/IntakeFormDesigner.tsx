@@ -41,7 +41,7 @@ const fieldTypeBadgeColor: Record<FieldType, string> = {
   number: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
   date: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
   dropdown: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
-  textarea: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400',
+  textarea: 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400',
   checkbox: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400',
 };
 
