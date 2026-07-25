@@ -157,7 +157,7 @@ export const IntegrationsPage: React.FC = () => {
       {isLoading && (
         <div className="flex items-center justify-center py-20">
           <RefreshCw className="h-6 w-6 animate-spin text-gray-400 dark:text-gray-500" />
-          <span className="ml-2 text-gray-500 dark:text-gray-400">Loading integrations...</span>
+          <span className="ml-2 text-gray-500 dark:text-gray-400">Loading integrations…</span>
         </div>
       )}
 

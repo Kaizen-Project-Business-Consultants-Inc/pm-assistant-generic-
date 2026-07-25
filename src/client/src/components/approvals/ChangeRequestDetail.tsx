@@ -336,7 +336,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
                   disabled={!selectedWorkflowId || submitMutation.isPending}
                   className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {submitMutation.isPending ? 'Submitting...' : 'Submit'}
+                  {submitMutation.isPending ? 'Submitting…' : 'Submit'}
                 </button>
                 <button
                   onClick={() => setShowWorkflowSelect(false)}

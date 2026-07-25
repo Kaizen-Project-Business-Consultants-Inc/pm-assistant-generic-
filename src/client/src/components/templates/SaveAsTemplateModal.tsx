@@ -165,7 +165,7 @@ export const SaveAsTemplateModal: React.FC<SaveAsTemplateModalProps> = ({
             disabled={!templateName || saveMutation.isPending}
             className="w-full py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-lg transition-colors"
           >
-            {saveMutation.isPending ? 'Saving...' : 'Save Template'}
+            {saveMutation.isPending ? 'Saving…' : 'Save Template'}
           </button>
         </form>
       </div>

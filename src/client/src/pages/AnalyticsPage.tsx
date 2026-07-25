@@ -513,7 +513,7 @@ export const AnalyticsPage: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading analytics...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading analytics…</p>
         </div>
       </div>
     );

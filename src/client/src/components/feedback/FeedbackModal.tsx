@@ -182,7 +182,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
           >
             <Send className="w-4 h-4" />
-            {mutation.isPending ? 'Submitting...' : 'Submit Feedback'}
+            {mutation.isPending ? 'Submitting…' : 'Submit Feedback'}
           </button>
         </form>
       </div>

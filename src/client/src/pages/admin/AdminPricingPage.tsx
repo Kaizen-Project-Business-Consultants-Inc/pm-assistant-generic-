@@ -232,7 +232,7 @@ export function AdminPricingPage() {
     },
   });
 
-  if (isLoading) return <AdminPageWrapper title="Pricing Configuration" subtitle="Loading..."><div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading pricing config...</div></AdminPageWrapper>;
+  if (isLoading) return <AdminPageWrapper title="Pricing Configuration" subtitle="Loading…"><div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading pricing config…</div></AdminPageWrapper>;
   if (error) return <AdminPageWrapper title="Pricing Configuration" subtitle="Error"><div className="text-center py-12 text-red-500">Failed to load pricing configuration.</div></AdminPageWrapper>;
 
   const tiers: PricingConfig[] = data?.tiers ?? [];

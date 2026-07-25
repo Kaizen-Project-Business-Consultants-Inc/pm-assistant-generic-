@@ -324,7 +324,7 @@ export const AccountBillingPage: React.FC = () => {
               {seatLoading && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center gap-1">
                   <span className="w-3 h-3 border border-gray-400 border-t-primary-500 rounded-full animate-spin" />
-                  Updating seats...
+                  Updating seats…
                 </p>
               )}
             </div>

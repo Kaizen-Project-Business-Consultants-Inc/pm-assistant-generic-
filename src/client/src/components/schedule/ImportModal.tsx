@@ -387,7 +387,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
                       onClick={handleImport}
                       className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {importing ? 'Importing...' : `Import ${parsed.rows.length} rows`}
+                      {importing ? 'Importing…' : `Import ${parsed.rows.length} rows`}
                     </button>
                   </div>
                 </>

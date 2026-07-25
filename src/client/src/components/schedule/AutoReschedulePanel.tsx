@@ -247,7 +247,7 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
             {delaysLoading && (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-5 h-5 animate-spin text-primary-500 mr-2" />
-                <span className="text-sm text-gray-500 dark:text-gray-400">Analyzing schedule for delays...</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Analyzing schedule for delays…</span>
               </div>
             )}
 
@@ -310,7 +310,7 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
                 {generateMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Generating Proposal...
+                    Generating Proposal…
                   </>
                 ) : (
                   'Generate Proposal'

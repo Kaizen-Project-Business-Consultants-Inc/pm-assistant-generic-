@@ -438,7 +438,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
                       disabled={!reasonText.trim() || submitting}
                       className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400 rounded-lg"
                     >
-                      {submitting ? 'Submitting...' : cancelMode ? 'Confirm Cancel' : 'Confirm Reverse'}
+                      {submitting ? 'Submitting…' : cancelMode ? 'Confirm Cancel' : 'Confirm Reverse'}
                     </button>
                     <button
                       onClick={() => { setCancelMode(false); setReverseMode(false); setReasonText(''); }}

@@ -267,7 +267,7 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
             disabled={!createForm.name || !createForm.start_date || !createForm.end_date || createSprintMutation.isPending}
             className="w-full mt-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-medium py-2 rounded-md transition-colors"
           >
-            {createSprintMutation.isPending ? 'Creating...' : 'Create Sprint'}
+            {createSprintMutation.isPending ? 'Creating…' : 'Create Sprint'}
           </button>
         </div>
       </div>

@@ -141,7 +141,7 @@ function AiCostTab() {
         ))}
       </div>
 
-      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading AI usage...</div>}
+      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading AI usage…</div>}
       {error && <div className="text-center py-12 text-red-500">Failed to load AI usage.</div>}
 
       {data && (
@@ -218,7 +218,7 @@ function UsageAnalyticsTab() {
         ))}
       </div>
 
-      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading analytics...</div>}
+      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading analytics…</div>}
       {error && <div className="text-center py-12 text-red-500">Failed to load usage analytics.</div>}
 
       {data && (

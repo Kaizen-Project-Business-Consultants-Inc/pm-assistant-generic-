@@ -153,7 +153,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
               {mutation.isPending ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-3" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Generating status report...</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Generating status report…</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">This may take a few seconds</p>
                 </div>
               ) : mutation.isError ? (
@@ -196,7 +196,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Mail className="w-4 h-4" />
-                {emailMutation.isPending ? 'Sending...' : 'Send Report'}
+                {emailMutation.isPending ? 'Sending…' : 'Send Report'}
               </button>
             </div>
           )}
@@ -313,7 +313,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Calendar className="w-4 h-4" />
-                  {scheduleMutation.isPending ? 'Creating...' : 'Create Schedule'}
+                  {scheduleMutation.isPending ? 'Creating…' : 'Create Schedule'}
                 </button>
               </div>
             </div>

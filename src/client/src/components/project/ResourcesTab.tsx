@@ -307,7 +307,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                   disabled={!formName.trim() || !formRole.trim() || !formEmail.trim() || createResourceMutation.isPending || updateResourceMutation.isPending}
                   className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
                 >
-                  {(createResourceMutation.isPending || updateResourceMutation.isPending) ? 'Saving...' : editingResource ? 'Update' : 'Create'}
+                  {(createResourceMutation.isPending || updateResourceMutation.isPending) ? 'Saving…' : editingResource ? 'Update' : 'Create'}
                 </button>
               </div>
             </div>

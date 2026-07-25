@@ -890,7 +890,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
           <div className="bg-primary-50 dark:bg-primary-900/20 px-5 py-3 flex items-center gap-2 border-b border-primary-200 dark:border-primary-800">
             <Bot className="h-4 w-4 text-primary-500 animate-pulse" />
             <h3 className="text-sm font-semibold text-primary-700 dark:text-primary-300">AI Analysis</h3>
-            <span className="ml-auto text-xs text-primary-500 dark:text-primary-400 animate-pulse">Generating...</span>
+            <span className="ml-auto text-xs text-primary-500 dark:text-primary-400 animate-pulse">Generating…</span>
           </div>
           <div className="p-5 space-y-3">
             <div className="h-4 bg-gray-100 dark:bg-gray-700 rounded animate-pulse w-3/4" />

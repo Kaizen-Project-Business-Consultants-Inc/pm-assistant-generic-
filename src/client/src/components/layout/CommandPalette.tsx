@@ -454,7 +454,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
         <div ref={resultsRef} className="max-h-80 overflow-y-auto">
           {/* Loading */}
           {loading && (
-            <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">Searching...</div>
+            <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">Searching…</div>
           )}
 
           {/* Commands (default + filtered) */}

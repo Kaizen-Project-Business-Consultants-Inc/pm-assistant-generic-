@@ -263,7 +263,7 @@ const AddLessonModal: React.FC<{
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Saving...
+                  Saving…
                 </>
               ) : (
                 <>
@@ -746,7 +746,7 @@ export const LessonsLearnedPage: React.FC = () => {
             <div className="flex justify-end gap-3">
               <button onClick={() => setConfirmDeleteId(null)} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200">Cancel</button>
               <button onClick={() => deleteLessonMutation.mutate(confirmDeleteId)} disabled={deleteLessonMutation.isPending} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
-                {deleteLessonMutation.isPending ? 'Deleting...' : 'Delete'}
+                {deleteLessonMutation.isPending ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>

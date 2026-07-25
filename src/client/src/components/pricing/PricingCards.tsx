@@ -362,7 +362,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
                     {loading === plan.tier ? (
                       <span className="flex items-center justify-center">
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                        Loading...
+                        Loading…
                       </span>
                     ) : isAuthenticated ? (
                       isSubscribed ? 'Switch Plan' : 'Subscribe'

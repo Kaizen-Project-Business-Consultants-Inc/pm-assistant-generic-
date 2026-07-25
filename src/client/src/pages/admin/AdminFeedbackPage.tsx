@@ -136,7 +136,7 @@ export function AdminFeedbackPage() {
         ))}
       </div>
 
-      {isLoading && <p className="text-gray-500">Loading feedback...</p>}
+      {isLoading && <p className="text-gray-500">Loading feedback…</p>}
       {error && <p className="text-red-500">Failed to load feedback</p>}
 
       {/* Feedback List */}

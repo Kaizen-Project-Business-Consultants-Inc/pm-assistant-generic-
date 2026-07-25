@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -84,7 +84,14 @@ function SectionSpinner() {
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validTabs: Tab[] = ['overview', 'schedule', 'raid', 'ai-insights', 'performance', 'scenarios', 'team', 'agent-activity', 'change-requests', 'sprints', 'backlog', 'resources', 'time', 'files', 'budget'];
+  const tabParam = searchParams.get('tab') as Tab | null;
+  const [activeTab, setActiveTabState] = useState<Tab>(tabParam && validTabs.includes(tabParam) ? tabParam : 'overview');
+  const setActiveTab = (tab: Tab) => {
+    setActiveTabState(tab);
+    setSearchParams(tab === 'overview' ? {} : { tab }, { replace: true });
+  };
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);

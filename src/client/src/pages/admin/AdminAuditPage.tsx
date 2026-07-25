@@ -114,7 +114,7 @@ export function AdminAuditPage() {
         </span>
       </div>
 
-      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading audit trail...</div>}
+      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading audit trail…</div>}
       {error && <div className="text-center py-12 text-red-500">Failed to load audit trail.</div>}
 
       {!isLoading && !error && (

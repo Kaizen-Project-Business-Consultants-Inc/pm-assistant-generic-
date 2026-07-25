@@ -209,7 +209,7 @@ export function ResourceLevelingPanel({
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 flex items-center justify-center">
           <Loader2 className="w-5 h-5 animate-spin text-primary-500 mr-2" />
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            Loading resource histogram...
+            Loading resource histogram…
           </span>
         </div>
       )}

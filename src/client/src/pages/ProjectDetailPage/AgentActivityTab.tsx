@@ -55,7 +55,7 @@ export function AgentActivityTab({ projectId }: { projectId: string }) {
               className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="h-3.5 w-3.5" />
-              {scanMutation.isPending ? 'Running...' : 'Run AI Analysis'}
+              {scanMutation.isPending ? 'Running…' : 'Run AI Analysis'}
             </button>
           )}
           {scanMutation.isError && (
@@ -79,7 +79,7 @@ export function AgentActivityTab({ projectId }: { projectId: string }) {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading...</div>
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading agent activity…</div>
       ) : entries.length === 0 ? (
         <div className="text-center py-8 text-gray-400 dark:text-gray-500">No agent activity recorded yet</div>
       ) : (

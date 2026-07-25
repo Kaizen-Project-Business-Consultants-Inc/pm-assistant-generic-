@@ -113,7 +113,7 @@ export function AdminSystemPage() {
         </button>
       </div>
 
-      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading configuration...</div>}
+      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading configuration…</div>}
       {error && <div className="text-center py-12 text-red-500">Failed to load configuration.</div>}
 
       {data && (

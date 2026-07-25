@@ -415,7 +415,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                   disabled={!formAmount || createMutation.isPending}
                   className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
                 >
-                  {createMutation.isPending ? 'Saving...' : 'Add Expense'}
+                  {createMutation.isPending ? 'Saving…' : 'Add Expense'}
                 </button>
               </div>
             </div>

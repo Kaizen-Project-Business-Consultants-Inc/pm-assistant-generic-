@@ -540,7 +540,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
             disabled={saving}
             className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 rounded-lg transition-colors"
           >
-            {saving ? 'Saving...' : editRisk ? 'Update' : 'Create'}
+            {saving ? 'Saving…' : editRisk ? 'Update' : 'Create'}
           </button>
         </div>
       </div>

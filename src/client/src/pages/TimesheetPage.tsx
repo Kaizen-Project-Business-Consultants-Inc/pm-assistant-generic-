@@ -162,7 +162,7 @@ export function TimesheetPage() {
               disabled={!logTaskId || !logDate || !logHours || parseFloat(logHours) <= 0 || logTimeMutation.isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
             >
-              {logTimeMutation.isPending ? 'Saving...' : 'Save Entry'}
+              {logTimeMutation.isPending ? 'Saving…' : 'Save Entry'}
             </button>
           </div>
           {logTimeMutation.isError && (

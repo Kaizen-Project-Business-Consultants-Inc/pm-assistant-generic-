@@ -110,7 +110,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
       >
         <UploadCloud className={`w-6 h-6 mx-auto mb-1 ${dragOver ? 'text-primary-500' : 'text-gray-400'}`} />
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          {uploadMutation.isPending ? 'Uploading...' : 'Drop files here or click to upload'}
+          {uploadMutation.isPending ? 'Uploading…' : 'Drop files here or click to upload'}
         </p>
         <input
           id={`file-input-${entityId}`}

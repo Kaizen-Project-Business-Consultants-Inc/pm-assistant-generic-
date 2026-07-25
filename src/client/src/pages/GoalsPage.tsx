@@ -229,7 +229,7 @@ const GoalModal: React.FC<{
         <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Cancel</button>
           <button onClick={() => { if (form.name.trim()) onSubmit(form); }} disabled={isSubmitting || !form.name.trim()} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
-            {isSubmitting ? 'Saving...' : 'Save'}
+            {isSubmitting ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
@@ -424,7 +424,7 @@ export const GoalsPage: React.FC = () => {
 
       {/* Content */}
       {isLoading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading goals...</div>
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading goals…</div>
       ) : tree.length === 0 ? (
         <div className="text-center py-12">
           <Target className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />

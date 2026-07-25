@@ -42,7 +42,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           disabled={isPending}
           className={`px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-colors ${btnColor}`}
         >
-          {isPending ? 'Processing...' : confirmLabel}
+          {isPending ? 'Processing…' : confirmLabel}
         </button>
       </div>
     </AccessibleModal>

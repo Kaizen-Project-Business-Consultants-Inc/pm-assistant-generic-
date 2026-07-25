@@ -254,7 +254,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
             disabled={!form.label.trim() || createMutation.isPending}
             className="w-full text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md py-1.5 transition-colors"
           >
-            {createMutation.isPending ? 'Creating...' : 'Create Portal Link'}
+            {createMutation.isPending ? 'Creating…' : 'Create Portal Link'}
           </button>
           {createMutation.isError && (
             <p className="text-xs text-red-600 dark:text-red-400">

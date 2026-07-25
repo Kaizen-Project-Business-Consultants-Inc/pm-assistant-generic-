@@ -88,7 +88,7 @@ export function AttachmentVersionHistory({ attachmentId, onClose }: AttachmentVe
             className="btn btn-primary w-full flex items-center justify-center gap-2 text-sm"
           >
             <Upload className="w-4 h-4" />
-            {uploadVersionMutation.isPending ? 'Uploading...' : 'Upload New Version'}
+            {uploadVersionMutation.isPending ? 'Uploading…' : 'Upload New Version'}
           </button>
           <input
             id="version-upload"

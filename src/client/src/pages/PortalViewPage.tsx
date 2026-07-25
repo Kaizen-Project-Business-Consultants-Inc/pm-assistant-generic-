@@ -136,7 +136,7 @@ export default function PortalViewPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading portal...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading portal…</p>
         </div>
       </div>
     );
@@ -494,7 +494,7 @@ export default function PortalViewPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Send className="w-4 h-4" />
-                {commentMutation.isPending ? 'Sending...' : 'Submit Comment'}
+                {commentMutation.isPending ? 'Sending…' : 'Submit Comment'}
               </button>
               {commentMutation.isError && (
                 <p className="text-xs text-red-600 dark:text-red-400">

@@ -234,7 +234,7 @@ export function AdminOperationsPage() {
         </button>
       </div>
 
-      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading operations data...</div>}
+      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading operations data…</div>}
       {error && <div className="text-center py-12 text-red-500">Failed to load operations data.</div>}
 
       {data && (

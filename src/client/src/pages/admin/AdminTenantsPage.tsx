@@ -63,7 +63,7 @@ export function AdminTenantsPage() {
 
   return (
     <AdminPageWrapper title="Tenants" subtitle="Multi-tenant organization management">
-      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading tenants...</div>}
+      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading tenants…</div>}
       {error && <div className="text-center py-12 text-red-500">Failed to load tenants.</div>}
       {!isLoading && !error && (() => {
         const tenants: AdminTenant[] = data?.tenants ?? [];

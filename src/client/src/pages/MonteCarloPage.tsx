@@ -274,7 +274,7 @@ export function MonteCarloPage() {
                   {!selectedProjectId
                     ? 'Select a project first...'
                     : schedulesLoading
-                    ? 'Loading schedules...'
+                    ? 'Loading schedules…'
                     : 'Select a schedule...'}
                 </option>
                 {schedules.map((s: Schedule) => (
@@ -334,7 +334,7 @@ export function MonteCarloPage() {
             {simulation.isPending ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Running Simulation...
+                Running Simulation…
               </>
             ) : (
               <>

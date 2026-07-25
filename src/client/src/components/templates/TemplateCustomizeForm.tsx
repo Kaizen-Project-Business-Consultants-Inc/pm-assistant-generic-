@@ -364,7 +364,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
           disabled={!projectName || !startDate || isSubmitting}
           className="w-full py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-lg transition-colors"
         >
-          {isSubmitting ? 'Creating Project...' : 'Create Project'}
+          {isSubmitting ? 'Creating Project…' : 'Create Project'}
         </button>
       </form>
     </div>

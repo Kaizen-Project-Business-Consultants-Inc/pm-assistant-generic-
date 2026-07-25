@@ -229,7 +229,7 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
               disabled={isSaving || recipientList.length === 0}
               className="px-4 py-2 rounded-lg text-sm bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
             >
-              {isSaving ? 'Saving...' : existingId ? 'Update' : 'Create Schedule'}
+              {isSaving ? 'Saving…' : existingId ? 'Update' : 'Create Schedule'}
             </button>
           </div>
         </div>

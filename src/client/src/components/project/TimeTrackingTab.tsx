@@ -218,7 +218,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
               disabled={!formTaskId || !formHours || createMutation.isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
             >
-              {createMutation.isPending ? 'Saving...' : 'Log Entry'}
+              {createMutation.isPending ? 'Saving…' : 'Log Entry'}
             </button>
           </div>
         </div>

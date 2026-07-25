@@ -100,7 +100,7 @@ export function TimeLogForm({ taskId, scheduleId, projectId }: TimeLogFormProps)
           className="btn btn-primary text-xs py-1 px-3 flex items-center gap-1"
         >
           <Plus className="w-3 h-3" />
-          {createMutation.isPending ? 'Saving...' : 'Log'}
+          {createMutation.isPending ? 'Saving…' : 'Log'}
         </button>
         <button onClick={() => setExpanded(false)} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
           Cancel

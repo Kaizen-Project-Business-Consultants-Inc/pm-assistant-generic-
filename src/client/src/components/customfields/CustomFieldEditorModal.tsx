@@ -161,7 +161,7 @@ export function CustomFieldEditorModal({ projectId, entityType, field, onClose }
               className="btn btn-primary flex items-center gap-2"
             >
               <Save className="w-4 h-4" />
-              {isPending ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+              {isPending ? 'Saving…' : isEdit ? 'Update' : 'Create'}
             </button>
           </div>
         </form>

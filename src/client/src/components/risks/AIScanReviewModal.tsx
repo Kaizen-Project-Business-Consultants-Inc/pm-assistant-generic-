@@ -290,7 +290,7 @@ export function AIScanReviewModal({ isOpen, onClose, onImport, candidates, impor
             disabled={selectedCount === 0 || importing}
             className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {importing ? 'Importing...' : `Import ${selectedCount} Selected`}
+            {importing ? 'Importing…' : `Import ${selectedCount} Selected`}
           </button>
         </div>
       </div>

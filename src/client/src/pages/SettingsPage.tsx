@@ -192,7 +192,7 @@ const ProfileTab: React.FC = () => {
         <div className="flex items-center gap-3 pt-2">
           <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors disabled:opacity-50">
             <Save className="w-4 h-4" />
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving…' : 'Save Changes'}
           </button>
           {saved && <span className="text-sm text-green-600 dark:text-green-400">Saved successfully</span>}
         </div>
@@ -327,7 +327,7 @@ const TeamTab: React.FC = () => {
     },
   });
 
-  if (isLoading) return <div className="text-gray-500 dark:text-gray-400">Loading team...</div>;
+  if (isLoading) return <div className="text-gray-500 dark:text-gray-400">Loading team…</div>;
   if (error) return <div className="text-red-500">Failed to load team members. You may not be part of an organization.</div>;
 
   const members = data?.members ?? [];
@@ -371,7 +371,7 @@ const TeamTab: React.FC = () => {
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 disabled:opacity-50"
           >
             <Send className="w-4 h-4" />
-            {inviteMutation.isPending ? 'Sending...' : 'Invite'}
+            {inviteMutation.isPending ? 'Sending…' : 'Invite'}
           </button>
         </div>
         {inviteMsg && (
@@ -597,7 +597,7 @@ const NotificationsTab: React.FC = () => {
       <div className="flex items-center gap-3">
         <button onClick={handleSave} disabled={serverSaving} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors disabled:opacity-50">
           <Save className="w-4 h-4" />
-          {serverSaving ? 'Saving...' : 'Save Preferences'}
+          {serverSaving ? 'Saving…' : 'Save Preferences'}
         </button>
         {saved && <span className="text-sm text-green-600 dark:text-green-400">Saved successfully</span>}
       </div>
@@ -833,7 +833,7 @@ const ApiKeysTab: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={handleCreate} disabled={!newKeyName.trim() || createMutation.isPending} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors disabled:opacity-50">
-                    {createMutation.isPending ? 'Creating...' : 'Create'}
+                    {createMutation.isPending ? 'Creating…' : 'Create'}
                   </button>
                   <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-lg text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
                 </div>
@@ -844,7 +844,7 @@ const ApiKeysTab: React.FC = () => {
 
         {/* Keys List */}
         {isLoading ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading API keys…</p>
         ) : keys.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">No API keys yet. Create one to get started.</p>
         ) : (
@@ -1029,7 +1029,7 @@ const WebhooksTab: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={handleCreate} disabled={!newUrl.trim() || newEvents.length === 0 || createMutation.isPending} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors disabled:opacity-50">
-                    {createMutation.isPending ? 'Creating...' : 'Create'}
+                    {createMutation.isPending ? 'Creating…' : 'Create'}
                   </button>
                   <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-lg text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
                 </div>
@@ -1040,7 +1040,7 @@ const WebhooksTab: React.FC = () => {
 
         {/* Webhooks List */}
         {isLoading ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading webhooks…</p>
         ) : webhooks.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">No webhooks configured.</p>
         ) : (
@@ -1296,7 +1296,7 @@ const DangerZoneTab: React.FC = () => {
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Download a copy of all your data including projects, tasks, and settings.</p>
         <button onClick={handleExport} disabled={exporting} className="flex items-center gap-2 bg-gray-800 dark:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-900 dark:hover:bg-gray-500 transition-colors disabled:opacity-50">
           <Download className="w-4 h-4" />
-          {exporting ? 'Exporting...' : 'Export All Data'}
+          {exporting ? 'Exporting…' : 'Export All Data'}
         </button>
         {exportError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{exportError}</p>}
       </div>

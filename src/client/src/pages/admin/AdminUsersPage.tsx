@@ -275,7 +275,7 @@ export function AdminUsersPage() {
 
   return (
     <AdminPageWrapper title="Users" subtitle="Manage platform users">
-      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading users...</div>}
+      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading users…</div>}
       {error && <div className="text-center py-12 text-red-500">Failed to load users.</div>}
       {!isLoading && !error && (
         <>
@@ -642,7 +642,7 @@ export function AdminUsersPage() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4">
-              {historyLoading && <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>}
+              {historyLoading && <p className="text-sm text-gray-500 dark:text-gray-400">Loading subscription history…</p>}
               {historyData?.events?.length === 0 && <p className="text-sm text-gray-400 dark:text-gray-500">No subscription events found.</p>}
               {historyData?.events?.map((ev: SubscriptionEvent) => (
                 <div key={ev.id} className="flex items-start gap-3 py-2 border-b border-gray-100 dark:border-gray-700/50 last:border-0">

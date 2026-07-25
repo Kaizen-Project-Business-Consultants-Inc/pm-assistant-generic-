@@ -306,7 +306,7 @@ export function WorkflowEditor({ projectId, workflowId, onClose, onSaved }: Work
                 className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-4 h-4" />
-                {saveMutation.isPending ? 'Saving...' : 'Save Workflow'}
+                {saveMutation.isPending ? 'Saving…' : 'Save Workflow'}
               </button>
             </div>
           </form>

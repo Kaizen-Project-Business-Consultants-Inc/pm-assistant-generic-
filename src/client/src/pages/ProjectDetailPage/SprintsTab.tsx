@@ -166,7 +166,7 @@ export function SprintsTab({ projectId }: { projectId: string }) {
       {retroLoading && (
         <div className="rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 p-6 text-center">
           <div className="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-2" />
-          <p className="text-sm text-indigo-600 dark:text-indigo-400">Generating AI retrospective...</p>
+          <p className="text-sm text-indigo-600 dark:text-indigo-400">Generating AI retrospective…</p>
         </div>
       )}
 

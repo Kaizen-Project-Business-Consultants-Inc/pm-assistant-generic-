@@ -275,7 +275,7 @@ export const MeetingMinutesPage: React.FC = () => {
               id="transcript"
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
-              placeholder={isListening ? 'Listening... speak now' : 'Paste your meeting notes or transcript here, or click Record to use your microphone...'}
+              placeholder={isListening ? 'Listening… speak now' : 'Paste your meeting notes or transcript here, or click Record to use your microphone...'}
               className="input w-full resize-y"
               style={{ minHeight: '200px' }}
               rows={8}
@@ -331,7 +331,7 @@ export const MeetingMinutesPage: React.FC = () => {
                     {!selectedProjectId
                       ? 'Select a project first'
                       : schedulesLoading
-                        ? 'Loading...'
+                        ? 'Loading…'
                         : 'Select a schedule...'}
                   </option>
                   {schedules.map((s) => (
@@ -354,7 +354,7 @@ export const MeetingMinutesPage: React.FC = () => {
                 {analyzeMutation.isPending ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Analyzing...
+                    Analyzing…
                   </>
                 ) : (
                   <>

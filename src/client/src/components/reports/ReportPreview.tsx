@@ -422,7 +422,7 @@ export function ReportPreview({ templateId, onClose }: ReportPreviewProps) {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              {report ? report.name : 'Generating Report...'}
+              {report ? report.name : 'Generating Report…'}
             </h1>
             {report && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -464,7 +464,7 @@ export function ReportPreview({ templateId, onClose }: ReportPreviewProps) {
       {generateMutation.isPending && (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin mb-4" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">Generating report...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Generating report…</p>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">This may take a moment while data is aggregated.</p>
         </div>
       )}

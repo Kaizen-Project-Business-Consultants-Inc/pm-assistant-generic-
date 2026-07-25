@@ -97,7 +97,7 @@ export function ScenariosTab({ projectId }: { projectId: string }) {
               {mutation.isPending ? (
                 <>
                   <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Running...
+                  Running…
                 </>
               ) : (
                 <>

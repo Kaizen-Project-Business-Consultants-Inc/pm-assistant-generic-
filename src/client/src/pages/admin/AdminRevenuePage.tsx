@@ -64,7 +64,7 @@ export function AdminRevenuePage() {
 
   return (
     <AdminPageWrapper title="Revenue" subtitle="Subscription metrics and financial health">
-      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading revenue data...</div>}
+      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading revenue data…</div>}
       {error && <div className="text-center py-12 text-red-500">Failed to load revenue data.</div>}
       {data && (
         <>

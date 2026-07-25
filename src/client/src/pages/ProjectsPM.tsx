@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, FolderKanban, Archive, LayoutGrid, List, ChevronUp, ChevronDown } from 'lucide-react';
@@ -47,6 +47,14 @@ export function ProjectsPM() {
     setSortDir(prev => sortKey === key ? (prev === 'asc' ? 'desc' : 'asc') : 'asc');
     setSortKey(key);
   }, [sortKey]);
+
+  // Debounce search input (200ms) for large project lists
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 200);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]);
 
   const { data: allProjectsData, isLoading } = useQuery({
     queryKey: ['pm-all-projects', showArchived],
@@ -110,23 +118,26 @@ export function ProjectsPM() {
     if ((p as any).isFavourite) favouriteSet.add(p.id);
   }
 
-  // Apply filters
-  const filtered = projects.filter((p) => {
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      if (!p.name.toLowerCase().includes(q) && !(p.client || '').toLowerCase().includes(q)) {
+  // Apply filters (memoized with debounced search)
+  const filtered = useMemo(() =>
+    projects.filter((p) => {
+      if (debouncedSearch.trim()) {
+        const q = debouncedSearch.toLowerCase();
+        if (!p.name.toLowerCase().includes(q) && !(p.client || '').toLowerCase().includes(q)) {
+          return false;
+        }
+      }
+      if (healthFilter !== 'all' && healthBand(p.healthScore) !== healthFilter) {
         return false;
       }
-    }
-    if (healthFilter !== 'all' && healthBand(p.healthScore) !== healthFilter) {
-      return false;
-    }
-    if (statusFilter !== 'all') {
-      const ns = normalizeStatus(p.status);
-      if (ns !== statusFilter) return false;
-    }
-    return true;
-  });
+      if (statusFilter !== 'all') {
+        const ns = normalizeStatus(p.status);
+        if (ns !== statusFilter) return false;
+      }
+      return true;
+    }),
+    [projects, debouncedSearch, healthFilter, statusFilter]
+  );
 
   const hasActiveFilters = search.trim() !== '' || healthFilter !== 'all' || statusFilter !== 'all';
 

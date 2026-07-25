@@ -180,7 +180,7 @@ export const IntakeFormsPage: React.FC = () => {
       {tab === 'forms' && (
         <div>
           {formsLoading ? (
-            <div className="text-center py-12 text-gray-400 dark:text-gray-500">Loading forms...</div>
+            <div className="text-center py-12 text-gray-400 dark:text-gray-500">Loading forms…</div>
           ) : forms.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
               <FileText className="w-10 h-10 mx-auto text-gray-300 mb-3" />
@@ -269,7 +269,7 @@ export const IntakeFormsPage: React.FC = () => {
 
           {/* Submissions table */}
           {submissionsLoading ? (
-            <div className="text-center py-12 text-gray-400 dark:text-gray-500">Loading submissions...</div>
+            <div className="text-center py-12 text-gray-400 dark:text-gray-500">Loading submissions…</div>
           ) : submissions.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
               <ClipboardList className="w-10 h-10 mx-auto text-gray-300 mb-3" />

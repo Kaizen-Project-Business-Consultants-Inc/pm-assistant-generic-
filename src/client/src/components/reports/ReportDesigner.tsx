@@ -504,7 +504,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
           disabled={!form.name.trim() || saveMutation.isPending}
           className="px-5 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {saveMutation.isPending ? 'Saving...' : templateId ? 'Update Template' : 'Save Template'}
+          {saveMutation.isPending ? 'Saving…' : templateId ? 'Update Template' : 'Save Template'}
         </button>
       </div>
 
