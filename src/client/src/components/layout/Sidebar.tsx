@@ -102,7 +102,7 @@ const pmNavSections: NavSection[] = [
       { labelKey: 'nav.notifications', icon: Bell, path: '/notifications' },
       { labelKey: 'nav.timesheets', icon: Clock, path: '/timesheet' },
       { labelKey: 'nav.goals', icon: Target, path: '/goals' },
-      { labelKey: 'nav.settings', icon: Settings, path: '/settings', roles: ['admin', 'project_manager', 'pmo'] },
+      { labelKey: 'nav.settings', icon: Settings, path: '/settings' },
     ],
   },
 ];

@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import BottomNav from './BottomNav';
+import KeyboardShortcuts from './KeyboardShortcuts';
 import { OfflineBanner } from './OfflineBanner';
 import { TrialBanner } from './TrialBanner';
 import { UpgradePrompt } from './UpgradePrompt';
@@ -29,10 +31,20 @@ function readLocalStorageBool(key: string, defaultValue: boolean): boolean {
   }
 }
 
+const GO_SHORTCUTS: Record<string, string> = {
+  d: '/dashboard',
+  p: '/projects',
+  n: '/notifications',
+  s: '/settings',
+};
+
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   useWebSocket();
   const breakpoint = useBreakpoint();
+  const navigate = useNavigate();
   const { aiPanelContext } = useUIStore();
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const pendingGo = useRef(false);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     readLocalStorageBool(SIDEBAR_STORAGE_KEY, false)
@@ -66,6 +78,47 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       setAiPanelOpen(false);
     }
   }, [breakpoint]);
+
+  // Global keyboard shortcuts: ? for cheat sheet, g+<key> for navigation
+  useEffect(() => {
+    let goTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable) return;
+
+      // ? opens shortcut cheat sheet
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
+
+      // g + <key> navigation
+      if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        pendingGo.current = true;
+        if (goTimer) clearTimeout(goTimer);
+        goTimer = setTimeout(() => { pendingGo.current = false; }, 500);
+        return;
+      }
+
+      if (pendingGo.current) {
+        pendingGo.current = false;
+        if (goTimer) clearTimeout(goTimer);
+        const dest = GO_SHORTCUTS[e.key];
+        if (dest) {
+          e.preventDefault();
+          navigate(dest);
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (goTimer) clearTimeout(goTimer);
+    };
+  }, [navigate]);
 
   const handleSidebarToggle = useCallback(() => {
     setSidebarCollapsed((prev) => !prev);
@@ -194,6 +247,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
       <UpgradePrompt />
       <WelcomeModal />
+      <KeyboardShortcuts isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 };

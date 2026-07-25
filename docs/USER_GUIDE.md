@@ -1376,6 +1376,8 @@ Additional component-level dark mode coverage includes: WorkloadHeatmap (heat co
 
 **Visual system unification (July 2026):** The application now uses a single warm neutral color temperature throughout — the Tailwind `gray` ramp is aliased to stone, eliminating the visible difference between sidebar and app chrome surfaces in dark mode. All hardcoded teal classes were replaced with the `primary` token so the brand color can be changed in one place. The landing page uses the same teal-to-cyan palette as the app. The onboarding page matches the login screen's stone-900 background and shows the Kovarti "K" mark. Trust line and footer text on the landing page meet WCAG AA contrast requirements.
 
+**Command palette & keyboard shortcuts (July 2026):** The command palette (Ctrl+K / Cmd+K) is now a full command center. When opened, it shows your recent commands, quick actions (New Project, Log Time, Ask AI, Build Report), and "Go to..." navigation for every page. Typing a single character filters the command list; typing two or more characters searches projects, tasks, risks, and other entities. Press `?` anywhere in the app to open a keyboard shortcut cheat sheet. Chord shortcuts are available: press `g` then `d` for Dashboard, `g` then `p` for Projects, `g` then `n` for Notifications, or `g` then `s` for Settings. The Settings page is now accessible to all user roles (previously limited to admin, project manager, and PMO).
+
 ### Language
 
 Open **Settings → Language** and choose from **English**, **French (Français)**, or **Spanish (Español)**. The interface updates immediately; no page reload is required.
