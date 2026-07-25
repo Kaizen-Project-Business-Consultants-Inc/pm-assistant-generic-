@@ -207,7 +207,7 @@ function TaskSlipPredictionSection({ projectId }: { projectId: string }) {
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{summary}</p>
           <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
             {tasks.map((task: any) => (
-              <div key={task.taskId} className="p-2.5 rounded-lg border border-gray-100 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700">
+              <div key={task.taskId} className="p-2.5 rounded-lg border border-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-medium text-gray-900 dark:text-white truncate flex-1">{task.taskName}</span>
                   <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-medium ${severityColor(task.severity)}`}>

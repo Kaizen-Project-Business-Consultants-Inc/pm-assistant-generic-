@@ -119,7 +119,7 @@ export function ActualVsEstimatedChart({ tasks, height = 300 }: ActualVsEstimate
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="fixed z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg"
+          className="fixed z-50 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg"
           style={{ left: tooltip.x + 10, top: tooltip.y - 40 }}
         >
           <p className="font-medium">{tooltip.task.taskName}</p>

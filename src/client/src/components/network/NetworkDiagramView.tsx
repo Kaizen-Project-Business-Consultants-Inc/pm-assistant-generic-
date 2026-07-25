@@ -189,7 +189,7 @@ export function NetworkDiagramView({ scheduleId }: NetworkDiagramViewProps) {
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="fixed z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg max-w-xs"
+          className="fixed z-50 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg max-w-xs"
           style={{ left: tooltip.x + 12, top: tooltip.y - 60 }}
         >
           <p className="font-semibold mb-1">{tooltip.node.name}</p>

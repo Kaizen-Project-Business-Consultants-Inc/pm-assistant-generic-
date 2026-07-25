@@ -9,7 +9,6 @@ import AppLayout from './components/layout/AppLayout';
 // Eagerly loaded (part of initial bundle — needed immediately)
 import { LoginPage } from './pages/LoginPage';
 import { LandingPage } from './pages/LandingPage';
-import { PrelaunchLandingPage } from './pages/PrelaunchLandingPage';
 
 const isPrelaunch = window.location.hostname === 'kovarti.com' || window.location.hostname === 'www.kovarti.com';
 
@@ -22,6 +21,7 @@ const PricingPage = lazy(() => import('./pages/PricingPage').then(m => ({ defaul
 const TermsPage = lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
 const UserGuidePublicPage = lazy(() => import('./pages/UserGuidePublicPage').then(m => ({ default: m.UserGuidePublicPage })));
+const PrelaunchLandingPage = lazy(() => import('./pages/PrelaunchLandingPage').then(m => ({ default: m.PrelaunchLandingPage })));
 const WaitlistAdminPage = lazy(() => import('./pages/WaitlistAdminPage').then(m => ({ default: m.WaitlistAdminPage })));
 const PortalViewPage = lazy(() => import('./pages/PortalViewPage'));
 const DashboardPM = lazy(() => import('./pages/DashboardPM').then(m => ({ default: m.DashboardPM })));

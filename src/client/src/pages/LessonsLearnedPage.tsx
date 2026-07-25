@@ -212,7 +212,7 @@ const AddLessonModal: React.FC<{
                   className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
                     form.impact === opt.value
                       ? `${opt.color} border-transparent ring-2 ring-primary-300`
-                      : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700'
+                      : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   {opt.label}

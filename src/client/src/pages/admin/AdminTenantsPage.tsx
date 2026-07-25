@@ -95,7 +95,7 @@ export function AdminTenantsPage() {
                   const active = Boolean(t.is_active);
                   const provisioned = Boolean(t.is_provisioned);
                   return (
-                    <tr key={t.id} className="hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700">
+                    <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="py-3 pr-4">
                         <div className="font-medium text-gray-900 dark:text-white">{t.name}</div>
                         <div className="text-xs text-gray-400 dark:text-gray-500">{t.slug}</div>

@@ -119,6 +119,7 @@ export const SyncLogPanel: React.FC<SyncLogPanelProps> = ({
             </button>
             <button
               onClick={onClose}
+              aria-label="Close"
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               <X className="h-5 w-5" />

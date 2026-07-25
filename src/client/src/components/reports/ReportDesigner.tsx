@@ -327,7 +327,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                       }));
                       setShowAddMenu(false);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     {opt.icon}
                     {opt.label}
@@ -495,7 +495,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
       <div className="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700 pt-4">
         <button
           onClick={onClose}
-          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           Cancel
         </button>

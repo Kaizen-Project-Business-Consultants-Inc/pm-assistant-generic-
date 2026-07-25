@@ -292,7 +292,7 @@ export function CapacityChart({ data }: CapacityChartProps) {
         {/* Tooltip */}
         {hoveredIdx !== null && bars[hoveredIdx] && (
           <div
-            className="absolute z-20 bg-gray-900 text-white rounded-lg px-3 py-2 text-xs shadow-lg pointer-events-none"
+            className="absolute z-20 bg-gray-900 dark:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs shadow-lg pointer-events-none"
             style={{
               left: `${(bars[hoveredIdx].labelX / svgW) * 100}%`,
               top: '8px',

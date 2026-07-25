@@ -3243,7 +3243,7 @@ export function GanttChart({
                       }}
                     />
                     {/* Milestone tooltip */}
-                    <div className="invisible group-hover/bar:visible absolute z-30 left-1/2 -translate-x-1/2 -top-14 bg-gray-900 text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-lg pointer-events-none">
+                    <div className="invisible group-hover/bar:visible absolute z-30 left-1/2 -translate-x-1/2 -top-14 bg-gray-900 dark:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-lg pointer-events-none">
                       <div className="font-semibold">
                         {isCritical && <span className="text-red-400">[Critical] </span>}
                         Milestone: {task.name}
@@ -3420,7 +3420,7 @@ export function GanttChart({
                   )}
 
                   {/* Tooltip on hover */}
-                  <div className={`${isDragging ? 'invisible' : 'invisible group-hover/bar:visible'} absolute z-30 left-0 -top-16 bg-gray-900 text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-lg pointer-events-none`}>
+                  <div className={`${isDragging ? 'invisible' : 'invisible group-hover/bar:visible'} absolute z-30 left-0 -top-16 bg-gray-900 dark:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-lg pointer-events-none`}>
                     <div className="font-semibold">
                       {isCritical && <span className="text-red-400">[Critical] </span>}
                       {task.name}

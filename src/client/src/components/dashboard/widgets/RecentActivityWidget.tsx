@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Bell, Clock } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { apiService } from '../../../services/api';
 
 function resolveLink(n: any): string {

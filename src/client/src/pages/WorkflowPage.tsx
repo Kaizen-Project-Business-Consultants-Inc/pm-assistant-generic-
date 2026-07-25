@@ -415,7 +415,7 @@ export function WorkflowPage() {
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
               {definitions.map((def) => (
-                <div key={def.id} className="px-4 py-3 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700/50 transition-colors">
+                <div key={def.id} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <button
@@ -476,7 +476,7 @@ export function WorkflowPage() {
             ) : (
               <div className="divide-y divide-gray-50">
                 {executions.map((exec: any) => (
-                  <div key={exec.id} className="px-4 py-2 text-xs flex items-center gap-3 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700/50 cursor-pointer"
+                  <div key={exec.id} className="px-4 py-2 text-xs flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
                     onClick={() => setViewExecId(viewExecId === exec.id ? null : exec.id)}>
                     <div className="flex-shrink-0">
                       {viewExecId === exec.id ? <ChevronDown className="w-3 h-3 text-gray-400 dark:text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500" />}

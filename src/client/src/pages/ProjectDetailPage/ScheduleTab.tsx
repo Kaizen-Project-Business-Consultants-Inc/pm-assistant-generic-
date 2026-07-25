@@ -191,7 +191,7 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                 viewMode === mode
                   ? 'bg-primary-600 text-white'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -1024,7 +1024,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
               </thead>
               <tbody>
                 {comparison.taskVariances.map((tv: any) => (
-                  <tr key={tv.taskId} className="border-b border-gray-50 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700">
+                  <tr key={tv.taskId} className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-2 py-1.5 text-gray-800 dark:text-gray-100 font-medium">{tv.taskName}</td>
                     <td className={`text-center px-2 py-1.5 font-medium ${
                       tv.startVarianceDays > 0 ? 'text-red-600' : tv.startVarianceDays < 0 ? 'text-green-600' : 'text-gray-500 dark:text-gray-400'

@@ -256,7 +256,7 @@ const PortfolioIntelligence: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {heatMap.map((entry) => (
-                  <tr key={entry.projectId} className="hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 transition-colors">
+                  <tr key={entry.projectId} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <td className="py-2.5 pr-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
                       {entry.projectName}
                     </td>

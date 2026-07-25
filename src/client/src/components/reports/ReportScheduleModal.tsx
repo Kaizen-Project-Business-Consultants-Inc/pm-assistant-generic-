@@ -123,7 +123,7 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
             <select
               value={frequency}
               onChange={(e) => setFrequency(e.target.value as any)}
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
@@ -138,7 +138,7 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
               <select
                 value={dayOfWeek}
                 onChange={(e) => setDayOfWeek(Number(e.target.value))}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value={0}>Sunday</option>
                 <option value={1}>Monday</option>
@@ -158,7 +158,7 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
               <select
                 value={dayOfMonth}
                 onChange={(e) => setDayOfMonth(Number(e.target.value))}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 {Array.from({ length: 28 }, (_, i) => (
                   <option key={i + 1} value={i + 1}>{i + 1}</option>
@@ -174,7 +174,7 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
               type="time"
               value={timeOfDay}
               onChange={(e) => setTimeOfDay(e.target.value)}
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
@@ -186,7 +186,7 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
               onChange={(e) => setRecipients(e.target.value)}
               rows={2}
               placeholder="user@example.com, another@example.com"
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
@@ -195,6 +195,8 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
             <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Active</span>
             <button
               type="button"
+              role="switch"
+              aria-checked={isActive}
               onClick={() => setIsActive(!isActive)}
               className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
                 isActive ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-600'
@@ -219,7 +221,7 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700">
+            <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
               Cancel
             </button>
             <button

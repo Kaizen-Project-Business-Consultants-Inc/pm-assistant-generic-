@@ -172,7 +172,7 @@ export function SCurveChart({ data, height = 300 }: SCurveChartProps) {
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="absolute z-20 bg-gray-900 text-white rounded-lg px-3 py-2 text-xs shadow-lg pointer-events-none"
+          className="absolute z-20 bg-gray-900 dark:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs shadow-lg pointer-events-none"
           style={{
             left: `${(tooltip.x / svgWidth) * 100}%`,
             top: '10px',

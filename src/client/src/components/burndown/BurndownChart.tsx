@@ -149,7 +149,7 @@ export function BurndownChart({ dataPoints, totalScope, height = 300 }: Burndown
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="fixed z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg"
+          className="fixed z-50 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg"
           style={{ left: tooltip.x + 10, top: tooltip.y - 50 }}
         >
           <p className="font-medium">{new Date(tooltip.point.date + 'T00:00:00').toLocaleDateString()}</p>

@@ -170,7 +170,7 @@ export const ChangeRequestsPage: React.FC = () => {
                     setSelectedWorkflowId(undefined);
                     setView('workflow-editor');
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 dark:bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-800 dark:hover:bg-gray-500 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   New Workflow
@@ -200,7 +200,7 @@ export const ChangeRequestsPage: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                       {workflows.map((wf: any) => (
-                        <tr key={wf.id} className="hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 transition-colors">
+                        <tr key={wf.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                           <td className="px-4 py-3">
                             <button
                               onClick={() => {

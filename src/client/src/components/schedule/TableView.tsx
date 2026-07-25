@@ -1321,7 +1321,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                   rows.push(
                     <tr
                       key={`group-${groupKey}`}
-                      className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-150 dark:hover:bg-gray-700"
+                      className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
                       onClick={() => toggleGroupCollapse(groupKey)}
                     >
                       <td colSpan={visibleColumns.length + 2} className="px-3 py-2">

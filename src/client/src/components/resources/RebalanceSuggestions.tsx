@@ -136,27 +136,6 @@ export function RebalanceSuggestions({ suggestions }: RebalanceSuggestionsProps)
                 </span>
               </div>
 
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center gap-1 rounded-lg bg-gray-100 dark:bg-gray-700 px-3 py-1.5 text-xs font-medium text-gray-400 dark:text-gray-500 cursor-not-allowed"
-                title="Coming soon — use this suggestion to manually reassign tasks"
-              >
-                {/* Checkmark icon (hand-rolled SVG) */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                  className="h-3 w-3"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M12.416 3.376a.75.75 0 01.208 1.04l-5 7.5a.75.75 0 01-1.154.114l-3-3a.75.75 0 011.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 011.04-.207z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Apply
-              </button>
             </div>
           </div>
         );

@@ -383,7 +383,7 @@ export function ProjectDetailPage() {
             <div className="relative" ref={exportMenuRef}>
               <button
                 onClick={() => setShowExportMenu(v => !v)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
                 <Download className="w-3.5 h-3.5" />
                 Export
@@ -393,21 +393,21 @@ export function ProjectDetailPage() {
                 <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
                   <button
                     onClick={() => { apiService.exportProjectCSV(id!); setShowExportMenu(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Export as CSV
                   </button>
                   <button
                     onClick={() => { apiService.exportProjectXML(id!); setShowExportMenu(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Export for MS Project
                   </button>
                   <button
                     onClick={() => { apiService.exportProjectPDF(id!); setShowExportMenu(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Export as PDF
@@ -415,7 +415,7 @@ export function ProjectDetailPage() {
                   <div className="border-t border-gray-100 my-1" />
                   <button
                     onClick={() => { window.print(); setShowExportMenu(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <Printer className="w-3.5 h-3.5" />
                     Print Gantt

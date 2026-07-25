@@ -301,7 +301,7 @@ export const IntakeFormsPage: React.FC = () => {
                   {submissions.map((sub: any) => (
                     <tr
                       key={sub.id}
-                      className="hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                       onClick={() => openReview(sub.id)}
                     >
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">

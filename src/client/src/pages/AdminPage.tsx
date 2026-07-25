@@ -189,7 +189,7 @@ function UsersTab() {
           {users.map((u: AdminUser) => {
             const active = Boolean(u.is_active);
             return (
-              <tr key={u.id} className="hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700">
+              <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="py-3 pr-4">
                   <div className="font-medium text-gray-900 dark:text-white">{u.full_name}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">{u.email}</div>
@@ -315,7 +315,7 @@ function AiUsageTab() {
         </thead>
         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
           {rows.map((r: AiUsageRow) => (
-            <tr key={r.username} className="hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700">
+            <tr key={r.username} className="hover:bg-gray-50 dark:hover:bg-gray-700">
               <td className="py-3 pr-4">
                 <div className="font-medium text-gray-900 dark:text-white">{r.full_name}</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">{r.email}</div>
@@ -395,7 +395,7 @@ function TenantsTab() {
             const active = Boolean(t.is_active);
             const provisioned = Boolean(t.is_provisioned);
             return (
-              <tr key={t.id} className="hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700">
+              <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="py-3 pr-4">
                   <div className="font-medium text-gray-900 dark:text-white">{t.name}</div>
                   <div className="text-xs text-gray-400 dark:text-gray-500">{t.slug}</div>

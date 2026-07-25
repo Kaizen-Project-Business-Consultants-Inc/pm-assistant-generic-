@@ -194,7 +194,7 @@ export function ComplianceReport({ projectId }: { projectId: string }) {
               </thead>
               <tbody>
                 {entries.slice(0, 20).map((entry) => (
-                  <tr key={entry.entryUuid} className="border-b border-gray-50 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700">
+                  <tr key={entry.entryUuid} className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="py-1.5 px-2 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">
                       {new Date(entry.createdAt).toLocaleString()}
                     </td>

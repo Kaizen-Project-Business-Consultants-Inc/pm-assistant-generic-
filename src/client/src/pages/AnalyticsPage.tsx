@@ -649,7 +649,7 @@ export const AnalyticsPage: React.FC = () => {
                       ? Math.round(((p.budgetSpent || 0) / p.budgetAllocated) * 100)
                       : null;
                     return (
-                      <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700">
+                      <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="py-2 px-2 font-medium text-gray-900 dark:text-white truncate max-w-[180px]">{p.name}</td>
                         <td className="py-2 px-2">
                           <span
@@ -706,7 +706,7 @@ export const AnalyticsPage: React.FC = () => {
                     const now = new Date();
                     const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
                     return (
-                      <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700">
+                      <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="py-2 px-2 font-medium text-gray-900 dark:text-white truncate max-w-[160px]">{t.taskName}</td>
                         <td className="py-2 px-2 text-gray-600 dark:text-gray-300 truncate max-w-[120px]">{t.projectName}</td>
                         <td className="py-2 px-2">

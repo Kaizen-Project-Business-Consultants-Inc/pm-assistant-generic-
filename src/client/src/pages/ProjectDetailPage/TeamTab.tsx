@@ -202,7 +202,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
         ) : (
           <div className="space-y-2">
             {members.map((member: any) => (
-              <div key={member.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 transition-colors">
+              <div key={member.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center">
                     <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">

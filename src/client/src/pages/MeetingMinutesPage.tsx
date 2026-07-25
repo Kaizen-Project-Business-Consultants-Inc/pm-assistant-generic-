@@ -433,7 +433,7 @@ export const MeetingMinutesPage: React.FC = () => {
                 <button
                   key={entry.id}
                   onClick={() => handleHistoryClick(entry)}
-                  className="w-full text-left rounded-lg border border-gray-200 dark:border-gray-700 p-3 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-700 hover:shadow-sm dark:shadow-gray-900/30 transition-all"
+                  className="w-full text-left rounded-lg border border-gray-200 dark:border-gray-700 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-sm dark:shadow-gray-900/30 transition-all"
                 >
                   <p className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">
                     {entry.summary || 'Meeting analysis'}
