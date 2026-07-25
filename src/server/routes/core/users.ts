@@ -7,11 +7,14 @@ import { organizationService } from '../../services/OrganizationService';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import logger from '../../utils/logger';
 
+const SELF_ASSIGNABLE_ROLES = ['project_manager', 'team_member', 'executive', 'scrum_master'] as const;
+
 const profileUpdateSchema = z.object({
   fullName: z.string().min(1).max(200).optional(),
   email: z.string().email().max(255).optional(),
   username: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_]+$/, 'Username may only contain letters, numbers, and underscores').optional(),
   organizationName: z.string().min(2).max(255).optional(),
+  role: z.enum(SELF_ASSIGNABLE_ROLES).optional(),
 });
 
 const categoryPrefSchema = z.object({
@@ -82,6 +85,14 @@ export async function userRoutes(fastify: FastifyInstance) {
       const updateData: Record<string, any> = {};
       if (parsed.fullName !== undefined) updateData.fullName = parsed.fullName;
       if (parsed.email !== undefined) updateData.email = parsed.email;
+
+      // Role self-assignment — only allowed during onboarding (when fullName is null)
+      if (parsed.role !== undefined) {
+        const currentUser = await userService.findById(userId);
+        if (currentUser && !currentUser.fullName) {
+          updateData.role = parsed.role;
+        }
+      }
 
       // Username change — check uniqueness
       if (parsed.username !== undefined) {

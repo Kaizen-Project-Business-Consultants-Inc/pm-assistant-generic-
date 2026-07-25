@@ -56,15 +56,23 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 3. If your session expires, you will be returned to the login page automatically.
 4. Use **Forgot Password** if you need to reset your credentials.
 
-### First Login — Welcome Modal
+### First Login — Onboarding Wizard
 
-On your very first login, a **Welcome modal** appears to help you get oriented. It offers three quick-start actions:
+On your very first login, a **3-step onboarding wizard** appears to help you get set up:
 
-- **Create a project** — jump directly to the new project form.
-- **Import a schedule** — open a project and go straight to the CSV/Excel import flow.
-- **Explore the dashboard** — dismiss the modal and browse the application freely.
+**Step 1 — Your Profile**
+- Enter your full name.
+- Select your role from the dropdown (e.g., Project Manager, Team Member, Executive).
+- Choose your preferred methodology: Waterfall, Agile, or Hybrid. This sets the default view mode and tab ordering on new projects.
 
-The modal only appears once. After you dismiss or choose an action it will not show again.
+**Step 2 — Create Your First Project (optional)**
+- Pick a project template from the library to pre-populate tasks, milestones, and dependencies.
+- Or skip this step if you prefer to create a project manually later.
+
+**Step 3 — You're ready**
+- Links to the Dashboard, Projects page, and Mjuzi AI Chat to get started.
+
+The wizard only appears once. After you complete or dismiss it, it will not show again.
 
 ### Dashboard Overview
 
@@ -109,7 +117,8 @@ The left sidebar provides access to all areas of the application:
 | Integrations   | Jira, GitHub, Slack, Trello connections     |
 | Report Builder | Custom report designer                      |
 | Intake         | Project intake forms and submissions        |
-| Ask AI         | Natural language query interface            |
+| AI Query       | Natural language query interface (Mjuzi AI) |
+| AI Proposals   | AI-generated agentic proposals (Mjuzi AI)   |
 | Help           | In-app help and user guide                  |
 | Account        | Billing and subscription management         |
 | Settings       | User preferences and API keys (admin/manager)|
@@ -910,9 +919,11 @@ If cost data is available, the simulation also produces probabilistic cost forec
 
 PM Assistant integrates AI capabilities throughout the platform (requires AI to be enabled in your environment).
 
-### Natural Language Queries (Ask AI)
+### Natural Language Queries (AI Query)
 
-1. Navigate to **Ask AI** in the sidebar.
+All AI surfaces are grouped under the **Mjuzi AI** section in the sidebar. "Ask AI" has been renamed to **AI Query** and the Agent Proposals page is now **AI Proposals**.
+
+1. Navigate to **AI Query** in the sidebar under Mjuzi AI.
 2. Type a question in plain English, such as:
    - "Which tasks are overdue across all projects?"
    - "What is the budget utilization for Project Alpha?"
@@ -922,9 +933,9 @@ PM Assistant integrates AI capabilities throughout the platform (requires AI to 
 
 > **Trial accounts:** If you are on a trial plan, submitting a query returns a **sample response** with demo data — a short narrative answer, a sample bar chart showing task status across fictitious projects, and 3 suggested follow-up questions. An amber banner at the top of the page identifies it as a sample. No AI tokens are consumed. Upgrade to a paid plan to query your real project data.
 
-### Mjuzi Chat Panel
+### Mjuzi AI Chat Panel
 
-**Mjuzi** is your AI project assistant, available as a persistent slide-out chat panel from any page:
+**Mjuzi** is your AI project assistant, available as a persistent slide-out **Mjuzi AI Chat** panel from any page:
 
 - Click the AI chat icon to open the side panel.
 - Ask questions about the current context (project, schedule, task).
@@ -1707,7 +1718,7 @@ AI Scan does not overwrite or modify existing records — it only proposes new o
 - **Save often** -- Always click Save after modifying schedules or tasks. Unsaved changes are lost on page refresh.
 - **Use the Command Palette** -- Ctrl+K is the fastest way to navigate anywhere in the application.
 - **Check notifications** -- The bell icon alerts you to approvals, delays, and assignment changes.
-- **Leverage AI** -- Use Ask AI for quick data lookups, and AI Task Breakdown when starting a new project.
+- **Leverage AI** -- Use AI Query (under Mjuzi AI in the sidebar) for quick data lookups, and AI Task Breakdown when starting a new project.
 - **Set baselines early** -- Create a baseline as soon as the initial plan is approved, before work begins.
 - **Review EVM weekly** -- SPI and CPI trends provide early warning of schedule and cost problems.
 

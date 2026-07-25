@@ -650,6 +650,11 @@ The `crossProjectIntelligenceService` analyzes patterns across the entire portfo
 
 **Mjuzi** is the AI project assistant, available as a slide-out chat panel on every page. The `aiChatService` provides a conversational interface where users can ask open-ended questions about their projects and receive AI-generated responses grounded in actual project data.
 
+All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the sidebar:
+- **AI Query** (previously “Ask AI”) — natural language query interface at `/nl-query`
+- **AI Proposals** (previously “Agent”) — agentic proposal review at `/agent`
+- The chat panel header reads **”Mjuzi AI Chat”** (previously “AI Assistant — Powered by Claude”)
+
 **Key features:**
 - **Persistent conversations** — chat history is stored in the database (`chat_conversations` + `chat_messages` tables) and survives server restarts. Users can browse, switch between, and resume past conversations from the history panel.
 - **Agent memory integration** — Mjuzi injects recent agent scan findings (via `InterAgentQueryService`), prior conversation context, and its own project-specific memories into the system prompt, enabling more informed and contextual responses.
@@ -1356,6 +1361,8 @@ A global dark theme is available throughout the application. The user toggles it
 
 **UI Audit Sprint 2 — Visual System Unification (6 findings, July 2026):** The Tailwind config now aliases `gray` to the warm stone ramp, eliminating the two-temperature neutral issue where sidebar (stone) and app chrome (cool gray) had visibly different tones in dark mode. All hardcoded `teal-*` classes across 12 component files were replaced with `primary-*`, ensuring the brand token system is actually used and any future brand change propagates automatically. The landing page's blue→cyan gradients were restyled to primary→cyan (teal) to match the app's identity. Feature card accents, shadows, and icon backgrounds all use `primary-*` tokens. The trust line ("No credit card · 14-day trial · Setup in minutes") contrast was raised from `text-slate-500` to `text-slate-300` and the footer from `text-slate-600` to `text-slate-400` for WCAG AA compliance on the dark background. The onboarding page's purple-pink gradient was replaced with `bg-gray-900` (consistent with login) and the green check icon was replaced with the "K" brand mark.
 
+**UI Audit Sprint 6 — Accessibility, Branding & Onboarding (5 findings, July 2026):** Landing page feature cards now have full keyboard and tap support: `tabIndex={0}`, `onFocus`/`onBlur` handlers, `onClick` toggle for expanded detail, and `aria-expanded` on the card element, making them operable without a mouse. The hero SVG mockup (previously `hidden lg:block`) is now visible on mobile to give all users a preview of the product. A `useReducedMotion()` hook reads the `prefers-reduced-motion: reduce` media query; all six SVG mockup components on the landing page accept a `static` prop and suppress all SMIL `<animate>` / `<animateTransform>` elements when the user has requested reduced motion. System-level high-contrast CSS overrides were added to `index.css` using `prefers-contrast: more` media query and attribute selectors (to avoid Tailwind PostCSS conflicts), boosting muted text (gray-400/500 → gray-700 / gray-300), borders (gray-200/300 → gray-500; gray-600/700 → gray-400), and placeholder text to WCAG AA levels. All Mjuzi AI surfaces in the sidebar were unified under a "Mjuzi AI" nav section: "Ask AI" was renamed to "AI Query", the Agent Proposals page was renamed to "AI Proposals", and the chat panel header was changed from "AI Assistant — Powered by Claude" to "Mjuzi AI Chat"; the QueryPage and AgentProposalsPage titles and cross-references were updated; i18n keys updated in en/fr/es. A new "See it in action" section was added to the landing page between features and pricing, featuring three alternating content rows with static SVG mockups; the hero's secondary CTA was changed from "View Pricing" to "See how it works" (anchoring to `#see-it-work`); the refund policy was wrapped in a `details`/`summary` accordion; and tier names in the comparison table got parenthetical descriptors. The onboarding flow was rewritten as a 3-step wizard: Step 1 collects full name, role (dropdown), and methodology preference; Step 2 offers an optional first project from a template; Step 3 is a completion screen with navigation links. The backend `updateProfile` endpoint now accepts a `role` parameter that is applied only when `fullName` is null (first-time profile save). The `apiService.updateProfile()` helper was extended with the optional `role` parameter.
+
 **UI Audit Sprint 5 — Copy, Performance & Navigation (4 findings, July 2026):** The sidebar token meter was redesigned: it now only appears when AI usage reaches ≥70%, showing a warning label ("AI usage high" at ≥70%, "AI usage critical" at ≥90%) with amber/red colours and a link to the Account page for details — below 70% the indicator is hidden entirely. All loading/empty-state microcopy was standardised: three-dot ellipsis (`...`) was replaced with the typographic ellipsis character (`…`) across 67 component files, and generic "Loading…" text was replaced with contextual messages ("Loading API keys…", "Loading agent activity…", etc.). The Projects page search was upgraded with a 200ms debounce and memoised filtering via `useMemo` for smoother performance on large project lists. Schedule deep-linking was added: the Project Detail page now reads a `?tab=` URL search parameter (e.g. `/project/:id?tab=schedule`) to open directly on any tab. Pinned projects in the sidebar gained a calendar icon shortcut (visible on hover) that deep-links to the project's schedule tab.
 
 **UI Audit Sprint 4 — Density & Disclosure (4 findings, July 2026):** KPI tiles on the dashboard were reduced from six to four by merging the overlapping pairs: "Budget Variance" and "Budget Utilization" are now a single "Budget" tile showing variance as the main value and utilization as a subtitle; "Open Risks" now includes an "X projects at risk" subtitle, replacing the separate "At-Risk Projects" tile. The grid changed from 6 columns to 4. The Projects page gained a table/card toggle (persisted in localStorage) — table mode shows sortable columns (name, status, health, progress, methodology, end date) with click-to-sort headers, progress bars, and health labels. The AI assistant panel now defaults to closed instead of permanently reserving 380px on every route; the floating toggle button remains visible for users who want it open. The My/All Projects scope toggle on the dashboard is now always visible; when the user can already see all projects, the "All Projects" button is disabled with a tooltip instead of disappearing.
@@ -1633,6 +1640,17 @@ Users can configure accessibility settings from **Settings → Accessibility**:
 
 Preferences are stored server-side in the `accessibility_preferences` JSON column (migration 034) and cached in localStorage. The `AccessibilityProvider` React context applies CSS classes (`high-contrast`, `reduce-motion`) to the document root.
 
+### System-Level High-Contrast Mode
+
+In addition to the user preference toggle, `index.css` includes CSS overrides that activate when the browser or OS reports `prefers-contrast: more`. These overrides use attribute selectors (to avoid Tailwind PostCSS conflicts) and boost:
+- Muted text colors (Tailwind `gray-400`/`gray-500`) to `gray-700` in light mode and `gray-300` in dark mode
+- Border colors (`gray-200`/`gray-300`) to `gray-500` in light mode; (`gray-600`/`gray-700`) to `gray-400` in dark mode
+- Placeholder text to match the boosted muted-text levels
+
+### Reduced Motion Hook
+
+A `useReducedMotion()` React hook reads the `prefers-reduced-motion: reduce` media query and returns a boolean. All six SVG mockup components on the landing page accept a `static` prop; when `static={true}` (set automatically when `useReducedMotion()` returns true), all SMIL `<animate>` and `<animateTransform>` elements are suppressed, delivering a fully static illustration to users who have requested reduced motion.
+
 ### API Endpoints
 - `GET /api/v1/users/me/accessibility` — get current preferences
 - `PUT /api/v1/users/me/accessibility` — update preferences
@@ -1730,17 +1748,19 @@ A monitoring cockpit with read-only scope toggle:
 - **Project Cards** — Grid layout with left border colored by health band, health pill, status/priority chips, progress meter, and "View Project" button. Clicking a card navigates to `/project/:id`.
 - **New Project** — Template picker integration for creating projects from templates.
 
-### Onboarding — Welcome Modal
+### Onboarding — 3-Step Wizard
 
-New users see a **WelcomeModal** on their first login after registration. The modal presents three options:
+New users see a **3-step onboarding wizard** on their first login after registration. The wizard replaces the old single-screen WelcomeModal with a guided setup flow:
 
-| Option | Action |
-|--------|--------|
-| **Create a Project** | Navigates to `/projects` with the new-project dialog open |
-| **Import a Schedule** | Navigates to the bulk import flow |
-| **I'll explore on my own** | Dismisses the modal without navigation |
+| Step | Content |
+|------|---------|
+| **Step 1 — Profile** | Full name, role selector (dropdown: project_manager, team_member, executive, etc.), and preferred methodology (waterfall/agile/hybrid). Role is persisted to the backend only during onboarding (when `fullName` is null), preventing accidental role changes later. |
+| **Step 2 — First Project** | Optional project creation from a template. Users can pick a template from the library or skip this step. |
+| **Step 3 — Done** | Completion screen with navigation links to Dashboard, Projects, and Mjuzi AI Chat. |
 
-First-login detection uses `sessionStorage` (set once per browser session after registration). Dismissal — by choosing any option or closing the modal — is persisted in `localStorage` so the modal does not reappear on subsequent logins from the same browser.
+First-login detection uses `sessionStorage` (set once per browser session after registration). Completing or dismissing the wizard persists a flag in `localStorage` so it does not reappear on subsequent logins.
+
+The `apiService.updateProfile()` call in Step 1 accepts an optional `role` parameter, which is applied by the backend only when the user's `fullName` is currently null (i.e., this is their first profile save).
 
 Component: `src/client/src/components/onboarding/WelcomeModal.tsx`
 

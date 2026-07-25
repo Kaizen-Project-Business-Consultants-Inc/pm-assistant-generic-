@@ -200,9 +200,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                     <Bot className="w-4 h-4 text-primary-600" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Assistant</h2>
+                    <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Mjuzi AI Chat</h2>
                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-none mt-0.5">
-                      Powered by Claude
+                      Conversational project assistant
                     </p>
                   </div>
                 </div>

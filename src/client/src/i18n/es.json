@@ -15,6 +15,8 @@
     "lessons": "Lecciones",
     "askAi": "Preguntar a la IA",
     "agent": "Agente",
+    "aiQuery": "Consulta IA",
+    "aiProposals": "Propuestas IA",
     "timesheets": "Hojas de tiempo",
     "integrations": "Integraciones",
     "goals": "Objetivos",
@@ -34,6 +36,7 @@
     "system": "Sistema",
     "work": "Trabajo",
     "insights": "Perspectivas",
+    "ai": "Mjuzi IA",
     "myWork": "Mi trabajo"
   },
   "common": {

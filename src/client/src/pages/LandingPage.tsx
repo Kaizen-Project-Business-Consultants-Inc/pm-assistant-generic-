@@ -5,6 +5,25 @@ import { PricingCards, COMPARISON } from '../components/pricing/PricingCards';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
 
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      document.documentElement.classList.contains('reduce-motion')
+    );
+  });
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = () => setReduced(mq.matches || document.documentElement.classList.contains('reduce-motion'));
+    mq.addEventListener('change', onChange);
+    const observer = new MutationObserver(() => onChange());
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => { mq.removeEventListener('change', onChange); observer.disconnect(); };
+  }, []);
+  return reduced;
+}
+
 const features = [
   {
     title: 'AI-Powered Scheduling',
@@ -83,7 +102,7 @@ const features = [
 
 
 /* Animated mockup previews for feature cards */
-function SchedulingMockup() {
+function SchedulingMockup({ static: isStatic }: { static?: boolean }) {
   return (
     <svg viewBox="0 0 360 200" className="w-full h-full">
       <rect width="360" height="200" fill="#1e293b" />
@@ -93,86 +112,88 @@ function SchedulingMockup() {
       <text x="16" y="110" fill="#cbd5e1" fontSize="11" fontFamily="system-ui">Frontend</text>
       <text x="16" y="138" fill="#cbd5e1" fontSize="11" fontFamily="system-ui">Testing</text>
       <text x="16" y="166" fill="#cbd5e1" fontSize="11" fontFamily="system-ui">Deploy</text>
-      <rect x="90" y="42" width="0" height="16" rx="3" fill="#3b82f6" opacity="0.9">
-        <animate attributeName="width" from="0" to="90" dur="0.6s" begin="0.2s" fill="freeze" />
+      <rect x="90" y="42" width={isStatic ? "90" : "0"} height="16" rx="3" fill="#3b82f6" opacity="0.9">
+        {!isStatic && <animate attributeName="width" from="0" to="90" dur="0.6s" begin="0.2s" fill="freeze" />}
       </rect>
-      <rect x="130" y="70" width="0" height="16" rx="3" fill="#60a5fa" opacity="0.9">
-        <animate attributeName="width" from="0" to="130" dur="0.7s" begin="0.5s" fill="freeze" />
+      <rect x="130" y="70" width={isStatic ? "130" : "0"} height="16" rx="3" fill="#60a5fa" opacity="0.9">
+        {!isStatic && <animate attributeName="width" from="0" to="130" dur="0.7s" begin="0.5s" fill="freeze" />}
       </rect>
-      <rect x="175" y="98" width="0" height="16" rx="3" fill="#06b6d4" opacity="0.9">
-        <animate attributeName="width" from="0" to="110" dur="0.6s" begin="0.9s" fill="freeze" />
+      <rect x="175" y="98" width={isStatic ? "110" : "0"} height="16" rx="3" fill="#06b6d4" opacity="0.9">
+        {!isStatic && <animate attributeName="width" from="0" to="110" dur="0.6s" begin="0.9s" fill="freeze" />}
       </rect>
-      <rect x="240" y="126" width="0" height="16" rx="3" fill="#22d3ee" opacity="0.9">
-        <animate attributeName="width" from="0" to="70" dur="0.5s" begin="1.3s" fill="freeze" />
+      <rect x="240" y="126" width={isStatic ? "70" : "0"} height="16" rx="3" fill="#22d3ee" opacity="0.9">
+        {!isStatic && <animate attributeName="width" from="0" to="70" dur="0.5s" begin="1.3s" fill="freeze" />}
       </rect>
-      <rect x="295" y="154" width="0" height="16" rx="3" fill="#67e8f9" opacity="0.9">
-        <animate attributeName="width" from="0" to="40" dur="0.4s" begin="1.6s" fill="freeze" />
+      <rect x="295" y="154" width={isStatic ? "40" : "0"} height="16" rx="3" fill="#67e8f9" opacity="0.9">
+        {!isStatic && <animate attributeName="width" from="0" to="40" dur="0.4s" begin="1.6s" fill="freeze" />}
       </rect>
-      <path d="M180 58 L180 70" stroke="#64748b" strokeWidth="1" fill="none" strokeDasharray="3,2" opacity="0">
-        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="0.8s" fill="freeze" />
+      <path d="M180 58 L180 70" stroke="#64748b" strokeWidth="1" fill="none" strokeDasharray="3,2" opacity={isStatic ? "1" : "0"}>
+        {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="0.8s" fill="freeze" />}
       </path>
-      <path d="M260 86 L260 98" stroke="#64748b" strokeWidth="1" fill="none" strokeDasharray="3,2" opacity="0">
-        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.2s" fill="freeze" />
+      <path d="M260 86 L260 98" stroke="#64748b" strokeWidth="1" fill="none" strokeDasharray="3,2" opacity={isStatic ? "1" : "0"}>
+        {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.2s" fill="freeze" />}
       </path>
-      <text x="310" y="26" fill="#22d3ee" fontSize="12" opacity="0">✦ AI
-        <animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="0.1s" fill="freeze" />
-        <animateTransform attributeName="transform" type="scale" values="0.8;1.1;1" dur="0.5s" begin="0.1s" fill="freeze" />
+      <text x="310" y="26" fill="#22d3ee" fontSize="12" opacity={isStatic ? "1" : "0"}>✦ AI
+        {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="0.1s" fill="freeze" />}
+        {!isStatic && <animateTransform attributeName="transform" type="scale" values="0.8;1.1;1" dur="0.5s" begin="0.1s" fill="freeze" />}
       </text>
     </svg>
   );
 }
 
-function MonteCarloMockup() {
+function MonteCarloMockup({ static: isStatic }: { static?: boolean }) {
   const bars = [8, 15, 28, 45, 60, 80, 95, 78, 55, 35, 20, 10, 5];
   return (
     <svg viewBox="0 0 360 200" className="w-full h-full">
       <rect width="360" height="200" fill="#1e293b" />
       <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Completion Probability</text>
       {bars.map((h, i) => (
-        <rect key={i} x={35 + i * 24} y={180 - h} width="18" rx="2" fill="#06b6d4" opacity="0.8" height="0">
-          <animate attributeName="height" from="0" to={String(h)} dur="0.4s" begin={`${0.1 + i * 0.08}s`} fill="freeze" />
-          <animate attributeName="y" from="180" to={String(180 - h)} dur="0.4s" begin={`${0.1 + i * 0.08}s`} fill="freeze" />
+        <rect key={i} x={35 + i * 24} y={isStatic ? 180 - h : 180} width="18" rx="2" fill="#06b6d4" opacity="0.8" height={isStatic ? h : 0}>
+          {!isStatic && <animate attributeName="height" from="0" to={String(h)} dur="0.4s" begin={`${0.1 + i * 0.08}s`} fill="freeze" />}
+          {!isStatic && <animate attributeName="y" from="180" to={String(180 - h)} dur="0.4s" begin={`${0.1 + i * 0.08}s`} fill="freeze" />}
         </rect>
       ))}
-      <line x1="155" y1="34" x2="155" y2="180" stroke="#fbbf24" strokeWidth="1" strokeDasharray="4,3" opacity="0">
-        <animate attributeName="opacity" from="0" to="0.8" dur="0.3s" begin="1.2s" fill="freeze" />
+      <line x1="155" y1="34" x2="155" y2="180" stroke="#fbbf24" strokeWidth="1" strokeDasharray="4,3" opacity={isStatic ? "0.8" : "0"}>
+        {!isStatic && <animate attributeName="opacity" from="0" to="0.8" dur="0.3s" begin="1.2s" fill="freeze" />}
       </line>
-      <text x="158" y="44" fill="#fbbf24" fontSize="10" fontFamily="system-ui" opacity="0">P50
-        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.2s" fill="freeze" />
+      <text x="158" y="44" fill="#fbbf24" fontSize="10" fontFamily="system-ui" opacity={isStatic ? "1" : "0"}>P50
+        {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.2s" fill="freeze" />}
       </text>
-      <line x1="225" y1="34" x2="225" y2="180" stroke="#f97316" strokeWidth="1" strokeDasharray="4,3" opacity="0">
-        <animate attributeName="opacity" from="0" to="0.8" dur="0.3s" begin="1.5s" fill="freeze" />
+      <line x1="225" y1="34" x2="225" y2="180" stroke="#f97316" strokeWidth="1" strokeDasharray="4,3" opacity={isStatic ? "0.8" : "0"}>
+        {!isStatic && <animate attributeName="opacity" from="0" to="0.8" dur="0.3s" begin="1.5s" fill="freeze" />}
       </line>
-      <text x="228" y="44" fill="#f97316" fontSize="10" fontFamily="system-ui" opacity="0">P80
-        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.5s" fill="freeze" />
+      <text x="228" y="44" fill="#f97316" fontSize="10" fontFamily="system-ui" opacity={isStatic ? "1" : "0"}>P80
+        {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.5s" fill="freeze" />}
       </text>
-      <line x1="275" y1="34" x2="275" y2="180" stroke="#ef4444" strokeWidth="1" strokeDasharray="4,3" opacity="0">
-        <animate attributeName="opacity" from="0" to="0.8" dur="0.3s" begin="1.8s" fill="freeze" />
+      <line x1="275" y1="34" x2="275" y2="180" stroke="#ef4444" strokeWidth="1" strokeDasharray="4,3" opacity={isStatic ? "0.8" : "0"}>
+        {!isStatic && <animate attributeName="opacity" from="0" to="0.8" dur="0.3s" begin="1.8s" fill="freeze" />}
       </line>
-      <text x="278" y="44" fill="#ef4444" fontSize="10" fontFamily="system-ui" opacity="0">P95
-        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.8s" fill="freeze" />
+      <text x="278" y="44" fill="#ef4444" fontSize="10" fontFamily="system-ui" opacity={isStatic ? "1" : "0"}>P95
+        {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.8s" fill="freeze" />}
       </text>
     </svg>
   );
 }
 
-function RiskDetectionMockup() {
+function RiskDetectionMockup({ static: isStatic }: { static?: boolean }) {
   return (
     <svg viewBox="0 0 360 200" className="w-full h-full">
       <rect width="360" height="200" fill="#1e293b" />
       <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Risk Scanner</text>
-      <rect x="0" y="34" width="360" height="2" fill="#3b82f6" opacity="0">
-        <animate attributeName="opacity" values="0;0.6;0" dur="1.5s" begin="0.2s" />
-        <animate attributeName="y" from="34" to="190" dur="1.5s" begin="0.2s" fill="freeze" />
-      </rect>
+      {!isStatic && (
+        <rect x="0" y="34" width="360" height="2" fill="#3b82f6" opacity="0">
+          <animate attributeName="opacity" values="0;0.6;0" dur="1.5s" begin="0.2s" />
+          <animate attributeName="y" from="34" to="190" dur="1.5s" begin="0.2s" fill="freeze" />
+        </rect>
+      )}
       {[
         { y: 46, text1: 'Budget overrun — Phase 2 at 23% over', severity: '#ef4444', tag: 'HIGH' },
         { y: 86, text1: 'Resource conflict — 3 devs double-booked', severity: '#f97316', tag: 'MED' },
         { y: 126, text1: 'Dependency delay — API blocked by vendor', severity: '#ef4444', tag: 'HIGH' },
         { y: 166, text1: 'Scope creep — 12 unplanned tasks added', severity: '#eab308', tag: 'LOW' },
       ].map((risk, i) => (
-        <g key={i} opacity="0">
-          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.6 + i * 0.5}s`} fill="freeze" />
+        <g key={i} opacity={isStatic ? "1" : "0"}>
+          {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.6 + i * 0.5}s`} fill="freeze" />}
           <rect x="14" y={risk.y} width="6" height="24" rx="2" fill={risk.severity} />
           <text x="28" y={risk.y + 15} fill="#e2e8f0" fontSize="10" fontFamily="system-ui">{risk.text1}</text>
           <rect x="300" y={risk.y + 3} width="40" height="18" rx="9" fill={risk.severity} opacity="0.2" />
@@ -183,7 +204,7 @@ function RiskDetectionMockup() {
   );
 }
 
-function MeetingMockup() {
+function MeetingMockup({ static: isStatic }: { static?: boolean }) {
   const lines = [
     { text: 'Sarah: Finalize API spec by Friday', type: 'transcript' },
     { text: '→ Action: API spec — Sarah — due Fri', type: 'action' },
@@ -197,8 +218,8 @@ function MeetingMockup() {
       <rect width="360" height="200" fill="#1e293b" />
       <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Meeting Analysis</text>
       {lines.map((line, i) => (
-        <g key={i} opacity="0">
-          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.3 + i * 0.4}s`} fill="freeze" />
+        <g key={i} opacity={isStatic ? "1" : "0"}>
+          {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.3 + i * 0.4}s`} fill="freeze" />}
           {line.type === 'action' ? (
             <>
               <rect x="14" y={38 + i * 26} width="332" height="22" rx="4" fill="#3b82f6" opacity="0.15" />
@@ -218,7 +239,7 @@ function MeetingMockup() {
   );
 }
 
-function PortfolioMockup() {
+function PortfolioMockup({ static: isStatic }: { static?: boolean }) {
   const projects = [
     { name: 'Website Redesign', health: 92, color: '#10b981', w: 250 },
     { name: 'Mobile App v2', health: 67, color: '#f97316', w: 182 },
@@ -230,16 +251,16 @@ function PortfolioMockup() {
       <rect width="360" height="200" fill="#1e293b" />
       <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Portfolio Health</text>
       {projects.map((p, i) => (
-        <g key={i} opacity="0">
-          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.2 + i * 0.3}s`} fill="freeze" />
+        <g key={i} opacity={isStatic ? "1" : "0"}>
+          {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.2 + i * 0.3}s`} fill="freeze" />}
           <text x="16" y={56 + i * 42} fill="#e2e8f0" fontSize="11" fontFamily="system-ui">{p.name}</text>
           <rect x="16" y={62 + i * 42} width="280" height="10" rx="5" fill="#334155" />
-          <rect x="16" y={62 + i * 42} width="0" height="10" rx="5" fill={p.color}>
-            <animate attributeName="width" from="0" to={String(p.w)} dur="0.8s" begin={`${0.4 + i * 0.3}s`} fill="freeze" />
+          <rect x="16" y={62 + i * 42} width={isStatic ? String(p.w) : "0"} height="10" rx="5" fill={p.color}>
+            {!isStatic && <animate attributeName="width" from="0" to={String(p.w)} dur="0.8s" begin={`${0.4 + i * 0.3}s`} fill="freeze" />}
           </rect>
-          <text x="304" y={72 + i * 42} fill={p.color} fontSize="11" fontWeight="bold" fontFamily="system-ui" opacity="0">
+          <text x="304" y={72 + i * 42} fill={p.color} fontSize="11" fontWeight="bold" fontFamily="system-ui" opacity={isStatic ? "1" : "0"}>
             {p.health}%
-            <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.8 + i * 0.3}s`} fill="freeze" />
+            {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.8 + i * 0.3}s`} fill="freeze" />}
           </text>
         </g>
       ))}
@@ -247,41 +268,43 @@ function PortfolioMockup() {
   );
 }
 
-function NLQueryMockup() {
+function NLQueryMockup({ static: isStatic }: { static?: boolean }) {
   return (
     <svg viewBox="0 0 360 200" className="w-full h-full">
       <rect width="360" height="200" fill="#1e293b" />
-      <g opacity="0">
-        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="0.3s" fill="freeze" />
+      <g opacity={isStatic ? "1" : "0"}>
+        {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="0.3s" fill="freeze" />}
         <rect x="90" y="14" width="254" height="30" rx="15" fill="#3b82f6" />
         <text x="106" y="34" fill="white" fontSize="11" fontFamily="system-ui">Which tasks are overdue this sprint?</text>
       </g>
-      <g opacity="0">
-        <animate attributeName="opacity" values="0;1;1;0" dur="1s" begin="0.8s" fill="freeze" />
-        <circle cx="28" cy="68" r="3.5" fill="#64748b"><animate attributeName="opacity" values="0.3;1;0.3" dur="0.6s" repeatCount="2" begin="0.8s" /></circle>
-        <circle cx="40" cy="68" r="3.5" fill="#64748b"><animate attributeName="opacity" values="0.3;1;0.3" dur="0.6s" repeatCount="2" begin="0.9s" /></circle>
-        <circle cx="52" cy="68" r="3.5" fill="#64748b"><animate attributeName="opacity" values="0.3;1;0.3" dur="0.6s" repeatCount="2" begin="1.0s" /></circle>
-      </g>
-      <g opacity="0">
-        <animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="1.8s" fill="freeze" />
+      {!isStatic && (
+        <g opacity="0">
+          <animate attributeName="opacity" values="0;1;1;0" dur="1s" begin="0.8s" fill="freeze" />
+          <circle cx="28" cy="68" r="3.5" fill="#64748b"><animate attributeName="opacity" values="0.3;1;0.3" dur="0.6s" repeatCount="2" begin="0.8s" /></circle>
+          <circle cx="40" cy="68" r="3.5" fill="#64748b"><animate attributeName="opacity" values="0.3;1;0.3" dur="0.6s" repeatCount="2" begin="0.9s" /></circle>
+          <circle cx="52" cy="68" r="3.5" fill="#64748b"><animate attributeName="opacity" values="0.3;1;0.3" dur="0.6s" repeatCount="2" begin="1.0s" /></circle>
+        </g>
+      )}
+      <g opacity={isStatic ? "1" : "0"}>
+        {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="1.8s" fill="freeze" />}
         <rect x="16" y="56" width="270" height="130" rx="14" fill="#334155" />
         <text x="30" y="78" fill="#e2e8f0" fontSize="11" fontFamily="system-ui">Found 3 overdue tasks:</text>
         <text x="30" y="100" fill="#f87171" fontSize="10" fontFamily="system-ui">• API auth module — 3 days overdue</text>
         <text x="30" y="120" fill="#f87171" fontSize="10" fontFamily="system-ui">• DB schema review — 1 day overdue</text>
         <text x="30" y="140" fill="#fbbf24" fontSize="10" fontFamily="system-ui">• UI wireframes — due today</text>
         <text x="30" y="162" fill="#94a3b8" fontSize="10" fontFamily="system-ui">Suggest auto-reschedule?</text>
-        <rect x="30" y="170" width="60" height="18" rx="9" fill="#3b82f6" opacity="0">
-          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="2.4s" fill="freeze" />
+        <rect x="30" y="170" width="60" height="18" rx="9" fill="#3b82f6" opacity={isStatic ? "1" : "0"}>
+          {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="2.4s" fill="freeze" />}
         </rect>
-        <text x="40" y="183" fill="white" fontSize="9" fontFamily="system-ui" opacity="0">Yes, do it
-          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="2.4s" fill="freeze" />
+        <text x="40" y="183" fill="white" fontSize="9" fontFamily="system-ui" opacity={isStatic ? "1" : "0"}>Yes, do it
+          {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="2.4s" fill="freeze" />}
         </text>
       </g>
-      <circle cx="30" cy="88" r="12" fill="#3b82f6" opacity="0">
-        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.8s" fill="freeze" />
+      <circle cx="30" cy="88" r="12" fill="#3b82f6" opacity={isStatic ? "1" : "0"}>
+        {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.8s" fill="freeze" />}
       </circle>
-      <text x="24" y="92" fill="white" fontSize="10" fontWeight="bold" fontFamily="system-ui" opacity="0">M
-        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.8s" fill="freeze" />
+      <text x="24" y="92" fill="white" fontSize="10" fontWeight="bold" fontFamily="system-ui" opacity={isStatic ? "1" : "0"}>M
+        {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.8s" fill="freeze" />}
       </text>
     </svg>
   );
@@ -387,7 +410,7 @@ function HeroMockup() {
   );
 }
 
-const featureMockups: Record<string, React.FC> = {
+const featureMockups: Record<string, React.FC<{ static?: boolean }>> = {
   'AI-Powered Scheduling': SchedulingMockup,
   'Monte Carlo Simulations': MonteCarloMockup,
   'Smart Risk Detection': RiskDetectionMockup,
@@ -399,25 +422,37 @@ const featureMockups: Record<string, React.FC> = {
 function FeatureCard({ feature }: { feature: typeof features[number] }) {
   const [showPreview, setShowPreview] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const Mockup = featureMockups[feature.title];
+  const Mockup = featureMockups[feature.title] as React.FC<{ static?: boolean }> | undefined;
+  const reducedMotion = useReducedMotion();
 
-  const handleMouseEnter = useCallback(() => {
+  const show = useCallback(() => {
     if (!Mockup) return;
     timeoutRef.current = setTimeout(() => setShowPreview(true), 400);
   }, [Mockup]);
 
-  const handleMouseLeave = useCallback(() => {
+  const hide = useCallback(() => {
     clearTimeout(timeoutRef.current);
     setShowPreview(false);
   }, []);
 
+  const handleClick = useCallback(() => {
+    if (!Mockup) return;
+    setShowPreview((prev) => !prev);
+  }, [Mockup]);
+
   return (
     <div
-      className={`group relative rounded-2xl p-6 border hover:shadow-lg hover:shadow-primary-500/10 hover:-translate-y-1 hover:z-40 transition-all duration-300 ${feature.cardBg}`}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      tabIndex={0}
+      role="button"
+      aria-expanded={Mockup ? showPreview : undefined}
+      className={`group relative rounded-2xl p-6 border hover:shadow-lg hover:shadow-primary-500/10 hover:-translate-y-1 hover:z-40 transition-all duration-300 cursor-pointer ${feature.cardBg}`}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+      onClick={handleClick}
     >
-      <div className={`absolute top-0 left-6 right-6 h-1 rounded-b-full bg-gradient-to-r ${feature.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+      <div className={`absolute top-0 left-6 right-6 h-1 rounded-b-full bg-gradient-to-r ${feature.accent} opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-300`} />
       <div className={`w-12 h-12 ${feature.iconBg} rounded-xl flex items-center justify-center mb-4`}>
         {feature.icon}
       </div>
@@ -427,7 +462,7 @@ function FeatureCard({ feature }: { feature: typeof features[number] }) {
       {Mockup && showPreview && (
         <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10">
           <div className="absolute left-1/2 -translate-x-1/2 top-full w-3 h-3 bg-[#1e293b] rotate-45 -mt-1.5" />
-          <Mockup />
+          <Mockup static={reducedMotion} />
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-3 py-2">
             <p className="text-white text-xs font-medium">{feature.title}</p>
           </div>
@@ -543,11 +578,11 @@ export const LandingPage: React.FC = () => {
                 Get Started Free
               </Link>
               <a
-                href="#pricing"
+                href="#see-it-work"
                 className="text-[15px] font-semibold text-white px-6 py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
               >
-                View Pricing
+                See how it works
               </a>
             </div>
             <div className="flex items-center gap-5 mt-7 flex-wrap">
@@ -563,7 +598,7 @@ export const LandingPage: React.FC = () => {
           </div>
 
           {/* Right: Product Mockup */}
-          <div className="hidden lg:block">
+          <div className="w-full max-w-md mx-auto lg:max-w-none">
             <HeroMockup />
           </div>
         </div>
@@ -581,6 +616,35 @@ export const LandingPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature) => (
               <FeatureCard key={feature.title} feature={feature} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* See it in action */}
+      <section id="see-it-work" className="pt-28 pb-20 border-t border-white/5 scroll-mt-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white">See it in action</h2>
+            <p className="mt-3 text-base text-slate-300">
+              Real workflows, real results — here's how Kovarti PM works day to day
+            </p>
+          </div>
+          <div className="space-y-20">
+            {[
+              { title: 'Plan with AI-powered scheduling', description: 'Import a scope document or describe your project — Mjuzi generates a full Gantt chart with tasks, dependencies, and critical path in seconds. Drag to adjust, then baseline and track.', Mockup: SchedulingMockup, reverse: false },
+              { title: 'Catch risks before they escalate', description: 'The autonomous risk scanner runs daily, flagging budget overruns, resource conflicts, and dependency delays. Each finding comes with a confidence score and suggested mitigation from historical lessons.', Mockup: RiskDetectionMockup, reverse: true },
+              { title: 'Monitor portfolio health at a glance', description: 'See every project\'s health, CPI, and SPI on one dashboard. Drill into any project for EVM metrics, Monte Carlo forecasts, and AI-generated next-best-actions.', Mockup: PortfolioMockup, reverse: false },
+            ].map((row, i) => (
+              <div key={i} className={`flex flex-col ${row.reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} gap-8 lg:gap-14 items-center`}>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl font-semibold text-white mb-3">{row.title}</h3>
+                  <p className="text-slate-300 leading-relaxed">{row.description}</p>
+                </div>
+                <div className="flex-1 min-w-0 w-full max-w-md lg:max-w-none rounded-xl overflow-hidden ring-1 ring-white/10">
+                  <row.Mockup static />
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -638,9 +702,9 @@ export const LandingPage: React.FC = () => {
                   <thead>
                     <tr className="border-b-2 border-gray-700">
                       <th className="text-left py-3 pr-6 font-semibold text-white">Feature</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-400 w-24">Trial</th>
-                      <th className="text-center py-3 px-4 font-semibold text-white w-28">Consultant</th>
-                      <th className="text-center py-3 px-4 font-semibold text-primary-400 w-24">SME</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-400 w-24">Trial <span className="font-normal">(Free)</span></th>
+                      <th className="text-center py-3 px-4 font-semibold text-white w-28">Consultant <span className="font-normal">(Solo)</span></th>
+                      <th className="text-center py-3 px-4 font-semibold text-primary-400 w-24">SME <span className="font-normal">(Team)</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -669,12 +733,15 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Refund policy */}
-            <div className="mt-12 text-center text-xs text-gray-500 space-y-1">
-              <p>Monthly subscriptions are non-refundable. Cancel anytime.</p>
-              <p>Annual subscriptions: pro-rated refund within 30 days, non-refundable after.</p>
-              <p>Token top-ups are non-refundable and do not expire.</p>
-              <p>Questions? <a href="mailto:support@kpbc.ca" className="text-primary-400 hover:underline">support@kpbc.ca</a></p>
-            </div>
+            <details className="mt-12 text-center text-xs text-gray-500">
+              <summary className="cursor-pointer hover:text-gray-300 transition-colors">Refund &amp; cancellation policy</summary>
+              <div className="mt-2 space-y-1">
+                <p>Monthly subscriptions are non-refundable. Cancel anytime.</p>
+                <p>Annual subscriptions: pro-rated refund within 30 days, non-refundable after.</p>
+                <p>Token top-ups are non-refundable and do not expire.</p>
+                <p>Questions? <a href="mailto:support@kpbc.ca" className="text-primary-400 hover:underline">support@kpbc.ca</a></p>
+              </div>
+            </details>
           </div>
         </div>
       </section>

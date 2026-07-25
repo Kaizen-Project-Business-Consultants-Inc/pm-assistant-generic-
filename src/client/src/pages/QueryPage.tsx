@@ -233,10 +233,10 @@ export const QueryPage: React.FC = () => {
       <div className="text-center">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2">
           <MessageSquare className="w-6 h-6 text-primary-500" />
-          Project Query
+          AI Query
         </h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Ask questions about your projects in natural language.
+          Ask questions about your project data in plain English. For conversational help, use the Mjuzi chat panel.
         </p>
       </div>
 

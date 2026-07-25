@@ -93,8 +93,13 @@ const pmNavSections: NavSection[] = [
       { labelKey: 'nav.scenarios', icon: FlaskConical, path: '/scenarios' },
       { labelKey: 'nav.reports', icon: FileText, path: '/reports' },
       { labelKey: 'nav.reportBuilder', icon: FileBarChart, path: '/report-builder' },
-      { labelKey: 'nav.askAi', icon: Search, path: '/query' },
-      { labelKey: 'nav.agent', icon: Bot, path: '/agent', roles: ['admin', 'project_manager', 'pmo'] },
+    ],
+  },
+  {
+    titleKey: 'section.ai',
+    items: [
+      { labelKey: 'nav.aiQuery', icon: Search, path: '/query' },
+      { labelKey: 'nav.aiProposals', icon: Bot, path: '/agent', roles: ['admin', 'project_manager', 'pmo'] },
     ],
   },
   {

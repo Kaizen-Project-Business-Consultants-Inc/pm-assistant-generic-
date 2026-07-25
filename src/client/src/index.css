@@ -169,6 +169,41 @@
   outline-color: #fff;
 }
 
+/* Boost muted text contrast — light mode */
+.high-contrast [class*="text-gray-400"],
+.high-contrast [class*="text-gray-500"] {
+  color: #374151; /* gray-700, WCAG AA on white */
+}
+/* Boost muted text contrast — dark mode */
+.high-contrast.dark [class*="text-gray-400"],
+.high-contrast.dark [class*="text-gray-500"],
+.high-contrast .dark [class*="text-gray-400"],
+.high-contrast .dark [class*="text-gray-500"] {
+  color: #d1d5db; /* gray-300, WCAG AA on dark backgrounds */
+}
+
+/* Boost border contrast — light mode */
+.high-contrast [class*="border-gray-200"],
+.high-contrast [class*="border-gray-300"] {
+  border-color: #6b7280; /* gray-500 */
+}
+/* Boost border contrast — dark mode */
+.high-contrast.dark [class*="border-gray-600"],
+.high-contrast.dark [class*="border-gray-700"],
+.high-contrast .dark [class*="border-gray-600"],
+.high-contrast .dark [class*="border-gray-700"] {
+  border-color: #9ca3af; /* gray-400 */
+}
+
+/* Boost placeholder text */
+.high-contrast ::placeholder {
+  color: #374151;
+}
+.high-contrast.dark ::placeholder,
+.high-contrast .dark ::placeholder {
+  color: #d1d5db;
+}
+
 /* Reduced motion (user preference via toggle) */
 .reduce-motion * {
   animation-duration: 0.01ms !important;

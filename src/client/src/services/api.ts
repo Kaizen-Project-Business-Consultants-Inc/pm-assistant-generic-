@@ -2281,7 +2281,7 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
-  async updateProfile(data: { fullName?: string; email?: string; username?: string; organizationName?: string }) {
+  async updateProfile(data: { fullName?: string; email?: string; username?: string; organizationName?: string; role?: string }) {
     const response = await this.api.put('/users/me/profile', data);
     return response.data;
   }
