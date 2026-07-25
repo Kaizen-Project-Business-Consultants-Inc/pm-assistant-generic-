@@ -14,13 +14,49 @@ interface Breadcrumb {
   path: string;
 }
 
+const ACRONYMS = new Set(['evm', 'kpi', 'ai']);
+
 const segmentLabels: Record<string, string> = {
   dashboard: 'Dashboard',
   projects: 'Projects',
   project: 'Project',
+  portfolio: 'Portfolio',
+  resources: 'Resources',
+  meetings: 'Meetings',
+  lessons: 'Lessons Learned',
+  'change-requests': 'Change Requests',
+  analytics: 'Analytics',
+  evm: 'EVM',
   reports: 'Reports',
+  'report-builder': 'Report Builder',
+  query: 'Ask AI',
+  notifications: 'Notifications',
+  timesheet: 'Timesheet',
+  goals: 'Goals',
   settings: 'Settings',
   schedule: 'Schedule',
+  'monte-carlo': 'Monte Carlo',
+  scenarios: 'Scenarios',
+  workflows: 'Workflows',
+  intake: 'Intake Forms',
+  integrations: 'Integrations',
+  agent: 'Agent Proposals',
+  account: 'Account',
+  help: 'Help',
+  admin: 'Admin',
+  users: 'Users',
+  tenants: 'Tenants',
+  pricing: 'Pricing',
+  feedback: 'Feedback',
+  operations: 'Operations',
+  revenue: 'Revenue',
+  'ai-usage': 'AI Usage',
+  system: 'System',
+  audit: 'Audit',
+  login: 'Login',
+  register: 'Register',
+  terms: 'Terms',
+  privacy: 'Privacy',
 };
 
 function buildBreadcrumbs(pathname: string): Breadcrumb[] {
@@ -37,9 +73,9 @@ function buildBreadcrumbs(pathname: string): Breadcrumb[] {
     currentPath += `/${segment}`;
     const label =
       segmentLabels[segment] ||
-      (segment.length <= 6
+      (ACRONYMS.has(segment.toLowerCase())
         ? segment.toUpperCase()
-        : segment.charAt(0).toUpperCase() + segment.slice(1));
+        : segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' '));
     crumbs.push({ label, path: currentPath });
   }
 

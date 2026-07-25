@@ -1,7 +1,6 @@
 import { useEffect, useCallback, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Eye,
   Activity,
   Clock,
   AlertTriangle,
@@ -33,21 +32,21 @@ import { TeamWorkloadWidget } from '../components/dashboard/widgets/TeamWorkload
 // ─── Widget registry ──────────────────────────────────────────────────────────
 
 const PM_WIDGETS: WidgetDef[] = [
-  // Above the fold — data first, then actionable items
+  // Above the fold — essentials only (progressive disclosure: opt-in the rest)
   { id: 'kpi',           label: 'KPI Tiles',              group: 'Overview', defaultOn: true,  size: 'full' },
   { id: 'projects',      label: 'Projects Table',         group: 'Overview', defaultOn: true,  size: 'full' },
   { id: 'briefing',      label: 'Morning Briefing',       group: 'Overview', defaultOn: true,  size: 'full' },
   { id: 'action',        label: 'Action Center',          group: 'Overview', defaultOn: true,  size: 'full' },
-  // Below the fold — AI insights, charts, details
-  { id: 'intel',         label: 'Portfolio Intelligence',  group: 'AI',       defaultOn: true,  size: 'full' },
-  { id: 'trend',         label: 'Issues Trend',           group: 'Charts',   defaultOn: true,  size: 'full' },
-  { id: 'velocity',      label: 'Sprint Velocity',        group: 'Charts',   defaultOn: true,  size: 'full' },
-  { id: 'milestones',    label: 'Milestones',             group: 'Details',  defaultOn: true,  size: 'third' },
-  { id: 'budget',        label: 'Budget Watch',           group: 'Details',  defaultOn: true,  size: 'third' },
-  { id: 'activity',      label: 'Activity Feed',          group: 'Details',  defaultOn: true,  size: 'third' },
-  { id: 'sprint',        label: 'Sprint Snapshot',        group: 'Details',  defaultOn: true,  size: 'full' },
-  { id: 'goals',         label: 'Goals Progress',         group: 'Details',  defaultOn: true,  size: 'full' },
-  { id: 'workload',      label: 'Team Workload',          group: 'Details',  defaultOn: true,  size: 'full' },
+  // Below the fold — opt-in via Customize dropdown
+  { id: 'intel',         label: 'Portfolio Intelligence',  group: 'AI',       defaultOn: false, size: 'full' },
+  { id: 'trend',         label: 'Issues Trend',           group: 'Charts',   defaultOn: false, size: 'full' },
+  { id: 'velocity',      label: 'Sprint Velocity',        group: 'Charts',   defaultOn: false, size: 'full' },
+  { id: 'milestones',    label: 'Milestones',             group: 'Details',  defaultOn: false, size: 'third' },
+  { id: 'budget',        label: 'Budget Watch',           group: 'Details',  defaultOn: false, size: 'third' },
+  { id: 'activity',      label: 'Activity Feed',          group: 'Details',  defaultOn: false, size: 'third' },
+  { id: 'sprint',        label: 'Sprint Snapshot',        group: 'Details',  defaultOn: false, size: 'full' },
+  { id: 'goals',         label: 'Goals Progress',         group: 'Details',  defaultOn: false, size: 'full' },
+  { id: 'workload',      label: 'Team Workload',          group: 'Details',  defaultOn: false, size: 'full' },
   { id: 'standup',       label: 'Standup Summary',        group: 'AI',       defaultOn: false, size: 'full' },
 ];
 
@@ -57,6 +56,15 @@ function formatCompact(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000)     return `${(n / 1_000).toFixed(0)}K`;
   return String(Math.round(n));
+}
+
+function formatRelativeTime(timestamp: number): string {
+  const seconds = Math.round((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  return `${hours}h ago`;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -91,7 +99,7 @@ export function DashboardPM() {
     staleTime: 120_000,
   });
 
-  const { data: predictions } = useQuery({
+  const { data: predictions, dataUpdatedAt } = useQuery({
     queryKey: ['pm-predictions'],
     queryFn: () => apiService.getDashboardPredictions(),
     staleTime: 120_000,
@@ -228,10 +236,6 @@ export function DashboardPM() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400">
-            <Eye className="w-3 h-3" />
-            Read-only monitoring
-          </span>
         </div>
         <div className="flex items-center gap-2">
           {showScopeToggle && (
@@ -277,9 +281,9 @@ export function DashboardPM() {
       />
 
       {/* ── Footer ── */}
-      <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500 pt-2 border-t border-gray-100 dark:border-gray-800">
-        <span>Last refreshed: {new Date().toLocaleTimeString()}</span>
-        <span>PM Assistant v1.0</span>
+      <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 pt-2 border-t border-gray-100 dark:border-gray-800">
+        <span>Updated {dataUpdatedAt ? formatRelativeTime(dataUpdatedAt) : '—'}</span>
+        <span>Kovarti PM</span>
       </div>
 
     </div>

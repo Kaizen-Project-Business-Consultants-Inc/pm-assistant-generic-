@@ -10,7 +10,7 @@ const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   { label: 'Projects', icon: FolderKanban, path: '/projects' },
   { label: 'Timesheet', icon: Clock, path: '/timesheet' },
-  { label: 'Alerts', icon: Bell, path: '/notifications' },
+  { label: 'Notifications', icon: Bell, path: '/notifications' },
   { label: 'More', icon: Menu, path: '' },
 ];
 
@@ -42,6 +42,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ onMoreClick }) => {
             <button
               key={item.label}
               onClick={handleClick}
+              aria-current={active ? 'page' : undefined}
+              aria-label={item.label}
               className={`flex flex-col items-center justify-center flex-1 h-full min-w-0 transition-colors ${
                 active
                   ? 'text-primary-600 dark:text-primary-400'
@@ -49,7 +51,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ onMoreClick }) => {
               }`}
             >
               <Icon className="w-5 h-5" />
-              <span className="text-[10px] mt-0.5 leading-none">{item.label}</span>
+              <span className="text-xs mt-0.5 leading-none">{item.label}</span>
             </button>
           );
         })}

@@ -30,6 +30,13 @@ import {
   Zap,
   DollarSign,
   Tag,
+  Dices,
+  FlaskConical,
+  Workflow,
+  FileBarChart,
+  ClipboardList,
+  Plug,
+  Bot,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -71,6 +78,9 @@ const pmNavSections: NavSection[] = [
       { labelKey: 'nav.meetings', icon: MessageSquare, path: '/meetings' },
       { labelKey: 'nav.lessons', icon: BookOpen, path: '/lessons' },
       { labelKey: 'nav.changeRequests', icon: GitPullRequest, path: '/change-requests' },
+      { labelKey: 'nav.workflows', icon: Workflow, path: '/workflows' },
+      { labelKey: 'nav.intake', icon: ClipboardList, path: '/intake' },
+      { labelKey: 'nav.integrations', icon: Plug, path: '/integrations', roles: ['admin', 'project_manager', 'pmo'] },
     ],
   },
   {
@@ -78,8 +88,12 @@ const pmNavSections: NavSection[] = [
     items: [
       { labelKey: 'nav.analytics', icon: BarChart3, path: '/analytics' },
       { labelKey: 'nav.evm', icon: TrendingUp, path: '/evm' },
+      { labelKey: 'nav.simulation', icon: Dices, path: '/monte-carlo' },
+      { labelKey: 'nav.scenarios', icon: FlaskConical, path: '/scenarios' },
       { labelKey: 'nav.reports', icon: FileText, path: '/reports' },
+      { labelKey: 'nav.reportBuilder', icon: FileBarChart, path: '/report-builder' },
       { labelKey: 'nav.askAi', icon: Search, path: '/query' },
+      { labelKey: 'nav.agent', icon: Bot, path: '/agent', roles: ['admin', 'project_manager', 'pmo'] },
     ],
   },
   {
@@ -313,7 +327,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
                     to={item.path}
                     title={collapsed ? t(item.labelKey) : undefined}
                     className={`
-                      group flex items-center rounded-lg
+                      group relative flex items-center rounded-lg
                       transition-all duration-200 ease-in-out
                       ${collapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'}
                       ${

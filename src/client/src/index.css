@@ -68,6 +68,10 @@
   .dark a:not(.btn):not(.btn-primary) {
     color: inherit;
   }
+  .dark a:not(.btn):not(.btn-primary):hover {
+    text-decoration-line: underline;
+    text-underline-offset: 2px;
+  }
 }
 
 
@@ -86,6 +90,19 @@
   }
   .input {
     @apply w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-neutral-700 dark:text-neutral-100;
+  }
+}
+
+@layer base {
+  /* Global focus-visible ring for keyboard navigation (D2) */
+  :focus-visible {
+    outline: 2px solid theme('colors.primary.500');
+    outline-offset: 2px;
+  }
+  /* Suppress default for elements that handle their own focus styles */
+  [class*="focus:ring"]:focus-visible,
+  [class*="focus-visible:ring"]:focus-visible {
+    outline: none;
   }
 }
 

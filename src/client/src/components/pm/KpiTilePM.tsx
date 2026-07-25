@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 type Color = 'green' | 'amber' | 'red' | 'teal' | 'gray';
 
@@ -28,17 +28,8 @@ const dotBg: Record<Color, string> = {
 };
 
 export function KpiTilePM({ label, value, icon: Icon, color, drillPath, statusDot }: KpiTilePMProps) {
-  const navigate = useNavigate();
-
-  function handleClick() {
-    if (drillPath) navigate(drillPath);
-  }
-
-  return (
-    <div
-      onClick={handleClick}
-      className={`relative rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 transition-all duration-150 ${drillPath ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md' : ''}`}
-    >
+  const content = (
+    <>
       {statusDot && (
         <span className={`absolute top-2.5 right-2.5 h-2 w-2 rounded-full ${dotBg[statusDot]}`} />
       )}
@@ -47,8 +38,25 @@ export function KpiTilePM({ label, value, icon: Icon, color, drillPath, statusDo
           <Icon className="h-4 w-4" />
         </div>
       </div>
-      <p className="text-[27px] font-[800] leading-tight text-gray-900 dark:text-white">{value}</p>
-      <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{label}</p>
+      <p className="text-3xl font-extrabold leading-tight text-gray-900 dark:text-white">{value}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{label}</p>
+    </>
+  );
+
+  if (drillPath) {
+    return (
+      <Link
+        to={drillPath}
+        className="relative block rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="relative rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+      {content}
     </div>
   );
 }
