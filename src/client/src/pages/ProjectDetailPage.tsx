@@ -14,6 +14,8 @@ import {
   Printer,
   Save,
   FileText,
+  Pencil,
+  Zap,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useUIStore } from '../stores/uiStore';
@@ -24,7 +26,6 @@ import { SetupChecklist } from '../components/project/SetupChecklist';
 import { ProjectReadinessBar } from '../components/onboarding/ProjectReadinessBar';
 import { EditProjectModal } from '../components/project/EditProjectModal';
 import { StatusReportModal } from './ProjectDetailPage/StatusReportModal';
-import { Pencil, Zap } from 'lucide-react';
 import { getPrimaryTabs, getDefaultViewMode, type Methodology } from '../utils/methodology';
 
 // Lazy-loaded tab components
