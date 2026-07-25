@@ -5,7 +5,6 @@ import { apiService } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 import { FilterBarPM } from '../components/pm/FilterBarPM';
 import { ProjectCardPM } from '../components/pm/ProjectCardPM';
-import { AiPortfolioInsightsPM } from '../components/pm/AiPortfolioInsightsPM';
 import { TemplatePicker } from '../components/templates/TemplatePicker';
 import type { ProjectSummaryPM } from '../types/pm';
 
@@ -169,8 +168,6 @@ export function ProjectsPM() {
         hasActiveFilters={hasActiveFilters}
       />
 
-      {/* AI Portfolio Insights */}
-      <AiPortfolioInsightsPM />
 
       {/* Project grid or loading */}
       {isLoading ? (
