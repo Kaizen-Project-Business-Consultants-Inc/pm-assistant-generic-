@@ -1236,7 +1236,6 @@ When a user's own projects are a subset of the full portfolio (e.g., a `team_mem
 | **Milestones** | Upcoming milestones with project name, date, and days-until badge (green/red) |
 | **Budget Watch** | Portfolio summary row (total allocated/spent, utilization %, over-budget count badge), top 5 projects by spend % with burn-rate-vs-progress indicator (red up arrow if burn exceeds progress, green down if under budget), progress marker on spend bar, and dollar amounts |
 | **Recent Activity** | Latest notifications feed with filter pills (All / Agent / Risk / Budget / Meeting / System) and date grouping (Today / Yesterday / Earlier). Click any notification to navigate to the linked entity and mark it as read. "View All" link navigates to the full notifications page. |
-| **Next Best Actions** | AI-suggested next actions with confidence percentage badges (blue pill), risk level badges (color-coded: critical/high/medium/low), and health score badges for at-risk projects. Low-confidence proposals (<60%) are bumped in priority for human review. Critical-severity notifications now surface alongside high-severity. |
 | **Health Trends** | Sparkline health history per project |
 | **Sprint Velocity** | Per-project velocity sparklines with average badge, trend arrow, sprint-over-sprint delta percentage, and commitment ratio (delivered vs committed). Portfolio aggregate row when multiple agile projects exist. Only shown for agile/hybrid projects. |
 | **Sprint Snapshot** | Active sprints across projects with day progress, task completion bar, and velocity trend (default: off) |
@@ -1704,7 +1703,7 @@ A monitoring cockpit with read-only scope toggle:
   - **Sortable Table** — All types retain the existing sortable table with click-through to project detail.
 - **Portfolio Intelligence** — `AISummaryBanner` with circular health ring, risk summary chips, budget status, key insights, and AI narrative (when enabled). Full dark mode support.
 - **Projects Table** — Sortable by 10 columns (name, health, status, priority, type, progress, budget, spent%, end date, days left). Rows navigate to `/project/:id`.
-- **Action Center** — Two-column card: "Today's Priorities" (deadline-driven items from predictions) and "AI Next Best Actions" (proposals to approve with confidence % and risk level badges, critical/high notifications to investigate, at-risk projects to review with health score badges).
+- **Action Center** — Two-column card: "Today's Priorities" (deadline-driven items from predictions) and "AI Next Best Actions" (proposals to approve with confidence % and risk level badges, critical/high notifications to investigate, at-risk projects to review with health score badges). This is the single source for AI-suggested next actions on the dashboard.
 - **Issues Created vs Resolved** — Weekly trend chart with scope awareness.
 - **3-Column Footer** — Milestones widget, Budget Watch widget, Activity Feed with filter pills (All/Agent/Risk/Budget/Meeting/System), date grouping (Today/Yesterday/Earlier), clickable rows, mark-as-read, and navigation.
 - **Customize Dropdown** — Toggle any widget section on/off. "Reset to Default Layout" button restores defaults. Includes opt-in placeholders for Sprint Snapshot, Goals Progress, and Team Workload (disabled by default).
@@ -1714,8 +1713,7 @@ A monitoring cockpit with read-only scope toggle:
 ### Projects (`/projects`)
 
 - **Filter Bar** — Search by name, filter by health band (Healthy/Warning/Critical) and status (Active/Planning/On Hold/Completed).
-- **AI Portfolio Insights** — Self-fetching 3-up insight tiles from analytics summary, enriched with 7-day trend context (e.g., "Trending down from last week", "Completion rate is trending up").
-- **Project Cards** — Grid layout with left border colored by health band, health pill, status/priority chips, progress meter, and inline action buttons. Clicking a card navigates to `/project/:id`.
+- **Project Cards** — Grid layout with left border colored by health band, health pill, status/priority chips, progress meter, and "View Project" button. Clicking a card navigates to `/project/:id`.
 - **New Project** — Template picker integration for creating projects from templates.
 
 ### Onboarding — Welcome Modal

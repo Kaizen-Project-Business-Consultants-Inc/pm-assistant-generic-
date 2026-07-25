@@ -77,7 +77,6 @@ All users see a single **Unified Dashboard** with customizable widgets:
 - **Milestones** -- Upcoming milestones with days-until badges.
 - **Budget Watch** -- Portfolio summary row (total allocated/spent, utilization %, over-budget count), top 5 projects by spend % with burn-rate-vs-progress indicators and progress markers.
 - **Recent Activity** -- Latest notifications. Click any notification to navigate to the linked page and mark it as read. Includes a "View All" link to the full notifications page.
-- **Next Best Actions** -- AI-suggested actions.
 - **Health Trends** -- Sparkline health history per project.
 - **Sprint Velocity** -- Per-project velocity sparklines with average, trend arrow, sprint-over-sprint delta %, and commitment ratio (delivered vs committed). Portfolio aggregate row when multiple agile projects exist.
 - **Sprint Snapshot** -- Active sprints across projects with day progress, task completion bar, and velocity trend (off by default).
@@ -1528,7 +1527,7 @@ The unified dashboard supports toggling widget sections on/off and drag-and-drop
 3. Click **"Reset to Default Layout"** at the bottom of the Customize dropdown to restore the default widget order, visibility, and scope.
 4. Your preferences (enabled widgets, order, and scope) are saved to the server automatically and sync across devices. Changes appear instantly via localStorage cache.
 
-Available sections: Morning Briefing, KPI Tiles, Portfolio Intelligence, Projects Table, Action Center, Next Best Actions, Issues Trend, Health Trends, Sprint Velocity, Milestones, Budget Watch, Activity Feed.
+Available sections: Morning Briefing, KPI Tiles, Portfolio Intelligence, Projects Table, Action Center, Issues Trend, Sprint Velocity, Milestones, Budget Watch, Activity Feed, Standup Summary.
 
 Opt-in sections (disabled by default): Sprint Snapshot, Goals Progress, Team Workload.
 
@@ -1546,7 +1545,7 @@ Access via the sidebar under **Plan → Dashboard**.
 - **KPI Tiles** — 6 tiles showing Portfolio Health, Overdue Tasks, Open Risks, At-Risk Projects, Budget Variance, and Budget Utilization. Each has a colored status dot and click-through to drill-in pages. Health and Overdue tiles show 7-day trend arrows: green up arrow (improving), red down arrow (declining), or gray dash (stable).
 - **KPI Drill-In Pages** — Click any KPI tile to open a detailed drill-in page. Each page includes summary stat cards at the top (e.g., average health, total overdue, critical count), a sortable data table, and type-specific enrichments: Health and Overdue pages show a trend badge (improving/declining/stable); Health and Risks pages show a color-coded distribution bar; the Health table adds Schedule, Budget, and Risk sub-score columns with 30-day sparkline trends.
 - **Portfolio Intelligence** — AI-generated health ring, risk chips, budget status, and key insights. Supports dark mode.
-- **Action Center** — Two columns: "Today's Priorities" (deadline-driven items) and "AI Next Best Actions" (proposals with confidence % and risk level badges, critical/high notifications, at-risk projects with health score badges).
+- **Action Center** — Two columns: "Today's Priorities" (deadline-driven items) and "AI Next Best Actions" (proposals with confidence % and risk level badges, critical/high notifications, at-risk projects with health score badges). This is the single source for AI-suggested next actions on the dashboard.
 - **Projects Table** — Sortable table; clicking a row navigates to the project detail view (`/project/:id`).
 - **Customize** — Toggle widgets on/off, drag-and-drop to reorder, and "Reset to Default Layout" to restore defaults. Preferences sync across devices. Opt-in widgets (Sprint Snapshot, Goals Progress, Team Workload) are available but disabled by default.
 

@@ -130,7 +130,7 @@ An agentic AI project management platform that combines the scheduling power of 
 
 **Dashboard & Projects**
 - **Dashboard** (`/dashboard`) — 6 KPI tiles with status dots, 7-day trend arrows, and enriched drill-in pages (summary cards, trend badges, distribution bars, health sparklines + sub-scores). Portfolio Intelligence banner with trend context, Action Center (confidence/risk/health badges on actions), Projects Table, Issues Trend, Milestones, Budget Watch (portfolio summary + burn-rate indicators), Sprint Velocity (delta % + commitment ratio), Activity Feed with filter pills and date grouping. Customizable via widget dropdown (includes opt-in Sprint Snapshot, Goals Progress, Team Workload with overallocation warnings).
-- **Projects** (`/projects`) — Filterable card grid with health-based borders, AI portfolio insights. Cards link to `/project/:id` for full Gantt/Kanban/Calendar/EVM detail.
+- **Projects** (`/projects`) — Filterable card grid with health-based borders. Cards link to `/project/:id` for full Gantt/Kanban/Calendar/EVM detail.
 
 ### 2.4 Real-Time Collaboration
 - Real-time task updates (WebSocket)
@@ -509,7 +509,7 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 | AI Circuit Breaker (trips after 5 transient failures, 60s cooldown, returns 503 instantly, auto-recovers) | Done | Reliability |
 | Parallel Agent Scheduler (projects processed concurrently with bounded parallelism of 3, ~3x scan speedup) | Done | Performance |
 | Structured Log Export (daily-rotated JSON logs with 14d retention, admin query/download endpoints) | Done | Observability |
-| Next Best Actions Widget | Done | Enhancement |
+| Next Best Actions (integrated into Action Center) | Done | Enhancement |
 | Health Trends Sparklines (daily cron + migration 038) | Done | Enhancement |
 | Dashboard & Projects consolidation (PM pages promoted to primary) | Done | Enhancement |
 | PM Dashboard Design Gap Fixes (dark mode, KPI dots, linkPrefix) | Done | Enhancement |
