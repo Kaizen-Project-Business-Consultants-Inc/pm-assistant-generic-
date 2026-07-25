@@ -313,7 +313,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
 
           {/* Probability + Impact + Score — only for risk/issue */}
           {showProbImpact && (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className={labelClass}>Probability (1-5)</label>
                 <select value={form.probability} onChange={e => setForm(prev => ({ ...prev, probability: Number(e.target.value) }))} className={inputClass}>

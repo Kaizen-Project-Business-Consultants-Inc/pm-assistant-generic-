@@ -84,6 +84,7 @@ export function AdminRevenuePage() {
               {data.subscribersByTier.length === 0 ? (
                 <p className="text-sm text-gray-400 dark:text-gray-500">No active subscribers yet.</p>
               ) : (
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
@@ -104,6 +105,7 @@ export function AdminRevenuePage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
 

@@ -368,14 +368,14 @@ export function ProjectDetailPage() {
             )}
             <button
               onClick={() => setShowStatusReport(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 hover:bg-primary-100 dark:bg-primary-900/40 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 hover:bg-primary-100 dark:hover:bg-primary-900/40 rounded-lg transition-colors"
             >
               <FileText className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Status Report</span>
             </button>
             <button
               onClick={() => setShowSaveTemplate(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 hover:bg-primary-100 dark:bg-primary-900/40 rounded-lg transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 hover:bg-primary-100 dark:hover:bg-primary-900/40 rounded-lg transition-colors"
             >
               <Save className="w-3.5 h-3.5" />
               Save as Template
@@ -412,7 +412,7 @@ export function ProjectDetailPage() {
                     <Download className="w-3.5 h-3.5" />
                     Export as PDF
                   </button>
-                  <div className="border-t border-gray-100 my-1" />
+                  <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
                   <button
                     onClick={() => { window.print(); setShowExportMenu(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

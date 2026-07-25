@@ -151,7 +151,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
           </div>
           <button
             onClick={() => setShowAddMember(!showAddMember)}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:bg-primary-900/40 rounded-md transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/40 rounded-md transition-colors"
           >
             <Plus className="w-3 h-3" />
             Add Member

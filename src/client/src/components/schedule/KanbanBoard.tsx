@@ -238,7 +238,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
         // Swimlane view
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {/* Column headers */}
-          <div className="flex gap-3 px-4 pt-3 pb-2">
+          <div className="flex gap-3 px-4 pt-3 pb-2 overflow-x-auto">
             <div className="w-32 flex-shrink-0" />
             {COLUMNS.map(col => (
               <div key={col.id} className="flex-1 min-w-[200px]">

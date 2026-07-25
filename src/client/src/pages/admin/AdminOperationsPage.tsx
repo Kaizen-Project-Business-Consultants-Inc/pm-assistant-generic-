@@ -709,7 +709,7 @@ export function AdminOperationsPage() {
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3 flex items-center gap-2">
               <Activity className="w-4 h-4" /> User Activity
             </h2>
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               {[
                 { label: 'DAU (24h)', value: data.userActivity.dau, color: 'border-l-emerald-500' },
                 { label: 'WAU (7d)', value: data.userActivity.wau, color: 'border-l-blue-500' },

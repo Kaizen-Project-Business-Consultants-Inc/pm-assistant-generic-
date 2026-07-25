@@ -226,7 +226,7 @@ export const IntakeFormsPage: React.FC = () => {
                     </button>
                     <button
                       onClick={() => openDesigner(form.id)}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     >
                       Edit
                     </button>

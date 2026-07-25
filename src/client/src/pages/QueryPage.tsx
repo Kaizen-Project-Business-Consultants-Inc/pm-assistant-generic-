@@ -256,7 +256,7 @@ export const QueryPage: React.FC = () => {
             <button
               key={eq}
               onClick={() => handleExampleClick(eq)}
-              className="rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:bg-primary-900/30 hover:border-primary-200 hover:text-primary-700 dark:text-primary-300 transition-colors"
+              className="rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:border-primary-200 hover:text-primary-700 dark:text-primary-300 transition-colors"
             >
               <Search className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
               {eq}
@@ -320,7 +320,7 @@ export const QueryPage: React.FC = () => {
                   <button
                     key={idx}
                     onClick={() => handleFollowUpClick(fu)}
-                    className="rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:bg-primary-900/30 hover:border-primary-200 hover:text-primary-700 dark:text-primary-300 transition-colors"
+                    className="rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:border-primary-200 hover:text-primary-700 dark:text-primary-300 transition-colors"
                   >
                     {fu}
                   </button>

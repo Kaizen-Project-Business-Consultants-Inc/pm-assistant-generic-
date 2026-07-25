@@ -100,7 +100,7 @@ export function TimesheetPage() {
 
       {/* Log Time Form */}
       {showLogForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-primary-200 p-5 space-y-4 shadow-sm dark:shadow-gray-900/30">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-primary-200 dark:border-primary-700 p-5 space-y-4 shadow-sm dark:shadow-gray-900/30">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-gray-900 dark:text-white">Log Time Entry</h3>
             <button onClick={() => setShowLogForm(false)} className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300" aria-label="Close time log form"><X className="w-4 h-4" /></button>

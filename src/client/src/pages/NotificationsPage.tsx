@@ -306,6 +306,7 @@ export function NotificationsPage() {
                           }}
                           className="p-1 rounded text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
                           title="Mark as read"
+                          aria-label="Mark as read"
                         >
                           <Check className="w-3.5 h-3.5" />
                         </button>

@@ -632,7 +632,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
           <button
             onClick={() => createBaselineMutation.mutate()}
             disabled={createBaselineMutation.isPending}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:bg-primary-900/40 rounded-md transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/40 rounded-md transition-colors"
           >
             <Save className="w-3 h-3" />
             Save Baseline
@@ -658,7 +658,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
                   className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
                     showComparison
                       ? 'bg-primary-600 text-white'
-                      : 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:bg-primary-900/40'
+                      : 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/40'
                   }`}
                 >
                   <BarChart3 className="w-3 h-3" />

@@ -103,7 +103,7 @@ function TierCard({ tier, onSave }: { tier: PricingConfig; onSave: (data: Partia
         <div className="flex gap-1">
           {editing ? (
             <>
-              <button onClick={handleSave} className="p-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors" title="Save">
+              <button onClick={handleSave} className="p-1.5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/40 transition-colors" title="Save">
                 <Check className="w-4 h-4" />
               </button>
               <button onClick={() => setEditing(false)} className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" title="Cancel">

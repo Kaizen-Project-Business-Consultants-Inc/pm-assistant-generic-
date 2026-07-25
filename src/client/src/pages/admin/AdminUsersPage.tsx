@@ -280,7 +280,7 @@ export function AdminUsersPage() {
       {!isLoading && !error && (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-3 gap-4 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center">
                 <Users className="w-5 h-5 text-white" />
@@ -537,10 +537,10 @@ export function AdminUsersPage() {
                               className="w-24 px-1.5 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
                               autoFocus
                             />
-                            <button onClick={() => handleBudgetSave(u.id)} className="text-emerald-600 hover:text-emerald-700" title="Save">
+                            <button onClick={() => handleBudgetSave(u.id)} className="text-emerald-600 hover:text-emerald-700" title="Save" aria-label="Save">
                               <Check className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => setEditingBudgetId(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Cancel">
+                            <button onClick={() => setEditingBudgetId(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Cancel" aria-label="Cancel">
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>

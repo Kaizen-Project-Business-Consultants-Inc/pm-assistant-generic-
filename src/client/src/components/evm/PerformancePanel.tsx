@@ -815,7 +815,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
       {/* ================================================================= */}
       {/* [6] Forecast Table                                                */}
       {/* ================================================================= */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-700/50">
             <tr>

@@ -150,7 +150,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
     return (
       <>
         <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} aria-hidden="true" />
-        <div className="fixed inset-y-0 right-0 z-50 w-[520px] bg-white dark:bg-gray-800 shadow-2xl flex items-center justify-center">
+        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[520px] max-w-full bg-white dark:bg-gray-800 shadow-2xl flex items-center justify-center">
           <div className="w-6 h-6 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
         </div>
       </>
@@ -168,7 +168,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} aria-hidden="true" />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 z-50 w-[520px] bg-white dark:bg-gray-800 shadow-2xl flex flex-col transform transition-transform duration-300" role="dialog" aria-modal="true" aria-label="RAID item details">
+      <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[520px] max-w-full bg-white dark:bg-gray-800 shadow-2xl flex flex-col transform transition-transform duration-300" role="dialog" aria-modal="true" aria-label="RAID item details">
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           {item.recordId && (

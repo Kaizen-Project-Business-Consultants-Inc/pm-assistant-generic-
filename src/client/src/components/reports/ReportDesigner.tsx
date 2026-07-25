@@ -250,7 +250,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={onClose}
-          className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           aria-label="Go back"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -310,7 +310,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
           <div className="relative">
             <button
               onClick={() => setShowAddMenu(!showAddMenu)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 rounded-lg hover:bg-primary-100 dark:bg-primary-900/40 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               Add Section

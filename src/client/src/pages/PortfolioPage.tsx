@@ -209,19 +209,19 @@ export function PortfolioPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setView('dashboard')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${view === 'dashboard' ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700'}`}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${view === 'dashboard' ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
           >
             <BarChart3 className="w-3.5 h-3.5 inline mr-1" />Dashboard
           </button>
           <button
             onClick={() => setView('gantt')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${view === 'gantt' ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700'}`}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${view === 'gantt' ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
           >
             <Layers className="w-3.5 h-3.5 inline mr-1" />Timeline
           </button>
           <button
             onClick={() => setView('resources')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${view === 'resources' ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700'}`}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${view === 'resources' ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
           >
             <Users className="w-3.5 h-3.5 inline mr-1" />Resources
           </button>

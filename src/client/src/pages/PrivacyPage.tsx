@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 export const PrivacyPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-800">
-      <nav className="border-b border-gray-100">
+      <nav className="border-b border-gray-100 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link to="/" className="flex items-center">
@@ -96,7 +96,7 @@ export const PrivacyPage: React.FC = () => {
         </div>
       </div>
 
-      <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-100">
+      <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex justify-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
             <Link to="/terms" className="hover:text-gray-900 dark:text-white">Terms of Service</Link>

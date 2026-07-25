@@ -130,7 +130,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {breakpoint === 'desktop' && (
         <aside
           className={`
-            fixed top-0 right-0 z-30 h-screen
+            fixed top-0 right-0 z-20 h-screen
             flex flex-col
             bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700
             transition-all duration-300 ease-in-out
@@ -177,7 +177,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <button
           onClick={handleAiPanelToggle}
           className="
-            fixed bottom-6 right-6 z-40
+            fixed bottom-6 right-6 z-20
             w-12 h-12 rounded-full
             bg-primary-600 text-white
             shadow-lg shadow-primary-500/30

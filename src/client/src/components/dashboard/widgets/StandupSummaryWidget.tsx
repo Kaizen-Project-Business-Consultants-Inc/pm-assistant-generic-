@@ -78,10 +78,10 @@ export function StandupSummaryWidget({ projects }: Props) {
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
-          <button onClick={handleRefresh} disabled={isFetching} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50" title="Refresh">
+          <button onClick={handleRefresh} disabled={isFetching} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50" title="Refresh" aria-label="Refresh">
             <RefreshCw className={`w-3.5 h-3.5 text-gray-500 ${isFetching ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={handleEmail} disabled={emailing} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50" title="Email standup">
+          <button onClick={handleEmail} disabled={emailing} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50" title="Email standup" aria-label="Email standup">
             <Mail className={`w-3.5 h-3.5 text-gray-500 ${emailing ? 'opacity-50' : ''}`} />
           </button>
         </div>

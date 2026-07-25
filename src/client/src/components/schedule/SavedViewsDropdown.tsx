@@ -170,7 +170,7 @@ export function SavedViewsDropdown({ scheduleId, currentColumns, currentSortFiel
                   Update "{activeView!.name}" to current
                 </button>
               )}
-              <div className="border-b border-gray-100 my-1 mx-2" />
+              <div className="border-b border-gray-100 dark:border-gray-700 my-1 mx-2" />
             </div>
           )}
 

@@ -217,6 +217,7 @@ export function AISummaryBanner() {
               onClick={() => refetchNarrative()}
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               title="Refresh narrative"
+              aria-label="Refresh narrative"
             >
               <RefreshCw className={`h-3 w-3 ${narrativeLoading ? 'animate-spin' : ''}`} />
             </button>

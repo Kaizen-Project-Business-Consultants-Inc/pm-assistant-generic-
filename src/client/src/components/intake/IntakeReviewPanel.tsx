@@ -120,7 +120,7 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
 
       {/* Submission info */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
           <div>
             <span className="text-xs text-gray-500 dark:text-gray-400 font-medium block mb-0.5">Submitted By</span>
             <span className="text-gray-900 dark:text-white font-medium">

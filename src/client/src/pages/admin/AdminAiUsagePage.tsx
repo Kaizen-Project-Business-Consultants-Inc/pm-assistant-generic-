@@ -322,7 +322,7 @@ function UsageAnalyticsTab() {
           {/* Chat stats */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Mjuzi Chat</h3>
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{Number(data.chatStats.active_chatters)}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Active Users</p>

@@ -200,6 +200,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
                   onClick={() => onEdit(crId)}
                   className="p-2 text-gray-400 hover:text-primary-600 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                   title="Edit change request"
+                  aria-label="Edit change request"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
@@ -209,6 +210,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
                   onClick={() => setShowDeleteConfirm(true)}
                   className="p-2 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                   title="Delete change request"
+                  aria-label="Delete change request"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

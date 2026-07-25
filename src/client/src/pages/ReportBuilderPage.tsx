@@ -200,7 +200,7 @@ export const ReportBuilderPage: React.FC = () => {
               </p>
 
               {!isSample && (
-                <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
+                <div className="flex items-center gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
                   <button
                     onClick={() => handleEdit(template.id)}
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 transition-colors"
@@ -216,8 +216,9 @@ export const ReportBuilderPage: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setScheduleTemplate({ id: template.id, name: template.name })}
-                    className="flex items-center justify-center p-1.5 text-gray-400 dark:text-gray-500 hover:text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:bg-primary-900/30 rounded-lg transition-colors"
+                    className="flex items-center justify-center p-1.5 text-gray-400 dark:text-gray-500 hover:text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
                     title="Schedule delivery"
+                    aria-label="Schedule delivery"
                   >
                     <Clock className="w-3.5 h-3.5" />
                   </button>
@@ -225,13 +226,14 @@ export const ReportBuilderPage: React.FC = () => {
                     onClick={() => handleDelete(template.id)}
                     disabled={deleteMutation.isPending}
                     className="flex items-center justify-center p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    aria-label="Delete template"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
               {isSample && (
-                <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
+                <div className="flex items-center gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
                   <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                     <Lock className="w-3.5 h-3.5" />
                     Upgrade to use

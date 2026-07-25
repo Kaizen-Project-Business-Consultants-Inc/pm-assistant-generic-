@@ -382,7 +382,7 @@ const TeamTab: React.FC = () => {
       </div>
 
       {/* Members Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
@@ -1062,7 +1062,7 @@ const WebhooksTab: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
-                    <button onClick={() => testMutation.mutate(wh.id)} disabled={testMutation.isPending} className="text-sm px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" title="Send test ping">
+                    <button onClick={() => testMutation.mutate(wh.id)} disabled={testMutation.isPending} className="text-sm px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" title="Send test ping" aria-label="Send test ping">
                       <Send className="w-3.5 h-3.5" />
                     </button>
                     <button

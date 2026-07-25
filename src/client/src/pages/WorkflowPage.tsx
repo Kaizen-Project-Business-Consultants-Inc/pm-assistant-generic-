@@ -445,7 +445,7 @@ export function WorkflowPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <button onClick={() => openEdit(def)}
-                        className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:bg-primary-900/30 rounded transition-colors">
+                        className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded transition-colors">
                         Edit
                       </button>
                       <button onClick={() => deleteMut.mutate(def.id)}

@@ -451,7 +451,7 @@ function TenantsTab() {
                       onClick={() => provision.mutate(t.id)}
                       disabled={provision.isPending}
                       title="Retry provisioning"
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors mx-auto"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800 transition-colors mx-auto"
                     >
                       <XCircle className="w-3.5 h-3.5" />
                       Retry
@@ -465,7 +465,7 @@ function TenantsTab() {
                       onClick={() => runMigrations.mutate(t.id)}
                       disabled={runMigrations.isPending}
                       title="Run pending tenant migrations"
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 transition-colors"
                     >
                       <Database className="w-3.5 h-3.5" />
                       Migrate
