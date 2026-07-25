@@ -51,7 +51,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(() =>
-    readLocalStorageBool(AI_PANEL_STORAGE_KEY, true)
+    readLocalStorageBool(AI_PANEL_STORAGE_KEY, false)
   );
 
   useEffect(() => {

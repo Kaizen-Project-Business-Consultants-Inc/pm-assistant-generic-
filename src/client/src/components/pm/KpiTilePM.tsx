@@ -5,6 +5,7 @@ type Color = 'green' | 'amber' | 'red' | 'teal' | 'gray';
 interface KpiTilePMProps {
   label: string;
   value: string | number;
+  subtitle?: string;
   icon: React.ElementType;
   color: Color;
   drillPath?: string;
@@ -27,7 +28,7 @@ const dotBg: Record<Color, string> = {
   gray:  'bg-gray-400',
 };
 
-export function KpiTilePM({ label, value, icon: Icon, color, drillPath, statusDot }: KpiTilePMProps) {
+export function KpiTilePM({ label, value, subtitle, icon: Icon, color, drillPath, statusDot }: KpiTilePMProps) {
   const content = (
     <>
       {statusDot && (
@@ -40,6 +41,7 @@ export function KpiTilePM({ label, value, icon: Icon, color, drillPath, statusDo
       </div>
       <p className="text-3xl font-extrabold leading-tight text-gray-900 dark:text-white">{value}</p>
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{label}</p>
+      {subtitle && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{subtitle}</p>}
     </>
   );
 

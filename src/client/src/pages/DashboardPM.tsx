@@ -4,8 +4,6 @@ import {
   Activity,
   Clock,
   AlertTriangle,
-  AlertCircle,
-  TrendingDown,
   DollarSign,
 } from 'lucide-react';
 import { apiService } from '../services/api';
@@ -115,7 +113,7 @@ export function DashboardPM() {
 
   const myProjects: ProjectRow[]  = myProjectsData?.data  || myProjectsData?.projects  || [];
   const allProjects: ProjectRow[] = allProjectsData?.data || allProjectsData?.projects || [];
-  const showScopeToggle = allProjects.length !== myProjects.length;
+  const sameScope = allProjects.length === myProjects.length;
   const activeProjects  = scope === 'portfolio' ? allProjects : myProjects;
   const scopeParam      = scope === 'portfolio' ? 'portfolio' as const : undefined;
 
@@ -168,9 +166,6 @@ export function DashboardPM() {
   const healthColor: 'green' | 'amber' | 'red' | 'teal' | 'gray' =
     healthScores.length === 0 ? 'gray' : avgHealth >= 75 ? 'teal' : avgHealth >= 50 ? 'amber' : 'red';
   const varianceColor: 'green' | 'amber' | 'red' | 'teal' | 'gray' = variance >= 0 ? 'green' : 'red';
-  const utilColor: 'green' | 'amber' | 'red' | 'teal' | 'gray' =
-    utilization > 95 ? 'red' : utilization >= 80 ? 'amber' : 'green';
-
   // ─── Widget renderer ──────────────────────────────────────────────────────
 
   const renderWidget = useCallback((id: string): ReactNode => {
@@ -179,13 +174,11 @@ export function DashboardPM() {
         return <MorningBriefingWidget scope={scopeParam} />;
       case 'kpi':
         return (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <KpiTilePM label="Portfolio Health" value={`${avgHealth}%`} icon={Activity} color={healthColor} statusDot={healthColor} drillPath="/portfolio" />
             <KpiTilePM label="Overdue Tasks" value={overdueTasks} icon={Clock} color={kpiColor(overdueTasks, true, 5, 10)} statusDot={kpiColor(overdueTasks, true, 5, 10)} drillPath="/kpi/overdue" />
-            <KpiTilePM label="Open Risks" value={openRisks} icon={AlertTriangle} color={kpiColor(openRisks, true, 3, 7)} statusDot={kpiColor(openRisks, true, 3, 7)} drillPath="/kpi/risks" />
-            <KpiTilePM label="At-Risk Projects" value={atRiskCount} icon={AlertCircle} color={kpiColor(atRiskCount, true, 2, 4)} statusDot={kpiColor(atRiskCount, true, 2, 4)} drillPath="/kpi/at-risk" />
-            <KpiTilePM label="Budget Variance" value={varianceStr} icon={TrendingDown} color={varianceColor} statusDot={varianceColor} drillPath="/kpi/budget" />
-            <KpiTilePM label="Budget Utilization" value={`${Math.round(utilization)}%`} icon={DollarSign} color={utilColor} statusDot={utilColor} drillPath="/kpi/budget" />
+            <KpiTilePM label="Open Risks" value={openRisks} subtitle={atRiskCount > 0 ? `${atRiskCount} project${atRiskCount !== 1 ? 's' : ''} at risk` : undefined} icon={AlertTriangle} color={kpiColor(openRisks, true, 3, 7)} statusDot={kpiColor(openRisks, true, 3, 7)} drillPath="/kpi/risks" />
+            <KpiTilePM label="Budget" value={varianceStr} subtitle={`${Math.round(utilization)}% utilized`} icon={DollarSign} color={varianceColor} statusDot={varianceColor} drillPath="/kpi/budget" />
           </div>
         );
       case 'intel':
@@ -215,7 +208,7 @@ export function DashboardPM() {
       default:
         return null;
     }
-  }, [scopeParam, avgHealth, healthColor, overdueTasks, openRisks, atRiskCount, varianceStr, varianceColor, utilization, utilColor, projectsWithHealth, projectSummaries, activeProjects, kpiColor]);
+  }, [scopeParam, avgHealth, healthColor, overdueTasks, openRisks, atRiskCount, varianceStr, varianceColor, utilization, projectsWithHealth, projectSummaries, activeProjects, kpiColor]);
 
   // ─── Loading state ──────────────────────────────────────────────────────────
 
@@ -238,30 +231,32 @@ export function DashboardPM() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
         </div>
         <div className="flex items-center gap-2">
-          {showScopeToggle && (
-            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
-              <button
-                onClick={() => changeScope('mine')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  scope === 'mine'
+          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+            <button
+              onClick={() => changeScope('mine')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                scope === 'mine'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              My Projects · {myProjects.length}
+            </button>
+            <button
+              onClick={() => !sameScope && changeScope('portfolio')}
+              disabled={sameScope}
+              title={sameScope ? 'You can see all projects' : undefined}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                sameScope
+                  ? 'text-gray-400 dark:text-gray-500 cursor-default'
+                  : scope === 'portfolio'
                     ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                }`}
-              >
-                My Projects · {myProjects.length}
-              </button>
-              <button
-                onClick={() => changeScope('portfolio')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  scope === 'portfolio'
-                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                }`}
-              >
-                All Projects · {allProjects.length}
-              </button>
-            </div>
-          )}
+              }`}
+            >
+              All Projects · {allProjects.length}
+            </button>
+          </div>
           <CustomizeDropdown
             widgets={PM_WIDGETS}
             enabledIds={enabledIds}
