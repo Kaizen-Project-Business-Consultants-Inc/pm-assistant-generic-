@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Calendar, ExternalLink, BarChart2, Star, Archive, ArchiveRestore } from 'lucide-react';
+import { Calendar, ExternalLink, Star, Archive, ArchiveRestore } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import type { ProjectSummaryPM } from '../../types/pm';
@@ -112,22 +112,24 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
     >
       {/* Top: name + star + health pill */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0 flex items-center gap-1">
-          <button
-            onClick={() => toggleFav.mutate()}
-            className="flex-shrink-0 p-0.5 -ml-0.5 hover:scale-110 transition-transform"
-            aria-label={isFavourite ? 'Remove from favourites' : 'Add to favourites'}
-          >
-            <Star className={`w-3.5 h-3.5 ${isFavourite ? 'fill-amber-400 text-amber-400' : 'text-gray-300 dark:text-gray-600 hover:text-amber-400'}`} />
-          </button>
-          <Link
-            to={`/project/${id}`}
-            className="text-sm font-semibold text-gray-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400 transition-colors line-clamp-1"
-          >
-            {name}
-          </Link>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => toggleFav.mutate()}
+              className="flex-shrink-0 p-0.5 -ml-0.5 hover:scale-110 transition-transform"
+              aria-label={isFavourite ? 'Remove from favourites' : 'Add to favourites'}
+            >
+              <Star className={`w-3.5 h-3.5 ${isFavourite ? 'fill-amber-400 text-amber-400' : 'text-gray-300 dark:text-gray-600 hover:text-amber-400'}`} />
+            </button>
+            <Link
+              to={`/project/${id}`}
+              className="text-sm font-semibold text-gray-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400 transition-colors line-clamp-1"
+            >
+              {name}
+            </Link>
+          </div>
           {client && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{client}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate pl-5">{client}</p>
           )}
         </div>
         <span
@@ -192,14 +194,7 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
           className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium transition-colors"
         >
           <ExternalLink className="w-3.5 h-3.5" />
-          PM Detail
-        </Link>
-        <Link
-          to={`/project/${id}`}
-          title="Full project view"
-          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        >
-          <BarChart2 className="w-3.5 h-3.5" />
+          View Project
         </Link>
         <button
           onClick={() => toggleArchive.mutate()}

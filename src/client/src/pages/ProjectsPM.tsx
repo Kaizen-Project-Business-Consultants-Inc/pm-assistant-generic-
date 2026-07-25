@@ -120,9 +120,7 @@ export function ProjectsPM() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Projects</h1>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Projects</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             {isLoading ? (
               'Loading projects…'
@@ -167,7 +165,6 @@ export function ProjectsPM() {
         onClear={clearFilters}
         hasActiveFilters={hasActiveFilters}
       />
-
 
       {/* Project grid or loading */}
       {isLoading ? (
