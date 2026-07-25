@@ -327,7 +327,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
                     <Icon
                       className={`
                         flex-shrink-0 transition-colors duration-200
-                        ${collapsed ? 'w-5 h-5' : 'w-4.5 h-4.5 w-[18px] h-[18px]'}
+                        ${collapsed ? 'w-5 h-5' : 'w-[18px] h-[18px]'}
                         ${active ? 'text-white' : 'text-sidebar-text group-hover:text-white'}
                       `}
                     />
@@ -433,8 +433,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
         )}
 
         {/* Help & Support */}
-        <a
-          href="mailto:support@kpbc.ca"
+        <Link
+          to="/help"
           className={`
             flex items-center gap-2 px-3 py-2.5
             text-sidebar-text/70 hover:text-white hover:bg-sidebar-hover
@@ -453,7 +453,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
           >
             Help & Support
           </span>
-        </a>
+        </Link>
 
         {/* Feedback */}
         <button
