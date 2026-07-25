@@ -36,7 +36,7 @@ export function BurndownPanel({ scheduleId }: BurndownPanelProps) {
   const trend = velocityData?.trend || 'stable';
 
   const TrendIcon = trend === 'increasing' ? TrendingUp : trend === 'decreasing' ? TrendingDown : Minus;
-  const trendColor = trend === 'increasing' ? 'text-green-600' : trend === 'decreasing' ? 'text-red-600' : 'text-gray-600';
+  const trendColor = trend === 'increasing' ? 'text-green-600' : trend === 'decreasing' ? 'text-red-600' : 'text-gray-600 dark:text-gray-400';
 
   // Estimated completion based on velocity
   const remaining = totalScope - completedCount;

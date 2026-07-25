@@ -616,7 +616,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
 
         {viewMode === 'gantt' && (
           <>
-          <div className="h-4 w-px bg-gray-200 mx-1" />
+          <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
           <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
             <input
               type="checkbox"
@@ -627,7 +627,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             Show Critical Path
           </label>
 
-          <div className="h-4 w-px bg-gray-200 mx-1" />
+          <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
 
           <button
             onClick={() => createBaselineMutation.mutate()}
@@ -668,7 +668,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             </>
           )}
 
-          <div className="h-4 w-px bg-gray-200 mx-1" />
+          <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
 
           <button
             onClick={() => setShowImportModal(true)}

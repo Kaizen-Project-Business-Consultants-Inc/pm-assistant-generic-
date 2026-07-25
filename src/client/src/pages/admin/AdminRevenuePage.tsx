@@ -154,7 +154,7 @@ export function AdminRevenuePage() {
             ) : (
               <div className="space-y-2 max-h-80 overflow-y-auto">
                 {data.recentEvents.map(ev => {
-                  const evInfo = EVENT_LABELS[ev.event_type] || { label: ev.event_type, color: 'bg-gray-100 text-gray-600' };
+                  const evInfo = EVENT_LABELS[ev.event_type] || { label: ev.event_type, color: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' };
                   return (
                     <div key={ev.id} className="flex items-center gap-3 text-sm py-1.5 border-b border-gray-50 dark:border-gray-700/50 last:border-0">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${evInfo.color}`}>

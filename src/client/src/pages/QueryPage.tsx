@@ -110,7 +110,7 @@ const DynamicChart: React.FC<{ chart: ChartData }> = ({ chart }) => {
                         <span className="text-gray-600 dark:text-gray-300 truncate">{label}</span>
                         <span className="font-medium text-gray-900 dark:text-white ml-2">{val}</span>
                       </div>
-                      <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all"
                           style={{ width: `${pct}%`, backgroundColor: color }}
@@ -139,7 +139,7 @@ const DynamicChart: React.FC<{ chart: ChartData }> = ({ chart }) => {
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{chart.title}</h3>
         )}
         {/* Stacked bar */}
-        <div className="w-full h-6 bg-gray-200 rounded-full overflow-hidden flex">
+        <div className="w-full h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex">
           {ds.data.map((val, i) => {
             const pct = (val / total) * 100;
             const color =

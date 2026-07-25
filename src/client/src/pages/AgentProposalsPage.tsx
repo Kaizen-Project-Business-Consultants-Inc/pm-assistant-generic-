@@ -1024,7 +1024,7 @@ export const AgentProposalsPage: React.FC = () => {
 
           {isLoading && (
             <div className="flex items-center justify-center py-20">
-              <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-gray-200 dark:border-gray-700 border-t-gray-600 dark:border-t-gray-300 rounded-full animate-spin" />
             </div>
           )}
 

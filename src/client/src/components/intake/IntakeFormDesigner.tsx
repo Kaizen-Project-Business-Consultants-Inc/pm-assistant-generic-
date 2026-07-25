@@ -288,7 +288,7 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
                       type="checkbox"
                       checked={field.required}
                       onChange={(e) => updateField(field.id, { required: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-xs text-gray-600 dark:text-gray-400">Required</span>
                   </label>
@@ -379,7 +379,7 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
                     )}
                     {field.type === 'checkbox' && (
                       <div className="flex items-center gap-2">
-                        <input type="checkbox" disabled className="rounded border-gray-300" />
+                        <input type="checkbox" disabled className="rounded border-gray-300 dark:border-gray-600" />
                         <span className="text-sm text-gray-500 dark:text-gray-400">
                           {field.label || 'Checkbox'}
                         </span>

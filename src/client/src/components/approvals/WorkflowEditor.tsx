@@ -182,7 +182,7 @@ export function WorkflowEditor({ projectId, workflowId, onClose, onSaved }: Work
               <select
                 value={entityType}
                 onChange={(e) => setEntityType(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 {ENTITY_TYPES.map((et) => (
                   <option key={et} value={et}>
@@ -195,7 +195,7 @@ export function WorkflowEditor({ projectId, workflowId, onClose, onSaved }: Work
             {/* Steps */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium text-gray-700">Approval Steps</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Approval Steps</label>
                 <button
                   type="button"
                   onClick={handleAddStep}

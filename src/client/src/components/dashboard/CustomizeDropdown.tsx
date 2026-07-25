@@ -57,7 +57,7 @@ export function CustomizeDropdown({ widgets, enabledIds, onToggle, onReset }: Cu
                     type="checkbox"
                     checked={enabledIds.has(w.id)}
                     onChange={() => onToggle(w.id)}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer"
+                    className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer"
                   />
                   <span className="text-xs text-gray-700 dark:text-gray-300">{w.label}</span>
                 </label>

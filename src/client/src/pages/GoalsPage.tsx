@@ -81,7 +81,7 @@ const EMPTY_FORM: GoalFormData = {
 function statusBadge(status: string) {
   return (
     <span
-      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-600'}`}
+      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${STATUS_COLORS[status] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}
     >
       {status.replace('_', ' ')}
     </span>

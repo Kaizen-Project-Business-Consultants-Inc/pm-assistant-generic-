@@ -332,7 +332,7 @@ export function TaskPrioritizationPanel({ projectId, scheduleId }: TaskPrioritiz
                                   }`}
                                 />
                                 <div>
-                                  <span className={`font-medium ${impactColors[factor.impact] || 'text-gray-600'}`}>
+                                  <span className={`font-medium ${impactColors[factor.impact] || 'text-gray-600 dark:text-gray-400'}`}>
                                     {factor.factor}
                                   </span>
                                   <span className="text-gray-500 dark:text-gray-400"> — {factor.description}</span>

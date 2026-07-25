@@ -96,7 +96,7 @@ function SkeletonPanel() {
         ))}
       </div>
       {/* Bottleneck skeleton */}
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
         <div className="h-4 w-40 rounded bg-gray-200 dark:bg-gray-700 mb-4" />
         <div className="space-y-3">
           {[1, 2].map((i) => (
@@ -262,7 +262,7 @@ export function ResourceForecastPanel({ projectId }: ResourceForecastPanelProps)
             {burnoutRisks.map((br) => (
               <div
                 key={br.resourceId}
-                className="flex items-center gap-2.5 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2"
+                className="flex items-center gap-2.5 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40 px-3 py-2"
               >
                 <span className={`h-2 w-2 rounded-full ${riskDotColor[br.riskLevel] || riskDotColor.medium}`} />
                 <div>

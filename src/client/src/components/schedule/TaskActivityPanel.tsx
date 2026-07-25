@@ -163,7 +163,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
           className={`flex items-center gap-1.5 text-xs font-medium pb-1 border-b-2 transition-colors ${
             tab === 'comments'
               ? 'border-primary-500 text-primary-600'
-              : 'border-transparent text-gray-400 hover:text-gray-600'
+              : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5" />
@@ -179,7 +179,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
           className={`flex items-center gap-1.5 text-xs font-medium pb-1 border-b-2 transition-colors ${
             tab === 'activity'
               ? 'border-primary-500 text-primary-600'
-              : 'border-transparent text-gray-400 hover:text-gray-600'
+              : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
           }`}
         >
           <Activity className="w-3.5 h-3.5" />

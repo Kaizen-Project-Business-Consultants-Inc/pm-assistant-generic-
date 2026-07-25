@@ -484,7 +484,7 @@ export function AdminUsersPage() {
                       </td>
                       <td className="py-3 pr-3">
                         {u.subscription_status ? (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${SUB_STATUS_COLORS[u.subscription_status] || 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${SUB_STATUS_COLORS[u.subscription_status] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
                             {u.subscription_status.replace('_', ' ')}
                           </span>
                         ) : (
@@ -540,7 +540,7 @@ export function AdminUsersPage() {
                             <button onClick={() => handleBudgetSave(u.id)} className="text-emerald-600 hover:text-emerald-700" title="Save">
                               <Check className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => setEditingBudgetId(null)} className="text-gray-400 hover:text-gray-600" title="Cancel">
+                            <button onClick={() => setEditingBudgetId(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Cancel">
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>

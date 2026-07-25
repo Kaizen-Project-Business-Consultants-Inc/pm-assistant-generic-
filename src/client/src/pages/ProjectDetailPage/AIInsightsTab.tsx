@@ -458,7 +458,7 @@ function RiskAssessmentSection({ projectId }: { projectId: string }) {
                         <span>Probability</span>
                         <span>{Math.round((risk.probability || 0) * 100)}%</span>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-gray-200">
+                      <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
                         <div
                           className="h-full rounded-full bg-orange-400 transition-all"
                           style={{ width: `${Math.min((risk.probability || 0) * 100, 100)}%` }}
@@ -470,7 +470,7 @@ function RiskAssessmentSection({ projectId }: { projectId: string }) {
                         <span>Impact</span>
                         <span>{Math.round((risk.impact || 0) * 100)}%</span>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-gray-200">
+                      <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
                         <div
                           className="h-full rounded-full bg-red-400 transition-all"
                           style={{ width: `${Math.min((risk.impact || 0) * 100, 100)}%` }}

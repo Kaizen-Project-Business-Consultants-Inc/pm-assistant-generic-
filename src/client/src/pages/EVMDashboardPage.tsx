@@ -318,9 +318,9 @@ export function EVMDashboardPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 dark:bg-gray-700">
-                      <th className="text-left px-4 py-2 font-semibold text-gray-600">Method</th>
-                      <th className="text-right px-4 py-2 font-semibold text-gray-600">EAC</th>
-                      <th className="text-right px-4 py-2 font-semibold text-gray-600">Variance from BAC</th>
+                      <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-400">Method</th>
+                      <th className="text-right px-4 py-2 font-semibold text-gray-600 dark:text-gray-400">EAC</th>
+                      <th className="text-right px-4 py-2 font-semibold text-gray-600 dark:text-gray-400">Variance from BAC</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -378,7 +378,7 @@ export function EVMDashboardPage() {
 
               {result.aiPredictions.correctiveActions.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-600 uppercase mb-2">Recommended Corrective Actions</h4>
+                  <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase mb-2">Recommended Corrective Actions</h4>
                   <div className="space-y-2">
                     {result.aiPredictions.correctiveActions.map((ca, i) => (
                       <div key={i} className="bg-white/80 dark:bg-gray-800/80 rounded-lg px-3 py-2 text-sm flex items-start gap-3">

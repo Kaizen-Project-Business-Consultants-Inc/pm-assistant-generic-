@@ -79,7 +79,7 @@ export const MitigationSuggestions: React.FC<MitigationSuggestionsProps> = ({
                 </span>
                 <span className={`font-semibold ${scoreTextColor}`}>{Math.round(score)}%</span>
               </div>
-              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${scoreColor}`}
                   style={{ width: `${score}%` }}

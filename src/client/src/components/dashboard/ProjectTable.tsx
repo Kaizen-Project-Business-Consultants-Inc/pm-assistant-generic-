@@ -296,7 +296,7 @@ export function ProjectTable({ projects }: Props) {
                         style={{ width: `${Math.min(progress, 100)}%` }}
                       />
                     </div>
-                    <span className="text-xs text-gray-600 w-8 text-right">{progress}%</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 w-8 text-right">{progress}%</span>
                   </div>
                 </td>
 
@@ -308,7 +308,7 @@ export function ProjectTable({ projects }: Props) {
                 {/* Budget Spent % */}
                 <td className="hidden md:table-cell px-3 py-3 whitespace-nowrap">
                   {budgetPct !== null ? (
-                    <span className={`text-sm font-medium ${budgetPct > 90 ? 'text-red-600' : 'text-gray-600'}`}>
+                    <span className={`text-sm font-medium ${budgetPct > 90 ? 'text-red-600' : 'text-gray-600 dark:text-gray-400'}`}>
                       {budgetPct}%
                     </span>
                   ) : (
@@ -324,7 +324,7 @@ export function ProjectTable({ projects }: Props) {
                 {/* Days Remaining */}
                 <td className="px-3 py-3 whitespace-nowrap">
                   {days !== null ? (
-                    <span className={`text-sm font-medium ${days < 0 ? 'text-red-600' : days <= 7 ? 'text-orange-500' : 'text-gray-600'}`}>
+                    <span className={`text-sm font-medium ${days < 0 ? 'text-red-600' : days <= 7 ? 'text-orange-500' : 'text-gray-600 dark:text-gray-400'}`}>
                       {days < 0 ? `${Math.abs(days)}d overdue` : `${days}d`}
                     </span>
                   ) : (

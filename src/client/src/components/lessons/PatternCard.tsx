@@ -89,7 +89,7 @@ export const PatternCard: React.FC<PatternCardProps> = ({ pattern }) => {
           <span className="text-gray-500 dark:text-gray-400">Confidence</span>
           <span className={`font-semibold ${confidenceTextColor}`}>{Math.round(confidencePct)}%</span>
         </div>
-        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${confidenceColor}`}
             style={{ width: `${confidencePct}%` }}

@@ -146,7 +146,7 @@ export function CustomFieldEditorModal({ projectId, entityType, field, onClose }
               type="checkbox"
               checked={form.isRequired}
               onChange={(e) => setForm(p => ({ ...p, isRequired: e.target.checked }))}
-              className="rounded border-gray-300 text-primary-600"
+              className="rounded border-gray-300 dark:border-gray-600 text-primary-600"
             />
             Required field
           </label>

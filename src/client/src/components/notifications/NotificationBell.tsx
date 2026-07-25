@@ -310,7 +310,7 @@ export function NotificationBell() {
               {notifications.map((notification) => {
                 const IconComponent = typeIcons[notification.type] || Info;
                 const severityColor = severityColors[notification.severity] || 'bg-gray-400';
-                const severityText = severityTextColors[notification.severity] || 'text-gray-600';
+                const severityText = severityTextColors[notification.severity] || 'text-gray-600 dark:text-gray-400';
 
                 const isClickable = notification.linkType === 'proposal' && notification.projectId;
 

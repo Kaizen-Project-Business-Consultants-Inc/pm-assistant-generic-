@@ -486,7 +486,7 @@ export const LessonsLearnedPage: React.FC = () => {
                       <span className="text-gray-600 dark:text-gray-300 truncate">{cat}</span>
                       <span className="text-gray-500 dark:text-gray-400 font-medium">{count}</span>
                     </div>
-                    <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary-500 rounded-full"
                         style={{

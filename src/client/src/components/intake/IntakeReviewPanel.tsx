@@ -111,7 +111,7 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
         </div>
         <span
           className={`text-xs px-3 py-1 rounded-full font-medium ${
-            statusBadgeStyles[submission.status] || 'bg-gray-100 text-gray-600'
+            statusBadgeStyles[submission.status] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
           }`}
         >
           {statusLabels[submission.status] || submission.status}

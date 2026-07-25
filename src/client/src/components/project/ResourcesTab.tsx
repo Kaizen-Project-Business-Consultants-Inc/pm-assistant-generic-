@@ -264,7 +264,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-primary-200 dark:border-primary-700 p-5 space-y-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white">{editingResource ? 'Edit Resource' : 'New Resource'}</h3>
-                <button onClick={resetForm} className="p-1 text-gray-400 hover:text-gray-600" aria-label="Close resource form"><X className="w-4 h-4" /></button>
+                <button onClick={resetForm} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close resource form"><X className="w-4 h-4" /></button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div>
@@ -572,20 +572,20 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-gray-50 dark:bg-gray-700">
-                          <th className="text-left px-4 py-2 font-semibold text-gray-600">Resource</th>
-                          <th className="text-left px-4 py-2 font-semibold text-gray-600">Week</th>
-                          <th className="text-right px-4 py-2 font-semibold text-gray-600">Demand</th>
-                          <th className="text-right px-4 py-2 font-semibold text-gray-600">Capacity</th>
-                          <th className="text-left px-4 py-2 font-semibold text-gray-600">Severity</th>
+                          <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-400">Resource</th>
+                          <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-400">Week</th>
+                          <th className="text-right px-4 py-2 font-semibold text-gray-600 dark:text-gray-400">Demand</th>
+                          <th className="text-right px-4 py-2 font-semibold text-gray-600 dark:text-gray-400">Capacity</th>
+                          <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-400">Severity</th>
                         </tr>
                       </thead>
                       <tbody>
                         {forecast.bottlenecks.map((b, i) => (
                           <tr key={i} className="border-t border-gray-100 dark:border-gray-700">
                             <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">{b.resourceName}</td>
-                            <td className="px-4 py-2 text-gray-600">{formatWeek(b.week)}</td>
+                            <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{formatWeek(b.week)}</td>
                             <td className="px-4 py-2 text-right text-gray-900 dark:text-white">{b.demand}h</td>
-                            <td className="px-4 py-2 text-right text-gray-600">{b.capacity}h</td>
+                            <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400">{b.capacity}h</td>
                             <td className="px-4 py-2">
                               <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold text-white ${b.severity === 'critical' ? 'bg-red-500' : b.severity === 'high' ? 'bg-amber-500' : 'bg-yellow-400'}`}>
                                 {b.severity}

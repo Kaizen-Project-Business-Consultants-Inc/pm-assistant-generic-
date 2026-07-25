@@ -162,7 +162,7 @@ export const IntakeSubmissionForm: React.FC<Props> = ({ formId, onClose, onSubmi
                       checked={!!values[field.id]}
                       onChange={(e) => setValue(field.id, e.target.checked)}
                       className={`rounded text-blue-600 focus:ring-blue-500 ${
-                        hasError ? 'border-red-400' : 'border-gray-300'
+                        hasError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'
                       }`}
                     />
                     <span className="text-sm text-gray-600 dark:text-gray-400">{field.label}</span>

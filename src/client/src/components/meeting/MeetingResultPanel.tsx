@@ -75,7 +75,7 @@ function priorityBadge(priority: string) {
   };
   return (
     <span
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${colors[p] || 'bg-gray-100 text-gray-600'}`}
+      className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${colors[p] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}
     >
       {priority}
     </span>
@@ -92,7 +92,7 @@ function severityBadge(severity: string) {
   };
   return (
     <span
-      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${colors[s] || 'bg-gray-100 text-gray-600'}`}
+      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${colors[s] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}
     >
       {severity}
     </span>
@@ -107,7 +107,7 @@ function typeBadge(type: string) {
   };
   return (
     <span
-      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${colors[type] || 'bg-gray-100 text-gray-600'}`}
+      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${colors[type] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}
     >
       {type}
     </span>
@@ -292,7 +292,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                             type="checkbox"
                             checked={selectedIndices.size === taskUpdates.length}
                             onChange={toggleAll}
-                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
                           />
                         </th>
                         <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -314,7 +314,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                               type="checkbox"
                               checked={selectedIndices.has(idx)}
                               onChange={() => toggleIndex(idx)}
-                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                              className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
                             />
                           </td>
                           <td className="py-2.5 px-3 text-center">{typeBadge(tu.type)}</td>

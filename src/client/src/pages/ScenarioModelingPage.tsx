@@ -284,7 +284,7 @@ const PortfolioIntelligence: React.FC = () => {
                     </td>
                     <td className="py-2.5 pl-3 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-primary-500 rounded-full transition-all"
                             style={{ width: `${Math.min(entry.progress, 100)}%` }}
@@ -566,7 +566,7 @@ const AIAccuracy: React.FC = () => {
                 <span className="text-gray-600 dark:text-gray-300">Accepted</span>
                 <span className="font-medium text-green-700">{feedback.accepted}</span>
               </div>
-              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-green-500 rounded-full transition-all"
                   style={{
@@ -582,7 +582,7 @@ const AIAccuracy: React.FC = () => {
                 <span className="text-gray-600 dark:text-gray-300">Modified</span>
                 <span className="font-medium text-yellow-700">{feedback.modified}</span>
               </div>
-              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-yellow-500 rounded-full transition-all"
                   style={{
@@ -598,7 +598,7 @@ const AIAccuracy: React.FC = () => {
                 <span className="text-gray-600 dark:text-gray-300">Rejected</span>
                 <span className="font-medium text-red-700">{feedback.rejected}</span>
               </div>
-              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-red-500 rounded-full transition-all"
                   style={{

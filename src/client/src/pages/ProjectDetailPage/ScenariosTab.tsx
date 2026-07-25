@@ -120,7 +120,7 @@ export function ScenariosTab({ projectId }: { projectId: string }) {
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Confidence:</span>
               <div className="flex items-center gap-2">
-                <div className="h-2 w-24 rounded-full bg-gray-200">
+                <div className="h-2 w-24 rounded-full bg-gray-200 dark:bg-gray-700">
                   <div
                     className="h-full rounded-full bg-primary-500 transition-all"
                     style={{ width: `${Math.round(result.confidence * 100)}%` }}

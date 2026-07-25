@@ -142,7 +142,7 @@ function TierCard({ tier, onSave }: { tier: PricingConfig; onSave: (data: Partia
             type="checkbox"
             checked={form.highlight}
             onChange={(e) => setForm({ ...form, highlight: e.target.checked })}
-            className="rounded border-gray-300"
+            className="rounded border-gray-300 dark:border-gray-600"
           />
           Show "Most Popular" badge
         </label>

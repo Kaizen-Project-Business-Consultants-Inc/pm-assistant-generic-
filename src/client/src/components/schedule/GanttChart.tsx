@@ -2176,7 +2176,7 @@ export function GanttChart({
                         type="checkbox"
                         checked={ganttVisibleCols.has(col.key)}
                         onChange={() => toggleColVisibility(col.key)}
-                        className="w-3.5 h-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                        className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
                       />
                       <span
                         className="flex-1 cursor-pointer"
@@ -2305,7 +2305,7 @@ export function GanttChart({
                     if (next.has(s)) next.delete(s); else next.add(s);
                     return { ...prev, statuses: next };
                   })}
-                  className="w-3 h-3 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="w-3 h-3 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
                 />
                 {statusLabels[s] || s}
               </label>
@@ -2325,7 +2325,7 @@ export function GanttChart({
                     if (next.has(p)) next.delete(p); else next.add(p);
                     return { ...prev, priorities: next };
                   })}
-                  className="w-3 h-3 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="w-3 h-3 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
                 />
                 <span className={`w-1.5 h-1.5 rounded-full ${priorityDot[p] || 'bg-gray-300'}`} />
                 {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -2539,7 +2539,7 @@ export function GanttChart({
                       checked={allSelected}
                       onChange={toggleSelectAll}
                       aria-label="Select all tasks"
-                      className="w-3.5 h-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                      className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
                       title="Select all"
                     />
                   ) : (
@@ -2642,7 +2642,7 @@ export function GanttChart({
                       checked={selectedIds.has(task.id)}
                       onChange={() => {}}
                       onClick={(e) => { e.stopPropagation(); toggleSelect(task.id, e.shiftKey); }}
-                      className="w-3.5 h-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                      className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
                     />
                   ) : onTaskReorder && !editingCell && !sortField ? (
                     <span className="hidden group-hover:inline cursor-grab text-gray-400" title="Drag to reorder">&#x2807;</span>
