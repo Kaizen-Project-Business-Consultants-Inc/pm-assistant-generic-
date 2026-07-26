@@ -27,6 +27,7 @@ import {
   Mic,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { ProjectBriefCard } from '../../components/project/ProjectBriefCard';
 import { CustomFieldsSection } from '../../components/customfields/CustomFieldsSection';
 import { PortalLinkManager } from '../../components/portal/PortalLinkManager';
 
@@ -58,7 +59,7 @@ const DEFAULT_CARD_ORDER: CardId[] = [
   'goals', 'attachments', 'latest-meeting',
 ];
 
-export function OverviewTab({ project, onNavigateToTab }: { project: ProjectOverview; onNavigateToTab?: (tab: string) => void }) {
+export function OverviewTab({ project, onNavigateToTab, canEdit }: { project: ProjectOverview; onNavigateToTab?: (tab: string) => void; canEdit?: boolean }) {
   const { data: membersData, isLoading: membersLoading } = useQuery({
     queryKey: ['project-members', project.id],
     queryFn: () => apiService.getProjectMembers(project.id),
@@ -973,14 +974,12 @@ export function OverviewTab({ project, onNavigateToTab }: { project: ProjectOver
       {/* Row 1: Description + Project Details + Team Members (fixed position) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className={`lg:col-span-2 space-y-6`}>
-          {project.description && (
-            <div className={cardClass}>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Description</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                {project.description}
-              </p>
-            </div>
-          )}
+          <ProjectBriefCard
+            projectId={project.id}
+            description={project.description}
+            canEdit={canEdit ?? false}
+            cardClass={cardClass}
+          />
 
           <div className={cardClass}>
             <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Project Details</h3>
