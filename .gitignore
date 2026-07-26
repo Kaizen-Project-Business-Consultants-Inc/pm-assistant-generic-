@@ -51,6 +51,8 @@ nul
 test-results/
 playwright-report/
 playwright/.cache/
+pw-results.json
+parse-results.js
 
 # Claude Code
 .claude/settings.local.json

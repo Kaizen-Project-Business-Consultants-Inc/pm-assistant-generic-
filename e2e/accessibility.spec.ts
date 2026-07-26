@@ -48,15 +48,30 @@ test.describe('Accessibility — High Contrast & Reduced Motion', () => {
   test('reduced-motion CSS disables animations', async ({ page }) => {
     await page.goto('/');
 
+    // Create a test element with a known animation duration
+    await page.evaluate(() => {
+      const el = document.createElement('div');
+      el.id = 'motion-test';
+      el.style.animationName = 'test';
+      el.style.animationDuration = '5s';
+      document.body.appendChild(el);
+    });
+
+    // Before reduce-motion: animation-duration should be 5s
+    let duration = await page.evaluate(
+      () => getComputedStyle(document.getElementById('motion-test')!).animationDuration
+    );
+    expect(duration).toBe('5s');
+
+    // Apply reduce-motion class
     await page.evaluate(() => document.documentElement.classList.add('reduce-motion'));
 
-    // Any animated element should have near-zero animation-duration
-    const duration = await page.evaluate(() => {
-      const el = document.querySelector('*');
-      return el ? getComputedStyle(el).animationDuration : null;
-    });
-    // reduce-motion sets animation-duration to 0.01ms
-    expect(duration).toBe('0.01ms');
+    // After reduce-motion: CSS rule overrides to 0.01ms
+    // Chromium may return "0s" or "1e-05s" depending on version
+    duration = await page.evaluate(
+      () => getComputedStyle(document.getElementById('motion-test')!).animationDuration
+    );
+    expect(parseFloat(duration)).toBeLessThan(0.001);
   });
 
   test('prefers-reduced-motion media query is respected', async ({ page }) => {
@@ -64,11 +79,18 @@ test.describe('Accessibility — High Contrast & Reduced Motion', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
 
+    // Create a test element with a known animation duration
+    // The media query should override it to ~0
     const duration = await page.evaluate(() => {
-      const el = document.querySelector('*');
-      return el ? getComputedStyle(el).animationDuration : null;
+      const el = document.createElement('div');
+      el.style.animationName = 'test';
+      el.style.animationDuration = '5s';
+      document.body.appendChild(el);
+      return getComputedStyle(el).animationDuration;
     });
-    expect(duration).toBe('0.01ms');
+    // The @media (prefers-reduced-motion: reduce) rule sets 0.01ms
+    // Chromium may return "0s" or "1e-05s" depending on version
+    expect(parseFloat(duration)).toBeLessThan(0.001);
   });
 
   test('focus-visible ring appears on keyboard navigation', async ({ page }) => {

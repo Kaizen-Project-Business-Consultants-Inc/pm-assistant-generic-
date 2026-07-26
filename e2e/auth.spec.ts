@@ -11,6 +11,15 @@ test.describe('Authentication', () => {
   });
 
   test('shows error on invalid credentials', async ({ page }) => {
+    // Mock the login endpoint to return 401
+    await page.route('**/api/v1/auth/login', async (route) => {
+      return route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Invalid username or password' }),
+      });
+    });
+
     await page.goto('/login');
     await page.fill('#username', 'nonexistent');
     await page.fill('#password', 'wrongpassword');
