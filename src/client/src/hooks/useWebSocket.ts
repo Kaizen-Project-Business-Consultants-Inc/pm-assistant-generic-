@@ -27,9 +27,14 @@ export function sendWsMessage(data: object) {
 // Module-level presence state with custom event dispatch
 const PRESENCE_EVENT = 'ws:presence_update';
 const presenceMap = new Map<string, { userId: string; username: string }[]>();
+const editorsMap = new Map<string, { userId: string; username: string; field: string }[]>();
 
 export function getPresenceViewers(projectId: string): { userId: string; username: string }[] {
   return presenceMap.get(projectId) || [];
+}
+
+export function getPresenceEditors(projectId: string): { userId: string; username: string; field: string }[] {
+  return editorsMap.get(projectId) || [];
 }
 
 export function usePresenceViewers(projectId: string | undefined): { userId: string; username: string }[] {
@@ -52,6 +57,28 @@ export function usePresenceViewers(projectId: string | undefined): { userId: str
   }, [projectId]);
 
   return viewers;
+}
+
+export function usePresenceEditors(projectId: string | undefined): { userId: string; username: string; field: string }[] {
+  const [editors, setEditors] = useState<{ userId: string; username: string; field: string }[]>(() =>
+    projectId ? getPresenceEditors(projectId) : []
+  );
+
+  useEffect(() => {
+    if (!projectId) return;
+    setEditors(getPresenceEditors(projectId));
+
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail.projectId === projectId) {
+        setEditors(detail.editors || []);
+      }
+    };
+    window.addEventListener(PRESENCE_EVENT, handler);
+    return () => window.removeEventListener(PRESENCE_EVENT, handler);
+  }, [projectId]);
+
+  return editors;
 }
 
 // Module-level connection state with custom event dispatch
@@ -125,10 +152,11 @@ export function useWebSocket() {
                 queryClient.invalidateQueries({ queryKey: ['portfolio'] });
                 break;
               case 'presence_update': {
-                const { projectId, viewers } = message.payload;
+                const { projectId, viewers, editors } = message.payload;
                 presenceMap.set(projectId, viewers);
+                editorsMap.set(projectId, editors || []);
                 window.dispatchEvent(new CustomEvent(PRESENCE_EVENT, {
-                  detail: { projectId, viewers },
+                  detail: { projectId, viewers, editors: editors || [] },
                 }));
                 break;
               }

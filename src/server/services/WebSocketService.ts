@@ -10,6 +10,7 @@ interface ClientInfo {
   userId: string;
   username: string;
   projectId: string | null;
+  editingField: string | null;
 }
 
 const MAX_CONNECTIONS = 500;
@@ -57,6 +58,7 @@ export class WebSocketService {
         userId: userInfo.userId,
         username: userInfo.username,
         projectId: null,
+        editingField: null,
       });
     }
 
@@ -79,7 +81,20 @@ export class WebSocketService {
           if (info && info.projectId) {
             const projectId = info.projectId;
             info.projectId = null;
+            info.editingField = null;
             WebSocketService.broadcastPresence(projectId);
+          }
+        } else if (msg.type === 'presence:editing' && typeof msg.field === 'string') {
+          const info = WebSocketService.clientInfo.get(ws);
+          if (info && info.projectId) {
+            info.editingField = msg.field;
+            WebSocketService.broadcastPresence(info.projectId);
+          }
+        } else if (msg.type === 'presence:stop_editing') {
+          const info = WebSocketService.clientInfo.get(ws);
+          if (info && info.projectId && info.editingField) {
+            info.editingField = null;
+            WebSocketService.broadcastPresence(info.projectId);
           }
         }
       } catch { /* ignore non-JSON messages */ }
@@ -110,17 +125,21 @@ export class WebSocketService {
   static broadcastPresence(projectId: string) {
     // Collect unique viewers for this project
     const viewers: { userId: string; username: string }[] = [];
+    const editors: { userId: string; username: string; field: string }[] = [];
     const seen = new Set<string>();
     for (const [, info] of WebSocketService.clientInfo) {
       if (info.projectId === projectId && !seen.has(info.userId)) {
         seen.add(info.userId);
         viewers.push({ userId: info.userId, username: info.username });
+        if (info.editingField) {
+          editors.push({ userId: info.userId, username: info.username, field: info.editingField });
+        }
       }
     }
 
     const message = JSON.stringify({
       type: 'presence_update',
-      payload: { projectId, viewers },
+      payload: { projectId, viewers, editors },
     });
 
     // Send only to clients viewing this project

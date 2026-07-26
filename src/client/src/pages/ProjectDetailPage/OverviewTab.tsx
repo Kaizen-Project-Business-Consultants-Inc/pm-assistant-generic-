@@ -59,7 +59,7 @@ const DEFAULT_CARD_ORDER: CardId[] = [
   'goals', 'attachments', 'latest-meeting',
 ];
 
-export function OverviewTab({ project, onNavigateToTab, canEdit }: { project: ProjectOverview; onNavigateToTab?: (tab: string) => void; canEdit?: boolean }) {
+export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors, currentUserId }: { project: ProjectOverview; onNavigateToTab?: (tab: string) => void; canEdit?: boolean; presenceEditors?: { userId: string; username: string; field: string }[]; currentUserId?: string }) {
   const { data: membersData, isLoading: membersLoading } = useQuery({
     queryKey: ['project-members', project.id],
     queryFn: () => apiService.getProjectMembers(project.id),
@@ -979,6 +979,8 @@ export function OverviewTab({ project, onNavigateToTab, canEdit }: { project: Pr
             description={project.description}
             canEdit={canEdit ?? false}
             cardClass={cardClass}
+            presenceEditors={presenceEditors}
+            currentUserId={currentUserId}
           />
 
           <div className={cardClass}>

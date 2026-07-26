@@ -100,7 +100,7 @@ export function ProjectDetailPage() {
 
   const { user } = useAuthStore();
   const canEditStatus = user?.role === 'admin' || user?.role === 'project_manager';
-  const presenceViewers = usePresence(id);
+  const { viewers: presenceViewers, editors: presenceEditors } = usePresence(id);
   const otherViewers = presenceViewers.filter(v => v.userId !== user?.id);
 
   const {
@@ -581,7 +581,7 @@ export function ProjectDetailPage() {
 
       {/* Tab Content */}
       <Suspense fallback={<SectionSpinner />}>
-        {activeTab === 'overview' && <OverviewTab project={project} onNavigateToTab={(tab) => setActiveTab(tab as Tab)} canEdit={canEditStatus} />}
+        {activeTab === 'overview' && <OverviewTab project={project} onNavigateToTab={(tab) => setActiveTab(tab as Tab)} canEdit={canEditStatus} presenceEditors={presenceEditors} currentUserId={user?.id} />}
         {activeTab === 'raid' && <RAIDTab projectId={id!} />}
         {activeTab === 'schedule' && <ScheduleTab projectId={id!} projectName={project.name} projectStartDate={project.startDate || project.start_date} defaultViewMode={getDefaultViewMode(methodology)} />}
         {activeTab === 'ai-insights' && <AIInsightsTab projectId={id!} />}

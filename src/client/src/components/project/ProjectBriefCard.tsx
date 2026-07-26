@@ -4,21 +4,29 @@ import { Pencil, FileText, Bold, Italic, Heading2, List, Link2, Code } from 'luc
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 import { renderMarkdown } from '../../utils/renderMarkdown';
+import { sendWsMessage } from '../../hooks/useWebSocket';
 
 interface ProjectBriefCardProps {
   projectId: string;
   description: string | null | undefined;
   canEdit: boolean;
   cardClass: string;
+  presenceEditors?: { userId: string; username: string; field: string }[];
+  currentUserId?: string;
 }
 
-export function ProjectBriefCard({ projectId, description, canEdit, cardClass }: ProjectBriefCardProps) {
+export function ProjectBriefCard({ projectId, description, canEdit, cardClass, presenceEditors, currentUserId }: ProjectBriefCardProps) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(description ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Other users editing the brief (exclude self)
+  const otherBriefEditors = (presenceEditors || []).filter(
+    (e) => e.field === 'description' && e.userId !== currentUserId
+  );
 
   // Sync draft when description changes externally (and we're not editing)
   useEffect(() => {
@@ -41,6 +49,15 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass }:
     if (editing && textareaRef.current) {
       textareaRef.current.focus();
       textareaRef.current.selectionStart = textareaRef.current.value.length;
+    }
+  }, [editing]);
+
+  // Send presence editing signals
+  useEffect(() => {
+    if (editing) {
+      sendWsMessage({ type: 'presence:editing', field: 'description' });
+    } else {
+      sendWsMessage({ type: 'presence:stop_editing' });
     }
   }, [editing]);
 
@@ -145,6 +162,12 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass }:
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-semibold text-gray-900 dark:text-white">Project Brief</h3>
         <div className="flex items-center gap-2">
+          {otherBriefEditors.length > 0 && (
+            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              {otherBriefEditors.map((e) => e.username).join(', ')} editing
+            </span>
+          )}
           {saveStatus === 'saving' && (
             <span className="text-xs text-gray-400 dark:text-gray-500 animate-pulse">Saving...</span>
           )}
