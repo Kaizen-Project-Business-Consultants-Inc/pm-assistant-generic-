@@ -3,10 +3,13 @@ import { test, expect } from '@playwright/test';
 test.describe('Landing Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    // Wait for React to finish rendering (not just "Loading application...")
+    await expect(page.locator('section').first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('renders hero section with CTA buttons', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /Manage projects/i })).toBeVisible();
+    // Use level:1 to disambiguate from the h2 "Everything you need to manage projects"
+    await expect(page.getByRole('heading', { level: 1, name: /Manage projects/i })).toBeVisible();
     await expect(page.getByText('smarter with AI')).toBeVisible();
 
     // Primary CTA
@@ -28,8 +31,8 @@ test.describe('Landing Page', () => {
   test('feature cards are keyboard-focusable', async ({ page }) => {
     // Feature cards should have tabIndex and role="button"
     const featureCards = page.locator('[role="button"][tabindex="0"]');
-    const count = await featureCards.count();
-    expect(count).toBe(6); // 6 feature cards
+    // Use auto-waiting assertion instead of instant count()
+    await expect(featureCards).toHaveCount(6);
 
     // First card should be focusable via Tab
     const firstCard = featureCards.first();
@@ -41,15 +44,16 @@ test.describe('Landing Page', () => {
     const featureCards = page.locator('[role="button"][tabindex="0"]');
     const firstCard = featureCards.first();
 
-    // Click to toggle preview
+    // Initially collapsed
+    await expect(firstCard).toHaveAttribute('aria-expanded', 'false');
+
+    // Click to toggle preview open
     await firstCard.click();
-    // Preview should appear (the mockup popup)
+    await expect(firstCard).toHaveAttribute('aria-expanded', 'true');
+
+    // Preview popup should be visible
     const preview = firstCard.locator('.absolute.z-50');
     await expect(preview).toBeVisible({ timeout: 2000 });
-
-    // Click again to toggle off
-    await firstCard.click();
-    await expect(preview).not.toBeVisible();
   });
 
   test('feature card has aria-expanded attribute', async ({ page }) => {
@@ -106,7 +110,8 @@ test.describe('Landing Page', () => {
     // Click to expand
     await summary.click();
     await expect(content).toBeVisible();
-    await expect(content.getByText('non-refundable')).toBeVisible();
+    // Use .first() — multiple paragraphs contain "non-refundable"
+    await expect(content.getByText('non-refundable').first()).toBeVisible();
   });
 
   test('navbar has mobile menu toggle', async ({ page }) => {

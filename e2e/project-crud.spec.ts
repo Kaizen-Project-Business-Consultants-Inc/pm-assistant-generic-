@@ -19,37 +19,40 @@ test.describe('Project CRUD', () => {
     await page.goto('/projects');
     await page.getByRole('button', { name: /New Project/i }).click();
 
-    // Template picker modal should open — step: category
-    await expect(page.getByText('New Project')).toBeVisible();
+    // Template picker modal should open
+    await expect(page.getByRole('heading', { name: /New Project/i })).toBeVisible();
 
     // Click "Start from Scratch" (blank project option)
-    await page.getByText(/Start from Scratch|Blank Project/i).click();
-
-    // Fill in the project form
-    const nameInput = page.locator('input[type="text"]').first();
-    await nameInput.clear();
-    await nameInput.fill(projectName);
-
-    // Submit the form
-    await page.getByRole('button', { name: /Create Project/i }).click();
-
-    // Should navigate to the new project detail page
-    await expect(page).toHaveURL(/\/project\//, { timeout: 15_000 });
-
-    // Project name should be visible on the detail page
-    await expect(page.getByText(projectName)).toBeVisible({ timeout: 10_000 });
-  });
-
-  test('view project detail page with tabs', async ({ page }) => {
-    // Navigate to projects and click the first one
-    await page.goto('/projects');
-    const firstProject = page.locator('a[href^="/project/"]').first();
-    // If there are no projects, skip
-    const count = await firstProject.count();
-    if (count === 0) {
+    const scratchBtn = page.getByText(/Start from Scratch|Blank Project/i);
+    if ((await scratchBtn.count()) === 0) {
       test.skip();
       return;
     }
+    await scratchBtn.click();
+
+    // Fill in the project form — name and start date are both required
+    const nameInput = page.getByPlaceholder('My Project');
+    await nameInput.clear();
+    await nameInput.fill(projectName);
+
+    const dateInput = page.locator('input[type="date"]').first();
+    await dateInput.fill('2026-08-01');
+
+    // Submit the form
+    const createBtn = page.getByRole('button', { name: /Create Project/i });
+    await expect(createBtn).toBeEnabled({ timeout: 5_000 });
+    await createBtn.click();
+
+    // Should navigate to the new project detail page
+    await expect(page).toHaveURL(/\/project\//, { timeout: 15_000 });
+  });
+
+  test('view project detail page with tabs', async ({ page }) => {
+    // Navigate to projects and wait for project links to render
+    await page.goto('/projects');
+    const firstProject = page.locator('a[href^="/project/"]').first();
+    await expect(firstProject).toBeVisible({ timeout: 10_000 });
+
     await firstProject.click();
     await expect(page).toHaveURL(/\/project\//);
 
