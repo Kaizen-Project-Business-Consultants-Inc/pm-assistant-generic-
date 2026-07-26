@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Pencil, FileText } from 'lucide-react';
+import { Pencil, FileText, Bold, Italic, Heading2, List, Link2, Code } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 import { renderMarkdown } from '../../utils/renderMarkdown';
@@ -94,6 +94,49 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass }:
     }
   };
 
+  const wrapSelection = (before: string, after: string, placeholder: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = draft.slice(start, end) || placeholder;
+    const newText = draft.slice(0, start) + before + selected + after + draft.slice(end);
+    handleChange(newText);
+    // Restore cursor around the inserted/selected text
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = start + before.length;
+      ta.selectionEnd = start + before.length + selected.length;
+    });
+  };
+
+  const insertLinePrefix = (prefix: string, placeholder: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    // Find the beginning of the current line
+    const lineStart = draft.lastIndexOf('\n', start - 1) + 1;
+    const lineEnd = draft.indexOf('\n', start);
+    const currentLine = draft.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
+    const newLine = currentLine.trim() ? `${prefix}${currentLine}` : `${prefix}${placeholder}`;
+    const newText = draft.slice(0, lineStart) + newLine + draft.slice(lineEnd === -1 ? draft.length : lineEnd);
+    handleChange(newText);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = lineStart + prefix.length;
+      ta.selectionEnd = lineStart + newLine.length;
+    });
+  };
+
+  const toolbarButtons = [
+    { icon: Bold, title: 'Bold (Ctrl+B)', action: () => wrapSelection('**', '**', 'bold text') },
+    { icon: Italic, title: 'Italic (Ctrl+I)', action: () => wrapSelection('*', '*', 'italic text') },
+    { icon: Heading2, title: 'Heading', action: () => insertLinePrefix('## ', 'Heading') },
+    { icon: List, title: 'Bullet list', action: () => insertLinePrefix('- ', 'List item') },
+    { icon: Link2, title: 'Link', action: () => wrapSelection('[', '](url)', 'link text') },
+    { icon: Code, title: 'Inline code', action: () => wrapSelection('`', '`', 'code') },
+  ];
+
   const isEmpty = !draft.trim();
 
   return (
@@ -122,15 +165,34 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass }:
 
       {/* Edit mode */}
       {editing && (
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          onChange={(e) => handleChange(e.target.value)}
-          onBlur={exitEdit}
-          onKeyDown={handleKeyDown}
-          className="w-full bg-transparent text-sm text-gray-700 dark:text-gray-200 leading-relaxed resize-none outline-none font-mono placeholder-gray-400 dark:placeholder-gray-500 min-h-[100px]"
-          placeholder="Write your project brief using markdown..."
-        />
+        <div>
+          <div className="flex items-center gap-0.5 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+            {toolbarButtons.map(({ icon: Icon, title, action }) => (
+              <button
+                key={title}
+                type="button"
+                title={title}
+                onMouseDown={(e) => { e.preventDefault(); action(); }}
+                className="p-1.5 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                <Icon className="w-4 h-4" />
+              </button>
+            ))}
+          </div>
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(e) => handleChange(e.target.value)}
+            onBlur={exitEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') { exitEdit(); return; }
+              if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**', '**', 'bold text'); return; }
+              if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); wrapSelection('*', '*', 'italic text'); return; }
+            }}
+            className="w-full bg-transparent text-sm text-gray-700 dark:text-gray-200 leading-relaxed resize-none outline-none font-mono placeholder-gray-400 dark:placeholder-gray-500 min-h-[100px]"
+            placeholder="Write your project brief using markdown..."
+          />
+        </div>
       )}
 
       {/* View mode */}
