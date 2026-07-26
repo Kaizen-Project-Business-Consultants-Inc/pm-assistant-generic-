@@ -222,10 +222,10 @@ Available cards:
 
 Above the card grid, the **Project Brief** card displays the project description with full markdown rendering (headings, bold, italic, lists, links, and inline code).
 
-- **Editing** -- Admins and project managers see a pencil icon on hover. Click the card (or the pencil) to enter edit mode with a monospace textarea. The card shows a focus ring while editing.
-- **Markdown toolbar** -- In edit mode, a formatting toolbar appears above the textarea with 6 buttons: **Bold**, **Italic**, **Heading**, **Bullet list**, **Link**, and **Inline code**. Each button wraps the current text selection with the appropriate markdown syntax (or inserts a placeholder if nothing is selected). Keyboard shortcuts **Ctrl+B** (bold) and **Ctrl+I** (italic) also work.
-- **Auto-save** -- Changes save automatically after 1.5 seconds of inactivity. A "Saving..." / "Saved" indicator appears next to the header. Exiting edit mode (Escape or clicking away) flushes any pending save immediately.
-- **Collaborative editing** -- When another user is editing the brief at the same time, an amber indicator with a pulsing dot shows their username (e.g., "jsmith editing"). This helps avoid conflicting edits — the last save wins.
+- **Editing** -- Admins and project managers see a pencil icon (always visible on mobile; appears on hover on desktop). Click the card (or the pencil) to enter edit mode with a monospace textarea. The card shows a focus ring while editing. The textarea is capped at 50vh height with scrolling to prevent it from consuming the entire viewport on mobile.
+- **Markdown toolbar** -- In edit mode, a formatting toolbar appears above the textarea with 6 buttons: **Bold**, **Italic**, **Heading**, **Bullet list**, **Link**, and **Inline code**. Each button wraps the current text selection with the appropriate markdown syntax (or inserts a placeholder if nothing is selected). Keyboard shortcuts **Ctrl+B** (bold) and **Ctrl+I** (italic) also work. The toolbar wraps to a second row on narrow screens.
+- **Auto-save** -- Changes save automatically after 1.5 seconds of inactivity. A "Saving..." / "Saved" indicator appears next to the header. If a save fails, a red "Save failed" message with a **Retry** link appears. Exiting edit mode (Escape or clicking away) flushes any pending save immediately.
+- **Collaborative editing** -- When another user is editing the brief at the same time, an amber indicator with a pulsing dot shows their username (e.g., "jsmith editing"), truncated on narrow screens. This helps avoid conflicting edits — the last save wins.
 - **Empty state** -- When no description exists, a placeholder ("Click to add a project brief...") is shown. Editors can click it to start writing. Read-only users see "No project brief yet."
 - **Markdown support** -- `# Headings`, `**bold**`, `*italic*`, `- lists`, `[links](url)`, and `` `inline code` `` are all rendered.
 

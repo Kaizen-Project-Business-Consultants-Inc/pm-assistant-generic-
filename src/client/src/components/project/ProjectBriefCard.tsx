@@ -19,7 +19,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(description ?? '');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -69,7 +69,8 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
       setTimeout(() => setSaveStatus('idle'), 2000);
     },
     onError: () => {
-      setSaveStatus('idle');
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 5000);
     },
   });
 
@@ -102,12 +103,6 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
         setSaveStatus('saving');
         mutation.mutate(draft);
       }
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      exitEdit();
     }
   };
 
@@ -165,7 +160,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
           {otherBriefEditors.length > 0 && (
             <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              {otherBriefEditors.map((e) => e.username).join(', ')} editing
+              <span className="truncate max-w-[120px] sm:max-w-none">{otherBriefEditors.map((e) => e.username).join(', ')}</span> editing
             </span>
           )}
           {saveStatus === 'saving' && (
@@ -174,10 +169,16 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
           {saveStatus === 'saved' && (
             <span className="text-xs text-green-500 dark:text-green-400">Saved</span>
           )}
+          {saveStatus === 'error' && (
+            <span className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+              Save failed
+              <button onClick={() => { setSaveStatus('saving'); mutation.mutate(draft); }} className="underline">Retry</button>
+            </span>
+          )}
           {canEdit && !editing && !isEmpty && (
             <button
               onClick={() => setEditing(true)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               title="Edit brief"
             >
               <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
@@ -189,7 +190,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
       {/* Edit mode */}
       {editing && (
         <div>
-          <div className="flex items-center gap-0.5 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex flex-wrap items-center gap-0.5 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
             {toolbarButtons.map(({ icon: Icon, title, action }) => (
               <button
                 key={title}
@@ -212,7 +213,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
               if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**', '**', 'bold text'); return; }
               if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); wrapSelection('*', '*', 'italic text'); return; }
             }}
-            className="w-full bg-transparent text-sm text-gray-700 dark:text-gray-200 leading-relaxed resize-none outline-none font-mono placeholder-gray-400 dark:placeholder-gray-500 min-h-[100px]"
+            className="w-full bg-transparent text-sm text-gray-700 dark:text-gray-200 leading-relaxed resize-none outline-none font-mono placeholder-gray-400 dark:placeholder-gray-500 min-h-[100px] max-h-[50vh] overflow-y-auto"
             placeholder="Write your project brief using markdown..."
           />
         </div>

@@ -12,10 +12,11 @@ import { parsePagination } from '../../schemas/paginationSchema';
 import { favouriteProjectRepository } from '../../database/FavouriteProjectRepository';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
+import { stripDangerousHtml } from '../../utils/sanitize';
 
 const createProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
-  description: z.string().optional(),
+  description: z.string().max(50000).optional(),
   category: z.string().optional(),
   projectType: z.enum(['it', 'construction', 'infrastructure', 'roads', 'other']).default('other'),
   methodology: z.enum(['waterfall', 'agile', 'hybrid']).default('waterfall'),
@@ -88,6 +89,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const data = createProjectSchema.parse(request.body);
+      if (data.description) data.description = stripDangerousHtml(data.description);
       const userId = request.user!.userId;
 
       // Trial users: max 3 projects
@@ -124,6 +126,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       const data = updateProjectSchema.parse(request.body);
+      if (data.description) data.description = stripDangerousHtml(data.description);
       const userId = request.user!.userId;
       const project = await projectService.update(id, {
         ...data,
