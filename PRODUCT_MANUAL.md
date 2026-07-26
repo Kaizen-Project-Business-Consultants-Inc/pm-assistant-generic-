@@ -18,6 +18,7 @@ Full CRUD lifecycle for projects with the following attributes:
 - **Budget management**: allocated budget, spent budget, budget variance
 - **Date management**: start date, end date, auto-calculated duration
 - **Team assignment**: project members with role-based access (owner, manager, editor, viewer). Only members can access a project; non-members get 404. Creator is auto-added as owner. Admin/pmo bypass membership; executive gets read-only bypass.
+- **Project Brief**: Inline-editable markdown description on the Overview tab. Supports headings, bold, italic, lists, links, and inline code. Click-to-edit with auto-save (1.5s debounce). Empty projects show a placeholder prompting the user to add a brief. Read-only users see rendered markdown without edit controls. Content is sanitized via DOMPurify.
 
 ### Schedules
 

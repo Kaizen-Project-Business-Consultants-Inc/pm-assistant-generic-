@@ -144,7 +144,7 @@ The bell icon in the top bar shows unread notifications. Click it to view alerts
 1. From the Dashboard, click **Create New Project**.
 2. Fill in the project details:
    - **Name** (required) -- A descriptive project name.
-   - **Description** -- Overview of the project scope.
+   - **Description** -- Overview of the project scope. Supports markdown formatting (headings, bold, italic, lists, links, inline code). Can also be edited inline from the Overview tab's Project Brief card.
    - **Status** -- Planning, Active, On Hold, Completed, or Cancelled.
    - **Priority** -- Low, Medium, High, or Urgent.
    - **Methodology** -- Waterfall (default), Agile, or Hybrid. This controls the default view, tab ordering, readiness bar steps, and context cards (see below).
@@ -217,6 +217,15 @@ Available cards:
 - **Goals** -- Project-linked OKR progress with completion percentages.
 - **Attachments** -- Recent file uploads with version info.
 - **Latest Meeting** -- Most recent meeting analysis summary with action items and decisions.
+
+#### Project Brief
+
+Above the card grid, the **Project Brief** card displays the project description with full markdown rendering (headings, bold, italic, lists, links, and inline code).
+
+- **Editing** -- Admins and project managers see a pencil icon on hover. Click the card (or the pencil) to enter edit mode with a monospace textarea. The card shows a focus ring while editing.
+- **Auto-save** -- Changes save automatically after 1.5 seconds of inactivity. A "Saving..." / "Saved" indicator appears next to the header. Exiting edit mode (Escape or clicking away) flushes any pending save immediately.
+- **Empty state** -- When no description exists, a placeholder ("Click to add a project brief...") is shown. Editors can click it to start writing. Read-only users see "No project brief yet."
+- **Markdown support** -- `# Headings`, `**bold**`, `*italic*`, `- lists`, `[links](url)`, and `` `inline code` `` are all rendered.
 
 Additional sections below the card grid:
 - **Custom Fields** -- User-defined metadata fields.
