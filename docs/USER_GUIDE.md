@@ -1090,7 +1090,7 @@ Connect PM Assistant to external tools for bidirectional synchronization.
 |----------|-----------|
 | **Jira** | Sync tasks with Jira issues. Import/export task status, priority, and assignments. |
 | **GitHub** | Link GitHub issues and pull requests to project tasks. Track development progress. |
-| **Slack** | Send project notifications, alerts, and status updates to Slack channels. |
+| **Slack** | Event notifications, `/kovarti status` slash command, interactive proposal approval buttons. |
 | **Trello** | Sync cards with project tasks. |
 
 ### Setting Up an Integration
@@ -1100,7 +1100,7 @@ Connect PM Assistant to external tools for bidirectional synchronization.
 3. In the configuration modal, enter the required credentials:
    - **Jira** -- Server URL, API token, project key.
    - **GitHub** -- Repository, personal access token.
-   - **Slack** -- Webhook URL or OAuth token, channel.
+   - **Slack** -- Webhook URL, channel, optional `notifyEvents` filter array.
    - **Trello** -- API key, board ID.
 4. Click **Save** to create the integration.
 
@@ -1109,6 +1109,15 @@ Connect PM Assistant to external tools for bidirectional synchronization.
 - Click **Sync Now** to manually trigger a synchronization.
 - View the **Sync Log** panel to see a history of sync operations, including timestamps, status, and any errors.
 - Integrations can be enabled/disabled with a toggle without deleting the configuration.
+
+### Slack Features
+
+Once a Slack integration is configured for a project:
+
+- **Automatic Notifications** — Slack receives messages when tasks are completed, risks are created, sprints start/complete, or the project status changes.
+- **Slash Command** — Type `/kovarti status My Project` in Slack to get a formatted status card. Requires the slash command to be configured in your Slack App pointing to `https://your-domain/api/v1/slack/commands`.
+- **Interactive Proposal Buttons** — When AI agents create proposals, Slack shows Approve/Reject buttons. Clicking them reviews the proposal and records the Slack username for audit.
+- **Event Filtering** — Add a `notifyEvents` array (e.g., `["task.updated", "risk.created"]`) to the integration config to control which events send notifications.
 
 ---
 

@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
+import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import { auditLedgerService } from '../../services/AuditLedgerService';
 import { toProjectDTO, paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
@@ -133,6 +134,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Project not found', message: 'Project does not exist or you do not have access' });
       }
       webhookService.dispatch('project.updated', { project }, userId);
+      slackEventDispatcher.dispatchToSlack('project.updated', { project }, id);
       return { project: toProjectDTO(project) };
     } catch (error) {
       logger.error('Update project error', { error });
@@ -172,6 +174,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
       }
 
       webhookService.dispatch('project.updated', { project }, user.userId);
+      slackEventDispatcher.dispatchToSlack('project.updated', { project }, id);
       return { project };
     } catch (error) {
       logger.error('Update project status error', { error });

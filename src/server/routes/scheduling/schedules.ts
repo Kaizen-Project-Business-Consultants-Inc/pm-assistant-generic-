@@ -6,6 +6,7 @@ import { baselineService } from '../../services/BaselineService';
 import { dagWorkflowService } from '../../services/DagWorkflowService';
 import { WebSocketService } from '../../services/WebSocketService';
 import { webhookService } from '../../services/WebhookService';
+import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
@@ -212,6 +213,16 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       WebSocketService.broadcast({ type: 'task_updated', payload: { task, cascadedChanges } });
       const user = request.user!;
       webhookService.dispatch('task.updated', { task, cascadedChanges }, user?.userId);
+
+      // Slack notification for completed tasks
+      if (task.status === 'completed') {
+        const { scheduleId } = request.params as { scheduleId: string };
+        scheduleService.findById(scheduleId).then(schedule => {
+          if (schedule?.projectId) {
+            slackEventDispatcher.dispatchToSlack('task.updated', { task }, schedule.projectId);
+          }
+        }).catch(() => {});
+      }
 
       return { task, cascadedChanges };
     } catch (error) {

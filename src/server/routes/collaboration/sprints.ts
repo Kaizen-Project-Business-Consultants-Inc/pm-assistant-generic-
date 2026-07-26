@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
+import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
@@ -129,6 +130,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.startSprint(id);
       webhookService.dispatch('sprint.started', { sprint }, request.user!.userId);
+      slackEventDispatcher.dispatchToSlack('sprint.started', { sprint }, sprint.projectId);
       return { sprint };
     } catch (error) {
       logger.error('Start sprint error', { error });
@@ -142,6 +144,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.completeSprint(id);
       webhookService.dispatch('sprint.completed', { sprint }, request.user!.userId);
+      slackEventDispatcher.dispatchToSlack('sprint.completed', { sprint }, sprint.projectId);
       return { sprint };
     } catch (error) {
       logger.error('Complete sprint error', { error });

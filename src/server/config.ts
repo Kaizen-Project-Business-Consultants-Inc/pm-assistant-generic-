@@ -113,6 +113,10 @@ const configSchema = z.object({
   // Multi-Tenant Configuration
   MULTI_TENANT_ENABLED: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(false)),
 
+  // Slack Configuration
+  SLACK_SIGNING_SECRET: z.string().optional().default(''),
+  SLACK_BOT_TOKEN: z.string().optional().default(''),
+
   // File Upload Configuration
   UPLOAD_DIR: z.string().default(process.env['HOME'] || process.env['USERPROFILE'] ? `${process.env['HOME'] || process.env['USERPROFILE']}/uploads/pm-assistant` : './uploads/pm-assistant'),
   MAX_UPLOAD_SIZE_MB: z.coerce.number().min(1).max(100).default(10),
@@ -227,6 +231,8 @@ export function validateConfiguration() {
       ALERT_WEBHOOK_URL: process.env['ALERT_WEBHOOK_URL'],
       ALERT_COOLDOWN_MINUTES: process.env['ALERT_COOLDOWN_MINUTES'],
       MULTI_TENANT_ENABLED: process.env['MULTI_TENANT_ENABLED'],
+      SLACK_SIGNING_SECRET: process.env['SLACK_SIGNING_SECRET'],
+      SLACK_BOT_TOKEN: process.env['SLACK_BOT_TOKEN'],
       UPLOAD_DIR: process.env['UPLOAD_DIR'],
       MAX_UPLOAD_SIZE_MB: process.env['MAX_UPLOAD_SIZE_MB'],
     };

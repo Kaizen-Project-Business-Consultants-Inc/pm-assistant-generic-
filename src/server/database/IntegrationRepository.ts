@@ -104,6 +104,13 @@ export class IntegrationRepository extends BaseRepository<Integration> {
     return this.mapRows(rows);
   }
 
+  async findActiveSlackByProject(projectId: string): Promise<IntegrationRow[]> {
+    return this.queryRaw(
+      'SELECT * FROM integrations WHERE project_id = ? AND provider = ? AND is_active = 1',
+      [projectId, 'slack'],
+    );
+  }
+
   async findRawById(id: string): Promise<IntegrationRow | null> {
     const rows = await this.queryRaw('SELECT * FROM integrations WHERE id = ?', [id]);
     return rows.length > 0 ? rows[0] : null;

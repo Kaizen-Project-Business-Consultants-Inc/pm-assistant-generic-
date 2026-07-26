@@ -301,7 +301,13 @@ An agentic AI project management platform that combines the scheduling power of 
 ## Priority 5: Market Advantage (Win Enterprise Deals)
 
 ### 5.1 External Integrations
-- Slack integration (notifications, slash commands)
+- **Slack integration** — COMPLETE
+  - Event notifications (task completion, risk created, sprint start/complete, project status changes)
+  - `/kovarti status <project>` slash command for real-time project status
+  - Interactive Approve/Reject buttons for agent proposals
+  - Per-integration event filtering via `notifyEvents` config
+  - HMAC-SHA256 signature verification (Slack signing secret)
+  - Bot token support for interactive messages
 - Microsoft Teams integration
 - Jira two-way sync
 - GitHub/GitLab commit linking

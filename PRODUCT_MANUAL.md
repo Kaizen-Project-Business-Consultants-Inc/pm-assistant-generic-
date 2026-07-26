@@ -921,8 +921,30 @@ The `TemplateService` allows saving a project's structure as a reusable template
 |----------|---------|-------------|
 | **Jira** | `JiraAdapter` | Bi-directional task sync, status mapping |
 | **GitHub** | `GitHubAdapter` | Issue sync, PR status tracking |
-| **Slack** | `SlackAdapter` | Notification delivery, channel updates |
+| **Slack** | `SlackAdapter` | Event notifications, `/kovarti status` slash command, interactive proposal buttons |
 | **Trello** | `TrelloAdapter` | Card sync, board mapping |
+
+### Slack Integration
+
+The Slack integration provides three capabilities:
+
+1. **Event Notifications** — Automatic Slack messages when key events occur:
+   - Task completed
+   - Risk/issue/action/decision created
+   - Sprint started or completed
+   - Project status changed
+   - Agent proposal created (with interactive Approve/Reject buttons)
+
+2. **Slash Command** (`/kovarti status <project name>`) — Returns an ephemeral Block Kit message with the project's status, priority, methodology, and dates.
+
+3. **Interactive Buttons** — Agent proposals sent to Slack include Approve/Reject buttons. Clicking them records a review with the Slack username in the audit trail.
+
+**Configuration:**
+- Set `SLACK_SIGNING_SECRET` and `SLACK_BOT_TOKEN` environment variables
+- Create a Slack integration per project with the incoming webhook URL
+- Optionally configure `notifyEvents` array in the integration config to filter which events trigger notifications
+
+**Security:** All inbound requests (`/api/v1/slack/commands`, `/api/v1/slack/interactivity`) are verified using HMAC-SHA256 with the Slack signing secret. Timestamps older than 5 minutes are rejected.
 
 ### Webhooks
 

@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
+import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import { PredictiveIntelligenceService } from '../../services/predictiveIntelligence';
 import { lessonsLearnedService } from '../../services/LessonsLearnedService';
 import { projectService } from '../../services/ProjectService';
@@ -143,6 +144,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
       const risk = await riskService.create({ ...body, projectId, createdBy: userId }, userRole);
       webhookService.dispatch('risk.created', { risk, projectId }, userId);
+      slackEventDispatcher.dispatchToSlack('risk.created', { risk, projectId }, projectId);
       return reply.status(201).send({ data: risk });
     } catch (err) {
       if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });

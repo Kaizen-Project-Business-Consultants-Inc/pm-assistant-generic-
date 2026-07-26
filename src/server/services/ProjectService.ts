@@ -83,6 +83,10 @@ export class ProjectService {
     return projectRepository.findAll();
   }
 
+  async findByName(name: string): Promise<Project | null> {
+    return projectRepository.findByName(name);
+  }
+
   async create(data: CreateProjectData): Promise<Project> {
     // Policy check
     const policyResult = await policyEngineService.evaluate('project.create', {

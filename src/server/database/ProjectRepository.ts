@@ -173,6 +173,14 @@ export class ProjectRepository extends BaseRepository<Project> {
     return (rows as any)?.affectedRows > 0;
   }
 
+  async findByName(name: string): Promise<Project | null> {
+    const rows = await this.queryRaw(
+      'SELECT * FROM projects WHERE LOWER(name) = LOWER(?) LIMIT 1',
+      [name],
+    );
+    return rows.length > 0 ? rowToProject(rows[0]) : null;
+  }
+
   async deleteForUser(id: string, userId: string): Promise<boolean> {
     return this.deleteById(id, { column: 'created_by', value: userId });
   }

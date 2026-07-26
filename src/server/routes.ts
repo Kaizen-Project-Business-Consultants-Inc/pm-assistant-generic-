@@ -88,6 +88,7 @@ import { integrationRoutes } from './routes/integrations/integrations';
 import { webhookRoutes } from './routes/integrations/webhooks';
 import { apiKeyRoutes } from './routes/integrations/apiKeys';
 import { stripeRoutes } from './routes/integrations/stripe';
+import { slackRoutes } from './routes/integrations/slack';
 import { mcpProxyRoutes } from './routes/integrations/mcpProxy';
 
 // Admin
@@ -191,6 +192,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(webhookRoutes, { prefix: '/api/v1/webhooks' });
   await fastify.register(apiKeyRoutes, { prefix: '/api/v1/api-keys' });
   await fastify.register(stripeRoutes, { prefix: '/api/v1/stripe' });
+  await fastify.register(slackRoutes, { prefix: '/api/v1/slack' });
   await fastify.register(mcpProxyRoutes, { prefix: '/mcp' });
 
   // Admin
