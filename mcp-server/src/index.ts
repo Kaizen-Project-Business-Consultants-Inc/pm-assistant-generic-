@@ -356,7 +356,17 @@ async function startHttp() {
         return;
       }
 
-      // New session — resolve role for this user
+      // Stale/unknown session ID — return 404 per MCP spec so client re-initializes
+      if (sessionId) {
+        res.status(404).json({
+          jsonrpc: '2.0',
+          error: { code: -32001, message: 'Session expired' },
+          id: null,
+        });
+        return;
+      }
+
+      // New session (no session ID = fresh initialize) — resolve role for this user
       const authInfo = (req as any).auth;
       const role = await resolveRoleFromAuth(authInfo);
       const userContext: McpUserContext = {
