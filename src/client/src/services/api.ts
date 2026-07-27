@@ -303,6 +303,7 @@ class ApiService {
       dependency?: string;
       parentTaskId?: string;
       afterTaskId?: string;
+      beforeTaskId?: string;
       recurrenceRule?: string;
       isRecurrenceTemplate?: boolean;
       isMilestone?: boolean;

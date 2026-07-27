@@ -53,6 +53,7 @@ const createTaskSchema = z.object({
   dependencyLagDays: z.number().int().optional(),
   dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional(),
   afterTaskId: z.string().optional(),
+  beforeTaskId: z.string().optional(),
   dependencies: z.array(taskDependencySchema).max(20).optional(),
 });
 

@@ -280,7 +280,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
   const [editingTask, setEditingTask] = useState<GanttTask | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [createTaskDates, setCreateTaskDates] = useState<{ startDate: string; endDate: string; parentTaskId?: string } | null>(null);
+  const [createTaskDates, setCreateTaskDates] = useState<{ startDate: string; endDate: string; parentTaskId?: string; afterTaskId?: string; beforeTaskId?: string } | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCriticalPath, setShowCriticalPath] = useState(false);
   const columnState = useColumnState(schedule.id);
@@ -336,7 +336,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
 
   // Create task mutation
   const createMutation = useMutation({
-    mutationFn: (data: TaskFormData & { afterTaskId?: string }) => {
+    mutationFn: (data: TaskFormData & { afterTaskId?: string; beforeTaskId?: string }) => {
       const deps = (data.predecessors || [])
         .filter(p => p.dependencyId)
         .map(p => ({ dependencyId: p.dependencyId, dependencyType: p.dependencyType || 'FS', lagDays: parseInt(p.lagDays) || 0 }));
@@ -356,6 +356,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
         isMilestone: data.isMilestone || undefined,
         dependencies: deps.length > 0 ? deps : undefined,
         afterTaskId: data.afterTaskId || undefined,
+        beforeTaskId: data.beforeTaskId || undefined,
       };
       return apiService.createTask(schedule.id, payload as Parameters<typeof apiService.createTask>[1]);
     },
@@ -880,8 +881,12 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             setShowAddForm(true);
           }}
           onDeleteTask={(taskId) => deleteMutation.mutate(taskId)}
-          onInsertAfter={(_afterTaskId, parentTaskId) => {
-            setCreateTaskDates({ startDate: '', endDate: '', parentTaskId });
+          onInsertAfter={(afterTaskId, parentTaskId) => {
+            setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, afterTaskId });
+            setShowAddForm(true);
+          }}
+          onInsertBefore={(beforeTaskId, parentTaskId) => {
+            setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, beforeTaskId });
             setShowAddForm(true);
           }}
           columnState={columnState}
@@ -1086,15 +1091,18 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
           initialStartDate={createTaskDates?.startDate}
           initialEndDate={createTaskDates?.endDate}
           onSave={(data) => {
-            const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
-            let afterTaskId: string | undefined;
-            if (activeTask) {
-              const hasChildren = tasks.some(t => t.parentTaskId === activeTask.id);
-              if (!hasChildren) {
-                afterTaskId = activeTask.id;
+            let afterTaskId: string | undefined = createTaskDates?.afterTaskId;
+            let beforeTaskId: string | undefined = createTaskDates?.beforeTaskId;
+            if (!afterTaskId && !beforeTaskId) {
+              const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
+              if (activeTask) {
+                const hasChildren = tasks.some(t => t.parentTaskId === activeTask.id);
+                if (!hasChildren) {
+                  afterTaskId = activeTask.id;
+                }
               }
             }
-            createMutation.mutate({ ...data, afterTaskId });
+            createMutation.mutate({ ...data, afterTaskId, beforeTaskId } as any);
           }}
           onClose={() => { setShowAddForm(false); setCreateTaskDates(null); }}
           isSaving={createMutation.isPending}

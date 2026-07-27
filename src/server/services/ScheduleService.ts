@@ -102,6 +102,7 @@ export interface CreateTaskData {
   /** @deprecated Use dependencies[] instead */
   dependencyLagDays?: number;
   afterTaskId?: string;
+  beforeTaskId?: string;
   createdBy: string;
   /** Multi-dependency support */
   dependencies?: Array<{ dependencyId: string; dependencyType?: 'FS' | 'SS' | 'FF' | 'SF'; lagDays?: number }>;
@@ -293,7 +294,13 @@ export class ScheduleService {
       const q = <T = any>(sql: string, params: any[] = []) => databaseService.queryOn<T>(conn, sql, params);
 
       let sortOrder = 0;
-      if (data.afterTaskId) {
+      if (data.beforeTaskId) {
+        const beforeTask = await this.findTaskById(data.beforeTaskId);
+        if (beforeTask) {
+          sortOrder = beforeTask.sortOrder;
+          await q('UPDATE tasks SET sort_order = sort_order + 1 WHERE schedule_id = ? AND sort_order >= ?', [data.scheduleId, sortOrder]);
+        }
+      } else if (data.afterTaskId) {
         const afterTask = await this.findTaskById(data.afterTaskId);
         if (afterTask) {
           sortOrder = afterTask.sortOrder + 1;
