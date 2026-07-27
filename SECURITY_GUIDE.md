@@ -264,9 +264,10 @@ The project update endpoint (`PUT /projects/:id`) supports an optional `expected
 
 All user-facing HTML rendering uses **DOMPurify** on the client side to prevent XSS:
 
-- **Project Brief** (`ProjectBriefCard.tsx`) — Markdown is rendered to HTML and sanitized via `DOMPurify.sanitize()` before insertion with `dangerouslySetInnerHTML`.
+- **Project Brief** (`ProjectBriefCard.tsx`) — Markdown is parsed to HTML via `marked` (GFM mode) in `renderMarkdown.ts` and sanitized via `DOMPurify.sanitize()` before insertion with `dangerouslySetInnerHTML`. Links get `target="_blank" rel="noopener noreferrer"` added post-parse.
 - **Status Report Modal** (`StatusReportModal.tsx`) — AI-generated HTML status reports are sanitized via `DOMPurify.sanitize()` before rendering.
 - **Server-side stripping** — `stripDangerousHtml()` in `src/server/utils/sanitize.ts` removes `<script>`, `<iframe>`, `<object>`, `<embed>`, `<link>` tags, `on*` event handlers, and `javascript:` URLs from project descriptions on create/update. This provides defense-in-depth alongside client-side sanitization.
+- **WebSocket connection limits** — Per-user cap of 5 concurrent WebSocket connections (oldest closed on overflow) and 2,000 global cap prevent resource exhaustion. Ping/pong keepalive (30s interval, 10s timeout) terminates stale connections.
 
 ---
 

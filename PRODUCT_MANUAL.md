@@ -18,7 +18,7 @@ Full CRUD lifecycle for projects with the following attributes:
 - **Budget management**: allocated budget, spent budget, budget variance
 - **Date management**: start date, end date, auto-calculated duration
 - **Team assignment**: project members with role-based access (owner, manager, editor, viewer). Only members can access a project; non-members get 404. Creator is auto-added as owner. Admin/pmo bypass membership; executive gets read-only bypass.
-- **Project Brief**: Inline-editable markdown description on the Overview tab. Supports headings, bold, italic, lists, links, and inline code. Click-to-edit with auto-save (1.5s debounce). A formatting toolbar (bold, italic, heading, list, link, code) appears in edit mode with Ctrl+B/I shortcuts; toolbar wraps on narrow screens. Collaborative editing indicators show when another user is editing the brief (amber pulsing dot with username, truncated on mobile). Empty projects show a placeholder prompting the user to add a brief. Read-only users see rendered markdown without edit controls. The edit button is always visible on touch devices (no hover required). Failed saves show a "Save failed" message with a Retry link. Content is sanitized client-side via DOMPurify and server-side via HTML stripping (script/iframe/object/embed/link tags, event handlers, javascript: URLs). Description is limited to 50,000 characters. **Keyboard accessible:** view-mode and empty-state divs have `tabIndex`, `role="button"`, and keyboard handlers (Enter/Space to edit). **Escape cancels** editing and reverts draft to the last-saved description without saving. **Unmount flush:** navigating away mid-edit flushes the pending debounce so text is never lost. **Optimistic locking:** each save sends the last-known `expectedUpdatedAt` timestamp; if another user saved in the meantime, the server returns 409 Conflict and the UI shows "Someone else saved — Refresh" instead of silently overwriting.
+- **Project Brief**: Inline-editable markdown description on the Overview tab. The brief card is part of the **reorderable card grid** — drag it to reposition alongside KPI, milestones, and other overview cards (rendered full-width via `col-span-full`). Supports headings, bold, italic, lists, links, and inline code via the **`marked` GFM parser** (not regex). Clicking a link in the rendered brief opens it in a new tab without entering edit mode. Click-to-edit with auto-save (1.5s debounce). A formatting toolbar (bold, italic, heading, list, link, code) appears in edit mode with Ctrl+B/I shortcuts; toolbar wraps on narrow screens. Collaborative editing indicators show when another user is editing the brief (amber pulsing dot with username via the shared `PresenceIndicator` component, `role="status"` and `aria-live="polite"` for screen readers, `motion-reduce:animate-none` for reduced motion). Empty projects show a placeholder prompting the user to add a brief. Read-only users see rendered markdown without edit controls. The edit button is always visible on touch devices (no hover required). Failed saves show a "Save failed" message with a Retry link. Content is sanitized client-side via DOMPurify and server-side via HTML stripping (script/iframe/object/embed/link tags, event handlers, javascript: URLs). Description is limited to 50,000 characters. **Keyboard accessible:** view-mode and empty-state divs have `tabIndex`, `role="button"`, and keyboard handlers (Enter/Space to edit). **Escape cancels** editing and reverts draft to the last-saved description without saving. **Unmount flush:** navigating away mid-edit flushes the pending debounce so text is never lost. **Optimistic locking:** each save sends the last-known `expectedUpdatedAt` timestamp; if another user saved in the meantime, the server returns 409 Conflict and the UI shows "Someone else saved — Refresh" instead of silently overwriting.
 
 ### Schedules
 
@@ -2016,6 +2016,7 @@ Reverse (decision reversal) is restricted to `admin` only regardless of project 
 - **Server state**: React Query (TanStack Query)
 - **Styling**: Tailwind CSS
 - **PWA**: Service worker with offline caching, install prompts, push notifications
+- **SEO**: Static `<noscript>` prerender fallback in `index.html` with feature list, heading, and navigation links for search engine crawlers; Open Graph and Twitter Card meta tags
 
 ### API Structure
 
@@ -2230,6 +2231,8 @@ The WebSocket connection in `useWebSocket.ts` uses exponential backoff with jitt
 - **Disconnected:** Red dot with a clickable "Reconnect" link that resets attempts and triggers immediate reconnection
 
 Exported hooks: `useConnectionState()` returns the current `WsConnectionState` (`'connected' | 'connecting' | 'disconnected'`). `reconnectNow()` forces an immediate reconnect attempt.
+
+**Server-side connection limits:** The WebSocket server enforces a global cap of 2,000 concurrent connections and a per-user limit of 5 connections. When a user exceeds their per-user limit, the oldest connection is closed automatically. Keepalive ping/pong heartbeats (30s interval, 10s timeout) detect and terminate stale connections.
 
 ---
 
