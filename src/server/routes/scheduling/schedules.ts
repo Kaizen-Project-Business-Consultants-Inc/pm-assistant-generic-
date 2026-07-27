@@ -162,7 +162,9 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
         endDate: data.endDate || undefined,
         createdBy: user.userId,
       });
-      WebSocketService.broadcast({ type: 'task_created', payload: { task } });
+      // Look up schedule's projectId for scoped broadcast
+      const schedule = await scheduleService.findById(scheduleId);
+      WebSocketService.broadcast({ type: 'task_created', payload: { task } }, schedule?.projectId);
       webhookService.dispatch('task.created', { task }, user?.userId);
       return reply.status(201).send({ task });
     } catch (error) {
@@ -209,19 +211,16 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       // Workflow automation: evaluate rules
       await dagWorkflowService.evaluateTaskChange(task, oldTask, scheduleService);
 
-      // WebSocket broadcast
-      WebSocketService.broadcast({ type: 'task_updated', payload: { task, cascadedChanges } });
+      // WebSocket broadcast (scoped to project)
+      const { scheduleId } = request.params as { scheduleId: string };
+      const schedule = await scheduleService.findById(scheduleId);
+      WebSocketService.broadcast({ type: 'task_updated', payload: { task, cascadedChanges } }, schedule?.projectId);
       const user = request.user!;
       webhookService.dispatch('task.updated', { task, cascadedChanges }, user?.userId);
 
       // Slack notification for completed tasks
-      if (task.status === 'completed') {
-        const { scheduleId } = request.params as { scheduleId: string };
-        scheduleService.findById(scheduleId).then(schedule => {
-          if (schedule?.projectId) {
-            slackEventDispatcher.dispatchToSlack('task.updated', { task }, schedule.projectId);
-          }
-        }).catch(() => {});
+      if (task.status === 'completed' && schedule?.projectId) {
+        slackEventDispatcher.dispatchToSlack('task.updated', { task }, schedule.projectId);
       }
 
       return { task, cascadedChanges };
@@ -242,7 +241,9 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const { taskId } = request.params as { taskId: string };
       const deleted = await scheduleService.deleteTask(taskId);
       if (!deleted) return reply.status(404).send({ error: 'Not found', message: 'Task not found' });
-      WebSocketService.broadcast({ type: 'task_deleted', payload: { taskId } });
+      const { scheduleId } = request.params as { scheduleId: string };
+      const schedule = await scheduleService.findById(scheduleId);
+      WebSocketService.broadcast({ type: 'task_deleted', payload: { taskId } }, schedule?.projectId);
       const user = request.user!;
       webhookService.dispatch('task.deleted', { taskId }, user?.userId);
       return { message: 'Task deleted successfully' };

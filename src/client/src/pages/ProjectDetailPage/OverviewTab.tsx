@@ -981,6 +981,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
             cardClass={cardClass}
             presenceEditors={presenceEditors}
             currentUserId={currentUserId}
+            updatedAt={project.updatedAt || project.updated_at}
           />
 
           <div className={cardClass}>

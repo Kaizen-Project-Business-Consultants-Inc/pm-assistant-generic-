@@ -13,15 +13,26 @@ interface ProjectBriefCardProps {
   cardClass: string;
   presenceEditors?: { userId: string; username: string; field: string }[];
   currentUserId?: string;
+  updatedAt?: string;
 }
 
-export function ProjectBriefCard({ projectId, description, canEdit, cardClass, presenceEditors, currentUserId }: ProjectBriefCardProps) {
+export function ProjectBriefCard({ projectId, description, canEdit, cardClass, presenceEditors, currentUserId, updatedAt }: ProjectBriefCardProps) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(description ?? '');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'conflict'>('idle');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Refs for unmount flush (N1) and optimistic locking (P2)
+  const draftRef = useRef(draft);
+  const descriptionRef = useRef(description ?? '');
+  const updatedAtRef = useRef(updatedAt);
+
+  // Keep refs in sync
+  useEffect(() => { draftRef.current = draft; }, [draft]);
+  useEffect(() => { descriptionRef.current = description ?? ''; }, [description]);
+  useEffect(() => { updatedAtRef.current = updatedAt; }, [updatedAt]);
 
   // Other users editing the brief (exclude self)
   const otherBriefEditors = (presenceEditors || []).filter(
@@ -62,32 +73,54 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
   }, [editing]);
 
   const mutation = useMutation({
-    mutationFn: (desc: string) => apiService.updateProject(projectId, { description: desc }),
-    onSuccess: () => {
+    mutationFn: (payload: { description: string; expectedUpdatedAt?: string }) =>
+      apiService.updateProject(projectId, payload),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      // Update updatedAt ref from response for next save
+      const newUpdatedAt = data?.project?.updatedAt || data?.project?.updated_at;
+      if (newUpdatedAt) updatedAtRef.current = newUpdatedAt;
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
     },
-    onError: () => {
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 5000);
+    onError: (err: any) => {
+      if (err?.response?.status === 409) {
+        setSaveStatus('conflict');
+      } else {
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus('idle'), 5000);
+      }
     },
   });
+
+  const doSave = useCallback((value: string) => {
+    setSaveStatus('saving');
+    const payload: { description: string; expectedUpdatedAt?: string } = { description: value };
+    if (updatedAtRef.current) payload.expectedUpdatedAt = updatedAtRef.current;
+    mutation.mutate(payload);
+  }, [mutation]);
 
   const scheduleSave = useCallback((value: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      setSaveStatus('saving');
-      mutation.mutate(value);
+      doSave(value);
     }, 1500);
-  }, [mutation]);
+  }, [doSave]);
 
-  // Cleanup debounce on unmount
+  // Cleanup debounce on unmount — flush pending save (N1)
   useEffect(() => {
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        // Flush: if draft differs from last-known description, save it
+        if (draftRef.current !== descriptionRef.current) {
+          const payload: Record<string, string> = { description: draftRef.current };
+          if (updatedAtRef.current) payload.expectedUpdatedAt = updatedAtRef.current;
+          apiService.updateProject(projectId, payload).catch(() => {});
+        }
+      }
     };
-  }, []);
+  }, [projectId]);
 
   const handleChange = (value: string) => {
     setDraft(value);
@@ -100,9 +133,30 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
       if (draft !== (description ?? '')) {
-        setSaveStatus('saving');
-        mutation.mutate(draft);
+        doSave(draft);
       }
+    }
+  };
+
+  // N4: Escape cancels without saving
+  const cancelEdit = () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    setDraft(description ?? '');
+    setEditing(false);
+  };
+
+  const enterEdit = () => {
+    if (canEdit) setEditing(true);
+  };
+
+  // N3: Keyboard handler for view-mode divs
+  const handleViewKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      enterEdit();
     }
   };
 
@@ -172,12 +226,18 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
           {saveStatus === 'error' && (
             <span className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
               Save failed
-              <button onClick={() => { setSaveStatus('saving'); mutation.mutate(draft); }} className="underline">Retry</button>
+              <button onClick={() => doSave(draft)} className="underline">Retry</button>
+            </span>
+          )}
+          {saveStatus === 'conflict' && (
+            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              Someone else saved
+              <button onClick={() => { queryClient.invalidateQueries({ queryKey: ['project', projectId] }); setSaveStatus('idle'); }} className="underline">Refresh</button>
             </span>
           )}
           {canEdit && !editing && !isEmpty && (
             <button
-              onClick={() => setEditing(true)}
+              onClick={enterEdit}
               className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               title="Edit brief"
             >
@@ -209,7 +269,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
             onChange={(e) => handleChange(e.target.value)}
             onBlur={exitEdit}
             onKeyDown={(e) => {
-              if (e.key === 'Escape') { exitEdit(); return; }
+              if (e.key === 'Escape') { cancelEdit(); return; }
               if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**', '**', 'bold text'); return; }
               if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); wrapSelection('*', '*', 'italic text'); return; }
             }}
@@ -223,7 +283,11 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
       {!editing && !isEmpty && (
         <div
           className={`prose-sm max-w-none ${canEdit ? 'cursor-pointer' : ''}`}
-          onClick={canEdit ? () => setEditing(true) : undefined}
+          onClick={canEdit ? enterEdit : undefined}
+          tabIndex={canEdit ? 0 : undefined}
+          role={canEdit ? 'button' : undefined}
+          aria-label={canEdit ? 'Edit project brief' : undefined}
+          onKeyDown={canEdit ? handleViewKeyDown : undefined}
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(draft)) }}
         />
       )}
@@ -232,7 +296,11 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
       {!editing && isEmpty && (
         <div
           className={`flex flex-col items-center justify-center py-8 text-gray-400 dark:text-gray-500 ${canEdit ? 'cursor-pointer hover:text-gray-500 dark:hover:text-gray-400' : ''}`}
-          onClick={canEdit ? () => setEditing(true) : undefined}
+          onClick={canEdit ? enterEdit : undefined}
+          tabIndex={canEdit ? 0 : undefined}
+          role={canEdit ? 'button' : undefined}
+          aria-label={canEdit ? 'Add project brief' : undefined}
+          onKeyDown={canEdit ? handleViewKeyDown : undefined}
         >
           <FileText className="w-8 h-8 mb-2" />
           <span className="text-sm">

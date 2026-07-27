@@ -141,12 +141,18 @@ export function useWebSocket() {
             switch (message.type) {
               case 'task_updated':
               case 'task_created':
-              case 'task_deleted':
-                queryClient.invalidateQueries({ queryKey: ['tasks'] });
-                queryClient.invalidateQueries({ queryKey: ['criticalPath'] });
+              case 'task_deleted': {
+                const scheduleId = message.payload?.task?.scheduleId;
+                if (scheduleId) {
+                  queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
+                  queryClient.invalidateQueries({ queryKey: ['criticalPath', scheduleId] });
+                } else {
+                  queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                  queryClient.invalidateQueries({ queryKey: ['criticalPath'] });
+                }
                 queryClient.invalidateQueries({ queryKey: ['portfolio'] });
-                queryClient.invalidateQueries({ queryKey: ['workflowExecutions'] });
                 break;
+              }
               case 'schedule_updated':
                 queryClient.invalidateQueries({ queryKey: ['schedules'] });
                 queryClient.invalidateQueries({ queryKey: ['portfolio'] });

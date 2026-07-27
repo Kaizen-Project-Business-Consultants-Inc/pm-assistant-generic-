@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, X, Download, Mail, Calendar, Trash2, Lock } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 
 export function StatusReportModal({ projectId, projectName, onClose }: { projectId: string; projectName: string; onClose: () => void }) {
@@ -164,7 +165,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
               ) : html ? (
                 <div
                   className={`status-report-container ${isSample ? 'opacity-80' : ''}`}
-                  dangerouslySetInnerHTML={{ __html: html }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
                 />
               ) : null}
             </>

@@ -10,7 +10,7 @@ export async function websocketRoutes(fastify: FastifyInstance) {
 
   fastify.get('/', { websocket: true, preHandler: [requireScope('read')] }, (socket, request) => {
     const userInfo = request.user
-      ? { userId: request.user.userId, username: request.user.username }
+      ? { userId: request.user.userId, username: request.user.username, role: request.user.role }
       : undefined;
 
     WebSocketService.addClient(socket, userInfo);

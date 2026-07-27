@@ -31,7 +31,9 @@ const createProjectSchema = z.object({
   endDate: z.string().optional(),
 });
 
-const updateProjectSchema = createProjectSchema.partial();
+const updateProjectSchema = createProjectSchema.partial().extend({
+  expectedUpdatedAt: z.string().optional(),
+});
 
 const statusUpdateSchema = z.object({
   status: z.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']),
@@ -128,10 +130,28 @@ export async function projectRoutes(fastify: FastifyInstance) {
       const data = updateProjectSchema.parse(request.body);
       if (data.description) data.description = stripDangerousHtml(data.description);
       const userId = request.user!.userId;
+
+      // Optimistic locking: if expectedUpdatedAt is provided, verify it matches
+      const { expectedUpdatedAt, ...updateData } = data;
+      if (expectedUpdatedAt) {
+        const current = await projectService.findById(id);
+        if (current) {
+          const serverUpdatedAt = new Date(current.updatedAt).toISOString();
+          const clientUpdatedAt = new Date(expectedUpdatedAt).toISOString();
+          if (serverUpdatedAt !== clientUpdatedAt) {
+            return reply.status(409).send({
+              error: 'Conflict',
+              message: 'Modified by someone else',
+              serverUpdatedAt,
+            });
+          }
+        }
+      }
+
       const project = await projectService.update(id, {
-        ...data,
-        startDate: data.startDate || undefined,
-        endDate: data.endDate || undefined,
+        ...updateData,
+        startDate: updateData.startDate || undefined,
+        endDate: updateData.endDate || undefined,
       }, userId);
       if (!project) {
         return reply.status(404).send({ error: 'Project not found', message: 'Project does not exist or you do not have access' });

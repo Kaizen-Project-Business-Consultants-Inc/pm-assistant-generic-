@@ -1,5 +1,6 @@
 import { WebSocket } from 'ws';
 import logger from '../utils/logger';
+import { projectMemberService } from './ProjectMemberService';
 
 export interface WSMessage {
   type: 'task_updated' | 'task_created' | 'task_deleted' | 'schedule_updated' | 'notification' | 'presence_update';
@@ -9,6 +10,7 @@ export interface WSMessage {
 interface ClientInfo {
   userId: string;
   username: string;
+  role: string;
   projectId: string | null;
   editingField: string | null;
 }
@@ -40,7 +42,7 @@ export class WebSocketService {
     WebSocketService.pingTimer.unref();
   }
 
-  static addClient(ws: WebSocket, userInfo?: { userId: string; username: string }) {
+  static addClient(ws: WebSocket, userInfo?: { userId: string; username: string; role: string }) {
     if (WebSocketService.clients.size >= MAX_CONNECTIONS) {
       logger.warn('WebSocket max connections reached — rejecting new client');
       ws.close(1013, 'Max connections reached');
@@ -57,6 +59,7 @@ export class WebSocketService {
       WebSocketService.clientInfo.set(ws, {
         userId: userInfo.userId,
         username: userInfo.username,
+        role: userInfo.role,
         projectId: null,
         editingField: null,
       });
@@ -68,13 +71,19 @@ export class WebSocketService {
         if (msg.type === 'presence:join' && typeof msg.projectId === 'string') {
           const info = WebSocketService.clientInfo.get(ws);
           if (info) {
-            const oldProjectId = info.projectId;
-            info.projectId = msg.projectId;
-            // Broadcast to old project (someone left) and new project (someone joined)
-            if (oldProjectId && oldProjectId !== msg.projectId) {
-              WebSocketService.broadcastPresence(oldProjectId);
+            // Authorization: check project membership (global roles bypass)
+            const globalRoles = ['admin', 'executive', 'pmo'];
+            if (!globalRoles.includes(info.role)) {
+              projectMemberService.hasAccess(msg.projectId, info.userId).then((allowed) => {
+                if (!allowed) {
+                  try { ws.send(JSON.stringify({ type: 'presence:error', message: 'Not authorized for this project' })); } catch {}
+                  return;
+                }
+                WebSocketService.applyJoin(ws, info, msg.projectId);
+              }).catch(() => {});
+              return;
             }
-            WebSocketService.broadcastPresence(msg.projectId);
+            WebSocketService.applyJoin(ws, info, msg.projectId);
           }
         } else if (msg.type === 'presence:leave') {
           const info = WebSocketService.clientInfo.get(ws);
@@ -122,6 +131,15 @@ export class WebSocketService {
     });
   }
 
+  private static applyJoin(ws: WebSocket, info: ClientInfo, projectId: string) {
+    const oldProjectId = info.projectId;
+    info.projectId = projectId;
+    if (oldProjectId && oldProjectId !== projectId) {
+      WebSocketService.broadcastPresence(oldProjectId);
+    }
+    WebSocketService.broadcastPresence(projectId);
+  }
+
   static broadcastPresence(projectId: string) {
     // Collect unique viewers for this project
     const viewers: { userId: string; username: string }[] = [];
@@ -150,11 +168,20 @@ export class WebSocketService {
     }
   }
 
-  static broadcast(message: WSMessage) {
+  static broadcast(message: WSMessage, projectId?: string) {
     const data = JSON.stringify(message);
-    for (const client of WebSocketService.clients) {
-      if (client.readyState === WebSocket.OPEN) {
-        try { client.send(data); } catch (err) { logger.warn('WebSocket broadcast send failed', { error: (err as Error).message }); }
+    if (projectId) {
+      // Scoped: send only to clients viewing this project
+      for (const [ws, info] of WebSocketService.clientInfo) {
+        if (info.projectId === projectId && ws.readyState === WebSocket.OPEN) {
+          try { ws.send(data); } catch (err) { logger.warn('WebSocket broadcast send failed', { error: (err as Error).message }); }
+        }
+      }
+    } else {
+      for (const client of WebSocketService.clients) {
+        if (client.readyState === WebSocket.OPEN) {
+          try { client.send(data); } catch (err) { logger.warn('WebSocket broadcast send failed', { error: (err as Error).message }); }
+        }
       }
     }
   }
