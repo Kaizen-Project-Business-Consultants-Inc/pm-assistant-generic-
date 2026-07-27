@@ -160,6 +160,8 @@ const priorityDot: Record<string, string> = {
 
 const ROW_H = 36;
 const HEADER_H = 52;
+const VIRTUALIZE_THRESHOLD = 100;
+const OVERSCAN = 15;
 const TABLE_DEFAULT_W = 720;
 const TABLE_MIN_W = 200;
 const TABLE_MAX_W = 1100;
@@ -1504,6 +1506,8 @@ export function GanttChart({
   };
 
   const timelineRef = useRef<HTMLDivElement>(null);
+  const leftPanelRef = useRef<HTMLDivElement>(null);
+  const scrollSyncSource = useRef<'left' | 'right' | null>(null);
 
   // Compute date range
   const { minDate, maxDate, totalDays } = useMemo(() => {
@@ -1591,14 +1595,52 @@ export function GanttChart({
     timelineRef.current.scrollLeft = Math.max(0, px);
   }, [minDate, dayPx]);
 
-  // Track scroll position for minimap viewport
+  // Track scroll position for minimap viewport + virtualisation + sync left/right panels
+  const [containerHeight, setContainerHeight] = useState(600);
   useEffect(() => {
-    const el = timelineRef.current;
-    if (!el) return;
-    const handler = () => setScrollPos({ left: el.scrollLeft, top: el.scrollTop });
-    el.addEventListener('scroll', handler, { passive: true });
-    return () => el.removeEventListener('scroll', handler);
+    const tl = timelineRef.current;
+    const lp = leftPanelRef.current;
+    if (!tl) return;
+    const onResize = () => setContainerHeight(tl.clientHeight);
+    onResize();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onResize) : null;
+    ro?.observe(tl);
+    const handleRight = () => {
+      setScrollPos({ left: tl.scrollLeft, top: tl.scrollTop });
+      if (scrollSyncSource.current === 'left') return;
+      scrollSyncSource.current = 'right';
+      if (lp && Math.abs(lp.scrollTop - tl.scrollTop) > 1) lp.scrollTop = tl.scrollTop;
+      scrollSyncSource.current = null;
+    };
+    const handleLeft = () => {
+      if (!lp) return;
+      if (scrollSyncSource.current === 'right') return;
+      scrollSyncSource.current = 'left';
+      if (tl && Math.abs(tl.scrollTop - lp.scrollTop) > 1) tl.scrollTop = lp.scrollTop;
+      scrollSyncSource.current = null;
+    };
+    tl.addEventListener('scroll', handleRight, { passive: true });
+    lp?.addEventListener('scroll', handleLeft, { passive: true });
+    return () => {
+      ro?.disconnect();
+      tl.removeEventListener('scroll', handleRight);
+      lp?.removeEventListener('scroll', handleLeft);
+    };
   }, []);
+
+  // Virtualisation: compute visible row range
+  const shouldVirtualize = rows.length > VIRTUALIZE_THRESHOLD;
+  const { visStart, visEnd } = useMemo(() => {
+    if (!shouldVirtualize) return { visStart: 0, visEnd: rows.length };
+    const st = scrollPos.top;
+    const first = Math.floor(st / ROW_H);
+    const last = Math.ceil((st + containerHeight) / ROW_H);
+    return {
+      visStart: Math.max(0, first - OVERSCAN),
+      visEnd: Math.min(rows.length, last + OVERSCAN),
+    };
+  }, [shouldVirtualize, scrollPos.top, containerHeight, rows.length]);
+  const totalRowsHeight = rows.length * ROW_H;
 
   // Build two-tier timescale header bands
   const timescale = useMemo(() => buildTimescale(zoom, minDate, maxDate, dayPx), [zoom, minDate, maxDate, dayPx]);
@@ -2501,7 +2543,8 @@ export function GanttChart({
         {/* LEFT: Task table                                               */}
         {/* ============================================================= */}
         <div
-          className="flex-shrink-0 overflow-y-auto overflow-x-hidden"
+          ref={leftPanelRef}
+          className="flex-shrink-0 overflow-y-auto overflow-x-hidden scrollbar-hide"
           style={{ width: tableWidth }}
         >
           {/* Table header */}
@@ -2608,7 +2651,9 @@ export function GanttChart({
           </div>
 
           {/* Task rows */}
+          <div style={shouldVirtualize ? { height: totalRowsHeight, position: 'relative' } : undefined}>
           {rows.map(({ task, level }, rowIdx) => {
+            if (shouldVirtualize && (rowIdx < visStart || rowIdx >= visEnd)) return null;
             const start = toDate(task.startDate);
             const end = toDate(task.endDate);
             const pct = task.progressPercentage ?? 0;
@@ -2618,7 +2663,7 @@ export function GanttChart({
               <div
                 key={task.id}
                 className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer ${rowIdx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} ${activeTaskId === task.id ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-inset ring-primary-200 dark:ring-primary-700' : ''} ${rowDrag?.targetIdx === rowIdx && rowDrag?.taskId !== task.id && rowDrag?.parentTaskId === (task.parentTaskId || null) ? 'border-t-2 border-t-blue-500' : ''} ${rowDrag?.taskId === task.id ? 'opacity-40' : ''}`}
-                style={{ height: ROW_H }}
+                style={shouldVirtualize ? { height: ROW_H, position: 'absolute', top: rowIdx * ROW_H, left: 0, right: 0 } : { height: ROW_H }}
                 onClick={() => {
                   if (editingCell) return;
                   if (someSelected && onBulkUpdate) { toggleSelect(task.id, false); return; }
@@ -3021,6 +3066,7 @@ export function GanttChart({
               </div>
             );
           })}
+          </div>
         </div>
 
         {/* Draggable splitter */}
@@ -3085,8 +3131,9 @@ export function GanttChart({
             </div>
 
             {/* Row stripes (alternating background for readability) */}
-            {rows.map((_, idx) =>
-              idx % 2 === 1 ? (
+            {rows.map((_, idx) => {
+              if (shouldVirtualize && (idx < visStart || idx >= visEnd)) return null;
+              return idx % 2 === 1 ? (
                 <div
                   key={`stripe-${idx}`}
                   className="absolute left-0 bg-gray-50/60 dark:bg-gray-800/30 pointer-events-none"
@@ -3096,8 +3143,8 @@ export function GanttChart({
                     height: ROW_H,
                   }}
                 />
-              ) : null
-            )}
+              ) : null;
+            })}
 
             {/* Today line */}
             {todayOffset !== null && (
@@ -3118,6 +3165,7 @@ export function GanttChart({
 
             {/* Baseline ghost bars (only when baseline differs from actual) */}
             {rows.map(({ task }, idx) => {
+              if (shouldVirtualize && (idx < visStart || idx >= visEnd)) return null;
               const bl = baselineMap.get(task.id);
               if (!bl) return null;
               if (bl.startDate === (task.startDate?.split('T')[0] || task.startDate) && bl.endDate === (task.endDate?.split('T')[0] || task.endDate)) return null;
@@ -3184,6 +3232,7 @@ export function GanttChart({
 
             {/* Task bars */}
             {rows.map(({ task }, idx) => {
+              if (shouldVirtualize && (idx < visStart || idx >= visEnd)) return null;
               const start = toDate(task.startDate);
               const end = toDate(task.endDate);
               if (!start || !end) return null;
@@ -3483,6 +3532,7 @@ export function GanttChart({
               </defs>
               {rows.flatMap(({ task }, idx) => {
                 if (!task.dependencies || task.dependencies.length === 0) return [];
+                if (shouldVirtualize && (idx < visStart || idx >= visEnd)) return [];
                 const taskStart = toDate(task.startDate);
                 const taskEnd = toDate(task.endDate);
                 if (!taskStart || !taskEnd) return [];
