@@ -133,9 +133,11 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Projects** (`/projects`) — Filterable card grid with health-based borders. Cards link to `/project/:id` for full Gantt/Kanban/Calendar/EVM detail.
 
 ### 2.4 Real-Time Collaboration
-- Real-time task updates (WebSocket)
+- Real-time task updates (WebSocket) with project-scoped broadcast (task events only reach clients viewing that project)
 - Real-time presence indicators: avatar circles in project header show who else is viewing the same project
-- Presence is ephemeral (server in-memory), auto-cleans on disconnect
+- Presence is ephemeral (server in-memory), auto-cleans on disconnect, auto-rejoins on reconnect
+- WebSocket `presence:join` requires project membership (admin/executive/pmo bypass); unauthorized join returns `presence:error`
+- Project-scoped query invalidation: task create/update/delete only invalidates queries for the affected schedule, not all cached task data
 - **Benchmark:** Monday.com, Smartsheet
 
 ### 2.5 Calendar & Table Views
@@ -536,3 +538,4 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 | UI Audit Sprint 5 (token meter hidden below 70% with warning/critical labels, microcopy `…` standardisation across 67 files, debounced+memoised project search, `?tab=` deep-link on project detail + sidebar schedule shortcut — 4 findings, 70 files) | Done | Copy/Performance/Nav |
 | UI Audit Sprint 6 (landing page feature cards keyboard/tap/focus support + aria-expanded; hero mockup visible on mobile; `useReducedMotion()` hook + `static` prop on all 6 SVG mockups; system high-contrast CSS overrides in index.css; AI surfaces unified under "Mjuzi AI" sidebar section with renamed nav items and panel header; "See it in action" section on landing page with 3 alternating mockup rows + hero CTA to #see-it-work + refund policy accordion + tier descriptor parentheticals; onboarding rewritten as 3-step wizard with role/methodology step, optional template project step, and done step — 5 findings, D5/D6/E2/E4/E5) | Done | A11y/Branding/Onboarding |
 | Project Brief Card (inline-editable markdown description on Overview tab; click-to-edit with auto-save 1.5s debounce; markdown toolbar with bold/italic/heading/list/link/code buttons + Ctrl+B/I shortcuts + flex-wrap on mobile; collaborative editing indicators via WebSocket presence with amber pulsing badge + truncated usernames on mobile; headings/bold/italic/lists/links/inline code rendering; empty-state placeholder; DOMPurify client sanitization + server-side `stripDangerousHtml()` stripping script/iframe/object/embed/link/event-handlers/javascript-URLs; 50K char description limit; error toast with Retry on failed saves; edit button always visible on touch devices; textarea max-height 50vh on mobile; shared `renderMarkdown` utility extracted from QueryPage) | Done | Enhancement/Security |
+| Realtime Audit Fixes (8 findings: N1 flush autosave on unmount; N3 keyboard/touch edit access with tabIndex+role+onKeyDown; N4 Escape cancels and reverts draft; P1 WebSocket presence:join membership check + scoped broadcast by projectId; P2 optimistic locking via expectedUpdatedAt with 409 Conflict response; P3 auto re-join presence on reconnect via connectionState dependency; P4 scoped task query invalidation by scheduleId; N6 DOMPurify sanitization of AI-generated status report HTML — 9 files) | Done | Security/UX/Performance |

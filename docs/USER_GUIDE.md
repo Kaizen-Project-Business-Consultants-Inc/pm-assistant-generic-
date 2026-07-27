@@ -222,11 +222,13 @@ Available cards:
 
 Above the card grid, the **Project Brief** card displays the project description with full markdown rendering (headings, bold, italic, lists, links, and inline code).
 
-- **Editing** -- Admins and project managers see a pencil icon (always visible on mobile; appears on hover on desktop). Click the card (or the pencil) to enter edit mode with a monospace textarea. The card shows a focus ring while editing. The textarea is capped at 50vh height with scrolling to prevent it from consuming the entire viewport on mobile.
+- **Editing** -- Admins and project managers see a pencil icon (always visible on mobile; appears on hover on desktop). Click the card (or the pencil) to enter edit mode with a monospace textarea. The card shows a focus ring while editing. The textarea is capped at 50vh height with scrolling to prevent it from consuming the entire viewport on mobile. You can also **Tab** to the brief and press **Enter** or **Space** to start editing (keyboard accessible).
 - **Markdown toolbar** -- In edit mode, a formatting toolbar appears above the textarea with 6 buttons: **Bold**, **Italic**, **Heading**, **Bullet list**, **Link**, and **Inline code**. Each button wraps the current text selection with the appropriate markdown syntax (or inserts a placeholder if nothing is selected). Keyboard shortcuts **Ctrl+B** (bold) and **Ctrl+I** (italic) also work. The toolbar wraps to a second row on narrow screens.
-- **Auto-save** -- Changes save automatically after 1.5 seconds of inactivity. A "Saving..." / "Saved" indicator appears next to the header. If a save fails, a red "Save failed" message with a **Retry** link appears. Exiting edit mode (Escape or clicking away) flushes any pending save immediately.
-- **Collaborative editing** -- When another user is editing the brief at the same time, an amber indicator with a pulsing dot shows their username (e.g., "jsmith editing"), truncated on narrow screens. This helps avoid conflicting edits — the last save wins.
-- **Empty state** -- When no description exists, a placeholder ("Click to add a project brief...") is shown. Editors can click it to start writing. Read-only users see "No project brief yet."
+- **Auto-save** -- Changes save automatically after 1.5 seconds of inactivity. A "Saving..." / "Saved" indicator appears next to the header. If a save fails, a red "Save failed" message with a **Retry** link appears. Clicking away (blur) flushes any pending save immediately. Navigating away from the page mid-edit also flushes the pending save so no text is lost.
+- **Escape to cancel** -- Pressing **Escape** while editing discards your changes and reverts the draft to the last-saved description. This lets you back out of accidental edits without saving.
+- **Conflict detection** -- If another user saves the brief while you are editing, your next save will detect the conflict and show an amber "Someone else saved" message with a **Refresh** link. Click Refresh to load their changes. This prevents silently overwriting another user's work.
+- **Collaborative editing** -- When another user is editing the brief at the same time, an amber indicator with a pulsing dot shows their username (e.g., "jsmith editing"), truncated on narrow screens.
+- **Empty state** -- When no description exists, a placeholder ("Click to add a project brief...") is shown. Editors can click or press Enter to start writing. Read-only users see "No project brief yet."
 - **Markdown support** -- `# Headings`, `**bold**`, `*italic*`, `- lists`, `[links](url)`, and `` `inline code` `` are all rendered.
 
 Additional sections below the card grid:
@@ -239,6 +241,8 @@ Additional sections below the card grid:
 #### Real-Time Presence
 
 When other users are viewing the same project, their avatar circles appear in the project header next to the action buttons. Each circle shows the user's initials with a tooltip displaying their username. This helps teams coordinate and avoid conflicting edits.
+
+Presence automatically re-joins after a WebSocket reconnect (e.g., if your connection drops briefly), so you don't need to refresh the page to reappear in the viewer list.
 
 ---
 

@@ -254,6 +254,20 @@ All API endpoints use **Zod v4** schemas for runtime request validation:
 
 Validation is applied across the main server routes and all MCP tool handlers (`mcp-server/src/tools/`).
 
+### Optimistic Locking
+
+The project update endpoint (`PUT /projects/:id`) supports an optional `expectedUpdatedAt` field. When provided, the server compares it against the current `updatedAt` timestamp in the database. If they differ (another user saved in the meantime), the server returns **409 Conflict** with `{ error: 'Conflict', message: 'Modified by someone else', serverUpdatedAt }`. The client displays a "Someone else saved — Refresh" message instead of silently overwriting.
+
+---
+
+## 10a. Output Sanitization
+
+All user-facing HTML rendering uses **DOMPurify** on the client side to prevent XSS:
+
+- **Project Brief** (`ProjectBriefCard.tsx`) — Markdown is rendered to HTML and sanitized via `DOMPurify.sanitize()` before insertion with `dangerouslySetInnerHTML`.
+- **Status Report Modal** (`StatusReportModal.tsx`) — AI-generated HTML status reports are sanitized via `DOMPurify.sanitize()` before rendering.
+- **Server-side stripping** — `stripDangerousHtml()` in `src/server/utils/sanitize.ts` removes `<script>`, `<iframe>`, `<object>`, `<embed>`, `<link>` tags, `on*` event handlers, and `javascript:` URLs from project descriptions on create/update. This provides defense-in-depth alongside client-side sanitization.
+
 ---
 
 ## 11. Rate Limiting
