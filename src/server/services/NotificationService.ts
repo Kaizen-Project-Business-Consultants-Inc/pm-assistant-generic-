@@ -80,7 +80,7 @@ export class NotificationService {
         data.projectId || null, data.scheduleId || null,
         data.linkType || null, data.linkId || null, now,
       );
-      WebSocketService.broadcast({ type: 'notification', payload: dto });
+      WebSocketService.sendToUser(dto.userId, { type: 'notification', payload: dto });
     }
 
     if ((data.severity === 'critical' || data.severity === 'high') && shouldEmail) {

@@ -4,7 +4,7 @@ import { Pencil, FileText, Bold, Italic, Heading2, List, Link2, Code } from 'luc
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 import { renderMarkdown } from '../../utils/renderMarkdown';
-import { sendWsMessage } from '../../hooks/useWebSocket';
+import { sendWsMessage, useConnectionState } from '../../hooks/useWebSocket';
 import { PresenceIndicator } from '../presence/PresenceIndicator';
 
 interface ProjectBriefCardProps {
@@ -23,9 +23,9 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
   const [draft, setDraft] = useState(description ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'conflict'>('idle');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelledRef = useRef(false);
 
-  // Refs for unmount flush (N1) and optimistic locking (P2)
+  // Refs for unmount flush and optimistic locking
   const draftRef = useRef(draft);
   const descriptionRef = useRef(description ?? '');
   const updatedAtRef = useRef(updatedAt);
@@ -34,6 +34,9 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
   useEffect(() => { draftRef.current = draft; }, [draft]);
   useEffect(() => { descriptionRef.current = description ?? ''; }, [description]);
   useEffect(() => { updatedAtRef.current = updatedAt; }, [updatedAt]);
+
+  // F5: Re-send editing state on reconnect
+  const wsConnectionState = useConnectionState();
 
   // Other users editing the brief (exclude self)
   const otherBriefEditors = (presenceEditors || []).filter(
@@ -64,13 +67,51 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
     }
   }, [editing]);
 
-  // Send presence editing signals
+  // F5: Send presence editing signals — re-fire on reconnect
   useEffect(() => {
+    if (wsConnectionState !== 'connected') return;
     if (editing) {
       sendWsMessage({ type: 'presence:editing', field: 'description' });
     } else {
       sendWsMessage({ type: 'presence:stop_editing' });
     }
+  }, [editing, wsConnectionState]);
+
+  // F4: SessionStorage recovery on mount
+  const STORAGE_KEY = `brief-draft-${projectId}`;
+  useEffect(() => {
+    const recovered = sessionStorage.getItem(`brief-draft-${projectId}`);
+    if (recovered !== null && canEdit) {
+      setDraft(recovered);
+      setEditing(true);
+      sessionStorage.removeItem(`brief-draft-${projectId}`);
+    }
+  }, [projectId]);
+
+  // F4: Unmount flush — persist draft to sessionStorage, attempt save
+  useEffect(() => {
+    return () => {
+      if (draftRef.current !== descriptionRef.current) {
+        sessionStorage.setItem(`brief-draft-${projectId}`, draftRef.current);
+        const payload: Record<string, string> = { description: draftRef.current };
+        if (updatedAtRef.current) payload.expectedUpdatedAt = updatedAtRef.current;
+        apiService.updateProject(projectId, payload)
+          .then(() => sessionStorage.removeItem(`brief-draft-${projectId}`))
+          .catch(() => { /* draft stays in sessionStorage for recovery */ });
+      }
+    };
+  }, [projectId]);
+
+  // F4: beforeunload warning when editing with unsaved changes
+  useEffect(() => {
+    if (!editing) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      if (draftRef.current !== descriptionRef.current) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
   }, [editing]);
 
   const mutation = useMutation({
@@ -78,9 +119,9 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
       apiService.updateProject(projectId, payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      // Update updatedAt ref from response for next save
       const newUpdatedAt = data?.project?.updatedAt || data?.project?.updated_at;
       if (newUpdatedAt) updatedAtRef.current = newUpdatedAt;
+      sessionStorage.removeItem(STORAGE_KEY);
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
     },
@@ -101,50 +142,26 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
     mutation.mutate(payload);
   }, [mutation]);
 
-  const scheduleSave = useCallback((value: string) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      doSave(value);
-    }, 1500);
-  }, [doSave]);
-
-  // Cleanup debounce on unmount — flush pending save (N1)
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-        // Flush: if draft differs from last-known description, save it
-        if (draftRef.current !== descriptionRef.current) {
-          const payload: Record<string, string> = { description: draftRef.current };
-          if (updatedAtRef.current) payload.expectedUpdatedAt = updatedAtRef.current;
-          apiService.updateProject(projectId, payload).catch(() => {});
-        }
-      }
-    };
-  }, [projectId]);
-
+  // F2: No more scheduleSave / autosave-while-typing — only save on blur
   const handleChange = (value: string) => {
     setDraft(value);
-    scheduleSave(value);
   };
 
+  // F2: Save on blur (explicit exit), skip if cancelled
   const exitEdit = () => {
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      return;
+    }
     setEditing(false);
-    // Flush any pending save immediately
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      if (draft !== (description ?? '')) {
-        doSave(draft);
-      }
+    if (draft !== (description ?? '')) {
+      doSave(draft);
     }
   };
 
-  // N4: Escape cancels without saving
+  // F2: Escape cancels — honest revert, nothing was saved mid-edit
   const cancelEdit = () => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
-    }
+    cancelledRef.current = true;
     setDraft(description ?? '');
     setEditing(false);
   };
@@ -153,7 +170,6 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
     if (canEdit) setEditing(true);
   };
 
-  // N3: Keyboard handler for view-mode divs
   const handleViewKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -169,7 +185,6 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
     const selected = draft.slice(start, end) || placeholder;
     const newText = draft.slice(0, start) + before + selected + after + draft.slice(end);
     handleChange(newText);
-    // Restore cursor around the inserted/selected text
     requestAnimationFrame(() => {
       ta.focus();
       ta.selectionStart = start + before.length;
@@ -181,7 +196,6 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
     const ta = textareaRef.current;
     if (!ta) return;
     const start = ta.selectionStart;
-    // Find the beginning of the current line
     const lineStart = draft.lastIndexOf('\n', start - 1) + 1;
     const lineEnd = draft.indexOf('\n', start);
     const currentLine = draft.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
@@ -282,7 +296,6 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
         <div
           className={`prose-sm max-w-none ${canEdit ? 'cursor-pointer' : ''}`}
           onClick={canEdit ? (e) => {
-            // N7: Don't enter edit mode when clicking a link
             if ((e.target as HTMLElement).closest('a')) return;
             enterEdit();
           } : undefined}

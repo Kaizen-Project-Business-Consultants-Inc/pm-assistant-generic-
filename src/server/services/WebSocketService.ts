@@ -203,6 +203,17 @@ export class WebSocketService {
     }
   }
 
+  static sendToUser(userId: string, message: WSMessage) {
+    const data = JSON.stringify(message);
+    for (const [ws, info] of WebSocketService.clientInfo) {
+      if (info.userId === userId && ws.readyState === WebSocket.OPEN) {
+        try { ws.send(data); } catch (err) {
+          logger.warn('WebSocket sendToUser failed', { error: (err as Error).message });
+        }
+      }
+    }
+  }
+
   static getClientCount(): number {
     return WebSocketService.clients.size;
   }

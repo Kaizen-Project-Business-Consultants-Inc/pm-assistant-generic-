@@ -48,6 +48,8 @@ interface ProjectOverview {
   start_date?: string;
   endDate?: string;
   end_date?: string;
+  updatedAt?: string;
+  updated_at?: string;
 }
 
 type CardId = 'brief' | 'task-summary' | 'timeline' | 'milestones' | 'health' | 'evm' | 'budget' | 'due-soon' | 'raid' | 'sprint' | 'activity' | 'blocked' | 'comments' | 'goals' | 'attachments' | 'latest-meeting';

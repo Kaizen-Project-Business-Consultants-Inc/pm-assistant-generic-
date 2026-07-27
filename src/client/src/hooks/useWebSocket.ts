@@ -17,6 +17,7 @@ function getBackoffDelay(attempt: number): number {
 
 // Module-level WebSocket reference for sending messages from anywhere
 let globalWs: WebSocket | null = null;
+let portfolioDebounce: ReturnType<typeof setTimeout> | null = null;
 
 export function sendWsMessage(data: object) {
   if (globalWs && globalWs.readyState === WebSocket.OPEN) {
@@ -150,12 +151,18 @@ export function useWebSocket() {
                   queryClient.invalidateQueries({ queryKey: ['tasks'] });
                   queryClient.invalidateQueries({ queryKey: ['criticalPath'] });
                 }
-                queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+                if (portfolioDebounce) clearTimeout(portfolioDebounce);
+                portfolioDebounce = setTimeout(() => {
+                  queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+                }, 500);
                 break;
               }
               case 'schedule_updated':
                 queryClient.invalidateQueries({ queryKey: ['schedules'] });
-                queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+                if (portfolioDebounce) clearTimeout(portfolioDebounce);
+                portfolioDebounce = setTimeout(() => {
+                  queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+                }, 500);
                 break;
               case 'presence_update': {
                 const { projectId, viewers, editors } = message.payload;
