@@ -135,3 +135,79 @@ Requirements -> Design -> DB Changes -> Implement -> Test -> Document -> Commit 
 ```
 
 No partial steps. No skipping phases. If a phase doesn't apply (e.g., no DB changes), note it and move on.
+
+---
+
+## Feature Quality Checklists
+
+Before shipping any feature, run through the applicable checklist. These exist because past audit findings repeatedly caught the same categories of gaps.
+
+### Editable Content
+- [ ] Save and cancel paths: auto-save on blur, explicit save, Escape to cancel/revert
+- [ ] Unmount flush: if debounced save is pending and user navigates away, flush it
+- [ ] Conflict detection: if multiple users can edit the same data, use optimistic locking (send `expectedUpdatedAt`, handle 409)
+- [ ] Error feedback: show save failures with retry option, not silent swallowing
+- [ ] Input sanitization: server-side stripping of dangerous HTML on write
+- [ ] Output sanitization: DOMPurify on any `dangerouslySetInnerHTML`
+- [ ] Use a proper parser (e.g., `marked`) for markdown — never hand-rolled regex
+- [ ] Link clicks in rendered content should not trigger edit mode
+
+### Real-Time / WebSocket Features
+- [ ] Authorization: verify the user has access to the resource they're subscribing to (e.g., project membership on `presence:join`)
+- [ ] Scoped broadcast: send events only to clients that need them, not all connected clients
+- [ ] Scoped query invalidation: invalidate only the affected cache keys (e.g., `['tasks', scheduleId]`), not all cached data globally
+- [ ] Reconnect: re-establish subscriptions after WebSocket reconnect (server state is gone)
+- [ ] Connection limits: enforce per-user and global caps to prevent resource exhaustion
+- [ ] Keepalive: ping/pong heartbeat to detect and terminate stale connections
+
+### Accessibility (a11y)
+- [ ] Keyboard access: interactive elements need `tabIndex`, `role`, and `onKeyDown` (Enter/Space)
+- [ ] Screen readers: dynamic status indicators need `role="status"` and `aria-live="polite"`
+- [ ] Reduced motion: animations must respect `prefers-reduced-motion` / `motion-reduce:` classes
+- [ ] Focus management: modals trap focus, edit mode receives focus on entry
+
+### New Components
+- [ ] Check for existing shared primitives before building inline — search the codebase first
+- [ ] If two+ components need the same behavior, extract the shared piece *before* building both
+- [ ] Reorderable/draggable elements: integrate with existing grid/order systems, don't create parallel ones
+
+### SEO & Performance
+- [ ] SPA pages: provide `<noscript>` fallback or server-side prerender for crawlers
+- [ ] External dependencies: use `preconnect` / `preload` for third-party origins
+- [ ] Fonts: load non-render-blocking (`media="print"` with `onload` swap)
+
+---
+
+## Lessons Learned
+
+Hard-won lessons from past audits and production issues. Read these before designing new features.
+
+### 1. Design all states upfront, not incrementally
+**What happened:** ProjectBriefCard started as a simple text display, then grew editing, auto-save, presence, conflict detection, a11y, and markdown rendering across 6+ separate changes. Each addition missed interactions with existing behavior (Escape committed instead of cancelling, unmount lost data, links triggered edit mode).
+
+**Rule:** When a component has more than two states (e.g., viewing/editing/saving/error/conflict), write a state diagram before coding. List every transition and what triggers it. This prevents states from conflicting with each other.
+
+### 2. Build shared primitives first, not after
+**What happened:** Presence avatars were implemented inline in ProjectDetailPage, then a separate chip variant was built into ProjectBriefCard. After the audit, both were extracted into a shared `PresenceIndicator` component. The extraction work was pure waste.
+
+**Rule:** If a pattern will appear in 2+ places, create the shared component *before* building either consumer. The cost of extraction later is always higher than building it shared from the start.
+
+### 3. Authorization is not optional for real-time features
+**What happened:** The WebSocket `presence:join` handler accepted any projectId from any authenticated user, with no membership check. Any logged-in user could see who was viewing any project.
+
+**Rule:** Every subscription/join event must verify the user has access to the resource. Real-time features are APIs — they need the same authorization as REST endpoints.
+
+### 4. Regex is not a parser
+**What happened:** Markdown rendering used hand-written regex (`/\*\*(.*?)\*\*/g` → `<strong>`) which broke on nested formatting, multi-line content, and edge cases. The audit flagged it and we replaced it with `marked` (a proper GFM parser) — a single dependency that eliminated ~30 lines of fragile code.
+
+**Rule:** Use established parsers for structured formats (markdown, HTML, CSV, XML). Regex works for simple pattern matching, not for parsing nested grammars.
+
+### 5. Scope everything: broadcasts, invalidation, subscriptions
+**What happened:** Task update WebSocket broadcasts went to all connected clients regardless of which project they were viewing. Query invalidation cleared all cached `['tasks']` queries globally, causing unnecessary refetches across unrelated projects.
+
+**Rule:** Every broadcast, cache invalidation, and subscription must be scoped to the narrowest relevant boundary (projectId, scheduleId). Global operations should be the exception, not the default.
+
+### 6. Keyboard and screen reader access from day one
+**What happened:** The brief card's view-mode div had `onClick` but no `tabIndex`, `role`, or `onKeyDown`. Keyboard users couldn't enter edit mode. The editing indicator had no ARIA attributes. These were flagged as separate audit findings and required separate fixes.
+
+**Rule:** Every interactive element gets keyboard and screen reader support in the same PR that adds the interaction. It's 3 extra attributes (`tabIndex={0}`, `role="button"`, `onKeyDown`) — never worth deferring.
