@@ -14,6 +14,22 @@ vi.mock('../../services/DagWorkflowService', () => ({
   },
 }));
 
+vi.mock('../../config', () => ({
+  config: { APP_URL: 'https://pm.kpbc.ca' },
+}));
+
+vi.mock('../../services/WebSocketService', () => ({
+  WebSocketService: { sendToUser: vi.fn(), broadcast: vi.fn() },
+}));
+
+vi.mock('../../services/EmailService', () => ({
+  emailService: { sendNotificationEmail: vi.fn().mockResolvedValue(undefined) },
+}));
+
+vi.mock('../../services/UserService', () => ({
+  userService: { findById: vi.fn().mockResolvedValue(null) },
+}));
+
 vi.mock('uuid', () => ({ v4: () => 'test-schedule-id' }));
 
 import { ScheduleService } from '../../services/ScheduleService';

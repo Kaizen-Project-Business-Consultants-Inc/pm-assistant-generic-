@@ -15,6 +15,7 @@ vi.mock('../../database/NotificationRepository', () => {
 vi.mock('../../services/WebSocketService', () => ({
   WebSocketService: {
     broadcast: vi.fn(),
+    sendToUser: vi.fn(),
   },
 }));
 
@@ -172,15 +173,18 @@ describe('NotificationService', () => {
         message: 'Broadcast this',
       });
 
-      expect(mockWs.broadcast).toHaveBeenCalledWith({
-        type: 'notification',
-        payload: expect.objectContaining({
-          id: 'test-uuid-1234',
-          title: 'WS Test',
-          userId: 'user-1',
-          isRead: false,
-        }),
-      });
+      expect(mockWs.sendToUser).toHaveBeenCalledWith(
+        'user-1',
+        {
+          type: 'notification',
+          payload: expect.objectContaining({
+            id: 'test-uuid-1234',
+            title: 'WS Test',
+            userId: 'user-1',
+            isRead: false,
+          }),
+        },
+      );
     });
 
     it('does not send email for medium severity', async () => {
@@ -375,7 +379,7 @@ describe('NotificationService', () => {
       });
 
       expect(mockRepo.insert).not.toHaveBeenCalled();
-      expect(mockWs.broadcast).not.toHaveBeenCalled();
+      expect(mockWs.sendToUser).not.toHaveBeenCalled();
       expect(result.id).toBe('test-uuid-1234');
     });
 
@@ -427,7 +431,7 @@ describe('NotificationService', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       expect(mockRepo.insert).toHaveBeenCalled();
-      expect(mockWs.broadcast).toHaveBeenCalled();
+      expect(mockWs.sendToUser).toHaveBeenCalled();
       expect(mockEmail.sendNotificationEmail).toHaveBeenCalled();
     });
 

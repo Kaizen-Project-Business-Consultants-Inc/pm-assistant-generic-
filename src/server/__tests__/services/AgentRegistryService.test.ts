@@ -22,6 +22,22 @@ vi.mock('../../services/PolicyEngineService', () => ({
   },
 }));
 
+vi.mock('../../config', () => ({
+  config: { APP_URL: 'https://pm.kpbc.ca' },
+}));
+
+vi.mock('../../services/WebSocketService', () => ({
+  WebSocketService: { sendToUser: vi.fn(), broadcast: vi.fn() },
+}));
+
+vi.mock('../../services/EmailService', () => ({
+  emailService: { sendNotificationEmail: vi.fn().mockResolvedValue(undefined) },
+}));
+
+vi.mock('../../services/UserService', () => ({
+  userService: { findById: vi.fn().mockResolvedValue(null) },
+}));
+
 import { agentRegistry, type AgentCapability, type InvocationContext } from '../../services/AgentRegistryService';
 import { auditLedgerService } from '../../services/AuditLedgerService';
 import { policyEngineService } from '../../services/PolicyEngineService';
