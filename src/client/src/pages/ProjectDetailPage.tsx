@@ -27,6 +27,7 @@ import { ProjectReadinessBar } from '../components/onboarding/ProjectReadinessBa
 import { EditProjectModal } from '../components/project/EditProjectModal';
 import { StatusReportModal } from './ProjectDetailPage/StatusReportModal';
 import { getPrimaryTabs, getDefaultViewMode, type Methodology } from '../utils/methodology';
+import { PresenceIndicator } from '../components/presence/PresenceIndicator';
 
 // Lazy-loaded tab components
 const OverviewTab = lazy(() => import('./ProjectDetailPage/OverviewTab').then(m => ({ default: m.OverviewTab })));
@@ -333,36 +334,7 @@ export function ProjectDetailPage() {
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 flex-wrap sm:flex-nowrap">
             {otherViewers.length > 0 && (
-              <div className="flex items-center mr-1">
-                <div className="flex -space-x-2">
-                  {otherViewers.slice(0, 5).map((viewer) => {
-                    const initials = viewer.username
-                      .split(/[\s._-]+/)
-                      .map(p => p[0])
-                      .join('')
-                      .toUpperCase()
-                      .slice(0, 2) || '?';
-                    return (
-                      <div
-                        key={viewer.userId}
-                        className="w-7 h-7 rounded-full bg-primary-100 dark:bg-primary-900/40 border-2 border-white dark:border-gray-800 flex items-center justify-center"
-                        title={`${viewer.username} is viewing`}
-                      >
-                        <span className="text-[10px] font-semibold text-primary-700 dark:text-primary-300">{initials}</span>
-                      </div>
-                    );
-                  })}
-                  {otherViewers.length > 5 && (
-                    <div
-                      className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 border-2 border-white dark:border-gray-900 flex items-center justify-center"
-                      title={`${otherViewers.length - 5} more viewers`}
-                    >
-                      <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">+{otherViewers.length - 5}</span>
-                    </div>
-                  )}
-                </div>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1.5 whitespace-nowrap">viewing</span>
-              </div>
+              <PresenceIndicator variant="avatars" users={otherViewers} />
             )}
             {canEditStatus && (
               <button

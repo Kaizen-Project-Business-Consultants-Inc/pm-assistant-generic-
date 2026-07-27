@@ -52,7 +52,24 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static prerender fallback for SEO / first paint (replaced by React on mount) -->
+      <noscript>
+        <div style="max-width:800px;margin:0 auto;padding:48px 24px;font-family:system-ui,sans-serif;color:#1e293b">
+          <h1 style="font-size:2.5rem;font-weight:800;margin-bottom:16px">Kovarti PM — AI-Powered Project Management</h1>
+          <p style="font-size:1.125rem;color:#475569;margin-bottom:24px">Plan smarter, predict risks, and deliver on time with intelligent scheduling, Monte Carlo simulations, and natural-language project insights.</p>
+          <ul style="list-style:disc;padding-left:24px;color:#475569;line-height:2">
+            <li>AI-Powered Scheduling — task breakdowns, dependencies, and optimized timelines</li>
+            <li>Monte Carlo Simulations — probabilistic analysis on project timelines</li>
+            <li>Earned Value Management — CPI, SPI, and EAC forecasting</li>
+            <li>Real-Time Collaboration — WebSocket presence, live task updates</li>
+            <li>Sprint Boards &amp; Backlog — agile and hybrid methodology support</li>
+            <li>Stakeholder Portals — external read-only project views</li>
+          </ul>
+          <p style="margin-top:24px"><a href="/register" style="color:#6366f1;font-weight:600">Get Started Free — 14-day trial</a> | <a href="/login" style="color:#6366f1;font-weight:600">Sign In</a> | <a href="/pricing" style="color:#6366f1;font-weight:600">Pricing</a></p>
+        </div>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

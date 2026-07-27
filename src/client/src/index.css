@@ -76,6 +76,36 @@
 
 
 @layer components {
+  /* Minimal prose styles for markdown rendering (replaces @tailwindcss/typography) */
+  .prose-sm {
+    @apply text-sm text-gray-700 dark:text-gray-200 leading-relaxed;
+  }
+  .prose-sm h1 { @apply text-xl font-bold text-gray-900 dark:text-white mt-4 mb-2; }
+  .prose-sm h2 { @apply text-lg font-semibold text-gray-900 dark:text-white mt-4 mb-2; }
+  .prose-sm h3 { @apply text-base font-semibold text-gray-900 dark:text-white mt-3 mb-1; }
+  .prose-sm p { @apply mb-2 leading-relaxed; }
+  .prose-sm ul { @apply list-disc ml-4 mb-3 space-y-1; }
+  .prose-sm ol { @apply list-decimal ml-4 mb-3 space-y-1; }
+  .prose-sm li { @apply leading-relaxed; }
+  .prose-sm strong { @apply font-semibold; }
+  .prose-sm a { @apply text-primary-600 dark:text-primary-400 underline hover:text-primary-700 dark:hover:text-primary-300; }
+  .prose-sm code { @apply px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-sm font-mono text-gray-800 dark:text-gray-200; }
+  .prose-sm pre { @apply bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mb-3 overflow-x-auto; }
+  .prose-sm pre code { @apply p-0 bg-transparent; }
+  .prose { @apply text-gray-700 dark:text-gray-200 leading-relaxed; }
+  .prose h1 { @apply text-xl font-bold text-gray-900 dark:text-white mt-4 mb-2; }
+  .prose h2 { @apply text-lg font-semibold text-gray-900 dark:text-white mt-4 mb-2; }
+  .prose h3 { @apply text-base font-semibold text-gray-900 dark:text-white mt-3 mb-1; }
+  .prose p { @apply mb-2 leading-relaxed; }
+  .prose ul { @apply list-disc ml-4 mb-3 space-y-1; }
+  .prose ol { @apply list-decimal ml-4 mb-3 space-y-1; }
+  .prose li { @apply leading-relaxed; }
+  .prose strong { @apply font-semibold; }
+  .prose a { @apply text-primary-600 dark:text-primary-400 underline hover:text-primary-700 dark:hover:text-primary-300; }
+  .prose code { @apply px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-sm font-mono text-gray-800 dark:text-gray-200; }
+  .prose pre { @apply bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mb-3 overflow-x-auto; }
+  .prose pre code { @apply p-0 bg-transparent; }
+
   .btn {
     @apply px-4 py-2 rounded-md font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
   }

@@ -25,6 +25,7 @@ import {
   Paperclip,
   GripVertical,
   Mic,
+  FileText,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ProjectBriefCard } from '../../components/project/ProjectBriefCard';
@@ -49,9 +50,10 @@ interface ProjectOverview {
   end_date?: string;
 }
 
-type CardId = 'task-summary' | 'timeline' | 'milestones' | 'health' | 'evm' | 'budget' | 'due-soon' | 'raid' | 'sprint' | 'activity' | 'blocked' | 'comments' | 'goals' | 'attachments' | 'latest-meeting';
+type CardId = 'brief' | 'task-summary' | 'timeline' | 'milestones' | 'health' | 'evm' | 'budget' | 'due-soon' | 'raid' | 'sprint' | 'activity' | 'blocked' | 'comments' | 'goals' | 'attachments' | 'latest-meeting';
 
 const DEFAULT_CARD_ORDER: CardId[] = [
+  'brief',
   'task-summary', 'timeline', 'milestones',
   'health', 'evm', 'budget',
   'due-soon', 'raid', 'sprint',
@@ -359,6 +361,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
 
   // ── Card metadata ──────────────────────────────
   const cardMeta: Record<CardId, { icon: ReactNode; title: string }> = {
+    'brief': { icon: <FileText className="w-4 h-4" />, title: 'Project Brief' },
     'task-summary': { icon: <BarChart3 className="w-4 h-4" />, title: 'Task Summary' },
     'timeline': { icon: <Clock className="w-4 h-4" />, title: 'Timeline Progress' },
     'milestones': { icon: <Target className="w-4 h-4" />, title: 'Key Milestones' },
@@ -393,6 +396,17 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
 
   // ── Card content ──────────────────────────────
   const cardContent: Record<CardId, ReactNode> = {
+    'brief': (
+      <ProjectBriefCard
+        projectId={project.id}
+        description={project.description}
+        canEdit={canEdit ?? false}
+        cardClass=""
+        presenceEditors={presenceEditors}
+        currentUserId={currentUserId}
+        updatedAt={project.updatedAt || project.updated_at}
+      />
+    ),
     'task-summary': analyticsLoading ? (
       <div className="grid grid-cols-2 gap-3">
         {[1, 2, 3, 4].map((i) => <div key={i} className={`h-16 ${skeletonPulse}`} />)}
@@ -971,19 +985,9 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         </div>
       )}
 
-      {/* Row 1: Description + Project Details + Team Members (fixed position) */}
+      {/* Row 1: Project Details + Team Members (fixed position) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className={`lg:col-span-2 space-y-6`}>
-          <ProjectBriefCard
-            projectId={project.id}
-            description={project.description}
-            canEdit={canEdit ?? false}
-            cardClass={cardClass}
-            presenceEditors={presenceEditors}
-            currentUserId={currentUserId}
-            updatedAt={project.updatedAt || project.updated_at}
-          />
-
           <div className={cardClass}>
             <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Project Details</h3>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
@@ -1120,6 +1124,22 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cardOrder.filter(isCardVisible).map(id => {
           const meta = cardMeta[id];
+          // Brief card has its own header — render directly without CollapsibleCard wrapper
+          if (id === 'brief') {
+            return (
+              <div
+                key={id}
+                className={`col-span-full ${cardClass} transition-all duration-150 ${dragId === id ? 'opacity-40 scale-[0.97] ring-2 ring-primary-300 dark:ring-primary-600' : ''} ${dragId && dragId !== id ? 'hover:ring-2 hover:ring-primary-200 dark:hover:ring-primary-800' : ''}`}
+                draggable
+                onDragStart={(e) => handleDragStart(e, id)}
+                onDragOver={(e) => handleDragOver(e, id)}
+                onDragEnd={handleDragEnd}
+                onDrop={(e) => e.preventDefault()}
+              >
+                {cardContent[id]}
+              </div>
+            );
+          }
           return (
             <CollapsibleCard
               key={id}

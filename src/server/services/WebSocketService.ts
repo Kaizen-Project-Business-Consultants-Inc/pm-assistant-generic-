@@ -15,7 +15,8 @@ interface ClientInfo {
   editingField: string | null;
 }
 
-const MAX_CONNECTIONS = 500;
+const MAX_CONNECTIONS = 2000;
+const MAX_CONNECTIONS_PER_USER = 5;
 const PING_INTERVAL_MS = 30_000;
 const PONG_TIMEOUT_MS = 10_000;
 
@@ -47,6 +48,22 @@ export class WebSocketService {
       logger.warn('WebSocket max connections reached — rejecting new client');
       ws.close(1013, 'Max connections reached');
       return;
+    }
+
+    // Per-user connection limit: close oldest connection if exceeded
+    if (userInfo) {
+      let userCount = 0;
+      let oldest: WebSocket | null = null;
+      for (const [existingWs, info] of WebSocketService.clientInfo) {
+        if (info.userId === userInfo.userId) {
+          userCount++;
+          if (!oldest) oldest = existingWs;
+        }
+      }
+      if (userCount >= MAX_CONNECTIONS_PER_USER && oldest) {
+        logger.info('WebSocket per-user limit reached — closing oldest connection', { userId: userInfo.userId });
+        oldest.close(1013, 'Too many connections');
+      }
     }
 
     WebSocketService.clients.add(ws);

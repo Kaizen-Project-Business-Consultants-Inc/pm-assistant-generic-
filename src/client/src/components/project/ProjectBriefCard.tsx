@@ -5,6 +5,7 @@ import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 import { renderMarkdown } from '../../utils/renderMarkdown';
 import { sendWsMessage } from '../../hooks/useWebSocket';
+import { PresenceIndicator } from '../presence/PresenceIndicator';
 
 interface ProjectBriefCardProps {
   projectId: string;
@@ -212,10 +213,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
         <h3 className="text-base font-semibold text-gray-900 dark:text-white">Project Brief</h3>
         <div className="flex items-center gap-2">
           {otherBriefEditors.length > 0 && (
-            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <span className="truncate max-w-[120px] sm:max-w-none">{otherBriefEditors.map((e) => e.username).join(', ')}</span> editing
-            </span>
+            <PresenceIndicator variant="chip" users={otherBriefEditors} />
           )}
           {saveStatus === 'saving' && (
             <span className="text-xs text-gray-400 dark:text-gray-500 animate-pulse">Saving...</span>
@@ -283,7 +281,11 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
       {!editing && !isEmpty && (
         <div
           className={`prose-sm max-w-none ${canEdit ? 'cursor-pointer' : ''}`}
-          onClick={canEdit ? enterEdit : undefined}
+          onClick={canEdit ? (e) => {
+            // N7: Don't enter edit mode when clicking a link
+            if ((e.target as HTMLElement).closest('a')) return;
+            enterEdit();
+          } : undefined}
           tabIndex={canEdit ? 0 : undefined}
           role={canEdit ? 'button' : undefined}
           aria-label={canEdit ? 'Edit project brief' : undefined}
