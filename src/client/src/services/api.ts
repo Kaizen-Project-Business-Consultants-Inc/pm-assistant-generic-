@@ -1276,7 +1276,7 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   }).join(' → ')}</p>
 `).join('')}` : ''}
 
-<div class="footer">Kovarti PM Assistant - Project Report</div>
+<div class="footer">Kovarti PM - Project Report</div>
 
 <script>window.onload = function() { window.print(); }</script>
 </body></html>`;

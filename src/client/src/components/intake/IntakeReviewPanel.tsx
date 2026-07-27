@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -304,12 +305,12 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
           <p className="text-sm text-green-700 dark:text-green-400 mb-3">
             This submission has been successfully converted into a project.
           </p>
-          <a
-            href={`/project/${convertedProjectId}`}
+          <Link
+            to={`/project/${convertedProjectId}`}
             className="text-sm font-medium text-green-700 underline hover:text-green-800"
           >
             View Project
-          </a>
+          </Link>
         </div>
       )}
 

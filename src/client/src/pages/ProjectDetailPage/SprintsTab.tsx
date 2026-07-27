@@ -187,7 +187,7 @@ export function SprintsTab({ projectId }: { projectId: string }) {
               Dismiss
             </button>
           </div>
-          <div className="p-4 prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+          <div className="p-4 prose-sm max-w-none text-sm text-gray-700 dark:text-gray-300">
             {retroData.markdown}
           </div>
         </div>

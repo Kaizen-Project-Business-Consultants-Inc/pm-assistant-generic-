@@ -177,7 +177,7 @@ export default function PortalViewPage() {
           </p>
           <h1 className="text-2xl font-bold">{project.name}</h1>
           <p className="text-primary-100 text-sm mt-1">
-            Kovarti PM Assistant
+            Kovarti PM
           </p>
         </div>
       </header>
@@ -510,7 +510,7 @@ export default function PortalViewPage() {
       <footer className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 mt-8">
         <div className="max-w-4xl mx-auto px-6 py-4 text-center">
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            Powered by Kovarti PM Assistant &middot; Last updated {new Date().toLocaleString()}
+            Powered by Kovarti PM &middot; Last updated {new Date().toLocaleString()}
           </p>
         </div>
       </footer>

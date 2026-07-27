@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ROUTES, ROUTE_PATTERNS } from './routes';
 import { useAuthStore } from './stores/authStore';
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
@@ -115,57 +116,57 @@ function App() {
       <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public routes */}
-        <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : (isPrelaunch ? <PrelaunchLandingPage /> : <LandingPage />)} />
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
-        <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/guide" element={<UserGuidePublicPage />} />
-        <Route path="/waitlist-admin" element={<WaitlistAdminPage />} />
-        <Route path="/portal/:token" element={<PortalViewPage />} />
-        <Route path="/onboarding" element={isAuthenticated ? <OnboardingPage /> : <Navigate to="/login" replace />} />
+        <Route path={ROUTES.home} element={isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : (isPrelaunch ? <PrelaunchLandingPage /> : <LandingPage />)} />
+        <Route path={ROUTES.login} element={isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : <LoginPage />} />
+        <Route path={ROUTES.register} element={isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : <RegisterPage />} />
+        <Route path={ROUTES.verifyEmail} element={<VerifyEmailPage />} />
+        <Route path={ROUTES.forgotPassword} element={<ForgotPasswordPage />} />
+        <Route path={ROUTES.resetPassword} element={<ResetPasswordPage />} />
+        <Route path={ROUTES.pricing} element={<PricingPage />} />
+        <Route path={ROUTES.terms} element={<TermsPage />} />
+        <Route path={ROUTES.privacy} element={<PrivacyPage />} />
+        <Route path={ROUTES.guide} element={<UserGuidePublicPage />} />
+        <Route path={ROUTES.waitlistAdmin} element={<WaitlistAdminPage />} />
+        <Route path={ROUTE_PATTERNS.portal} element={<PortalViewPage />} />
+        <Route path={ROUTES.onboarding} element={isAuthenticated ? <OnboardingPage /> : <Navigate to={ROUTES.login} replace />} />
 
         {/* Protected routes */}
-        <Route path="/dashboard" element={<PrivateRoute><DashboardPM /></PrivateRoute>} />
-        <Route path="/projects" element={<PrivateRoute><ProjectsPM /></PrivateRoute>} />
-        <Route path="/project/:id" element={<PrivateRoute><ProjectDetailPage /></PrivateRoute>} />
-        <Route path="/reports" element={<PrivateRoute><ReportsPage /></PrivateRoute>} />
-        <Route path="/scenarios" element={<PrivateRoute><ScenarioModelingPage /></PrivateRoute>} />
-        <Route path="/portfolio" element={<PrivateRoute><PortfolioPage /></PrivateRoute>} />
-        <Route path="/analytics" element={<PrivateRoute><AnalyticsPage /></PrivateRoute>} />
-        <Route path="/workflows" element={<PrivateRoute><WorkflowPage /></PrivateRoute>} />
-        <Route path="/monte-carlo" element={<PrivateRoute><MonteCarloPage /></PrivateRoute>} />
-        <Route path="/meetings" element={<PrivateRoute><MeetingMinutesPage /></PrivateRoute>} />
-        <Route path="/lessons" element={<PrivateRoute><LessonsLearnedPage /></PrivateRoute>} />
-        <Route path="/timesheet" element={<PrivateRoute><TimesheetPage /></PrivateRoute>} />
-        <Route path="/query" element={<PrivateRoute><QueryPage /></PrivateRoute>} />
-        <Route path="/account" element={<PrivateRoute><AccountBillingPage /></PrivateRoute>} />
-        <Route path="/integrations" element={<PrivateRoute><IntegrationsPage /></PrivateRoute>} />
-        <Route path="/report-builder" element={<PrivateRoute><ReportBuilderPage /></PrivateRoute>} />
-        <Route path="/intake" element={<PrivateRoute><IntakeFormsPage /></PrivateRoute>} />
-        <Route path="/help" element={<PrivateRoute><UserGuidePage /></PrivateRoute>} />
-        <Route path="/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
-        <Route path="/change-requests" element={<PrivateRoute><ChangeRequestsPage /></PrivateRoute>} />
-        <Route path="/goals" element={<PrivateRoute><GoalsPage /></PrivateRoute>} />
-        <Route path="/notifications" element={<PrivateRoute><NotificationsPage /></PrivateRoute>} />
-        <Route path="/resources" element={<PrivateRoute><ResourceManagementPage /></PrivateRoute>} />
-        <Route path="/evm" element={<PrivateRoute><EVMDashboardPage /></PrivateRoute>} />
-        <Route path="/kpi/:type" element={<PrivateRoute><KPIDrillInPage /></PrivateRoute>} />
-        <Route path="/agent" element={<PrivateRoute><AgentProposalsPage /></PrivateRoute>} />
-        <Route path="/admin/users" element={<PrivateRoute><AdminUsersPage /></PrivateRoute>} />
-        <Route path="/admin/tenants" element={<PrivateRoute><AdminTenantsPage /></PrivateRoute>} />
-        <Route path="/admin/system" element={<PrivateRoute><AdminSystemPage /></PrivateRoute>} />
-        <Route path="/admin/ai-usage" element={<PrivateRoute><AdminAiUsagePage /></PrivateRoute>} />
-        <Route path="/admin/audit" element={<PrivateRoute><AdminAuditPage /></PrivateRoute>} />
-        <Route path="/admin/operations" element={<PrivateRoute><AdminOperationsPage /></PrivateRoute>} />
-        <Route path="/admin/feedback" element={<PrivateRoute><AdminFeedbackPage /></PrivateRoute>} />
-        <Route path="/admin/revenue" element={<PrivateRoute><AdminRevenuePage /></PrivateRoute>} />
-        <Route path="/admin/pricing" element={<PrivateRoute><AdminPricingPage /></PrivateRoute>} />
-        <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+        <Route path={ROUTES.dashboard} element={<PrivateRoute><DashboardPM /></PrivateRoute>} />
+        <Route path={ROUTES.projects} element={<PrivateRoute><ProjectsPM /></PrivateRoute>} />
+        <Route path={ROUTE_PATTERNS.project} element={<PrivateRoute><ProjectDetailPage /></PrivateRoute>} />
+        <Route path={ROUTES.reports} element={<PrivateRoute><ReportsPage /></PrivateRoute>} />
+        <Route path={ROUTES.scenarios} element={<PrivateRoute><ScenarioModelingPage /></PrivateRoute>} />
+        <Route path={ROUTES.portfolio} element={<PrivateRoute><PortfolioPage /></PrivateRoute>} />
+        <Route path={ROUTES.analytics} element={<PrivateRoute><AnalyticsPage /></PrivateRoute>} />
+        <Route path={ROUTES.workflows} element={<PrivateRoute><WorkflowPage /></PrivateRoute>} />
+        <Route path={ROUTES.monteCarlo} element={<PrivateRoute><MonteCarloPage /></PrivateRoute>} />
+        <Route path={ROUTES.meetings} element={<PrivateRoute><MeetingMinutesPage /></PrivateRoute>} />
+        <Route path={ROUTES.lessons} element={<PrivateRoute><LessonsLearnedPage /></PrivateRoute>} />
+        <Route path={ROUTES.timesheet} element={<PrivateRoute><TimesheetPage /></PrivateRoute>} />
+        <Route path={ROUTES.query} element={<PrivateRoute><QueryPage /></PrivateRoute>} />
+        <Route path={ROUTES.account} element={<PrivateRoute><AccountBillingPage /></PrivateRoute>} />
+        <Route path={ROUTES.integrations} element={<PrivateRoute><IntegrationsPage /></PrivateRoute>} />
+        <Route path={ROUTES.reportBuilder} element={<PrivateRoute><ReportBuilderPage /></PrivateRoute>} />
+        <Route path={ROUTES.intake} element={<PrivateRoute><IntakeFormsPage /></PrivateRoute>} />
+        <Route path={ROUTES.help} element={<PrivateRoute><UserGuidePage /></PrivateRoute>} />
+        <Route path={ROUTES.settings} element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
+        <Route path={ROUTES.changeRequests} element={<PrivateRoute><ChangeRequestsPage /></PrivateRoute>} />
+        <Route path={ROUTES.goals} element={<PrivateRoute><GoalsPage /></PrivateRoute>} />
+        <Route path={ROUTES.notifications} element={<PrivateRoute><NotificationsPage /></PrivateRoute>} />
+        <Route path={ROUTES.resources} element={<PrivateRoute><ResourceManagementPage /></PrivateRoute>} />
+        <Route path={ROUTES.evm} element={<PrivateRoute><EVMDashboardPage /></PrivateRoute>} />
+        <Route path={ROUTE_PATTERNS.kpi} element={<PrivateRoute><KPIDrillInPage /></PrivateRoute>} />
+        <Route path={ROUTES.agent} element={<PrivateRoute><AgentProposalsPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminUsers} element={<PrivateRoute><AdminUsersPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminTenants} element={<PrivateRoute><AdminTenantsPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminSystem} element={<PrivateRoute><AdminSystemPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminAiUsage} element={<PrivateRoute><AdminAiUsagePage /></PrivateRoute>} />
+        <Route path={ROUTES.adminAudit} element={<PrivateRoute><AdminAuditPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminOperations} element={<PrivateRoute><AdminOperationsPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminFeedback} element={<PrivateRoute><AdminFeedbackPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminRevenue} element={<PrivateRoute><AdminRevenuePage /></PrivateRoute>} />
+        <Route path={ROUTES.adminPricing} element={<PrivateRoute><AdminPricingPage /></PrivateRoute>} />
+        <Route path={ROUTES.admin} element={<Navigate to={ROUTES.adminUsers} replace />} />
 
         {/* Catch-all */}
         <Route path="*" element={<NotFoundPage />} />

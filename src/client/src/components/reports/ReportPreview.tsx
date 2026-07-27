@@ -500,7 +500,7 @@ export function ReportPreview({ templateId, onClose }: ReportPreviewProps) {
 
       {/* Print footer */}
       <div className="hidden print:block mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
-        <p className="text-xs text-gray-400 dark:text-gray-500">Kovarti PM Assistant - Custom Report</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500">Kovarti PM - Custom Report</p>
       </div>
 
       {/* Print-friendly styles */}

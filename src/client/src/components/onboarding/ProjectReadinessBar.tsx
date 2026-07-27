@@ -64,11 +64,7 @@ export function ProjectReadinessBar({ projectId, tasks, resources, scheduleId, m
         setClickedSteps(prev => ({ ...prev, [cfg.clickedStepKey!]: true }));
       }
       if (cfg.targetTab === 'simulation') {
-        if (scheduleId) {
-          navigate(`/monte-carlo`);
-        } else {
-          navigate(`/monte-carlo`);
-        }
+        navigate(scheduleId ? `/monte-carlo?scheduleId=${scheduleId}` : '/monte-carlo');
       } else {
         onTabChange(cfg.targetTab);
       }

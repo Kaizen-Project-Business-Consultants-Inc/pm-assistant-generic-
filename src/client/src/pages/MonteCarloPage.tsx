@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Dices,
@@ -147,6 +148,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
 // ---------------------------------------------------------------------------
 
 export function MonteCarloPage() {
+  const [searchParams] = useSearchParams();
   // --- Config state ---
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>('');
@@ -175,6 +177,32 @@ export function MonteCarloPage() {
   });
 
   const schedules: Schedule[] = schedulesData?.data || schedulesData || [];
+
+  // --- Preselect from query param ---
+  const qsScheduleId = searchParams.get('scheduleId');
+  useEffect(() => {
+    if (!qsScheduleId || projects.length === 0) return;
+    // Find which project owns this schedule by trying each project
+    if (!selectedProjectId) {
+      // Auto-select first project to trigger schedule fetch; refine once schedules load
+      for (const p of projects) {
+        setSelectedProjectId(p.id);
+        break;
+      }
+    }
+    if (schedules.length > 0 && !selectedScheduleId) {
+      const match = schedules.find(s => s.id === qsScheduleId);
+      if (match) {
+        setSelectedScheduleId(match.id);
+      } else if (selectedProjectId && projects.length > 0) {
+        // Try next project
+        const idx = projects.findIndex(p => p.id === selectedProjectId);
+        if (idx < projects.length - 1) {
+          setSelectedProjectId(projects[idx + 1].id);
+        }
+      }
+    }
+  }, [qsScheduleId, projects, schedules, selectedProjectId, selectedScheduleId]);
 
   // --- Simulation mutation ---
   const simulation = useMutation({

@@ -77,34 +77,28 @@
 
 @layer components {
   /* Minimal prose styles for markdown rendering (replaces @tailwindcss/typography) */
-  .prose-sm {
-    @apply text-sm text-gray-700 dark:text-gray-200 leading-relaxed;
-  }
-  .prose-sm h1 { @apply text-xl font-bold text-gray-900 dark:text-white mt-4 mb-2; }
-  .prose-sm h2 { @apply text-lg font-semibold text-gray-900 dark:text-white mt-4 mb-2; }
-  .prose-sm h3 { @apply text-base font-semibold text-gray-900 dark:text-white mt-3 mb-1; }
-  .prose-sm p { @apply mb-2 leading-relaxed; }
-  .prose-sm ul { @apply list-disc ml-4 mb-3 space-y-1; }
-  .prose-sm ol { @apply list-decimal ml-4 mb-3 space-y-1; }
-  .prose-sm li { @apply leading-relaxed; }
-  .prose-sm strong { @apply font-semibold; }
-  .prose-sm a { @apply text-primary-600 dark:text-primary-400 underline hover:text-primary-700 dark:hover:text-primary-300; }
-  .prose-sm code { @apply px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-sm font-mono text-gray-800 dark:text-gray-200; }
-  .prose-sm pre { @apply bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mb-3 overflow-x-auto; }
-  .prose-sm pre code { @apply p-0 bg-transparent; }
+  .prose-sm { @apply text-sm text-gray-700 dark:text-gray-200 leading-relaxed; }
   .prose { @apply text-gray-700 dark:text-gray-200 leading-relaxed; }
-  .prose h1 { @apply text-xl font-bold text-gray-900 dark:text-white mt-4 mb-2; }
-  .prose h2 { @apply text-lg font-semibold text-gray-900 dark:text-white mt-4 mb-2; }
-  .prose h3 { @apply text-base font-semibold text-gray-900 dark:text-white mt-3 mb-1; }
-  .prose p { @apply mb-2 leading-relaxed; }
-  .prose ul { @apply list-disc ml-4 mb-3 space-y-1; }
-  .prose ol { @apply list-decimal ml-4 mb-3 space-y-1; }
-  .prose li { @apply leading-relaxed; }
-  .prose strong { @apply font-semibold; }
-  .prose a { @apply text-primary-600 dark:text-primary-400 underline hover:text-primary-700 dark:hover:text-primary-300; }
-  .prose code { @apply px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-sm font-mono text-gray-800 dark:text-gray-200; }
-  .prose pre { @apply bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mb-3 overflow-x-auto; }
-  .prose pre code { @apply p-0 bg-transparent; }
+  .prose h1, .prose-sm h1 { @apply text-xl font-bold text-gray-900 dark:text-white mt-4 mb-2; }
+  .prose h2, .prose-sm h2 { @apply text-lg font-semibold text-gray-900 dark:text-white mt-4 mb-2; }
+  .prose h3, .prose-sm h3 { @apply text-base font-semibold text-gray-900 dark:text-white mt-3 mb-1; }
+  .prose p, .prose-sm p { @apply mb-2 leading-relaxed; }
+  .prose ul, .prose-sm ul { @apply list-disc ml-4 mb-3 space-y-1; }
+  .prose ol, .prose-sm ol { @apply list-decimal ml-4 mb-3 space-y-1; }
+  .prose li, .prose-sm li { @apply leading-relaxed; }
+  .prose strong, .prose-sm strong { @apply font-semibold; }
+  .prose a, .prose-sm a { @apply text-primary-600 dark:text-primary-400 underline hover:text-primary-700 dark:hover:text-primary-300; }
+  .prose code, .prose-sm code { @apply px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-sm font-mono text-gray-800 dark:text-gray-200; }
+  .prose pre, .prose-sm pre { @apply bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mb-3 overflow-x-auto; }
+  .prose pre code, .prose-sm pre code { @apply p-0 bg-transparent; }
+  /* GFM: tables, blockquotes, horizontal rules, task-list checkboxes */
+  .prose table, .prose-sm table { @apply w-full border-collapse mb-3 text-sm; }
+  .prose thead, .prose-sm thead { @apply border-b-2 border-gray-200 dark:border-gray-600; }
+  .prose th, .prose-sm th { @apply text-left px-3 py-2 font-semibold text-gray-900 dark:text-gray-100; }
+  .prose td, .prose-sm td { @apply px-3 py-2 border-t border-gray-100 dark:border-gray-700; }
+  .prose blockquote, .prose-sm blockquote { @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic text-gray-600 dark:text-gray-400 mb-3; }
+  .prose hr, .prose-sm hr { @apply border-t border-gray-200 dark:border-gray-700 my-4; }
+  .prose input[type="checkbox"], .prose-sm input[type="checkbox"] { @apply mr-2 align-middle; }
 
   .btn {
     @apply px-4 py-2 rounded-md font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;

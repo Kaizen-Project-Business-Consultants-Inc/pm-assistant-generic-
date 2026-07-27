@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, FolderKanban, Archive, LayoutGrid, List, ChevronUp, ChevronDown } from 'lucide-react';
 import { apiService } from '../services/api';
@@ -26,12 +26,21 @@ function normalizeStatus(status: string): string {
 
 export function ProjectsPM() {
   const { user } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
   const [healthFilter, setHealthFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showArchived, setShowArchived] = useState(false);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+
+  // Auto-open TemplatePicker when navigating with ?new=1
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setTemplatePickerOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [viewMode, setViewMode] = useState<'card' | 'table'>(() => {
     try { return (localStorage.getItem(VIEW_MODE_KEY) as 'card' | 'table') || 'card'; } catch { return 'card'; }
   });

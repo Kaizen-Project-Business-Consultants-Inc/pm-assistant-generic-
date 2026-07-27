@@ -47,7 +47,7 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       sidebarCollapsed: false,
-      aiPanelOpen: true,
+      aiPanelOpen: false,
       aiPanelContext: { type: 'dashboard' },
       notifications: [],
       unreadCount: 0,

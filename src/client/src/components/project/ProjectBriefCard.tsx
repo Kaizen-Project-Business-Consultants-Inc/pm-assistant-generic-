@@ -22,6 +22,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(description ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'conflict'>('idle');
+  const [recoveredDraft, setRecoveredDraft] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cancelledRef = useRef(false);
 
@@ -77,14 +78,14 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
     }
   }, [editing, wsConnectionState]);
 
-  // F4: SessionStorage recovery on mount
+  // F4: SessionStorage recovery on mount — only if draft differs from server
   const STORAGE_KEY = `brief-draft-${projectId}`;
   useEffect(() => {
-    const recovered = sessionStorage.getItem(`brief-draft-${projectId}`);
-    if (recovered !== null && canEdit) {
-      setDraft(recovered);
-      setEditing(true);
-      sessionStorage.removeItem(`brief-draft-${projectId}`);
+    const recovered = sessionStorage.getItem(STORAGE_KEY);
+    if (recovered !== null && canEdit && recovered !== (description ?? '')) {
+      setRecoveredDraft(recovered);
+    } else if (recovered !== null) {
+      sessionStorage.removeItem(STORAGE_KEY);
     }
   }, [projectId]);
 
@@ -92,11 +93,11 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
   useEffect(() => {
     return () => {
       if (draftRef.current !== descriptionRef.current) {
-        sessionStorage.setItem(`brief-draft-${projectId}`, draftRef.current);
+        sessionStorage.setItem(STORAGE_KEY, draftRef.current);
         const payload: Record<string, string> = { description: draftRef.current };
         if (updatedAtRef.current) payload.expectedUpdatedAt = updatedAtRef.current;
         apiService.updateProject(projectId, payload)
-          .then(() => sessionStorage.removeItem(`brief-draft-${projectId}`))
+          .then(() => { sessionStorage.removeItem(STORAGE_KEY); })
           .catch(() => { /* draft stays in sessionStorage for recovery */ });
       }
     };
@@ -142,9 +143,18 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
     mutation.mutate(payload);
   }, [mutation]);
 
-  // F2: No more scheduleSave / autosave-while-typing — only save on blur
+  // 2.3: Debounced checkpoint to sessionStorage (crash protection, no network)
+  const checkpointTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleChange = (value: string) => {
     setDraft(value);
+    if (checkpointTimerRef.current) clearTimeout(checkpointTimerRef.current);
+    checkpointTimerRef.current = setTimeout(() => {
+      if (value !== (description ?? '')) {
+        sessionStorage.setItem(STORAGE_KEY, value);
+      } else {
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
+    }, 2000);
   };
 
   // F2: Save on blur (explicit exit), skip if cancelled
@@ -258,6 +268,25 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
           )}
         </div>
       </div>
+
+      {/* Draft recovery bar */}
+      {recoveredDraft !== null && (
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-sm">
+          <span className="text-amber-800 dark:text-amber-300 flex-1">Restored unsaved changes from earlier</span>
+          <button
+            onClick={() => { setDraft(recoveredDraft); setEditing(true); setRecoveredDraft(null); sessionStorage.removeItem(STORAGE_KEY); }}
+            className="px-2 py-1 text-xs font-medium rounded bg-amber-600 text-white hover:bg-amber-700"
+          >
+            Keep
+          </button>
+          <button
+            onClick={() => { setRecoveredDraft(null); sessionStorage.removeItem(STORAGE_KEY); }}
+            className="px-2 py-1 text-xs font-medium rounded text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-800/30"
+          >
+            Discard
+          </button>
+        </div>
+      )}
 
       {/* Edit mode */}
       {editing && (

@@ -206,4 +206,13 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(operationsRoutes, { prefix: '/api/v1/admin/operations' });
   await fastify.register(revenueRoutes, { prefix: '/api/v1/admin/revenue' });
   await fastify.register(mcpAnalyticsRoutes, { prefix: '/api/v1/admin/mcp-analytics' });
+
+  // Telemetry — lightweight client-side error reporting
+  fastify.post('/api/v1/telemetry/404', async (request, reply) => {
+    const { path, referrer } = (request.body as { path?: string; referrer?: string | null }) || {};
+    if (path) {
+      fastify.log.warn({ event: 'client-404', path, referrer: referrer || undefined }, 'Client hit 404 page');
+    }
+    return reply.status(204).send();
+  });
 }

@@ -6,6 +6,16 @@ marked.setOptions({
   gfm: true,
 });
 
+// Custom renderer: only add target="_blank" to off-origin links
+const renderer = new marked.Renderer();
+renderer.link = ({ href, title, text }) => {
+  const titleAttr = title ? ` title="${title}"` : '';
+  // Absolute URLs pointing to a different origin open in a new tab
+  const isExternal = href && /^https?:\/\//i.test(href) && !href.startsWith(window.location.origin);
+  const targetAttr = isExternal ? ' target="_blank" rel="noopener noreferrer"' : '';
+  return `<a href="${href}"${titleAttr}${targetAttr}>${text}</a>`;
+};
+
 /**
  * Render markdown to HTML using the `marked` parser.
  * Shared between QueryPage and ProjectBriefCard.
@@ -15,8 +25,5 @@ marked.setOptions({
  */
 export function renderMarkdown(text: string): string {
   if (!text) return '';
-  let html = marked.parse(text, { async: false }) as string;
-  // Add target="_blank" to all links for safety
-  html = html.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
-  return html;
+  return marked.parse(text, { async: false, renderer }) as string;
 }

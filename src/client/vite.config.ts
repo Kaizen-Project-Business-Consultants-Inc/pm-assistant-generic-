@@ -9,7 +9,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Kovarti PM Assistant',
+        name: 'Kovarti PM',
         short_name: 'Kovarti PM',
         description: 'AI-Powered Project Management Platform',
         theme_color: '#6366f1',

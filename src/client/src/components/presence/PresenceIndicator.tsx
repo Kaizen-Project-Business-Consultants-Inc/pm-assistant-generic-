@@ -33,7 +33,7 @@ export function PresenceIndicator(props: PresenceIndicatorProps) {
   if (props.variant === 'avatars') {
     const { users, maxVisible = 5, label = 'viewing' } = props;
     return (
-      <div className="flex items-center mr-1" role="status" aria-live="polite" aria-label={`${users.length} user${users.length !== 1 ? 's' : ''} ${label}`}>
+      <div className="flex items-center mr-1" aria-label={`${users.length} user${users.length !== 1 ? 's' : ''} ${label}`}>
         <div className="flex -space-x-2">
           {users.slice(0, maxVisible).map((user) => (
             <div
