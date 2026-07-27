@@ -110,8 +110,8 @@ export function ProjectTable({ projects }: Props) {
   const startMutation = useMutation({
     mutationFn: (projectId: string) => apiService.updateProjectStatus(projectId, 'active'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-predictions'] });
+      queryClient.invalidateQueries({ queryKey: ['pm-projects'] });
+      queryClient.invalidateQueries({ queryKey: ['pm-predictions'] });
     },
   });
 
