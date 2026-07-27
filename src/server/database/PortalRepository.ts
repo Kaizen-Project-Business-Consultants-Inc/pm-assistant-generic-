@@ -102,12 +102,13 @@ class PortalRepository {
     id: string; name: string; status: string; description: string | null;
     budget_allocated: number; budget_spent: number;
     start_date: string | null; end_date: string | null;
+    updated_at: string | null;
   } | null> {
     const rows = await databaseService.query(
       `SELECT id, name, status, description,
               COALESCE(budget_allocated, 0) as budget_allocated,
               COALESCE(budget_spent, 0) as budget_spent,
-              start_date, end_date
+              start_date, end_date, updated_at
        FROM projects WHERE id = ?`,
       [projectId],
     );

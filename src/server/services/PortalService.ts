@@ -112,6 +112,7 @@ class PortalService {
       budgetSpent: permissions.canViewBudget ? (Number(projectRow.budget_spent) || 0) : 0,
       startDate: projectRow.start_date || timeline.startDate,
       endDate: projectRow.end_date || timeline.endDate,
+      updatedAt: projectRow.updated_at,
       progressPercentage,
     };
 

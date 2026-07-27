@@ -28,6 +28,7 @@ interface PortalData {
     endDate: string | null;
     budgetAllocated: number;
     budgetSpent: number;
+    updatedAt: string | null;
   };
   permissions: {
     canViewGantt: boolean;
@@ -510,7 +511,7 @@ export default function PortalViewPage() {
       <footer className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 mt-8">
         <div className="max-w-4xl mx-auto px-6 py-4 text-center">
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            Powered by Kovarti PM &middot; Last updated {new Date().toLocaleString()}
+            Powered by Kovarti PM{project.updatedAt ? <> &middot; Last updated {new Date(project.updatedAt).toLocaleString()}</> : null}
           </p>
         </div>
       </footer>
