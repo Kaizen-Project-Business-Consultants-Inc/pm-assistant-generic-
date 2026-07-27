@@ -1,4 +1,5 @@
 import { useEffect, useCallback, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Activity,
@@ -71,10 +72,8 @@ export function DashboardPM() {
   const {
     enabledIds,
     widgetOrder,
-    scope,
     toggleWidget,
     reorder,
-    changeScope,
     resetLayout,
   } = useDashboardPreferences(PM_WIDGETS);
 
@@ -88,12 +87,6 @@ export function DashboardPM() {
   const { data: myProjectsData, isLoading: myLoading } = useQuery({
     queryKey: ['pm-projects'],
     queryFn: () => apiService.getProjects(),
-    staleTime: 120_000,
-  });
-
-  const { data: allProjectsData } = useQuery({
-    queryKey: ['pm-projects', 'portfolio'],
-    queryFn: () => apiService.getProjects('portfolio'),
     staleTime: 120_000,
   });
 
@@ -112,10 +105,7 @@ export function DashboardPM() {
   // ─── Derived data ───────────────────────────────────────────────────────────
 
   const myProjects: ProjectRow[]  = myProjectsData?.data  || myProjectsData?.projects  || [];
-  const allProjects: ProjectRow[] = allProjectsData?.data || allProjectsData?.projects || [];
-  const sameScope = allProjects.length === myProjects.length;
-  const activeProjects  = scope === 'portfolio' ? allProjects : myProjects;
-  const scopeParam      = scope === 'portfolio' ? 'portfolio' as const : undefined;
+  const activeProjects  = myProjects;
 
   // Merge health scores
   const healthMap = new Map<string, number>();
@@ -171,7 +161,7 @@ export function DashboardPM() {
   const renderWidget = useCallback((id: string): ReactNode => {
     switch (id) {
       case 'briefing':
-        return <MorningBriefingWidget scope={scopeParam} />;
+        return <MorningBriefingWidget scope={undefined} />;
       case 'kpi':
         return (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -188,11 +178,11 @@ export function DashboardPM() {
       case 'action':
         return <ActionCenterPM projects={projectSummaries} />;
       case 'trend':
-        return <IssuesCreatedVsResolvedChart scope={scopeParam} />;
+        return <IssuesCreatedVsResolvedChart scope={undefined} />;
       case 'velocity':
         return <VelocitySparklineWidget projects={projectsWithHealth} />;
       case 'milestones':
-        return <MilestonesWidget scope={scopeParam} />;
+        return <MilestonesWidget scope={undefined} />;
       case 'budget':
         return <BudgetWatchWidget projects={activeProjects} />;
       case 'activity':
@@ -208,7 +198,7 @@ export function DashboardPM() {
       default:
         return null;
     }
-  }, [scopeParam, avgHealth, healthColor, overdueTasks, openRisks, atRiskCount, varianceStr, varianceColor, utilization, projectsWithHealth, projectSummaries, activeProjects, kpiColor]);
+  }, [avgHealth, healthColor, overdueTasks, openRisks, atRiskCount, varianceStr, varianceColor, utilization, projectsWithHealth, projectSummaries, activeProjects, kpiColor]);
 
   // ─── Loading state ──────────────────────────────────────────────────────────
 
@@ -231,32 +221,12 @@ export function DashboardPM() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
-            <button
-              onClick={() => changeScope('mine')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                scope === 'mine'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-              }`}
-            >
-              My Projects · {myProjects.length}
-            </button>
-            <button
-              onClick={() => !sameScope && changeScope('portfolio')}
-              disabled={sameScope}
-              title={sameScope ? 'You can see all projects' : undefined}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                sameScope
-                  ? 'text-gray-400 dark:text-gray-500 cursor-default'
-                  : scope === 'portfolio'
-                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-              }`}
-            >
-              All Projects · {allProjects.length}
-            </button>
-          </div>
+          <Link
+            to="/projects"
+            className="px-3 py-1 text-xs font-medium rounded-md bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
+          >
+            My Projects · {myProjects.length}
+          </Link>
           <CustomizeDropdown
             widgets={PM_WIDGETS}
             enabledIds={enabledIds}
