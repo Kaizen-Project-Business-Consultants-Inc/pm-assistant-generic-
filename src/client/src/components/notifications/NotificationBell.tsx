@@ -321,7 +321,7 @@ export function NotificationBell() {
                       if (isClickable) {
                         setOpen(false);
                         dismissNotification(notification.id);
-                        navigate(`/projects/${notification.projectId}/schedule`);
+                        navigate(`/project/${notification.projectId}?tab=schedule`);
                       }
                     }}
                     {...(isClickable ? {
@@ -332,7 +332,7 @@ export function NotificationBell() {
                           e.preventDefault();
                           setOpen(false);
                           dismissNotification(notification.id);
-                          navigate(`/projects/${notification.projectId}/schedule`);
+                          navigate(`/project/${notification.projectId}?tab=schedule`);
                         }
                       },
                     } : {})}

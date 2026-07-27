@@ -276,7 +276,7 @@ export function NotificationsPage() {
                   if (isClickable) {
                     dismissNotification(n.id);
                     apiService.markNotificationRead(n.id).catch(() => {/* best effort */});
-                    navigate(`/projects/${n.projectId}/schedule`);
+                    navigate(`/project/${n.projectId}?tab=schedule`);
                   }
                 }}
                 className={`flex items-start gap-4 px-5 py-4 relative hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${n.read ? 'opacity-60' : ''} ${isClickable ? 'cursor-pointer' : ''}`}

@@ -126,7 +126,7 @@ export function HealthTrendsWidget({ projects }: HealthTrendsWidgetProps) {
             return (
               <Link
                 key={project.id}
-                to={`/projects/${project.id}`}
+                to={`/project/${project.id}`}
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
                 <span className="text-xs text-gray-700 dark:text-gray-300 truncate w-28 flex-shrink-0">

@@ -305,7 +305,7 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
             This submission has been successfully converted into a project.
           </p>
           <a
-            href={`/projects/${convertedProjectId}`}
+            href={`/project/${convertedProjectId}`}
             className="text-sm font-medium text-green-700 underline hover:text-green-800"
           >
             View Project

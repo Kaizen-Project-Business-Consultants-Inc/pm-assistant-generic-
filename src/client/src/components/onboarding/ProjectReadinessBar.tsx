@@ -65,7 +65,7 @@ export function ProjectReadinessBar({ projectId, tasks, resources, scheduleId, m
       }
       if (cfg.targetTab === 'simulation') {
         if (scheduleId) {
-          navigate(`/monte-carlo/${scheduleId}`);
+          navigate(`/monte-carlo`);
         } else {
           navigate(`/monte-carlo`);
         }
