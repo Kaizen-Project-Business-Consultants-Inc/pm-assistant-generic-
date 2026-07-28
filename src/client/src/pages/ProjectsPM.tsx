@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/authStore';
 import { FilterBarPM } from '../components/pm/FilterBarPM';
 import { ProjectCardPM } from '../components/pm/ProjectCardPM';
 import { TemplatePicker } from '../components/templates/TemplatePicker';
+import { getViewPref, setViewPref } from '../hooks/useViewPreferences';
 import type { ProjectSummaryPM } from '../types/pm';
 
 const VIEW_MODE_KEY = 'pm-projects-view-mode';
@@ -42,6 +43,8 @@ export function ProjectsPM() {
     }
   }, [searchParams, setSearchParams]);
   const [viewMode, setViewMode] = useState<'card' | 'table'>(() => {
+    const serverPref = getViewPref('projectsViewMode');
+    if (serverPref) return serverPref;
     try { return (localStorage.getItem(VIEW_MODE_KEY) as 'card' | 'table') || 'card'; } catch { return 'card'; }
   });
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -50,6 +53,7 @@ export function ProjectsPM() {
   const toggleViewMode = useCallback((mode: 'card' | 'table') => {
     setViewMode(mode);
     try { localStorage.setItem(VIEW_MODE_KEY, mode); } catch {}
+    setViewPref('projectsViewMode', mode);
   }, []);
 
   const handleSort = useCallback((key: SortKey) => {

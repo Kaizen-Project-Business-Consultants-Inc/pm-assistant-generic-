@@ -121,6 +121,14 @@ export class UserService {
   async updateDashboardPrefs(userId: string, prefs: Record<string, unknown>): Promise<void> {
     await userRepository.updateDashboardPrefs(userId, prefs);
   }
+
+  async getViewPrefs(userId: string): Promise<Record<string, unknown> | null> {
+    return userRepository.getViewPrefs(userId);
+  }
+
+  async updateViewPrefs(userId: string, prefs: Record<string, unknown>): Promise<void> {
+    await userRepository.updateViewPrefs(userId, prefs);
+  }
 }
 
 export const userService = new UserService();

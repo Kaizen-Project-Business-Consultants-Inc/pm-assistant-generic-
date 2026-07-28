@@ -204,6 +204,24 @@ export class UserRepository extends BaseRepository<User> {
       [JSON.stringify(prefs), userId],
     );
   }
+
+  async getViewPrefs(userId: string): Promise<Record<string, unknown> | null> {
+    const rows = await this.queryRaw(
+      'SELECT view_preferences FROM users WHERE id = ?',
+      [userId],
+    );
+    if (rows.length === 0) return null;
+    const raw = rows[0].view_preferences;
+    if (!raw) return null;
+    return typeof raw === 'string' ? JSON.parse(raw) : raw;
+  }
+
+  async updateViewPrefs(userId: string, prefs: Record<string, unknown>): Promise<void> {
+    await this.queryRaw(
+      'UPDATE users SET view_preferences = ?, updated_at = NOW() WHERE id = ?',
+      [JSON.stringify(prefs), userId],
+    );
+  }
 }
 
 export const userRepository = new UserRepository();

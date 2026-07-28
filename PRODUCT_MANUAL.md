@@ -2280,3 +2280,21 @@ The sidebar displays a real-time **AI Token Usage Indicator** above the user sec
 - **Collapsed sidebar**: Shows a compact SVG ring chart with a lightning bolt icon.
 - **Color-coded**: Green (<70% used), amber (70-90%), red (>90%).
 - Data is fetched from `GET /api/v1/ai/budget` with a 5-minute stale time (React Query). Only shown to authenticated users.
+
+## 50. Cross-Device View Preferences
+
+UI layout preferences are persisted server-side so they follow the user across devices and browsers. The following preferences are synced:
+
+- **Theme** (light/dark)
+- **Sidebar collapsed** state
+- **AI panel open** state
+- **Schedule view mode** (gantt/kanban/table/calendar/network/burndown)
+- **Projects view mode** (card/table)
+
+### How It Works
+
+- On login, the app fetches `GET /api/v1/users/me/view-preferences` and applies the saved state.
+- When the user changes any of these settings, the change is applied immediately (localStorage for instant feedback) and debounce-written to the server via `PUT /api/v1/users/me/view-preferences` (1-second debounce).
+- Partial updates are merged with existing preferences — changing one setting does not reset others.
+- If the server has no saved preferences (new user), localStorage defaults are used.
+- Stored in the `view_preferences` JSON column on the `users` table (migration 076).

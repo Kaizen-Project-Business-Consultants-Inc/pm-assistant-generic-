@@ -2524,6 +2524,20 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     const response = await this.api.delete(`/org/members/${memberId}`);
     return response.data;
   }
+
+  // -------------------------------------------------------------------------
+  // View Preferences (cross-device UI state)
+  // -------------------------------------------------------------------------
+
+  async getViewPreferences() {
+    const response = await this.api.get('/users/me/view-preferences');
+    return response.data;
+  }
+
+  async updateViewPreferences(prefs: Record<string, unknown>) {
+    const response = await this.api.put('/users/me/view-preferences', prefs);
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();

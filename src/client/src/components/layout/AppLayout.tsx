@@ -13,6 +13,8 @@ import { AIChatPanel } from '../ai/AIChatPanel';
 import { useUIStore } from '../../stores/uiStore';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { useViewPreferences, ViewPreferences } from '../../hooks/useViewPreferences';
+import { useThemeStore } from '../../stores/themeStore';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -54,13 +56,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     readLocalStorageBool(AI_PANEL_STORAGE_KEY, false)
   );
 
+  // Sync view preferences with server (cross-device persistence)
+  const { syncPrefs } = useViewPreferences(useCallback((prefs: ViewPreferences) => {
+    if (prefs.sidebarCollapsed !== undefined) setSidebarCollapsed(prefs.sidebarCollapsed);
+    if (prefs.aiPanelOpen !== undefined) setAiPanelOpen(prefs.aiPanelOpen);
+    if (prefs.theme) useThemeStore.getState().setDark(prefs.theme === 'dark', true);
+  }, []));
+
   useEffect(() => {
     try {
       localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarCollapsed));
     } catch {
       // ignore
     }
-  }, [sidebarCollapsed]);
+    syncPrefs({ sidebarCollapsed });
+  }, [sidebarCollapsed, syncPrefs]);
 
   useEffect(() => {
     try {
@@ -68,7 +78,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     } catch {
       // ignore
     }
-  }, [aiPanelOpen]);
+    syncPrefs({ aiPanelOpen });
+  }, [aiPanelOpen, syncPrefs]);
 
   useEffect(() => {
     if (breakpoint === 'tablet') {

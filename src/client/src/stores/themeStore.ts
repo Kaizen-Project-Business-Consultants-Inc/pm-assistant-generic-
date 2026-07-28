@@ -1,9 +1,20 @@
 import { create } from 'zustand';
+import { setViewPref } from '../hooks/useViewPreferences';
 
 interface ThemeState {
   isDark: boolean;
   toggle: () => void;
-  setDark: (dark: boolean) => void;
+  setDark: (dark: boolean, skipSync?: boolean) => void;
+}
+
+function applyTheme(dark: boolean) {
+  if (dark) {
+    document.documentElement.classList.add('dark');
+    localStorage.setItem('theme', 'dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+    localStorage.setItem('theme', 'light');
+  }
 }
 
 export const useThemeStore = create<ThemeState>((set) => {
@@ -19,24 +30,14 @@ export const useThemeStore = create<ThemeState>((set) => {
     toggle: () =>
       set((state) => {
         const newDark = !state.isDark;
-        if (newDark) {
-          document.documentElement.classList.add('dark');
-          localStorage.setItem('theme', 'dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-          localStorage.setItem('theme', 'light');
-        }
+        applyTheme(newDark);
+        setViewPref('theme', newDark ? 'dark' : 'light');
         return { isDark: newDark };
       }),
-    setDark: (dark: boolean) =>
+    setDark: (dark: boolean, skipSync?: boolean) =>
       set(() => {
-        if (dark) {
-          document.documentElement.classList.add('dark');
-          localStorage.setItem('theme', 'dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-          localStorage.setItem('theme', 'light');
-        }
+        applyTheme(dark);
+        if (!skipSync) setViewPref('theme', dark ? 'dark' : 'light');
         return { isDark: dark };
       }),
   };

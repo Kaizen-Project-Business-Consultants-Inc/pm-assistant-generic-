@@ -264,4 +264,46 @@ export async function userRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: 'Internal server error' });
     }
   });
+
+  // View preferences (cross-device UI state)
+  const viewPrefsSchema = z.object({
+    theme: z.enum(['light', 'dark']).optional(),
+    sidebarCollapsed: z.boolean().optional(),
+    scheduleViewMode: z.enum(['gantt', 'kanban', 'table', 'calendar', 'network', 'burndown']).optional(),
+    projectsViewMode: z.enum(['card', 'table']).optional(),
+    aiPanelOpen: z.boolean().optional(),
+  });
+
+  fastify.get('/me/view-preferences', {
+    preHandler: [requireScope('read')],
+    schema: { description: 'Get view preferences', tags: ['users'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userId = request.user!.userId;
+      const prefs = await userService.getViewPrefs(userId);
+      return { preferences: prefs };
+    } catch (error) {
+      logger.error('Get view preferences error', { error });
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
+  });
+
+  fastify.put('/me/view-preferences', {
+    preHandler: [requireScope('write')],
+    schema: { description: 'Update view preferences', tags: ['users'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userId = request.user!.userId;
+      const parsed = viewPrefsSchema.parse(request.body);
+      // Merge with existing prefs so partial updates work
+      const existing = await userService.getViewPrefs(userId) || {};
+      const merged = { ...existing, ...parsed };
+      await userService.updateViewPrefs(userId, merged);
+      return { preferences: merged };
+    } catch (error) {
+      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      logger.error('Update view preferences error', { error });
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
+  });
 }

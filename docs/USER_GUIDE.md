@@ -125,6 +125,8 @@ The left sidebar provides access to all areas of the application:
 
 The sidebar can be collapsed using the toggle at the bottom. On mobile devices, it slides in as an overlay.
 
+Your UI layout preferences — theme (light/dark), sidebar collapsed state, AI panel open state, schedule view mode, and projects view mode — are automatically synced to the server. When you log in from a different device or browser, your layout preferences are restored automatically.
+
 An **AI Token Usage** indicator appears above the user section, showing your current month's AI token consumption as a progress bar (or a ring chart when the sidebar is collapsed). The bar changes color as usage increases: green (<70%), amber (70-90%), red (>90%). Click the indicator text to view detailed usage in Settings.
 
 ### Command Palette
