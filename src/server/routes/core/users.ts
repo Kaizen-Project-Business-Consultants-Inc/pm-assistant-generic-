@@ -20,6 +20,7 @@ const profileUpdateSchema = z.object({
 const categoryPrefSchema = z.object({
   inApp: z.boolean(),
   email: z.boolean(),
+  slack: z.boolean().optional().default(true),
 });
 
 const notificationPrefsSchema = z.object({

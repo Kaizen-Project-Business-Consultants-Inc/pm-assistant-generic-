@@ -3,6 +3,7 @@ import { userRepository } from '../database/UserRepository';
 export interface NotificationCategoryPref {
   inApp: boolean;
   email: boolean;
+  slack?: boolean;
 }
 
 export type NotificationTypePreferences = Record<string, NotificationCategoryPref>;

@@ -1104,7 +1104,7 @@ Connect PM Assistant to external tools for bidirectional synchronization.
 3. In the configuration modal, enter the required credentials:
    - **Jira** -- Server URL, API token, project key.
    - **GitHub** -- Repository, personal access token.
-   - **Slack** -- Webhook URL, channel, optional `notifyEvents` filter array.
+   - **Slack** -- See [Slack Setup](#slack-setup) below.
    - **Trello** -- API key, board ID.
 4. Click **Save** to create the integration.
 
@@ -1114,14 +1114,54 @@ Connect PM Assistant to external tools for bidirectional synchronization.
 - View the **Sync Log** panel to see a history of sync operations, including timestamps, status, and any errors.
 - Integrations can be enabled/disabled with a toggle without deleting the configuration.
 
-### Slack Features
+### Slack Setup
 
-Once a Slack integration is configured for a project:
+#### Connecting Slack to a Project
 
-- **Automatic Notifications** — Slack receives messages when tasks are completed, risks are created, sprints start/complete, or the project status changes.
-- **Slash Command** — Type `/kovarti status My Project` in Slack to get a formatted status card. Requires the slash command to be configured in your Slack App pointing to `https://your-domain/api/v1/slack/commands`.
-- **Interactive Proposal Buttons** — When AI agents create proposals, Slack shows Approve/Reject buttons. Clicking them reviews the proposal and records the Slack username for audit.
-- **Event Filtering** — Add a `notifyEvents` array (e.g., `["task.updated", "risk.created"]`) to the integration config to control which events send notifications.
+1. Navigate to **Integrations** in the sidebar and click **Configure** under Slack.
+2. In the **Slack Configuration** modal:
+   - **Project** — Use the dropdown to select the project this integration applies to. Each Slack integration is scoped to one project; create multiple integrations for multiple projects.
+   - **Webhook URL** — Paste the incoming webhook URL from your Slack App (Settings > Incoming Webhooks in the Slack API portal).
+   - **Event Filters** — Check the event types you want to send to Slack. Available events:
+     - Task Assigned
+     - Task Completed
+     - Deadline Approaching
+     - Budget Alert
+     - Meeting Followup
+     - Member Added
+     - Risk Created
+     - Sprint Started
+     - Sprint Completed
+     - Project Status Changed
+     - Agent Proposal Created
+3. Click **Save**.
+
+#### Notification Preferences
+
+In **Settings → Notifications**, the notification category table now has a **Slack** column alongside In-App and Email. Toggle Slack on or off per category to control which event types are forwarded to your connected Slack channels. Turning off a category's Slack toggle does not affect in-app or email delivery.
+
+#### What Slack Messages Look Like
+
+Notifications arrive as formatted Slack Block Kit messages. Key event types have dedicated layouts:
+
+- **Task Assigned** — shows task name, assignee, due date, and a link to the task.
+- **Deadline Approaching** — shows task name, days remaining, and priority badge.
+- **Budget Alert** — shows amount spent vs. budget, burn rate, and cost variance.
+- **Meeting Followup** — shows meeting summary, action items, and decisions.
+- **Member Added** — shows the new member's name and project role.
+- All other events use a standard notification card with title, body, and a direct link button.
+
+#### Slash Command
+
+Type `/kovarti status My Project` in any Slack channel to get a formatted project status card. This requires the slash command to be registered in your Slack App and pointing to `https://your-domain/api/v1/slack/commands`.
+
+#### Interactive Proposal Buttons
+
+When the AI agent creates a proposal, a Slack message is sent with **Approve** and **Reject** buttons. Clicking either button records the review decision and logs the Slack username in the project audit trail.
+
+#### Sending Messages from Agents or Workflows
+
+Agents and workflow actions can push ad-hoc messages to a project's Slack channels using the `send-slack-message` MCP tool or the internal `POST /api/v1/slack/send` endpoint. This is also available as `test-slack-connection` (sends a ping to verify the webhook is live) and `list-slack-channels` (lists all configured channels for a project) via MCP.
 
 ---
 

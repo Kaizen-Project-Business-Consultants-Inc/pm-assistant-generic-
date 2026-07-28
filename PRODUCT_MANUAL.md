@@ -792,7 +792,7 @@ Preferences are stored in the database (`users.email_notifications_enabled`, `us
 
 #### Per-Category Notification Preferences
 
-Users can control which categories of notifications they receive, with independent toggles for in-app and email delivery:
+Users can control which categories of notifications they receive, with independent toggles for in-app, email, and Slack delivery:
 
 | Category | Notification types covered |
 |----------|---------------------------|
@@ -820,7 +820,7 @@ Common project management events now generate notifications automatically:
 
 Deadline notifications run daily at 8:00 AM via cron (`deadline-check` job). Redis deduplication prevents the same task from generating repeat notifications on the same day.
 
-When a category's in-app toggle is off, notifications of that type are not inserted into the database or broadcast via WebSocket. When the email toggle is off, emails are suppressed even for critical/high severity. System alerts are never suppressed for admin users. New users (NULL preferences) default to all categories ON.
+When a category's in-app toggle is off, notifications of that type are not inserted into the database or broadcast via WebSocket. When the email toggle is off, emails are suppressed even for critical/high severity. When the Slack toggle is off, `SlackEventDispatcher` skips forwarding for that category without affecting in-app or email delivery. System alerts are never suppressed for admin users. New users (NULL preferences) default to all categories ON for in-app, email, and Slack.
 
 ### Scheduled Report Delivery
 
@@ -921,28 +921,37 @@ The `TemplateService` allows saving a project's structure as a reusable template
 |----------|---------|-------------|
 | **Jira** | `JiraAdapter` | Bi-directional task sync, status mapping |
 | **GitHub** | `GitHubAdapter` | Issue sync, PR status tracking |
-| **Slack** | `SlackAdapter` | Event notifications, `/kovarti status` slash command, interactive proposal buttons |
+| **Slack** | `SlackAdapter` | Event notifications, per-project channel routing, project selector, event filter checkboxes, `/kovarti status` slash command, interactive proposal buttons, POST /slack/send API |
 | **Trello** | `TrelloAdapter` | Card sync, board mapping |
 
 ### Slack Integration
 
-The Slack integration provides three capabilities:
+The Slack integration provides four capabilities:
 
-1. **Event Notifications** — Automatic Slack messages when key events occur:
-   - Task completed
-   - Risk/issue/action/decision created
-   - Sprint started or completed
-   - Project status changed
-   - Agent proposal created (with interactive Approve/Reject buttons)
+1. **Event Notifications** — Automatic Slack messages when key events occur. `NotificationService` forwards notifications to Slack via `SlackEventDispatcher` as a fire-and-forget side-effect (never blocks the main request). Notifications are scoped to the project where the event originated; global notifications do not dispatch to Slack. Supported event types with dedicated Block Kit builders:
+   - `task_completed` — task name, assignee, schedule
+   - `task_assigned` — assignee, due date, project
+   - `deadline_approaching` — task name, days remaining, priority badge
+   - `budget_alert` — spent vs. budget, burn rate, variance
+   - `meeting_followup` — summary, action items, decisions
+   - `member_added` — new member name and role
+   - `risk_created`, `sprint_started`, `sprint_completed`, `project_status_changed`, `agent_proposal_created` — generic notification fallback (title + body + link button)
 
 2. **Slash Command** (`/kovarti status <project name>`) — Returns an ephemeral Block Kit message with the project's status, priority, methodology, and dates.
 
 3. **Interactive Buttons** — Agent proposals sent to Slack include Approve/Reject buttons. Clicking them records a review with the Slack username in the audit trail.
 
-**Configuration:**
-- Set `SLACK_SIGNING_SECRET` and `SLACK_BOT_TOKEN` environment variables
-- Create a Slack integration per project with the incoming webhook URL
-- Optionally configure `notifyEvents` array in the integration config to filter which events trigger notifications
+4. **POST /slack/send** — Internal API endpoint (`POST /api/v1/slack/send`) that sends a free-form message to all Slack channels configured for a given project. Accepts `{ projectId, text, blocks? }`. Used by agents and workflows to push ad-hoc messages.
+
+**Configuration (IntegrationConfigModal):**
+- Set `SLACK_SIGNING_SECRET` and `SLACK_BOT_TOKEN` environment variables.
+- Create a Slack integration per project. The configuration modal includes:
+  - **Project selector** dropdown — choose which project the integration is scoped to.
+  - **Webhook URL** — incoming webhook for the target Slack channel.
+  - **Event filter checkboxes** — select which of the 11 event types send notifications. Unchecked events are silently suppressed at the dispatcher level.
+
+**User Notification Preferences:**
+Each notification category now has three independent toggles — **In-App**, **Email**, and **Slack**. The Slack toggle controls whether that category's events are forwarded to the project's Slack channels. The Slack column appears in the Settings → Notifications table alongside In-App and Email. When the Slack toggle for a category is off, `SlackEventDispatcher` skips dispatch for that notification type without affecting in-app or email delivery.
 
 **Security:** All inbound requests (`/api/v1/slack/commands`, `/api/v1/slack/interactivity`) are verified using HMAC-SHA256 with the Slack signing secret. Timestamps older than 5 minutes are rejected.
 
@@ -1075,6 +1084,9 @@ A standalone Model Context Protocol (MCP) server (`mcp-server/server.ts`) enable
 | `get-portfolio` | Full portfolio overview |
 | `suggest-risk-mitigations` | AI risk mitigation suggestions from historical lessons |
 | `get-meeting-summary` | Extract summary, actions, and decisions from meeting transcript |
+| `send-slack-message` | Send a message to all Slack channels configured for a project |
+| `test-slack-connection` | Verify that the Slack webhook for a project is reachable |
+| `list-slack-channels` | List all Slack channel configurations registered for a project |
 
 ### MCP Proxy
 

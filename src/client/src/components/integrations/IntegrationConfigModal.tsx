@@ -136,6 +136,20 @@ const PROVIDER_COLORS: Record<string, string> = {
   trello: '#0079BF',
 };
 
+const SLACK_EVENT_TYPES: { key: string; label: string }[] = [
+  { key: 'task.completed', label: 'Task Completed' },
+  { key: 'task_assigned', label: 'Task Assigned' },
+  { key: 'risk.created', label: 'Risk/Issue Created' },
+  { key: 'sprint.started', label: 'Sprint Started' },
+  { key: 'sprint.completed', label: 'Sprint Completed' },
+  { key: 'project.updated', label: 'Project Updated' },
+  { key: 'proposal.created', label: 'Agent Proposal' },
+  { key: 'budget_alert', label: 'Budget Alert' },
+  { key: 'deadline_approaching', label: 'Deadline Approaching' },
+  { key: 'member_added', label: 'Member Added' },
+  { key: 'meeting_followup', label: 'Meeting Follow-up' },
+];
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -165,6 +179,16 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
     message: string;
   } | null>(null);
 
+  // Slack-specific: project selector + event filter
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [notifyEvents, setNotifyEvents] = useState<string[]>([]);
+
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects-list'],
+    queryFn: () => apiService.getProjects(),
+    enabled: provider === 'slack',
+  });
+
   // Load existing config if editing
   const { data: existingData } = useQuery({
     queryKey: ['integration', integrationId],
@@ -173,30 +197,43 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
   });
 
   useEffect(() => {
-    if (existingData?.integration?.config) {
-      const config = existingData.integration.config as Record<string, string>;
-      setFormValues((prev) => {
-        const updated = { ...prev };
-        for (const key of Object.keys(updated)) {
-          if (config[key] !== undefined) {
-            updated[key] = config[key];
+    if (existingData?.integration) {
+      const integration = existingData.integration;
+      if (integration.config) {
+        const config = integration.config as Record<string, any>;
+        setFormValues((prev) => {
+          const updated = { ...prev };
+          for (const key of Object.keys(updated)) {
+            if (config[key] !== undefined) {
+              updated[key] = String(config[key]);
+            }
           }
+          return updated;
+        });
+        if (Array.isArray(config.notifyEvents)) {
+          setNotifyEvents(config.notifyEvents);
         }
-        return updated;
-      });
+      }
+      if (integration.projectId) {
+        setSelectedProjectId(integration.projectId);
+      }
     }
   }, [existingData]);
 
   // Save mutation
   const saveMutation = useMutation({
-    mutationFn: (config: Record<string, string>) => {
+    mutationFn: (config: Record<string, unknown>) => {
       if (isEdit) {
         return apiService.updateIntegration(integrationId!, {
           provider,
           config,
         });
       }
-      return apiService.createIntegration({ provider, config });
+      return apiService.createIntegration({
+        provider,
+        config,
+        ...(provider === 'slack' && selectedProjectId ? { projectId: selectedProjectId } : {}),
+      });
     },
     onSuccess: () => {
       onSaved();
@@ -250,7 +287,11 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
 
   const handleSave = () => {
     if (!validate()) return;
-    saveMutation.mutate(formValues);
+    const configPayload: Record<string, unknown> = { ...formValues };
+    if (provider === 'slack' && notifyEvents.length > 0) {
+      configPayload.notifyEvents = notifyEvents;
+    }
+    saveMutation.mutate(configPayload);
   };
 
   const handleTestConnection = () => {
@@ -315,6 +356,57 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
               )}
             </div>
           ))}
+
+          {/* Slack-specific: project selector + event filter */}
+          {provider === 'slack' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Project
+                </label>
+                <select
+                  value={selectedProjectId}
+                  onChange={(e) => setSelectedProjectId(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white"
+                >
+                  <option value="">All Projects</option>
+                  {(projectsData?.projects || []).map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Select a project to scope notifications, or leave as &quot;All Projects&quot;.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Event Filters
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Select which events post to Slack. Leave all unchecked to receive all events.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {SLACK_EVENT_TYPES.map((evt) => (
+                    <label key={evt.key} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notifyEvents.includes(evt.key)}
+                        onChange={() => {
+                          setNotifyEvents((prev) =>
+                            prev.includes(evt.key)
+                              ? prev.filter((e) => e !== evt.key)
+                              : [...prev, evt.key],
+                          );
+                        }}
+                        className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                      />
+                      {evt.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Test connection (only when editing an existing integration) */}
           {isEdit && (

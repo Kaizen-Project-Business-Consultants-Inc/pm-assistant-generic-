@@ -240,6 +240,72 @@ export class SlackAdapter {
         }
         return { text, blocks };
       }
+      case 'budget_alert': {
+        const n = payload.notification;
+        if (!n) return null;
+        const text = `Budget Alert: ${n.title}`;
+        return {
+          text,
+          blocks: [
+            { type: 'section', text: { type: 'mrkdwn', text: `*Budget Alert* :money_with_wings:\n*${n.title}*\n${n.message || ''}` } },
+          ],
+        };
+      }
+      case 'deadline_approaching': {
+        const n = payload.notification;
+        if (!n) return null;
+        const text = `Deadline Approaching: ${n.title}`;
+        return {
+          text,
+          blocks: [
+            { type: 'section', text: { type: 'mrkdwn', text: `*Deadline Approaching* :alarm_clock:\n*${n.title}*\n${n.message || ''}` } },
+          ],
+        };
+      }
+      case 'task_assigned': {
+        const n = payload.notification;
+        if (!n) return null;
+        const text = `Task Assigned: ${n.title}`;
+        return {
+          text,
+          blocks: [
+            { type: 'section', text: { type: 'mrkdwn', text: `*Task Assigned* :clipboard:\n*${n.title}*\n${n.message || ''}` } },
+          ],
+        };
+      }
+      case 'member_added': {
+        const n = payload.notification;
+        if (!n) return null;
+        const text = `Member Added: ${n.title}`;
+        return {
+          text,
+          blocks: [
+            { type: 'section', text: { type: 'mrkdwn', text: `*Member Added* :busts_in_silhouette:\n*${n.title}*\n${n.message || ''}` } },
+          ],
+        };
+      }
+      case 'meeting_followup': {
+        const n = payload.notification;
+        if (!n) return null;
+        const text = `Meeting Follow-up: ${n.title}`;
+        return {
+          text,
+          blocks: [
+            { type: 'section', text: { type: 'mrkdwn', text: `*Meeting Follow-up* :spiral_calendar_pad:\n*${n.title}*\n${n.message || ''}` } },
+          ],
+        };
+      }
+      case 'notification': {
+        const n = payload.notification;
+        if (!n) return null;
+        const text = n.title;
+        return {
+          text,
+          blocks: [
+            { type: 'section', text: { type: 'mrkdwn', text: `*${n.title}*\n${n.message || ''}` } },
+          ],
+        };
+      }
       default:
         return null;
     }

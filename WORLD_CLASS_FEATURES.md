@@ -305,12 +305,16 @@ An agentic AI project management platform that combines the scheduling power of 
 
 ### 5.1 External Integrations
 - **Slack integration** — COMPLETE
-  - Event notifications (task completion, risk created, sprint start/complete, project status changes)
+  - Event notifications via `SlackEventDispatcher` (fire-and-forget, project-scoped): 11 event types including task_assigned, deadline_approaching, budget_alert, meeting_followup, member_added, and more
+  - Dedicated Block Kit builders for budget_alert, deadline_approaching, task_assigned, member_added, meeting_followup, and a generic notification fallback
   - `/kovarti status <project>` slash command for real-time project status
   - Interactive Approve/Reject buttons for agent proposals
-  - Per-integration event filtering via `notifyEvents` config
+  - `POST /api/v1/slack/send` — send ad-hoc messages to a project's Slack channels from agents or workflows
+  - IntegrationConfigModal with project selector dropdown and 11-event-type filter checkboxes
+  - Per-category Slack toggle in user notification preferences (alongside In-App and Email)
   - HMAC-SHA256 signature verification (Slack signing secret)
   - Bot token support for interactive messages
+  - 3 MCP tools: `send-slack-message`, `test-slack-connection`, `list-slack-channels`
 - Microsoft Teams integration
 - Jira two-way sync
 - GitHub/GitLab commit linking

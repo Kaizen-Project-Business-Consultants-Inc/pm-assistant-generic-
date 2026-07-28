@@ -48,6 +48,7 @@ const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 interface CategoryPref {
   inApp: boolean;
   email: boolean;
+  slack?: boolean;
 }
 
 type TypePreferences = Record<string, CategoryPref>;
@@ -493,11 +494,11 @@ const NotificationsTab: React.FC = () => {
     }
   }, [serverPrefs]);
 
-  const toggleCategoryChannel = (categoryKey: string, channel: 'inApp' | 'email') => {
+  const toggleCategoryChannel = (categoryKey: string, channel: 'inApp' | 'email' | 'slack') => {
     setTypePrefs((prev) => ({
       ...prev,
       [categoryKey]: {
-        ...(prev[categoryKey] ?? { inApp: true, email: true }),
+        ...(prev[categoryKey] ?? { inApp: true, email: true, slack: true }),
         [channel]: !(prev[categoryKey]?.[channel] ?? true),
       },
     }));
@@ -587,6 +588,11 @@ const NotificationsTab: React.FC = () => {
                     checked={isSystemForAdmin ? true : pref.email}
                     onChange={() => { if (!isSystemForAdmin) toggleCategoryChannel(cat.key, 'email'); }}
                     label="Email"
+                  />
+                  <MiniToggle
+                    checked={isSystemForAdmin ? true : (pref.slack ?? true)}
+                    onChange={() => { if (!isSystemForAdmin) toggleCategoryChannel(cat.key, 'slack'); }}
+                    label="Slack"
                   />
                 </div>
               </div>

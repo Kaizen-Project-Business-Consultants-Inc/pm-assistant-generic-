@@ -3,6 +3,7 @@ import { notificationRepository, NotificationDTO } from '../database/Notificatio
 import { WebSocketService } from './WebSocketService';
 import { emailService } from './EmailService';
 import { userService, NotificationCategoryPref } from './UserService';
+import { slackEventDispatcher } from './integrations/SlackEventDispatcher';
 import logger from '../utils/logger';
 import { config } from '../config';
 
@@ -31,7 +32,30 @@ const NOTIFICATION_TYPE_TO_CATEGORY: Record<string, string> = {
   member_added: 'collaboration',
 };
 
-const DEFAULT_CATEGORY_PREF: NotificationCategoryPref = { inApp: true, email: true };
+const DEFAULT_CATEGORY_PREF: NotificationCategoryPref = { inApp: true, email: true, slack: true };
+
+/** Maps notification type → Slack event name for dispatch.
+ *  Types already dispatched inline from route handlers are EXCLUDED to prevent double-posting:
+ *  task.completed, risk.created, sprint.started, sprint.completed, project.updated, proposal.created
+ */
+const NOTIFICATION_TYPE_TO_SLACK_EVENT: Record<string, string> = {
+  budget_alert: 'budget_alert',
+  ai_budget_warning: 'budget_alert',
+  monte_carlo_alert: 'budget_alert',
+  deadline_approaching: 'deadline_approaching',
+  task_assigned: 'task_assigned',
+  member_added: 'member_added',
+  meeting_followup: 'meeting_followup',
+  agent_proposal: 'notification',
+  agent_low_confidence: 'notification',
+  agent_execution_complete: 'notification',
+  agent_execution_failed: 'notification',
+  agent_notification: 'notification',
+  agent_rollback: 'notification',
+  reschedule_proposal: 'notification',
+  workflow_action: 'notification',
+  task_comment: 'notification',
+};
 
 export interface CreateNotificationData {
   userId: string;
@@ -100,6 +124,17 @@ export class NotificationService {
           logger.error('[NotificationService] Failed to send email notification:', err);
         }
       })();
+    }
+
+    // Fire-and-forget Slack delivery (project-scoped only, skip types already dispatched inline)
+    const shouldSlack = isAdminSystemAlert || !category || (catPref.slack ?? true);
+    const slackEvent = NOTIFICATION_TYPE_TO_SLACK_EVENT[type];
+    if (shouldSlack && slackEvent && data.projectId) {
+      slackEventDispatcher.dispatchToSlack(slackEvent, {
+        notification: { title: data.title, message: data.message, severity, type },
+      }, data.projectId).catch(err => {
+        logger.error('[NotificationService] Slack dispatch failed:', err);
+      });
     }
 
     return dto;

@@ -1,11 +1,19 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import * as querystring from 'querystring';
-import { slackAdapter } from '../../services/integrations/SlackAdapter';
+import { z } from 'zod';
+import { slackAdapter, SlackConfig } from '../../services/integrations/SlackAdapter';
 import { projectService } from '../../services/ProjectService';
 import { actionProposalService } from '../../services/agents/ActionProposalService';
-import { integrationRepository } from '../../database/IntegrationRepository';
+import { integrationRepository, parseConfig } from '../../database/IntegrationRepository';
+import { authMiddleware } from '../../middleware/auth';
+import { requireScope } from '../../middleware/requireScope';
 import { config } from '../../config';
 import logger from '../../utils/logger';
+
+const sendSlackSchema = z.object({
+  projectId: z.string().min(1),
+  text: z.string().min(1).max(4000),
+});
 
 export async function slackRoutes(fastify: FastifyInstance) {
   // POST /commands — Slack slash command handler
@@ -136,6 +144,58 @@ export async function slackRoutes(fastify: FastifyInstance) {
     } catch (error: any) {
       logger.error('Slack interactivity error', { error: error.message });
       return reply.status(200).send({ replace_original: false, text: 'An error occurred processing your action.' });
+    }
+  });
+
+  // POST /send — Send a message to all Slack integrations for a project (used by MCP)
+  fastify.post('/send', {
+    preHandler: [authMiddleware, requireScope('write')],
+    schema: { description: 'Send a message to Slack channels for a project', tags: ['slack'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId, text } = sendSlackSchema.parse(request.body);
+      const rows = await integrationRepository.findActiveSlackByProject(projectId);
+      if (rows.length === 0) {
+        return reply.status(404).send({ error: 'No Slack integrations found for this project' });
+      }
+
+      const results: { integrationId: string; success: boolean; message: string }[] = [];
+      for (const row of rows) {
+        const slackConfig = parseConfig(row.config) as SlackConfig;
+        const result = await slackAdapter.sendNotification(slackConfig, { text });
+        results.push({ integrationId: row.id, ...result });
+      }
+      return { sent: results.length, results };
+    } catch (error) {
+      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      logger.error('Slack send error', { error });
+      return reply.status(500).send({ error: 'Failed to send Slack message' });
+    }
+  });
+
+  // POST /test — Test Slack connection for a project's integrations
+  fastify.post('/test', {
+    preHandler: [authMiddleware, requireScope('read')],
+    schema: { description: 'Test Slack connection for a project', tags: ['slack'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId } = z.object({ projectId: z.string().min(1) }).parse(request.body);
+      const rows = await integrationRepository.findActiveSlackByProject(projectId);
+      if (rows.length === 0) {
+        return reply.status(404).send({ error: 'No Slack integrations found for this project' });
+      }
+
+      const results: { integrationId: string; success: boolean; message: string }[] = [];
+      for (const row of rows) {
+        const slackConfig = parseConfig(row.config) as SlackConfig;
+        const result = await slackAdapter.testConnection(slackConfig);
+        results.push({ integrationId: row.id, ...result });
+      }
+      return { results };
+    } catch (error) {
+      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      logger.error('Slack test error', { error });
+      return reply.status(500).send({ error: 'Failed to test Slack connection' });
     }
   });
 }

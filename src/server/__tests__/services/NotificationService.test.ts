@@ -31,6 +31,12 @@ vi.mock('../../services/UserService', () => ({
   },
 }));
 
+vi.mock('../../services/integrations/SlackEventDispatcher', () => ({
+  slackEventDispatcher: {
+    dispatchToSlack: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 vi.mock('../../config', () => ({
   config: {
     APP_URL: 'https://pm.kpbc.ca',
@@ -50,12 +56,14 @@ import { notificationRepository } from '../../database/NotificationRepository';
 import { WebSocketService } from '../../services/WebSocketService';
 import { emailService } from '../../services/EmailService';
 import { userService } from '../../services/UserService';
+import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import logger from '../../utils/logger';
 
 const mockRepo = notificationRepository as any;
 const mockWs = WebSocketService as any;
 const mockEmail = emailService as any;
 const mockUserService = userService as any;
+const mockSlack = slackEventDispatcher as any;
 
 const sampleNotification = {
   id: 'test-uuid-1234',
@@ -433,6 +441,71 @@ describe('NotificationService', () => {
       expect(mockRepo.insert).toHaveBeenCalled();
       expect(mockWs.sendToUser).toHaveBeenCalled();
       expect(mockEmail.sendNotificationEmail).toHaveBeenCalled();
+    });
+
+    it('dispatches to Slack for mapped notification types with projectId', async () => {
+      await service.create({
+        userId: 'user-1',
+        type: 'budget_alert',
+        severity: 'high',
+        title: 'Over Budget',
+        message: 'Project exceeded budget',
+        projectId: 'proj-1',
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockSlack.dispatchToSlack).toHaveBeenCalledWith(
+        'budget_alert',
+        { notification: { title: 'Over Budget', message: 'Project exceeded budget', severity: 'high', type: 'budget_alert' } },
+        'proj-1',
+      );
+    });
+
+    it('does not dispatch to Slack when no projectId', async () => {
+      await service.create({
+        userId: 'user-1',
+        type: 'budget_alert',
+        severity: 'high',
+        title: 'Over Budget',
+        message: 'No project',
+      });
+
+      expect(mockSlack.dispatchToSlack).not.toHaveBeenCalled();
+    });
+
+    it('does not dispatch to Slack for types already handled inline (task_completed)', async () => {
+      await service.create({
+        userId: 'user-1',
+        type: 'task_completed',
+        severity: 'medium',
+        title: 'Task Done',
+        message: 'Task completed',
+        projectId: 'proj-1',
+      });
+
+      // task_completed is NOT in NOTIFICATION_TYPE_TO_SLACK_EVENT — handled inline in routes
+      expect(mockSlack.dispatchToSlack).not.toHaveBeenCalled();
+    });
+
+    it('skips Slack when user has slack preference disabled', async () => {
+      mockUserService.findById.mockResolvedValueOnce({
+        id: 'user-1',
+        notificationTypePreferences: {
+          budget_finance: { inApp: true, email: true, slack: false },
+        },
+      });
+
+      await service.create({
+        userId: 'user-1',
+        type: 'budget_alert',
+        severity: 'high',
+        title: 'Budget Alert',
+        message: 'Slack disabled',
+        projectId: 'proj-1',
+      });
+
+      expect(mockSlack.dispatchToSlack).not.toHaveBeenCalled();
     });
 
     it('omits ctaUrl when linkId is missing', async () => {
