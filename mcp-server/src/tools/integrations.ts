@@ -35,7 +35,7 @@ export function registerIntegrationTools(server: McpServer) {
   );
 
   server.tool('list-slack-channels', 'List active Slack integrations (channels) across all projects', {}, async (_args, extra) => {
-    const result = await getApiClientFromExtra(extra).get('/integrations');
+    const result = await getApiClientFromExtra(extra).get('/integrations') as { integrations?: any[] };
     const integrations = result.integrations || [];
     const slackIntegrations = integrations.filter((i: any) => i.provider === 'slack' && i.isActive);
     return { content: [{ type: 'text' as const, text: JSON.stringify(slackIntegrations, null, 2) }] };
