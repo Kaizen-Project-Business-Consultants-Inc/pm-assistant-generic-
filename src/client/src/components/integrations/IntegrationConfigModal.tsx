@@ -370,7 +370,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
                   className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white"
                 >
                   <option value="">All Projects</option>
-                  {(projectsData?.projects || []).map((p: any) => (
+                  {(projectsData?.data || []).map((p: any) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>

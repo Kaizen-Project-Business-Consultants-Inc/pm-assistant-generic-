@@ -120,7 +120,7 @@ export const IntegrationsPage: React.FC = () => {
   });
 
   const integrations: Integration[] = integrationsData?.integrations ?? [];
-  const projects: { id: string; name: string }[] = projectsData?.projects ?? [];
+  const projects: { id: string; name: string }[] = projectsData?.data ?? [];
   const projectNameMap = new Map(projects.map((p) => [p.id, p.name]));
 
   // Build maps: for single-connection providers use first match, for multi keep all
