@@ -1,15 +1,21 @@
 # Kovarti PM — Pre-Subscriber TODO
 
-Status: 6/7 complete | Last updated: July 16, 2026 | Blocked: #1 needs Stripe setup
+Status: 7/7 complete | Last updated: July 28, 2026
 
 ---
 
-## 1. Test Full Stripe Subscriber Flow End-to-End — BLOCKED (Stripe not configured)
+## 1. ~~Test Full Stripe Subscriber Flow End-to-End~~ — DONE
 
-**Priority:** High | **Type:** Manual verification
+**Completed:** July 28, 2026
 
-### Blocker: Stripe env vars missing from production
-No `STRIPE_*` variables exist in `/opt/pm-app/.env`. Before testing, complete these steps:
+Stripe is fully configured in production (test mode):
+- API keys, webhook secret, and all price IDs set in `/opt/pm-app/.env`
+- 7 prices created: Consultant ($19/mo, $190/yr), SME Seat ($33/mo, $330/yr), Enterprise ($79/mo, $790/yr), Token Top-Up ($5)
+- Webhook endpoint verified: `https://pm.kpbc.ca/api/v1/stripe/webhook` (6 events)
+- All users backfilled with `stripe_customer_id`
+- Checkout session creation verified end-to-end
+
+### Previous blocker (resolved):
 
 1. **Get Stripe API keys** — stripe.com → Developers → API keys (use test mode)
 2. **Create products/prices** — Consultant Monthly ($25/mo) and Annual ($250/yr), copy `price_...` IDs
