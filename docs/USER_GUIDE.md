@@ -1383,6 +1383,8 @@ Navigate to **Settings** to configure:
 
 All eight Settings tabs (Profile, Team, Notifications, Display, Accessibility, API Keys, Webhooks, Danger Zone) fully support dark mode — toggle tracks, form panels, badges, code blocks, and the danger zone section all switch correctly when dark theme is active.
 
+**Deep linking:** You can link directly to any Settings tab using a `?tab=` query parameter, e.g., `/settings?tab=notifications` or `/settings?tab=danger`. The default tab (Profile) omits the parameter for a clean URL.
+
 ### Viewer Invites
 
 Paid plan users (Consultant, SME, and Enterprise) can invite external client stakeholders as **viewer accounts** at no extra charge, up to their plan's limit:
