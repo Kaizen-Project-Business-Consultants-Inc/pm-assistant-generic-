@@ -104,44 +104,44 @@ export function ProjectDetailPage() {
   const { viewers: presenceViewers, editors: presenceEditors } = usePresence(id);
   const otherViewers = presenceViewers.filter(v => v.userId !== user?.id);
 
+  const queryClient = useQueryClient();
+
+  // Single batch request replaces 5+ sequential queries
   const {
-    data: projectData,
+    data: summaryData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['project', id],
-    queryFn: () => apiService.getProject(id!),
-    enabled: !!id,
-  });
-
-  const project = projectData?.project;
-
-  const { data: riskStatsData } = useQuery({
-    queryKey: ['project-risks-stats', id],
-    queryFn: () => apiService.getRiskStats(id!),
+    queryKey: ['project-summary', id],
+    queryFn: () => apiService.getProjectSummary(id!),
     enabled: !!id,
     staleTime: 60_000,
   });
 
-  const riskStats = riskStatsData?.data || riskStatsData;
+  // Seed individual caches so child components (OverviewTab, ScheduleTab, etc.)
+  // get instant cache hits instead of making their own requests
+  useEffect(() => {
+    if (!summaryData || !id) return;
+    queryClient.setQueryData(['project', id], { project: summaryData.project });
+    queryClient.setQueryData(['schedules', id], { schedules: summaryData.schedules });
+    queryClient.setQueryData(['project-risks-stats', id], { data: summaryData.riskStats });
+    queryClient.setQueryData(['project-members', id], { members: summaryData.members });
+    queryClient.setQueryData(['sprints', id], { data: summaryData.sprints });
+    const firstScheduleId = summaryData.schedules?.[0]?.id;
+    if (firstScheduleId) {
+      queryClient.setQueryData(['tasks', firstScheduleId], { data: summaryData.tasks, total: summaryData.tasks?.length || 0, page: 1, pageSize: 1000, totalPages: 1 });
+      queryClient.setQueryData(['tasks', firstScheduleId, 'overview'], { tasks: summaryData.tasks });
+    }
+  }, [summaryData, id, queryClient]);
 
-  // Readiness bar data — shares cache with ScheduleTab / ResourcesTab
-  const { data: readinessSchedulesData } = useQuery({
-    queryKey: ['schedules', id],
-    queryFn: () => apiService.getSchedules(id!),
-    enabled: !!id,
-    staleTime: 120_000,
-  });
-  const readinessSchedules: any[] = readinessSchedulesData?.schedules || [];
+  const project = summaryData?.project;
+
+  const riskStats = summaryData?.riskStats;
+
+  const readinessSchedules: any[] = summaryData?.schedules || [];
   const firstScheduleId = readinessSchedules[0]?.id;
 
-  const { data: readinessTasksData } = useQuery({
-    queryKey: ['tasks', firstScheduleId],
-    queryFn: () => apiService.getTasks(firstScheduleId),
-    enabled: !!firstScheduleId,
-    staleTime: 120_000,
-  });
-  const readinessTasks: any[] = readinessTasksData?.data || readinessTasksData?.tasks || [];
+  const readinessTasks: any[] = summaryData?.tasks || [];
 
   const { data: readinessResourcesData } = useQuery({
     queryKey: ['resources'],
@@ -152,15 +152,9 @@ export function ProjectDetailPage() {
 
   // Sprint count for readiness bar (agile/hybrid)
   const methodology: Methodology = (project?.methodology || 'waterfall') as Methodology;
-  const { data: sprintsData } = useQuery({
-    queryKey: ['sprints', id],
-    queryFn: () => apiService.getSprints(id!),
-    enabled: !!id && methodology !== 'waterfall',
-    staleTime: 120_000,
-  });
-  const sprintCount = (sprintsData?.sprints || sprintsData?.data || []).length;
+  const sprintCount = (summaryData?.sprints || []).length;
 
-  // Velocity data for agile/hybrid context cards
+  // Velocity data for agile/hybrid context cards (not in summary — lightweight separate call)
   const { data: velocityData } = useQuery({
     queryKey: ['sprint-velocity', id],
     queryFn: () => apiService.getVelocityHistory(id!),
@@ -176,7 +170,6 @@ export function ProjectDetailPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
-  const queryClient = useQueryClient();
   const statusMutation = useMutation({
     mutationFn: ({ status, cancellationReason }: { status: string; cancellationReason?: string }) =>
       apiService.updateProjectStatus(id!, status, cancellationReason),

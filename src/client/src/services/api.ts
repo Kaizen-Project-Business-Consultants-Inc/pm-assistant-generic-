@@ -201,6 +201,11 @@ class ApiService {
     return response.data;
   }
 
+  async getProjectSummary(id: string) {
+    const response = await this.api.get(`/projects/${id}/summary`);
+    return response.data;
+  }
+
   async createProject(projectData: {
     name: string;
     description?: string;

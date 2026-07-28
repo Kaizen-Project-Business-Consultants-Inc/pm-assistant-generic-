@@ -7,7 +7,11 @@ import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import { auditLedgerService } from '../../services/AuditLedgerService';
-import { toProjectDTO, paginate } from '../../dto/responses';
+import { scheduleService } from '../../services/ScheduleService';
+import { riskService } from '../../services/RiskService';
+import { projectMemberService } from '../../services/ProjectMemberService';
+import { sprintService } from '../../services/SprintService';
+import { toProjectDTO, toScheduleDTO, toTaskDTO, paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import { favouriteProjectRepository } from '../../database/FavouriteProjectRepository';
 import { userService } from '../../services/UserService';
@@ -82,6 +86,46 @@ export async function projectRoutes(fastify: FastifyInstance) {
     } catch (error) {
       logger.error('Get project error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch project' });
+    }
+  });
+
+  // GET /:id/summary — Batch endpoint: project + schedules + tasks + riskStats + members + sprints
+  fastify.get('/:id/summary', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    schema: { description: 'Get project summary (batch)', tags: ['projects'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const project = await projectService.findById(id);
+      if (!project) {
+        return reply.status(404).send({ error: 'Not found', message: 'The requested resource was not found' });
+      }
+
+      // Run all queries in parallel
+      const [schedules, riskStats, members, sprints] = await Promise.all([
+        scheduleService.findByProjectId(id),
+        riskService.getStats(id),
+        projectMemberService.findByProjectId(id),
+        sprintService.getByProject(id),
+      ]);
+
+      // Fetch tasks for the primary schedule (if any)
+      const primarySchedule = schedules[0];
+      const tasks = primarySchedule
+        ? await scheduleService.findTasksByScheduleId(primarySchedule.id)
+        : [];
+
+      return {
+        project: toProjectDTO(project),
+        schedules: schedules.map(s => toScheduleDTO(s as any)),
+        tasks: tasks.map(t => toTaskDTO(t as any)),
+        riskStats,
+        members,
+        sprints,
+      };
+    } catch (error) {
+      logger.error('Get project summary error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch project summary' });
     }
   });
 
