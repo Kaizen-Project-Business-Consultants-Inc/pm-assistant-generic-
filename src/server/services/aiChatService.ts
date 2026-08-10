@@ -282,21 +282,20 @@ export class AIChatService {
     let projectContext = 'No specific project context.';
     let agentInsightsContext = '';
 
+    // Fetch all context in parallel: project/portfolio data, agent insights, self-learning memories
+    const userMemoriesP = agentMemoryService.recall('mjuzi-chat', 'role', req.userId).catch(() => []);
+
     if (req.context?.projectId) {
       try {
-        const ctx = await this.contextBuilder.buildProjectContext(req.context.projectId);
-        projectContext = this.contextBuilder.toPromptString(ctx);
-      } catch {
-        projectContext = `Project ID: ${req.context.projectId} (context unavailable)`;
-      }
-
-      // Fetch agent insights for this project (fire-and-forget safe)
-      try {
-        const [insights, priorConvos, mjuziMemories] = await Promise.all([
-          this.interAgentQueryService.getInsightsByProject(req.context.projectId),
-          chatRepository.findByProjectId(req.context.projectId, req.userId),
-          agentMemoryService.recall('mjuzi-chat', 'project', req.context.projectId),
+        const [ctx, insights, priorConvos, projectMemories, userMemories] = await Promise.all([
+          this.contextBuilder.buildProjectContext(req.context.projectId).catch(() => null),
+          this.interAgentQueryService.getInsightsByProject(req.context.projectId).catch(() => []),
+          chatRepository.findByProjectId(req.context.projectId, req.userId).catch(() => []),
+          agentMemoryService.recall('mjuzi-chat', 'project', req.context.projectId).catch(() => []),
+          userMemoriesP,
         ]);
+
+        projectContext = ctx ? this.contextBuilder.toPromptString(ctx) : `Project ID: ${req.context.projectId} (context unavailable)`;
 
         const parts: string[] = [];
 
@@ -309,67 +308,37 @@ export class AIChatService {
           parts.push(`You have had ${priorConvos.length} prior conversation(s) about this project.`);
         }
 
-        if (mjuziMemories.length > 0) {
-          const memLines = mjuziMemories.slice(0, 5).map(m => `- ${m.keyName}: ${JSON.stringify(m.value)}`).join('\n');
+        // Mjuzi project notes (excluding corrections, which go in selfLearnContext)
+        const projectNotes = projectMemories.filter(m => !m.keyName.startsWith('correction:'));
+        if (projectNotes.length > 0) {
+          const memLines = projectNotes.slice(0, 5).map(m => `- ${m.keyName}: ${JSON.stringify(m.value)}`).join('\n');
           parts.push(`Your prior notes about this project:\n${memLines}`);
         }
 
         if (parts.length > 0) {
           agentInsightsContext = '\n\n' + parts.join('\n\n');
         }
+
+        // Self-learning: user prefs + corrections (user-scoped + project-scoped)
+        agentInsightsContext += this.buildSelfLearnContext(userMemories, projectMemories);
       } catch {
-        // Non-critical — continue without agent context
+        // Non-critical — continue with defaults
       }
     } else {
-      // Always load portfolio context when no specific project is selected
       try {
-        const ctx = await this.contextBuilder.buildPortfolioContext({ userId: req.userId, role: req.userRole });
-        projectContext = this.contextBuilder.portfolioToPromptString(ctx);
+        const [ctx, userMemories] = await Promise.all([
+          this.contextBuilder.buildPortfolioContext({ userId: req.userId, role: req.userRole }).catch(() => null),
+          userMemoriesP,
+        ]);
+        projectContext = ctx ? this.contextBuilder.portfolioToPromptString(ctx) : 'Portfolio context unavailable.';
+        agentInsightsContext += this.buildSelfLearnContext(userMemories, []);
       } catch {
         projectContext = 'Portfolio context unavailable.';
       }
     }
 
-    // Recall user preferences and corrections for self-learning context
-    let selfLearnContext = '';
-    try {
-      const [userMemories, projectCorrections] = await Promise.all([
-        agentMemoryService.recall('mjuzi-chat', 'role', req.userId),
-        req.context?.projectId
-          ? agentMemoryService.recall('mjuzi-chat', 'project', req.context.projectId)
-          : Promise.resolve([]),
-      ]);
-
-      const prefEntries = userMemories.filter(m => m.keyName.startsWith('pref:'));
-      const corrEntries = [
-        ...userMemories.filter(m => m.keyName.startsWith('correction:')),
-        ...projectCorrections.filter(m => m.keyName.startsWith('correction:')),
-      ];
-
-      const parts: string[] = [];
-      if (prefEntries.length > 0) {
-        const prefLines = prefEntries.slice(0, 10).map(m => {
-          const v = m.value as { value: string; reason: string };
-          return `- ${m.keyName.replace('pref:', '')}: ${v.value}`;
-        }).join('\n');
-        parts.push(`User preferences (apply these to your responses):\n${prefLines}`);
-      }
-      if (corrEntries.length > 0) {
-        const corrLines = corrEntries.slice(0, 10).map(m => {
-          const v = m.value as { wrong: string; correct: string };
-          return `- ${m.keyName.replace('correction:', '')}: NOT "${v.wrong}" — correct is "${v.correct}"`;
-        }).join('\n');
-        parts.push(`Previous corrections (do not repeat these mistakes):\n${corrLines}`);
-      }
-      if (parts.length > 0) {
-        selfLearnContext = '\n\n' + parts.join('\n\n');
-      }
-    } catch {
-      // Non-critical — continue without self-learn context
-    }
-
     const systemPrompt = promptTemplates.conversational.render({
-      projectContext: projectContext + agentInsightsContext + selfLearnContext,
+      projectContext: projectContext + agentInsightsContext,
       userRole: req.userRole || 'team_member',
     });
 
@@ -433,6 +402,36 @@ export class AIChatService {
       this.fastify.log.error({ err: error instanceof Error ? error : new Error(String(error)) }, 'Failed to persist conversation');
       return req.conversationId || randomUUID();
     }
+  }
+
+  private buildSelfLearnContext(
+    userMemories: import('./AgentMemoryService').AgentMemory[],
+    projectMemories: import('./AgentMemoryService').AgentMemory[],
+  ): string {
+    const prefEntries = userMemories.filter(m => m.keyName.startsWith('pref:'));
+    const corrEntries = [
+      ...userMemories.filter(m => m.keyName.startsWith('correction:')),
+      ...projectMemories.filter(m => m.keyName.startsWith('correction:')),
+    ];
+
+    if (prefEntries.length === 0 && corrEntries.length === 0) return '';
+
+    const parts: string[] = [];
+    if (prefEntries.length > 0) {
+      const prefLines = prefEntries.slice(0, 10).map(m => {
+        const v = m.value as { value: string; reason: string };
+        return `- ${m.keyName.replace('pref:', '')}: ${v.value}`;
+      }).join('\n');
+      parts.push(`User preferences (apply these to your responses):\n${prefLines}`);
+    }
+    if (corrEntries.length > 0) {
+      const corrLines = corrEntries.slice(0, 10).map(m => {
+        const v = m.value as { wrong: string; correct: string };
+        return `- ${m.keyName.replace('correction:', '')}: NOT "${v.wrong}" — correct is "${v.correct}"`;
+      }).join('\n');
+      parts.push(`Previous corrections (do not repeat these mistakes):\n${corrLines}`);
+    }
+    return '\n\n' + parts.join('\n\n');
   }
 
   private storeActionMemory(req: ChatRequest, actions?: ActionResult[]): void {
