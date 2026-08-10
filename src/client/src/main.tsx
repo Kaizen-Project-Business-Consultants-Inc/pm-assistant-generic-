@@ -5,16 +5,20 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import './index.css';
 
-registerSW({
+const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
-    // New version deployed — reload to pick it up
-    if (window.confirm('A new version of Kovarti PM is available. Reload now?')) {
-      window.location.reload();
-    }
+    // New version deployed — activate the new SW and reload
+    updateSW(true);
   },
   onOfflineReady() {
     // Silently ready for offline use — no action needed
+  },
+  onRegisteredSW(_swUrl, registration) {
+    // Check for updates every 5 minutes
+    if (registration) {
+      setInterval(() => { registration.update(); }, 5 * 60 * 1000);
+    }
   },
 });
 

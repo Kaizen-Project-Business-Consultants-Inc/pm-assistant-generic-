@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       manifest: {
         name: 'Kovarti PM',
         short_name: 'Kovarti PM',
@@ -24,7 +24,6 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         navigateFallbackDenylist: [/^\/api\//, /^\/authorize/, /^\/token/, /^\/register$/, /^\/revoke/, /^\/mcp/, /^\/.well-known\//],
