@@ -266,12 +266,19 @@ export async function userRoutes(fastify: FastifyInstance) {
   });
 
   // View preferences (cross-device UI state)
+  const columnStateSchema = z.object({
+    visibleKeys: z.array(z.string()).optional(),
+    columnOrder: z.array(z.string()).optional(),
+    colWidths: z.record(z.string(), z.number()).optional(),
+  });
+
   const viewPrefsSchema = z.object({
     theme: z.enum(['light', 'dark']).optional(),
     sidebarCollapsed: z.boolean().optional(),
     scheduleViewMode: z.enum(['gantt', 'kanban', 'table', 'calendar', 'network', 'burndown']).optional(),
     projectsViewMode: z.enum(['card', 'table']).optional(),
     aiPanelOpen: z.boolean().optional(),
+    columnStates: z.record(z.string(), columnStateSchema).optional(),
   });
 
   fastify.get('/me/view-preferences', {

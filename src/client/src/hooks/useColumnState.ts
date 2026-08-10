@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS, SCHEDULING_KEYS } from '../components/schedule/tableColumns';
 import type { ColumnKey, ColumnGroup, ColumnDef } from '../components/schedule/tableColumns';
+import { apiService } from '../services/api';
 
 export interface ColumnState {
   visibleKeys: Set<ColumnKey>;
@@ -14,6 +15,29 @@ export interface ColumnState {
   setColWidths: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   moveColumn: (colKey: ColumnKey, direction: 'left' | 'right') => void;
   cpmNeeded: boolean;
+}
+
+interface PerScheduleColumnState {
+  visibleKeys: ColumnKey[];
+  columnOrder: ColumnKey[];
+  colWidths: Record<string, number>;
+}
+
+/** Debounce timer for server sync — shared across instances */
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+function syncToServer(scheduleId: string, state: PerScheduleColumnState) {
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    apiService.getViewPreferences()
+      .then((res: any) => {
+        const existing = res?.preferences || {};
+        const columnStates = existing.columnStates || {};
+        columnStates[scheduleId] = state;
+        return apiService.updateViewPreferences({ ...existing, columnStates });
+      })
+      .catch(() => {/* silent */});
+  }, 1500);
 }
 
 export function useColumnState(scheduleId: string): ColumnState {
@@ -45,14 +69,50 @@ export function useColumnState(scheduleId: string): ColumnState {
     return {};
   });
 
-  // Persist
+  // Track whether server prefs have been loaded to avoid overwriting on first persist
+  const serverLoaded = useRef(false);
+
+  // On mount: fetch server-side column state and apply if present
+  useEffect(() => {
+    apiService.getViewPreferences()
+      .then((res: any) => {
+        const prefs = res?.preferences;
+        const saved: PerScheduleColumnState | undefined = prefs?.columnStates?.[scheduleId];
+        if (saved) {
+          if (saved.visibleKeys?.length) {
+            const keys = new Set(saved.visibleKeys as ColumnKey[]);
+            keys.add('rowNum');
+            setVisibleKeys(keys);
+            localStorage.setItem(`tableview-cols:${scheduleId}`, JSON.stringify(saved.visibleKeys));
+          }
+          if (saved.columnOrder?.length) {
+            setColumnOrder(saved.columnOrder);
+            localStorage.setItem(`tableview-col-order:${scheduleId}`, JSON.stringify(saved.columnOrder));
+          }
+          if (saved.colWidths && Object.keys(saved.colWidths).length) {
+            setColWidths(saved.colWidths);
+            localStorage.setItem(`tableview-col-widths:${scheduleId}`, JSON.stringify(saved.colWidths));
+          }
+        }
+        serverLoaded.current = true;
+      })
+      .catch(() => { serverLoaded.current = true; });
+  }, [scheduleId]);
+
+  // Persist to localStorage + server
   useEffect(() => {
     localStorage.setItem(`tableview-cols:${scheduleId}`, JSON.stringify([...visibleKeys]));
+    if (serverLoaded.current) {
+      syncToServer(scheduleId, { visibleKeys: [...visibleKeys], columnOrder, colWidths });
+    }
   }, [visibleKeys, scheduleId]);
 
   useEffect(() => {
     if (columnOrder.length > 0) {
       localStorage.setItem(`tableview-col-order:${scheduleId}`, JSON.stringify(columnOrder));
+    }
+    if (serverLoaded.current) {
+      syncToServer(scheduleId, { visibleKeys: [...visibleKeys], columnOrder, colWidths });
     }
   }, [columnOrder, scheduleId]);
 
@@ -60,7 +120,20 @@ export function useColumnState(scheduleId: string): ColumnState {
     if (Object.keys(colWidths).length > 0) {
       localStorage.setItem(`tableview-col-widths:${scheduleId}`, JSON.stringify(colWidths));
     }
+    if (serverLoaded.current) {
+      syncToServer(scheduleId, { visibleKeys: [...visibleKeys], columnOrder, colWidths });
+    }
   }, [colWidths, scheduleId]);
+
+  // Cleanup sync timer on unmount — flush pending sync
+  useEffect(() => {
+    return () => {
+      if (syncTimer) {
+        clearTimeout(syncTimer);
+        syncTimer = null;
+      }
+    };
+  }, []);
 
   const toggleColumn = useCallback((key: ColumnKey) => {
     if (key === 'name' || key === 'rowNum') return;

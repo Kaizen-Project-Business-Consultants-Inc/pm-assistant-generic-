@@ -9,6 +9,7 @@ export interface ViewPreferences {
   scheduleViewMode?: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown';
   projectsViewMode?: 'card' | 'table';
   aiPanelOpen?: boolean;
+  columnStates?: Record<string, { visibleKeys?: string[]; columnOrder?: string[]; colWidths?: Record<string, number> }>;
 }
 
 function loadLocal(): ViewPreferences | null {
