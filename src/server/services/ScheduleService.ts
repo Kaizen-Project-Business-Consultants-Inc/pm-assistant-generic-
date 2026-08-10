@@ -290,6 +290,15 @@ export class ScheduleService {
     const legacyDepType = firstDep?.dependencyType || null;
     const legacyLag = firstDep?.lagDays ?? 0;
 
+    // Auto-compute endDate from startDate + estimatedDays when endDate is missing
+    if (data.startDate && data.estimatedDays && !data.endDate) {
+      const start = new Date(data.startDate);
+      if (!isNaN(start.getTime())) {
+        start.setDate(start.getDate() + data.estimatedDays);
+        data.endDate = start.toISOString().split('T')[0];
+      }
+    }
+
     await databaseService.transaction(async (conn) => {
       const q = <T = any>(sql: string, params: any[] = []) => databaseService.queryOn<T>(conn, sql, params);
 
@@ -438,6 +447,18 @@ export class ScheduleService {
     };
 
     const toDateStr = TaskRepository.toDateStr;
+
+    // Auto-compute endDate when startDate + estimatedDays are known but endDate is missing
+    const effectiveStart = data.startDate ?? oldTask.startDate;
+    const effectiveEstDays = data.estimatedDays ?? oldTask.estimatedDays;
+    const effectiveEnd = data.endDate ?? oldTask.endDate;
+    if (effectiveStart && effectiveEstDays && !effectiveEnd) {
+      const start = new Date(effectiveStart);
+      if (!isNaN(start.getTime())) {
+        start.setDate(start.getDate() + effectiveEstDays);
+        data.endDate = start.toISOString().split('T')[0];
+      }
+    }
 
     await databaseService.transaction(async (conn) => {
       const q = <T = any>(sql: string, params: any[] = []) => databaseService.queryOn<T>(conn, sql, params);
