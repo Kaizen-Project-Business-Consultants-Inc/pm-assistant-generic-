@@ -293,6 +293,7 @@ Each task supports up to **20 predecessors**. Set dependencies to define executi
 - Gantt dependency arrows are drawn for each predecessor and colour-coded by predecessor health. All predecessors are used in critical path and Monte Carlo analysis.
 - **Validation** -- The server enforces dependency rules for each predecessor: no self-references, no circular dependencies (A→B→C→A), dependencies must exist and be in the same schedule, and the 20-predecessor limit is enforced. Invalid dependencies return an error message explaining the issue.
 - **Orphan cleanup** -- Deleting a task automatically removes all dependency records that referenced it (via `ON DELETE CASCADE`), so no other tasks are left with broken predecessors.
+- **Removing dependencies** -- To remove a single predecessor, edit the task and delete the predecessor row, or clear it from the inline Predecessor cell. To remove **all** dependencies in a schedule at once, ask the AI assistant (e.g. "remove all dependencies from this schedule") — it will use the `clear-all-dependencies` tool to bulk-remove them.
 
 ### Task Activity Panel
 

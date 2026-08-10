@@ -101,6 +101,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Move one task -> cascade all dependent tasks automatically
 - Respect all four dependency types (FS, SS, FF, SF) and lag days across multiple predecessors
 - Up to 20 predecessors per task; cascades compute the correct early start by taking the maximum constraint from all predecessors
+- Remove individual dependencies or bulk-clear all dependencies in a schedule via API, AI agent, and MCP tools
 - **Benchmark:** MS Project, Primavera P6
 
 ### 2.2 Workflow Automation Builder (DAG Engine)

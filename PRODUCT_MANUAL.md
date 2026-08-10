@@ -1498,6 +1498,15 @@ All dependency writes — API, UI, and AI tools — go through `validateDependen
 
 **Orphan cleanup:** When a task is deleted, its row in `task_dependencies` is removed by `ON DELETE CASCADE` for both the predecessor and successor sides, so no dangling references remain.
 
+### Dependency Removal
+
+Two operations are available for removing dependencies:
+
+- **Remove a single dependency** — `DELETE /api/v1/schedules/:scheduleId/tasks/:taskId/dependencies/:predecessorId` removes one predecessor link from a task. Available via MCP tool `remove-dependency` and AI agent tool `remove_dependency`.
+- **Clear all dependencies in a schedule** — `DELETE /api/v1/schedules/:scheduleId/dependencies` bulk-removes every predecessor-successor link in the schedule. Available via MCP tool `clear-all-dependencies` and AI agent tool `clear_all_dependencies`. This is classified as a destructive operation and requires manager-level project access.
+
+Both operations also clear the legacy denormalized columns (`dependency`, `dependency_type`, `dependency_lag_days`) on affected tasks and broadcast WebSocket events for real-time UI updates.
+
 ---
 
 ## 28. Kanban WIP Limits
