@@ -122,6 +122,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           role: user.role,
           subscriptionTier: user.role === 'admin' ? 'enterprise' : user.subscriptionTier,
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
+          trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
         },
       };
     } catch (error) {
@@ -208,9 +209,11 @@ export async function authRoutes(fastify: FastifyInstance) {
           logger.error('Failed to accept invite during registration', { userId: user.id, error: inviteErr });
         }
       } else {
-        // Regular user: no subscription until they pick a plan
+        // Regular user: start 14-day trial
+        const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
         await userService.update(user.id, {
-          subscriptionStatus: 'none',
+          subscriptionStatus: 'trialing',
+          trialEndsAt,
         });
 
         // Multi-tenant: create organization and provision tenant database
@@ -275,7 +278,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             fullName: user.fullName,
             role: user.role,
             subscriptionTier: 'trial',
-            subscriptionStatus: 'none',
+            subscriptionStatus: 'trialing',
           },
         });
       }
