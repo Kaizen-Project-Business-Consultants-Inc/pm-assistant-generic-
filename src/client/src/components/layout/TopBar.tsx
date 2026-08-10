@@ -114,12 +114,10 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
 
   const breadcrumbs = useMemo(() => {
     const crumbs = buildBreadcrumbs(location.pathname);
-    // Replace UUID breadcrumb with project name
-    if (projectName) {
-      for (const crumb of crumbs) {
-        if (UUID_RE.test(crumb.label)) {
-          crumb.label = projectName;
-        }
+    // Replace or hide UUID breadcrumb with project name
+    for (const crumb of crumbs) {
+      if (UUID_RE.test(crumb.label)) {
+        crumb.label = projectName || 'Project';
       }
     }
     return crumbs;
