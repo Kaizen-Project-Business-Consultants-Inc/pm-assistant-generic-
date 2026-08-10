@@ -290,8 +290,21 @@ export class ScheduleService {
     const legacyDepType = firstDep?.dependencyType || null;
     const legacyLag = firstDep?.lagDays ?? 0;
 
+    // Default startDate to schedule start date (or today) if missing — like MS Project
+    if (!data.startDate) {
+      const schedule = await this.findById(data.scheduleId);
+      data.startDate = schedule?.startDate
+        ? new Date(schedule.startDate).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+    }
+
+    // Default estimatedDays to 1 if missing — like MS Project's "1 day?" default
+    if (!data.estimatedDays) {
+      data.estimatedDays = 1;
+    }
+
     // Auto-compute endDate from startDate + estimatedDays when endDate is missing
-    if (data.startDate && data.estimatedDays && !data.endDate) {
+    if (!data.endDate) {
       const start = new Date(data.startDate);
       if (!isNaN(start.getTime())) {
         start.setDate(start.getDate() + data.estimatedDays);
