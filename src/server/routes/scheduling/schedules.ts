@@ -191,12 +191,14 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
 
       const oldEndDate = oldTask.endDate ? new Date(oldTask.endDate) : null;
 
-      const task = await scheduleService.updateTask(taskId, {
-        ...data,
-        dueDate: data.dueDate || undefined,
-        startDate: data.startDate || undefined,
-        endDate: data.endDate || undefined,
-      });
+      // Only include fields that were actually sent — avoid setting unsent fields to null
+      const updatePayload: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(data)) {
+        if (value !== undefined) {
+          updatePayload[key] = value;
+        }
+      }
+      const task = await scheduleService.updateTask(taskId, updatePayload as any);
       if (!task) return reply.status(404).send({ error: 'Not found', message: 'Task not found' });
 
       // Auto-scheduling: cascade date changes to downstream tasks

@@ -59,6 +59,8 @@ const segmentLabels: Record<string, string> = {
   privacy: 'Privacy',
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function buildBreadcrumbs(pathname: string): Breadcrumb[] {
   const segments = pathname.split('/').filter(Boolean);
   const crumbs: Breadcrumb[] = [{ label: 'Home', path: '/dashboard' }];
@@ -71,11 +73,15 @@ function buildBreadcrumbs(pathname: string): Breadcrumb[] {
   let currentPath = '';
   for (const segment of segments) {
     currentPath += `/${segment}`;
+    // Keep UUIDs as-is (dashes intact) so they can be detected and replaced with names
+    const isUuid = UUID_RE.test(segment);
     const label =
       segmentLabels[segment] ||
-      (ACRONYMS.has(segment.toLowerCase())
-        ? segment.toUpperCase()
-        : segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' '));
+      (isUuid
+        ? segment
+        : ACRONYMS.has(segment.toLowerCase())
+          ? segment.toUpperCase()
+          : segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' '));
     crumbs.push({ label, path: currentPath });
   }
 
@@ -85,8 +91,6 @@ function buildBreadcrumbs(pathname: string): Breadcrumb[] {
 interface TopBarProps {
   onMobileMenuToggle?: () => void;
 }
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
   const location = useLocation();
