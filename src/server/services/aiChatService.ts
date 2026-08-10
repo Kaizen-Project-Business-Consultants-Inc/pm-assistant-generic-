@@ -8,6 +8,7 @@ import { AIActionExecutor, type ActionResult } from './aiActionExecutor';
 import { chatRepository, type ChatConversation, type ChatMessage } from '../database/ChatRepository';
 import { agentMemoryService } from './AgentMemoryService';
 import { InterAgentQueryService } from './agents/InterAgentQueryService';
+import { AIBudgetExceededError } from './AIBudgetService';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -147,8 +148,15 @@ export class AIChatService {
         errorMessage: error instanceof Error ? error.message : String(error),
       });
 
+      let reply: string;
+      if (error instanceof AIBudgetExceededError) {
+        reply = `You've reached your monthly AI token limit (${error.used.toLocaleString()} / ${error.budget.toLocaleString()} tokens used). Your budget resets on **${error.resetDate}**.\n\nYou can [purchase additional tokens](/pricing) to continue using AI features, or wait for your budget to reset. All non-AI features remain fully available.`;
+      } else {
+        reply = 'I encountered an error processing your request. Please try again in a moment.';
+      }
+
       return {
-        reply: 'I encountered an error processing your request. Please try again in a moment.',
+        reply,
         conversationId: req.conversationId || randomUUID(),
         aiPowered: false,
       };
