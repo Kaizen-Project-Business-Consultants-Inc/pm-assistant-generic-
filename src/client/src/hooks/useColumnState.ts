@@ -23,21 +23,15 @@ interface PerScheduleColumnState {
   colWidths: Record<string, number>;
 }
 
-/** Debounce timer for server sync — shared across instances */
-let syncTimer: ReturnType<typeof setTimeout> | null = null;
-
-function syncToServer(scheduleId: string, state: PerScheduleColumnState) {
-  if (syncTimer) clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => {
-    apiService.getViewPreferences()
-      .then((res: any) => {
-        const existing = res?.preferences || {};
-        const columnStates = existing.columnStates || {};
-        columnStates[scheduleId] = state;
-        return apiService.updateViewPreferences({ ...existing, columnStates });
-      })
-      .catch(() => {/* silent */});
-  }, 1500);
+function doSyncToServer(scheduleId: string, state: PerScheduleColumnState) {
+  apiService.getViewPreferences()
+    .then((res: any) => {
+      const existing = res?.preferences || {};
+      const columnStates = existing.columnStates || {};
+      columnStates[scheduleId] = state;
+      return apiService.updateViewPreferences({ ...existing, columnStates });
+    })
+    .catch(() => {/* silent */});
 }
 
 export function useColumnState(scheduleId: string): ColumnState {
@@ -71,6 +65,22 @@ export function useColumnState(scheduleId: string): ColumnState {
 
   // Track whether server prefs have been loaded to avoid overwriting on first persist
   const serverLoaded = useRef(false);
+  // Track dirty state so we can flush on unmount
+  const dirtyRef = useRef(false);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Keep latest values in refs so unmount cleanup has access
+  const latestRef = useRef({ visibleKeys, columnOrder, colWidths });
+  latestRef.current = { visibleKeys, columnOrder, colWidths };
+
+  const scheduleDebouncedSync = useCallback(() => {
+    dirtyRef.current = true;
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      dirtyRef.current = false;
+      const { visibleKeys: vk, columnOrder: co, colWidths: cw } = latestRef.current;
+      doSyncToServer(scheduleId, { visibleKeys: [...vk], columnOrder: co, colWidths: cw });
+    }, 1500);
+  }, [scheduleId]);
 
   // On mount: fetch server-side column state and apply if present
   useEffect(() => {
@@ -99,41 +109,40 @@ export function useColumnState(scheduleId: string): ColumnState {
       .catch(() => { serverLoaded.current = true; });
   }, [scheduleId]);
 
-  // Persist to localStorage + server
+  // Persist to localStorage + debounced server sync
   useEffect(() => {
     localStorage.setItem(`tableview-cols:${scheduleId}`, JSON.stringify([...visibleKeys]));
-    if (serverLoaded.current) {
-      syncToServer(scheduleId, { visibleKeys: [...visibleKeys], columnOrder, colWidths });
-    }
-  }, [visibleKeys, scheduleId]);
+    if (serverLoaded.current) scheduleDebouncedSync();
+  }, [visibleKeys, scheduleId, scheduleDebouncedSync]);
 
   useEffect(() => {
     if (columnOrder.length > 0) {
       localStorage.setItem(`tableview-col-order:${scheduleId}`, JSON.stringify(columnOrder));
     }
-    if (serverLoaded.current) {
-      syncToServer(scheduleId, { visibleKeys: [...visibleKeys], columnOrder, colWidths });
-    }
-  }, [columnOrder, scheduleId]);
+    if (serverLoaded.current) scheduleDebouncedSync();
+  }, [columnOrder, scheduleId, scheduleDebouncedSync]);
 
   useEffect(() => {
     if (Object.keys(colWidths).length > 0) {
       localStorage.setItem(`tableview-col-widths:${scheduleId}`, JSON.stringify(colWidths));
     }
-    if (serverLoaded.current) {
-      syncToServer(scheduleId, { visibleKeys: [...visibleKeys], columnOrder, colWidths });
-    }
-  }, [colWidths, scheduleId]);
+    if (serverLoaded.current) scheduleDebouncedSync();
+  }, [colWidths, scheduleId, scheduleDebouncedSync]);
 
-  // Cleanup sync timer on unmount — flush pending sync
+  // On unmount: flush pending sync immediately instead of discarding it
   useEffect(() => {
     return () => {
-      if (syncTimer) {
-        clearTimeout(syncTimer);
-        syncTimer = null;
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
+      if (dirtyRef.current) {
+        const { visibleKeys: vk, columnOrder: co, colWidths: cw } = latestRef.current;
+        doSyncToServer(scheduleId, { visibleKeys: [...vk], columnOrder: co, colWidths: cw });
+        dirtyRef.current = false;
       }
     };
-  }, []);
+  }, [scheduleId]);
 
   const toggleColumn = useCallback((key: ColumnKey) => {
     if (key === 'name' || key === 'rowNum') return;

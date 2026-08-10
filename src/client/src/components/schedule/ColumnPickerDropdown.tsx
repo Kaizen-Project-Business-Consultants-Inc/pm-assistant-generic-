@@ -68,7 +68,7 @@ export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleG
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-2 max-h-[70vh] overflow-y-auto">
+        <div className="absolute left-0 top-full mt-1 z-50 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-2 max-h-[70vh] overflow-y-auto">
           {grouped.map(({ group, label, cols }) => {
             const allVisible = cols.every(c => visibleKeys.has(c.key));
             const someVisible = cols.some(c => visibleKeys.has(c.key));
