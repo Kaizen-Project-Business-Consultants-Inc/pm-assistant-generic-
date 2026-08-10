@@ -6,6 +6,7 @@ import { userService } from './UserService';
 import { auditLedgerService } from './AuditLedgerService';
 import { policyEngineService } from './PolicyEngineService';
 import { deadLetterService } from './DeadLetterService';
+import { agentMemoryService } from './AgentMemoryService';
 
 export interface ActionResult {
   success: boolean;
@@ -74,6 +75,8 @@ export class AIActionExecutor {
         case 'get_overdue_tasks': result = await this.getOverdueTasks(); break;
         case 'get_high_risk_projects': result = await this.getHighRiskProjects(); break;
         case 'get_portfolio_summary': result = await this.getPortfolioSummary(); break;
+        case 'remember_user_preference': result = await this.rememberUserPreference(input, context); break;
+        case 'remember_correction': result = await this.rememberCorrection(input, context); break;
         default:
           return { success: false, toolName, summary: `Unknown tool: ${toolName}`, error: `Tool '${toolName}' is not recognized` };
       }
@@ -728,6 +731,47 @@ export class AIActionExecutor {
         totalBudgetSpent: totalSpent,
         budgetUtilization: totalBudget > 0 ? `${Math.round((totalSpent / totalBudget) * 100)}%` : 'N/A',
       },
+    };
+  }
+
+  private async rememberUserPreference(input: Record<string, any>, context: ActionContext): Promise<ActionResult> {
+    const { preferenceKey, preferenceValue, reason } = input;
+
+    await agentMemoryService.store(
+      'mjuzi-chat',
+      'role',            // user-scoped (entityId = userId)
+      context.userId,
+      `pref:${preferenceKey}`,
+      { value: preferenceValue, reason, setAt: new Date().toISOString() },
+    );
+
+    return {
+      success: true,
+      toolName: 'remember_user_preference',
+      summary: `Noted preference: ${preferenceKey} = ${preferenceValue}`,
+      data: { preferenceKey, preferenceValue },
+    };
+  }
+
+  private async rememberCorrection(input: Record<string, any>, context: ActionContext): Promise<ActionResult> {
+    const { correctionKey, wrongValue, correctValue, projectId } = input;
+
+    const entityId = projectId || context.userId;
+    const memoryType = projectId ? 'project' : 'role';
+
+    await agentMemoryService.store(
+      'mjuzi-chat',
+      memoryType as any,
+      entityId,
+      `correction:${correctionKey}`,
+      { wrong: wrongValue, correct: correctValue, correctedAt: new Date().toISOString() },
+    );
+
+    return {
+      success: true,
+      toolName: 'remember_correction',
+      summary: `Noted correction: ${correctionKey} — was "${wrongValue}", should be "${correctValue}"`,
+      data: { correctionKey, wrongValue, correctValue, projectId },
     };
   }
 }

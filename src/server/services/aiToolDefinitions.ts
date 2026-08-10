@@ -255,9 +255,36 @@ export const AI_TOOLS: Anthropic.Tool[] = [
       required: [],
     },
   },
+  {
+    name: 'remember_user_preference',
+    description: 'Store a user preference you detected from the conversation. Call this when the user explicitly states a preference about how they want responses formatted, what level of detail they prefer, which topics to focus on, etc. Examples: "keep it short", "always show budget numbers", "I prefer tables", "don\'t include risk scores". Do NOT call this for one-off requests — only for stated ongoing preferences.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        preferenceKey: { type: 'string', description: 'Short key for the preference, e.g. "response_length", "detail_level", "format_preference", "focus_area"' },
+        preferenceValue: { type: 'string', description: 'The preference value, e.g. "brief", "detailed", "tables", "budget_focus"' },
+        reason: { type: 'string', description: 'What the user said that indicates this preference' },
+      },
+      required: ['preferenceKey', 'preferenceValue', 'reason'],
+    },
+  },
+  {
+    name: 'remember_correction',
+    description: 'Store a correction the user made to something you said. Call this when the user corrects factual information, clarifies a misunderstanding, or tells you something you got wrong. This prevents repeating the same mistake. Examples: "No, the budget is $50K not $30K", "That task belongs to Phase 2 not Phase 1", "John is the PM, not Sarah".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        correctionKey: { type: 'string', description: 'Short key describing what was corrected, e.g. "project_budget", "task_owner", "phase_assignment"' },
+        wrongValue: { type: 'string', description: 'What you incorrectly said or assumed' },
+        correctValue: { type: 'string', description: 'The correct information from the user' },
+        projectId: { type: 'string', description: 'Project ID if the correction is project-specific' },
+      },
+      required: ['correctionKey', 'wrongValue', 'correctValue'],
+    },
+  },
 ];
 
 // Tool categories for permission checking
 export const DESTRUCTIVE_TOOLS = ['delete_task', 'clear_all_dependencies'];
 export const MUTATING_TOOLS = ['create_task', 'update_task', 'delete_task', 'create_project', 'update_project', 'reschedule_task', 'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies'];
-export const READ_ONLY_TOOLS = ['list_projects', 'get_project_details', 'list_tasks', 'get_dependency_chain', 'get_projects_due_today', 'get_overdue_projects', 'get_projects_by_status', 'get_overdue_tasks', 'get_high_risk_projects', 'get_portfolio_summary'];
+export const READ_ONLY_TOOLS = ['list_projects', 'get_project_details', 'list_tasks', 'get_dependency_chain', 'get_projects_due_today', 'get_overdue_projects', 'get_projects_by_status', 'get_overdue_tasks', 'get_high_risk_projects', 'get_portfolio_summary', 'remember_user_preference', 'remember_correction'];

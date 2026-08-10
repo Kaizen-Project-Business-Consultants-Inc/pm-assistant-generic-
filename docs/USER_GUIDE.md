@@ -968,6 +968,11 @@ All AI surfaces are grouped under the **Mjuzi AI** section in the sidebar. "Ask 
 - Click the **+** button to start a new conversation.
 - Mjuzi remembers past interactions about a project and incorporates agent scan findings for richer, more informed responses.
 
+**Self-learning**
+
+- **Preferences**: Tell Mjuzi how you like your responses and it will remember across sessions. Examples: "keep it brief", "always include budget numbers", "I prefer bullet points over tables". Mjuzi stores these and applies them to all future conversations.
+- **Corrections**: If Mjuzi gets a fact wrong, correct it and it will remember. Example: "No, the budget is $50K not $30K." Mjuzi stores the correction and won't repeat the mistake. Project-specific corrections stay scoped to that project.
+
 **Voice input and spoken replies**
 
 - **Speak your message:** If your browser supports it, a **microphone** button appears next to the chat input. Click it, speak your question (e.g. “What projects are in trouble?” or “What’s my portfolio spend to date?”), and your words are sent as a normal chat message. Click the mic again to stop listening.

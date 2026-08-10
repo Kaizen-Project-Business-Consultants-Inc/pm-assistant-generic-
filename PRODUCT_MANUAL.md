@@ -660,6 +660,9 @@ All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the
 - **Persistent conversations** — chat history is stored in the database (`chat_conversations` + `chat_messages` tables) and survives server restarts. Users can browse, switch between, and resume past conversations from the history panel.
 - **Agent memory integration** — Mjuzi injects recent agent scan findings (via `InterAgentQueryService`), prior conversation context, and its own project-specific memories into the system prompt, enabling more informed and contextual responses.
 - **Action memory** — when Mjuzi executes tools (create task, update project, etc.), it stores a memory of the action via `AgentMemoryService` for future reference.
+- **Self-learning** — Mjuzi learns from conversations in two ways:
+  - **User preferences**: when a user states an ongoing preference (e.g. “keep responses brief”, “always show budget numbers”), Mjuzi stores it via `remember_user_preference` and applies it to all future responses for that user.
+  - **Correction memory**: when a user corrects a factual error (e.g. “the budget is $50K, not $30K”), Mjuzi stores the correction via `remember_correction` and avoids repeating the mistake. Project-specific corrections are scoped to that project; general corrections apply across all conversations.
 - **Voice input** (browser Speech Recognition): users can click the mic, speak their message, and the transcript is sent as a normal chat message. Optional **text-to-speech** (“Speak replies”) reads the assistant’s replies aloud when enabled.
 - **Conversation history UI** — History button and New Conversation button in the chat panel header. Click any past conversation to reload it.
 

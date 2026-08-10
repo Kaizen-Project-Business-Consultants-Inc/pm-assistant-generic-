@@ -330,8 +330,46 @@ export class AIChatService {
       }
     }
 
+    // Recall user preferences and corrections for self-learning context
+    let selfLearnContext = '';
+    try {
+      const [userMemories, projectCorrections] = await Promise.all([
+        agentMemoryService.recall('mjuzi-chat', 'role', req.userId),
+        req.context?.projectId
+          ? agentMemoryService.recall('mjuzi-chat', 'project', req.context.projectId)
+          : Promise.resolve([]),
+      ]);
+
+      const prefEntries = userMemories.filter(m => m.keyName.startsWith('pref:'));
+      const corrEntries = [
+        ...userMemories.filter(m => m.keyName.startsWith('correction:')),
+        ...projectCorrections.filter(m => m.keyName.startsWith('correction:')),
+      ];
+
+      const parts: string[] = [];
+      if (prefEntries.length > 0) {
+        const prefLines = prefEntries.slice(0, 10).map(m => {
+          const v = m.value as { value: string; reason: string };
+          return `- ${m.keyName.replace('pref:', '')}: ${v.value}`;
+        }).join('\n');
+        parts.push(`User preferences (apply these to your responses):\n${prefLines}`);
+      }
+      if (corrEntries.length > 0) {
+        const corrLines = corrEntries.slice(0, 10).map(m => {
+          const v = m.value as { wrong: string; correct: string };
+          return `- ${m.keyName.replace('correction:', '')}: NOT "${v.wrong}" — correct is "${v.correct}"`;
+        }).join('\n');
+        parts.push(`Previous corrections (do not repeat these mistakes):\n${corrLines}`);
+      }
+      if (parts.length > 0) {
+        selfLearnContext = '\n\n' + parts.join('\n\n');
+      }
+    } catch {
+      // Non-critical — continue without self-learn context
+    }
+
     const systemPrompt = promptTemplates.conversational.render({
-      projectContext: projectContext + agentInsightsContext,
+      projectContext: projectContext + agentInsightsContext + selfLearnContext,
       userRole: req.userRole || 'team_member',
     });
 
