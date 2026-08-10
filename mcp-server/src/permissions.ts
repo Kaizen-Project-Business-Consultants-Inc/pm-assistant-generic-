@@ -97,6 +97,7 @@ const SPRINT_WRITE_TOOLS = new Set([
 // Schedule write: project_manager, pmo, admin
 const SCHEDULE_WRITE_TOOLS = new Set([
   'create-schedule', 'update-schedule', 'delete-schedule',
+  'remove-dependency', 'clear-all-dependencies',
 ]);
 
 // Project write: project_manager, pmo, admin

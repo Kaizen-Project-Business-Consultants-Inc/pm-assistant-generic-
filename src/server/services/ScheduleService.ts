@@ -628,6 +628,46 @@ export class ScheduleService {
   }
 
   // -------------------------------------------------------------------------
+  // Dependency management
+  // -------------------------------------------------------------------------
+
+  async removeDependency(taskId: string, predecessorId: string): Promise<boolean> {
+    const task = await this.findTaskById(taskId);
+    if (!task) return false;
+
+    const remaining = task.dependencies.filter(d => d.dependencyId !== predecessorId);
+    if (remaining.length === task.dependencies.length) return false; // nothing to remove
+
+    await this.updateTask(taskId, {
+      dependencies: remaining.map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType, lagDays: d.lagDays })),
+    } as any);
+    return true;
+  }
+
+  async clearAllDependencies(scheduleId: string): Promise<number> {
+    const tasks = await this.findTasksByScheduleId(scheduleId);
+    const taskIds = tasks.map(t => t.id);
+    if (taskIds.length === 0) return 0;
+
+    const placeholders = taskIds.map(() => '?').join(', ');
+    const result: any = await databaseService.query(
+      `DELETE FROM task_dependencies WHERE task_id IN (${placeholders})`,
+      taskIds,
+    );
+    const removed = result.affectedRows ?? 0;
+
+    // Also clear the legacy denormalized columns
+    if (removed > 0) {
+      await databaseService.query(
+        `UPDATE tasks SET dependency = NULL, dependency_type = NULL, dependency_lag_days = 0 WHERE schedule_id = ? AND dependency IS NOT NULL`,
+        [scheduleId],
+      );
+    }
+
+    return removed;
+  }
+
+  // -------------------------------------------------------------------------
   // Comments & Activities (delegated to TaskRepository)
   // -------------------------------------------------------------------------
 

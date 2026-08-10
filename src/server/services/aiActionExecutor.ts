@@ -65,6 +65,8 @@ export class AIActionExecutor {
         case 'list_tasks': result = await this.listTasks(input, context); break;
         case 'cascade_reschedule': result = await this.cascadeReschedule(input, context); break;
         case 'set_dependency': result = await this.setDependency(input, context); break;
+        case 'remove_dependency': result = await this.removeDependency(input, context); break;
+        case 'clear_all_dependencies': result = await this.clearAllDependencies(input, context); break;
         case 'get_dependency_chain': result = await this.getDependencyChain(input, context); break;
         case 'get_projects_due_today': result = await this.getProjectsDueToday(); break;
         case 'get_overdue_projects': result = await this.getOverdueProjects(); break;
@@ -463,6 +465,45 @@ export class AIActionExecutor {
       toolName: 'set_dependency',
       summary: `Set dependency: "${task.name}" now depends on "${predecessor?.name}" (${depType})`,
       data: { taskId, taskName: task.name, predecessorId, predecessorName: predecessor?.name, dependencyType: depType },
+    };
+  }
+
+  private async removeDependency(input: Record<string, any>, _context: ActionContext): Promise<ActionResult> {
+    const { taskId, predecessorId } = input;
+
+    const task = await scheduleService.findTaskById(taskId);
+    if (!task) {
+      return { success: false, toolName: 'remove_dependency', summary: `Task '${taskId}' not found`, error: 'Task not found' };
+    }
+
+    const removed = await scheduleService.removeDependency(taskId, predecessorId);
+    if (!removed) {
+      return { success: false, toolName: 'remove_dependency', summary: `No dependency from "${task.name}" on task '${predecessorId}' found`, error: 'Dependency not found' };
+    }
+
+    const predecessor = await scheduleService.findTaskById(predecessorId);
+    return {
+      success: true,
+      toolName: 'remove_dependency',
+      summary: `Removed dependency: "${task.name}" no longer depends on "${predecessor?.name || predecessorId}"`,
+      data: { taskId, taskName: task.name, predecessorId, predecessorName: predecessor?.name },
+    };
+  }
+
+  private async clearAllDependencies(input: Record<string, any>, _context: ActionContext): Promise<ActionResult> {
+    const { scheduleId } = input;
+
+    const schedule = await scheduleService.findById(scheduleId);
+    if (!schedule) {
+      return { success: false, toolName: 'clear_all_dependencies', summary: `Schedule '${scheduleId}' not found`, error: 'Schedule not found' };
+    }
+
+    const removed = await scheduleService.clearAllDependencies(scheduleId);
+    return {
+      success: true,
+      toolName: 'clear_all_dependencies',
+      summary: `Removed all ${removed} dependencies from schedule "${schedule.name}"`,
+      data: { scheduleId, scheduleName: schedule.name, removedCount: removed },
     };
   }
 

@@ -46,4 +46,18 @@ export function registerScheduleTools(server: McpServer) {
   }, async ({ scheduleId }, extra) =>
     jsonResult(await getApiClientFromExtra(extra).get(`/schedules/${scheduleId}/baselines`))
   );
+
+  server.tool('remove-dependency', 'Remove a single dependency between two tasks', {
+    scheduleId: z.string().describe('Schedule ID'),
+    taskId: z.string().describe('The task to remove the dependency from'),
+    predecessorId: z.string().describe('The predecessor task to unlink'),
+  }, async ({ scheduleId, taskId, predecessorId }, extra) =>
+    jsonResult(await getApiClientFromExtra(extra).delete(`/schedules/${scheduleId}/tasks/${taskId}/dependencies/${predecessorId}`))
+  );
+
+  server.tool('clear-all-dependencies', 'Remove ALL dependencies in a schedule (bulk operation)', {
+    scheduleId: z.string().describe('Schedule ID'),
+  }, async ({ scheduleId }, extra) =>
+    jsonResult(await getApiClientFromExtra(extra).delete(`/schedules/${scheduleId}/dependencies`))
+  );
 }

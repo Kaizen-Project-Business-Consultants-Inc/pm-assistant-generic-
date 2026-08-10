@@ -162,6 +162,29 @@ export const AI_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'remove_dependency',
+    description: 'Remove a single dependency between two tasks. The dependent task (taskId) will no longer depend on the predecessor (predecessorId).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        taskId: { type: 'string', description: 'The task to remove the dependency from' },
+        predecessorId: { type: 'string', description: 'The predecessor task to unlink' },
+      },
+      required: ['taskId', 'predecessorId'],
+    },
+  },
+  {
+    name: 'clear_all_dependencies',
+    description: 'Remove ALL dependencies in a schedule. This is a bulk operation — every predecessor-successor link in the schedule will be deleted. Use this when the user wants to start fresh with dependency planning.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        scheduleId: { type: 'string', description: 'The schedule to clear all dependencies from' },
+      },
+      required: ['scheduleId'],
+    },
+  },
+  {
     name: 'get_dependency_chain',
     description: 'Show the full dependency chain for a task — both what it depends on (upstream) and what depends on it (downstream). Use this to understand impact before rescheduling.',
     input_schema: {
@@ -235,6 +258,6 @@ export const AI_TOOLS: Anthropic.Tool[] = [
 ];
 
 // Tool categories for permission checking
-export const DESTRUCTIVE_TOOLS = ['delete_task'];
-export const MUTATING_TOOLS = ['create_task', 'update_task', 'delete_task', 'create_project', 'update_project', 'reschedule_task', 'cascade_reschedule', 'set_dependency'];
+export const DESTRUCTIVE_TOOLS = ['delete_task', 'clear_all_dependencies'];
+export const MUTATING_TOOLS = ['create_task', 'update_task', 'delete_task', 'create_project', 'update_project', 'reschedule_task', 'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies'];
 export const READ_ONLY_TOOLS = ['list_projects', 'get_project_details', 'list_tasks', 'get_dependency_chain', 'get_projects_due_today', 'get_overdue_projects', 'get_projects_by_status', 'get_overdue_tasks', 'get_high_risk_projects', 'get_portfolio_summary'];

@@ -257,6 +257,45 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   });
 
   // -------------------------------------------------------------------------
+  // Dependencies
+  // -------------------------------------------------------------------------
+
+  fastify.delete('/:scheduleId/tasks/:taskId/dependencies/:predecessorId', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    schema: { description: 'Remove a single dependency from a task', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { taskId, predecessorId } = request.params as { taskId: string; predecessorId: string };
+      const removed = await scheduleService.removeDependency(taskId, predecessorId);
+      if (!removed) return reply.status(404).send({ error: 'Not found', message: 'Dependency not found' });
+      const { scheduleId } = request.params as { scheduleId: string };
+      const schedule = await scheduleService.findById(scheduleId);
+      WebSocketService.broadcast({ type: 'task_updated', payload: { taskId } }, schedule?.projectId);
+      return { message: 'Dependency removed' };
+    } catch (error) {
+      logger.error('Remove dependency error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to remove dependency' });
+    }
+  });
+
+  fastify.delete('/:scheduleId/dependencies', {
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    schema: { description: 'Remove all dependencies in a schedule', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const schedule = await scheduleService.findById(scheduleId);
+      if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
+      const removed = await scheduleService.clearAllDependencies(scheduleId);
+      WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId } }, schedule.projectId);
+      return { message: `Removed ${removed} dependencies`, count: removed };
+    } catch (error) {
+      logger.error('Clear all dependencies error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to clear dependencies' });
+    }
+  });
+
+  // -------------------------------------------------------------------------
   // Critical Path
   // -------------------------------------------------------------------------
 
