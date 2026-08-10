@@ -28,9 +28,9 @@ export const COLUMN_DEFS: ColumnDef[] = [
   { key: 'endDate', label: 'End Date', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'progressPercentage', label: 'Progress', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'assignedTo', label: 'Assigned To', group: 'standard', defaultVisible: true, editable: true, sortable: true },
+  { key: 'duration', label: 'Duration', group: 'standard', defaultVisible: true, editable: true, sortable: true },
 
   // Scheduling (CPM)
-  { key: 'duration', label: 'Duration', group: 'scheduling', defaultVisible: false, editable: true, sortable: true },
   { key: 'earlyStart', label: 'Early Start', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
   { key: 'earlyFinish', label: 'Early Finish', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
   { key: 'lateStart', label: 'Late Start', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
@@ -46,7 +46,7 @@ export const COLUMN_DEFS: ColumnDef[] = [
   { key: 'endVariance', label: 'End Variance', group: 'baseline', defaultVisible: false, editable: false, sortable: true },
 
   // Other
-  { key: 'dependency', label: 'Predecessor', group: 'other', defaultVisible: false, editable: true, sortable: false },
+  { key: 'dependency', label: 'Predecessor', group: 'standard', defaultVisible: true, editable: true, sortable: false },
   { key: 'wbs', label: 'WBS', group: 'other', defaultVisible: false, editable: false, sortable: false },
 ];
 
