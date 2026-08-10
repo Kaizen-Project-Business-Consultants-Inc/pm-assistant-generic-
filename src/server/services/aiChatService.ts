@@ -85,12 +85,18 @@ export class AIChatService {
         });
 
         const tokenCount = result.totalUsage.inputTokens + result.totalUsage.outputTokens;
-        const conversationId = await this.persistConversation(
-          req,
-          result.finalText,
-          tokenCount,
-          allActions.length > 0 ? allActions : undefined,
-        );
+        let conversationId: string;
+        try {
+          conversationId = await this.persistConversation(
+            req,
+            result.finalText,
+            tokenCount,
+            allActions.length > 0 ? allActions : undefined,
+          );
+        } catch (persistErr) {
+          this.fastify.log.error({ err: persistErr }, 'Failed to persist conversation');
+          conversationId = req.conversationId || randomUUID();
+        }
 
         logAIUsage({
           userId: req.userId,
@@ -121,7 +127,13 @@ export class AIChatService {
           temperature: 0.5,
         });
 
-        const conversationId = await this.persistConversation(req, result.content, result.usage.inputTokens + result.usage.outputTokens);
+        let conversationId: string;
+        try {
+          conversationId = await this.persistConversation(req, result.content, result.usage.inputTokens + result.usage.outputTokens);
+        } catch (persistErr) {
+          this.fastify.log.error({ err: persistErr }, 'Failed to persist conversation');
+          conversationId = req.conversationId || randomUUID();
+        }
 
         logAIUsage({
           userId: req.userId,
