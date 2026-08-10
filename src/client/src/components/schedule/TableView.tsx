@@ -7,6 +7,7 @@ import { SavedViewsDropdown, type SavedView } from './SavedViewsDropdown';
 import { exportTasksCSV } from '../../utils/exportUtils';
 import type { ColumnKey, ColumnDef } from './tableColumns';
 import type { ColumnState } from '../../hooks/useColumnState';
+import { useColumnDragReorder } from '../../hooks/useColumnDragReorder';
 import { ConfirmModal } from '../ui/ConfirmModal';
 
 const barColors: Record<string, { bg: string; text: string }> = {
@@ -92,6 +93,13 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   const [bulkMessage, setBulkMessage] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
+
+  const colDragKeys = useMemo(() => visibleColumns.map(c => c.key), [visibleColumns]);
+  const colDrag = useColumnDragReorder({
+    orderedKeys: colDragKeys,
+    onReorder: (newOrder) => columnState.setColumnOrder(newOrder),
+    isFixed: (key) => key === 'rowNum',
+  });
 
   const loadSavedView = useCallback((view: SavedView) => {
     columnState.setVisibleKeys(new Set(view.columns));
@@ -1202,7 +1210,12 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               {visibleColumns.map((col, colIdx) => (
                 <th
                   key={col.key}
-                  className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide select-none relative group/th hover:bg-gray-100 dark:hover:bg-gray-700"
+                  draggable={colDrag.isDraggable(col.key)}
+                  onDragStart={(e) => colDrag.handleDragStart(e, col.key)}
+                  onDragOver={(e) => colDrag.handleDragOver(e, col.key)}
+                  onDrop={(e) => colDrag.handleDrop(e, col.key)}
+                  onDragEnd={colDrag.handleDragEnd}
+                  className={`px-3 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide select-none relative group/th hover:bg-gray-100 dark:hover:bg-gray-700 ${colDrag.isDraggable(col.key) ? 'cursor-grab active:cursor-grabbing' : ''} ${colDrag.dragColKey === col.key ? 'opacity-40' : ''} ${colDrag.overColKey === col.key && colDrag.dragColKey !== col.key ? 'ring-2 ring-inset ring-primary-400' : ''}`}
                   style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : { minWidth: col.key === 'name' ? 200 : 100 }}
                 >
                   <div className="flex items-center gap-1 whitespace-nowrap">
@@ -1238,6 +1251,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                   </div>
                   {/* Resize handle */}
                   <div
+                    draggable={false}
                     className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize z-10 flex items-center justify-center"
                     onMouseDown={(e) => {
                       e.preventDefault();

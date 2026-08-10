@@ -1,6 +1,7 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Download } from 'lucide-react';
 import type { ColumnState } from '../../hooks/useColumnState';
+import { useColumnDragReorder } from '../../hooks/useColumnDragReorder';
 import { SavedViewsDropdown } from './SavedViewsDropdown';
 import type { SavedView } from './SavedViewsDropdown';
 import { exportTasksCSV } from '../../utils/exportUtils';
@@ -645,6 +646,23 @@ export function GanttChart({
 
     return ganttColOrder.map(k => colMap.get(k)).filter((c): c is GanttColDef => !!c);
   }, [ganttColOrder, _columnState]);
+
+  const ganttColDragKeys = useMemo(() => orderedColumns.map(c => c.key), [orderedColumns]);
+  const ganttColDrag = useColumnDragReorder({
+    orderedKeys: ganttColDragKeys,
+    onReorder: (newOrder) => {
+      if (_columnState) {
+        // Map Gantt keys back to table keys for external columnState
+        const tableOrder = newOrder
+          .map(k => ganttKeyToTableKey[k] || k)
+          .filter(k => k !== 'rowNum' && k !== 'editIcon');
+        _columnState.setColumnOrder(['rowNum', ...tableOrder] as any);
+      } else {
+        setGanttColOrder(newOrder);
+      }
+    },
+    isFixed: (key) => key === 'rowNum' || key === 'editIcon',
+  });
 
   // -----------------------------------------------------------------------
   // Row expand/collapse state — persisted per schedule in localStorage
@@ -2621,10 +2639,16 @@ export function GanttChart({
               const canReorder = !col.alwaysVisible && !col.fixed;
               const visibleCols = orderedColumns.filter(c => !c.alwaysVisible && !c.fixed && isColVisible(c));
               const reorderIdx = visibleCols.findIndex(c => c.key === col.key);
+              const colIsDraggable = ganttColDrag.isDraggable(col.key);
               return (
                 <div
                   key={col.key}
-                  className={`shrink-0 px-1 text-center relative select-none group/gh ${col.flex ? 'flex-1 min-w-0 px-2' : ''} ${isSortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : ''}`}
+                  draggable={colIsDraggable}
+                  onDragStart={(e) => ganttColDrag.handleDragStart(e, col.key)}
+                  onDragOver={(e) => ganttColDrag.handleDragOver(e, col.key)}
+                  onDrop={(e) => ganttColDrag.handleDrop(e, col.key)}
+                  onDragEnd={ganttColDrag.handleDragEnd}
+                  className={`shrink-0 px-1 text-center relative select-none group/gh ${col.flex ? 'flex-1 min-w-0 px-2' : ''} ${isSortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : ''} ${colIsDraggable ? 'cursor-grab active:cursor-grabbing' : ''} ${ganttColDrag.dragColKey === col.key ? 'opacity-40' : ''} ${ganttColDrag.overColKey === col.key && ganttColDrag.dragColKey !== col.key ? 'ring-2 ring-inset ring-primary-400' : ''}`}
                   style={col.flex ? undefined : { width: w }}
                 >
                   {col.key === 'rowNum' && onBulkUpdate ? (
@@ -2692,6 +2716,7 @@ export function GanttChart({
                   )}
                   {col.resizable && (
                     <div
+                      draggable={false}
                       className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-10 hover:bg-primary-400/40 transition-colors"
                       onMouseDown={(e) => { e.stopPropagation(); handleColResizeStart(e, col.key, w); }}
                     />
