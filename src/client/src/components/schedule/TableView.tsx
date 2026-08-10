@@ -65,7 +65,7 @@ type GroupByField = '' | 'status' | 'priority' | 'assignedTo';
 const statusOptions = ['pending', 'in_progress', 'completed'];
 const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 
-type EditableField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progressPercentage' | 'assignedTo' | 'dependency';
+type EditableField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progressPercentage' | 'assignedTo' | 'dependency' | 'duration';
 
 function addDaysToDate(baseDate: string, days: number): string {
   const d = new Date(baseDate);
@@ -457,6 +457,13 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'endDate': return task.endDate?.split('T')[0] || '';
       case 'progressPercentage': return String(task.progressPercentage ?? 0);
       case 'assignedTo': return task.assignedTo || '';
+      case 'duration': {
+        if (task.startDate && task.endDate) {
+          const diff = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000);
+          return String(diff > 0 ? diff : 0);
+        }
+        return task.estimatedDays != null ? String(task.estimatedDays) : '';
+      }
       case 'dependency': {
         const deps = task.dependencies;
         if (!deps || deps.length === 0) {
@@ -500,6 +507,25 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
     const originalValue = getTaskFieldValue(task, field);
     if (value === originalValue) { cancelEditing(); return; }
+
+    // Duration: compute new endDate from start + days
+    if (field === 'duration') {
+      const days = parseInt(value.replace(/d$/i, ''), 10);
+      if (isNaN(days) || days < 1 || !task.startDate) { cancelEditing(); return; }
+      const newEnd = new Date(task.startDate);
+      newEnd.setDate(newEnd.getDate() + days);
+      setSavingCell({ taskId, field });
+      setEditingCell(null);
+      setEditValue('');
+      onTaskUpdate(taskId, { endDate: newEnd.toISOString().split('T')[0] });
+      setTimeout(() => {
+        setSavingCell(null);
+        setSavedCell({ taskId, field });
+        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+        savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
+      }, 300);
+      return;
+    }
 
     // Handle dependency field specially — multi-dep
     if (field === 'dependency') {
@@ -931,15 +957,37 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           </td>
         );
 
-      // Read-only columns
       case 'duration': {
-        let days: number | null = task.estimatedDays ?? null;
-        if (days == null && task.startDate && task.endDate) {
+        let days: number | null = null;
+        if (task.startDate && task.endDate) {
           const diff = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000);
           if (diff > 0) days = diff;
         }
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{days != null ? `${days}d` : '-'}</td>;
+        if (days == null && task.estimatedDays != null) days = task.estimatedDays;
+        return (
+          <td key={col.key} className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 relative group/cell ${editableCellClass(task.id, 'duration')}`}
+            onClick={() => { if (!isEditing(task.id, 'duration')) startEditing(task.id, 'duration', task); }}>
+            {isEditing(task.id, 'duration') ? (
+              <input
+                autoFocus
+                type="text"
+                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 text-gray-600 dark:text-gray-300"
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, task.id, 'duration')}
+                onBlur={() => saveEdit(task.id, 'duration', editValue)}
+                placeholder="days"
+              />
+            ) : (
+              days != null ? `${days}d` : '-'
+            )}
+            {renderSaveIndicator(task.id, 'duration')}
+            {renderHoverPencil(task.id, 'duration')}
+          </td>
+        );
       }
+
+      // Read-only columns
 
       case 'earlyStart':
         return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{formatCpmDate(cpm?.ES)}</td>;

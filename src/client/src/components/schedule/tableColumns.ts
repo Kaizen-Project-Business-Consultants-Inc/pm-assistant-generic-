@@ -30,7 +30,7 @@ export const COLUMN_DEFS: ColumnDef[] = [
   { key: 'assignedTo', label: 'Assigned To', group: 'standard', defaultVisible: true, editable: true, sortable: true },
 
   // Scheduling (CPM)
-  { key: 'duration', label: 'Duration', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
+  { key: 'duration', label: 'Duration', group: 'scheduling', defaultVisible: false, editable: true, sortable: true },
   { key: 'earlyStart', label: 'Early Start', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
   { key: 'earlyFinish', label: 'Early Finish', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
   { key: 'lateStart', label: 'Late Start', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
