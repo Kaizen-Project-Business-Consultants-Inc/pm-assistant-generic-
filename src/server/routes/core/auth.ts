@@ -190,7 +190,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         email,
         passwordHash,
         fullName,
-        role: isInvitedViewer ? 'viewer' : isPlanSignup ? 'project_manager' : 'team_member',
+        role: isInvitedViewer ? 'viewer' : 'project_manager',
         emailVerified: isPlanSignup ? true : false,
         emailVerificationToken: isPlanSignup ? undefined : verificationToken,
         emailVerificationExpires: isPlanSignup ? undefined : verificationExpires,
