@@ -349,6 +349,16 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     targetIdx: number;
   } | null>(null);
   const tbodyRef = useRef<HTMLTableSectionElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const ROW_H = 35; // approximate row height in px
+  const OVERSCAN = 20;
+
+  // Virtualization: compute visible row range
+  const useVirtualization = visibleSorted.length >= 100 && !groupBy;
+  const containerHeight = scrollContainerRef.current?.clientHeight ?? 600;
+  const startRow = useVirtualization ? Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN) : 0;
+  const endRow = useVirtualization ? Math.min(visibleSorted.length, Math.ceil((scrollTop + containerHeight) / ROW_H) + OVERSCAN) : visibleSorted.length;
 
   const canDragRows = !!onTaskReorder && !editingCell && selectedIds.size === 0 && !sortField;
 
@@ -1256,6 +1266,24 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             <option value="assignedTo">Group by Assignee</option>
           </select>
         </div>
+        {summaryTaskIds.size > 0 && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCollapsedSummaries(new Set(summaryTaskIds))}
+              className="px-2 py-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Collapse all summary tasks"
+            >
+              Collapse All
+            </button>
+            <button
+              onClick={() => setCollapsedSummaries(new Set())}
+              className="px-2 py-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Expand all summary tasks"
+            >
+              Expand All
+            </button>
+          </div>
+        )}
         <button
           onClick={() => exportTasksCSV(visibleSorted, 'tasks')}
           className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -1377,7 +1405,12 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      <div
+        ref={scrollContainerRef}
+        className="overflow-x-auto overflow-y-auto"
+        style={{ maxHeight: 'calc(100vh - 280px)' }}
+        onScroll={useVirtualization ? (e) => setScrollTop((e.target as HTMLDivElement).scrollTop) : undefined}
+      >
         <table className="text-sm" style={{ minWidth: '100%' }}>
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -1552,7 +1585,20 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 return rows;
               }
 
-              // Flat rendering (no grouping)
+              // Flat rendering (no grouping) — virtualized for large lists
+              if (useVirtualization) {
+                const rows: React.ReactNode[] = [];
+                if (startRow > 0) {
+                  rows.push(<tr key="spacer-top" style={{ height: startRow * ROW_H }} />);
+                }
+                for (let i = startRow; i < endRow; i++) {
+                  rows.push(renderTaskRow(visibleSorted[i], i));
+                }
+                if (endRow < visibleSorted.length) {
+                  rows.push(<tr key="spacer-bottom" style={{ height: (visibleSorted.length - endRow) * ROW_H }} />);
+                }
+                return rows;
+              }
               return visibleSorted.map((task, rowIdx) => renderTaskRow(task, rowIdx));
             })()}
 
