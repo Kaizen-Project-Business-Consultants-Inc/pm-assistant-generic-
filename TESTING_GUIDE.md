@@ -1089,3 +1089,142 @@ curl -s -b cookies.txt -X POST https://pm.kpbc.ca/api/v1/ai/estimate-task \
 
 - [ ] `npx vitest run src/server/__tests__/services/AiTaskEstimationService.test.ts` — 5 tests pass
 - [ ] Tests cover: no-data fallback (3 days), average-based fallback, AI estimate, AI error fallback, rounding to 0.5
+
+## 28. MPP-Parity Scheduling Features (T010–T014)
+
+Five MS Project-parity features added to the scheduling engine: Task-Level Budget, Summary Task Auto-Rollup, Task Constraints, Custom Calendars, and Multi-Resource Assignment.
+
+### 28a. Task-Level Budget (T010)
+
+**Table columns:**
+
+- [ ] Open Column Picker → "Cost" group is visible with `Budget Allocated`, `Actual Cost`, and `Budget Variance` columns
+- [ ] Enable all three cost columns → they appear in the table view
+- [ ] `Budget Variance` shows computed value (budgetAllocated − actualCost) and is not editable
+
+**Inline editing:**
+
+- [ ] Click a `Budget Allocated` cell → number input appears (min=0, step=0.01)
+- [ ] Enter a value, press Enter → value saves and cell displays formatted number
+- [ ] Click an `Actual Cost` cell → same inline number input behavior
+- [ ] Tab out of an edited budget cell → value saves (blur save)
+
+**Task Form Modal:**
+
+- [ ] Open Add Task → Budget section visible with "Budget Allocated ($)" and "Actual Cost ($)" inputs
+- [ ] Enter budget values, save task → values persist on reload
+- [ ] Edit an existing task with budget → values pre-filled in the form
+
+**API:**
+
+- [ ] `POST /api/v1/schedules/:id/tasks` with `budgetAllocated: 5000, actualCost: 1200` → task created with budget fields
+- [ ] `PATCH /api/v1/tasks/:id` with `budgetAllocated: 8000` → budget updated
+
+### 28b. Summary Task Auto-Rollup (T011)
+
+**Summary task detection:**
+
+- [ ] Create a parent task, then create 2+ child tasks under it → parent becomes a summary task (is_summary = 1)
+- [ ] Summary task shows amber banner in Task Form Modal: "Summary task — dates, progress, status, and budget are computed from child tasks"
+
+**Rollup computation:**
+
+- [ ] Summary task `startDate` = earliest child start date
+- [ ] Summary task `endDate` = latest child end date
+- [ ] Summary task `progressPercentage` = weighted average of children by estimatedDays
+- [ ] Summary task `status` = "completed" if all children completed, "in_progress" if any child in progress, else "pending"
+- [ ] Summary task `budgetAllocated` = SUM of child budgets
+- [ ] Summary task `actualCost` = SUM of child actual costs
+
+**Read-only enforcement:**
+
+- [ ] Click on a summary task's date cell in table view → editing is blocked (no input appears)
+- [ ] Click on a summary task's status cell → editing is blocked
+- [ ] Click on a summary task's progress cell → editing is blocked
+- [ ] Click on a summary task's budget cells → editing is blocked
+- [ ] In Task Form Modal for a summary task, rollup fields (status, dates, progress, budget) are disabled
+
+**Recursive rollup:**
+
+- [ ] Create a 3-level hierarchy (grandparent → parent → child) → updating the child recomputes both parent and grandparent
+
+### 28c. Task Constraints (T012)
+
+**Table columns:**
+
+- [ ] Open Column Picker → "Scheduling" group includes `Constraint Type` and `Constraint Date` columns
+- [ ] Enable both columns → they appear in the table view
+- [ ] `Constraint Type` defaults to "ASAP" for new tasks
+
+**Inline editing:**
+
+- [ ] Click a `Constraint Type` cell → dropdown with 8 options: ASAP, ALAP, SNET, SNLT, FNET, FNLT, MSO, MFO
+- [ ] Select a non-ASAP constraint → cell highlights (e.g., blue background) to indicate active constraint
+- [ ] Click a `Constraint Date` cell → date picker appears (only editable when constraint type requires a date)
+- [ ] ASAP and ALAP constraints → constraint date cell is not editable
+
+**Task Form Modal:**
+
+- [ ] Open Add Task → Constraint section visible with Type dropdown and Date picker
+- [ ] Select "Start No Earlier Than" → date picker becomes enabled
+- [ ] Select "ASAP" → date picker hides or is disabled
+- [ ] Save task with constraint → values persist on reload
+
+**CPM enforcement:**
+
+- [ ] Set SNET constraint with a future date on a task → critical path recalculates, task cannot start before that date
+- [ ] Set MSO (Must Start On) → task is pinned to that exact start date
+- [ ] Set MFO (Must Finish On) → task end date matches the constraint date
+
+### 28d. Custom Calendars (T013)
+
+**API endpoints:**
+
+- [ ] `GET /api/v1/projects/:id/calendars` → returns calendar list (default "Standard" auto-created)
+- [ ] `POST /api/v1/projects/:id/calendars` with `{ name, workingDays, hoursPerDay }` → creates calendar
+- [ ] `PUT /api/v1/projects/:id/calendars/:calId` → updates calendar settings
+- [ ] `DELETE /api/v1/projects/:id/calendars/:calId` → deletes non-default calendar
+- [ ] `POST /api/v1/projects/:id/calendars/:calId/exceptions` with `{ exceptionDate, type: "holiday", name }` → adds holiday
+- [ ] `DELETE /api/v1/projects/:id/calendars/:calId/exceptions/:excId` → removes exception
+- [ ] `GET /api/v1/projects/:id/non-working-dates?start=YYYY-MM-DD&end=YYYY-MM-DD` → returns non-working dates for Gantt shading
+
+**Calendar logic:**
+
+- [ ] Default calendar has Mon–Fri working days and 8 hours/day
+- [ ] Adding a holiday exception on a weekday → that day is skipped in duration calculations
+- [ ] Adding a "working" exception on a weekend → that day counts as a working day
+- [ ] `addWorkingDays(startDate, 5, calendar)` skips weekends and holidays correctly
+
+### 28e. Multi-Resource Assignment (T014)
+
+**Task Form Modal:**
+
+- [ ] Open Add Task → "Assignments" section visible with "Add Assignment" button
+- [ ] Click "Add Assignment" → row appears with Resource ID input, Allocation % (default 100), and Role input
+- [ ] Add multiple assignment rows (up to 10) → all render correctly
+- [ ] Remove an assignment row → row disappears
+- [ ] Save task with 3 assignments → values persist on reload
+- [ ] Edit task → assignments pre-filled with correct values
+
+**Inline display:**
+
+- [ ] Table view "Assigned To" column shows primary assignee name
+- [ ] Tasks with multiple assignments show the primary (first) assignee
+
+**API:**
+
+- [ ] `POST /api/v1/schedules/:id/tasks` with `assignments: [{ resourceId, allocationPct: 50 }, { resourceId, allocationPct: 50 }]` → task created with both assignments
+- [ ] `PATCH /api/v1/tasks/:id` with `assignments: [...]` → assignments replaced (old ones removed, new ones saved)
+- [ ] Primary assignee (first in array) is denormalized to `tasks.assigned_to`
+
+**Database:**
+
+- [ ] `task_assignments` table exists with columns: id, task_id, resource_id, allocation_pct, role_on_task, hours_planned
+- [ ] Unique constraint on (task_id, resource_id) prevents duplicate assignments
+
+### 28f. Cross-Feature Integration
+
+- [ ] Summary task with budget children → parent budget rolls up correctly even when constraints are set on children
+- [ ] Task with constraint + multiple assignments → all fields save and display correctly together
+- [ ] Column Picker shows all new column groups (Cost, Scheduling additions) and they persist via view preferences
+- [ ] Gantt chart renders summary tasks, constraint indicators, and assignment data without visual glitches
