@@ -30,7 +30,7 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 22. [Settings and Account](#22-settings-and-account)
 23. [Dark Mode, Language, and Time Zone](#23-dark-mode-language-and-time-zone)
 24. [Goals / OKR Tracking](#24-goals--okr-tracking)
-25. [Bulk CSV Import](#25-bulk-csv-import)
+25. [Bulk CSV / Excel / XML Import](#25-bulk-csv--excel--xml-import)
 26. [Resource Management Page](#26-resource-management-page)
 27. [EVM Dashboard Page](#27-evm-dashboard-page)
 28. [Notifications Center Page](#28-notifications-center-page)
@@ -270,7 +270,7 @@ Presence automatically re-joins after a WebSocket reconnect (e.g., if your conne
    - **Assigned To** -- Team member responsible.
    - **Description** -- Detailed task notes.
    - **Story Points** -- Agile estimation value.
-   - **Recurrence** -- Set a recurring schedule (Daily, Weekly, Biweekly, or Monthly). For Weekly/Biweekly, select specific days. Recurring templates auto-generate task instances within a 14-day horizon.
+   - **Recurrence** -- Set a recurring schedule (Daily, Weekly, Biweekly, or Monthly). For Weekly/Biweekly, select specific days. When you save a recurring template, task instances are automatically expanded up to 90 days ahead (capped at 100 instances). The template task displays a blue repeat icon on its Gantt bar. Generated instances also show a repeat icon and link back to their parent template. To regenerate instances after editing a template, delete existing children and re-save.
 3. Click **Save** to add the task.
 
 ### Task Hierarchy
@@ -394,6 +394,10 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - **Row striping**: Alternating row backgrounds (every other row) in both the left task panel and the timeline for improved readability. Stripes are subtle and support dark mode. Active task and hover highlights override the stripe.
 - **Resource avatars**: Task bars show a small circle with the assignee's initials at the right edge. Colors are deterministic — the same person always gets the same color. Avatars appear on non-parent, non-milestone bars wider than 40px. Hover over the circle to see the full assignee name.
 - **Drag-to-create**: Click and drag on an empty area of the timeline to create a new task. A dashed blue preview rectangle appears while dragging. On release, the Add Task form opens with the start and end dates pre-filled from the drag range. The parent task is auto-detected: dragging on a parent row creates a child task, dragging on a child row creates a sibling. A minimum drag width of half a day prevents accidental creation.
+- **Non-working day shading**: At Day and Week zoom levels, non-working days (weekends, holidays, and custom calendar exceptions) are shaded with a subtle grey overlay on the timeline. This makes it easy to see at a glance which days are off-limits for scheduling. Shading data is fetched from the project's calendar automatically.
+- **Quick Level Resources**: Click the **Level Resources** button (orange) in the Gantt toolbar to run automatic resource leveling on the current schedule. A modal appears showing the proposed task adjustments — each row lists the task name, original dates, new dates, and the reason for the shift. Click **Apply All** to accept the changes, or **Cancel** to discard. Applied changes are added to the undo stack, so you can revert with Ctrl+Z.
+- **Progress Mode (Duration vs Work)**: Use the **% Mode** dropdown in the toolbar to switch between **Duration** and **Work** modes. In **Duration** mode (default), parent task progress is calculated as the simple average of child progress percentages. In **Work** mode, parent progress is weighted by each child's estimated duration in hours — a 40-hour task contributes more to the parent's progress than an 8-hour task. The setting is saved per schedule.
+- **What-If Scenarios**: Click **Create Scenario** (indigo button) in the toolbar to clone the current schedule into an independent what-if scenario. The clone copies all tasks, dependencies, and assignments. Edit the scenario freely without affecting the base schedule. Use the scenario dropdown to switch between the base schedule and its scenarios. Click **Compare** to see a side-by-side diff: summary cards show counts of modified, added, and removed tasks plus total duration change, while a detail table highlights date and duration changes per task. Click **Promote to Base** to replace the base schedule's task dates with the scenario's values, then delete the scenario.
 - **Resource overallocation warnings**: Click the **Overalloc** button (warning triangle icon) in the toolbar to highlight tasks with overlapping resource assignments. The system detects when the same person is assigned to multiple tasks with overlapping dates, then marks those bars with an amber border, glow effect, and a small "!" warning dot. A badge on the button shows the total count of flagged bars. The legend adds an "Overallocated" entry when active. Toggle the button off to hide the highlights.
 - **Minimap**: A small overview panel (200×80px) appears in the bottom-right corner of the timeline, showing the entire schedule at a glance. Each task is shown as a coloured rectangle matching its status colour. A semi-transparent blue rectangle indicates the currently visible area. Click anywhere on the minimap to jump to that position, or drag the viewport rectangle to scroll proportionally. Toggle the **Map** button in the toolbar to show or hide the minimap. Enabled by default.
 - **Touch gestures (mobile/tablet)**: All Gantt drag interactions support touch input for tablets and touch-enabled laptops. Touch-drag a task bar to move or resize it, touch-drag the progress handle to adjust completion percentage, and touch-drag on empty timeline space to create a new task. Single-finger gestures only; page scrolling is suppressed during drag operations.
@@ -1539,15 +1543,15 @@ In the goal modal, use the **Project** dropdown to associate the goal with a pro
 
 ---
 
-## 25. Bulk CSV / Excel Import
+## 25. Bulk CSV / Excel / XML Import
 
-You can import tasks into any schedule from a CSV or Excel file without entering them one by one.
+You can import tasks into any schedule from a CSV, Excel, or Microsoft Project XML file without entering them one by one.
 
-1. Open a schedule and click **Import CSV** in the toolbar.
-2. Either **drag-and-drop** a `.csv`, `.xlsx`, or `.xls` file into the upload area or **paste CSV text** directly. Maximum file size is **5MB**.
+1. Open a schedule and click **Import** in the toolbar.
+2. Either **drag-and-drop** a `.csv`, `.xlsx`, `.xls`, or `.xml` file into the upload area or **paste CSV text** directly. Maximum file size is **5MB**.
 3. For **multi-sheet Excel files**, a sheet selector dropdown appears — choose which sheet to import.
-4. The **Column Mapping** step lets you match each column to a task field (name, start date, end date, estimated days, status, priority, assignee). Required: name.
-5. The **Preview** table shows the parsed rows with any validation warnings highlighted.
+4. For **CSV/Excel files**, the **Column Mapping** step lets you match each column to a task field (name, start date, end date, estimated days, status, priority, assignee). Required: name. The **Preview** table shows parsed rows with validation warnings highlighted.
+5. For **Microsoft Project XML (.xml)** files (MSPDI format), tasks are parsed automatically — no column mapping needed. The importer extracts task names, dates, durations, outline levels (hierarchy), percent complete, and predecessor links (FS/SS/FF/SF with lag). Tasks are created with their hierarchy preserved, and dependencies are wired up automatically. Maximum 500 tasks per import.
 6. Click **Import** to create all valid tasks. A summary shows how many rows were imported and any rows skipped due to errors.
 
 **Duplicate detection:** If a task with the same name and start date already exists in the schedule, the row is skipped and reported as a duplicate.

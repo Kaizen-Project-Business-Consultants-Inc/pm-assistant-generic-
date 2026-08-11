@@ -297,6 +297,10 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
   const [filterPriority, setFilterPriority] = useState<string>('');
   const [filterAssignee, setFilterAssignee] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+  const [levelingResult, setLevelingResult] = useState<any[] | null>(null);
+  const [levelingBusy, setLevelingBusy] = useState(false);
+  const [showScenarioCompare, setShowScenarioCompare] = useState(false);
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
   const cpmNeeded = columnState.cpmNeeded;
 
   const { data: tasksData, isLoading: tasksLoading } = useQuery({
@@ -305,6 +309,43 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
   });
 
   const tasks: GanttTask[] = tasksData?.data || tasksData?.tasks || [];
+
+  // Non-working dates for Gantt shading
+  const taskDateRange = useMemo(() => {
+    if (tasks.length === 0) return null;
+    let min = Infinity, max = -Infinity;
+    for (const t of tasks) {
+      if (t.startDate) { const d = new Date(t.startDate).getTime(); if (d < min) min = d; }
+      if (t.endDate) { const d = new Date(t.endDate).getTime(); if (d > max) max = d; }
+    }
+    if (min === Infinity) return null;
+    const start = new Date(min - 14 * 86400000).toISOString().slice(0, 10);
+    const end = new Date(max + 30 * 86400000).toISOString().slice(0, 10);
+    return { start, end };
+  }, [tasks]);
+
+  const { data: nwdData } = useQuery({
+    queryKey: ['nonWorkingDates', projectId, taskDateRange?.start, taskDateRange?.end],
+    queryFn: () => apiService.getNonWorkingDates(projectId, taskDateRange!.start, taskDateRange!.end),
+    enabled: !!taskDateRange && viewMode === 'gantt',
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const nonWorkingDates = useMemo(() => new Set(nwdData?.dates || []), [nwdData]);
+
+  // What-if scenarios
+  const { data: scenariosData } = useQuery({
+    queryKey: ['scenarios', schedule.id],
+    queryFn: () => apiService.getScenarios(schedule.id),
+    enabled: !schedule.isScenario,
+  });
+  const scenarios: any[] = scenariosData?.scenarios || [];
+
+  const { data: scenarioCompareData } = useQuery({
+    queryKey: ['scenarioCompare', schedule.id, selectedScenarioId],
+    queryFn: () => apiService.compareSchedules(schedule.id, selectedScenarioId),
+    enabled: !!selectedScenarioId && showScenarioCompare,
+  });
 
   // Critical Path
   const { data: cpmData } = useQuery({
@@ -369,7 +410,14 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
       };
       return apiService.createTask(schedule.id, payload as Parameters<typeof apiService.createTask>[1]);
     },
-    onSuccess: () => {
+    onSuccess: (result: any) => {
+      const createdTask = result?.task || result;
+      // Auto-expand recurrence if this is a template
+      if (createdTask?.isRecurrenceTemplate && createdTask?.id) {
+        apiService.expandRecurrence(schedule.id, createdTask.id).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+        }).catch(() => { /* silent */ });
+      }
       queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       setShowAddForm(false);
       setActiveTaskId(null);
@@ -690,7 +738,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-md transition-colors"
           >
             <Upload className="w-3 h-3" />
-            Import CSV
+            Import
           </button>
 
           <button
@@ -700,6 +748,98 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             <Bot className="w-3 h-3" />
             AI Reschedule
           </button>
+
+          <button
+            onClick={async () => {
+              setLevelingBusy(true);
+              try {
+                const res = await apiService.levelResources(schedule.id);
+                const adjustments = res?.result?.adjustedTasks || res?.adjustedTasks || [];
+                if (adjustments.length === 0) {
+                  setLevelingResult([]);
+                } else {
+                  setLevelingResult(adjustments);
+                }
+              } catch {
+                setLevelingResult([]);
+              } finally {
+                setLevelingBusy(false);
+              }
+            }}
+            disabled={levelingBusy}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-md transition-colors disabled:opacity-50"
+          >
+            {levelingBusy ? (
+              <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"/><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="opacity-75"/></svg>
+            ) : (
+              <BarChart3 className="w-3 h-3" />
+            )}
+            Level Resources
+          </button>
+
+          <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
+
+          <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+            <span className="text-[10px] font-semibold text-gray-400 uppercase">% Mode:</span>
+            <select
+              value={schedule.progressMode || 'duration'}
+              onChange={async (e) => {
+                const mode = e.target.value as 'duration' | 'work';
+                await apiService.updateSchedule(schedule.id, { progressMode: mode } as any);
+                queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+                queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+              }}
+              className="text-xs border border-gray-200 dark:border-gray-700 rounded-md px-1.5 py-0.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+            >
+              <option value="duration">Duration</option>
+              <option value="work">Work (Hours)</option>
+            </select>
+          </div>
+
+          {!schedule.isScenario && (
+            <>
+              <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
+              <button
+                onClick={async () => {
+                  const label = prompt('Scenario name:', `Scenario ${new Date().toLocaleDateString()}`);
+                  if (!label) return;
+                  await apiService.cloneSchedule(schedule.id, label);
+                  queryClient.invalidateQueries({ queryKey: ['scenarios', schedule.id] });
+                  queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/40 dark:text-indigo-400 rounded-md transition-colors"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                Create Scenario
+              </button>
+              {scenarios.length > 0 && (
+                <>
+                  <select
+                    value={selectedScenarioId}
+                    onChange={(e) => { setSelectedScenarioId(e.target.value); setShowScenarioCompare(false); }}
+                    className="text-xs border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800"
+                  >
+                    <option value="">Select scenario...</option>
+                    {scenarios.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.scenarioLabel || s.name}</option>
+                    ))}
+                  </select>
+                  {selectedScenarioId && (
+                    <button
+                      onClick={() => setShowScenarioCompare(!showScenarioCompare)}
+                      className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                        showScenarioCompare
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/40'
+                      }`}
+                    >
+                      Compare
+                    </button>
+                  )}
+                </>
+              )}
+            </>
+          )}
 
           {cpmData && showCriticalPath && (
             <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
@@ -922,6 +1062,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             startDate: bt.startDate,
             endDate: bt.endDate,
           }))}
+          nonWorkingDates={nonWorkingDates}
         />
       )}
       {viewMode === 'kanban' && (
@@ -1080,6 +1221,102 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
         </div>
       )}
 
+      {/* Scenario Comparison */}
+      {showScenarioCompare && scenarioCompareData && (
+        <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Scenario Comparison</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  if (!confirm('Promote this scenario? This will update the base schedule with scenario dates and delete the scenario.')) return;
+                  await apiService.promoteScenario(schedule.id, selectedScenarioId);
+                  setShowScenarioCompare(false);
+                  setSelectedScenarioId('');
+                  queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+                  queryClient.invalidateQueries({ queryKey: ['scenarios', schedule.id] });
+                  queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+                }}
+                className="px-2.5 py-1 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
+              >
+                Promote to Base
+              </button>
+              <button onClick={() => setShowScenarioCompare(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs">Close</button>
+            </div>
+          </div>
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-center">
+              <div className="text-xs font-medium text-gray-400 uppercase">Modified</div>
+              <div className="mt-1 text-lg font-bold text-yellow-600">{scenarioCompareData.summary.totalModified}</div>
+            </div>
+            <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-center">
+              <div className="text-xs font-medium text-gray-400 uppercase">Added</div>
+              <div className="mt-1 text-lg font-bold text-green-600">{scenarioCompareData.summary.totalAdded}</div>
+            </div>
+            <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-center">
+              <div className="text-xs font-medium text-gray-400 uppercase">Removed</div>
+              <div className="mt-1 text-lg font-bold text-red-600">{scenarioCompareData.summary.totalRemoved}</div>
+            </div>
+            <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-center">
+              <div className="text-xs font-medium text-gray-400 uppercase">Duration Δ</div>
+              <div className={`mt-1 text-lg font-bold ${scenarioCompareData.summary.netDurationChange > 0 ? 'text-red-600' : scenarioCompareData.summary.netDurationChange < 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                {scenarioCompareData.summary.netDurationChange > 0 ? '+' : ''}{scenarioCompareData.summary.netDurationChange}d
+              </div>
+            </div>
+          </div>
+
+          {/* Diff table */}
+          {scenarioCompareData.diffs.length > 0 && (
+            <div className="overflow-x-auto max-h-64 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
+                  <tr>
+                    <th className="text-left px-2 py-1.5 font-semibold text-gray-500 uppercase">Task</th>
+                    <th className="text-center px-2 py-1.5 font-semibold text-gray-500 uppercase">Base Start</th>
+                    <th className="text-center px-2 py-1.5 font-semibold text-gray-500 uppercase">Scenario Start</th>
+                    <th className="text-center px-2 py-1.5 font-semibold text-gray-500 uppercase">Start Δ</th>
+                    <th className="text-center px-2 py-1.5 font-semibold text-gray-500 uppercase">Duration Δ</th>
+                    <th className="text-center px-2 py-1.5 font-semibold text-gray-500 uppercase">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scenarioCompareData.diffs.map((d: any, i: number) => (
+                    <tr key={i} className="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-2 py-1.5 text-gray-800 dark:text-gray-100 font-medium">{d.taskName}</td>
+                      <td className="text-center px-2 py-1.5 text-gray-500">{d.baseStart?.slice(0, 10) || '—'}</td>
+                      <td className="text-center px-2 py-1.5 text-gray-500">{d.scenarioStart?.slice(0, 10) || '—'}</td>
+                      <td className={`text-center px-2 py-1.5 font-medium ${(d.startDelta ?? 0) > 0 ? 'text-red-600' : (d.startDelta ?? 0) < 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                        {d.startDelta != null ? `${d.startDelta > 0 ? '+' : ''}${d.startDelta}d` : '—'}
+                      </td>
+                      <td className={`text-center px-2 py-1.5 font-medium ${(d.durationDelta ?? 0) > 0 ? 'text-red-600' : (d.durationDelta ?? 0) < 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                        {d.durationDelta != null ? `${d.durationDelta > 0 ? '+' : ''}${d.durationDelta}d` : '—'}
+                      </td>
+                      <td className="text-center px-2 py-1.5">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          d.status === 'modified' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
+                          d.status === 'added' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                          'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                        }`}>
+                          {d.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {scenarioCompareData.diffs.length === 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">No differences — scenario matches the base schedule.</p>
+          )}
+        </div>
+      )}
+
       {/* Edit modal */}
       {editingTask && (
         <TaskFormModal
@@ -1140,6 +1377,64 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
           }}
         />
+      )}
+
+      {/* Resource Leveling Results Modal */}
+      {levelingResult !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[70vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Resource Leveling</h3>
+              <button onClick={() => setLevelingResult(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              {levelingResult.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">No resource conflicts detected — schedule is already balanced.</p>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{levelingResult.length} task(s) need date adjustments to resolve resource over-allocations:</p>
+                  <div className="space-y-2">
+                    {levelingResult.map((adj: any) => (
+                      <div key={adj.taskId} className="border border-gray-100 dark:border-gray-700 rounded-lg p-3 text-xs">
+                        <p className="font-medium text-gray-900 dark:text-white">{adj.taskName}</p>
+                        <div className="flex items-center gap-2 mt-1 text-gray-500 dark:text-gray-400">
+                          <span>{adj.originalStart?.slice(0, 10)}</span>
+                          <span>→</span>
+                          <span className="text-orange-600 dark:text-orange-400 font-medium">{adj.newStart?.slice(0, 10)}</span>
+                        </div>
+                        {adj.reason && <p className="mt-1 text-gray-400 dark:text-gray-500 italic">{adj.reason}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            {levelingResult.length > 0 && (
+              <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setLevelingResult(null)}
+                  className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await apiService.applyResourceLeveling(schedule.id, levelingResult);
+                      queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+                    } catch { /* ignore */ }
+                    setLevelingResult(null);
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-md"
+                >
+                  Apply All
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Undo toast */}

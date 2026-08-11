@@ -46,7 +46,49 @@ Tasks can be marked as recurring templates with an RRULE-style recurrence rule. 
 - **Weekly / Biweekly** — with selectable days of the week (e.g., Mon/Wed/Fri)
 - **Monthly** — on a specific day of the month
 
-A daily cron job (02:00 UTC) scans for templates and generates instances within a 14-day horizon. Generated instances link back to their parent template via `recurrence_parent_id`. Template tasks appear in the Gantt chart with a repeat icon.
+A daily cron job (02:00 UTC) scans for templates and generates instances within a 14-day horizon. Additionally, when a user creates a recurring template via the task form, instances are immediately expanded up to 90 days ahead via the `POST /:scheduleId/tasks/:taskId/expand-recurrence` API. Generated instances link back to their parent template via `recurrence_parent_id`. Template tasks appear in the Gantt chart with a blue repeat icon; instances show a smaller repeat icon.
+
+### Non-Working Day Shading
+
+When viewing the Gantt chart at Day or Week zoom levels, non-working days (weekends, holidays, custom calendar exceptions) are shaded with a subtle grey overlay. The dates are fetched from the existing `GET /api/projects/:projectId/non-working-dates` endpoint and cached for 5 minutes. This helps project managers visually identify working vs non-working periods when scheduling tasks.
+
+### Progress Mode (Duration vs Work)
+
+Each schedule has a `progressMode` setting (default: `duration`) that controls how parent task completion percentages are calculated during rollup:
+
+- **Duration mode** — parent progress is a weighted average of children by `estimatedDays` (traditional approach)
+- **Work mode** — parent progress is a weighted average of children by `estimatedDurationHours` (effort-based approach)
+
+The toggle is available in the Gantt toolbar under "% Mode". Changing the mode triggers a re-computation of all parent task rollup values.
+
+### Resource Leveling (Quick Level)
+
+A "Level Resources" button in the Gantt toolbar provides one-click resource leveling. Clicking it calls the existing resource leveling API, which analyzes task resource assignments and detects over-allocations. If adjustments are needed, a modal displays the proposed date changes with reasons. Users can review and click "Apply All" to reschedule the affected tasks, or cancel.
+
+### MSPDI XML Import
+
+The import modal now accepts Microsoft Project XML files (.xml) in MSPDI format, in addition to CSV and Excel. The client-side parser (`mspdiParser.ts`) extracts tasks with:
+- Task names, WBS codes, outline levels (hierarchy)
+- Start/finish dates and durations (PT format → days)
+- Percent complete
+- Predecessor links with dependency types (FS/FF/SS/SF) and lag
+
+Parsed tasks are sent to the `POST /:scheduleId/import-structured` endpoint, which creates tasks in order, assigns parent-child relationships based on outline levels, and creates dependency links.
+
+### What-If Scenarios
+
+Schedules support clone-based what-if scenario analysis:
+
+1. **Create Scenario** — clones the entire schedule (tasks, dependencies, hierarchy) into a new "scenario" schedule. Tasks in the scenario retain `original_task_id` links to the base schedule for comparison.
+2. **Edit independently** — the scenario schedule appears in the schedule list and can be edited like any normal schedule.
+3. **Compare** — select a scenario from the dropdown and click "Compare" to see a task-by-task diff showing date shifts, duration changes, and added/removed tasks. Summary cards show totals.
+4. **Promote to Base** — replaces the base schedule's task dates/durations with the scenario's values and deletes the scenario.
+
+API endpoints:
+- `POST /:scheduleId/clone` — create scenario
+- `GET /:scheduleId/scenarios` — list scenarios
+- `GET /:scheduleId/compare/:scenarioId` — compare base vs scenario
+- `POST /:scheduleId/scenarios/:scenarioId/promote` — promote scenario
 
 ### Views
 

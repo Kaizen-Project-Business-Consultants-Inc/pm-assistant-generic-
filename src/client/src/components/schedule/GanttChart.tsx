@@ -361,6 +361,7 @@ export function GanttChart({
   onCreateTaskWithDates,
   onInsertAfter,
   onInsertBefore,
+  nonWorkingDates,
 }: {
   tasks: GanttTask[];
   scheduleName?: string;
@@ -407,6 +408,8 @@ export function GanttChart({
   onInsertAfter?: (afterTaskId: string, parentTaskId?: string) => void;
   /** Called to insert a new task before a specific task */
   onInsertBefore?: (beforeTaskId: string, parentTaskId?: string) => void;
+  /** Non-working dates to shade on the timeline (YYYY-MM-DD strings) */
+  nonWorkingDates?: Set<string>;
 }) {
   const criticalSet = useMemo(() => new Set(criticalPathTaskIds || []), [criticalPathTaskIds]);
   const baselineMap = useMemo(() => {
@@ -2832,7 +2835,21 @@ export function GanttChart({
                       {task.isMilestone && (
                         <span className="w-3 h-3 flex-shrink-0 rotate-45 bg-primary-500 inline-block" title="Milestone" />
                       )}
-                      {task.priority && !task.isMilestone && (
+                      {(task as any).isRecurrenceTemplate && (
+                        <span className="flex-shrink-0" title="Recurring template">
+                          <svg className="w-3 h-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </span>
+                      )}
+                      {(task as any).recurrenceParentId && (
+                        <span className="flex-shrink-0" title="Recurring instance">
+                          <svg className="w-2.5 h-2.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </span>
+                      )}
+                      {task.priority && !task.isMilestone && !(task as any).isRecurrenceTemplate && !(task as any).recurrenceParentId && (
                         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${priorityDot[task.priority] || 'bg-gray-300'}`} />
                       )}
                       <span
@@ -3233,6 +3250,28 @@ export function GanttChart({
                 />
               ))}
             </div>
+
+            {/* Non-working day shading (only at day/week zoom where individual days are visible) */}
+            {nonWorkingDates && nonWorkingDates.size > 0 && (zoom === 'day' || zoom === 'week') && (() => {
+              const shades: React.ReactNode[] = [];
+              const h = HEADER_H + rows.length * ROW_H;
+              // Iterate through each day in visible range
+              const cursor = new Date(minDate);
+              for (let d = 0; d < totalDays; d++) {
+                const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+                if (nonWorkingDates.has(key)) {
+                  shades.push(
+                    <div
+                      key={`nwd-${d}`}
+                      className="absolute top-0 pointer-events-none bg-gray-200/40 dark:bg-gray-600/25"
+                      style={{ left: d * dayPx, width: dayPx, height: h }}
+                    />
+                  );
+                }
+                cursor.setDate(cursor.getDate() + 1);
+              }
+              return shades;
+            })()}
 
             {/* Row stripes (alternating background for readability) */}
             {rows.map((_, idx) => {

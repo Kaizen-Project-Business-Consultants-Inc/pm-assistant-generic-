@@ -151,6 +151,93 @@ export class RecurrenceService {
 
     return created;
   }
+
+  /**
+   * On-demand expansion for a specific template task.
+   * Called from the API when a user creates/updates a recurring template.
+   */
+  async expandTemplate(templateTaskId: string, horizonDays = 90): Promise<number> {
+    const templates = await databaseService.query(
+      `SELECT * FROM tasks WHERE id = ? AND is_recurrence_template = 1`,
+      [templateTaskId]
+    );
+    if (templates.length === 0) return 0;
+    const tpl = templates[0];
+
+    const rule = parseRecurrenceRule(tpl.recurrence_rule);
+    if (!rule) return 0;
+
+    const horizon = new Date();
+    horizon.setDate(horizon.getDate() + horizonDays);
+
+    const instances = await databaseService.query(
+      `SELECT start_date FROM tasks WHERE recurrence_parent_id = ? ORDER BY start_date DESC LIMIT 1`,
+      [tpl.id]
+    );
+
+    let lastDate: Date;
+    if (instances.length > 0 && instances[0].start_date) {
+      lastDate = new Date(instances[0].start_date);
+    } else if (tpl.start_date) {
+      lastDate = new Date(tpl.start_date);
+    } else {
+      lastDate = new Date();
+    }
+
+    let created = 0;
+    let next = getNextOccurrence(rule, lastDate);
+    while (next <= horizon && created < 100) {
+      const existing = await databaseService.query(
+        `SELECT id FROM tasks WHERE recurrence_parent_id = ? AND start_date = ?`,
+        [tpl.id, formatDate(next)]
+      );
+
+      if (existing.length === 0) {
+        const id = uuidv4();
+        const duration = tpl.estimated_days || 1;
+        const endDate = new Date(next);
+        endDate.setDate(endDate.getDate() + duration);
+
+        await databaseService.query(
+          `INSERT INTO tasks (id, schedule_id, name, description, status, priority, assigned_to,
+            estimated_days, start_date, end_date, progress_percentage, parent_task_id,
+            recurrence_parent_id, is_recurrence_template, created_by)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, 0, ?, ?, 0, ?)`,
+          [
+            id,
+            tpl.schedule_id,
+            tpl.name,
+            tpl.description || null,
+            tpl.priority || 'medium',
+            tpl.assigned_to || null,
+            tpl.estimated_days || null,
+            formatDate(next),
+            formatDate(endDate),
+            0,
+            tpl.parent_task_id || null,
+            tpl.id,
+            tpl.created_by,
+          ]
+        );
+        created++;
+      }
+
+      next = getNextOccurrence(rule, next);
+    }
+
+    return created;
+  }
+
+  /**
+   * Delete all instances created from a template.
+   */
+  async deleteChildren(templateTaskId: string): Promise<number> {
+    const result: any = await databaseService.query(
+      `DELETE FROM tasks WHERE recurrence_parent_id = ?`,
+      [templateTaskId]
+    );
+    return result?.affectedRows ?? 0;
+  }
 }
 
 export const recurrenceService = new RecurrenceService();

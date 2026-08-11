@@ -18,6 +18,10 @@ export interface Schedule {
   startDate: string;
   endDate: string;
   status: 'pending' | 'active' | 'completed' | 'on_hold' | 'cancelled';
+  progressMode?: 'duration' | 'work';
+  isScenario?: boolean;
+  sourceScheduleId?: string;
+  scenarioLabel?: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -251,6 +255,17 @@ export class ScheduleService {
     return taskRepository.findAllDownstream(taskId);
   }
 
+  async addDependency(taskId: string, dependencyId: string, depType: 'FS' | 'FF' | 'SS' | 'SF' = 'FS', lagDays = 0): Promise<void> {
+    const task = await this.findTaskById(taskId);
+    if (!task) throw new Error('Task not found');
+    await this.validateDependency(taskId, dependencyId, task.scheduleId);
+    const id = uuidv4();
+    await databaseService.query(
+      `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES (?, ?, ?, ?, ?)`,
+      [id, taskId, dependencyId, depType, lagDays],
+    );
+  }
+
   // -------------------------------------------------------------------------
   // Dependency validation (business logic — stays in service)
   // -------------------------------------------------------------------------
@@ -317,11 +332,13 @@ export class ScheduleService {
     const rollupStart = starts.length > 0 ? starts.sort()[0] : null;
     const rollupEnd = ends.length > 0 ? ends.sort().reverse()[0] : null;
 
-    // Progress — weighted average by estimatedDays (equal weight 1 if null)
+    // Progress — weighted average by estimatedDays or estimatedDurationHours depending on schedule progressMode
+    const schedule = await this.findById(parent.scheduleId);
+    const useWorkMode = schedule?.progressMode === 'work';
     let totalWeight = 0;
     let weightedProgress = 0;
     for (const c of childTasks) {
-      const w = c.estimatedDays ?? 1;
+      const w = useWorkMode ? (c.estimatedDurationHours ?? c.estimatedDays ?? 1) : (c.estimatedDays ?? 1);
       totalWeight += w;
       weightedProgress += (c.progressPercentage ?? 0) * w;
     }
@@ -925,6 +942,198 @@ export class ScheduleService {
     }
 
     return { triggeredByTaskId: taskId, deltaDays, affectedTasks };
+  }
+
+  // -------------------------------------------------------------------------
+  // What-If Scenarios (clone-based)
+  // -------------------------------------------------------------------------
+
+  async cloneSchedule(scheduleId: string, label: string, userId: string): Promise<Schedule> {
+    const source = await this.findById(scheduleId);
+    if (!source) throw new Error('Schedule not found');
+
+    const newId = uuidv4();
+    await databaseService.query(
+      `INSERT INTO schedules (id, project_id, name, description, start_date, end_date, status, created_by, is_scenario, source_schedule_id, scenario_label, progress_mode)
+       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, 1, ?, ?, ?)`,
+      [newId, source.projectId, `${source.name} — ${label}`, source.description || null,
+       source.startDate, source.endDate, userId, scheduleId, label, source.progressMode || 'duration'],
+    );
+
+    // Clone all tasks
+    const tasks = await this.findTasksByScheduleId(scheduleId);
+    const oldToNew = new Map<string, string>();
+
+    for (const t of tasks) {
+      const newTaskId = uuidv4();
+      oldToNew.set(t.id, newTaskId);
+
+      await databaseService.query(
+        `INSERT INTO tasks (id, schedule_id, name, description, status, priority, assigned_to,
+          due_date, estimated_days, estimated_duration_hours, actual_duration_hours,
+          start_date, end_date, progress_percentage, dependency, dependency_type,
+          risks, issues, comments, parent_task_id, is_milestone, dependency_lag_days, sort_order, created_by,
+          recurrence_rule, recurrence_parent_id, is_recurrence_template, budget_allocated, actual_cost,
+          constraint_type, constraint_date, original_task_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          newTaskId, newId, t.name, t.description || null, t.status, t.priority, t.assignedTo || null,
+          t.dueDate || null, t.estimatedDays ?? null, t.estimatedDurationHours ?? null, t.actualDurationHours ?? null,
+          t.startDate || null, t.endDate || null, t.progressPercentage ?? 0,
+          null, null, // dependencies will be re-created below
+          t.risks || null, t.issues || null, t.comments || null,
+          null, // parentTaskId remapped below
+          t.isMilestone ? 1 : 0, t.dependencyLagDays ?? 0, t.sortOrder, userId,
+          t.recurrenceRule || null, null, t.isRecurrenceTemplate ? 1 : 0,
+          t.budgetAllocated ?? null, t.actualCost ?? null,
+          t.constraintType || 'ASAP', t.constraintDate || null, t.id,
+        ],
+      );
+    }
+
+    // Fix parent references
+    for (const t of tasks) {
+      if (t.parentTaskId && oldToNew.has(t.parentTaskId)) {
+        await databaseService.query(
+          'UPDATE tasks SET parent_task_id = ? WHERE id = ?',
+          [oldToNew.get(t.parentTaskId), oldToNew.get(t.id)],
+        );
+      }
+    }
+
+    // Clone dependencies with remapped IDs
+    for (const t of tasks) {
+      if (t.dependencies && t.dependencies.length > 0) {
+        for (const dep of t.dependencies) {
+          const newTaskId = oldToNew.get(t.id);
+          const newDepId = oldToNew.get(dep.dependencyId);
+          if (newTaskId && newDepId) {
+            await databaseService.query(
+              'INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES (?, ?, ?, ?, ?)',
+              [uuidv4(), newTaskId, newDepId, dep.dependencyType, dep.lagDays],
+            );
+          }
+        }
+      }
+    }
+
+    return (await this.findById(newId))!;
+  }
+
+  async getScenarios(scheduleId: string): Promise<Schedule[]> {
+    const rows = await databaseService.query(
+      'SELECT * FROM schedules WHERE source_schedule_id = ? AND is_scenario = 1 ORDER BY created_at DESC',
+      [scheduleId],
+    );
+    return rows.map((r: any) => ({
+      id: r.id, projectId: r.project_id, name: r.name, description: r.description ?? undefined,
+      startDate: String(r.start_date), endDate: String(r.end_date), status: r.status,
+      progressMode: r.progress_mode ?? 'duration',
+      isScenario: true, sourceScheduleId: r.source_schedule_id, scenarioLabel: r.scenario_label,
+      createdBy: r.created_by, createdAt: String(r.created_at), updatedAt: String(r.updated_at),
+    }));
+  }
+
+  async compareSchedules(baseId: string, scenarioId: string): Promise<{
+    diffs: Array<{
+      taskName: string;
+      originalTaskId: string;
+      baseStart?: string; baseEnd?: string; baseDuration?: number;
+      scenarioStart?: string; scenarioEnd?: string; scenarioDuration?: number;
+      startDelta?: number; endDelta?: number; durationDelta?: number;
+      status: 'modified' | 'added' | 'removed';
+    }>;
+    summary: { totalModified: number; totalAdded: number; totalRemoved: number; netDurationChange: number };
+  }> {
+    const baseTasks = await this.findTasksByScheduleId(baseId);
+    const scenarioTasks = await this.findTasksByScheduleId(scenarioId);
+
+    const baseMap = new Map(baseTasks.map(t => [t.id, t]));
+    const scenarioByOriginal = new Map<string, Task>();
+    const scenarioOnlyTasks: Task[] = [];
+
+    for (const st of scenarioTasks) {
+      const origId = (st as any).originalTaskId;
+      if (origId && baseMap.has(origId)) {
+        scenarioByOriginal.set(origId, st);
+      } else {
+        scenarioOnlyTasks.push(st);
+      }
+    }
+
+    const diffs: Array<any> = [];
+    let totalModified = 0, totalAdded = 0, totalRemoved = 0, netDurationChange = 0;
+
+    const daysBetween = (a?: string, b?: string) => {
+      if (!a || !b) return 0;
+      return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86_400_000);
+    };
+
+    for (const bt of baseTasks) {
+      const st = scenarioByOriginal.get(bt.id);
+      if (!st) {
+        diffs.push({ taskName: bt.name, originalTaskId: bt.id, baseStart: bt.startDate, baseEnd: bt.endDate, baseDuration: bt.estimatedDays, status: 'removed' });
+        totalRemoved++;
+        continue;
+      }
+
+      const startDelta = daysBetween(bt.startDate, st.startDate);
+      const endDelta = daysBetween(bt.endDate, st.endDate);
+      const durationDelta = (st.estimatedDays ?? 0) - (bt.estimatedDays ?? 0);
+
+      if (startDelta !== 0 || endDelta !== 0 || durationDelta !== 0) {
+        diffs.push({
+          taskName: bt.name, originalTaskId: bt.id,
+          baseStart: bt.startDate, baseEnd: bt.endDate, baseDuration: bt.estimatedDays,
+          scenarioStart: st.startDate, scenarioEnd: st.endDate, scenarioDuration: st.estimatedDays,
+          startDelta, endDelta, durationDelta, status: 'modified',
+        });
+        totalModified++;
+        netDurationChange += durationDelta;
+      }
+    }
+
+    for (const st of scenarioOnlyTasks) {
+      diffs.push({
+        taskName: st.name, originalTaskId: '', status: 'added',
+        scenarioStart: st.startDate, scenarioEnd: st.endDate, scenarioDuration: st.estimatedDays,
+      });
+      totalAdded++;
+    }
+
+    return { diffs, summary: { totalModified, totalAdded, totalRemoved, netDurationChange } };
+  }
+
+  async promoteScenario(scenarioId: string): Promise<void> {
+    const scenario = await this.findById(scenarioId);
+    if (!scenario || !scenario.isScenario || !scenario.sourceScheduleId) {
+      throw new Error('Not a scenario schedule');
+    }
+
+    const baseId = scenario.sourceScheduleId;
+    const baseTasks = await this.findTasksByScheduleId(baseId);
+    const scenarioTasks = await this.findTasksByScheduleId(scenarioId);
+
+    // Build mapping from original_task_id → scenario task
+    const scenarioByOriginal = new Map<string, Task>();
+    for (const st of scenarioTasks) {
+      const origId = (st as any).originalTaskId;
+      if (origId) scenarioByOriginal.set(origId, st);
+    }
+
+    // Update base tasks with scenario dates/durations
+    for (const bt of baseTasks) {
+      const st = scenarioByOriginal.get(bt.id);
+      if (st) {
+        await databaseService.query(
+          'UPDATE tasks SET start_date = ?, end_date = ?, estimated_days = ?, progress_percentage = ? WHERE id = ?',
+          [st.startDate || null, st.endDate || null, st.estimatedDays ?? null, st.progressPercentage ?? 0, bt.id],
+        );
+      }
+    }
+
+    // Delete the scenario schedule
+    await this.delete(scenarioId);
   }
 }
 

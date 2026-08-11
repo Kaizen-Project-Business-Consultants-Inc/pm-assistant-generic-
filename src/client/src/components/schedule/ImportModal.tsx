@@ -3,6 +3,7 @@ import { X, Upload, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { apiService } from '../../services/api';
 import { cleanCsvForImport } from '../../utils/csvCleaner';
+import { parseMspdi } from '../../utils/mspdiParser';
 import { useModal } from '../../hooks/useModal';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 
@@ -156,6 +157,30 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
       return;
     }
 
+    const ext = file.name.toLowerCase().split('.').pop();
+
+    // Handle MS Project XML (.xml)
+    if (ext === 'xml') {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const xmlText = (e.target?.result as string) ?? '';
+          const mspdiTasks = parseMspdi(xmlText);
+          if (mspdiTasks.length === 0) { setError('No tasks found in XML file.'); return; }
+          setImporting(true);
+          const res = await apiService.importStructured(scheduleId, mspdiTasks);
+          setResult({ succeeded: res.succeeded ?? 0, failed: res.failed ?? [] });
+          if ((res.succeeded ?? 0) > 0) onImported?.();
+        } catch (err: unknown) {
+          setError(getApiErrorMessage(err, 'Failed to parse XML file'));
+        } finally {
+          setImporting(false);
+        }
+      };
+      reader.readAsText(file);
+      return;
+    }
+
     if (isExcelFile(file)) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -235,7 +260,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Import Tasks" onKeyDown={handleKeyDown} tabIndex={-1} className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Import Tasks from CSV / Excel</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Import Tasks from CSV / Excel / XML</h2>
           <button onClick={handleClose} aria-label="Close" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">
             <X size={20} />
           </button>
@@ -280,9 +305,9 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
                     }`}
                   >
                     <Upload size={32} className="text-gray-400 dark:text-gray-500" />
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop a CSV or Excel file here, or click to browse</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">.csv, .xlsx, .xls supported (max 5MB)</p>
-                    <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop a CSV, Excel, or MS Project XML file here, or click to browse</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">.csv, .xlsx, .xls, .xml supported (max 5MB)</p>
+                    <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.xml,text/csv,text/xml,application/xml,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">

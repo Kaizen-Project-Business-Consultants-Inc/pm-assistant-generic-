@@ -272,6 +272,11 @@ class ApiService {
     return response.data;
   }
 
+  async getNonWorkingDates(projectId: string, start: string, end: string): Promise<{ dates: string[] }> {
+    const response = await this.api.get(`/projects/${projectId}/non-working-dates`, { params: { start, end } });
+    return response.data;
+  }
+
   async createSchedule(scheduleData: {
     projectId: string;
     name: string;
@@ -280,6 +285,16 @@ class ApiService {
     endDate: string;
   }) {
     const response = await this.api.post('/schedules', scheduleData);
+    return response.data;
+  }
+
+  async updateSchedule(scheduleId: string, data: Record<string, unknown>) {
+    const response = await this.api.put(`/schedules/${scheduleId}`, data);
+    return response.data;
+  }
+
+  async deleteSchedule(scheduleId: string) {
+    const response = await this.api.delete(`/schedules/${scheduleId}`);
     return response.data;
   }
 
@@ -326,6 +341,45 @@ class ApiService {
 
   async deleteTask(scheduleId: string, taskId: string) {
     const response = await this.api.delete(`/schedules/${scheduleId}/tasks/${taskId}`);
+    return response.data;
+  }
+
+  async expandRecurrence(scheduleId: string, taskId: string, horizonDays = 90) {
+    const response = await this.api.post(`/schedules/${scheduleId}/tasks/${taskId}/expand-recurrence`, { horizonDays });
+    return response.data;
+  }
+
+  async deleteRecurrenceChildren(scheduleId: string, taskId: string) {
+    const response = await this.api.delete(`/schedules/${scheduleId}/tasks/${taskId}/recurrence-children`);
+    return response.data;
+  }
+
+  async importStructured(scheduleId: string, tasks: Array<{ name: string; wbs?: string; startDate?: string; endDate?: string; duration?: number; predecessors?: string; percentComplete?: number; outlineLevel?: number }>) {
+    const response = await this.api.post(`/schedules/${scheduleId}/import-structured`, { tasks });
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
+  // What-If Scenarios
+  // -------------------------------------------------------------------------
+
+  async cloneSchedule(scheduleId: string, label?: string) {
+    const response = await this.api.post(`/schedules/${scheduleId}/clone`, { label });
+    return response.data;
+  }
+
+  async getScenarios(scheduleId: string) {
+    const response = await this.api.get(`/schedules/${scheduleId}/scenarios`);
+    return response.data;
+  }
+
+  async compareSchedules(baseId: string, scenarioId: string) {
+    const response = await this.api.get(`/schedules/${baseId}/compare/${scenarioId}`);
+    return response.data;
+  }
+
+  async promoteScenario(baseId: string, scenarioId: string) {
+    const response = await this.api.post(`/schedules/${baseId}/scenarios/${scenarioId}/promote`);
     return response.data;
   }
 

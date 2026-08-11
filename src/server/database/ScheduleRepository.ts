@@ -17,6 +17,10 @@ function rowToSchedule(row: any): Schedule {
     startDate: String(row.start_date),
     endDate: String(row.end_date),
     status: row.status,
+    progressMode: row.progress_mode ?? 'duration',
+    isScenario: row.is_scenario === 1 || row.is_scenario === true,
+    sourceScheduleId: row.source_schedule_id ?? undefined,
+    scenarioLabel: row.scenario_label ?? undefined,
     createdBy: row.created_by,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
@@ -30,6 +34,10 @@ const SCHEDULE_COLUMN_MAP: Record<string, string> = {
   endDate: 'end_date',
   status: 'status',
   createdBy: 'created_by',
+  progressMode: 'progress_mode',
+  isScenario: 'is_scenario',
+  sourceScheduleId: 'source_schedule_id',
+  scenarioLabel: 'scenario_label',
 };
 
 export class ScheduleRepository extends BaseRepository<Schedule> {

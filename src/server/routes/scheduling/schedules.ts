@@ -7,6 +7,7 @@ import { dagWorkflowService } from '../../services/DagWorkflowService';
 import { WebSocketService } from '../../services/WebSocketService';
 import { webhookService } from '../../services/WebhookService';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
+import { recurrenceService } from '../../services/RecurrenceService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
@@ -22,6 +23,7 @@ const createScheduleSchema = z.object({
   description: z.string().optional(),
   startDate: z.string().date(),
   endDate: z.string().date(),
+  progressMode: z.enum(['duration', 'work']).optional(),
 });
 
 const taskDependencySchema = z.object({
@@ -504,6 +506,103 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     } catch (error) {
       logger.error('Get activity error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch activity' });
+    }
+  });
+
+  // Expand recurrence template into instances
+  fastify.post('/:scheduleId/tasks/:taskId/expand-recurrence', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    schema: { description: 'Expand a recurring task template into instances', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { taskId } = request.params as { taskId: string };
+      const { horizonDays } = (request.body as { horizonDays?: number }) || {};
+      const count = await recurrenceService.expandTemplate(taskId, horizonDays || 90);
+      return { expanded: count };
+    } catch (error) {
+      logger.error('Expand recurrence error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to expand recurrence' });
+    }
+  });
+
+  // Delete all recurrence children
+  fastify.delete('/:scheduleId/tasks/:taskId/recurrence-children', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    schema: { description: 'Delete all instances of a recurring task template', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { taskId } = request.params as { taskId: string };
+      const deleted = await recurrenceService.deleteChildren(taskId);
+      return { deleted };
+    } catch (error) {
+      logger.error('Delete recurrence children error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to delete recurrence children' });
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // What-If Scenarios
+  // -------------------------------------------------------------------------
+
+  // Clone schedule as a scenario
+  fastify.post('/:scheduleId/clone', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    schema: { description: 'Clone a schedule as a what-if scenario', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const { label } = (request.body as { label?: string }) || {};
+      const userId = request.user!.userId;
+      const scenario = await scheduleService.cloneSchedule(scheduleId, label || `Scenario ${new Date().toLocaleDateString()}`, userId);
+      return reply.status(201).send({ schedule: scenario });
+    } catch (error) {
+      logger.error('Clone schedule error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to clone schedule' });
+    }
+  });
+
+  // List scenarios for a schedule
+  fastify.get('/:scheduleId/scenarios', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    schema: { description: 'List what-if scenarios for a schedule', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const scenarios = await scheduleService.getScenarios(scheduleId);
+      return { scenarios };
+    } catch (error) {
+      logger.error('List scenarios error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to list scenarios' });
+    }
+  });
+
+  // Compare base vs scenario
+  fastify.get('/:scheduleId/compare/:scenarioId', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    schema: { description: 'Compare base schedule with a scenario', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId, scenarioId } = request.params as { scheduleId: string; scenarioId: string };
+      const result = await scheduleService.compareSchedules(scheduleId, scenarioId);
+      return result;
+    } catch (error) {
+      logger.error('Compare schedules error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to compare schedules' });
+    }
+  });
+
+  // Promote scenario to replace base schedule
+  fastify.post('/:scheduleId/scenarios/:scenarioId/promote', {
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    schema: { description: 'Promote a scenario to replace the base schedule', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scenarioId } = request.params as { scheduleId: string; scenarioId: string };
+      await scheduleService.promoteScenario(scenarioId);
+      return { message: 'Scenario promoted successfully' };
+    } catch (error) {
+      logger.error('Promote scenario error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to promote scenario' });
     }
   });
 }

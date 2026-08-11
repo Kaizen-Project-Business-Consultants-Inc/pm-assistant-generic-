@@ -226,4 +226,119 @@ export async function importRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: 'Failed to import CSV' });
     }
   });
+
+  // POST /:scheduleId/import-structured — import tasks from structured JSON (used by MSPDI parser)
+  const structuredTaskSchema = z.object({
+    name: z.string().min(1),
+    wbs: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    duration: z.number().optional(),
+    predecessors: z.string().optional(), // "3FS+2d,5SS"
+    percentComplete: z.number().min(0).max(100).optional(),
+    outlineLevel: z.number().int().min(0).optional(),
+  });
+
+  const importStructuredSchema = z.object({
+    tasks: z.array(structuredTaskSchema).max(500),
+  });
+
+  fastify.post('/:scheduleId/import-structured', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const body = importStructuredSchema.parse(request.body);
+      const schedule = await scheduleService.findById(scheduleId);
+      if (!schedule) return reply.status(404).send({ error: 'Schedule not found' });
+
+      const userId = request.user!.userId;
+      const uidToTaskId = new Map<number, string>();
+      const levelStack: { level: number; taskId: string }[] = [];
+
+      const succeeded: number[] = [];
+      const failed: { row: number; error: string }[] = [];
+
+      for (let i = 0; i < body.tasks.length; i++) {
+        const t = body.tasks[i];
+        try {
+          // Determine parent from outlineLevel
+          const level = t.outlineLevel ?? 1;
+          let parentTaskId: string | undefined;
+          while (levelStack.length > 0 && levelStack[levelStack.length - 1].level >= level) {
+            levelStack.pop();
+          }
+          if (levelStack.length > 0) {
+            parentTaskId = levelStack[levelStack.length - 1].taskId;
+          }
+
+          // Compute end date from duration if missing
+          let endDate = t.endDate ? toDateStr(t.endDate) : null;
+          const startDate = t.startDate ? toDateStr(t.startDate) : null;
+          if (!endDate && startDate && t.duration) {
+            const s = new Date(startDate);
+            s.setDate(s.getDate() + t.duration);
+            endDate = s.toISOString().slice(0, 10);
+          }
+
+          const task = await scheduleService.createTask({
+            scheduleId,
+            name: t.name.trim(),
+            startDate: startDate || undefined,
+            endDate: endDate || undefined,
+            estimatedDays: t.duration || undefined,
+            progressPercentage: t.percentComplete || 0,
+            parentTaskId,
+            createdBy: userId,
+          });
+
+          uidToTaskId.set(i + 1, task.id); // Use 1-based index as UID proxy
+          levelStack.push({ level, taskId: task.id });
+          succeeded.push(i + 1);
+        } catch (rowErr: any) {
+          failed.push({ row: i + 1, error: rowErr.message || 'Unknown error' });
+        }
+      }
+
+      // Second pass: create dependencies
+      let depsCreated = 0;
+      for (let i = 0; i < body.tasks.length; i++) {
+        const t = body.tasks[i];
+        if (!t.predecessors) continue;
+
+        const taskId = uidToTaskId.get(i + 1);
+        if (!taskId) continue;
+
+        const predParts = t.predecessors.split(',').map(s => s.trim()).filter(Boolean);
+        for (const pred of predParts) {
+          // Parse "3FS+2d" or "3" or "3SS-1d"
+          const m = pred.match(/^(\d+)(FS|FF|SS|SF)?([+-]\d+d)?$/);
+          if (!m) continue;
+
+          const predUid = parseInt(m[1]);
+          const depType = (m[2] || 'FS') as 'FS' | 'FF' | 'SS' | 'SF';
+          const lagDays = m[3] ? parseInt(m[3].replace('d', '')) : 0;
+
+          const depId = uidToTaskId.get(predUid);
+          if (!depId) continue;
+
+          try {
+            await scheduleService.addDependency(taskId, depId, depType, lagDays);
+            depsCreated++;
+          } catch {
+            // Skip invalid dependencies silently
+          }
+        }
+      }
+
+      return {
+        succeeded: succeeded.length,
+        failed,
+        total: body.tasks.length,
+        dependenciesCreated: depsCreated,
+      };
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      logger.error('Structured import error', { error });
+      return reply.status(500).send({ error: 'Failed to import tasks' });
+    }
+  });
 }
