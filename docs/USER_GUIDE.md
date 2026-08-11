@@ -280,6 +280,45 @@ Tasks can be organized hierarchically:
 - Create **parent tasks** (phases or work packages) as top-level items.
 - Add **subtasks** under parent tasks to break down work.
 - Expand or collapse task groups using the chevron icon.
+- **Summary tasks**: Parent tasks with children become summary tasks. Their dates, progress, status, and budget are automatically computed from children. Rollup fields are read-only in the table and task form (shown as greyed/disabled). The Gantt chart renders summary tasks with diamond markers at each end of the bar.
+
+### Task Budget
+
+Each task can track budget and cost:
+
+- **Budget ($)** -- Planned budget for the task. Set in the Task Form modal or inline in the Table view (Cost column group).
+- **Actual Cost ($)** -- Actual spend to date.
+- **Cost Variance** -- Computed as Budget minus Actual Cost. Shown colour-coded: green (under budget), red (over budget).
+
+Enable cost columns via the **Columns** picker > **Cost** group.
+
+### Task Constraints
+
+Constraints control when tasks can be scheduled in the Critical Path calculation:
+
+- **ASAP** -- As Soon As Possible (default, no constraint)
+- **ALAP** -- As Late As Possible (scheduled at latest possible time)
+- **SNET/SNLT** -- Start No Earlier/Later Than a specific date
+- **FNET/FNLT** -- Finish No Earlier/Later Than a specific date
+- **MSO/MFO** -- Must Start/Finish On a specific date
+
+Set constraints in the Task Form modal or inline via the **Constraint** and **Constraint Date** columns (enable in Columns picker > Scheduling group).
+
+### Multi-Resource Assignment
+
+Tasks can have multiple resources assigned:
+
+- In the Task Form modal, use the **Resource Assignments** section to add up to 10 resources.
+- Each assignment has: Resource name/ID, Allocation % (1-100), and optional Role.
+- The primary assignee (first resource or the "Assigned To" field) is shown in the Gantt and Table views.
+
+### Custom Calendars
+
+Each project has a working calendar that defines which days are working days:
+
+- **Default calendar**: Monday through Friday, 8 hours/day.
+- Add **holidays** (non-working exceptions) or mark weekend days as working.
+- Calendars are managed via the API (`/api/projects/:projectId/calendars`).
 
 ### Dependencies
 

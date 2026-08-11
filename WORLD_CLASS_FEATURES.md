@@ -22,6 +22,47 @@ An agentic AI project management platform that combines the scheduling power of 
 - Recalculate on demand via API and UI toggle
 - **Benchmark:** Primavera P6, MS Project
 
+### 1.1b Task Constraints (CPM)
+- 8 constraint types: ASAP, ALAP, SNET, SNLT, FNET, FNLT, MSO, MFO
+- Constraints enforced in CPM forward/backward pass
+- Inline editing in Table view (dropdown + date picker)
+- Task Form modal constraint section with conditional date field
+- **Benchmark:** MS Project, Primavera P6
+
+### 1.1c Task-Level Budget
+- Budget Allocated and Actual Cost per task (DECIMAL 12,2)
+- Cost Variance = Budget - Actual (color-coded green/red)
+- Inline editable in Table view Cost column group
+- Budget fields in Task Form modal
+- Summary task budget auto-rollup from children
+- **Benchmark:** MS Project
+
+### 1.1d Summary Task Auto-Rollup
+- Parent tasks auto-compute dates, progress, status, budget from children
+- Recompute-on-write pattern (create/update/delete triggers rollup up the chain)
+- Rollup fields read-only in UI (greyed cells, disabled form fields)
+- Gantt renders summary tasks with diamond endpoint markers
+- Recursive rollup up to 10 levels deep
+- **Benchmark:** MS Project, Primavera P6
+
+### 1.1e Custom Calendars (Working Days)
+- Per-project calendars with configurable working days (Mon-Sun checkboxes)
+- Hours per day setting
+- Holiday exceptions (specific dates as non-working)
+- Working exceptions (override non-working days as working)
+- CRUD API for calendars and exceptions
+- Non-working dates API for Gantt shading
+- **Benchmark:** MS Project, Primavera P6
+
+### 1.1f Multi-Resource Assignment
+- Multiple resources per task (up to 10)
+- Allocation percentage (1-100%) per resource
+- Role on task label
+- Planned hours per assignment
+- Primary assignee denormalized for backward compatibility
+- Task Form modal multi-resource editor
+- **Benchmark:** MS Project, Primavera P6
+
 ### 1.2 Baseline Management
 - Save schedule baseline snapshots (planned start, planned end, progress)
 - Compare baseline vs actual on Gantt (dual bars)

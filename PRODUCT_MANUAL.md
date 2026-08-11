@@ -106,6 +106,68 @@ The `CriticalPathService` performs a full forward and backward pass across the t
 
 Results feed into Gantt chart highlighting, Monte Carlo simulation, and resource leveling.
 
+### Task Constraints (CPM)
+
+Tasks support 8 constraint types that influence the CPM forward/backward pass:
+
+| Constraint | Description |
+|---|---|
+| ASAP | As Soon As Possible (default) |
+| ALAP | As Late As Possible — ES shifted to LS after backward pass |
+| SNET | Start No Earlier Than — ES = max(ES, constraint date) |
+| SNLT | Start No Later Than — ES = min(ES, constraint date) |
+| FNET | Finish No Earlier Than — shifts ES forward so EF meets constraint |
+| FNLT | Finish No Later Than — shifts ES back so EF doesn't exceed constraint |
+| MSO | Must Start On — ES = constraint date |
+| MFO | Must Finish On — EF = constraint date, ES = EF - duration |
+
+Constraints are stored as `constraint_type` (VARCHAR 4) and `constraint_date` (DATE) on the tasks table. Set via the Task Form modal or inline in the Table view's Scheduling column group.
+
+### Task-Level Budget
+
+Each task tracks `budget_allocated` (planned budget) and `actual_cost` (spent to date), both DECIMAL(12,2). The Table view's **Cost** column group shows:
+
+- **Budget** — formatted as currency, inline editable
+- **Actual Cost** — formatted as currency, inline editable
+- **Cost Variance** — computed (budget - actual), color-coded green/red
+
+Budget fields are also available in the Task Form modal. For summary tasks, budget rolls up automatically from children.
+
+### Summary Task Auto-Rollup
+
+When a task has children (via `parent_task_id`), it becomes a **summary task** (`is_summary = 1`). Summary task fields are automatically recomputed from children on every create/update/delete:
+
+- **Start Date** = earliest child start
+- **End Date** = latest child end
+- **Progress** = weighted average by estimatedDays
+- **Status** = all completed → completed, any in-progress → in_progress, else pending
+- **Budget/Cost** = sum of children
+- **Estimated Days** = sum of children
+
+Summary fields are **read-only** in the UI — greyed out in inline editing and disabled in the Task Form modal. The Gantt chart renders summary tasks with diamond endpoint markers.
+
+### Custom Calendars (Working Days)
+
+Each project can have one or more calendars (`project_calendars` table) defining:
+
+- **Working days** — array of weekday numbers (0=Sun through 6=Sat), default Mon-Fri
+- **Hours per day** — default 8.0
+- **Holiday exceptions** — specific dates marked as non-working (`calendar_exceptions` table)
+- **Working exceptions** — specific non-working days overridden as working
+
+API endpoints under `/api/projects/:projectId/calendars` provide CRUD for calendars and exceptions. The `/api/projects/:projectId/non-working-dates` endpoint returns non-working dates for a date range (used by the Gantt for shading).
+
+### Multi-Resource Assignment
+
+Tasks can have multiple resource assignments (`task_assignments` table):
+
+- **Resource ID** — person or team assigned
+- **Allocation %** — 1-100, how much of the resource's time is dedicated
+- **Role on task** — optional role label
+- **Hours planned** — optional planned hours
+
+The primary assignee is denormalized to `tasks.assigned_to` for backward compatibility. Assignments are bulk-loaded alongside dependencies for efficient queries. The Task Form modal provides a multi-resource editor with add/remove rows, allocation percentage, and role fields.
+
 ### Baselines
 
 The `BaselineService` captures point-in-time snapshots of a schedule. Each baseline records every task's start date, end date, estimated days, progress, and status. Baselines are immutable once created.
