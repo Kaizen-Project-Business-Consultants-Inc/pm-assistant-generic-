@@ -80,9 +80,16 @@ function formatShortDate(d: Date): string {
 function buildFlatRows(tasks: GanttTask[], collapsedIds?: Set<string>): FlatRow[] {
   const rows: FlatRow[] = [];
   const taskIds = new Set(tasks.map((t) => t.id));
-  const topLevel = tasks.filter((t) => !t.parentTaskId || !taskIds.has(t.parentTaskId));
-  // Sort by sort_order (user-defined), then start date as fallback
-  topLevel.sort((a, b) => {
+
+  // Pre-build childrenOf map to avoid O(n) filter per parent
+  const childrenOf = new Map<string | null, GanttTask[]>();
+  for (const t of tasks) {
+    const parent = (t.parentTaskId && taskIds.has(t.parentTaskId)) ? t.parentTaskId : null;
+    if (!childrenOf.has(parent)) childrenOf.set(parent, []);
+    childrenOf.get(parent)!.push(t);
+  }
+
+  const sortTasks = (list: GanttTask[]) => list.sort((a, b) => {
     const sa = a.sortOrder ?? 0;
     const sb = b.sortOrder ?? 0;
     if (sa !== sb) return sa - sb;
@@ -91,18 +98,11 @@ function buildFlatRows(tasks: GanttTask[], collapsedIds?: Set<string>): FlatRow[
     return da - db;
   });
 
+  const topLevel = sortTasks(childrenOf.get(null) || []);
+
   function addChildren(parentId: string, level: number, parentWbs: string) {
-    if (collapsedIds?.has(parentId)) return; // skip children of collapsed parents
-    const children = tasks
-      .filter((t) => t.parentTaskId === parentId)
-      .sort((a, b) => {
-        const sa = a.sortOrder ?? 0;
-        const sb = b.sortOrder ?? 0;
-        if (sa !== sb) return sa - sb;
-        const da = toDate(a.startDate)?.getTime() ?? 0;
-        const db = toDate(b.startDate)?.getTime() ?? 0;
-        return da - db;
-      });
+    if (collapsedIds?.has(parentId)) return;
+    const children = sortTasks(childrenOf.get(parentId) || []);
     children.forEach((child, idx) => {
       const wbs = `${parentWbs}.${idx + 1}`;
       rows.push({ task: child, level, wbs });
@@ -1053,15 +1053,29 @@ export function GanttChart({
     return map;
   }, [rows]);
 
+  // taskId → row index (0-based) for O(1) dependency arrow lookups
+  const rowIdxMap = useMemo(() => {
+    const map = new Map<string, number>();
+    rows.forEach(({ task }, idx) => map.set(task.id, idx));
+    return map;
+  }, [rows]);
+
+  // taskId → task for O(1) lookups in render path
+  const taskMap = useMemo(() => {
+    const map = new Map<string, GanttTask>();
+    for (const t of tasks) map.set(t.id, t);
+    return map;
+  }, [tasks]);
+
   // Get dependency health status
   const getDepHealth = useCallback((depTaskId: string): 'satisfied' | 'in_progress' | 'at_risk' => {
-    const depTask = tasks.find(t => t.id === depTaskId);
+    const depTask = taskMap.get(depTaskId);
     if (!depTask) return 'at_risk';
     if (depTask.status === 'completed') return 'satisfied';
     if (depTask.status === 'in_progress') return 'in_progress';
     if (depTask.endDate && new Date(depTask.endDate) < new Date()) return 'at_risk';
     return 'in_progress';
-  }, [tasks]);
+  }, [taskMap]);
 
   const healthColor = (health: 'satisfied' | 'in_progress' | 'at_risk') =>
     health === 'satisfied' ? '#22c55e' : health === 'in_progress' ? '#eab308' : '#ef4444';
@@ -2808,7 +2822,7 @@ export function GanttChart({
                           onClick={(e) => { e.stopPropagation(); toggleCollapse(task.id); }}
                           title={collapsedIds.has(task.id) ? 'Expand children' : 'Collapse children'}
                         >
-                          <svg className={`w-3 h-3 transition-transform ${collapsedIds.has(task.id) ? '' : 'rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <svg className={`w-3 h-3 ${collapsedIds.has(task.id) ? '' : 'rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                           </svg>
                         </button>
@@ -3691,8 +3705,8 @@ export function GanttChart({
                 if (!taskStart || !taskEnd) return [];
 
                 return task.dependencies.map((dep, di) => {
-                  const depIdx = rows.findIndex(r => r.task.id === dep.dependencyId);
-                  if (depIdx === -1) return null;
+                  const depIdx = rowIdxMap.get(dep.dependencyId);
+                  if (depIdx == null) return null;
 
                   const depTask = rows[depIdx].task;
                   const depStart = toDate(depTask.startDate);

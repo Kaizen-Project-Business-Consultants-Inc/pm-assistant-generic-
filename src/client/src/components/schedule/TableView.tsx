@@ -284,43 +284,29 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       });
     };
 
+    // Build summaryTaskIds inline (tasks that have children)
+    const summaryIds = new Set<string>();
+    for (const [parentId] of childrenOf) {
+      if (parentId !== null) summaryIds.add(parentId);
+    }
+
     const result: GanttTask[] = [];
     const flatten = (parentId: string | null) => {
       const children = childrenOf.get(parentId);
       if (!children) return;
       for (const child of sortChildren(children)) {
         result.push(child);
-        flatten(child.id);
+        if (!collapsedSummaries.has(child.id)) {
+          flatten(child.id);
+        }
       }
     };
     flatten(null);
-    return result;
-  }, [tasks, sortField, sortDir, getSortValue]);
+    return { rows: result, summaryIds };
+  }, [tasks, sortField, sortDir, getSortValue, collapsedSummaries]);
 
-  // Summary task IDs — tasks that have at least one child
-  const summaryTaskIds = useMemo(() => {
-    const ids = new Set<string>();
-    const taskIds = new Set(tasks.map(t => t.id));
-    for (const t of tasks) {
-      if (t.parentTaskId && taskIds.has(t.parentTaskId)) {
-        ids.add(t.parentTaskId);
-      }
-    }
-    return ids;
-  }, [tasks]);
-
-  // Filter out children of collapsed summary tasks
-  const visibleSorted = useMemo(() => {
-    if (collapsedSummaries.size === 0) return sorted;
-    const hidden = new Set<string>();
-    // Walk through sorted list; if a task's ancestor is collapsed, hide it
-    for (const task of sorted) {
-      if (task.parentTaskId && (collapsedSummaries.has(task.parentTaskId) || hidden.has(task.parentTaskId))) {
-        hidden.add(task.id);
-      }
-    }
-    return sorted.filter(t => !hidden.has(t.id));
-  }, [sorted, collapsedSummaries]);
+  const visibleSorted = sorted.rows;
+  const summaryTaskIds = sorted.summaryIds;
 
   const toggleSummaryCollapse = useCallback((taskId: string) => {
     setCollapsedSummaries(prev => {
@@ -400,7 +386,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       setRowDrag(prev => {
         if (!prev || !onTaskReorder || prev.startIdx === prev.targetIdx) return null;
         const parentId = prev.parentTaskId;
-        const siblings = sorted
+        const siblings = visibleSorted
           .map((t, idx) => ({ task: t, rowIdx: idx }))
           .filter(r => (r.task.parentTaskId || null) === parentId);
         const draggedSibIdx = siblings.findIndex(s => s.task.id === prev.taskId);
@@ -417,7 +403,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
-  }, [canDragRows, onTaskReorder, sorted]);
+  }, [canDragRows, onTaskReorder, visibleSorted]);
 
   // Row number map: taskId → sequential row number (1-based)
   const rowNumMap = useMemo(() => {
@@ -829,7 +815,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                     onClick={(e) => { e.stopPropagation(); toggleSummaryCollapse(task.id); }}
                     title={collapsedSummaries.has(task.id) ? 'Expand children' : 'Collapse children'}
                   >
-                    <svg className={`w-3 h-3 transition-transform ${collapsedSummaries.has(task.id) ? '' : 'rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={`w-3 h-3 ${collapsedSummaries.has(task.id) ? '' : 'rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
