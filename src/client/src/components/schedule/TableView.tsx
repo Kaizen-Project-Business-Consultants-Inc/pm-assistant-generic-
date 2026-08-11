@@ -80,6 +80,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [groupBy, setGroupBy] = useState<GroupByField>('');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedSummaries, setCollapsedSummaries] = useState<Set<string>>(new Set());
   const [quickAddName, setQuickAddName] = useState('');
   const quickAddInputRef = useRef<HTMLInputElement>(null);
   const [editingCell, setEditingCell] = useState<{ taskId: string; field: EditableField } | null>(null);
@@ -296,11 +297,45 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     return result;
   }, [tasks, sortField, sortDir, getSortValue]);
 
+  // Summary task IDs — tasks that have at least one child
+  const summaryTaskIds = useMemo(() => {
+    const ids = new Set<string>();
+    const taskIds = new Set(tasks.map(t => t.id));
+    for (const t of tasks) {
+      if (t.parentTaskId && taskIds.has(t.parentTaskId)) {
+        ids.add(t.parentTaskId);
+      }
+    }
+    return ids;
+  }, [tasks]);
+
+  // Filter out children of collapsed summary tasks
+  const visibleSorted = useMemo(() => {
+    if (collapsedSummaries.size === 0) return sorted;
+    const hidden = new Set<string>();
+    // Walk through sorted list; if a task's ancestor is collapsed, hide it
+    for (const task of sorted) {
+      if (task.parentTaskId && (collapsedSummaries.has(task.parentTaskId) || hidden.has(task.parentTaskId))) {
+        hidden.add(task.id);
+      }
+    }
+    return sorted.filter(t => !hidden.has(t.id));
+  }, [sorted, collapsedSummaries]);
+
+  const toggleSummaryCollapse = useCallback((taskId: string) => {
+    setCollapsedSummaries(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  }, []);
+
   // Group tasks
   const groupedSorted = useMemo(() => {
     if (!groupBy) return null;
     const groups = new Map<string, GanttTask[]>();
-    for (const task of sorted) {
+    for (const task of visibleSorted) {
       let key: string;
       if (groupBy === 'status') key = task.status || 'unknown';
       else if (groupBy === 'priority') key = task.priority || 'medium';
@@ -309,7 +344,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       groups.get(key)!.push(task);
     }
     return groups;
-  }, [sorted, groupBy]);
+  }, [visibleSorted, groupBy]);
 
   const toggleGroupCollapse = useCallback((key: string) => {
     setCollapsedGroups(prev => {
@@ -387,16 +422,16 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   // Row number map: taskId → sequential row number (1-based)
   const rowNumMap = useMemo(() => {
     const map = new Map<string, number>();
-    sorted.forEach((task, idx) => map.set(task.id, idx + 1));
+    visibleSorted.forEach((task, idx) => map.set(task.id, idx + 1));
     return map;
-  }, [sorted]);
+  }, [visibleSorted]);
 
   // Reverse map: row number → taskId
   const rowNumToTaskId = useMemo(() => {
     const map = new Map<number, string>();
-    sorted.forEach((task, idx) => map.set(idx + 1, task.id));
+    visibleSorted.forEach((task, idx) => map.set(idx + 1, task.id));
     return map;
-  }, [sorted]);
+  }, [visibleSorted]);
 
   const [depError, setDepError] = useState<{ taskId: string; message: string } | null>(null);
 
@@ -624,12 +659,12 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   };
 
   // Selection helpers
-  const allSelected = sorted.length > 0 && sorted.every(t => selectedIds.has(t.id));
+  const allSelected = visibleSorted.length > 0 && visibleSorted.every(t => selectedIds.has(t.id));
   const someSelected = selectedIds.size > 0;
 
   const toggleSelectAll = () => {
     if (allSelected) setSelectedIds(new Set());
-    else setSelectedIds(new Set(sorted.map(t => t.id)));
+    else setSelectedIds(new Set(visibleSorted.map(t => t.id)));
   };
 
   const toggleSelect = (taskId: string) => {
@@ -786,14 +821,25 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 onBlur={() => saveEdit(task.id, 'name', editValue)}
               />
             ) : (
-              <div className="flex items-center gap-2" style={{ paddingLeft: `${(levelMap.get(task.id) || 0) * 20}px` }}>
+              <div className="flex items-center gap-1" style={{ paddingLeft: `${(levelMap.get(task.id) || 0) * 20}px` }}>
+                {summaryTaskIds.has(task.id) ? (
+                  <button
+                    type="button"
+                    className="w-4 h-4 flex items-center justify-center text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex-shrink-0"
+                    onClick={(e) => { e.stopPropagation(); toggleSummaryCollapse(task.id); }}
+                    title={collapsedSummaries.has(task.id) ? 'Expand children' : 'Collapse children'}
+                  >
+                    <svg className={`w-3 h-3 transition-transform ${collapsedSummaries.has(task.id) ? '' : 'rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                ) : (
+                  <span className="w-4 flex-shrink-0" />
+                )}
                 {task.isMilestone && (
                   <span className="inline-block w-2.5 h-2.5 rotate-45 bg-amber-500 flex-shrink-0" title="Milestone" />
                 )}
-                {(levelMap.get(task.id) || 0) > 0 && (
-                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${task.parentTaskId ? 'bg-gray-300 dark:bg-gray-600' : ''}`} />
-                )}
-                <span className={(levelMap.get(task.id) || 0) === 0 ? 'font-semibold' : ''}>{task.name}</span>
+                <span className={summaryTaskIds.has(task.id) ? 'font-semibold' : (levelMap.get(task.id) || 0) === 0 ? 'font-semibold' : ''}>{task.name}</span>
               </div>
             )}
             {renderSaveIndicator(task.id, 'name')}
@@ -1225,7 +1271,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           </select>
         </div>
         <button
-          onClick={() => exportTasksCSV(sorted, 'tasks')}
+          onClick={() => exportTasksCSV(visibleSorted, 'tasks')}
           className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           title="Export to CSV"
         >
@@ -1521,10 +1567,10 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               }
 
               // Flat rendering (no grouping)
-              return sorted.map((task, rowIdx) => renderTaskRow(task, rowIdx));
+              return visibleSorted.map((task, rowIdx) => renderTaskRow(task, rowIdx));
             })()}
 
-            {sorted.length === 0 && (
+            {visibleSorted.length === 0 && (
               <tr>
                 <td colSpan={visibleColumns.length + 2} className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
                   No tasks found

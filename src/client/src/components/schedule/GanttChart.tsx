@@ -3393,6 +3393,69 @@ export function GanttChart({
                 );
               }
 
+              // Summary task: thin black bar with downward triangles at ends (MS Project style)
+              if (task.isSummary || isParent) {
+                const summaryH = 6;
+                const summaryTop = HEADER_H + idx * ROW_H + ROW_H / 2 - summaryH / 2;
+                const triSize = 5;
+                return (
+                  <div
+                    key={task.id}
+                    className="absolute group/bar"
+                    style={{ left, top: summaryTop, width, height: summaryH + triSize, cursor: 'pointer' }}
+                    onClick={handleBarClick}
+                  >
+                    {/* Thin bar */}
+                    <div
+                      className="absolute inset-x-0 top-0 rounded-sm"
+                      style={{
+                        height: summaryH,
+                        backgroundColor: isSelected ? '#3b82f6' : '#374151',
+                        boxShadow: isSelected ? '0 0 0 2px rgba(59,130,246,0.3)' : undefined,
+                      }}
+                    />
+                    {/* Progress fill on thin bar */}
+                    {(task.progressPercentage ?? 0) > 0 && (
+                      <div
+                        className="absolute top-0.5 left-0.5 rounded-sm"
+                        style={{
+                          height: summaryH - 2,
+                          width: `${Math.min(task.progressPercentage ?? 0, 100)}%`,
+                          backgroundColor: isSelected ? '#60a5fa' : '#111827',
+                        }}
+                      />
+                    )}
+                    {/* Left triangle */}
+                    <div
+                      className="absolute"
+                      style={{
+                        left: 0, top: summaryH,
+                        width: 0, height: 0,
+                        borderLeft: `${triSize}px solid transparent`,
+                        borderRight: `${triSize}px solid transparent`,
+                        borderTop: `${triSize}px solid ${isSelected ? '#3b82f6' : '#374151'}`,
+                      }}
+                    />
+                    {/* Right triangle */}
+                    <div
+                      className="absolute"
+                      style={{
+                        right: 0, top: summaryH,
+                        width: 0, height: 0,
+                        borderLeft: `${triSize}px solid transparent`,
+                        borderRight: `${triSize}px solid transparent`,
+                        borderTop: `${triSize}px solid ${isSelected ? '#3b82f6' : '#374151'}`,
+                      }}
+                    />
+                    {/* Tooltip */}
+                    <div className="invisible group-hover/bar:visible absolute z-30 left-1/2 -translate-x-1/2 -top-16 bg-gray-900 dark:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-lg pointer-events-none">
+                      <div className="font-semibold">{task.name}</div>
+                      <div className="text-gray-300 mt-0.5">{formatShortDate(start)} – {formatShortDate(end)} | {task.progressPercentage ?? 0}%</div>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={task.id}
