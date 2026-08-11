@@ -6,10 +6,11 @@ const groupLabels: Record<ColumnGroup, string> = {
   standard: 'Standard',
   scheduling: 'Scheduling (CPM)',
   baseline: 'Baseline',
+  cost: 'Cost',
   other: 'Other',
 };
 
-const groupOrder: ColumnGroup[] = ['standard', 'scheduling', 'baseline', 'other'];
+const groupOrder: ColumnGroup[] = ['standard', 'scheduling', 'baseline', 'cost', 'other'];
 
 interface ColumnPickerDropdownProps {
   columns: ColumnDef[];

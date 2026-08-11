@@ -358,6 +358,11 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
         recurrenceRule: data.recurrenceRule || undefined,
         isRecurrenceTemplate: data.isRecurrenceTemplate || undefined,
         isMilestone: data.isMilestone || undefined,
+        budgetAllocated: data.budgetAllocated ? parseFloat(data.budgetAllocated) : undefined,
+        actualCost: data.actualCost ? parseFloat(data.actualCost) : undefined,
+        constraintType: data.constraintType && data.constraintType !== 'ASAP' ? data.constraintType : undefined,
+        constraintDate: data.constraintDate || undefined,
+        assignments: data.assignments?.filter(a => a.resourceId).length ? data.assignments.filter(a => a.resourceId) : undefined,
         dependencies: deps.length > 0 ? deps : undefined,
         afterTaskId: data.afterTaskId || undefined,
         beforeTaskId: data.beforeTaskId || undefined,
@@ -393,6 +398,11 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
           recurrenceRule: d.recurrenceRule || undefined,
           isRecurrenceTemplate: d.isRecurrenceTemplate || undefined,
           isMilestone: d.isMilestone || undefined,
+          budgetAllocated: d.budgetAllocated ? parseFloat(d.budgetAllocated) : undefined,
+          actualCost: d.actualCost ? parseFloat(d.actualCost) : undefined,
+          constraintType: d.constraintType && d.constraintType !== 'ASAP' ? d.constraintType : undefined,
+          constraintDate: d.constraintDate || undefined,
+          assignments: d.assignments?.filter(a => a.resourceId).length ? d.assignments.filter(a => a.resourceId) : undefined,
           dependencies: deps,
         };
         return apiService.updateTask(schedule.id, taskId, payload);

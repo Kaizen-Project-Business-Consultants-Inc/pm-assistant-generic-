@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from './connection';
 import { Task, TaskDependency, TaskComment, TaskActivityEntry } from '../services/ScheduleService';
+import { taskAssignmentService } from '../services/TaskAssignmentService';
 
 // ---------------------------------------------------------------------------
 // Row mappers
@@ -39,6 +40,11 @@ function rowToTask(row: any): Task {
     isRecurrenceTemplate: row.is_recurrence_template === 1 || row.is_recurrence_template === true,
     isMilestone: row.is_milestone === 1 || row.is_milestone === true,
     dependencyLagDays: row.dependency_lag_days != null ? Number(row.dependency_lag_days) : 0,
+    budgetAllocated: row.budget_allocated != null ? Number(row.budget_allocated) : undefined,
+    actualCost: row.actual_cost != null ? Number(row.actual_cost) : undefined,
+    isSummary: row.is_summary === 1 || row.is_summary === true,
+    constraintType: row.constraint_type || 'ASAP',
+    constraintDate: row.constraint_date ? String(row.constraint_date).slice(0, 10) : undefined,
     sortOrder: row.sort_order != null ? Number(row.sort_order) : 0,
     createdBy: row.created_by,
     createdAt: String(row.created_at),
@@ -106,7 +112,11 @@ export class TaskRepository {
 
   async attachDependencies(tasks: Task[]): Promise<void> {
     if (tasks.length === 0) return;
-    const depMap = await this.loadDependenciesForTasks(tasks.map(t => t.id));
+    const taskIds = tasks.map(t => t.id);
+    const [depMap, assignMap] = await Promise.all([
+      this.loadDependenciesForTasks(taskIds),
+      taskAssignmentService.getForTasks(taskIds),
+    ]);
     for (const task of tasks) {
       task.dependencies = depMap.get(task.id) || [];
       if (task.dependencies.length > 0) {
@@ -115,6 +125,7 @@ export class TaskRepository {
         task.dependencyType = first.dependencyType;
         task.dependencyLagDays = first.lagDays;
       }
+      task.assignments = assignMap.get(task.id) || [];
     }
   }
 

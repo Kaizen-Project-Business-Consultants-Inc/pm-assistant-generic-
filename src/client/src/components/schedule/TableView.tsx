@@ -65,7 +65,7 @@ type GroupByField = '' | 'status' | 'priority' | 'assignedTo';
 const statusOptions = ['pending', 'in_progress', 'completed'];
 const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 
-type EditableField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progressPercentage' | 'assignedTo' | 'dependency' | 'duration';
+type EditableField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progressPercentage' | 'assignedTo' | 'dependency' | 'duration' | 'budgetAllocated' | 'actualCost' | 'constraintType' | 'constraintDate';
 
 function addDaysToDate(baseDate: string, days: number): string {
   const d = new Date(baseDate);
@@ -487,11 +487,19 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           return label;
         }).filter(Boolean).join(',');
       }
+      case 'budgetAllocated': return (task as any).budgetAllocated != null ? String((task as any).budgetAllocated) : '';
+      case 'actualCost': return (task as any).actualCost != null ? String((task as any).actualCost) : '';
+      case 'constraintType': return (task as any).constraintType || 'ASAP';
+      case 'constraintDate': return (task as any).constraintDate || '';
       default: return '';
     }
   };
 
+  const SUMMARY_ROLLUP_FIELDS: Set<EditableField> = new Set(['startDate', 'endDate', 'progressPercentage', 'status', 'budgetAllocated', 'actualCost', 'duration']);
+
   const startEditing = (taskId: string, field: EditableField, task: GanttTask) => {
+    // Block editing of rollup fields on summary tasks
+    if (task.isSummary && SUMMARY_ROLLUP_FIELDS.has(field)) return;
     setEditingCell({ taskId, field });
     setEditValue(getTaskFieldValue(task, field));
   };
@@ -557,7 +565,9 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
     const saveValue = field === 'progressPercentage'
       ? Math.max(0, Math.min(100, Number(value)))
-      : value;
+      : (field === 'budgetAllocated' || field === 'actualCost')
+        ? (value === '' ? null : Math.max(0, Number(value.replace(/[,$]/g, ''))))
+        : value;
 
     setSavingCell({ taskId, field });
     setEditingCell(null);
@@ -602,7 +612,11 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   const isSaved = (taskId: string, field: string) =>
     savedCell?.taskId === taskId && savedCell.field === field;
 
-  const editableCellClass = (taskId: string, field: string) => {
+  const editableCellClass = (taskId: string, field: string, task?: GanttTask) => {
+    // Summary rollup fields are not editable
+    if (task?.isSummary && SUMMARY_ROLLUP_FIELDS.has(field as EditableField)) {
+      return 'relative cursor-default opacity-70';
+    }
     const base = 'relative cursor-pointer transition-all duration-150';
     if (isEditing(taskId, field)) return `${base} ring-2 ring-blue-400 ring-inset rounded`;
     if (isSaved(taskId, field)) return `${base} bg-green-50 dark:bg-green-900/20`;
@@ -758,7 +772,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 font-medium text-gray-900 dark:text-white min-w-[200px] ${editableCellClass(task.id, 'name')}`}
+            className={`px-3 py-2 font-medium text-gray-900 dark:text-white min-w-[200px] ${editableCellClass(task.id, 'name', task)}`}
             onClick={() => { if (!isEditing(task.id, 'name')) startEditing(task.id, 'name', task); }}
           >
             {isEditing(task.id, 'name') ? (
@@ -791,7 +805,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 w-28 ${editableCellClass(task.id, 'status')}`}
+            className={`px-3 py-2 w-28 ${editableCellClass(task.id, 'status', task)}`}
             onClick={() => { if (!isEditing(task.id, 'status')) startEditing(task.id, 'status', task); }}
           >
             {isEditing(task.id, 'status') ? (
@@ -821,7 +835,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 w-24 ${editableCellClass(task.id, 'priority')}`}
+            className={`px-3 py-2 w-24 ${editableCellClass(task.id, 'priority', task)}`}
             onClick={() => { if (!isEditing(task.id, 'priority')) startEditing(task.id, 'priority', task); }}
           >
             {isEditing(task.id, 'priority') ? (
@@ -851,7 +865,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${editableCellClass(task.id, 'startDate')}`}
+            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${editableCellClass(task.id, 'startDate', task)}`}
             onClick={() => { if (!isEditing(task.id, 'startDate')) startEditing(task.id, 'startDate', task); }}
           >
             {isEditing(task.id, 'startDate') ? (
@@ -876,7 +890,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${editableCellClass(task.id, 'endDate')}`}
+            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${editableCellClass(task.id, 'endDate', task)}`}
             onClick={() => { if (!isEditing(task.id, 'endDate')) startEditing(task.id, 'endDate', task); }}
           >
             {isEditing(task.id, 'endDate') ? (
@@ -901,7 +915,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 w-28 ${editableCellClass(task.id, 'progressPercentage')}`}
+            className={`px-3 py-2 w-28 ${editableCellClass(task.id, 'progressPercentage', task)}`}
             onClick={() => { if (!isEditing(task.id, 'progressPercentage')) startEditing(task.id, 'progressPercentage', task); }}
           >
             {isEditing(task.id, 'progressPercentage') ? (
@@ -936,7 +950,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-32 ${editableCellClass(task.id, 'assignedTo')}`}
+            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-32 ${editableCellClass(task.id, 'assignedTo', task)}`}
             onClick={() => { if (!isEditing(task.id, 'assignedTo')) startEditing(task.id, 'assignedTo', task); }}
           >
             {isEditing(task.id, 'assignedTo') ? (
@@ -965,7 +979,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         }
         if (days == null && task.estimatedDays != null) days = task.estimatedDays;
         return (
-          <td key={col.key} className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 relative group/cell ${editableCellClass(task.id, 'duration')}`}
+          <td key={col.key} className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 relative group/cell ${editableCellClass(task.id, 'duration', task)}`}
             onClick={() => { if (!isEditing(task.id, 'duration')) startEditing(task.id, 'duration', task); }}>
             {isEditing(task.id, 'duration') ? (
               <input
@@ -1036,7 +1050,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 text-xs w-28 ${hasDepError ? 'ring-2 ring-red-400 ring-inset rounded' : editableCellClass(task.id, 'dependency')}`}
+            className={`px-3 py-2 text-xs w-28 ${hasDepError ? 'ring-2 ring-red-400 ring-inset rounded' : editableCellClass(task.id, 'dependency', task)}`}
             onClick={() => { if (!isEditing(task.id, 'dependency')) startEditing(task.id, 'dependency', task); }}
             title={hasDepError ? depError!.message : undefined}
           >
@@ -1095,6 +1109,97 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
       case 'wbs':
         return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono">{wbsMap.get(task.id) || '-'}</td>;
+
+      case 'budgetAllocated':
+      case 'actualCost': {
+        const budgetField = col.key as EditableField;
+        const val = (task as any)[col.key];
+        const formatted = val != null ? `$${Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '-';
+        return (
+          <td key={col.key}
+            className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 text-right font-mono w-28 ${editableCellClass(task.id, budgetField, task)}`}
+            onClick={() => { if (!isEditing(task.id, budgetField)) startEditing(task.id, budgetField, task); }}
+          >
+            {isEditing(task.id, budgetField) ? (
+              <input
+                ref={el => { inputRef.current = el; }}
+                type="number"
+                min="0"
+                step="0.01"
+                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 text-right font-mono text-gray-700 dark:text-gray-300"
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, task.id, budgetField)}
+                onBlur={() => saveEdit(task.id, budgetField, editValue)}
+              />
+            ) : formatted}
+          </td>
+        );
+      }
+
+      case 'budgetVariance': {
+        const budget = (task as any).budgetAllocated;
+        const actual = (task as any).actualCost;
+        if (budget == null && actual == null) return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 text-right">-</td>;
+        const variance = (budget ?? 0) - (actual ?? 0);
+        const color = variance < 0 ? 'text-red-600 dark:text-red-400' : variance > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-500';
+        return <td key={col.key} className={`px-3 py-2 text-xs font-mono text-right ${color}`}>{variance >= 0 ? '+' : ''}${Math.abs(variance).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>;
+      }
+
+      case 'constraintType': {
+        const ct = (task as any).constraintType || 'ASAP';
+        return (
+          <td key={col.key}
+            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-24 ${editableCellClass(task.id, 'constraintType' as EditableField, task)}`}
+            onClick={() => startEditing(task.id, 'constraintType' as EditableField, task)}
+          >
+            {isEditing(task.id, 'constraintType' as EditableField) ? (
+              <select
+                ref={el => { inputRef.current = el as any; }}
+                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0"
+                value={editValue}
+                onChange={e => { setEditValue(e.target.value); saveEdit(task.id, 'constraintType' as EditableField, e.target.value); }}
+                onBlur={() => saveEdit(task.id, 'constraintType' as EditableField, editValue)}
+              >
+                <option value="ASAP">ASAP</option>
+                <option value="ALAP">ALAP</option>
+                <option value="SNET">Start No Earlier Than</option>
+                <option value="SNLT">Start No Later Than</option>
+                <option value="FNET">Finish No Earlier Than</option>
+                <option value="FNLT">Finish No Later Than</option>
+                <option value="MSO">Must Start On</option>
+                <option value="MFO">Must Finish On</option>
+              </select>
+            ) : (
+              <span className={ct !== 'ASAP' ? 'font-medium text-indigo-600 dark:text-indigo-400' : ''}>{ct}</span>
+            )}
+          </td>
+        );
+      }
+
+      case 'constraintDate': {
+        const cd = (task as any).constraintDate;
+        const ct2 = (task as any).constraintType || 'ASAP';
+        const needsDate = ct2 !== 'ASAP' && ct2 !== 'ALAP';
+        return (
+          <td key={col.key}
+            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${needsDate ? editableCellClass(task.id, 'constraintDate' as EditableField, task) : ''}`}
+            onClick={() => { if (needsDate) startEditing(task.id, 'constraintDate' as EditableField, task); }}
+          >
+            {isEditing(task.id, 'constraintDate' as EditableField) ? (
+              <input
+                ref={el => { inputRef.current = el; }}
+                type="date"
+                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0"
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, task.id, 'constraintDate' as EditableField)}
+                onBlur={() => saveEdit(task.id, 'constraintDate' as EditableField, editValue)}
+              />
+            ) : cd ? new Date(cd + 'T00:00').toLocaleDateString() : (needsDate ? '-' : '')}
+          </td>
+        );
+      }
 
       default:
         return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">-</td>;

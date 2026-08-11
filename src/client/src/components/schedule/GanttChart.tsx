@@ -41,6 +41,12 @@ export interface GanttTask {
   isMilestone?: boolean;
   sortOrder?: number;
   dependencies?: TaskDependencyRef[];
+  budgetAllocated?: number;
+  actualCost?: number;
+  isSummary?: boolean;
+  constraintType?: string;
+  constraintDate?: string;
+  assignments?: Array<{ id: string; resourceId: string; allocationPct: number; roleOnTask?: string; hoursPlanned?: number }>;
 }
 
 interface FlatRow {

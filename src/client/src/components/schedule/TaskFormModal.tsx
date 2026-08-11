@@ -38,6 +38,11 @@ export interface TaskFormData {
   isRecurrenceTemplate: boolean;
   isMilestone: boolean;
   predecessors: PredecessorEntry[];
+  budgetAllocated: string;
+  actualCost: string;
+  constraintType: string;
+  constraintDate: string;
+  assignments: Array<{ resourceId: string; allocationPct: number; roleOnTask: string }>;
 }
 
 interface TaskFormModalProps {
@@ -92,6 +97,7 @@ export function TaskFormModal({
   initialEndDate,
 }: TaskFormModalProps) {
   const isEdit = !!task;
+  const isSummary = !!task?.isSummary;
 
   const [form, setForm] = useState<TaskFormData>({
     name: '',
@@ -111,6 +117,11 @@ export function TaskFormModal({
     dependencyLagDays: '',
     isMilestone: false,
     predecessors: [],
+    budgetAllocated: '',
+    actualCost: '',
+    constraintType: 'ASAP',
+    constraintDate: '',
+    assignments: [],
   });
 
   // Pre-fill form when editing
@@ -143,6 +154,15 @@ export function TaskFormModal({
         dependencyLagDays: task.dependencyLagDays?.toString() || '',
         isMilestone: task.isMilestone || false,
         predecessors: deps,
+        budgetAllocated: task.budgetAllocated != null ? String(task.budgetAllocated) : '',
+        actualCost: task.actualCost != null ? String(task.actualCost) : '',
+        constraintType: task.constraintType || 'ASAP',
+        constraintDate: task.constraintDate || '',
+        assignments: task.assignments?.map(a => ({
+          resourceId: a.resourceId,
+          allocationPct: a.allocationPct ?? 100,
+          roleOnTask: a.roleOnTask || '',
+        })) || [],
       });
     }
   }, [task]);
@@ -263,6 +283,13 @@ export function TaskFormModal({
             />
           </div>
 
+          {/* Summary task info banner */}
+          {isSummary && (
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
+              <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">Summary task — dates, progress, status, and budget are computed from child tasks</span>
+            </div>
+          )}
+
           {/* Status + Priority row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -271,6 +298,7 @@ export function TaskFormModal({
                 name="status"
                 value={form.status}
                 onChange={handleChange}
+                disabled={isSummary}
                 className="input w-full"
               >
                 <option value="pending">Not Started</option>
@@ -303,6 +331,7 @@ export function TaskFormModal({
                 name="startDate"
                 value={form.startDate}
                 onChange={handleChange}
+                disabled={isSummary}
                 className="input w-full"
               />
             </div>
@@ -313,6 +342,7 @@ export function TaskFormModal({
                 name="endDate"
                 value={form.endDate}
                 onChange={handleChange}
+                disabled={isSummary}
                 className="input w-full"
               />
             </div>
@@ -331,6 +361,7 @@ export function TaskFormModal({
                 step="5"
                 value={form.progressPercentage}
                 onChange={handleProgressChange}
+                disabled={isSummary}
                 className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-primary-600"
               />
               <div className="flex justify-between text-xs text-gray-400 mt-0.5">
@@ -349,6 +380,7 @@ export function TaskFormModal({
                   name="estimatedDays"
                   value={form.estimatedDays}
                   onChange={handleChange}
+                  disabled={isSummary}
                   min="0.25"
                   step="0.25"
                   placeholder="—"
@@ -377,7 +409,7 @@ export function TaskFormModal({
             </div>
           </div>
 
-          {/* Assigned To */}
+          {/* Assigned To (primary) */}
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Assigned To</label>
             <input
@@ -385,9 +417,113 @@ export function TaskFormModal({
               name="assignedTo"
               value={form.assignedTo}
               onChange={handleChange}
-              placeholder="Person or team name"
+              placeholder="Primary assignee"
               className="input w-full"
             />
+          </div>
+
+          {/* Multi-Resource Assignments */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Resource Assignments ({form.assignments.length}/10)
+            </label>
+            {form.assignments.map((a, idx) => (
+              <div key={idx} className="flex items-center gap-2 mb-2">
+                <input
+                  type="text"
+                  value={a.resourceId}
+                  onChange={(e) => {
+                    const updated = [...form.assignments];
+                    updated[idx] = { ...updated[idx], resourceId: e.target.value };
+                    setForm(f => ({ ...f, assignments: updated }));
+                  }}
+                  placeholder="Resource name/ID"
+                  className="input flex-1 text-xs"
+                />
+                <input
+                  type="number"
+                  value={a.allocationPct}
+                  onChange={(e) => {
+                    const updated = [...form.assignments];
+                    updated[idx] = { ...updated[idx], allocationPct: Math.min(100, Math.max(1, parseInt(e.target.value) || 100)) };
+                    setForm(f => ({ ...f, assignments: updated }));
+                  }}
+                  min="1"
+                  max="100"
+                  className="input w-16 text-xs"
+                  title="Allocation %"
+                />
+                <span className="text-xs text-gray-400">%</span>
+                <input
+                  type="text"
+                  value={a.roleOnTask}
+                  onChange={(e) => {
+                    const updated = [...form.assignments];
+                    updated[idx] = { ...updated[idx], roleOnTask: e.target.value };
+                    setForm(f => ({ ...f, assignments: updated }));
+                  }}
+                  placeholder="Role"
+                  className="input w-24 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = form.assignments.filter((_, i) => i !== idx);
+                    setForm(f => ({ ...f, assignments: updated }));
+                  }}
+                  className="text-red-400 hover:text-red-600 text-xs px-1"
+                  title="Remove resource"
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+            {form.assignments.length < 10 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setForm(f => ({
+                    ...f,
+                    assignments: [...f.assignments, { resourceId: '', allocationPct: 100, roleOnTask: '' }],
+                  }));
+                }}
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+              >
+                + Add Resource
+              </button>
+            )}
+          </div>
+
+          {/* Budget */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Budget ($)</label>
+              <input
+                type="number"
+                name="budgetAllocated"
+                value={form.budgetAllocated}
+                onChange={handleChange}
+                disabled={isSummary}
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                className="input w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Actual Cost ($)</label>
+              <input
+                type="number"
+                name="actualCost"
+                value={form.actualCost}
+                onChange={handleChange}
+                disabled={isSummary}
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                className="input w-full"
+              />
+            </div>
           </div>
 
           {/* Parent Task */}
@@ -495,6 +631,40 @@ export function TaskFormModal({
             />
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Mark as Milestone</span>
           </label>
+
+          {/* Constraint */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Constraint Type</label>
+              <select
+                name="constraintType"
+                value={form.constraintType}
+                onChange={handleChange}
+                className="input w-full"
+              >
+                <option value="ASAP">As Soon As Possible</option>
+                <option value="ALAP">As Late As Possible</option>
+                <option value="SNET">Start No Earlier Than</option>
+                <option value="SNLT">Start No Later Than</option>
+                <option value="FNET">Finish No Earlier Than</option>
+                <option value="FNLT">Finish No Later Than</option>
+                <option value="MSO">Must Start On</option>
+                <option value="MFO">Must Finish On</option>
+              </select>
+            </div>
+            {form.constraintType !== 'ASAP' && form.constraintType !== 'ALAP' && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Constraint Date</label>
+                <input
+                  type="date"
+                  name="constraintDate"
+                  value={form.constraintDate}
+                  onChange={handleChange}
+                  className="input w-full"
+                />
+              </div>
+            )}
+          </div>
 
           {/* Recurrence */}
           <RecurrenceSection form={form} setForm={setForm} isRecurringInstance={!!task?.recurrenceParentId} />

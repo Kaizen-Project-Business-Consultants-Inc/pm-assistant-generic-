@@ -1,0 +1,25 @@
+CREATE TABLE IF NOT EXISTS project_calendars (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  project_id VARCHAR(36) NOT NULL,
+  name VARCHAR(255) NOT NULL DEFAULT 'Standard',
+  working_days JSON NOT NULL,
+  hours_per_day DECIMAL(4,1) NOT NULL DEFAULT 8.0,
+  is_default TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_cal_project (project_id),
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS calendar_exceptions (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  calendar_id VARCHAR(36) NOT NULL,
+  exception_date DATE NOT NULL,
+  type VARCHAR(10) NOT NULL DEFAULT 'holiday',
+  name VARCHAR(255) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_cal_date (calendar_id, exception_date),
+  FOREIGN KEY (calendar_id) REFERENCES project_calendars(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS calendar_id VARCHAR(36) DEFAULT NULL;

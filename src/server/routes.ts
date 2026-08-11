@@ -26,6 +26,7 @@ import { autoRescheduleRoutes } from './routes/scheduling/autoReschedule';
 import { resourceLevelingRoutes } from './routes/scheduling/resourceLeveling';
 import { taskPrioritizationRoutes } from './routes/scheduling/taskPrioritization';
 import { importRoutes } from './routes/scheduling/import';
+import { calendarRoutes } from './routes/scheduling/calendars';
 
 // AI
 import { aiChatRoutes } from './routes/ai/aiChat';
@@ -130,6 +131,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(resourceLevelingRoutes, { prefix: '/api/v1/resource-leveling' });
   await fastify.register(taskPrioritizationRoutes, { prefix: '/api/v1/task-prioritization' });
   await fastify.register(importRoutes, { prefix: '/api/v1/schedules' });
+  await fastify.register(calendarRoutes);
 
   // AI
   await fastify.register(aiChatRoutes, { prefix: '/api/v1/ai-chat' });

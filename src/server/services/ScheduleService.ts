@@ -8,6 +8,7 @@ import logger from '../utils/logger';
 import { deadLetterService } from './DeadLetterService';
 import { notificationService } from './NotificationService';
 import { getRequestContext } from '../middleware/requestContext';
+import { taskAssignmentService } from './TaskAssignmentService';
 
 export interface Schedule {
   id: string;
@@ -59,12 +60,19 @@ export interface Task {
   isMilestone?: boolean;
   /** @deprecated Use dependencies[] instead. */
   dependencyLagDays?: number;
+  budgetAllocated?: number;
+  actualCost?: number;
+  isSummary?: boolean;
+  constraintType?: 'ASAP' | 'ALAP' | 'SNET' | 'SNLT' | 'FNET' | 'FNLT' | 'MSO' | 'MFO';
+  constraintDate?: string;
   sortOrder: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
   /** Multi-dependency support — all predecessors for this task */
   dependencies: TaskDependency[];
+  /** Multi-resource assignments */
+  assignments?: Array<{ id: string; taskId: string; resourceId: string; allocationPct: number; roleOnTask?: string; hoursPlanned?: number; createdAt: string }>;
 }
 
 export interface CreateScheduleData {
@@ -109,6 +117,11 @@ export interface CreateTaskData {
   recurrenceRule?: string;
   recurrenceParentId?: string;
   isRecurrenceTemplate?: boolean;
+  budgetAllocated?: number;
+  actualCost?: number;
+  constraintType?: 'ASAP' | 'ALAP' | 'SNET' | 'SNLT' | 'FNET' | 'FNLT' | 'MSO' | 'MFO';
+  constraintDate?: Date | string;
+  assignments?: Array<{ resourceId: string; allocationPct?: number; roleOnTask?: string; hoursPlanned?: number }>;
 }
 
 export interface TaskComment {
@@ -265,6 +278,82 @@ export class ScheduleService {
   }
 
   // -------------------------------------------------------------------------
+  // Summary task rollup (recompute-on-write)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Recompute a parent task's rollup fields from its children.
+   * Recursively walks up the parent chain (max depth 10).
+   */
+  private async recomputeParentRollup(parentTaskId: string, depth = 0): Promise<void> {
+    if (depth >= 10) return;
+    const parent = await this.findTaskById(parentTaskId);
+    if (!parent) return;
+
+    const children = await databaseService.query(
+      'SELECT * FROM tasks WHERE parent_task_id = ? AND schedule_id = ?',
+      [parentTaskId, parent.scheduleId],
+    );
+
+    if (children.length === 0) {
+      // No children — clear summary flag
+      if (parent.isSummary) {
+        await databaseService.query(
+          'UPDATE tasks SET is_summary = 0 WHERE id = ?',
+          [parentTaskId],
+        );
+      }
+      if (parent.parentTaskId) {
+        await this.recomputeParentRollup(parent.parentTaskId, depth + 1);
+      }
+      return;
+    }
+
+    const childTasks = children.map(TaskRepository.rowToTask);
+
+    // Dates
+    const starts = childTasks.map(c => c.startDate).filter(Boolean) as string[];
+    const ends = childTasks.map(c => c.endDate).filter(Boolean) as string[];
+    const rollupStart = starts.length > 0 ? starts.sort()[0] : null;
+    const rollupEnd = ends.length > 0 ? ends.sort().reverse()[0] : null;
+
+    // Progress — weighted average by estimatedDays (equal weight 1 if null)
+    let totalWeight = 0;
+    let weightedProgress = 0;
+    for (const c of childTasks) {
+      const w = c.estimatedDays ?? 1;
+      totalWeight += w;
+      weightedProgress += (c.progressPercentage ?? 0) * w;
+    }
+    const rollupProgress = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0;
+
+    // Status
+    const allCompleted = childTasks.every(c => c.status === 'completed');
+    const anyInProgress = childTasks.some(c => c.status === 'in_progress' || c.status === 'completed');
+    const rollupStatus = allCompleted ? 'completed' : anyInProgress ? 'in_progress' : 'pending';
+
+    // Budget
+    const rollupBudget = childTasks.reduce((s, c) => s + (c.budgetAllocated ?? 0), 0) || null;
+    const rollupCost = childTasks.reduce((s, c) => s + (c.actualCost ?? 0), 0) || null;
+
+    // EstimatedDays
+    const rollupEstDays = childTasks.reduce((s, c) => s + (c.estimatedDays ?? 0), 0) || null;
+
+    await databaseService.query(
+      `UPDATE tasks SET
+        start_date = ?, end_date = ?, progress_percentage = ?, status = ?,
+        budget_allocated = ?, actual_cost = ?, estimated_days = ?, is_summary = 1
+       WHERE id = ?`,
+      [rollupStart, rollupEnd, rollupProgress, rollupStatus, rollupBudget, rollupCost, rollupEstDays, parentTaskId],
+    );
+
+    // Recurse up
+    if (parent.parentTaskId) {
+      await this.recomputeParentRollup(parent.parentTaskId, depth + 1);
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Task mutations (business logic + transactions — stays in service)
   // -------------------------------------------------------------------------
 
@@ -338,8 +427,9 @@ export class ScheduleService {
           due_date, estimated_days, estimated_duration_hours, actual_duration_hours,
           start_date, end_date, progress_percentage, dependency, dependency_type,
           risks, issues, comments, parent_task_id, is_milestone, dependency_lag_days, sort_order, created_by,
-          recurrence_rule, recurrence_parent_id, is_recurrence_template)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          recurrence_rule, recurrence_parent_id, is_recurrence_template, budget_allocated, actual_cost,
+          constraint_type, constraint_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           data.scheduleId,
@@ -368,6 +458,10 @@ export class ScheduleService {
           data.recurrenceRule || null,
           data.recurrenceParentId || null,
           data.isRecurrenceTemplate ? 1 : 0,
+          data.budgetAllocated ?? null,
+          data.actualCost ?? null,
+          data.constraintType || 'ASAP',
+          toDateStr(data.constraintDate) || null,
         ],
       );
 
@@ -380,7 +474,19 @@ export class ScheduleService {
       }
     });
 
+    // Save multi-resource assignments if provided
+    if (data.assignments && data.assignments.length > 0) {
+      await taskAssignmentService.setAssignments(id, data.assignments);
+    }
+
     const task = (await this.findTaskById(id))!;
+
+    // Recompute parent rollup if this task has a parent
+    if (data.parentTaskId) {
+      await this.recomputeParentRollup(data.parentTaskId).catch(err =>
+        logger.error('[Rollup] recomputeParentRollup error on create:', err)
+      );
+    }
 
     // Fire-and-forget side effects AFTER transaction commit
     const schedule = await this.findById(data.scheduleId);
@@ -457,6 +563,10 @@ export class ScheduleService {
       isMilestone: 'is_milestone',
       dependencyLagDays: 'dependency_lag_days',
       createdBy: 'created_by',
+      budgetAllocated: 'budget_allocated',
+      actualCost: 'actual_cost',
+      constraintType: 'constraint_type',
+      constraintDate: 'constraint_date',
     };
 
     const toDateStr = TaskRepository.toDateStr;
@@ -522,7 +632,7 @@ export class ScheduleService {
       for (const [key, column] of Object.entries(columnMap)) {
         if (key in data) {
           let val = (data as any)[key];
-          if (['startDate', 'endDate', 'dueDate'].includes(key) && val) {
+          if (['startDate', 'endDate', 'dueDate', 'constraintDate'].includes(key) && val) {
             val = toDateStr(val);
           }
           fields.push(`${column} = ?`);
@@ -536,9 +646,34 @@ export class ScheduleService {
       }
     });
 
-    if (!Object.keys(data).some(k => k in columnMap)) return oldTask;
+    // Save multi-resource assignments if provided
+    if ((data as any).assignments !== undefined) {
+      await taskAssignmentService.setAssignments(id, (data as any).assignments);
+    }
+
+    if (!Object.keys(data).some(k => k in columnMap || k === 'assignments')) return oldTask;
 
     const updated = (await this.findTaskById(id))!;
+
+    // Recompute parent rollup if rollup-relevant fields changed
+    const rollupFields = ['startDate', 'endDate', 'progressPercentage', 'status', 'estimatedDays', 'budgetAllocated', 'actualCost', 'parentTaskId'];
+    const rollupChanged = rollupFields.some(f => f in data);
+    if (rollupChanged) {
+      // If parentTaskId changed, recompute both old and new parents
+      if (data.parentTaskId !== undefined && data.parentTaskId !== oldTask.parentTaskId) {
+        if (oldTask.parentTaskId) {
+          await this.recomputeParentRollup(oldTask.parentTaskId).catch(err =>
+            logger.error('[Rollup] recomputeParentRollup error (old parent):', err));
+        }
+        if (data.parentTaskId) {
+          await this.recomputeParentRollup(data.parentTaskId).catch(err =>
+            logger.error('[Rollup] recomputeParentRollup error (new parent):', err));
+        }
+      } else if (updated.parentTaskId) {
+        await this.recomputeParentRollup(updated.parentTaskId).catch(err =>
+          logger.error('[Rollup] recomputeParentRollup error:', err));
+      }
+    }
 
     const schedule = await this.findById(oldTask.scheduleId);
     auditLedgerService.append({
@@ -611,6 +746,12 @@ export class ScheduleService {
     });
 
     if (deleted && existing) {
+      // Recompute parent rollup after child deletion
+      if (existing.parentTaskId) {
+        await this.recomputeParentRollup(existing.parentTaskId).catch(err =>
+          logger.error('[Rollup] recomputeParentRollup error on delete:', err));
+      }
+
       const schedule = await this.findById(existing.scheduleId);
       auditLedgerService.append({
         actorId: existing.createdBy,

@@ -3,9 +3,11 @@ export type ColumnKey =
   | 'progressPercentage' | 'assignedTo' | 'duration' | 'earlyStart' | 'earlyFinish'
   | 'lateStart' | 'lateFinish' | 'totalFloat' | 'freeFloat' | 'critical'
   | 'baselineStart' | 'baselineEnd' | 'startVariance' | 'endVariance'
-  | 'dependency' | 'wbs';
+  | 'dependency' | 'wbs'
+  | 'budgetAllocated' | 'actualCost' | 'budgetVariance'
+  | 'constraintType' | 'constraintDate';
 
-export type ColumnGroup = 'standard' | 'scheduling' | 'baseline' | 'other';
+export type ColumnGroup = 'standard' | 'scheduling' | 'baseline' | 'cost' | 'other';
 
 export interface ColumnDef {
   key: ColumnKey;
@@ -38,12 +40,19 @@ export const COLUMN_DEFS: ColumnDef[] = [
   { key: 'totalFloat', label: 'Total Float', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
   { key: 'freeFloat', label: 'Free Float', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
   { key: 'critical', label: 'Critical', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
+  { key: 'constraintType', label: 'Constraint', group: 'scheduling', defaultVisible: false, editable: true, sortable: true },
+  { key: 'constraintDate', label: 'Constraint Date', group: 'scheduling', defaultVisible: false, editable: true, sortable: true },
 
   // Baseline
   { key: 'baselineStart', label: 'Baseline Start', group: 'baseline', defaultVisible: false, editable: false, sortable: true },
   { key: 'baselineEnd', label: 'Baseline End', group: 'baseline', defaultVisible: false, editable: false, sortable: true },
   { key: 'startVariance', label: 'Start Variance', group: 'baseline', defaultVisible: false, editable: false, sortable: true },
   { key: 'endVariance', label: 'End Variance', group: 'baseline', defaultVisible: false, editable: false, sortable: true },
+
+  // Cost
+  { key: 'budgetAllocated', label: 'Budget', group: 'cost', defaultVisible: false, editable: true, sortable: true },
+  { key: 'actualCost', label: 'Actual Cost', group: 'cost', defaultVisible: false, editable: true, sortable: true },
+  { key: 'budgetVariance', label: 'Cost Variance', group: 'cost', defaultVisible: false, editable: false, sortable: true },
 
   // Other
   { key: 'dependency', label: 'Predecessor', group: 'standard', defaultVisible: true, editable: true, sortable: false },
@@ -60,4 +69,8 @@ export const SCHEDULING_KEYS = new Set<ColumnKey>(
 
 export const BASELINE_KEYS = new Set<ColumnKey>(
   COLUMN_DEFS.filter(c => c.group === 'baseline').map(c => c.key)
+);
+
+export const COST_KEYS = new Set<ColumnKey>(
+  COLUMN_DEFS.filter(c => c.group === 'cost').map(c => c.key)
 );

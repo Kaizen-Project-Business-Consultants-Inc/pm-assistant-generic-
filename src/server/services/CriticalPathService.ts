@@ -11,6 +11,8 @@ export interface CPMTaskResult {
   totalFloat: number;
   freeFloat: number;
   isCritical: boolean;
+  constraintType?: string;
+  constraintDate?: string;
 }
 
 export interface CriticalPathResult {
@@ -96,6 +98,13 @@ export class CriticalPathService {
     const esMap = new Map<string, number>();
     const efMap = new Map<string, number>();
 
+    // Pre-compute project start date for constraint offset calculations
+    const projStartStr = tasks.reduce((min, tt) => {
+      if (!tt.startDate) return min;
+      return !min || tt.startDate < min ? tt.startDate : min;
+    }, '' as string);
+    const projStartMs = projStartStr ? new Date(projStartStr).getTime() : 0;
+
     for (const id of topoOrder) {
       const t = taskMap.get(id)!;
       const dur = getDuration(t);
@@ -118,6 +127,34 @@ export class CriticalPathService {
         es = Math.max(es, constraint);
       }
       es = Math.max(0, es);
+
+      // Apply task constraints
+      const ct = t.constraintType || 'ASAP';
+      if (ct !== 'ASAP' && t.constraintDate) {
+        const cdOffset = projStartMs ? Math.round((new Date(t.constraintDate).getTime() - projStartMs) / DAY_MS) : 0;
+
+        switch (ct) {
+          case 'SNET': es = Math.max(es, cdOffset); break;
+          case 'SNLT': es = Math.min(es, cdOffset); break;
+          case 'MSO':  es = cdOffset; break;
+          case 'FNET': {
+            const minEF = cdOffset;
+            if (es + dur < minEF) es = minEF - dur;
+            break;
+          }
+          case 'FNLT': {
+            const maxEF = cdOffset;
+            if (es + dur > maxEF) es = maxEF - dur;
+            break;
+          }
+          case 'MFO': {
+            es = cdOffset - dur;
+            break;
+          }
+          // ALAP handled in backward pass
+        }
+      }
+
       esMap.set(id, es);
       efMap.set(id, es + dur);
     }
@@ -158,6 +195,12 @@ export class CriticalPathService {
       }
       lfMap.set(id, lf);
       lsMap.set(id, lf - dur);
+
+      // ALAP constraint: shift ES to LS (start as late as possible)
+      if ((t.constraintType || 'ASAP') === 'ALAP') {
+        esMap.set(id, lf - dur);
+        efMap.set(id, lf);
+      }
     }
 
     // Compute float and identify critical tasks
@@ -198,6 +241,8 @@ export class CriticalPathService {
         totalFloat,
         freeFloat: Math.max(0, freeFloat),
         isCritical,
+        constraintType: t.constraintType || 'ASAP',
+        constraintDate: t.constraintDate,
       });
     }
 

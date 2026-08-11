@@ -55,6 +55,16 @@ const createTaskSchema = z.object({
   afterTaskId: z.string().optional(),
   beforeTaskId: z.string().optional(),
   dependencies: z.array(taskDependencySchema).max(20).optional(),
+  budgetAllocated: z.number().min(0).optional(),
+  actualCost: z.number().min(0).optional(),
+  constraintType: z.enum(['ASAP', 'ALAP', 'SNET', 'SNLT', 'FNET', 'FNLT', 'MSO', 'MFO']).optional(),
+  constraintDate: z.string().optional(),
+  assignments: z.array(z.object({
+    resourceId: z.string(),
+    allocationPct: z.number().int().min(1).max(100).default(100),
+    roleOnTask: z.string().max(100).optional(),
+    hoursPlanned: z.number().min(0).optional(),
+  })).max(10).optional(),
 });
 
 const updateTaskSchema = createTaskSchema.partial().omit({ scheduleId: true });
