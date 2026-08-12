@@ -84,7 +84,7 @@ export async function calendarRoutes(fastify: FastifyInstance) {
   });
 
   // Get non-working dates for Gantt shading
-  fastify.get('/api/projects/:projectId/non-working-dates', async (req) => {
+  fastify.get('/api/v1/projects/:projectId/non-working-dates', async (req) => {
     const { projectId } = req.params as { projectId: string };
     const { start, end } = req.query as { start?: string; end?: string };
     if (!start || !end) return { dates: [] };

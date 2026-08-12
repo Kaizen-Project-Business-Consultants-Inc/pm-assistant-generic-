@@ -69,6 +69,7 @@ export interface Task {
   isSummary?: boolean;
   constraintType?: 'ASAP' | 'ALAP' | 'SNET' | 'SNLT' | 'FNET' | 'FNLT' | 'MSO' | 'MFO';
   constraintDate?: string;
+  originalTaskId?: string;
   sortOrder: number;
   createdBy: string;
   createdAt: string;
@@ -1053,7 +1054,7 @@ export class ScheduleService {
     const scenarioOnlyTasks: Task[] = [];
 
     for (const st of scenarioTasks) {
-      const origId = (st as any).originalTaskId;
+      const origId = st.originalTaskId;
       if (origId && baseMap.has(origId)) {
         scenarioByOriginal.set(origId, st);
       } else {
@@ -1117,7 +1118,7 @@ export class ScheduleService {
     // Build mapping from original_task_id → scenario task
     const scenarioByOriginal = new Map<string, Task>();
     for (const st of scenarioTasks) {
-      const origId = (st as any).originalTaskId;
+      const origId = st.originalTaskId;
       if (origId) scenarioByOriginal.set(origId, st);
     }
 

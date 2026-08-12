@@ -115,11 +115,12 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
       const data = createScheduleSchema.partial().parse(request.body);
-      const schedule = await scheduleService.update(scheduleId, {
-        ...data,
-        startDate: data.startDate || undefined,
-        endDate: data.endDate || undefined,
-      });
+      // Only include fields that were actually provided — don't pass undefined keys
+      const updateData: Record<string, any> = {};
+      for (const [key, val] of Object.entries(data)) {
+        if (val !== undefined) updateData[key] = val;
+      }
+      const schedule = await scheduleService.update(scheduleId, updateData);
       if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
       return { schedule };
     } catch (error) {
