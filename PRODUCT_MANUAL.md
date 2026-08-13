@@ -305,7 +305,7 @@ The `ResourceService` maintains a central resource registry. Each resource has:
 - Capacity (hours per week, default 40)
 - Skill tags
 - Active/inactive status
-- Cost rate ($/hour, optional) — used in portfolio cost projections
+- Cost rate ($/hour, optional) — used in workload cost rollup and portfolio cost projections
 
 The `GET /api/v1/resources` endpoint supports pagination via `?limit=` and `?offset=` query parameters (default limit 50, max 200). The response includes a `total` count for client-side pagination controls.
 
@@ -317,9 +317,27 @@ All major list endpoints use a shared pagination schema (`paginationSchema.ts`) 
 - `GET /api/v1/sprints/project/:projectId` — sprints for a project
 - `GET /api/v1/templates` — project templates
 
-### Workload Heatmap
+### Workload Heatmap & Cost Rollup
 
-The resource workload endpoint aggregates task assignments across projects to produce a per-resource, per-day demand profile. Over-allocated days are flagged.
+The resource workload endpoint aggregates task assignments across projects to produce a per-resource, per-week demand profile. Over-allocated weeks are flagged.
+
+**Cost rollup:** For each resource with a `costRateHourly` rate, the workload computation multiplies allocated hours × rate per week to produce per-resource and per-project cost totals. The `GET /api/v1/resources/workload/:projectId` response includes:
+- `costRateHourly` and `totalCost` per resource
+- `cost` per weekly entry
+- `costSummary.totalProjectCost` — aggregate across all resources
+
+The Workload Heatmap UI displays a **Cost** column per resource and an **Estimated Cost** summary card. Weekly cell tooltips include the cost for that week.
+
+### Assignment Conflict Detection
+
+When creating a resource assignment via `POST /api/v1/resources/assignments`, the system checks for over-allocation before inserting. It queries all existing assignments for the resource that overlap the requested date range, sums their `hoursPerWeek` with the new assignment, and compares against the resource's `capacityHoursPerWeek`. If the total exceeds capacity, a warning is returned in the response (the assignment is still created — warnings are advisory, not blocking):
+
+```json
+{
+  "assignment": { ... },
+  "warnings": ["Resource 'Jane Smith' would be allocated 56h/week against 40h capacity (140% utilization) during 2026-01-06 to 2026-03-31"]
+}
+```
 
 ### Resource Histogram
 
@@ -366,10 +384,10 @@ The calendar displays a color-coded month grid (red=vacation, blue=holiday, gray
 A dedicated page accessible from the sidebar under the **Analyze** section. Features:
 
 - **Project selector** dropdown to choose which project to view.
-- **Summary cards**: Total Resources, Over-allocated count, Average Utilization.
+- **Summary cards**: Total Resources, Over-allocated count, Average Utilization, Estimated Cost (shown when resources have cost rates).
 - **Four tabs**:
   - **Team** — Full table of all resources with create, edit, and delete capabilities. Managers can add new resources, update roles/capacity/cost rates, and remove resources directly from this tab.
-  - **Workload Heatmap** — Table showing all resources with weekly utilization percentages as colored cells (green < 80%, blue 80–100%, amber 100–120%, red > 120%). Displays resource name, role, average utilization, and per-week cells.
+  - **Workload Heatmap** — Table showing all resources with weekly utilization percentages as colored cells (green < 80%, blue 80–100%, amber 100–120%, red > 120%). Displays resource name, role, average utilization, cost per resource, and per-week cells with cost tooltips.
   - **Resource Histogram** — SVG bar chart per resource showing daily demand hours with an 8-hour capacity line. Red bars for over-allocated days. Includes an over-allocation summary with count and details.
   - **Capacity Forecast** — 8-week bottleneck predictions table (resource, week, demand, capacity, severity) and AI-generated recommendations.
 

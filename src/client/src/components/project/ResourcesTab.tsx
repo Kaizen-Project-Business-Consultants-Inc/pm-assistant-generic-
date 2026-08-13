@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, AlertTriangle, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, SlidersHorizontal } from 'lucide-react';
+import { Users, AlertTriangle, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, SlidersHorizontal, DollarSign } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ResourceLevelingPanel } from '../resources/ResourceLevelingPanel';
 import { ResourceForecastPanel } from '../resources/ResourceForecastPanel';
@@ -15,12 +15,15 @@ interface WorkloadWeek {
   allocated: number;
   capacity: number;
   utilization: number;
+  cost: number;
 }
 
 interface WorkloadEntry {
   resourceId: string;
   resourceName: string;
   role: string;
+  costRateHourly: number | null;
+  totalCost: number;
   weeks: WorkloadWeek[];
   averageUtilization: number;
   isOverAllocated: boolean;
@@ -204,10 +207,11 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
 
   // Derived stats
   const stats = useMemo(() => {
-    if (!workload.length) return { total: 0, overAllocated: 0, avgUtil: 0 };
+    if (!workload.length) return { total: 0, overAllocated: 0, avgUtil: 0, totalCost: 0 };
     const overAllocated = workload.filter(w => w.isOverAllocated).length;
     const avgUtil = Math.round(workload.reduce((s, w) => s + w.averageUtilization, 0) / workload.length);
-    return { total: workload.length, overAllocated, avgUtil };
+    const totalCost = workload.reduce((s, w) => s + (w.totalCost || 0), 0);
+    return { total: workload.length, overAllocated, avgUtil, totalCost };
   }, [workload]);
 
   const needsScheduleSelector = activeSubTab === 'histogram' || activeSubTab === 'leveling';
@@ -363,7 +367,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
         <>
           {/* Summary cards */}
           {workload.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-50 rounded-lg"><Users className="w-5 h-5 text-blue-600" /></div>
@@ -393,6 +397,17 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                   </div>
                 </div>
               </div>
+              {stats.totalCost > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-50 rounded-lg"><DollarSign className="w-5 h-5 text-emerald-600" /></div>
+                    <div>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">${stats.totalCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                      <p className="text-xs text-gray-500">Estimated Cost</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -412,6 +427,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                     <tr className="bg-gray-50 dark:bg-gray-700">
                       <th className="sticky left-0 bg-gray-50 dark:bg-gray-700 z-10 text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 min-w-[180px]">Resource</th>
                       <th className="text-left px-3 py-3 font-semibold text-gray-600 dark:text-gray-300 w-16">Avg</th>
+                      <th className="text-right px-3 py-3 font-semibold text-gray-600 dark:text-gray-300 w-20">Cost</th>
                       {workload[0]?.weeks.map((w, i) => (
                         <th key={i} className="text-center px-1 py-3 font-medium text-gray-500 text-xs min-w-[60px]">{formatWeek(w.weekStart)}</th>
                       ))}
@@ -432,6 +448,11 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                             {Math.round(entry.averageUtilization)}%
                           </span>
                         </td>
+                        <td className="px-3 py-3 text-right text-xs font-medium text-gray-600 dark:text-gray-400">
+                          {entry.costRateHourly != null && entry.totalCost > 0
+                            ? `$${entry.totalCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                            : '—'}
+                        </td>
                         {entry.weeks.map((w, i) => {
                           const pct = Math.round(w.utilization);
                           return (
@@ -439,7 +460,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                               <div
                                 className="mx-auto w-10 h-8 rounded flex items-center justify-center text-[10px] font-bold text-white"
                                 style={{ backgroundColor: utilColor(pct), opacity: pct === 0 ? 0.15 : 0.85 }}
-                                title={`${w.allocated}h / ${w.capacity}h (${pct}%)`}
+                                title={`${w.allocated}h / ${w.capacity}h (${pct}%)${w.cost > 0 ? ` — $${w.cost.toLocaleString()}` : ''}`}
                               >
                                 {pct > 0 ? `${pct}%` : ''}
                               </div>

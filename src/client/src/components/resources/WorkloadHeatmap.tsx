@@ -5,12 +5,15 @@ interface WeeklyUtilization {
   allocated: number;
   capacity: number;
   utilization: number;
+  cost?: number;
 }
 
 interface ResourceWorkload {
   resourceId: string;
   resourceName: string;
   role: string;
+  costRateHourly?: number | null;
+  totalCost?: number;
   weeks: WeeklyUtilization[];
   averageUtilization: number;
   isOverAllocated: boolean;
@@ -81,6 +84,7 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                     Resource
                   </th>
                   <th className="px-2 py-2 font-semibold text-gray-600 dark:text-gray-400 text-center w-16">Avg</th>
+                  <th className="px-2 py-2 font-semibold text-gray-600 dark:text-gray-400 text-right w-20">Cost</th>
                   {weeks.slice(0, 12).map((w, i) => (
                     <th key={i} className="px-1 py-2 font-medium text-gray-400 dark:text-gray-500 text-center min-w-[48px]">
                       {formatWeek(w.weekStart)}
@@ -112,13 +116,18 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                         {rw.averageUtilization}%
                       </span>
                     </td>
+                    <td className="px-2 py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-400">
+                      {rw.costRateHourly != null && (rw.totalCost ?? 0) > 0
+                        ? `$${(rw.totalCost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                        : '—'}
+                    </td>
                     {rw.weeks.slice(0, 12).map((w, i) => {
                       const { bg, text } = getHeatColor(w.utilization);
                       return (
                         <td key={i} className="px-1 py-1 text-center">
                           <div
                             className={`rounded px-1 py-1 ${bg} ${text} font-medium`}
-                            title={`${rw.resourceName} — Week of ${formatWeek(w.weekStart)}: ${w.allocated}h / ${w.capacity}h (${w.utilization}%)`}
+                            title={`${rw.resourceName} — Week of ${formatWeek(w.weekStart)}: ${w.allocated}h / ${w.capacity}h (${w.utilization}%)${w.cost && w.cost > 0 ? ` — $${w.cost.toLocaleString()}` : ''}`}
                           >
                             {w.utilization > 0 ? `${w.utilization}%` : '-'}
                           </div>

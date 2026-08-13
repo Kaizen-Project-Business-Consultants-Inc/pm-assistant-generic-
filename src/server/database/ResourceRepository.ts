@@ -125,6 +125,22 @@ export class ResourceRepository extends BaseRepository<Resource> {
     return rows.map(rowToAssignment);
   }
 
+  async findOverlappingAssignments(
+    resourceId: string,
+    startDate: string,
+    endDate: string,
+    excludeAssignmentId?: string,
+  ): Promise<ResourceAssignment[]> {
+    const params: any[] = [resourceId, endDate, startDate];
+    let sql = 'SELECT * FROM resource_assignments WHERE resource_id = ? AND start_date <= ? AND end_date >= ?';
+    if (excludeAssignmentId) {
+      sql += ' AND id != ?';
+      params.push(excludeAssignmentId);
+    }
+    const rows = await this.queryRaw(sql, params);
+    return rows.map(rowToAssignment);
+  }
+
   async createAssignment(data: Omit<ResourceAssignment, 'id'>): Promise<ResourceAssignment> {
     const id = uuidv4();
     await this.queryRaw(

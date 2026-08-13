@@ -108,9 +108,11 @@ An agentic AI project management platform that combines the scheduling power of 
 - Assign resources to tasks with effort hours
 - Workload heatmap: visual capacity per person per week
 - Over-allocation detection and warnings
+- **Assignment conflict detection**: Pre-flight capacity check on `POST /resources/assignments` — sums overlapping assignment hours and warns when exceeding resource capacity (advisory, non-blocking)
 - Resource utilization percentage
+- **Cost rollup**: Workload endpoint computes per-resource and per-project costs from `costRateHourly × allocated hours`. Workload heatmap displays Cost column per resource; Estimated Cost summary card shown when cost data is available; weekly cell tooltips include cost
 - Paginated list endpoints (`?limit=&offset=`, max 200, default 50) on resources, projects, schedule tasks, sprints, and templates — shared `paginationSchema` with `PaginatedResponse<T>` format (data, total, page, pageSize, totalPages)
-- Dedicated Resource Management page (`/resources`) with project selector, summary cards, and four tabs: Team (full resource table with create/edit/delete CRUD), Workload Heatmap (color-coded weekly utilization grid), Resource Histogram (SVG bar charts with 8h capacity line), Capacity Forecast (8-week bottleneck predictions + AI recommendations)
+- Dedicated Resource Management page (`/resources`) with project selector, summary cards (including Estimated Cost), and four tabs: Team (full resource table with create/edit/delete CRUD), Workload Heatmap (color-coded weekly utilization grid with cost column), Resource Histogram (SVG bar charts with 8h capacity line), Capacity Forecast (8-week bottleneck predictions + AI recommendations)
 - **Benchmark:** MS Project, Wrike, Asana
 
 ### 1.6a Gantt Overallocation Warnings & Minimap

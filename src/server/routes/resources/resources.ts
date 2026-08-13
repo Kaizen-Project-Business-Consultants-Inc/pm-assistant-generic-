@@ -94,8 +94,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   fastify.post('/assignments', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const data = createAssignmentSchema.parse(request.body);
-      const assignment = await resourceService.createAssignment(data);
-      return reply.status(201).send({ assignment });
+      const { assignment, warnings } = await resourceService.createAssignment(data);
+      return reply.status(201).send({ assignment, warnings });
     } catch (error) {
       logger.error('Create assignment error', { error });
       return reply.status(400).send({ error: 'Invalid assignment data' });
@@ -114,7 +114,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   fastify.get('/workload/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
     const { projectId } = request.params as { projectId: string };
     const workload = await resourceService.computeWorkload(projectId);
-    return { workload };
+    const totalProjectCost = Math.round(workload.reduce((sum, w) => sum + w.totalCost, 0) * 100) / 100;
+    return { workload, costSummary: { totalProjectCost } };
   });
 }
 

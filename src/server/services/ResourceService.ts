@@ -30,12 +30,15 @@ export interface WeeklyUtilization {
   allocated: number;
   capacity: number;
   utilization: number;
+  cost: number;
 }
 
 export interface ResourceWorkload {
   resourceId: string;
   resourceName: string;
   role: string;
+  costRateHourly: number | null;
+  totalCost: number;
   weeks: WeeklyUtilization[];
   averageUtilization: number;
   isOverAllocated: boolean;
@@ -99,7 +102,38 @@ export class ResourceService {
     return resourceRepository.findAssignmentsByResource(resourceId);
   }
 
-  async createAssignment(data: Omit<ResourceAssignment, 'id'>): Promise<ResourceAssignment> {
+  async checkAssignmentConflicts(data: {
+    resourceId: string;
+    hoursPerWeek: number;
+    startDate: string;
+    endDate: string;
+    excludeAssignmentId?: string;
+  }): Promise<{ warnings: string[] }> {
+    const warnings: string[] = [];
+    const resource = await resourceRepository.findById(data.resourceId);
+    if (!resource) return { warnings };
+
+    const overlapping = await resourceRepository.findOverlappingAssignments(
+      data.resourceId, data.startDate, data.endDate, data.excludeAssignmentId,
+    );
+
+    const existingHours = overlapping.reduce((sum, a) => sum + a.hoursPerWeek, 0);
+    const totalHours = existingHours + data.hoursPerWeek;
+    const capacity = resource.capacityHoursPerWeek;
+
+    if (totalHours > capacity) {
+      const pct = Math.round((totalHours / capacity) * 100);
+      warnings.push(
+        `Resource '${resource.name}' would be allocated ${totalHours}h/week against ${capacity}h capacity (${pct}% utilization) during ${data.startDate} to ${data.endDate}`,
+      );
+    }
+
+    return { warnings };
+  }
+
+  async createAssignment(data: Omit<ResourceAssignment, 'id'>): Promise<{ assignment: ResourceAssignment; warnings: string[] }> {
+    const { warnings } = await this.checkAssignmentConflicts(data);
+
     const assignment = await resourceRepository.createAssignment(data);
 
     auditLedgerService.append({
@@ -108,11 +142,11 @@ export class ResourceService {
       action: 'resource.assign',
       entityType: 'resource_assignment',
       entityId: assignment.id,
-      payload: { after: assignment },
+      payload: { after: assignment, warnings },
       source: 'web',
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
-    return assignment;
+    return { assignment, warnings };
   }
 
   async deleteAssignment(id: string): Promise<boolean> {
@@ -167,7 +201,9 @@ export class ResourceService {
 
       const resAssignments = projectAssignments.filter((a) => a.resourceId === resId);
       const baseCapacity = resource.capacityHoursPerWeek;
+      const rate = resource.costRateHourly;
       let totalUtilization = 0;
+      let totalCost = 0;
       let isOverAllocated = false;
 
       const weeklyData: WeeklyUtilization[] = [];
@@ -188,18 +224,26 @@ export class ResourceService {
         if (utilization > 100) isOverAllocated = true;
         totalUtilization += utilization;
 
+        const weeklyCost = rate ? Math.round(allocated * rate * 100) / 100 : 0;
+        totalCost += weeklyCost;
+
         weeklyData.push({
           weekStart: weekStart.toISOString().slice(0, 10),
           allocated,
           capacity,
           utilization,
+          cost: weeklyCost,
         });
       }
+
+      totalCost = Math.round(totalCost * 100) / 100;
 
       workloads.push({
         resourceId: resId,
         resourceName: resource.name,
         role: resource.role,
+        costRateHourly: rate,
+        totalCost,
         weeks: weeklyData,
         averageUtilization: weeks.length > 0 ? Math.round(totalUtilization / weeks.length) : 0,
         isOverAllocated,

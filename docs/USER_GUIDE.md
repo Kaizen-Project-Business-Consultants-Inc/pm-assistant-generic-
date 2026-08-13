@@ -1567,7 +1567,7 @@ Accepted date formats: `YYYY-MM-DD` and `MM/DD/YYYY`. Unrecognised status or pri
 The Resource Management page (`/resources`) provides a centralized view of resource utilization and capacity, as well as team management. Access it from the sidebar under the **Analyze** section.
 
 1. Select a project from the **project selector** dropdown at the top.
-2. Review the **summary cards**: Total Resources, Over-allocated count, and Average Utilization.
+2. Review the **summary cards**: Total Resources, Over-allocated count, Average Utilization, and Estimated Cost (shown when resources have hourly cost rates set).
 3. Switch between four tabs:
 
 ### Team
@@ -1589,7 +1589,7 @@ A table showing all resources with weekly utilization percentages rendered as co
 | Amber | 100%–120% |
 | Red   | Above 120% |
 
-Each row displays the resource name, role, average utilization, and per-week cells.
+Each row displays the resource name, role, average utilization, total cost (for resources with hourly rates), and per-week cells. Hover over a weekly cell to see the allocated hours, capacity, utilization percentage, and cost for that week.
 
 ### Resource Histogram
 
