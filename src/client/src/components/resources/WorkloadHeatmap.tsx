@@ -3,6 +3,7 @@
 interface WeeklyUtilization {
   weekStart: string;
   allocated: number;
+  actual?: number;
   capacity: number;
   utilization: number;
   cost?: number;
@@ -19,14 +20,20 @@ interface ResourceWorkload {
   isOverAllocated: boolean;
 }
 
+interface SkillWithProficiency {
+  name: string;
+  level: number;
+}
+
 interface Resource {
   id: string;
   name: string;
   role: string;
   email: string;
   capacityHoursPerWeek: number;
-  skills: string[];
+  skills: SkillWithProficiency[];
   isActive: boolean;
+  resourceGroup?: string | null;
 }
 
 interface WorkloadHeatmapProps {
@@ -192,8 +199,8 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
               {res.skills.length > 0 && (
                 <div className="flex gap-1 flex-wrap max-w-[200px]">
                   {res.skills.slice(0, 3).map((skill, i) => (
-                    <span key={i} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded-full">
-                      {skill}
+                    <span key={i} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded-full" title={`Level ${skill.level}`}>
+                      {skill.name}
                     </span>
                   ))}
                   {res.skills.length > 3 && (

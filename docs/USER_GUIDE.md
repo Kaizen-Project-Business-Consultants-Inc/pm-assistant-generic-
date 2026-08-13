@@ -1601,6 +1601,77 @@ An 8-week bottleneck predictions table with columns for resource, week, demand, 
 
 ---
 
+## 26b. Resource Management Enhancements
+
+The following capabilities extend the Resource Management page and team planning tools.
+
+### Skill Proficiency Levels
+
+When adding or editing a resource, each skill now has a **proficiency level** from 1 (Junior) to 5 (Expert). Set the level using the dropdown next to each skill tag. If no level is set, the skill defaults to Mid (3).
+
+Proficiency levels are used by the AI skill-match tool when recommending resources for tasks — a Senior-level skill match ranks higher than a Junior-level one, even if both have the same skill name.
+
+### Cross-Project Workload View
+
+The Workload Heatmap tab on the Resource Management page (`/resources`) now includes an **All Projects** option in the project selector dropdown. Selecting it shows each resource's combined demand across every project they are assigned to, making it easy to spot hidden cross-project over-allocation that would not appear when viewing a single project.
+
+The underlying API endpoint is:
+```
+GET /api/v1/resources/workload
+```
+(no projectId required)
+
+### Resource Groups
+
+Resources can be organized into groups (e.g., Engineering, Design, QA, Management, Operations):
+
+1. When creating or editing a resource, select a **Group** from the dropdown.
+2. On the Team tab of the Resource Management page, use the **Group** filter to view only a specific team.
+
+Groups help large organizations navigate their resource pool without scrolling through everyone.
+
+### Utilization Dashboard
+
+A 12-week trend chart is available in the Resource Management page. It plots three lines per resource:
+
+| Line | What it shows |
+|------|---------------|
+| **Planned** | Hours scheduled in task assignments |
+| **Actual** | Hours logged by the resource via time entries |
+| **Capacity** | Available hours per week from the resource's working schedule |
+
+Use this chart to identify recurring patterns — for example, a resource who consistently logs more hours than planned may be under-estimated, or one whose actual hours are far below capacity may be idle.
+
+### Gantt Quick-Assign
+
+From the Gantt chart, click the **"+"** button that appears on any unassigned task row in the resource column. A dropdown lists available resources. Selecting one instantly assigns the resource using the task's existing start and end dates, with hours defaulting to the resource's weekly capacity. An over-allocation warning appears as an amber badge if the assignment would exceed capacity, but the assignment is still created.
+
+### Calendar Templates
+
+Standard 5-day/8-hour schedules do not fit every team. Calendar templates let you define custom working weeks:
+
+- **Built-in templates:** Standard 5×8, Compressed 4×10, Rotating 6×6.
+- **Custom templates:** Define which days are working days and how many hours per day.
+
+To manage templates, go to **Settings → Calendar Templates**. To assign a template to a resource, open the resource's edit form and select a template from the **Working Schedule** dropdown.
+
+When a resource has a template assigned, all capacity and workload calculations use the template's effective weekly hours rather than the flat capacity value.
+
+### Timesheet Integration (Actual vs. Planned)
+
+If a resource's profile is linked to a user account (via the **Linked User** field in the resource edit form), the workload views automatically show actual hours from that user's time entries:
+
+- The Workload Heatmap displays an **Actual** row beneath the Planned row for each week.
+- Cell color indicates variance:
+  - **Green** — Actual hours are at or below planned.
+  - **Amber** — Actual hours are 10–25% above planned.
+  - **Red** — Actual hours are more than 25% above planned.
+- The Utilization Dashboard's **Actual** series is populated from real time-log data rather than estimates.
+
+To link a resource to a user, open the resource edit form and select the user from the **Linked User** dropdown. Only users in your organization appear in the list.
+
+---
+
 ## 27. EVM Dashboard Page
 
 The EVM Dashboard (`/evm`) provides a comprehensive earned value management view. Access it from the sidebar under the **Analyze** section.

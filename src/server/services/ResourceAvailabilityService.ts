@@ -1,4 +1,5 @@
 import { resourceAvailabilityRepository, ResourceAvailability } from '../database/ResourceAvailabilityRepository';
+import { calendarTemplateRepository } from '../database/CalendarTemplateRepository';
 import { MS_PER_DAY } from '../utils/constants';
 
 export type { ResourceAvailability } from '../database/ResourceAvailabilityRepository';
@@ -39,7 +40,19 @@ export class ResourceAvailabilityService {
     return resourceAvailabilityRepository.deleteById(id);
   }
 
-  async getEffectiveCapacity(resourceId: string, weekStart: Date, baseCapacity: number): Promise<number> {
+  async getEffectiveCapacity(resourceId: string, weekStart: Date, baseCapacity: number, calendarTemplateId?: string | null): Promise<number> {
+    // Determine working days and hours from calendar template if provided
+    let workingDaysCount = 5;
+    let hoursPerDay = baseCapacity / 5;
+    if (calendarTemplateId) {
+      const template = await calendarTemplateRepository.findById(calendarTemplateId);
+      if (template) {
+        workingDaysCount = template.workingDays.length;
+        hoursPerDay = template.hoursPerDay;
+        baseCapacity = workingDaysCount * hoursPerDay;
+      }
+    }
+
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
 
@@ -68,7 +81,6 @@ export class ResourceAvailabilityService {
       }
     }
 
-    const hoursPerDay = baseCapacity / 5;
     const available = Math.max(0, baseCapacity - (unavailableDays * hoursPerDay));
 
     if (reducedDays > 0) {

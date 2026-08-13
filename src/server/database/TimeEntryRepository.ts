@@ -84,6 +84,22 @@ class TimeEntryRepository {
       [scheduleId],
     );
   }
+
+  async sumHoursByUserAndWeekRange(userId: string, startDate: string, endDate: string): Promise<{ weekStart: string; totalHours: number }[]> {
+    const rows = await databaseService.query(
+      `SELECT DATE_SUB(date, INTERVAL ((DAYOFWEEK(date) + 5) % 7) DAY) AS week_start,
+              SUM(hours) AS total_hours
+       FROM time_entries
+       WHERE user_id = ? AND date >= ? AND date < ?
+       GROUP BY week_start
+       ORDER BY week_start`,
+      [userId, startDate, endDate],
+    );
+    return rows.map((r: any) => ({
+      weekStart: String(r.week_start).slice(0, 10),
+      totalHours: Number(r.total_hours),
+    }));
+  }
 }
 
 export const timeEntryRepository = new TimeEntryRepository();

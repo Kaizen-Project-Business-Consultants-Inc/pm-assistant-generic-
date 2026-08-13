@@ -44,14 +44,22 @@ interface ForecastData {
   recommendations: string[];
 }
 
+interface SkillWithProficiency {
+  name: string;
+  level: number;
+}
+
 interface Resource {
   id: string;
   name: string;
   role: string;
   email: string;
   capacityHoursPerWeek?: number;
-  skills?: string[];
+  skills?: SkillWithProficiency[];
   costRateHourly?: number | null;
+  resourceGroup?: string | null;
+  userId?: string | null;
+  calendarTemplateId?: string | null;
 }
 
 // ---------------------------------------------------------------------------

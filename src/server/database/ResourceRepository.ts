@@ -1,23 +1,31 @@
 import { v4 as uuidv4 } from 'uuid';
 import { BaseRepository } from './BaseRepository';
-import type { Resource, ResourceAssignment } from '../services/ResourceService';
+import type { Resource, ResourceAssignment, SkillWithProficiency } from '../services/ResourceService';
+
+function parseSkills(raw: any): SkillWithProficiency[] {
+  if (!raw) return [];
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(arr)) return [];
+    return arr.map((s: any) =>
+      typeof s === 'string' ? { name: s, level: 3 } : { name: s.name, level: Number(s.level) || 3 },
+    );
+  } catch { return []; }
+}
 
 function rowToResource(row: any): Resource {
-  let skills: string[] = [];
-  if (row.skills) {
-    try {
-      skills = typeof row.skills === 'string' ? JSON.parse(row.skills) : row.skills;
-    } catch { skills = []; }
-  }
   return {
     id: row.id,
     name: row.name,
     role: row.role,
     email: row.email,
     capacityHoursPerWeek: Number(row.capacity_hours_per_week),
-    skills,
+    skills: parseSkills(row.skills),
     isActive: Boolean(row.is_active),
     costRateHourly: row.cost_rate_hourly != null ? Number(row.cost_rate_hourly) : null,
+    resourceGroup: row.resource_group || null,
+    userId: row.user_id || null,
+    calendarTemplateId: row.calendar_template_id || null,
   };
 }
 
@@ -43,10 +51,12 @@ export class ResourceRepository extends BaseRepository<Resource> {
     return this.mapRows(rows);
   }
 
-  async findAllPaginated(limit: number, offset: number): Promise<{ resources: Resource[]; total: number }> {
+  async findAllPaginated(limit: number, offset: number, group?: string): Promise<{ resources: Resource[]; total: number }> {
+    const where = group ? ' WHERE resource_group = ?' : '';
+    const params = group ? [group] : [];
     const [[{ cnt }], rows] = await Promise.all([
-      this.queryRaw('SELECT COUNT(*) AS cnt FROM resources'),
-      this.queryRaw('SELECT * FROM resources ORDER BY name LIMIT ? OFFSET ?', [limit, offset]),
+      this.queryRaw(`SELECT COUNT(*) AS cnt FROM resources${where}`, params),
+      this.queryRaw(`SELECT * FROM resources${where} ORDER BY name LIMIT ? OFFSET ?`, [...params, limit, offset]),
     ]);
     return { resources: this.mapRows(rows), total: Number(cnt) };
   }
@@ -54,9 +64,9 @@ export class ResourceRepository extends BaseRepository<Resource> {
   async create(data: Omit<Resource, 'id'>): Promise<Resource> {
     const id = uuidv4();
     await this.queryRaw(
-      `INSERT INTO resources (id, name, role, email, capacity_hours_per_week, skills, is_active, cost_rate_hourly)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, data.name, data.role, data.email, data.capacityHoursPerWeek, JSON.stringify(data.skills || []), data.isActive ? 1 : 0, data.costRateHourly ?? null],
+      `INSERT INTO resources (id, name, role, email, capacity_hours_per_week, skills, is_active, cost_rate_hourly, resource_group, user_id, calendar_template_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, data.name, data.role, data.email, data.capacityHoursPerWeek, JSON.stringify(data.skills || []), data.isActive ? 1 : 0, data.costRateHourly ?? null, data.resourceGroup ?? null, data.userId ?? null, data.calendarTemplateId ?? null],
     );
     return (await this.findById(id))!;
   }
@@ -70,6 +80,9 @@ export class ResourceRepository extends BaseRepository<Resource> {
       skills: 'skills',
       isActive: 'is_active',
       costRateHourly: 'cost_rate_hourly',
+      resourceGroup: 'resource_group',
+      userId: 'user_id',
+      calendarTemplateId: 'calendar_template_id',
     };
 
     const fields: string[] = [];
@@ -122,6 +135,11 @@ export class ResourceRepository extends BaseRepository<Resource> {
       `SELECT * FROM resource_assignments WHERE schedule_id IN (${placeholders})`,
       scheduleIds,
     );
+    return rows.map(rowToAssignment);
+  }
+
+  async findAllAssignments(): Promise<ResourceAssignment[]> {
+    const rows = await this.queryRaw('SELECT * FROM resource_assignments');
     return rows.map(rowToAssignment);
   }
 

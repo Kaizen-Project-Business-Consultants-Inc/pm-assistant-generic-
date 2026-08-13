@@ -838,13 +838,16 @@ class ApiService {
     role: string;
     email: string;
     capacityHoursPerWeek?: number;
-    skills?: string[];
+    skills?: Array<string | { name: string; level: number }>;
+    resourceGroup?: string | null;
+    userId?: string | null;
+    calendarTemplateId?: string | null;
   }) {
     const response = await this.api.post('/resources', data);
     return response.data;
   }
 
-  async updateResource(id: string, data: { name?: string; role?: string; email?: string; capacityHoursPerWeek?: number; skills?: string[] }) {
+  async updateResource(id: string, data: Record<string, unknown>) {
     const response = await this.api.put(`/resources/${id}`, data);
     return response.data;
   }
@@ -856,6 +859,42 @@ class ApiService {
 
   async getResourceWorkload(projectId: string) {
     const response = await this.api.get(`/resources/workload/${projectId}`);
+    return response.data;
+  }
+
+  async getGlobalResourceWorkload() {
+    const response = await this.api.get('/resources/workload');
+    return response.data;
+  }
+
+  async getResourceUtilizationHistory(resourceId: string, weeks = 12) {
+    const response = await this.api.get(`/resources/${resourceId}/utilization-history`, { params: { weeks } });
+    return response.data;
+  }
+
+  async quickAssignResource(data: { resourceId: string; taskId: string; scheduleId: string }) {
+    const response = await this.api.post('/resources/quick-assign', data);
+    return response.data;
+  }
+
+  // Calendar Templates
+  async getCalendarTemplates() {
+    const response = await this.api.get('/resources/calendar-templates');
+    return response.data;
+  }
+
+  async createCalendarTemplate(data: { name: string; workingDays: string[]; hoursPerDay: number; isDefault?: boolean }) {
+    const response = await this.api.post('/resources/calendar-templates', data);
+    return response.data;
+  }
+
+  async updateCalendarTemplate(id: string, data: Record<string, unknown>) {
+    const response = await this.api.put(`/resources/calendar-templates/${id}`, data);
+    return response.data;
+  }
+
+  async deleteCalendarTemplate(id: string) {
+    const response = await this.api.delete(`/resources/calendar-templates/${id}`);
     return response.data;
   }
 

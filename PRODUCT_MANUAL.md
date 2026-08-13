@@ -2415,6 +2415,91 @@ The sidebar displays a real-time **AI Token Usage Indicator** above the user sec
 - **Color-coded**: Green (<70% used), amber (70-90%), red (>90%).
 - Data is fetched from `GET /api/v1/ai/budget` with a 5-minute stale time (React Query). Only shown to authenticated users.
 
+## 51. Resource Management Enhancements
+
+Seven enhancements to the resource management system, shipping together as a cohesive upgrade to workforce planning.
+
+### Skill Proficiency Levels
+
+Skills on resources now carry a numeric proficiency level from 1 to 5:
+
+| Level | Label |
+|-------|-------|
+| 1 | Junior |
+| 2 | Intermediate |
+| 3 | Mid |
+| 4 | Senior |
+| 5 | Expert |
+
+Backward compatible: existing plain-string skill tags are treated as level 3 (Mid). Skills are stored as `{ name: string, level: number }` objects. The skill-match finder (`find-skill-match`) uses proficiency levels when ranking candidates.
+
+### Cross-Project Workload
+
+A new org-wide workload endpoint aggregates task assignments across **all** projects rather than a single project:
+
+```
+GET /api/v1/resources/workload
+```
+
+No `projectId` parameter is required. The response follows the same shape as the per-project workload endpoint, grouped by resource, with weekly demand, capacity, utilization, and over-allocation flags calculated across every project the resource is assigned to. Useful for staffing decisions and preventing hidden cross-project over-allocation.
+
+### Resource Groups / Teams
+
+Resources can be assigned to one or more groups:
+
+- Engineering, Design, QA, Management, Operations, and custom groups.
+- Group membership is stored on the resource record.
+- The Team tab on the Resource Management page (`/resources`) includes a **Group** filter dropdown so managers can view a single team at a time.
+- The `GET /api/v1/resources` endpoint supports a `?group=` query parameter for server-side filtering.
+
+### Utilization Dashboard
+
+A historical utilization trends panel on the Resource Management page displays a 12-week SVG line chart with three series:
+
+| Series | Description |
+|--------|-------------|
+| **Planned** | Hours assigned to tasks (scheduled) |
+| **Actual** | Hours logged via time entries |
+| **Capacity** | Resource capacity hours per week |
+
+The chart allows managers to spot trends — e.g., consistently high actual vs. planned — and adjust upcoming allocations before over-runs occur.
+
+### Gantt Quick-Assign
+
+A one-click resource assignment endpoint for use from the Gantt chart toolbar and context menus:
+
+```
+POST /api/v1/resources/quick-assign
+Body: { taskId, resourceId }
+```
+
+The server derives assignment dates from the task's `startDate` and `endDate`, and defaults `hoursPerWeek` to the resource's `capacityHoursPerWeek`. An over-allocation warning is returned (advisory, non-blocking) if the new assignment exceeds capacity. The Gantt toolbar's resource avatar row shows a "+" button next to unassigned tasks to trigger this flow.
+
+### Calendar Templates
+
+Customizable working schedules allow resources to follow non-standard work weeks. CRUD API:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/resources/calendar-templates` | List all templates |
+| `POST` | `/api/v1/resources/calendar-templates` | Create a template |
+| `PUT` | `/api/v1/resources/calendar-templates/:id` | Update a template |
+| `DELETE` | `/api/v1/resources/calendar-templates/:id` | Delete a template |
+
+Built-in presets include standard 5×8, compressed 4×10, and 6×6. Templates define working days and hours per day. When a resource is assigned a calendar template, all capacity and workload calculations use the template's effective weekly hours rather than the flat `capacityHoursPerWeek` default.
+
+### Timesheet Integration
+
+Resources can be linked to a user account via a `userId` field on the resource record. When linked:
+
+- The workload heatmap and cross-project workload views display **actual hours** from that user's time entries alongside planned hours.
+- The utilization dashboard's "Actual" series is populated from real time-log data rather than estimates.
+- Actual vs. planned variance is surfaced per week, color-coded: green when actual ≤ planned, amber when 10–25% over, red when >25% over.
+
+**API:** `PUT /api/v1/resources/:id` accepts `{ userId }` to link a resource to a user. The `GET /api/v1/resources/workload` and `GET /api/v1/resources/workload/:projectId` responses include `actualHours` per weekly entry when a userId link exists.
+
+---
+
 ## 50. Cross-Device View Preferences
 
 UI layout preferences are persisted server-side so they follow the user across devices and browsers. The following preferences are synced:

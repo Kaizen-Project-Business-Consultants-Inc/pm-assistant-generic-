@@ -49,6 +49,7 @@ import { timeEntryRoutes } from './routes/resources/timeEntries';
 import { expenseRoutes } from './routes/resources/expenses';
 import { customFieldRoutes } from './routes/resources/customFields';
 import { availabilityRoutes } from './routes/resources/availability';
+import { calendarTemplateRoutes } from './routes/resources/calendarTemplates';
 
 // Collaboration
 import { approvalWorkflowRoutes } from './routes/collaboration/approvalWorkflows';
@@ -154,6 +155,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(timeEntryRoutes, { prefix: '/api/v1/time-entries' });
   await fastify.register(expenseRoutes, { prefix: '/api/v1/expenses' });
   await fastify.register(customFieldRoutes, { prefix: '/api/v1/custom-fields' });
+  await fastify.register(calendarTemplateRoutes, { prefix: '/api/v1/resources/calendar-templates' });
 
   // Collaboration
   await fastify.register(approvalWorkflowRoutes, { prefix: '/api/v1/approvals' });

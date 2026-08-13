@@ -383,19 +383,21 @@ export class ResourceLevelingService {
           for (const resource of activeResources) {
             if (resource.name === lt.task.assignedTo) continue;
 
-            // Simple skill-keyword match
-            let matchCount = 0;
+            // Skill-keyword match weighted by proficiency
+            let proficiencySum = 0;
             for (const skill of resource.skills) {
-              const skillLower = skill.toLowerCase();
+              const skillName = typeof skill === 'string' ? skill : skill.name;
+              const skillLevel = typeof skill === 'string' ? 3 : (skill.level || 3);
+              const skillLower = skillName.toLowerCase();
               for (const word of taskWords) {
                 if (skillLower.includes(word) || word.includes(skillLower)) {
-                  matchCount++;
+                  proficiencySum += skillLevel;
                   break;
                 }
               }
             }
             const score = resource.skills.length > 0
-              ? Math.round((matchCount / resource.skills.length) * 100)
+              ? Math.round((proficiencySum / (resource.skills.length * 5)) * 100)
               : 10; // Default low score for resources with no skills
 
             if (!bestMatch || score > bestMatch.score) {

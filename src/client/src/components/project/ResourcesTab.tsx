@@ -1,18 +1,25 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, AlertTriangle, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, SlidersHorizontal, DollarSign } from 'lucide-react';
+import { Users, AlertTriangle, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, SlidersHorizontal, DollarSign, LineChart } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ResourceLevelingPanel } from '../resources/ResourceLevelingPanel';
 import { ResourceForecastPanel } from '../resources/ResourceForecastPanel';
 import { CapacityChart } from '../resources/CapacityChart';
+import { UtilizationTrendChart } from '../resources/UtilizationTrendChart';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
+interface SkillWithProficiency {
+  name: string;
+  level: number;
+}
+
 interface WorkloadWeek {
   weekStart: string;
   allocated: number;
+  actual: number;
   capacity: number;
   utilization: number;
   cost: number;
@@ -53,8 +60,11 @@ interface Resource {
   role: string;
   email: string;
   capacityHoursPerWeek?: number;
-  skills?: string[];
+  skills?: SkillWithProficiency[];
   costRateHourly?: number | null;
+  resourceGroup?: string | null;
+  userId?: string | null;
+  calendarTemplateId?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,7 +96,7 @@ function formatWeek(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-type SubTab = 'team' | 'workload' | 'histogram' | 'forecast' | 'leveling';
+type SubTab = 'team' | 'workload' | 'histogram' | 'forecast' | 'leveling' | 'trends';
 
 const subTabs: { key: SubTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'team', label: 'Team', icon: Users },
@@ -94,7 +104,16 @@ const subTabs: { key: SubTab; label: string; icon: React.ComponentType<{ classNa
   { key: 'histogram', label: 'Histogram', icon: Clock },
   { key: 'forecast', label: 'Forecast', icon: TrendingUp },
   { key: 'leveling', label: 'Leveling', icon: SlidersHorizontal },
+  { key: 'trends', label: 'Trends', icon: LineChart },
 ];
+
+const RESOURCE_GROUPS = [
+  'Engineering', 'Design', 'QA', 'Management', 'Operations', 'Marketing', 'Sales', 'Support',
+];
+
+const PROFICIENCY_LABELS: Record<number, string> = {
+  1: 'Junior', 2: 'Intermediate', 3: 'Mid', 4: 'Senior', 5: 'Expert',
+};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -111,7 +130,13 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
   const [formEmail, setFormEmail] = useState('');
   const [formCapacity, setFormCapacity] = useState('40');
   const [formCostRate, setFormCostRate] = useState('');
+  const [formGroup, setFormGroup] = useState('');
+  const [formSkills, setFormSkills] = useState<SkillWithProficiency[]>([]);
+  const [newSkillName, setNewSkillName] = useState('');
+  const [newSkillLevel, setNewSkillLevel] = useState(3);
+  const [groupFilter, setGroupFilter] = useState('');
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
+  const [trendResourceId, setTrendResourceId] = useState('');
 
   // Queries
   const { data: schedulesData } = useQuery({
@@ -182,6 +207,10 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
     setFormEmail('');
     setFormCapacity('40');
     setFormCostRate('');
+    setFormGroup('');
+    setFormSkills([]);
+    setNewSkillName('');
+    setNewSkillLevel(3);
   }
 
   function openEdit(r: Resource) {
@@ -192,17 +221,39 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
     setFormEmail(r.email);
     setFormCapacity(String(r.capacityHoursPerWeek || 40));
     setFormCostRate(r.costRateHourly != null ? String(r.costRateHourly) : '');
+    setFormGroup(r.resourceGroup || '');
+    setFormSkills(r.skills || []);
     setShowResourceForm(true);
   }
 
   function handleSaveResource() {
     const costRate = formCostRate.trim() ? parseFloat(formCostRate) : null;
-    const data = { name: formName, role: formRole, email: formEmail, capacityHoursPerWeek: parseInt(formCapacity) || 40, costRateHourly: costRate };
+    const data = {
+      name: formName,
+      role: formRole,
+      email: formEmail,
+      capacityHoursPerWeek: parseInt(formCapacity) || 40,
+      costRateHourly: costRate,
+      resourceGroup: formGroup || null,
+      skills: formSkills,
+    };
     if (editingResource) {
       updateResourceMutation.mutate({ id: editingResource.id, data });
     } else {
       createResourceMutation.mutate(data);
     }
+  }
+
+  function addSkill() {
+    const name = newSkillName.trim();
+    if (!name || formSkills.some(s => s.name.toLowerCase() === name.toLowerCase())) return;
+    setFormSkills([...formSkills, { name, level: newSkillLevel }]);
+    setNewSkillName('');
+    setNewSkillLevel(3);
+  }
+
+  function removeSkill(idx: number) {
+    setFormSkills(formSkills.filter((_, i) => i !== idx));
   }
 
   // Derived stats
@@ -213,6 +264,17 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
     const totalCost = workload.reduce((s, w) => s + (w.totalCost || 0), 0);
     return { total: workload.length, overAllocated, avgUtil, totalCost };
   }, [workload]);
+
+  const allGroups = useMemo(() => {
+    const groups = new Set<string>();
+    resources.forEach(r => { if (r.resourceGroup) groups.add(r.resourceGroup); });
+    return [...groups].sort();
+  }, [resources]);
+
+  const filteredResources = useMemo(() => {
+    if (!groupFilter) return resources;
+    return resources.filter(r => r.resourceGroup === groupFilter);
+  }, [resources, groupFilter]);
 
   const needsScheduleSelector = activeSubTab === 'histogram' || activeSubTab === 'leveling';
 
@@ -253,8 +315,21 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
       {/* ── Team sub-tab ── */}
       {activeSubTab === 'team' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">{resources.length} resources</p>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-gray-500">{filteredResources.length} resources</p>
+              {/* Group filter */}
+              {allGroups.length > 0 && (
+                <select
+                  value={groupFilter}
+                  onChange={(e) => setGroupFilter(e.target.value)}
+                  className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-xs focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">All Groups</option>
+                  {allGroups.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              )}
+            </div>
             <button
               onClick={() => { resetForm(); setShowResourceForm(true); }}
               className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
@@ -269,7 +344,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white">{editingResource ? 'Edit Resource' : 'New Resource'}</h3>
                 <button onClick={resetForm} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close resource form"><X className="w-4 h-4" /></button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name</label>
                   <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="Full name" />
@@ -304,6 +379,39 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Cost Rate ($/hr)</label>
                   <input type="number" value={formCostRate} onChange={(e) => setFormCostRate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0" step="0.01" placeholder="Optional" />
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Group</label>
+                  <select value={formGroup} onChange={(e) => setFormGroup(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">No group</option>
+                    {RESOURCE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+              </div>
+              {/* Skills with proficiency */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Skills</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {formSkills.map((s, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-50 dark:bg-primary-900/30 text-xs text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700">
+                      {s.name} <span className="text-[10px] opacity-70">({PROFICIENCY_LABELS[s.level] || s.level})</span>
+                      <button type="button" onClick={() => removeSkill(i)} className="ml-0.5 text-primary-400 hover:text-red-500"><X className="w-3 h-3" /></button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newSkillName}
+                    onChange={(e) => setNewSkillName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
+                    className="input text-sm dark:bg-gray-700 dark:text-gray-100 flex-1"
+                    placeholder="Add skill..."
+                  />
+                  <select value={newSkillLevel} onChange={(e) => setNewSkillLevel(Number(e.target.value))} className="input text-sm dark:bg-gray-700 dark:text-gray-100 w-32">
+                    {[1, 2, 3, 4, 5].map(l => <option key={l} value={l}>{PROFICIENCY_LABELS[l]}</option>)}
+                  </select>
+                  <button type="button" onClick={addSkill} disabled={!newSkillName.trim()} className="px-3 py-1.5 text-xs font-medium bg-primary-100 text-primary-700 rounded hover:bg-primary-200 disabled:opacity-40">Add</button>
+                </div>
               </div>
               <div className="flex justify-end">
                 <button
@@ -322,17 +430,20 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
               <div className="flex items-center justify-center py-16">
                 <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
               </div>
-            ) : resources.length === 0 ? (
+            ) : filteredResources.length === 0 ? (
               <div className="text-center py-16 text-gray-400">
                 <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p>No resources yet. Add your first team member.</p>
+                <p>{groupFilter ? 'No resources in this group.' : 'No resources yet. Add your first team member.'}</p>
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 dark:bg-gray-700">
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Name</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Role</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Group</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Skills</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Email</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Hours/Wk</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">$/hr</th>
@@ -340,10 +451,26 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {resources.map(r => (
+                  {filteredResources.map(r => (
                     <tr key={r.id} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{r.name}</td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.role}</td>
+                      <td className="px-4 py-3">
+                        {r.resourceGroup ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{r.resourceGroup}</span>
+                        ) : <span className="text-gray-300 dark:text-gray-600">--</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {(r.skills || []).slice(0, 4).map((s, i) => (
+                            <span key={i} className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300" title={`${s.name} (${PROFICIENCY_LABELS[s.level] || s.level})`}>
+                              {s.name}
+                              <span className="ml-0.5 opacity-60">{s.level}</span>
+                            </span>
+                          ))}
+                          {(r.skills || []).length > 4 && <span className="text-[10px] text-gray-400">+{(r.skills || []).length - 4}</span>}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.email}</td>
                       <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.capacityHoursPerWeek || 40}</td>
                       <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.costRateHourly != null ? `$${r.costRateHourly.toFixed(2)}` : '--'}</td>
@@ -357,6 +484,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>
@@ -648,6 +776,30 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
           {selectedScheduleId && <ResourceLevelingPanel projectId={projectId} scheduleId={selectedScheduleId} />}
           <ResourceForecastPanel projectId={projectId} />
           <CapacityForecastSection projectId={projectId} />
+        </div>
+      )}
+
+      {/* ── Trends sub-tab (#6) ── */}
+      {activeSubTab === 'trends' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-gray-500">Resource:</label>
+            <select
+              value={trendResourceId}
+              onChange={(e) => setTrendResourceId(e.target.value)}
+              className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Select a resource...</option>
+              {resources.map(r => <option key={r.id} value={r.id}>{r.name} — {r.role}</option>)}
+            </select>
+          </div>
+          {trendResourceId ? (
+            <UtilizationTrendChart resourceId={trendResourceId} />
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center text-gray-400">
+              Select a resource to view utilization trends.
+            </div>
+          )}
         </div>
       )}
     </div>

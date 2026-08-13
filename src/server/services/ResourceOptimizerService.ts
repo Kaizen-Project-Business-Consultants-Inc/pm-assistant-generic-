@@ -187,9 +187,12 @@ export class ResourceOptimizerService {
       // Keyword match: compare resource skills against task keywords
       const matchedSkills: string[] = [];
       let matchScore = 0;
+      let proficiencySum = 0;
 
       for (const skill of resource.skills) {
-        const skillLower = skill.toLowerCase();
+        const skillName = typeof skill === 'string' ? skill : skill.name;
+        const skillLevel = typeof skill === 'string' ? 3 : (skill.level || 3);
+        const skillLower = skillName.toLowerCase();
         const skillWords = this.extractKeywords(skillLower);
 
         // Check if any skill keyword appears in the task text
@@ -212,13 +215,14 @@ export class ResourceOptimizerService {
         }
 
         if (skillMatched) {
-          matchedSkills.push(skill);
+          matchedSkills.push(skillName);
+          proficiencySum += skillLevel;
         }
       }
 
-      // Score: percentage of resource skills that matched, weighted
+      // Score: weighted by proficiency levels (max 5 per skill)
       if (resource.skills.length > 0) {
-        matchScore = Math.round((matchedSkills.length / resource.skills.length) * 100);
+        matchScore = Math.round((proficiencySum / (resource.skills.length * 5)) * 100);
       }
 
       // Calculate available capacity during the task period
@@ -352,7 +356,7 @@ export class ResourceOptimizerService {
     workloads: ResourceWorkload[],
     bottlenecks: BottleneckPrediction[],
     burnoutRisks: BurnoutRisk[],
-    resources: Array<{ id: string; name: string; role: string; skills: string[] }>,
+    resources: Array<{ id: string; name: string; role: string; skills: Array<string | { name: string; level: number }> }>,
   ): Promise<RebalanceSuggestion[]> {
     const systemPrompt = `You are a resource optimization AI for project management.
 Analyze the resource workload data, bottlenecks, and burnout risks provided.
