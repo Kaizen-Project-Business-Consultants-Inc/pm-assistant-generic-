@@ -45,7 +45,7 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 ### Signing Up
 
 1. Navigate to the PM Assistant URL in your browser.
-2. On the landing page, click **Get Started** — this takes you to the **Pricing** page.
+2. On the landing page, click **Get Started** — this scrolls to the **Pricing** section.
 3. Choose your plan:
    - Click **Start Free Trial** for a 14-day free trial (no credit card required).
    - Click **Subscribe** on a paid plan (Consultant or SME) to go straight to checkout.

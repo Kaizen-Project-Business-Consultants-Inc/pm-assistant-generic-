@@ -1304,12 +1304,18 @@ When a user deletes their account (via `DELETE /api/v1/auth/delete-account`), th
 
 ### Signup Flow — Pricing First
 
-The landing page's "Get Started" and "Get Started Free" CTAs direct users to the **Pricing page** (`/pricing`) instead of the registration form. This ensures users see all available plans and their features before creating an account. From the Pricing page:
+All entry points route users through plan selection before registration:
+
+- **Landing page hero** — "Get Started" button anchor-scrolls to the pricing section on the same page (no page navigation)
+- **Landing page nav** — both "Pricing" and "Get Started" anchor-scroll to `#pricing`
+- **Login page** — "Sign up" link routes to `/pricing`
+
+From the pricing cards, users choose their plan:
 
 - **"Start Free Trial"** on the Trial card links to `/register` for standard registration with a 14-day trial
 - **"Subscribe"** on paid plan cards links to `/register?tier=<tier>&billing=<billing>`, which creates the account and redirects to Stripe checkout
 
-The `/register` page remains directly accessible for users who navigate to it manually, via invite links, or via bookmarks.
+The `/register` page remains directly accessible for invite links and direct URL access.
 
 ### Pricing Page
 

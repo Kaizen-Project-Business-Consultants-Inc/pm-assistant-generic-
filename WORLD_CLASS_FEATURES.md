@@ -424,7 +424,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Trial sample API keys**: `GET /api/v1/api-keys` returns 2 sample keys (CI/CD Pipeline, Dashboard Read-Only) with amber upgrade banner instead of a 403; Create Key button hidden on SettingsPage API Keys tab; no DB reads
 - **Sample data architecture**: POST-based sample endpoints (`/nl-query`, `/meeting-intelligence/analyze`) exempt from global `requireActiveSubscription` hook via `SUBSCRIPTION_EXEMPT_PREFIXES`; portal links trial check runs before `requireProjectAccess`; meeting intelligence trial check runs before Zod schema validation; all write endpoints remain hard-gated
 - **Trial abuse prevention**: `deleted_emails` table tracks emails of deleted accounts; re-registration with a previously-deleted email skips the 14-day trial (`subscriptionStatus: 'none'`), requiring a paid plan; case-insensitive lookup; migration `079_deleted_emails.sql`
-- **Pricing-first signup flow**: Landing page CTAs ("Get Started", "Get Started Free") route to `/pricing` instead of `/register`; users see all plans and features before creating an account; Trial card links to `/register`, paid cards link to `/register?tier=<tier>&billing=<billing>` for direct Stripe checkout
+- **Pricing-first signup flow**: All entry points (landing page hero, nav, login page "Sign up") route through plan selection before registration; landing page "Get Started" anchor-scrolls to inline `#pricing` section; login page links to `/pricing`; Trial card links to `/register`, paid cards link to `/register?tier=<tier>&billing=<billing>` for direct Stripe checkout
 - Shareable report links
 - **Benchmark:** Smartsheet, Monday.com
 
