@@ -11,6 +11,7 @@ import { stripeService } from '../../services/StripeService';
 import { organizationService } from '../../services/OrganizationService';
 import { provisionTenantDatabase } from '../../database/tenantProvisioner';
 import { inviteService } from '../../services/InviteService';
+import { databaseService } from '../../database/connection';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { resolvePriceId } from '../integrations/stripe';
 import logger from '../../utils/logger';
@@ -173,6 +174,13 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.status(409).send({ error: 'Email already exists', message: 'An account with this email already exists' });
       }
 
+      // Check if this email was previously deleted (trial abuse prevention)
+      const [previousAccount] = await databaseService.query<{ email: string }>(
+        'SELECT email FROM deleted_emails WHERE email = ? LIMIT 1',
+        [email.toLowerCase()]
+      );
+      const hadPreviousAccount = !!previousAccount;
+
       const verificationToken = crypto.randomUUID();
       const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -208,8 +216,13 @@ export async function authRoutes(fastify: FastifyInstance) {
         } catch (inviteErr) {
           logger.error('Failed to accept invite during registration', { userId: user.id, error: inviteErr });
         }
+      } else if (hadPreviousAccount) {
+        // Returning user: no free trial — must pick a paid plan
+        await userService.update(user.id, {
+          subscriptionStatus: 'none',
+        });
       } else {
-        // Regular user: start 14-day trial
+        // New user: start 14-day trial
         const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
         await userService.update(user.id, {
           subscriptionStatus: 'trialing',
@@ -695,6 +708,12 @@ export async function authRoutes(fastify: FastifyInstance) {
           logger.warn('Failed to cancel Stripe subscriptions during account deletion', { userId, error: stripeErr });
         }
       }
+
+      // Log email to prevent trial abuse on re-registration
+      await databaseService.query(
+        'INSERT INTO deleted_emails (email) VALUES (?)',
+        [user.email.toLowerCase()]
+      );
 
       // Delete user (cascades to most related data via FK constraints)
       await userService.delete(userId);
