@@ -271,6 +271,7 @@ Presence automatically re-joins after a WebSocket reconnect (e.g., if your conne
    - **Priority** -- Low, Medium, High, or Urgent.
    - **Start Date / End Date** -- Task timeline.
    - **Estimated Days** -- Duration estimate.
+   - **Work Effort (hours)** -- Total labor hours needed to complete the task.
    - **Progress Percentage** -- Current completion (0-100%).
    - **Assigned To** -- Team member responsible.
    - **Description** -- Detailed task notes.
@@ -372,7 +373,7 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - **Progress fill** shows completion percentage within each bar.
 - **Resizable panel splitter**: Drag the vertical bar between the task table and the Gantt timeline to resize the panels. Your chosen width is remembered per schedule. Drag right to reveal more columns, drag left to give more room to the timeline.
 - **Left panel columns**: #, Task Name, Pred, Start, End, Duration, Est Days, %, Priority, Assigned, Status. Fixed-width columns stay in place; only Task Name grows/shrinks as you resize.
-- **Resizable columns**: Drag the right border of any column header (Pred, Start, End, Duration, Est, %, Priority, Assigned, Status) to resize it. Widths are saved per schedule in localStorage. The Task Name column uses flex width and Row # and Edit Icon columns are fixed.
+- **Resizable columns**: Drag the right border of any column header (Pred, Start, End, Duration, Est, Work, %, Priority, Assigned, Status) to resize it. Widths are saved per schedule in localStorage. The Task Name column uses flex width and Row # and Edit Icon columns are fixed.
 - **Column show/hide**: Click the **Columns** button in the toolbar to open a dropdown. Toggle any column on/off (except Row #, Task Name, and Edit Icon which are always visible). Click **Reset to default** to restore all columns. Visibility persists per schedule in localStorage.
 - **Row expand/collapse**: Parent tasks show a chevron (▶) to the left of their name. Click it to collapse or expand their children. Collapsed parents hide all descendants. Collapsed state persists per schedule in localStorage. Use the **Collapse All** (▶) and **Expand All** (▼) buttons in the toolbar to collapse or expand all parent tasks at once.
 - **Inline grid editing**: Click any cell in the left panel to edit it directly — no modal required. Editable fields: Task Name, Predecessor, Start Date, End Date, Duration, Est Days, %, Priority, Assigned To, and Status. Press **Enter** to save, **Escape** to cancel, or just click away (blur saves automatically). A green flash confirms the save. Use **Tab** to advance to the next field and **Shift+Tab** to go back; tabbing past the last field jumps to the first field of the next row. Editing the **Duration** column (e.g. typing `10`) automatically sets End Date = Start Date + 10 days. The row number (#) column is not editable. Double-click a row or click the pencil icon to open the full edit modal instead.
