@@ -45,9 +45,12 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 ### Signing Up
 
 1. Navigate to the PM Assistant URL in your browser.
-2. On the landing page, click **Sign Up** (or go to `/register`).
-3. Enter your full name, email, username, and password.
-4. Verify your email address using the link sent to your inbox.
+2. On the landing page, click **Get Started** — this takes you to the **Pricing** page.
+3. Choose your plan:
+   - Click **Start Free Trial** for a 14-day free trial (no credit card required).
+   - Click **Subscribe** on a paid plan (Consultant or SME) to go straight to checkout.
+4. Fill in your email, password, and other details on the registration form.
+5. Verify your email address using the link sent to your inbox.
 
 > **Note:** Each email address is eligible for one free 14-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
 

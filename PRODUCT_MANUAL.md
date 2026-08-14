@@ -1302,14 +1302,23 @@ When a user deletes their account (via `DELETE /api/v1/auth/delete-account`), th
 - **Registration check**: case-insensitive email lookup against `deleted_emails` before granting trial
 - **Migration**: `079_deleted_emails.sql`
 
+### Signup Flow — Pricing First
+
+The landing page's "Get Started" and "Get Started Free" CTAs direct users to the **Pricing page** (`/pricing`) instead of the registration form. This ensures users see all available plans and their features before creating an account. From the Pricing page:
+
+- **"Start Free Trial"** on the Trial card links to `/register` for standard registration with a 14-day trial
+- **"Subscribe"** on paid plan cards links to `/register?tier=<tier>&billing=<billing>`, which creates the account and redirects to Stripe checkout
+
+The `/register` page remains directly accessible for users who navigate to it manually, via invite links, or via bookmarks.
+
 ### Pricing Page
 
-The Pricing page (`/pricing`) presents three paid tiers (Consultant, SME, Enterprise) with monthly/annual billing toggle and a 17%-save badge on annual plans. Each plan card shows:
+The Pricing page (`/pricing`) presents the Free Trial tier and two paid tiers (Consultant, SME) with monthly/annual billing toggle and a 17%-save badge on annual plans. Each plan card shows:
 
 - Price and billing period
 - AI token allowance with **practical usage equivalents** (e.g., "~100 AI chats, 50 risk scans, or 25 reports/mo") so users understand what their token budget means in real terms
 - Feature list with checkmarks
-- Subscribe / Switch Plan / Current Plan button (context-aware based on auth state and current tier)
+- Start Free Trial / Subscribe / Switch Plan / Current Plan button (context-aware based on auth state and current tier)
 
 Below the plan cards, a **Feature Comparison Matrix** provides a side-by-side table across all 4 tiers (Trial, Consultant, SME, Enterprise). Features are marked with checkmarks (included), X marks (excluded), or text values (e.g., "3", "1GB", "Unlimited"). The table covers projects, AI tokens, exports, API access, EVM, Monte Carlo, resource management, workflows, portal, intelligence features, meeting tools, MCP, storage, and top-ups.
 
