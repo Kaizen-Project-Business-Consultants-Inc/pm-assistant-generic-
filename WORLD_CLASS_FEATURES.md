@@ -423,6 +423,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Trial sample auto-reschedule**: `GET /api/v1/delays` returns 3 sample delays (API Integration, Database Migration, UI Redesign) and `GET /api/v1/proposals` returns 1 sample proposal with amber upgrade banner instead of a 403; Generate Proposal button disabled on AutoReschedulePanel; no AI tokens consumed
 - **Trial sample API keys**: `GET /api/v1/api-keys` returns 2 sample keys (CI/CD Pipeline, Dashboard Read-Only) with amber upgrade banner instead of a 403; Create Key button hidden on SettingsPage API Keys tab; no DB reads
 - **Sample data architecture**: POST-based sample endpoints (`/nl-query`, `/meeting-intelligence/analyze`) exempt from global `requireActiveSubscription` hook via `SUBSCRIPTION_EXEMPT_PREFIXES`; portal links trial check runs before `requireProjectAccess`; meeting intelligence trial check runs before Zod schema validation; all write endpoints remain hard-gated
+- **Trial abuse prevention**: `deleted_emails` table tracks emails of deleted accounts; re-registration with a previously-deleted email skips the 14-day trial (`subscriptionStatus: 'none'`), requiring a paid plan; case-insensitive lookup; migration `079_deleted_emails.sql`
 - Shareable report links
 - **Benchmark:** Smartsheet, Monday.com
 

@@ -49,6 +49,8 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 3. Enter your full name, email, username, and password.
 4. Verify your email address using the link sent to your inbox.
 
+> **Note:** Each email address is eligible for one free 14-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
+
 ### Logging In
 
 1. Go to the login page (`/login`) and enter your username and password.

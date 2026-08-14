@@ -1294,6 +1294,14 @@ The `EmailService` sends automated reminder emails to users approaching the end 
 
 A daily cron job runs at **09:00** to scan for trials expiring within the relevant windows and dispatch the appropriate email. Redis-backed deduplication prevents the same reminder from being sent more than once per user per trigger window — if the cron runs multiple times or a user is picked up on consecutive days for the same window, only one email is delivered.
 
+### Trial Abuse Prevention
+
+When a user deletes their account (via `DELETE /api/v1/auth/delete-account`), their email address is recorded in the `deleted_emails` table. If the same email is used to register again, the system skips the 14-day free trial — the new account is created with `subscriptionStatus: 'none'` and the user must select a paid plan to access features. This prevents users from repeatedly deleting and re-registering to obtain unlimited free trials.
+
+- **Table**: `deleted_emails` (control plane DB) — stores `email` and `deleted_at` timestamp
+- **Registration check**: case-insensitive email lookup against `deleted_emails` before granting trial
+- **Migration**: `079_deleted_emails.sql`
+
 ### Pricing Page
 
 The Pricing page (`/pricing`) presents three paid tiers (Consultant, SME, Enterprise) with monthly/annual billing toggle and a 17%-save badge on annual plans. Each plan card shows:
