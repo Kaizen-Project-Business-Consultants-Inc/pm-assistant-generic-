@@ -36,6 +36,7 @@ export interface GanttTask {
   parentTaskId?: string;
   assignedTo?: string;
   estimatedDays?: number;
+  estimatedDurationHours?: number;
   recurrenceRule?: string;
   recurrenceParentId?: string;
   isRecurrenceTemplate?: boolean;
@@ -200,6 +201,7 @@ const GANTT_COLUMNS: GanttColDef[] = [
   { key: 'end',       label: 'End',      defaultWidth: 80,  minWidth: 60,  resizable: true },
   { key: 'dur',       label: 'Dur',      defaultWidth: 48,  minWidth: 36,  resizable: true },
   { key: 'est',       label: 'Est',      defaultWidth: 48,  minWidth: 36,  resizable: true },
+  { key: 'work',      label: 'Work',     defaultWidth: 56,  minWidth: 40,  resizable: true },
   { key: 'pct',       label: '%',        defaultWidth: 48,  minWidth: 36,  resizable: true },
   { key: 'priority',  label: 'Priority', defaultWidth: 64,  minWidth: 50,  resizable: true },
   { key: 'assigned',  label: 'Assigned', defaultWidth: 96,  minWidth: 60,  resizable: true },
@@ -564,7 +566,7 @@ export function GanttChart({
   // Reverse mapping: Gantt key → Table key (for checking external visibility)
   const ganttKeyToTableKey: Record<string, string> = {
     pred: 'dependency', start: 'startDate', end: 'endDate',
-    dur: 'duration', est: 'estimatedDays', pct: 'progressPercentage',
+    dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
     assigned: 'assignedTo', priority: 'priority', status: 'status',
   };
 
@@ -633,7 +635,7 @@ export function GanttChart({
   // Map external columnState keys to Gantt column keys
   const tableKeyToGanttKey: Record<string, string> = {
     dependency: 'pred', startDate: 'start', endDate: 'end',
-    duration: 'dur', estimatedDays: 'est', progressPercentage: 'pct',
+    duration: 'dur', estimatedDays: 'est', estimatedDurationHours: 'work', progressPercentage: 'pct',
     assignedTo: 'assigned', priority: 'priority', status: 'status', name: 'name',
   };
 
@@ -828,7 +830,7 @@ export function GanttChart({
     // Map column key to task field
     const colKeyToSortField: Record<string, string> = {
       name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate',
-      dur: 'duration', est: 'estimatedDays', pct: 'progressPercentage',
+      dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
       priority: 'priority', assigned: 'assignedTo', status: 'status',
     };
     const field = colKeyToSortField[colKey];
@@ -918,6 +920,7 @@ export function GanttChart({
           return s && e ? daysBetween(s, e) : 0;
         }
         case 'estimatedDays': return task.estimatedDays ?? 0;
+        case 'estimatedDurationHours': return task.estimatedDurationHours ?? 0;
         case 'progressPercentage': return task.progressPercentage ?? 0;
         case 'priority': return priorityOrder[task.priority || 'medium'] ?? 1;
         case 'status': return statusOrder[task.status] ?? 0;
@@ -1191,8 +1194,8 @@ export function GanttChart({
   // -----------------------------------------------------------------------
   // Inline editing state & helpers
   // -----------------------------------------------------------------------
-  type EditableField = 'name' | 'dependency' | 'startDate' | 'endDate' | 'duration' | 'estimatedDays' | 'progressPercentage' | 'priority' | 'assignedTo' | 'status';
-  const FIELD_ORDER: EditableField[] = ['name', 'dependency', 'startDate', 'endDate', 'duration', 'estimatedDays', 'progressPercentage', 'priority', 'assignedTo', 'status'];
+  type EditableField = 'name' | 'dependency' | 'startDate' | 'endDate' | 'duration' | 'estimatedDays' | 'estimatedDurationHours' | 'progressPercentage' | 'priority' | 'assignedTo' | 'status';
+  const FIELD_ORDER: EditableField[] = ['name', 'dependency', 'startDate', 'endDate', 'duration', 'estimatedDays', 'estimatedDurationHours', 'progressPercentage', 'priority', 'assignedTo', 'status'];
   const statusOptions = ['pending', 'in_progress', 'completed'];
   const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 
@@ -1256,6 +1259,7 @@ export function GanttChart({
         return s && e ? String(daysBetween(s, e)) : '';
       }
       case 'estimatedDays': return task.estimatedDays != null ? String(task.estimatedDays) : '';
+      case 'estimatedDurationHours': return task.estimatedDurationHours != null ? String(task.estimatedDurationHours) : '';
       case 'progressPercentage': return String(task.progressPercentage ?? 0);
       case 'assignedTo': return task.assignedTo || '';
       case 'dependency': {
@@ -1352,7 +1356,7 @@ export function GanttChart({
 
     const saveValue = field === 'progressPercentage'
       ? Math.max(0, Math.min(100, Number(value)))
-      : field === 'estimatedDays'
+      : field === 'estimatedDays' || field === 'estimatedDurationHours'
         ? Math.max(0, Number(value))
         : value;
 
@@ -1427,7 +1431,7 @@ export function GanttChart({
   const visibleFieldOrder = useMemo(() => {
     const colKeyToField: Record<string, EditableField> = {
       name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate',
-      dur: 'duration', est: 'estimatedDays', pct: 'progressPercentage',
+      dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
       priority: 'priority', assigned: 'assignedTo', status: 'status',
     };
     return orderedColumns
@@ -1457,7 +1461,7 @@ export function GanttChart({
         if (e.key === 'v') {
           if (copiedValue && copiedValue.field === focusedCell.field) {
             e.preventDefault();
-            onTaskUpdate(focusedCell.taskId, { [focusedCell.field === 'dependency' ? 'dependencies' : focusedCell.field]: focusedCell.field === 'progressPercentage' ? Math.max(0, Math.min(100, Number(copiedValue.value))) : focusedCell.field === 'estimatedDays' ? Math.max(0, Number(copiedValue.value)) : copiedValue.value });
+            onTaskUpdate(focusedCell.taskId, { [focusedCell.field === 'dependency' ? 'dependencies' : focusedCell.field]: focusedCell.field === 'progressPercentage' ? Math.max(0, Math.min(100, Number(copiedValue.value))) : (focusedCell.field === 'estimatedDays' || focusedCell.field === 'estimatedDurationHours') ? Math.max(0, Number(copiedValue.value)) : copiedValue.value });
             setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
             setTimeout(() => setPasteFlash(null), 800);
           }
@@ -2067,7 +2071,7 @@ export function GanttChart({
     if (view.sortField) {
       const colKeyToSortField: Record<string, string> = {
         name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate',
-        dur: 'duration', est: 'estimatedDays', pct: 'progressPercentage',
+        dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
         priority: 'priority', assigned: 'assignedTo', status: 'status',
       };
       // View stores column keys, map to sort field
@@ -2656,7 +2660,7 @@ export function GanttChart({
               const isSortable = sortableKeys.includes(col.key);
               const colKeyToSortField: Record<string, string> = {
                 name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate',
-                dur: 'duration', est: 'estimatedDays', pct: 'progressPercentage',
+                dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
                 priority: 'priority', assigned: 'assignedTo', status: 'status',
               };
               const sortFieldForCol = colKeyToSortField[col.key];
@@ -3012,6 +3016,31 @@ export function GanttChart({
                         />
                       ) : (
                         task.estimatedDays != null ? `${task.estimatedDays}d` : '—'
+                      )}
+                    </div>
+                  );
+
+                  if (col.key === 'work') return (
+                    <div
+                      key="work"
+                      className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${editableCellClass(task.id, 'estimatedDurationHours')}`}
+                      style={{ width: w }}
+                      onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'estimatedDurationHours', task); } }}
+                    >
+                      {isEditing(task.id, 'estimatedDurationHours') ? (
+                        <input
+                          ref={el => { inputRef.current = el; }}
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center"
+                          value={editValue}
+                          onChange={e => setEditValue(e.target.value)}
+                          onBlur={() => saveEdit(task.id, 'estimatedDurationHours', editValue)}
+                          onKeyDown={e => handleKeyDown(e, task.id, 'estimatedDurationHours')}
+                        />
+                      ) : (
+                        task.estimatedDurationHours != null ? `${task.estimatedDurationHours}h` : '—'
                       )}
                     </div>
                   );
