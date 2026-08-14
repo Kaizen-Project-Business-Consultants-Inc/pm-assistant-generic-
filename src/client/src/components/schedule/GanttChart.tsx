@@ -6,6 +6,7 @@ import { SavedViewsDropdown } from './SavedViewsDropdown';
 import type { SavedView } from './SavedViewsDropdown';
 import { exportTasksCSV } from '../../utils/exportUtils';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { ResourceQuickAssign } from './ResourceQuickAssign';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -202,6 +203,7 @@ const GANTT_COLUMNS: GanttColDef[] = [
   { key: 'pct',       label: '%',        defaultWidth: 48,  minWidth: 36,  resizable: true },
   { key: 'priority',  label: 'Priority', defaultWidth: 64,  minWidth: 50,  resizable: true },
   { key: 'assigned',  label: 'Assigned', defaultWidth: 96,  minWidth: 60,  resizable: true },
+  { key: 'resource',  label: 'Resource', defaultWidth: 110, minWidth: 70,  resizable: true },
   { key: 'status',    label: 'Status',   defaultWidth: 64,  minWidth: 50,  resizable: true },
   { key: 'editIcon',  label: '',         defaultWidth: 72,  minWidth: 72,  resizable: false, fixed: true, alwaysVisible: true },
 ];
@@ -3089,6 +3091,23 @@ export function GanttChart({
                         />
                       ) : (
                         task.assignedTo || '—'
+                      )}
+                    </div>
+                  );
+
+                  if (col.key === 'resource') return (
+                    <div
+                      key="resource"
+                      className="shrink-0 px-1 text-xs overflow-visible"
+                      style={{ width: w }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {!task.isSummary && onTaskUpdate && (
+                        <ResourceQuickAssign
+                          taskId={task.id}
+                          assignments={task.assignments || []}
+                          onUpdate={onTaskUpdate}
+                        />
                       )}
                     </div>
                   );
