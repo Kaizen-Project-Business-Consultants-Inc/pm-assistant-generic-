@@ -480,7 +480,7 @@ export const LandingPage: React.FC = () => {
 
   const handleBuyTokens = async () => {
     if (!isAuthenticated) {
-      window.location.href = '/register';
+      window.location.href = '/pricing';
       return;
     }
     setTopUpLoading(true);
@@ -515,7 +515,7 @@ export const LandingPage: React.FC = () => {
               <Link to="/pricing" className="text-sm text-slate-400 hover:text-white transition-colors">Pricing</Link>
               <Link to="/login" className="text-sm text-slate-400 hover:text-white transition-colors">Sign In</Link>
               <Link
-                to="/register"
+                to="/pricing"
                 className="text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-400 hover:from-primary-600 hover:to-cyan-500 px-4 py-2 rounded-lg transition-all shadow-md shadow-primary-500/20"
               >
                 Get Started
@@ -545,7 +545,7 @@ export const LandingPage: React.FC = () => {
             <div className="md:hidden border-t border-white/5 py-3 space-y-1">
               <Link to="/pricing" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Pricing</Link>
               <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Sign In</Link>
-              <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-400 rounded-lg text-center mt-2">Get Started</Link>
+              <Link to="/pricing" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-400 rounded-lg text-center mt-2">Get Started</Link>
             </div>
           )}
         </div>
@@ -572,7 +572,7 @@ export const LandingPage: React.FC = () => {
             </p>
             <div className="flex items-center gap-3.5 mt-8">
               <Link
-                to="/register"
+                to="/pricing"
                 className="text-[15px] font-bold text-white bg-gradient-to-br from-primary-500 to-cyan-400 hover:from-primary-600 hover:to-cyan-500 px-7 py-3.5 rounded-xl transition-all shadow-lg shadow-primary-500/35 hover:shadow-xl hover:shadow-primary-500/40 hover:-translate-y-0.5"
               >
                 Get Started Free
