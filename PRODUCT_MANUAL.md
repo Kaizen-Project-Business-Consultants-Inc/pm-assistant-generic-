@@ -2417,7 +2417,7 @@ The sidebar displays a real-time **AI Token Usage Indicator** above the user sec
 
 ## 51. Resource Management Enhancements
 
-Seven enhancements to the resource management system, shipping together as a cohesive upgrade to workforce planning.
+Nine enhancements to the resource management system, shipping together as a cohesive upgrade to workforce planning. Two foundational features (Cost Rollup and Assignment Conflict Detection) are documented in Section 4; the remaining seven are detailed below.
 
 ### Skill Proficiency Levels
 
@@ -2466,14 +2466,23 @@ The chart allows managers to spot trends — e.g., consistently high actual vs. 
 
 ### Gantt Quick-Assign
 
-A one-click resource assignment endpoint for use from the Gantt chart toolbar and context menus:
+A toggleable **Resource** column in the Gantt chart table allows inline resource assignment without leaving the schedule view:
+
+- Each task row shows resource chips (initials) for currently assigned resources.
+- Hovering a chip reveals an "×" button to remove the assignment.
+- A "+" button opens a searchable dropdown listing all available resources (filtered to exclude already-assigned ones).
+- Selecting a resource creates a `task_assignment` record via the existing `onTaskUpdate` flow — no page reload required.
+
+**Backend endpoint** (also used by MCP tools):
 
 ```
 POST /api/v1/resources/quick-assign
-Body: { taskId, resourceId }
+Body: { taskId, resourceId, scheduleId }
 ```
 
-The server derives assignment dates from the task's `startDate` and `endDate`, and defaults `hoursPerWeek` to the resource's `capacityHoursPerWeek`. An over-allocation warning is returned (advisory, non-blocking) if the new assignment exceeds capacity. The Gantt toolbar's resource avatar row shows a "+" button next to unassigned tasks to trigger this flow.
+The server derives assignment dates from the task's `startDate` and `endDate`, and defaults `hoursPerWeek` to the resource's `capacityHoursPerWeek`. An over-allocation warning is returned (advisory, non-blocking) if the new assignment exceeds capacity.
+
+The Resource column is hidden by default and can be enabled via the Gantt column picker.
 
 ### Calendar Templates
 
@@ -2487,6 +2496,8 @@ Customizable working schedules allow resources to follow non-standard work weeks
 | `DELETE` | `/api/v1/resources/calendar-templates/:id` | Delete a template |
 
 Built-in presets include standard 5×8, compressed 4×10, and 6×6. Templates define working days and hours per day. When a resource is assigned a calendar template, all capacity and workload calculations use the template's effective weekly hours rather than the flat `capacityHoursPerWeek` default.
+
+Calendar templates are managed from the **Calendar Templates** tab on the Resource Management page (`/resources`). The `CalendarTemplateManager` component provides full CRUD: create, edit (name, working days, hours/day, default flag), and delete with confirmation.
 
 ### Timesheet Integration
 

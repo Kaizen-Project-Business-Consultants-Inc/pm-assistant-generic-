@@ -1603,7 +1603,25 @@ An 8-week bottleneck predictions table with columns for resource, week, demand, 
 
 ## 26b. Resource Management Enhancements
 
-The following capabilities extend the Resource Management page and team planning tools.
+The following nine capabilities extend the Resource Management page and team planning tools.
+
+### Cost Rollup
+
+Resources with an hourly cost rate (`$/hour`) automatically have costs calculated in the workload views:
+
+- The **Workload Heatmap** shows a **Cost** column per resource with the total cost across the displayed weeks.
+- Weekly cell tooltips include the cost for that specific week (allocated hours × hourly rate).
+- The **Estimated Cost** summary card at the top of the page shows the aggregate cost across all resources.
+
+Set a resource's cost rate in the resource edit form under **Cost Rate ($/hr)**.
+
+### Assignment Conflict Detection
+
+When assigning a resource to a task (via the assignments panel or quick-assign), the system checks for over-allocation. If the resource's total allocated hours across all overlapping assignments would exceed their weekly capacity, an advisory warning is returned:
+
+> "Resource 'Jane Smith' would be allocated 56h/week against 40h capacity (140% utilization) during 2026-01-06 to 2026-03-31"
+
+The assignment is still created — warnings are informational, not blocking. This helps project managers make informed decisions about temporary over-allocation.
 
 ### Skill Proficiency Levels
 
@@ -1644,7 +1662,14 @@ Use this chart to identify recurring patterns — for example, a resource who co
 
 ### Gantt Quick-Assign
 
-From the Gantt chart, click the **"+"** button that appears on any unassigned task row in the resource column. A dropdown lists available resources. Selecting one instantly assigns the resource using the task's existing start and end dates, with hours defaulting to the resource's weekly capacity. An over-allocation warning appears as an amber badge if the assignment would exceed capacity, but the assignment is still created.
+The Gantt chart includes a toggleable **Resource** column that enables inline resource assignment:
+
+1. **Enable the column:** Open the column picker in the Gantt toolbar and toggle **Resource** on.
+2. **View assignments:** Each task row shows resource chips (initials) for currently assigned resources.
+3. **Add a resource:** Click the **"+"** button in the Resource cell. A searchable dropdown appears listing all available resources (excluding already-assigned ones). Select a resource to assign it instantly.
+4. **Remove a resource:** Hover over a resource chip and click the **"×"** that appears.
+
+Assignments use the task's existing start and end dates. An over-allocation warning appears if the assignment would exceed the resource's weekly capacity, but the assignment is still created (advisory, not blocking).
 
 ### Calendar Templates
 
@@ -1653,7 +1678,7 @@ Standard 5-day/8-hour schedules do not fit every team. Calendar templates let yo
 - **Built-in templates:** Standard 5×8, Compressed 4×10, Rotating 6×6.
 - **Custom templates:** Define which days are working days and how many hours per day.
 
-To manage templates, go to **Settings → Calendar Templates**. To assign a template to a resource, open the resource's edit form and select a template from the **Working Schedule** dropdown.
+To manage templates, go to the **Calendar Templates** tab on the Resource Management page (`/resources`). To assign a template to a resource, open the resource's edit form and select a template from the **Working Schedule** dropdown.
 
 When a resource has a template assigned, all capacity and workload calculations use the template's effective weekly hours rather than the flat capacity value.
 
