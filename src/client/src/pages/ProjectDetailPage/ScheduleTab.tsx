@@ -16,6 +16,7 @@ import {
   Filter,
   X,
   Download,
+  Trash2,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { GanttChart, type GanttTask } from '../../components/schedule/GanttChart';
@@ -959,6 +960,20 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             </>
           )}
         </div>
+
+        {/* Delete Schedule */}
+        <button
+          onClick={() => {
+            if (!confirm(`Delete schedule "${schedule.name}"? All tasks, baselines, and scenarios will be permanently removed.`)) return;
+            apiService.deleteSchedule(schedule.id).then(() => {
+              queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+            });
+          }}
+          className="w-6 h-6 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 border border-gray-200 dark:border-gray-600 rounded transition-colors"
+          title="Delete schedule"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
       </div>
 
       {/* Search + Filter Bar */}
