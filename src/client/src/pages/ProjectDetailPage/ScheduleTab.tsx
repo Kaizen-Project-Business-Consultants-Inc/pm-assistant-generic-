@@ -594,8 +594,10 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
   const handleBulkUpdate = useCallback(async (taskIds: string[], field: string, value: string) => {
     const oldValues = taskIds.map(id => {
       const t = tasks.find(tt => tt.id === id);
-      return { id, oldValue: t ? (t as unknown as Record<string, unknown>)[field] : undefined };
+      const val = t ? (t as unknown as Record<string, unknown>)[field] : undefined;
+      return { id, oldValue: val === undefined ? null : val };
     });
+    const apiValue = (field === 'parentTaskId' && !value) ? null : value;
     pushAction({
       description: `Bulk update ${field} on ${taskIds.length} tasks`,
       undo: async () => {
@@ -603,11 +605,11 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
         queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       },
       redo: async () => {
-        await apiService.bulkUpdateTasks(taskIds.map(id => ({ id, scheduleId: schedule.id, [field]: value })));
+        await apiService.bulkUpdateTasks(taskIds.map(id => ({ id, scheduleId: schedule.id, [field]: apiValue })));
         queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       },
     });
-    await apiService.bulkUpdateTasks(taskIds.map(id => ({ id, scheduleId: schedule.id, [field]: value })));
+    await apiService.bulkUpdateTasks(taskIds.map(id => ({ id, scheduleId: schedule.id, [field]: apiValue })));
     queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
   }, [tasks, schedule.id, pushAction, queryClient]);
 

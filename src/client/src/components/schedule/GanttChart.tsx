@@ -1496,29 +1496,53 @@ export function GanttChart({
           ? rows.filter(r => selectedIds.has(r.task.id)).map(r => r.task.id)
           : [focusedCell?.taskId || activeTaskId].filter(Boolean) as string[];
 
-        if (e.shiftKey) {
-          // Outdent: promote each to its parent's parent
-          for (const taskId of idsToProcess) {
-            const task = rows.find(r => r.task.id === taskId)?.task;
-            if (!task?.parentTaskId) continue;
-            const parent = tasks.find(t => t.id === task.parentTaskId);
-            onTaskUpdate(task.id, { parentTaskId: parent?.parentTaskId || null });
-          }
-        } else {
-          // Indent: find the task above the first selected one and indent all under it
-          const firstIdx = rows.findIndex(r => r.task.id === idsToProcess[0]);
-          if (firstIdx > 0) {
-            // Walk up from the first selected task to find a non-selected task as parent
-            let parentTask: GanttTask | null = null;
-            for (let i = firstIdx - 1; i >= 0; i--) {
-              if (!selectedIds.has(rows[i].task.id)) {
-                parentTask = rows[i].task;
-                break;
-              }
+        if (idsToProcess.length === 1) {
+          // Single task indent/outdent
+          const rowIdx = rows.findIndex(r => r.task.id === idsToProcess[0]);
+          if (rowIdx === -1) return;
+          const task = rows[rowIdx].task;
+          if (e.shiftKey) {
+            if (task.parentTaskId) {
+              const parent = tasks.find(t => t.id === task.parentTaskId);
+              onTaskUpdate(task.id, { parentTaskId: parent?.parentTaskId || null });
             }
-            if (parentTask) {
-              for (const taskId of idsToProcess) {
-                onTaskUpdate(taskId, { parentTaskId: parentTask.id });
+          } else if (rowIdx > 0) {
+            const aboveTask = rows[rowIdx - 1].task;
+            if (aboveTask.id !== task.parentTaskId) {
+              onTaskUpdate(task.id, { parentTaskId: aboveTask.id });
+            }
+          }
+        } else if (onBulkUpdate) {
+          // Multi-task indent/outdent via bulk API
+          if (e.shiftKey) {
+            // Outdent: all selected tasks that share the same parent get promoted
+            // Group by parent and outdent each group
+            const grouped = new Map<string, string[]>();
+            for (const taskId of idsToProcess) {
+              const task = rows.find(r => r.task.id === taskId)?.task;
+              if (!task?.parentTaskId) continue;
+              const parent = tasks.find(t => t.id === task.parentTaskId);
+              const newParent = parent?.parentTaskId || '';
+              const list = grouped.get(newParent) || [];
+              list.push(taskId);
+              grouped.set(newParent, list);
+            }
+            for (const [newParentId, taskIds] of grouped) {
+              onBulkUpdate(taskIds, 'parentTaskId', newParentId || '');
+            }
+          } else {
+            // Indent: find the task above the first selected one
+            const firstIdx = rows.findIndex(r => r.task.id === idsToProcess[0]);
+            if (firstIdx > 0) {
+              let parentTask: GanttTask | null = null;
+              for (let i = firstIdx - 1; i >= 0; i--) {
+                if (!selectedIds.has(rows[i].task.id)) {
+                  parentTask = rows[i].task;
+                  break;
+                }
+              }
+              if (parentTask) {
+                onBulkUpdate(idsToProcess, 'parentTaskId', parentTask.id);
               }
             }
           }
