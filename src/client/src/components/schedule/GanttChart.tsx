@@ -2088,8 +2088,19 @@ export function GanttChart({
 
   if (rows.length === 0 && baseRows.length === 0) {
     return (
-      <div className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
-        No tasks to display.
+      <div className="text-center py-12 text-sm text-gray-400 dark:text-gray-500">
+        <p>No tasks to display.</p>
+        {onAddTask && (
+          <button
+            onClick={onAddTask}
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Task
+          </button>
+        )}
       </div>
     );
   }
