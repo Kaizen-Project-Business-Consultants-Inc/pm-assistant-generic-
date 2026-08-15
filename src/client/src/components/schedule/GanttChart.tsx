@@ -1458,7 +1458,9 @@ export function GanttChart({
     if (!onTaskUpdate || editingCell) return;
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
+      // Allow Tab through for indent/outdent even when a checkbox is focused
+      const isCheckbox = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox';
+      if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') && !(isCheckbox && e.key === 'Tab')) return;
 
       // Copy/paste when a cell is focused
       if (focusedCell && (e.ctrlKey || e.metaKey)) {
