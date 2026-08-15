@@ -222,7 +222,8 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Benchmark:** Primavera P6, Smartsheet, Monday.com — **exceeds** with EVM-based portfolio analytics (CPI/SPI sparklines, cross-project comparison matrix) alongside budget KPI cards and per-project health cards
 
 ### 2.7 Advanced Security
-- Role-based access control (13 roles: admin, executive, project_manager, team_member, scrum_master, finance_officer, risk_manager, pmo, ba, qa, tester, devops, claude_sme) with project member roles (owner, manager, editor, viewer)
+- Role-based access control (14 roles: admin, executive, project_manager, team_member, scrum_master, finance_officer, risk_manager, pmo, ba, qa, tester, devops, claude_sme, viewer) with project member roles (owner, manager, editor, viewer)
+- Two-layer authorization: `requireScope` (read/write/admin) gates action type; `requireProjectAccess` (owner/manager/editor/viewer) gates project membership. Delete operations on project entities require `write` scope (not admin), keeping admin scope reserved for system-level operations (kill switches, agent policies, feedback)
 - MCP tool permission matrix: 83 tools filtered by user role at registration time (agents only see permitted tools)
 - Append-only chained audit ledger with API search, filter, and pagination
 - Data encryption at rest and in transit

@@ -126,13 +126,15 @@ fastify.get('/:scheduleId/tasks', {
 owner  >  manager  >  editor  >  viewer
 ```
 
-| Project Role | Read | Write (tasks, comments, time) | Admin (delete, manage members) |
-|---|---|---|---|
-| **owner** | Yes | Yes | Yes |
-| **manager** | Yes | Yes | No |
-| **editor** | Yes | Yes (tasks, comments, time only) | No |
-| **viewer** | Yes | No | No |
-| **Non-member** | No | No | No |
+| Project Role | Read | Write (create/edit) | Delete (tasks, schedules, etc.) | Manage Members / Delete Project |
+|---|---|---|---|---|
+| **owner** | Yes | Yes | Yes | Yes |
+| **manager** | Yes | Yes | Yes | No (members no, delete project no) |
+| **editor** | Yes | Yes (tasks, comments, time) | Yes (tasks, comments, time) | No |
+| **viewer** | Yes | No | No | No |
+| **Non-member** | No | No | No | No |
+
+**Note:** Delete operations on project-level entities (tasks, schedules, baselines, sprints, resources, expenses, etc.) require `requireScope('write')` + appropriate `requireProjectAccess` level (typically `manager` or `editor`). Only project deletion requires `requireProjectAccess('owner')`. System-level operations (kill switches, agent policies, feedback management) remain `requireScope('admin')`.
 
 ### Global Role Bypasses
 

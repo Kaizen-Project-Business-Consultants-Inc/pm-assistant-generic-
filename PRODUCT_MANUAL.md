@@ -1107,7 +1107,7 @@ The `WebhookService` allows registering outbound webhook endpoints that fire on 
 
 ### Roles
 
-Six user roles with hierarchical permissions:
+Fourteen user roles with hierarchical scope-based permissions. The `write` scope allows creating, editing, and deleting project-level entities (tasks, schedules, resources, etc.). The `admin` scope is reserved for system-level operations (kill switches, agent policies, feedback management).
 
 | Role | Scopes | Description |
 |------|--------|-------------|
@@ -1117,6 +1117,14 @@ Six user roles with hierarchical permissions:
 | `scrum_master` | read, write | Sprint and task management |
 | `team_member` | read | Task work + time logging |
 | `finance_officer` | read | Budget and financial visibility |
+| `risk_manager` | read, write | Risk and issue management |
+| `pmo` | read, write | PMO oversight (bypasses project membership) |
+| `ba` | read, write | Business analysis and requirements |
+| `qa` | read, write | Quality assurance and testing |
+| `tester` | read | Test execution and reporting |
+| `devops` | read, write | CI/CD and infrastructure |
+| `claude_sme` | read | AI subject-matter expert |
+| `viewer` | read | Read-only access |
 
 MCP tools are filtered by role — agents only see tools their role permits (see `mcp-server/src/permissions.ts`).
 
