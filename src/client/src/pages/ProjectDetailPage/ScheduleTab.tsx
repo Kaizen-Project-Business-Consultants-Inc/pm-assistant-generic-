@@ -145,11 +145,34 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           No schedules have been created for this project yet.
         </p>
-        <div className="mt-4 flex flex-col items-center gap-2">
+        <div className="mt-4 flex flex-col items-center gap-3">
+          <button
+            onClick={async () => {
+              try {
+                const startDate = projectStartDate || new Date().toISOString().split('T')[0];
+                const endDate = new Date(startDate);
+                endDate.setFullYear(endDate.getFullYear() + 1);
+                await apiService.createSchedule({
+                  projectId,
+                  name: `${projectName || 'Project'} Schedule`,
+                  startDate,
+                  endDate: endDate.toISOString().split('T')[0],
+                });
+                queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+              } catch {
+                setUploadError('Failed to create schedule.');
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
+          >
+            <Calendar className="w-4 h-4" />
+            Create Schedule
+          </button>
+          <span className="text-xs text-gray-400 dark:text-gray-500">or</span>
           <button
             onClick={() => scheduleFileRef.current?.click()}
             disabled={uploadingSchedule}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:bg-gray-300 rounded-lg transition-colors"
           >
             <Upload className="w-4 h-4" />
             {uploadingSchedule ? 'Importing…' : 'Upload Schedule (.xlsx / .csv)'}
