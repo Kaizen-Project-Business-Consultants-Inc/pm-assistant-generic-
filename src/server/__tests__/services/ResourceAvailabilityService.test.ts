@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../../database/connection', () => ({
+  databaseService: { query: vi.fn(), getTenantConnection: vi.fn() },
+}));
+
 vi.mock('../../database/ResourceAvailabilityRepository', () => {
   const mockRepo = {
     findByResource: vi.fn().mockResolvedValue([]),
