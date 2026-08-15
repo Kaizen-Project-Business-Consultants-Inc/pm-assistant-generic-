@@ -1053,6 +1053,9 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}
           onAddTask={() => setShowAddForm(true)}
+          onQuickAdd={(name) => {
+            createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '' } as any);
+          }}
           onCreateTaskWithDates={(startDate, endDate, parentTaskId) => {
             setCreateTaskDates({ startDate, endDate, parentTaskId });
             setShowAddForm(true);

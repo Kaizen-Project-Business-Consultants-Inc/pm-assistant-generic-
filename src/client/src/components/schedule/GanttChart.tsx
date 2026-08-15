@@ -346,6 +346,7 @@ export function GanttChart({
   onTaskSelect,
   activeTaskId,
   onAddTask,
+  onQuickAdd,
   onDeleteTask,
   columnState: _columnState,
   criticalPathTaskIds,
@@ -379,6 +380,8 @@ export function GanttChart({
   activeTaskId?: string | null;
   /** Called when the "Add Task" button is clicked */
   onAddTask?: () => void;
+  /** Called when a task name is typed into an inline empty row */
+  onQuickAdd?: (name: string) => void;
   /** Called when the delete button is clicked for the active task */
   onDeleteTask?: (taskId: string) => void;
   /** Shared column state (for future left-panel column rendering) */
@@ -2086,7 +2089,7 @@ export function GanttChart({
     }
   }, []);
 
-  if (rows.length === 0 && baseRows.length === 0) {
+  if (rows.length === 0 && baseRows.length === 0 && !onQuickAdd) {
     return (
       <div className="text-center py-12 text-sm text-gray-400 dark:text-gray-500">
         <p>No tasks to display.</p>
@@ -3242,6 +3245,46 @@ export function GanttChart({
               </div>
             );
           })}
+
+          {/* MPP-style empty input rows for inline task creation */}
+          {onQuickAdd && !shouldVirtualize && Array.from({ length: Math.max(3, 6 - rows.length) }).map((_, i) => (
+            <div
+              key={`empty-${i}`}
+              className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors`}
+              style={{ height: ROW_H }}
+            >
+              {/* Row number */}
+              <div
+                className="shrink-0 px-1 text-center text-xs text-gray-300 dark:text-gray-600 font-mono"
+                style={{ width: getColWidth(GANTT_COLUMNS[0]) }}
+              >
+                {rows.length + i + 1}
+              </div>
+              {/* Task name input */}
+              <div className="flex-1 min-w-0 px-2">
+                <input
+                  type="text"
+                  placeholder={i === 0 ? 'Type a task name…' : ''}
+                  className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-gray-500"
+                  onKeyDown={(e) => {
+                    const input = e.currentTarget;
+                    if (e.key === 'Enter' && input.value.trim()) {
+                      onQuickAdd(input.value.trim());
+                      input.value = '';
+                    }
+                    if (e.key === 'Escape') { input.value = ''; input.blur(); }
+                  }}
+                />
+              </div>
+              {/* Empty cells for remaining columns */}
+              {orderedColumns.map(col => {
+                if (col.key === 'rowNum' || col.key === 'name' || col.key === 'editIcon') return null;
+                if (!isColVisible(col)) return null;
+                return <div key={col.key} className="shrink-0" style={{ width: getColWidth(col) }} />;
+              })}
+              <div className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
+            </div>
+          ))}
           </div>
         </div>
         )}
