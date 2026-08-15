@@ -1483,10 +1483,11 @@ export function GanttChart({
         }
       }
 
-      // Indent/outdent with Tab/Shift+Tab
-      if (focusedCell && e.key === 'Tab') {
+      // Indent/outdent with Tab/Shift+Tab (works with focusedCell or just activeTaskId)
+      const indentTaskId = focusedCell?.taskId || activeTaskId;
+      if (indentTaskId && e.key === 'Tab') {
         e.preventDefault();
-        const rowIdx = rows.findIndex(r => r.task.id === focusedCell.taskId);
+        const rowIdx = rows.findIndex(r => r.task.id === indentTaskId);
         if (rowIdx === -1) return;
         const task = rows[rowIdx].task;
         if (e.shiftKey) {
