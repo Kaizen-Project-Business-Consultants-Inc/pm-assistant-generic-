@@ -1602,41 +1602,46 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               return visibleSorted.map((task, rowIdx) => renderTaskRow(task, rowIdx));
             })()}
 
-            {visibleSorted.length === 0 && (
+            {/* MPP-style empty input rows */}
+            {onQuickAdd && Array.from({ length: Math.max(5, 8 - visibleSorted.length) }).map((_, i) => {
+              const emptyRowKey = `empty-${i}`;
+              return (
+                <tr key={emptyRowKey} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                  <td className="px-2 py-2">
+                    <span className="w-5 text-center text-[10px] font-medium text-gray-300 dark:text-gray-600">{visibleSorted.length + i + 1}</span>
+                  </td>
+                  {visibleColumns.map((col, ci) => (
+                    <td key={col.key} className="px-3 py-2" style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}>
+                      {ci === 0 ? (
+                        <input
+                          type="text"
+                          placeholder={i === 0 ? 'Type a task name…' : ''}
+                          className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-gray-500"
+                          onKeyDown={(e) => {
+                            const input = e.currentTarget;
+                            if (e.key === 'Enter' && input.value.trim()) {
+                              onQuickAdd(input.value.trim());
+                              input.value = '';
+                            }
+                            if (e.key === 'Escape') {
+                              input.value = '';
+                              input.blur();
+                            }
+                          }}
+                        />
+                      ) : null}
+                    </td>
+                  ))}
+                  <td className="w-10" />
+                </tr>
+              );
+            })}
+
+            {visibleSorted.length === 0 && !onQuickAdd && (
               <tr>
                 <td colSpan={visibleColumns.length + 2} className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
                   No tasks found
                 </td>
-              </tr>
-            )}
-
-            {/* Inline quick-add row */}
-            {onQuickAdd && (
-              <tr className="border-t border-gray-100 dark:border-gray-800">
-                <td className="px-2 py-1.5">
-                  <Plus className="w-3.5 h-3.5 text-gray-300 dark:text-gray-600" />
-                </td>
-                <td colSpan={visibleColumns.length} className="px-3 py-1.5">
-                  <input
-                    ref={quickAddInputRef}
-                    type="text"
-                    value={quickAddName}
-                    onChange={(e) => setQuickAddName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && quickAddName.trim()) {
-                        onQuickAdd(quickAddName.trim());
-                        setQuickAddName('');
-                      }
-                      if (e.key === 'Escape') {
-                        setQuickAddName('');
-                        quickAddInputRef.current?.blur();
-                      }
-                    }}
-                    placeholder="+ Add task (press Enter)"
-                    className="w-full text-xs bg-transparent border-0 text-gray-500 dark:text-gray-400 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:text-gray-900 dark:focus:text-gray-100 focus:placeholder-gray-400 dark:focus:placeholder-gray-500"
-                  />
-                </td>
-                <td className="w-10" />
               </tr>
             )}
           </tbody>
