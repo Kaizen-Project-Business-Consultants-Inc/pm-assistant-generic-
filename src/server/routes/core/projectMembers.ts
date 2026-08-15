@@ -104,7 +104,7 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/v1/projects/:projectId/members/:memberId
   fastify.delete('/:projectId/members/:memberId', {
-    preHandler: [requireScope('admin'), requireProjectAccess('owner')],
+    preHandler: [requireScope('write'), requireProjectAccess('owner')],
     schema: { description: 'Remove a project member', tags: ['members'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

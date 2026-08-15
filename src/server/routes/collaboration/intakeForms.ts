@@ -82,7 +82,7 @@ export async function intakeFormRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /forms/:id — delete form
-  fastify.delete('/forms/:id', { preHandler: [requireScope('admin')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/forms/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       await intakeFormService.deleteForm(id);

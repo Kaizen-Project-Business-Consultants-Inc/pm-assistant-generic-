@@ -117,7 +117,7 @@ export async function goalRoutes(fastify: FastifyInstance) {
 
   // DELETE /:id — delete goal (admin only)
   fastify.delete('/:id', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('write')],
     schema: { description: 'Delete a goal', tags: ['goals'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

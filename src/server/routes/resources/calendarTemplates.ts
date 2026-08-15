@@ -46,7 +46,7 @@ export async function calendarTemplateRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /resources/calendar-templates/:id
-  fastify.delete('/:id', { preHandler: [requireScope('admin'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
     const deleted = await calendarTemplateService.delete(id);
     if (!deleted) return reply.status(404).send({ error: 'Calendar template not found' });

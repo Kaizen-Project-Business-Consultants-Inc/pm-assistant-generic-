@@ -248,7 +248,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
   });
 
   fastify.delete('/:id', {
-    preHandler: [requireScope('admin'), requireProjectAccess('owner')],
+    preHandler: [requireScope('write'), requireProjectAccess('owner')],
     schema: { description: 'Delete a project', tags: ['projects'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

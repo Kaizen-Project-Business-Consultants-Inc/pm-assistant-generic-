@@ -87,7 +87,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /workflows/:id — delete workflow
-  fastify.delete('/workflows/:id', { preHandler: [requireScope('admin')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/workflows/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       await approvalWorkflowService.deleteWorkflow(id);

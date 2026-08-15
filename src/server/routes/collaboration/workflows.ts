@@ -185,7 +185,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/v1/workflows/:id — delete definition
   fastify.delete('/:id', {
-    preHandler: [requireScope('admin'), requireFeature('workflows')],
+    preHandler: [requireScope('write'), requireFeature('workflows')],
     schema: { description: 'Delete a workflow definition', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

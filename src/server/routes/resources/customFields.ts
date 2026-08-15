@@ -52,7 +52,7 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:id
-  fastify.delete('/:id', { preHandler: [requireScope('admin')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       await customFieldService.deleteField(id);

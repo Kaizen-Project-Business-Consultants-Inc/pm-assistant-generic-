@@ -88,7 +88,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:id — delete sprint
-  fastify.delete('/:id', { preHandler: [requireScope('admin')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       await sprintService.delete(id);
@@ -113,7 +113,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:id/tasks/:taskId — remove task from sprint
-  fastify.delete('/:id/tasks/:taskId', { preHandler: [requireScope('admin')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id/tasks/:taskId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id, taskId } = request.params as { id: string; taskId: string };
       await sprintService.removeTask(id, taskId);

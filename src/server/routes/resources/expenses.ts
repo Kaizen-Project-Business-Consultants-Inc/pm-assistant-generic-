@@ -78,7 +78,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:id — delete expense
-  fastify.delete('/:id', { preHandler: [requireScope('admin')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const deleted = await expenseService.delete(id);

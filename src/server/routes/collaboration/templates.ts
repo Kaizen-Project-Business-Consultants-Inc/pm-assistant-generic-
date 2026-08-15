@@ -115,7 +115,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
 
   // DELETE /:id — Delete custom template
   fastify.delete('/:id', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('write')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };

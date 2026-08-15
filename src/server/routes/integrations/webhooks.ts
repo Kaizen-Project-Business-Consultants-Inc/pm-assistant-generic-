@@ -69,7 +69,7 @@ export async function webhookRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:id — Delete webhook
-  fastify.delete('/:id', { preHandler: [requireScope('admin')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
