@@ -46,6 +46,7 @@ const segmentLabels: Record<string, string> = {
   admin: 'Admin',
   users: 'Users',
   tenants: 'Tenants',
+  project: 'Projects',
   pricing: 'Pricing',
   feedback: 'Feedback',
   operations: 'Operations',
@@ -60,6 +61,11 @@ const segmentLabels: Record<string, string> = {
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Segments whose natural path (/segment) differs from the actual route
+const segmentPathOverrides: Record<string, string> = {
+  project: '/projects',
+};
 
 function buildBreadcrumbs(pathname: string): Breadcrumb[] {
   const segments = pathname.split('/').filter(Boolean);
@@ -82,7 +88,8 @@ function buildBreadcrumbs(pathname: string): Breadcrumb[] {
         : ACRONYMS.has(segment.toLowerCase())
           ? segment.toUpperCase()
           : segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' '));
-    crumbs.push({ label, path: currentPath });
+    const path = segmentPathOverrides[segment] || currentPath;
+    crumbs.push({ label, path });
   }
 
   return crumbs;
