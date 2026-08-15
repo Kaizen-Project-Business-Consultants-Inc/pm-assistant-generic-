@@ -205,9 +205,10 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Table group-by** — group rows by Status, Priority, or Assignee with collapsible group headers
 - **Table MPP-style empty rows** — 5-8 persistent empty rows at bottom (MS Project style); click Task Name cell and type, Enter creates task; continuation row numbers
 - **Gantt MPP-style inline entry** — 3-6 persistent empty rows in the Gantt left panel; type a task name and press Enter to create inline; also shows Add Task button when schedule is empty
-- **Gantt click-to-select then edit** — first click selects a row, second click enters inline edit (matches MS Project); Ctrl+click / Shift+click multi-select (like Excel); Tab/Shift+Tab indent/outdent works on single or multi-selected rows
+- **Gantt click-to-select then edit** — first click selects a row, second click enters inline edit (matches MS Project); Ctrl+click / Shift+click multi-select (like Excel); Tab/Shift+Tab indent/outdent works on single or multi-selected rows; Delete key shows a confirmation modal with exact count ("Delete N tasks?"); right-click on a multi-selected row shows "Delete N Tasks" in context menu — both paths use ConfirmModal, not browser `window.confirm()`
+- **Undo/redo for delete** — delete operations (single or bulk) are fully undoable via Ctrl+Z; task data is captured before deletion so undo recreates tasks via the API; redo (Ctrl+Y / Ctrl+Shift+Z) re-deletes; stack holds 50 actions per session, resets on navigation; creating new tasks is not undoable
 - **Cross-view filter bar** — search by name, filter by status/priority/assignee, CSV export of filtered tasks. Applies to all views (Gantt, Kanban, Calendar, Table).
-- **Gantt row action icons** — edit, insert-below, and delete icons on each row (hover to reveal)
+- **Gantt row action icons** — edit, insert-below, and delete icons on each row (hover to reveal); delete icon respects multi-select — deletes the full selection when multiple tasks are selected
 - **Mobile schedule view** — view switcher (List/Kanban/Calendar) with swipe-to-complete gesture and tap-to-cycle status on task cards
 - **Benchmark:** MS Project, Smartsheet, Monday.com — **exceeds MS Project** with multi-predecessor support, health badges, inline predecessor editing, calendar drag-to-reschedule, and mobile swipe gestures
 
