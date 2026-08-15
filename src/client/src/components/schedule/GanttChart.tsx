@@ -1042,20 +1042,26 @@ export function GanttChart({
     }
   }, [selectedIds, onBulkDelete, showBulkMessage, clearBulkState]);
 
-  // Delete key for bulk delete
+  // Delete key for single or bulk delete
   useEffect(() => {
-    if (!onBulkDelete) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' && selectedIds.size > 0) {
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
-        e.preventDefault();
+      if (e.key !== 'Delete') return;
+      const target = e.target as HTMLElement;
+      const isCheckbox = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox';
+      if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') && !isCheckbox) return;
+      e.preventDefault();
+      if (selectedIds.size > 0 && onBulkDelete) {
         handleBulkDelete();
+      } else if (activeTaskId && onDeleteTask) {
+        const task = tasks.find(t => t.id === activeTaskId);
+        if (task && confirm(`Delete "${task.name}"?`)) {
+          onDeleteTask(activeTaskId);
+        }
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [selectedIds, onBulkDelete, handleBulkDelete]);
+  }, [selectedIds, onBulkDelete, handleBulkDelete, activeTaskId, onDeleteTask, tasks]);
 
   // Row number map: taskId → 1-based row index
   const rowNumMap = useMemo(() => {
