@@ -480,7 +480,7 @@ Column selections are saved per schedule and persist across page reloads. All vi
 
 **Group-By** -- Use the dropdown in the table header to group rows by **Status**, **Priority**, or **Assignee**. Each group has a collapsible header row showing the group name and task count. Collapsed/expanded state persists in localStorage.
 
-**Inline Quick-Add** -- A "+" row at the bottom of the table provides an inline text input for creating new tasks without opening a modal.
+**MPP-Style Empty Rows** -- The bottom of the table shows 5-8 persistent empty rows (MS Project style) with continuation row numbers. Click into the Task Name cell of any empty row and start typing. Press **Enter** to create the task — the input clears and empty rows remain for the next entry. Press **Escape** to cancel.
 
 #### Saved Views
 
