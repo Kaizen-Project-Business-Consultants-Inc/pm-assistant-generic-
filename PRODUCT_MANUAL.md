@@ -1977,6 +1977,8 @@ Step configurations: `src/client/src/utils/methodology.ts`
 
 When a user has **zero projects**, the Projects Table on the dashboard renders a "New Project" button in place of the empty table body. Clicking it links to `/projects`, where the project creation flow can be started. This replaces the blank table that previously appeared for new accounts.
 
+When a project has **zero schedules**, the Schedule tab shows two options: a primary **Create Schedule** button (creates a blank schedule named "{Project} Schedule" with a 1-year date range, ready for manual task entry) and a secondary **Upload Schedule** button (import from .xlsx or .csv file). The create button uses the project's start date if available, otherwise defaults to today.
+
 ### Navigation
 
 Accessible via the "Plan" section in the sidebar:

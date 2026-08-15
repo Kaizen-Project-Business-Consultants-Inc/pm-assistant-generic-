@@ -258,9 +258,10 @@ Presence automatically re-joins after a WebSocket reconnect (e.g., if your conne
 ### Creating a Schedule
 
 1. Open a project and navigate to the **Schedule** tab.
-2. Click **Create Schedule** or **New Schedule**.
-3. Give the schedule a name and save.
-4. You can have multiple schedules per project (e.g., baseline schedule, revised schedule).
+2. If no schedules exist, you'll see two options:
+   - **Create Schedule** -- creates a blank schedule ready for adding tasks manually.
+   - **Upload Schedule (.xlsx / .csv)** -- import tasks from a spreadsheet file.
+3. You can have multiple schedules per project (e.g., baseline schedule, revised schedule).
 
 ### Adding Tasks
 
