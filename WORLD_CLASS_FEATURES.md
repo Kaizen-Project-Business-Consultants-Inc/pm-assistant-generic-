@@ -204,6 +204,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Saved Views: name and store column+sort configurations per schedule, load/update/delete from dropdown
 - **Table group-by** — group rows by Status, Priority, or Assignee with collapsible group headers
 - **Table MPP-style empty rows** — 5-8 persistent empty rows at bottom (MS Project style); click Task Name cell and type, Enter creates task; continuation row numbers
+- **Gantt MPP-style inline entry** — 3-6 persistent empty rows in the Gantt left panel; type a task name and press Enter to create inline; also shows Add Task button when schedule is empty
 - **Cross-view filter bar** — search by name, filter by status/priority/assignee, CSV export of filtered tasks. Applies to all views (Gantt, Kanban, Calendar, Table).
 - **Gantt row action icons** — edit, insert-below, and delete icons on each row (hover to reveal)
 - **Mobile schedule view** — view switcher (List/Kanban/Calendar) with swipe-to-complete gesture and tap-to-cycle status on task cards
