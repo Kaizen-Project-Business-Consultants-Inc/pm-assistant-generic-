@@ -2815,9 +2815,22 @@ export function GanttChart({
                 onClick={(e) => {
                   if (editingCell) return;
                   // Ctrl+click or Cmd+click to multi-select (like MS Project / Excel)
-                  if ((e.ctrlKey || e.metaKey) && onBulkUpdate) { toggleSelect(task.id, false); return; }
+                  if ((e.ctrlKey || e.metaKey) && onBulkUpdate) {
+                    // If first Ctrl+click and a task was already selected, include it too
+                    if (!someSelected && activeTaskId && activeTaskId !== task.id) {
+                      toggleSelect(activeTaskId, false);
+                    }
+                    toggleSelect(task.id, false);
+                    return;
+                  }
                   // Shift+click for range select
-                  if (e.shiftKey && onBulkUpdate) { toggleSelect(task.id, true); return; }
+                  if (e.shiftKey && onBulkUpdate) {
+                    if (!someSelected && activeTaskId) {
+                      toggleSelect(activeTaskId, false);
+                    }
+                    toggleSelect(task.id, true);
+                    return;
+                  }
                   // If already in multi-select mode, toggle
                   if (someSelected && onBulkUpdate) { toggleSelect(task.id, false); return; }
                   onTaskSelect?.(task);
