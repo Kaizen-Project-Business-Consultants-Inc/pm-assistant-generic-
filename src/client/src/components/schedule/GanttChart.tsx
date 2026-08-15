@@ -1496,22 +1496,29 @@ export function GanttChart({
           ? rows.filter(r => selectedIds.has(r.task.id)).map(r => r.task.id)
           : [focusedCell?.taskId || activeTaskId].filter(Boolean) as string[];
 
-        for (const taskId of idsToProcess) {
-          const rowIdx = rows.findIndex(r => r.task.id === taskId);
-          if (rowIdx === -1) continue;
-          const task = rows[rowIdx].task;
-          if (e.shiftKey) {
-            // Outdent: promote to parent's parent
-            if (task.parentTaskId) {
-              const parent = tasks.find(t => t.id === task.parentTaskId);
-              onTaskUpdate(task.id, { parentTaskId: parent?.parentTaskId || null });
+        if (e.shiftKey) {
+          // Outdent: promote each to its parent's parent
+          for (const taskId of idsToProcess) {
+            const task = rows.find(r => r.task.id === taskId)?.task;
+            if (!task?.parentTaskId) continue;
+            const parent = tasks.find(t => t.id === task.parentTaskId);
+            onTaskUpdate(task.id, { parentTaskId: parent?.parentTaskId || null });
+          }
+        } else {
+          // Indent: find the task above the first selected one and indent all under it
+          const firstIdx = rows.findIndex(r => r.task.id === idsToProcess[0]);
+          if (firstIdx > 0) {
+            // Walk up from the first selected task to find a non-selected task as parent
+            let parentTask: GanttTask | null = null;
+            for (let i = firstIdx - 1; i >= 0; i--) {
+              if (!selectedIds.has(rows[i].task.id)) {
+                parentTask = rows[i].task;
+                break;
+              }
             }
-          } else {
-            // Indent: make child of the row above (must not be in selection set)
-            if (rowIdx > 0) {
-              const aboveTask = rows[rowIdx - 1].task;
-              if (aboveTask.id !== task.parentTaskId && !selectedIds.has(aboveTask.id)) {
-                onTaskUpdate(task.id, { parentTaskId: aboveTask.id });
+            if (parentTask) {
+              for (const taskId of idsToProcess) {
+                onTaskUpdate(taskId, { parentTaskId: parentTask.id });
               }
             }
           }

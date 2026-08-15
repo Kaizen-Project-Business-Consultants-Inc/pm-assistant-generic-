@@ -530,7 +530,8 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
     if (!task) { updateMutation.mutate({ taskId, data }); return; }
     const oldValues: Record<string, unknown> = {};
     for (const key of Object.keys(data)) {
-      oldValues[key] = (task as unknown as Record<string, unknown>)[key];
+      const val = (task as unknown as Record<string, unknown>)[key];
+      oldValues[key] = val === undefined ? null : val;
     }
     const fieldNames = Object.keys(data).join(', ');
     pushAction({
