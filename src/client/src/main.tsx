@@ -17,7 +17,7 @@ const updateSW = registerSW({
   onRegisteredSW(_swUrl, registration) {
     // Check for updates every 5 minutes
     if (registration) {
-      setInterval(() => { registration.update(); }, 5 * 60 * 1000);
+      setInterval(() => { registration.update(); }, 60 * 1000);
     }
   },
 });
