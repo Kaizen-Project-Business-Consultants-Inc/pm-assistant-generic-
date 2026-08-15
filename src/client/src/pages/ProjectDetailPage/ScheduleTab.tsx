@@ -613,11 +613,50 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
     queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
   }, [tasks, schedule.id, pushAction, queryClient]);
 
-  // Bulk delete
+  // Bulk delete with undo
   const handleBulkDelete = useCallback(async (taskIds: string[]) => {
+    // Capture full task data before deleting so undo can recreate them
+    const deletedTasks = taskIds
+      .map(id => tasks.find(t => t.id === id))
+      .filter((t): t is typeof tasks[number] => !!t)
+      .map(t => ({
+        name: t.name,
+        description: t.description || undefined,
+        status: t.status,
+        priority: t.priority,
+        assignedTo: t.assignedTo || undefined,
+        startDate: t.startDate || undefined,
+        endDate: t.endDate || undefined,
+        estimatedDays: t.estimatedDays || undefined,
+        progressPercentage: t.progressPercentage || undefined,
+        parentTaskId: t.parentTaskId || undefined,
+        dependency: t.dependency || undefined,
+        isMilestone: t.isMilestone || undefined,
+        sortOrder: t.sortOrder,
+      }));
+
     await Promise.all(taskIds.map(id => apiService.deleteTask(schedule.id, id)));
     queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-  }, [schedule.id, queryClient]);
+
+    pushAction({
+      description: `Delete ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`,
+      undo: async () => {
+        for (const taskData of deletedTasks) {
+          await apiService.createTask(schedule.id, taskData);
+        }
+        queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+      },
+      redo: async () => {
+        // Re-fetch current task IDs by name since IDs change after recreation
+        const currentTasks = queryClient.getQueryData<typeof tasks>(['tasks', schedule.id]) || [];
+        const idsToDelete = deletedTasks
+          .map(dt => currentTasks.find(ct => ct.name === dt.name)?.id)
+          .filter((id): id is string => !!id);
+        await Promise.all(idsToDelete.map(id => apiService.deleteTask(schedule.id, id)));
+        queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+      },
+    });
+  }, [schedule.id, queryClient, tasks, pushAction]);
 
   // Kanban status change
   const handleKanbanStatusChange = (taskId: string, newStatus: string) => {

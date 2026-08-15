@@ -783,6 +783,7 @@ export function GanttChart({
   const [bulkMessage, setBulkMessage] = useState('');
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const pendingDeleteIdsRef = useRef<string[]>([]);
   const lastClickedIdRef = useRef<string | null>(null);
   const someSelected = selectedIds.size > 0;
 
@@ -1024,23 +1025,27 @@ export function GanttChart({
 
   const handleBulkDelete = useCallback(() => {
     if (selectedIds.size === 0 || !onBulkDelete) return;
+    // Snapshot the IDs at modal-open time so they can't change before confirm
+    pendingDeleteIdsRef.current = Array.from(selectedIds);
     setPendingBulkDelete(true);
   }, [selectedIds, onBulkDelete]);
 
   const confirmBulkDelete = useCallback(async () => {
     if (!onBulkDelete) return;
+    const idsToDelete = pendingDeleteIdsRef.current;
     setPendingBulkDelete(false);
     setBulkLoading(true);
     try {
-      await onBulkDelete(Array.from(selectedIds));
-      showBulkMessage(`Deleted ${selectedIds.size} task${selectedIds.size > 1 ? 's' : ''}`);
+      await onBulkDelete(idsToDelete);
+      showBulkMessage(`Deleted ${idsToDelete.length} task${idsToDelete.length > 1 ? 's' : ''}`);
       clearBulkState();
     } catch {
       showBulkMessage('Some deletes failed');
     } finally {
       setBulkLoading(false);
+      pendingDeleteIdsRef.current = [];
     }
-  }, [selectedIds, onBulkDelete, showBulkMessage, clearBulkState]);
+  }, [onBulkDelete, showBulkMessage, clearBulkState]);
 
   // Delete key for single or bulk delete
   useEffect(() => {
@@ -1052,6 +1057,10 @@ export function GanttChart({
       e.preventDefault();
       if (selectedIds.size > 0 && onBulkDelete) {
         handleBulkDelete();
+      } else if (activeTaskId && onBulkDelete) {
+        // Single selected task — use same bulk delete flow for consistency & undo support
+        pendingDeleteIdsRef.current = [activeTaskId];
+        setPendingBulkDelete(true);
       } else if (activeTaskId && onDeleteTask) {
         const task = tasks.find(t => t.id === activeTaskId);
         if (task && confirm(`Delete "${task.name}"?`)) {
@@ -4198,12 +4207,12 @@ export function GanttChart({
       {pendingBulkDelete && (
         <ConfirmModal
           title="Delete Tasks"
-          message={selectedIds.size === 1
+          message={pendingDeleteIdsRef.current.length === 1
             ? 'Are you sure you want to delete this task? This cannot be undone.'
-            : `Are you sure you want to delete ${selectedIds.size} tasks? This cannot be undone.`}
+            : `Are you sure you want to delete ${pendingDeleteIdsRef.current.length} tasks? This cannot be undone.`}
           confirmLabel="Delete"
           onConfirm={confirmBulkDelete}
-          onCancel={() => setPendingBulkDelete(false)}
+          onCancel={() => { setPendingBulkDelete(false); pendingDeleteIdsRef.current = []; }}
         />
       )}
     </div>

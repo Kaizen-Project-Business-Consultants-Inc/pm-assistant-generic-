@@ -19,7 +19,6 @@ const ACRONYMS = new Set(['evm', 'kpi', 'ai']);
 const segmentLabels: Record<string, string> = {
   dashboard: 'Dashboard',
   projects: 'Projects',
-  project: 'Project',
   portfolio: 'Portfolio',
   resources: 'Resources',
   meetings: 'Meetings',

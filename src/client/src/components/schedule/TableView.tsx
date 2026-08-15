@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowUpDown, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Pencil, Check, Loader2, X, Trash2, CheckSquare, Download, ChevronDown, ChevronRight, Plus, Layers } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Pencil, Check, Loader2, X, Trash2, CheckSquare, Download, ChevronDown, ChevronRight, Layers } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
 import { apiService } from '../../services/api';
 import { SavedViewsDropdown, type SavedView } from './SavedViewsDropdown';
@@ -81,8 +81,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   const [groupBy, setGroupBy] = useState<GroupByField>('');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [collapsedSummaries, setCollapsedSummaries] = useState<Set<string>>(new Set());
-  const [quickAddName, setQuickAddName] = useState('');
-  const quickAddInputRef = useRef<HTMLInputElement>(null);
   const [editingCell, setEditingCell] = useState<{ taskId: string; field: EditableField } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [savingCell, setSavingCell] = useState<{ taskId: string; field: string } | null>(null);
