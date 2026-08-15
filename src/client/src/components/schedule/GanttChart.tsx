@@ -1298,6 +1298,17 @@ export function GanttChart({
     setDepError(null);
   }, [onTaskUpdate, drag, getTaskFieldValue]);
 
+  /** Click-to-select, click-again-to-edit: first click selects the row, second click enters inline edit */
+  const handleCellClick = useCallback((e: React.MouseEvent, taskId: string, field: EditableField, task: GanttTask) => {
+    if (!onTaskUpdate) return;
+    e.stopPropagation();
+    if (activeTaskId === taskId) {
+      startEditing(taskId, field, task);
+    } else {
+      onTaskSelect?.(task);
+    }
+  }, [onTaskUpdate, activeTaskId, startEditing, onTaskSelect]);
+
   const cancelEditing = useCallback(() => {
     setEditingCell(null);
     setEditValue('');
@@ -2825,7 +2836,7 @@ export function GanttChart({
                 <div
                   className={`flex-1 min-w-0 ${editableCellClass(task.id, 'name')}`}
                   style={{ paddingLeft: `${8 + level * 20}px` }}
-                  onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'name', task); } }}
+                  onClick={(e) => handleCellClick(e, task.id, 'name', task)}
                 >
                   {isEditing(task.id, 'name') ? (
                     <input
@@ -2894,7 +2905,7 @@ export function GanttChart({
                       key="pred"
                       className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 font-mono ${editableCellClass(task.id, 'dependency')}`}
                       style={{ width: w }}
-                      onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'dependency', task); } }}
+                      onClick={(e) => handleCellClick(e, task.id, 'dependency', task)}
                       title={(task.dependencies || []).map(d => tasks.find(t => t.id === d.dependencyId)?.name || '').filter(Boolean).join(', ') || undefined}
                     >
                       {isEditing(task.id, 'dependency') ? (
@@ -2946,7 +2957,7 @@ export function GanttChart({
                       key="start"
                       className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${editableCellClass(task.id, 'startDate')}`}
                       style={{ width: w }}
-                      onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'startDate', task); } }}
+                      onClick={(e) => handleCellClick(e, task.id, 'startDate', task)}
                     >
                       {isEditing(task.id, 'startDate') ? (
                         <input
@@ -2969,7 +2980,7 @@ export function GanttChart({
                       key="end"
                       className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${editableCellClass(task.id, 'endDate')}`}
                       style={{ width: w }}
-                      onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'endDate', task); } }}
+                      onClick={(e) => handleCellClick(e, task.id, 'endDate', task)}
                     >
                       {isEditing(task.id, 'endDate') ? (
                         <input
@@ -2992,7 +3003,7 @@ export function GanttChart({
                       key="dur"
                       className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${editableCellClass(task.id, 'duration')}`}
                       style={{ width: w }}
-                      onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'duration', task); } }}
+                      onClick={(e) => handleCellClick(e, task.id, 'duration', task)}
                     >
                       {isEditing(task.id, 'duration') ? (
                         <input
@@ -3015,7 +3026,7 @@ export function GanttChart({
                       key="est"
                       className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${editableCellClass(task.id, 'estimatedDays')}`}
                       style={{ width: w }}
-                      onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'estimatedDays', task); } }}
+                      onClick={(e) => handleCellClick(e, task.id, 'estimatedDays', task)}
                     >
                       {isEditing(task.id, 'estimatedDays') ? (
                         <input
@@ -3039,7 +3050,7 @@ export function GanttChart({
                       key="work"
                       className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${editableCellClass(task.id, 'estimatedDurationHours')}`}
                       style={{ width: w }}
-                      onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'estimatedDurationHours', task); } }}
+                      onClick={(e) => handleCellClick(e, task.id, 'estimatedDurationHours', task)}
                     >
                       {isEditing(task.id, 'estimatedDurationHours') ? (
                         <input
@@ -3064,7 +3075,7 @@ export function GanttChart({
                       key="pct"
                       className={`shrink-0 px-1 text-center text-xs font-medium text-gray-600 dark:text-gray-300 ${editableCellClass(task.id, 'progressPercentage')}`}
                       style={{ width: w }}
-                      onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'progressPercentage', task); } }}
+                      onClick={(e) => handleCellClick(e, task.id, 'progressPercentage', task)}
                     >
                       {isEditing(task.id, 'progressPercentage') ? (
                         <input
@@ -3089,7 +3100,7 @@ export function GanttChart({
                       key="priority"
                       className={`shrink-0 px-1 text-center ${editableCellClass(task.id, 'priority')}`}
                       style={{ width: w }}
-                      onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'priority', task); } }}
+                      onClick={(e) => handleCellClick(e, task.id, 'priority', task)}
                     >
                       {isEditing(task.id, 'priority') ? (
                         <select
@@ -3120,7 +3131,7 @@ export function GanttChart({
                       key="assigned"
                       className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 truncate ${editableCellClass(task.id, 'assignedTo')}`}
                       style={{ width: w }}
-                      onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'assignedTo', task); } }}
+                      onClick={(e) => handleCellClick(e, task.id, 'assignedTo', task)}
                       title={task.assignedTo || undefined}
                     >
                       {isEditing(task.id, 'assignedTo') ? (
@@ -3160,7 +3171,7 @@ export function GanttChart({
                       key="status"
                       className={`shrink-0 px-1 text-center ${editableCellClass(task.id, 'status')}`}
                       style={{ width: w }}
-                      onClick={(e) => { if (onTaskUpdate) { e.stopPropagation(); startEditing(task.id, 'status', task); } }}
+                      onClick={(e) => handleCellClick(e, task.id, 'status', task)}
                     >
                       {isEditing(task.id, 'status') ? (
                         <select
