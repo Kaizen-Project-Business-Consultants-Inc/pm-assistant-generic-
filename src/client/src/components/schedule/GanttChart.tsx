@@ -1301,6 +1301,8 @@ export function GanttChart({
   /** Click-to-select, click-again-to-edit: first click selects the row, second click enters inline edit */
   const handleCellClick = useCallback((e: React.MouseEvent, taskId: string, field: EditableField, task: GanttTask) => {
     if (!onTaskUpdate) return;
+    // Let Ctrl+click and Shift+click bubble up to the row for multi-select
+    if (e.ctrlKey || e.metaKey || e.shiftKey) return;
     e.stopPropagation();
     if (activeTaskId === taskId) {
       startEditing(taskId, field, task);
@@ -2803,8 +2805,13 @@ export function GanttChart({
                 key={task.id}
                 className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer ${rowIdx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} ${activeTaskId === task.id ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-inset ring-primary-200 dark:ring-primary-700' : ''} ${rowDrag?.targetIdx === rowIdx && rowDrag?.taskId !== task.id && rowDrag?.parentTaskId === (task.parentTaskId || null) ? 'border-t-2 border-t-blue-500' : ''} ${rowDrag?.taskId === task.id ? 'opacity-40' : ''}`}
                 style={shouldVirtualize ? { height: ROW_H, position: 'absolute', top: rowIdx * ROW_H, left: 0, right: 0 } : { height: ROW_H }}
-                onClick={() => {
+                onClick={(e) => {
                   if (editingCell) return;
+                  // Ctrl+click or Cmd+click to multi-select (like MS Project / Excel)
+                  if ((e.ctrlKey || e.metaKey) && onBulkUpdate) { toggleSelect(task.id, false); return; }
+                  // Shift+click for range select
+                  if (e.shiftKey && onBulkUpdate) { toggleSelect(task.id, true); return; }
+                  // If already in multi-select mode, toggle
                   if (someSelected && onBulkUpdate) { toggleSelect(task.id, false); return; }
                   onTaskSelect?.(task);
                 }}
