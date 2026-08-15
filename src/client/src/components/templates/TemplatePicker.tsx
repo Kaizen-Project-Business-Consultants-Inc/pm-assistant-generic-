@@ -18,7 +18,7 @@ import { apiService } from '../../services/api';
 import { TemplateCard } from './TemplateCard';
 import { TemplatePreview } from './TemplatePreview';
 import { TemplateCustomizeForm } from './TemplateCustomizeForm';
-import { cleanCsvForImport } from '../../utils/csvCleaner';
+import { cleanCsvForImport, sheetToCsv } from '../../utils/csvCleaner';
 import { useModal } from '../../hooks/useModal';
 
 interface TemplatePickerProps {
@@ -64,7 +64,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
           const sheetName = workbook.SheetNames[0];
-          const csv = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
+          const csv = sheetToCsv(XLSX, workbook.Sheets[sheetName]);
           setParsedCsvText(cleanCsvForImport(csv));
           setUploadedFileName(file.name);
         } catch {

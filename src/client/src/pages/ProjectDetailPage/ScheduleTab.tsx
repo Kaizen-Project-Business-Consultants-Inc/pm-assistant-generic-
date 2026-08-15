@@ -79,11 +79,11 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
 
       if (isExcel) {
         const XLSX = await import('xlsx');
-        const { cleanCsvForImport } = await import('../../utils/csvCleaner');
+        const { cleanCsvForImport, sheetToCsv } = await import('../../utils/csvCleaner');
         const buffer = await file.arrayBuffer();
         const data = new Uint8Array(buffer);
         const workbook = XLSX.read(data, { type: 'array' });
-        csvText = cleanCsvForImport(XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]));
+        csvText = cleanCsvForImport(sheetToCsv(XLSX, workbook.Sheets[workbook.SheetNames[0]]));
       } else if (ext === 'csv') {
         const { cleanCsvForImport } = await import('../../utils/csvCleaner');
         csvText = cleanCsvForImport(await file.text());

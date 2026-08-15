@@ -91,6 +91,23 @@ function fixMojibake(text: string): string {
     .replace(/\u00C2\u00A0/g, ' ');             // Â  → (non-breaking space)
 }
 
+/**
+ * Convert an XLSX sheet to CSV, collapsing multi-line cell values into single
+ * lines. XLSX.utils.sheet_to_csv preserves newlines inside cells, which breaks
+ * line-based CSV parsers. This function uses sheet_to_json (which keeps cell
+ * values intact) and re-serialises to clean single-line CSV.
+ */
+export function sheetToCsv(XLSX: any, sheet: any): string {
+  const rows: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+  return rows.map(row =>
+    (row as unknown[]).map(c => {
+      if (c == null) return '';
+      const s = String(c).replace(/[\r\n]+/g, ' ').trim();
+      return escapeCsvCell(s);
+    }).join(',')
+  ).join('\n');
+}
+
 export function cleanCsvForImport(rawCsv: string): string {
   const lines = fixMojibake(rawCsv).split(/\r?\n/).filter(l => l.trim().length > 0);
   if (lines.length === 0) return rawCsv;

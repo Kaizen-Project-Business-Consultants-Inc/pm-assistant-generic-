@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { X, Upload, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { apiService } from '../../services/api';
-import { cleanCsvForImport } from '../../utils/csvCleaner';
+import { cleanCsvForImport, sheetToCsv } from '../../utils/csvCleaner';
 import { parseMspdi } from '../../utils/mspdiParser';
 import { useModal } from '../../hooks/useModal';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
@@ -195,7 +195,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
             setSheetNames(workbook.SheetNames);
             setSelectedSheet(workbook.SheetNames[0]);
           } else {
-            const csv = XLSX.utils.sheet_to_csv(workbook.Sheets[workbook.SheetNames[0]]);
+            const csv = sheetToCsv(XLSX, workbook.Sheets[workbook.SheetNames[0]]);
             loadText(cleanCsvForImport(csv));
           }
         } catch (err: unknown) {
@@ -213,7 +213,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
   const handleSheetSelect = (name: string) => {
     setSelectedSheet(name);
     if (workbookRef.current) {
-      const csv = XLSX.utils.sheet_to_csv(workbookRef.current.Sheets[name]);
+      const csv = sheetToCsv(XLSX, workbookRef.current.Sheets[name]);
       loadText(cleanCsvForImport(csv));
     }
   };

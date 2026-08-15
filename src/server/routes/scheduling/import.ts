@@ -42,6 +42,8 @@ function mapColumn(header: string, columnMap: Record<string, string> | undefined
     task: 'name',
     task_name: 'name',
     key_activities: 'name',
+    key_milestone: 'name',
+    milestone: 'name',
     activities: 'name',
     activity: 'name',
     status: 'status',
@@ -49,9 +51,13 @@ function mapColumn(header: string, columnMap: Record<string, string> | undefined
     start_date: 'startDate',
     startdate: 'startDate',
     start: 'startDate',
+    target_start: 'startDate',
+    planned_start: 'startDate',
     end_date: 'endDate',
     enddate: 'endDate',
     end: 'endDate',
+    target_end: 'endDate',
+    planned_end: 'endDate',
     due_date: 'dueDate',
     duedate: 'dueDate',
     due: 'dueDate',
@@ -68,12 +74,21 @@ function mapColumn(header: string, columnMap: Record<string, string> | undefined
     estimated_duration_hours: 'estimatedDurationHours',
     estimateddurationhours: 'estimatedDurationHours',
     duration: 'estimatedDurationHours',
+    'duration_(weeks)': 'estimatedDurationHours',
     hours: 'estimatedDurationHours',
     description: 'description',
     deliverables: 'description',
     deliverable: 'description',
     notes: 'description',
     details: 'description',
+    purpose: 'description',
+    milestone_purpose: 'description',
+    'milestone_purpose_&_transparency_objectives': 'description',
+    phase: '_phase',
+    group: '_phase',
+    category: '_phase',
+    wbs: '_phase',
+    section: '_phase',
   };
 
   return aliases[key] ?? null;
@@ -134,6 +149,9 @@ export async function importRoutes(fastify: FastifyInstance) {
       const succeeded: number[] = [];
       const failed: { row: number; error: string }[] = [];
 
+      // Track phase/group summary tasks so child tasks get parentTaskId
+      const phaseTaskIds = new Map<string, string>(); // phase name → taskId
+
       for (let i = 0; i < records.length; i++) {
         const rawRow = records[i];
         const rowNum = i + 1; // 1-based row number (excluding header)
@@ -150,6 +168,33 @@ export async function importRoutes(fastify: FastifyInstance) {
 
           if (!row.name || row.name.trim() === '') {
             throw new Error('name is required');
+          }
+
+          // Handle phase/group column → create summary task if new phase
+          let parentTaskId: string | undefined;
+          const phase = row._phase?.trim();
+          if (phase) {
+            if (!phaseTaskIds.has(phase)) {
+              // Create a summary task for this phase
+              const phaseDedupKey = `${phase.toLowerCase()}|`;
+              if (!existingKeys.has(phaseDedupKey)) {
+                const phaseTask = await scheduleService.createTask({
+                  scheduleId,
+                  name: phase,
+                  status: 'in_progress' as CreateTaskData['status'],
+                  priority: 'medium' as CreateTaskData['priority'],
+                  createdBy: userId,
+                });
+                const phaseId = phaseTask.id;
+                phaseTaskIds.set(phase, phaseId);
+                existingKeys.add(phaseDedupKey);
+              } else {
+                // Phase task already exists — find its ID
+                const existing = existingTasks.find(t => t.name.toLowerCase().trim() === phase.toLowerCase());
+                if (existing) phaseTaskIds.set(phase, existing.id);
+              }
+            }
+            parentTaskId = phaseTaskIds.get(phase);
           }
 
           // Validate and default status
@@ -203,6 +248,7 @@ export async function importRoutes(fastify: FastifyInstance) {
             dueDate: dueDate || undefined,
             progressPercentage,
             estimatedDurationHours: estimatedDurationHours ?? undefined,
+            parentTaskId,
             createdBy: userId,
           });
 
