@@ -1483,26 +1483,32 @@ export function GanttChart({
         }
       }
 
-      // Indent/outdent with Tab/Shift+Tab (works with focusedCell or just activeTaskId)
-      const indentTaskId = focusedCell?.taskId || activeTaskId;
-      if (indentTaskId && e.key === 'Tab') {
+      // Indent/outdent with Tab/Shift+Tab (works with multi-select, focusedCell, or activeTaskId)
+      if (e.key === 'Tab' && (someSelected || focusedCell || activeTaskId)) {
         e.preventDefault();
-        const rowIdx = rows.findIndex(r => r.task.id === indentTaskId);
-        if (rowIdx === -1) return;
-        const task = rows[rowIdx].task;
-        if (e.shiftKey) {
-          // Outdent: promote to parent's parent
-          if (task.parentTaskId) {
-            const parent = tasks.find(t => t.id === task.parentTaskId);
-            onTaskUpdate(task.id, { parentTaskId: parent?.parentTaskId || null });
-          }
-        } else {
-          // Indent: make child of the row above (must be same level or parent)
-          if (rowIdx > 0) {
-            const aboveTask = rows[rowIdx - 1].task;
-            // Don't indent under itself or if already a child
-            if (aboveTask.id !== task.parentTaskId) {
-              onTaskUpdate(task.id, { parentTaskId: aboveTask.id });
+
+        // Determine which task IDs to indent/outdent
+        const idsToProcess = someSelected
+          ? rows.filter(r => selectedIds.has(r.task.id)).map(r => r.task.id)
+          : [focusedCell?.taskId || activeTaskId].filter(Boolean) as string[];
+
+        for (const taskId of idsToProcess) {
+          const rowIdx = rows.findIndex(r => r.task.id === taskId);
+          if (rowIdx === -1) continue;
+          const task = rows[rowIdx].task;
+          if (e.shiftKey) {
+            // Outdent: promote to parent's parent
+            if (task.parentTaskId) {
+              const parent = tasks.find(t => t.id === task.parentTaskId);
+              onTaskUpdate(task.id, { parentTaskId: parent?.parentTaskId || null });
+            }
+          } else {
+            // Indent: make child of the row above (must not be in selection set)
+            if (rowIdx > 0) {
+              const aboveTask = rows[rowIdx - 1].task;
+              if (aboveTask.id !== task.parentTaskId && !selectedIds.has(aboveTask.id)) {
+                onTaskUpdate(task.id, { parentTaskId: aboveTask.id });
+              }
             }
           }
         }
