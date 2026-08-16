@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { parse as csvParse } from 'csv-parse/sync';
 import { scheduleService, type CreateTaskData } from '../../services/ScheduleService';
+import { resourceService } from '../../services/ResourceService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import logger from '../../utils/logger';
@@ -148,6 +149,7 @@ export async function importRoutes(fastify: FastifyInstance) {
 
       const succeeded: number[] = [];
       const failed: { row: number; error: string }[] = [];
+      const importedAssignees = new Set<string>(); // collect unique assignee names
 
       // Track phase/group summary tasks so child tasks get parentTaskId
       const phaseTaskIds = new Map<string, string>(); // phase name → taskId
@@ -255,9 +257,44 @@ export async function importRoutes(fastify: FastifyInstance) {
           // Add to dedup set to catch intra-batch duplicates
           existingKeys.add(dedupKey);
 
+          // Track assignee for resource auto-creation
+          if (row.assignedTo && row.assignedTo.trim()) {
+            importedAssignees.add(row.assignedTo.trim());
+          }
+
           succeeded.push(rowNum);
         } catch (rowErr: any) {
           failed.push({ row: rowNum, error: rowErr.message || 'Unknown error' });
+        }
+      }
+
+      // Auto-create resources for new assignees
+      let resourcesCreated = 0;
+      if (importedAssignees.size > 0) {
+        try {
+          const existingResources = await resourceService.findAllResources();
+          const existingNames = new Set(existingResources.map(r => r.name.toLowerCase().trim()));
+
+          for (const assignee of importedAssignees) {
+            if (!existingNames.has(assignee.toLowerCase().trim())) {
+              await resourceService.createResource({
+                name: assignee,
+                role: '',
+                email: '',
+                capacityHoursPerWeek: 40,
+                skills: [],
+                isActive: true,
+                costRateHourly: null,
+                resourceGroup: null,
+                userId: null,
+                calendarTemplateId: null,
+              });
+              existingNames.add(assignee.toLowerCase().trim());
+              resourcesCreated++;
+            }
+          }
+        } catch (resErr: any) {
+          logger.warn('Failed to auto-create resources during import', { error: resErr.message });
         }
       }
 
@@ -265,6 +302,7 @@ export async function importRoutes(fastify: FastifyInstance) {
         succeeded: succeeded.length,
         failed,
         total: records.length,
+        resourcesCreated,
       };
     } catch (error: any) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });

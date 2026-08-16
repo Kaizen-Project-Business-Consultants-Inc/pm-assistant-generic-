@@ -26,6 +26,7 @@ interface ParsedCSV {
 interface ImportResult {
   succeeded: number;
   failed: { row: number; error: string }[];
+  resourcesCreated?: number;
 }
 
 const TARGET_COLUMNS = [
@@ -238,7 +239,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
       }
       const res = await apiService.importTasks(scheduleId, csvText, headerMap);
       const data = res?.data ?? res;
-      setResult({ succeeded: data.succeeded ?? 0, failed: data.failed ?? [] });
+      setResult({ succeeded: data.succeeded ?? 0, failed: data.failed ?? [], resourcesCreated: data.resourcesCreated ?? 0 });
       if ((data.succeeded ?? 0) > 0) onImported?.();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Import failed'));
@@ -272,6 +273,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
             <div className="space-y-2">
               <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm font-medium">
                 {result.succeeded} task{result.succeeded !== 1 ? 's' : ''} imported successfully.
+                {result.resourcesCreated ? ` ${result.resourcesCreated} resource${result.resourcesCreated !== 1 ? 's' : ''} added.` : ''}
               </div>
               {result.failed.length > 0 && (
                 <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-sm space-y-1">
