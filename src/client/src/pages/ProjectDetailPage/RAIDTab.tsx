@@ -53,6 +53,7 @@ export function RAIDTab({ projectId }: { projectId: string }) {
   const [showScanReview, setShowScanReview] = useState(false);
   const [scanAiPowered, setScanAiPowered] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -153,12 +154,18 @@ export function RAIDTab({ projectId }: { projectId: string }) {
 
   const handleAiScan = async () => {
     setScanning(true);
+    setScanError(null);
     try {
       const result = await apiService.runAiRiskScan(projectId);
       setScanCandidates(result.data?.candidates || []);
       setScanAiPowered(result.aiPowered !== false);
       setShowScanReview(true);
-    } catch { /* */ }
+    } catch (err: any) {
+      const msg = err?.response?.status === 429
+        ? 'AI budget exceeded for this month. Try again next billing cycle.'
+        : err?.response?.data?.error || 'AI risk scan failed. Please try again.';
+      setScanError(msg);
+    }
     setScanning(false);
   };
 
@@ -386,6 +393,11 @@ export function RAIDTab({ projectId }: { projectId: string }) {
             {scanning ? <Activity className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
             {scanning ? 'Scanning...' : 'AI Scan'}
           </button>
+          {scanError && (
+            <span className="text-xs text-red-600 dark:text-red-400 max-w-xs truncate" title={scanError}>
+              {scanError}
+            </span>
+          )}
 
           <div className="flex-1" />
 

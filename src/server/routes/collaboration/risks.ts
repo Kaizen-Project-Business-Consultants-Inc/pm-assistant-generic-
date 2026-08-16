@@ -322,7 +322,10 @@ export async function riskRoutes(fastify: FastifyInstance) {
         },
         aiPowered,
       });
-    } catch (err) {
+    } catch (err: any) {
+      if (err.code === 'AI_BUDGET_EXCEEDED' || err.name === 'AIBudgetExceededError') {
+        return reply.status(429).send({ error: 'AI budget exceeded', message: 'AI token budget has been reached for this month.' });
+      }
       fastify.log.error({ err }, 'AI risk scan failed');
       return reply.status(500).send({ error: 'AI risk scan failed' });
     }
