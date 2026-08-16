@@ -1879,6 +1879,25 @@ Access via the sidebar under **Plan → Dashboard**.
 
 - **Scope Toggle** — Switch between "My Projects" and "All Projects" to control which data is displayed.
 - **KPI Tiles** — 6 tiles showing Portfolio Health, Overdue Tasks, Open Risks, At-Risk Projects, Budget Variance, and Budget Utilization. Each has a colored status dot and click-through to drill-in pages. Health and Overdue tiles show 7-day trend arrows: green up arrow (improving), red down arrow (declining), or gray dash (stable).
+
+#### Understanding Portfolio Health
+
+Portfolio Health is a score from 0 to 100 that tells you how well your projects are going overall. It looks at three things for each active project:
+
+  1. **Schedule progress (40% of the score)** — Are tasks getting done? A project at 60% complete scores better than one at 10%.
+  2. **Budget (30% of the score)** — Are you spending within budget? High budget usage pulls the score down.
+  3. **Overall status (30% of the score)** — Is the project active and moving, on hold, or cancelled? Active projects score highest.
+
+Each project gets its own score, then they are averaged together to produce the portfolio-wide number. The result tells you:
+
+  - **75--100 = Good** — Projects are on track.
+  - **50--74 = Fair** — Some things need attention.
+  - **Below 50 = At Risk** — Significant problems that need action.
+
+Projects still in **planning** status are excluded. Until a project is active with real work happening, there is nothing meaningful to measure.
+
+The **Open Risks** tile next to Portfolio Health counts how many active projects scored below 75. If you see "2 Open Risks," it means two projects are showing signs of trouble — either behind schedule, over budget, or both.
+
 - **KPI Drill-In Pages** — Click any KPI tile to open a detailed drill-in page. Each page includes summary stat cards at the top (e.g., average health, total overdue, critical count), a sortable data table, and type-specific enrichments: Health and Overdue pages show a trend badge (improving/declining/stable); Health and Risks pages show a color-coded distribution bar; the Health table adds Schedule, Budget, and Risk sub-score columns with 30-day sparkline trends.
 - **Portfolio Intelligence** — AI-generated health ring, risk chips, budget status, and key insights. Supports dark mode.
 - **Action Center** — Two columns: "Today's Priorities" (deadline-driven items) and "AI Next Best Actions" (proposals with confidence % and risk level badges, critical/high notifications, at-risk projects with health score badges). This is the single source for AI-suggested next actions on the dashboard.
