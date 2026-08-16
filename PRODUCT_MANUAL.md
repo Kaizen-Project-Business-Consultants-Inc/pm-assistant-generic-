@@ -1693,6 +1693,10 @@ Tasks can be imported in bulk from a CSV or Excel file via `POST /api/v1/schedul
 - **File size limit** — 5MB enforced both client-side (before upload) and server-side (before parsing).
 - **Row limit** — maximum 100 rows per import.
 - **Encoding normalization** — `fixMojibake()` is applied client-side (in `csvCleaner.ts`, before CSV parsing) and server-side (in `import.ts`, before `csvParse()`) to correct Windows-1252 → UTF-8 double-encoding artifacts. Fixes 10 common patterns including em dash (`â€"` → `—`), en dash, smart quotes (left/right single and double), bullet, ellipsis, middle dot, and non-breaking space. This prevents garbled task names when importing Excel/CSV files saved in Windows-1252 encoding.
+- **Phase/Group as summary tasks** — if a Phase, Group, Category, WBS, or Section column is detected, the import creates summary (parent) tasks for each unique phase value and nests child tasks underneath them.
+- **Resource auto-creation** — after tasks are imported, unique assignee names are checked against existing resources. New resources are created automatically with default settings (40 hrs/week, no role/department). The import response includes a `resourcesCreated` count, shown in the UI as "X resources added."
+
+**Notes column** — both Table view and Gantt chart support a **Notes** column (hidden by default, toggle via column picker). The column maps to the task's `description` field. Clicking any Notes cell opens a floating popup editor with a full textarea, Save and Cancel buttons, and auto-save on click-away. Press Escape to dismiss without saving.
 
 ---
 
@@ -2476,13 +2480,13 @@ GET /api/v1/resources/workload
 
 No `projectId` parameter is required. The response follows the same shape as the per-project workload endpoint, grouped by resource, with weekly demand, capacity, utilization, and over-allocation flags calculated across every project the resource is assigned to. Useful for staffing decisions and preventing hidden cross-project over-allocation.
 
-### Resource Groups / Teams
+### Departments
 
-Resources can be assigned to one or more groups:
+Resources can be assigned to a department:
 
-- Engineering, Design, QA, Management, Operations, and custom groups.
-- Group membership is stored on the resource record.
-- The Team tab on the Resource Management page (`/resources`) includes a **Group** filter dropdown so managers can view a single team at a time.
+- Engineering, Design, QA, Management, Operations, Marketing, Sales, Support, and custom departments.
+- Department is stored on the resource record (`resource_group` column).
+- The Team tab on the Resource Management page (`/resources`) includes a **Department** filter dropdown so managers can view a single department at a time.
 - The `GET /api/v1/resources` endpoint supports a `?group=` query parameter for server-side filtering.
 
 ### Utilization Dashboard

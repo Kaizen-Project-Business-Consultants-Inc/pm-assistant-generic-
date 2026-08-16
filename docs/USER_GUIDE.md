@@ -461,7 +461,7 @@ Toggle between Month / Week / Day using buttons in the calendar header. Navigati
 
 A spreadsheet-like view of all tasks with inline editing. Click the **Columns** button (gear icon) to open the column picker. Choose from 22 columns organized into four groups:
 
-- **Standard** -- # (row number, always visible), Name, Status, Priority, Start Date, End Date, Progress, Assigned To (visible by default, inline-editable), Notes (hidden by default, inline-editable textarea)
+- **Standard** -- # (row number, always visible), Name, Status, Priority, Start Date, End Date, Progress, Assigned To (visible by default, inline-editable), Notes (hidden by default, click to open popup editor)
 - **Scheduling (CPM)** -- Duration, Early Start, Early Finish, Late Start, Late Finish, Total Float, Free Float, Critical (read-only; enabling any of these triggers CPM computation automatically)
 - **Baseline** -- Baseline Start, Baseline End, Start Variance, End Variance (read-only; populated when a baseline comparison is active)
 - **Other** -- Predecessor (inline-editable), WBS (read-only; auto-computed from task hierarchy)
@@ -493,6 +493,15 @@ Column selections are saved per schedule and persist across page reloads. All vi
 **Undo / Redo** -- The table toolbar includes Undo and Redo buttons (also accessible via **Ctrl+Z** / **Ctrl+Y**). All edits, bulk updates, and deletions are tracked in the undo history. Hover over the buttons to see what action will be undone or redone.
 
 **Bulk Operations with Undo** -- Multi-select tasks using checkboxes, then use the bulk toolbar to change status, priority, or assignee. All bulk operations are tracked in the undo history, so you can reverse them with Ctrl+Z.
+
+#### Notes Column
+
+Toggle the **Notes** column on via the Columns picker. It maps to the task's description field. Click any Notes cell (in either Table view or Gantt chart) to open a floating popup editor with:
+
+- A full-size textarea (6 rows, resizable)
+- **Save** and **Cancel** buttons
+- Auto-saves when you click outside the popup
+- Press **Escape** to dismiss without saving
 
 #### Saved Views
 
@@ -1575,6 +1584,10 @@ You can import tasks into any schedule from a CSV, Excel, or Microsoft Project X
 
 **Duplicate detection:** If a task with the same name and start date already exists in the schedule, the row is skipped and reported as a duplicate.
 
+**Phase/Group as summary tasks:** If your spreadsheet has a Phase, Group, Category, or WBS column, the import creates summary (parent) tasks for each unique phase and nests the corresponding tasks underneath them.
+
+**Resource auto-creation:** Any assignee names found in the imported data are automatically added to the Resources table if they don't already exist. New resources are created with default settings (40 hrs/week capacity, no role or department). The import summary shows how many resources were added (e.g. "15 tasks imported successfully. 4 resources added.").
+
 **Encoding:** Files exported from Excel in Windows-1252 encoding (common on Windows machines) are automatically corrected. Characters like em dashes, smart quotes, and bullets that appear garbled in other tools will import correctly.
 
 Accepted date formats: `YYYY-MM-DD` and `MM/DD/YYYY`. Unrecognised status or priority values default to `pending` and `medium` respectively.
@@ -1658,14 +1671,14 @@ GET /api/v1/resources/workload
 ```
 (no projectId required)
 
-### Resource Groups
+### Departments
 
-Resources can be organized into groups (e.g., Engineering, Design, QA, Management, Operations):
+Resources can be organized into departments (e.g., Engineering, Design, QA, Management, Operations, Marketing, Sales, Support):
 
-1. When creating or editing a resource, select a **Group** from the dropdown.
-2. On the Team tab of the Resource Management page, use the **Group** filter to view only a specific team.
+1. When creating or editing a resource, select a **Department** from the dropdown.
+2. On the Team tab of the Resource Management page, use the **Department** filter to view only a specific department.
 
-Groups help large organizations navigate their resource pool without scrolling through everyone.
+Departments help large organizations navigate their resource pool without scrolling through everyone.
 
 ### Utilization Dashboard
 

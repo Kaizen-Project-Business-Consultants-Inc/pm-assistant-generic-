@@ -189,7 +189,8 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Calendar view** with three display modes: Month (default with drag-to-reschedule), Week (7-column with full task cards), Day (single-day detail view). Toggle via header buttons. Navigation arrows and Today button in all modes. Drag-to-reschedule preserves task duration.
 - **Table view** with inline editing (spreadsheet-like), full feature parity with Gantt: right-click context menu (Insert Before/After, Edit, Indent, Outdent, Delete), Tab/Shift+Tab indent/outdent, Delete key with confirmation modal, undo/redo buttons and Ctrl+Z/Y support, bulk operations routed through undo history
 - MS Project-style column picker: 23 columns across 4 groups (Standard, Scheduling/CPM, Baseline, Other)
-- **Notes column** — maps to task description field, inline-editable via textarea (Shift+Enter for newlines), truncated display with hover tooltip. Available in both Table view and Gantt left panel.
+- **Notes column** — maps to task description field, available in both Table view and Gantt left panel. Click any Notes cell to open a floating popup editor with a full textarea, Save/Cancel buttons, and auto-save on click-away. Hidden by default; toggle via column picker.
+- **Resource auto-creation on import** — CSV/Excel import automatically creates resource entries for any new assignee names found in the data. Import result shows "X resources added."
 - **Row number (#) column** — always visible, sequential numbering, cannot be toggled off
 - **Multi-predecessor support** — up to 20 predecessors per task, each with its own type (FS/SS/FF/SF) and lag days, stored in a `task_dependencies` junction table
 - **MS Project-style predecessor display** — comma-separated compact row-number notation (e.g. "3FS+2d,5SS,7") instead of full task names; same format used in CSV export
