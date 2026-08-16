@@ -427,6 +427,8 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
         actualCost: data.actualCost ? parseFloat(data.actualCost) : undefined,
         constraintType: data.constraintType && data.constraintType !== 'ASAP' ? data.constraintType : undefined,
         constraintDate: data.constraintDate || undefined,
+        workHours: data.workHours ? parseFloat(data.workHours) : undefined,
+        effortDriven: data.effortDriven || undefined,
         assignments: data.assignments?.filter(a => a.resourceId).length ? data.assignments.filter(a => a.resourceId) : undefined,
         dependencies: deps.length > 0 ? deps : undefined,
         afterTaskId: data.afterTaskId || undefined,
@@ -474,6 +476,8 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
           actualCost: d.actualCost ? parseFloat(d.actualCost) : undefined,
           constraintType: d.constraintType && d.constraintType !== 'ASAP' ? d.constraintType : undefined,
           constraintDate: d.constraintDate || undefined,
+          workHours: d.workHours ? parseFloat(d.workHours) : undefined,
+          effortDriven: d.effortDriven || undefined,
           assignments: d.assignments?.filter(a => a.resourceId).length ? d.assignments.filter(a => a.resourceId) : undefined,
           dependencies: deps,
         };

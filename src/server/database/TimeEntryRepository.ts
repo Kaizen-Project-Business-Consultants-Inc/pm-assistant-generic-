@@ -100,6 +100,24 @@ class TimeEntryRepository {
       totalHours: Number(r.total_hours),
     }));
   }
+
+  async sumHoursByRateTypeAndWeekRange(userId: string, startDate: string, endDate: string): Promise<{ weekStart: string; standardHours: number; overtimeHours: number }[]> {
+    const rows = await databaseService.query(
+      `SELECT DATE_SUB(date, INTERVAL ((DAYOFWEEK(date) + 5) % 7) DAY) AS week_start,
+              SUM(CASE WHEN COALESCE(rate_type, 'standard') = 'standard' THEN hours ELSE 0 END) AS standard_hours,
+              SUM(CASE WHEN rate_type = 'overtime' THEN hours ELSE 0 END) AS overtime_hours
+       FROM time_entries
+       WHERE user_id = ? AND date >= ? AND date < ?
+       GROUP BY week_start
+       ORDER BY week_start`,
+      [userId, startDate, endDate],
+    );
+    return rows.map((r: any) => ({
+      weekStart: String(r.week_start).slice(0, 10),
+      standardHours: Number(r.standard_hours) || 0,
+      overtimeHours: Number(r.overtime_hours) || 0,
+    }));
+  }
 }
 
 export const timeEntryRepository = new TimeEntryRepository();

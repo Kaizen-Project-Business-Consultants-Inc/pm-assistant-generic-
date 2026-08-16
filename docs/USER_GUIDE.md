@@ -665,7 +665,53 @@ The workload heatmap shows resource utilization across time:
 - **Yellow** -- Optimally allocated.
 - **Red** -- Over-allocated (overloaded).
 
-Hover over a cell to see the specific allocation percentage and assigned tasks for that resource on that date.
+Each cell displays **actual/allocated hours** (e.g., "28/40h") with the utilization percentage below. Hover over a cell for a detailed tooltip showing allocated, actual, capacity, utilization %, and cost. Click a resource name to open their **Resource Profile** modal.
+
+### Bulk Resource Import
+
+Click **Import CSV** on the Team sub-tab to import resources in bulk:
+
+1. Drop a CSV file or click to browse (max 5MB, 200 resources).
+2. Expected columns: `name, role, email, capacityHoursPerWeek, skills, costRateHourly, resourceGroup`.
+3. Skills should be semicolon-separated (e.g., `React;TypeScript;Node.js`).
+4. Preview the first 5 rows before importing.
+5. Results show success count and any per-row errors.
+
+### Resource Profile
+
+Click any resource name (in Team table or Workload Heatmap) to open the Resource Profile modal:
+
+- **Summary cards:** Capacity/week, active assignments, utilization %, cost rate.
+- **Skills:** Listed with proficiency levels.
+- **Assignments table:** Current task assignments with hours/week and date range.
+- **Utilization trend:** Embedded 12-week chart showing planned vs actual vs capacity.
+
+### Overtime Rates
+
+Resources can have an **overtime rate** separate from the standard cost rate:
+
+- Set the "OT Rate ($/hr)" when creating or editing a resource.
+- Time entries with `rate_type = 'overtime'` are costed at the overtime rate.
+- If no overtime rate is set, the system defaults to 1.5× the standard rate.
+
+### Role Capacity Planning
+
+The **Role Capacity** sub-tab shows a 12-week capacity vs demand view grouped by role:
+
+- Each row is a role (e.g., Developer, Designer) showing resource count and total weekly capacity.
+- Cells are color-coded: **Green** (surplus >20%), **Yellow** (tight 0-20%), **Red** (over-committed).
+- Each cell shows allocated/capacity and surplus/deficit hours.
+
+### Effort-Driven Scheduling
+
+Mark a task as **Effort Driven** in the task edit form to have its duration auto-adjust based on resources:
+
+1. Enter the total **Work Hours** (e.g., 80 hours of work).
+2. Check **Effort Driven**.
+3. When resources are assigned or removed, the duration recalculates: `duration = work_hours / total_resource_hours_per_day`.
+4. End date adjusts automatically, skipping weekends.
+
+This mirrors how MS Project and Primavera handle effort-driven tasks — adding more resources shortens the schedule, removing resources extends it.
 
 ### Resource Histogram
 

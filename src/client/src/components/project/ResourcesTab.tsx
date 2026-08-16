@@ -1,11 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, AlertTriangle, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, SlidersHorizontal, DollarSign, LineChart } from 'lucide-react';
+import { Users, AlertTriangle, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, SlidersHorizontal, DollarSign, LineChart, Upload, Layers } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ResourceLevelingPanel } from '../resources/ResourceLevelingPanel';
 import { ResourceForecastPanel } from '../resources/ResourceForecastPanel';
 import { CapacityChart } from '../resources/CapacityChart';
 import { UtilizationTrendChart } from '../resources/UtilizationTrendChart';
+import { ResourceImportModal } from '../resources/ResourceImportModal';
+import { ResourceProfileModal } from '../resources/ResourceProfileModal';
+import { RoleCapacityView } from '../resources/RoleCapacityView';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -62,6 +65,7 @@ interface Resource {
   capacityHoursPerWeek?: number;
   skills?: SkillWithProficiency[];
   costRateHourly?: number | null;
+  overtimeRateHourly?: number | null;
   resourceGroup?: string | null;
   userId?: string | null;
   calendarTemplateId?: string | null;
@@ -96,11 +100,12 @@ function formatWeek(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-type SubTab = 'team' | 'workload' | 'histogram' | 'forecast' | 'leveling' | 'trends';
+type SubTab = 'team' | 'workload' | 'histogram' | 'forecast' | 'leveling' | 'trends' | 'capacity';
 
 const subTabs: { key: SubTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'team', label: 'Team', icon: Users },
   { key: 'workload', label: 'Workload Heatmap', icon: BarChart3 },
+  { key: 'capacity', label: 'Role Capacity', icon: Layers },
   { key: 'histogram', label: 'Histogram', icon: Clock },
   { key: 'forecast', label: 'Forecast', icon: TrendingUp },
   { key: 'leveling', label: 'Leveling', icon: SlidersHorizontal },
@@ -130,6 +135,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
   const [formEmail, setFormEmail] = useState('');
   const [formCapacity, setFormCapacity] = useState('40');
   const [formCostRate, setFormCostRate] = useState('');
+  const [formOvertimeRate, setFormOvertimeRate] = useState('');
   const [formGroup, setFormGroup] = useState('');
   const [formSkills, setFormSkills] = useState<SkillWithProficiency[]>([]);
   const [newSkillName, setNewSkillName] = useState('');
@@ -137,6 +143,8 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
   const [groupFilter, setGroupFilter] = useState('');
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [trendResourceId, setTrendResourceId] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [profileResourceId, setProfileResourceId] = useState<string | null>(null);
 
   // Queries
   const { data: schedulesData } = useQuery({
@@ -207,6 +215,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
     setFormEmail('');
     setFormCapacity('40');
     setFormCostRate('');
+    setFormOvertimeRate('');
     setFormGroup('');
     setFormSkills([]);
     setNewSkillName('');
@@ -221,6 +230,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
     setFormEmail(r.email);
     setFormCapacity(String(r.capacityHoursPerWeek || 40));
     setFormCostRate(r.costRateHourly != null ? String(r.costRateHourly) : '');
+    setFormOvertimeRate(r.overtimeRateHourly != null ? String(r.overtimeRateHourly) : '');
     setFormGroup(r.resourceGroup || '');
     setFormSkills(r.skills || []);
     setShowResourceForm(true);
@@ -228,12 +238,14 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
 
   function handleSaveResource() {
     const costRate = formCostRate.trim() ? parseFloat(formCostRate) : null;
+    const overtimeRate = formOvertimeRate.trim() ? parseFloat(formOvertimeRate) : null;
     const data = {
       name: formName,
       role: formRole,
       email: formEmail,
       capacityHoursPerWeek: parseInt(formCapacity) || 40,
       costRateHourly: costRate,
+      overtimeRateHourly: overtimeRate,
       resourceGroup: formGroup || null,
       skills: formSkills,
     };
@@ -330,12 +342,20 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                 </select>
               )}
             </div>
-            <button
-              onClick={() => { resetForm(); setShowResourceForm(true); }}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Add Resource
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+              >
+                <Upload className="w-4 h-4" /> Import CSV
+              </button>
+              <button
+                onClick={() => { resetForm(); setShowResourceForm(true); }}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Add Resource
+              </button>
+            </div>
           </div>
 
           {showResourceForm && (
@@ -344,7 +364,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white">{editingResource ? 'Edit Resource' : 'New Resource'}</h3>
                 <button onClick={resetForm} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close resource form"><X className="w-4 h-4" /></button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name</label>
                   <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="Full name" />
@@ -378,6 +398,10 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Cost Rate ($/hr)</label>
                   <input type="number" value={formCostRate} onChange={(e) => setFormCostRate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0" step="0.01" placeholder="Optional" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">OT Rate ($/hr)</label>
+                  <input type="number" value={formOvertimeRate} onChange={(e) => setFormOvertimeRate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0" step="0.01" placeholder="Optional" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Department</label>
@@ -447,13 +471,21 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Email</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Hours/Wk</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">$/hr</th>
+                    <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">OT $/hr</th>
                     <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredResources.map(r => (
                     <tr key={r.id} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{r.name}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                        <button
+                          onClick={() => setProfileResourceId(r.id)}
+                          className="text-left hover:text-primary-600 dark:hover:text-primary-400 hover:underline transition-colors"
+                        >
+                          {r.name}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.role}</td>
                       <td className="px-4 py-3">
                         {r.resourceGroup ? (
@@ -474,6 +506,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.email}</td>
                       <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.capacityHoursPerWeek || 40}</td>
                       <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.costRateHourly != null ? `$${r.costRateHourly.toFixed(2)}` : '--'}</td>
+                      <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.overtimeRateHourly != null ? `$${r.overtimeRateHourly.toFixed(2)}` : '--'}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => openEdit(r)} className="p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit resource"><Edit2 className="w-3.5 h-3.5" /></button>
@@ -565,8 +598,13 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                     {workload.map(entry => (
                       <tr key={entry.resourceId} className="border-t border-gray-100 dark:border-gray-700">
                         <td className="sticky left-0 bg-white dark:bg-gray-800 z-10 px-4 py-3">
-                          <div className="font-medium text-gray-900 dark:text-white">{entry.resourceName}</div>
-                          <div className="text-xs text-gray-500">{entry.role}</div>
+                          <button
+                            onClick={() => setProfileResourceId(entry.resourceId)}
+                            className="text-left hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                          >
+                            <div className="font-medium text-gray-900 dark:text-white hover:underline">{entry.resourceName}</div>
+                            <div className="text-xs text-gray-500">{entry.role}</div>
+                          </button>
                         </td>
                         <td className="px-3 py-3">
                           <span
@@ -583,14 +621,20 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                         </td>
                         {entry.weeks.map((w, i) => {
                           const pct = Math.round(w.utilization);
+                          const actual = w.actual ?? 0;
                           return (
                             <td key={i} className="px-1 py-3 text-center">
                               <div
-                                className="mx-auto w-10 h-8 rounded flex items-center justify-center text-[10px] font-bold text-white"
+                                className="mx-auto w-14 h-10 rounded flex flex-col items-center justify-center text-white"
                                 style={{ backgroundColor: utilColor(pct), opacity: pct === 0 ? 0.15 : 0.85 }}
-                                title={`${w.allocated}h / ${w.capacity}h (${pct}%)${w.cost > 0 ? ` — $${w.cost.toLocaleString()}` : ''}`}
+                                title={`Allocated: ${w.allocated}h\nActual: ${actual}h\nCapacity: ${w.capacity}h\nUtilization: ${pct}%${w.cost > 0 ? `\nCost: $${w.cost.toLocaleString()}` : ''}`}
                               >
-                                {pct > 0 ? `${pct}%` : ''}
+                                {pct > 0 ? (
+                                  <>
+                                    <span className="text-[9px] font-bold leading-tight">{actual > 0 ? actual : '-'}/{w.allocated}h</span>
+                                    <span className="text-[8px] opacity-80">{pct}%</span>
+                                  </>
+                                ) : ''}
                               </div>
                             </td>
                           );
@@ -602,8 +646,9 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
               </div>
             )}
             {workload.length > 0 && (
-              <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 flex items-center gap-4 text-xs text-gray-500">
-                <span className="font-medium">Utilization:</span>
+              <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 flex items-center gap-4 flex-wrap text-xs text-gray-500">
+                <span className="font-medium">Cells show actual/allocated hours.</span>
+                <span className="border-l border-gray-300 dark:border-gray-600 pl-3 font-medium">Utilization:</span>
                 {[
                   { label: '< 80% Under', color: UTIL_COLORS.low },
                   { label: '80-100% Optimal', color: UTIL_COLORS.optimal },
@@ -802,6 +847,13 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
           )}
         </div>
       )}
+
+      {/* ── Role Capacity sub-tab (#5) ── */}
+      {activeSubTab === 'capacity' && <RoleCapacityView />}
+
+      {/* Modals */}
+      {showImportModal && <ResourceImportModal onClose={() => setShowImportModal(false)} />}
+      {profileResourceId && <ResourceProfileModal resourceId={profileResourceId} onClose={() => setProfileResourceId(null)} />}
     </div>
   );
 }

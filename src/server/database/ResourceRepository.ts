@@ -23,6 +23,7 @@ function rowToResource(row: any): Resource {
     skills: parseSkills(row.skills),
     isActive: Boolean(row.is_active),
     costRateHourly: row.cost_rate_hourly != null ? Number(row.cost_rate_hourly) : null,
+    overtimeRateHourly: row.overtime_rate_hourly != null ? Number(row.overtime_rate_hourly) : null,
     resourceGroup: row.resource_group || null,
     userId: row.user_id || null,
     calendarTemplateId: row.calendar_template_id || null,

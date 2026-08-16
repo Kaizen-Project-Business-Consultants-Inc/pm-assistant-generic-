@@ -2548,6 +2548,64 @@ Resources can be linked to a user account via a `userId` field on the resource r
 
 ---
 
+## 52. Resource Management Enhancements (Phase 2)
+
+Six additional resource management features closing gaps identified in an audit against MS Project, Primavera, Smartsheet, and Monday.com.
+
+### Actual vs Planned Overlay
+
+Workload heatmap cells now display **actual/allocated hours** (e.g., "28/40h") with utilization percentage below. Hover tooltip shows full breakdown: allocated, actual, capacity, utilization %, and cost. Both the project-level heatmap (ResourcesTab) and the standalone WorkloadHeatmap component show this overlay. Legend updated to explain the cell format.
+
+### Bulk Resource Import (CSV)
+
+Import resources in bulk via a CSV file:
+
+- **Endpoint:** `POST /api/v1/resources/import` — accepts `{ csv: string }` (raw CSV text, max 5MB, max 200 rows)
+- **Expected columns:** name, role, email, capacityHoursPerWeek, skills (semicolon-separated), costRateHourly, resourceGroup
+- **Returns:** `{ created: number, errors: [{ row, error }], total: number }`
+- **UI:** "Import CSV" button on the Team sub-tab opens a modal with drag-and-drop file upload, preview table, and import results with error details
+
+### Resource Profile Modal
+
+Click any resource name (in Team table or Workload heatmap) to open a profile modal showing:
+
+- Resource details (name, role, email, department, skills with proficiency)
+- Summary cards (capacity, active assignments, utilization %, cost rate)
+- Current assignments table with task names, hours/week, and date range
+- Embedded utilization trend chart (reuses `UtilizationTrendChart`)
+- **Endpoint:** `GET /api/v1/resources/:id/profile` — returns resource + assignments + summary
+
+### Rate Types (Overtime)
+
+Resources can now have an **overtime rate** in addition to the standard cost rate:
+
+- **New column:** `overtime_rate_hourly` on `resources` table (migration 080)
+- **New column:** `rate_type` ENUM('standard','overtime') on `time_entries` table (migration 080)
+- **Cost calculation:** When time entries have `rate_type='overtime'`, those hours are costed at the overtime rate. Falls back to `costRateHourly * 1.5` if no overtime rate is set.
+- **UI:** "OT Rate ($/hr)" field in the resource form and column in the resource table
+
+### Capacity Planning by Role
+
+A new **Role Capacity** sub-tab on the Resources page shows capacity vs demand aggregated by role:
+
+- **Endpoint:** `GET /api/v1/resources/capacity-by-role` — groups resources by role, sums capacity and allocated hours per role per week (12-week window)
+- **Color coding:** Green (surplus >20%), Yellow (tight 0-20%), Red (over-committed)
+- Each cell shows allocated/capacity hours and surplus/deficit
+- Useful for identifying which roles are bottlenecks vs overstaffed
+
+### Effort-Driven Scheduling
+
+Tasks can be marked as **effort-driven**, where duration is a function of work hours and assigned resources:
+
+- **New columns:** `work_hours` DECIMAL and `effort_driven` TINYINT on `tasks` table (migration 081)
+- **Logic:** When `effort_driven = true` and task assignments change, duration is recalculated: `duration = work_hours / (sum of resource hours per day)`
+- Hours per day derived from each resource's `capacityHoursPerWeek / 5`, weighted by allocation percentage
+- End date recalculated skipping weekends
+- **UI:** "Work Hours" number input + "Effort Driven" checkbox in the task edit form (TaskFormModal)
+- Recalculation triggers on `addAssignment()` and `removeAssignment()` in TaskAssignmentService
+
+---
+
 ## 50. Cross-Device View Preferences
 
 UI layout preferences are persisted server-side so they follow the user across devices and browsers. The following preferences are synced:

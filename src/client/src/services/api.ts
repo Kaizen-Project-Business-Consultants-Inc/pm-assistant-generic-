@@ -877,6 +877,21 @@ class ApiService {
     return response.data;
   }
 
+  async importResources(csv: string) {
+    const response = await this.api.post('/resources/import', { csv });
+    return response.data;
+  }
+
+  async getResourceProfile(id: string) {
+    const response = await this.api.get(`/resources/${id}/profile`);
+    return response.data;
+  }
+
+  async getCapacityByRole() {
+    const response = await this.api.get('/resources/capacity-by-role');
+    return response.data;
+  }
+
   // Calendar Templates
   async getCalendarTemplates() {
     const response = await this.api.get('/resources/calendar-templates');

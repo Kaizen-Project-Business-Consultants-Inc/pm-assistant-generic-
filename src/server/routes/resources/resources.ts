@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { parse as csvParse } from 'csv-parse/sync';
 import { resourceService, normalizeSkills } from '../../services/ResourceService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -22,6 +23,7 @@ const createResourceSchema = z.object({
   skills: z.array(skillSchema).default([]),
   isActive: z.boolean().default(true),
   costRateHourly: z.number().min(0).nullable().default(null),
+  overtimeRateHourly: z.number().min(0).nullable().default(null),
   resourceGroup: z.string().max(100).nullable().default(null),
   userId: z.string().uuid().nullable().default(null),
   calendarTemplateId: z.string().uuid().nullable().default(null),
@@ -179,6 +181,165 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       logger.error('Quick-assign error', { error });
       return reply.status(400).send({ error: 'Invalid quick-assign data' });
     }
+  });
+
+  // POST /resources/import — Bulk CSV import (#2)
+  fastify.post('/import', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const body = z.object({ csv: z.string().min(1).max(5 * 1024 * 1024) }).parse(request.body);
+      const records: any[] = csvParse(body.csv, { columns: true, skip_empty_lines: true, trim: true, bom: true });
+
+      if (records.length === 0) return reply.status(400).send({ error: 'CSV contains no data rows' });
+      if (records.length > 200) return reply.status(400).send({ error: 'Maximum 200 resources per import' });
+
+      const results: { created: number; errors: Array<{ row: number; error: string }> } = { created: 0, errors: [] };
+
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i];
+        const name = (row.name || row.Name || '').trim();
+        const role = (row.role || row.Role || '').trim();
+        const email = (row.email || row.Email || '').trim();
+
+        if (!name || !role || !email) {
+          results.errors.push({ row: i + 2, error: 'Missing required field (name, role, or email)' });
+          continue;
+        }
+
+        const emailValid = z.string().email().safeParse(email);
+        if (!emailValid.success) {
+          results.errors.push({ row: i + 2, error: `Invalid email: ${email}` });
+          continue;
+        }
+
+        const capacityRaw = row.capacityHoursPerWeek || row.capacity || row['Hours/Week'] || '40';
+        const capacity = parseInt(capacityRaw) || 40;
+        const costRaw = row.costRateHourly || row.costRate || row['Cost Rate'] || '';
+        const costRate = costRaw ? parseFloat(costRaw) : null;
+        const skillsRaw = row.skills || row.Skills || '';
+        const skills = skillsRaw ? skillsRaw.split(';').map((s: string) => s.trim()).filter(Boolean).map((s: string) => ({ name: s, level: 3 })) : [];
+        const group = (row.resourceGroup || row.department || row.Department || '').trim() || null;
+
+        try {
+          await resourceService.createResource({
+            name, role, email,
+            capacityHoursPerWeek: capacity,
+            skills,
+            isActive: true,
+            costRateHourly: costRate != null && !isNaN(costRate) ? costRate : null,
+            overtimeRateHourly: null,
+            resourceGroup: group,
+            userId: null,
+            calendarTemplateId: null,
+          });
+          results.created++;
+        } catch (err: any) {
+          results.errors.push({ row: i + 2, error: err.message || 'Creation failed' });
+        }
+      }
+
+      return { ...results, total: records.length };
+    } catch (error: any) {
+      logger.error('Resource import error', { error });
+      if (error?.issues) return reply.status(400).send({ error: 'Invalid request data' });
+      return reply.status(400).send({ error: error.message || 'CSV parsing failed' });
+    }
+  });
+
+  // GET /resources/:id/profile — Resource profile with assignments (#3)
+  fastify.get('/:id/profile', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const resource = await resourceService.findResourceById(id);
+    if (!resource) return reply.status(404).send({ error: 'Resource not found' });
+
+    const assignments = await resourceService.findAssignmentsByResource(id);
+
+    // Gather task names for each assignment
+    const taskDetails: Array<{ assignmentId: string; taskId: string; taskName: string; scheduleId: string; hoursPerWeek: number; startDate: string; endDate: string }> = [];
+    for (const a of assignments) {
+      const task = await scheduleService.findTaskById(a.taskId);
+      taskDetails.push({
+        assignmentId: a.id,
+        taskId: a.taskId,
+        taskName: task?.name || 'Unknown Task',
+        scheduleId: a.scheduleId,
+        hoursPerWeek: a.hoursPerWeek,
+        startDate: a.startDate,
+        endDate: a.endDate,
+      });
+    }
+
+    // Compute summary
+    const totalAllocatedHours = assignments.reduce((s, a) => s + a.hoursPerWeek, 0);
+    const utilization = resource.capacityHoursPerWeek > 0
+      ? Math.round((totalAllocatedHours / resource.capacityHoursPerWeek) * 100)
+      : 0;
+
+    return {
+      resource,
+      assignments: taskDetails,
+      summary: {
+        totalAllocatedHours,
+        capacityHoursPerWeek: resource.capacityHoursPerWeek,
+        utilization,
+        activeAssignments: assignments.length,
+      },
+    };
+  });
+
+  // GET /resources/capacity-by-role — Capacity planning by role (#5)
+  fastify.get('/capacity-by-role', { preHandler: [requireScope('read')] }, async (_request: FastifyRequest, _reply: FastifyReply) => {
+    const resources = await resourceService.findAllResources();
+    const allAssignments = await resourceService.findAllAssignments();
+
+    const DAY_MS = 86_400_000;
+    const WEEK_MS = 7 * DAY_MS;
+    const now = new Date();
+    const startWeek = new Date(now);
+    startWeek.setDate(startWeek.getDate() - ((startWeek.getDay() + 6) % 7));
+
+    const weeks: Date[] = [];
+    for (let i = 0; i < 12; i++) {
+      weeks.push(new Date(startWeek.getTime() + i * WEEK_MS));
+    }
+
+    // Group resources by role
+    const roleMap = new Map<string, typeof resources>();
+    for (const r of resources) {
+      if (!r.isActive) continue;
+      const arr = roleMap.get(r.role) || [];
+      arr.push(r);
+      roleMap.set(r.role, arr);
+    }
+
+    const roles = [...roleMap.entries()].map(([role, roleResources]) => {
+      const resourceIds = new Set(roleResources.map(r => r.id));
+      const totalCapacity = roleResources.reduce((s, r) => s + r.capacityHoursPerWeek, 0);
+      const roleAssignments = allAssignments.filter(a => resourceIds.has(a.resourceId));
+
+      const weeklyData = weeks.map(weekStart => {
+        const weekEnd = new Date(weekStart.getTime() + WEEK_MS);
+        let allocated = 0;
+        for (const a of roleAssignments) {
+          const aStart = new Date(a.startDate).getTime();
+          const aEnd = new Date(a.endDate).getTime();
+          if (aStart < weekEnd.getTime() && aEnd >= weekStart.getTime()) {
+            allocated += a.hoursPerWeek;
+          }
+        }
+        const surplus = totalCapacity - allocated;
+        return {
+          weekStart: weekStart.toISOString().slice(0, 10),
+          capacity: totalCapacity,
+          allocated,
+          surplus,
+          status: surplus > totalCapacity * 0.2 ? 'surplus' as const : surplus >= 0 ? 'tight' as const : 'over' as const,
+        };
+      });
+
+      return { role, resourceCount: roleResources.length, totalCapacity, weeks: weeklyData };
+    });
+
+    return { roles, weekHeaders: weeks.map(w => w.toISOString().slice(0, 10)) };
   });
 }
 

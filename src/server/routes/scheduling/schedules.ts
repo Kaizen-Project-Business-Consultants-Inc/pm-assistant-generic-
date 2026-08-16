@@ -61,6 +61,8 @@ const createTaskSchema = z.object({
   actualCost: z.number().min(0).optional(),
   constraintType: z.enum(['ASAP', 'ALAP', 'SNET', 'SNLT', 'FNET', 'FNLT', 'MSO', 'MFO']).optional(),
   constraintDate: z.string().optional(),
+  workHours: z.number().min(0).optional(),
+  effortDriven: z.boolean().optional(),
   assignments: z.array(z.object({
     resourceId: z.string(),
     allocationPct: z.number().int().min(1).max(100).default(100),

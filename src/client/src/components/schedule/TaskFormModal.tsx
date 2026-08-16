@@ -42,6 +42,8 @@ export interface TaskFormData {
   actualCost: string;
   constraintType: string;
   constraintDate: string;
+  workHours: string;
+  effortDriven: boolean;
   assignments: Array<{ resourceId: string; allocationPct: number; roleOnTask: string }>;
 }
 
@@ -121,6 +123,8 @@ export function TaskFormModal({
     actualCost: '',
     constraintType: 'ASAP',
     constraintDate: '',
+    workHours: '',
+    effortDriven: false,
     assignments: [],
   });
 
@@ -158,6 +162,8 @@ export function TaskFormModal({
         actualCost: task.actualCost != null ? String(task.actualCost) : '',
         constraintType: task.constraintType || 'ASAP',
         constraintDate: task.constraintDate || '',
+        workHours: task.workHours != null ? String(task.workHours) : '',
+        effortDriven: task.effortDriven || false,
         assignments: task.assignments?.map(a => ({
           resourceId: a.resourceId,
           allocationPct: a.allocationPct ?? 100,
@@ -631,6 +637,37 @@ export function TaskFormModal({
             />
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Mark as Milestone</span>
           </label>
+
+          {/* Effort-Driven Scheduling */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Work Hours</label>
+              <input
+                type="number"
+                name="workHours"
+                value={form.workHours}
+                onChange={(e) => setForm((prev) => ({ ...prev, workHours: e.target.value }))}
+                className="input w-full"
+                min="0"
+                step="0.5"
+                placeholder="Total work effort"
+              />
+            </div>
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.effortDriven}
+                  onChange={(e) => setForm((prev) => ({ ...prev, effortDriven: e.target.checked }))}
+                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Effort Driven</span>
+              </label>
+            </div>
+          </div>
+          {form.effortDriven && (
+            <p className="text-[10px] text-gray-400 -mt-2">Duration auto-adjusts when resources are assigned. Work stays constant.</p>
+          )}
 
           {/* Constraint */}
           <div className="grid grid-cols-2 gap-4">

@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from '../database/connection';
+import { resourceRepository } from '../database/ResourceRepository';
 
 export interface TaskAssignment {
   id: string;
@@ -93,7 +94,9 @@ export class TaskAssignmentService {
       'SELECT * FROM task_assignments WHERE task_id = ? AND resource_id = ?',
       [taskId, data.resourceId],
     );
-    return rowToAssignment(rows[0]);
+    const assignment = rowToAssignment(rows[0]);
+    await this.recalcEffortDriven(taskId);
+    return assignment;
   }
 
   async removeAssignment(taskId: string, resourceId: string): Promise<boolean> {
@@ -101,7 +104,54 @@ export class TaskAssignmentService {
       'DELETE FROM task_assignments WHERE task_id = ? AND resource_id = ?',
       [taskId, resourceId],
     );
-    return (result.affectedRows ?? 0) > 0;
+    const removed = (result.affectedRows ?? 0) > 0;
+    if (removed) {
+      await this.recalcEffortDriven(taskId);
+    }
+    return removed;
+  }
+
+  /** Recalculate duration for effort-driven tasks when assignments change. */
+  async recalcEffortDriven(taskId: string): Promise<void> {
+    const taskRows = await databaseService.query(
+      'SELECT work_hours, effort_driven, start_date FROM tasks WHERE id = ?',
+      [taskId],
+    );
+    if (taskRows.length === 0) return;
+    const task = taskRows[0];
+    if (!task.effort_driven || !task.work_hours || !task.start_date) return;
+
+    const workHours = Number(task.work_hours);
+    const assignments = await this.getForTask(taskId);
+    if (assignments.length === 0) return;
+
+    // Calculate average hours per day across assigned resources
+    let totalHoursPerDay = 0;
+    for (const a of assignments) {
+      const resource = await resourceRepository.findById(a.resourceId);
+      const hoursPerDay = resource ? resource.capacityHoursPerWeek / 5 : 8;
+      totalHoursPerDay += hoursPerDay * ((a.allocationPct || 100) / 100);
+    }
+
+    if (totalHoursPerDay <= 0) return;
+
+    const durationDays = Math.max(1, Math.ceil(workHours / totalHoursPerDay));
+    const startDate = new Date(task.start_date);
+    if (isNaN(startDate.getTime())) return;
+
+    // Calculate end date (skip weekends)
+    let remaining = durationDays;
+    const endDate = new Date(startDate);
+    while (remaining > 0) {
+      endDate.setDate(endDate.getDate() + 1);
+      const dow = endDate.getDay();
+      if (dow !== 0 && dow !== 6) remaining--;
+    }
+
+    await databaseService.query(
+      'UPDATE tasks SET end_date = ?, estimated_days = ? WHERE id = ?',
+      [endDate.toISOString().slice(0, 10), durationDays, taskId],
+    );
   }
 }
 

@@ -70,6 +70,8 @@ export interface Task {
   constraintType?: 'ASAP' | 'ALAP' | 'SNET' | 'SNLT' | 'FNET' | 'FNLT' | 'MSO' | 'MFO';
   constraintDate?: string;
   originalTaskId?: string;
+  workHours?: number;
+  effortDriven?: boolean;
   sortOrder: number;
   createdBy: string;
   createdAt: string;
@@ -126,6 +128,8 @@ export interface CreateTaskData {
   actualCost?: number;
   constraintType?: 'ASAP' | 'ALAP' | 'SNET' | 'SNLT' | 'FNET' | 'FNLT' | 'MSO' | 'MFO';
   constraintDate?: Date | string;
+  workHours?: number;
+  effortDriven?: boolean;
   assignments?: Array<{ resourceId: string; allocationPct?: number; roleOnTask?: string; hoursPlanned?: number }>;
 }
 
@@ -446,8 +450,8 @@ export class ScheduleService {
           start_date, end_date, progress_percentage, dependency, dependency_type,
           risks, issues, comments, parent_task_id, is_milestone, dependency_lag_days, sort_order, created_by,
           recurrence_rule, recurrence_parent_id, is_recurrence_template, budget_allocated, actual_cost,
-          constraint_type, constraint_date)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          constraint_type, constraint_date, work_hours, effort_driven)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           data.scheduleId,
@@ -480,6 +484,8 @@ export class ScheduleService {
           data.actualCost ?? null,
           data.constraintType || 'ASAP',
           toDateStr(data.constraintDate) || null,
+          data.workHours ?? null,
+          data.effortDriven ? 1 : 0,
         ],
       );
 
@@ -585,6 +591,8 @@ export class ScheduleService {
       actualCost: 'actual_cost',
       constraintType: 'constraint_type',
       constraintDate: 'constraint_date',
+      workHours: 'work_hours',
+      effortDriven: 'effort_driven',
     };
 
     const toDateStr = TaskRepository.toDateStr;
@@ -975,8 +983,8 @@ export class ScheduleService {
           start_date, end_date, progress_percentage, dependency, dependency_type,
           risks, issues, comments, parent_task_id, is_milestone, dependency_lag_days, sort_order, created_by,
           recurrence_rule, recurrence_parent_id, is_recurrence_template, budget_allocated, actual_cost,
-          constraint_type, constraint_date, original_task_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          constraint_type, constraint_date, work_hours, effort_driven, original_task_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           newTaskId, newId, t.name, t.description || null, t.status, t.priority, t.assignedTo || null,
           t.dueDate || null, t.estimatedDays ?? null, t.estimatedDurationHours ?? null, t.actualDurationHours ?? null,
@@ -987,7 +995,8 @@ export class ScheduleService {
           t.isMilestone ? 1 : 0, t.dependencyLagDays ?? 0, t.sortOrder, userId,
           t.recurrenceRule || null, null, t.isRecurrenceTemplate ? 1 : 0,
           t.budgetAllocated ?? null, t.actualCost ?? null,
-          t.constraintType || 'ASAP', t.constraintDate || null, t.id,
+          t.constraintType || 'ASAP', t.constraintDate || null,
+          t.workHours ?? null, t.effortDriven ? 1 : 0, t.id,
         ],
       );
     }

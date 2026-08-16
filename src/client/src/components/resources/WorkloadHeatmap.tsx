@@ -130,13 +130,19 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                     </td>
                     {rw.weeks.slice(0, 12).map((w, i) => {
                       const { bg, text } = getHeatColor(w.utilization);
+                      const actual = w.actual ?? 0;
                       return (
                         <td key={i} className="px-1 py-1 text-center">
                           <div
                             className={`rounded px-1 py-1 ${bg} ${text} font-medium`}
-                            title={`${rw.resourceName} — Week of ${formatWeek(w.weekStart)}: ${w.allocated}h / ${w.capacity}h (${w.utilization}%)${w.cost && w.cost > 0 ? ` — $${w.cost.toLocaleString()}` : ''}`}
+                            title={`${rw.resourceName} — Week of ${formatWeek(w.weekStart)}\nAllocated: ${w.allocated}h\nActual: ${actual}h\nCapacity: ${w.capacity}h\nUtilization: ${w.utilization}%${w.cost && w.cost > 0 ? `\nCost: $${w.cost.toLocaleString()}` : ''}`}
                           >
-                            {w.utilization > 0 ? `${w.utilization}%` : '-'}
+                            {w.utilization > 0 ? (
+                              <div className="leading-tight">
+                                <div className="text-[9px]">{actual > 0 ? `${actual}` : '-'}/{w.allocated}h</div>
+                                <div className="text-[8px] opacity-70">{w.utilization}%</div>
+                              </div>
+                            ) : '-'}
                           </div>
                         </td>
                       );
@@ -149,8 +155,9 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
         )}
 
         {/* Legend */}
-        <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-          <span className="font-medium">Utilization:</span>
+        <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4 flex-wrap text-xs text-gray-500 dark:text-gray-400">
+          <span className="font-medium">Cells show actual/allocated hours.</span>
+          <span className="border-l border-gray-300 dark:border-gray-600 pl-3 font-medium">Utilization:</span>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800" />
             <span>&lt;50%</span>

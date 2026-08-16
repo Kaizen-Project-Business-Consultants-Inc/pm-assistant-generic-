@@ -23,6 +23,7 @@ export interface Resource {
   skills: SkillWithProficiency[];
   isActive: boolean;
   costRateHourly: number | null;
+  overtimeRateHourly: number | null;
   resourceGroup: string | null;
   userId: string | null;
   calendarTemplateId: string | null;
@@ -115,6 +116,10 @@ export class ResourceService {
 
   async findAssignmentsByResource(resourceId: string): Promise<ResourceAssignment[]> {
     return resourceRepository.findAssignmentsByResource(resourceId);
+  }
+
+  async findAllAssignments(): Promise<ResourceAssignment[]> {
+    return resourceRepository.findAllAssignments();
   }
 
   async checkAssignmentConflicts(data: {
@@ -223,12 +228,18 @@ export class ResourceService {
 
       // Pre-fetch actual hours from time entries if resource is linked to a user
       let actualByWeek: Map<string, number> | null = null;
+      let rateByWeek: Map<string, { standard: number; overtime: number }> | null = null;
       if (resource.userId) {
         const firstWeek = weeks[0].toISOString().slice(0, 10);
         const lastWeekEnd = new Date(weeks[weeks.length - 1].getTime() + WEEK_MS).toISOString().slice(0, 10);
         const actuals = await timeEntryRepository.sumHoursByUserAndWeekRange(resource.userId, firstWeek, lastWeekEnd);
         actualByWeek = new Map(actuals.map(a => [a.weekStart, a.totalHours]));
+        // Fetch rate-type breakdown for cost calculation
+        const rateBreakdown = await timeEntryRepository.sumHoursByRateTypeAndWeekRange(resource.userId, firstWeek, lastWeekEnd);
+        rateByWeek = new Map(rateBreakdown.map(r => [r.weekStart, { standard: r.standardHours, overtime: r.overtimeHours }]));
       }
+
+      const overtimeRate = resource.overtimeRateHourly ?? (rate ? rate * 1.5 : null);
 
       const weeklyData: WeeklyUtilization[] = [];
       for (const weekStart of weeks) {
@@ -251,7 +262,14 @@ export class ResourceService {
         if (utilization > 100) isOverAllocated = true;
         totalUtilization += utilization;
 
-        const weeklyCost = rate ? Math.round(allocated * rate * 100) / 100 : 0;
+        // Cost: use rate-type breakdown if available, otherwise fall back to allocated * rate
+        let weeklyCost = 0;
+        const rb = rateByWeek?.get(weekKey);
+        if (rate && rb && (rb.standard > 0 || rb.overtime > 0)) {
+          weeklyCost = Math.round((rb.standard * rate + rb.overtime * (overtimeRate ?? rate)) * 100) / 100;
+        } else if (rate) {
+          weeklyCost = Math.round(allocated * rate * 100) / 100;
+        }
         totalCost += weeklyCost;
 
         weeklyData.push({

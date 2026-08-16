@@ -48,6 +48,8 @@ export interface GanttTask {
   isSummary?: boolean;
   constraintType?: string;
   constraintDate?: string;
+  workHours?: number;
+  effortDriven?: boolean;
   assignments?: Array<{ id: string; resourceId: string; allocationPct: number; roleOnTask?: string; hoursPlanned?: number }>;
 }
 

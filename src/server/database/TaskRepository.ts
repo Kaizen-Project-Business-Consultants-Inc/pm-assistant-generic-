@@ -45,6 +45,8 @@ function rowToTask(row: any): Task {
     isSummary: row.is_summary === 1 || row.is_summary === true,
     constraintType: row.constraint_type || 'ASAP',
     constraintDate: row.constraint_date ? String(row.constraint_date).slice(0, 10) : undefined,
+    workHours: row.work_hours != null ? Number(row.work_hours) : undefined,
+    effortDriven: row.effort_driven === 1 || row.effort_driven === true,
     originalTaskId: row.original_task_id ?? undefined,
     sortOrder: row.sort_order != null ? Number(row.sort_order) : 0,
     createdBy: row.created_by,

@@ -285,6 +285,7 @@ export async function importRoutes(fastify: FastifyInstance) {
                 skills: [],
                 isActive: true,
                 costRateHourly: null,
+                overtimeRateHourly: null,
                 resourceGroup: null,
                 userId: null,
                 calendarTemplateId: null,
