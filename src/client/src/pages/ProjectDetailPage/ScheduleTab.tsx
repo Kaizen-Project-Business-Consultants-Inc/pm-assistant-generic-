@@ -1167,7 +1167,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
           onTaskSelect={(task) => setActiveTaskId(task.id)}
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}
-          onTaskUpdate={(taskId, data) => updateMutation.mutate({ taskId, data })}
+          onTaskUpdate={updateTaskWithUndo}
           onTaskReorder={handleTaskReorder}
           onQuickAdd={(name) => {
             createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '' } as any);
@@ -1176,6 +1176,23 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
           cpmData={cpmData}
           baselineData={comparison}
           scheduleStartDate={schedule.startDate}
+          onBulkUpdate={handleBulkUpdate}
+          onBulkDelete={handleBulkDelete}
+          onDeleteTask={(taskId) => deleteMutation.mutate(taskId)}
+          onInsertAfter={(afterTaskId, parentTaskId) => {
+            setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, afterTaskId });
+            setShowAddForm(true);
+          }}
+          onInsertBefore={(beforeTaskId, parentTaskId) => {
+            setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, beforeTaskId });
+            setShowAddForm(true);
+          }}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          undoDescription={undoDescription}
+          redoDescription={redoDescription}
+          onUndo={undo}
+          onRedo={redo}
         />
       )}
       {viewMode === 'calendar' && (

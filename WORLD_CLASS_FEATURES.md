@@ -187,7 +187,7 @@ An agentic AI project management platform that combines the scheduling power of 
 
 ### 2.5 Calendar & Table Views
 - **Calendar view** with three display modes: Month (default with drag-to-reschedule), Week (7-column with full task cards), Day (single-day detail view). Toggle via header buttons. Navigation arrows and Today button in all modes. Drag-to-reschedule preserves task duration.
-- **Table view** with inline editing (spreadsheet-like)
+- **Table view** with inline editing (spreadsheet-like), full feature parity with Gantt: right-click context menu (Insert Before/After, Edit, Indent, Outdent, Delete), Tab/Shift+Tab indent/outdent, Delete key with confirmation modal, undo/redo buttons and Ctrl+Z/Y support, bulk operations routed through undo history
 - MS Project-style column picker: 22 columns across 4 groups (Standard, Scheduling/CPM, Baseline, Other)
 - **Row number (#) column** — always visible, sequential numbering, cannot be toggled off
 - **Multi-predecessor support** — up to 20 predecessors per task, each with its own type (FS/SS/FF/SF) and lag days, stored in a `task_dependencies` junction table

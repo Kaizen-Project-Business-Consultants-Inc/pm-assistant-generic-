@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowUpDown, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Pencil, Check, Loader2, X, Trash2, CheckSquare, Download, ChevronDown, ChevronRight, Layers } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Pencil, Check, Loader2, X, Trash2, CheckSquare, Download, ChevronDown, ChevronRight, Layers, Undo2, Redo2, CornerDownRight, CornerDownLeft, PlusCircle } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
 import { apiService } from '../../services/api';
 import { SavedViewsDropdown, type SavedView } from './SavedViewsDropdown';
@@ -58,6 +58,17 @@ interface TableViewProps {
   cpmData?: { tasks: CpmTaskData[]; criticalPathTaskIds: string[] };
   baselineData?: { taskVariances: BaselineTaskVariance[] };
   scheduleStartDate?: string;
+  onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
+  onBulkDelete?: (taskIds: string[]) => Promise<void>;
+  onDeleteTask?: (taskId: string) => void;
+  onInsertAfter?: (afterTaskId: string, parentTaskId?: string) => void;
+  onInsertBefore?: (beforeTaskId: string, parentTaskId?: string) => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  undoDescription?: string;
+  redoDescription?: string;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 type GroupByField = '' | 'status' | 'priority' | 'assignedTo';
@@ -73,7 +84,7 @@ function addDaysToDate(baseDate: string, days: number): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate }: TableViewProps) {
+export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
   const [sortField, setSortField] = useState<ColumnKey | null>(null);
@@ -687,7 +698,9 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     setBulkLoading(true);
     try {
       const taskIds = Array.from(selectedIds);
-      if (field === 'status') {
+      if (onBulkUpdate) {
+        await onBulkUpdate(taskIds, field, value);
+      } else if (field === 'status') {
         await apiService.bulkUpdateTaskStatus(scheduleId, taskIds, value);
       } else {
         await apiService.bulkUpdateTasks(
@@ -709,7 +722,11 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   const confirmAndDeleteTasks = async (taskIds: string[]) => {
     setBulkLoading(true);
     try {
-      await Promise.all(taskIds.map(id => apiService.deleteTask(scheduleId, id)));
+      if (onBulkDelete) {
+        await onBulkDelete(taskIds);
+      } else {
+        await Promise.all(taskIds.map(id => apiService.deleteTask(scheduleId, id)));
+      }
       queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
       showBulkSuccess(`Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`);
       clearBulkState();
@@ -731,19 +748,89 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
   const handleRowDelete = (taskId: string) => handleDeleteTasks([taskId]);
 
-  // Keyboard Delete key support
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; task: GanttTask } | null>(null);
+
+  // Keyboard Delete key + Tab indent/outdent support
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' && selectedIds.size > 0) {
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT';
+
+      // Delete key
+      if (e.key === 'Delete' && !isInput) {
+        if (selectedIds.size > 0) {
+          e.preventDefault();
+          handleBulkDelete();
+        } else if (activeTaskId) {
+          e.preventDefault();
+          handleDeleteTasks([activeTaskId]);
+        }
+      }
+
+      // Tab indent / Shift+Tab outdent
+      if (e.key === 'Tab' && !isInput) {
         e.preventDefault();
-        handleBulkDelete();
+        if (e.shiftKey) {
+          // Outdent
+          if (selectedIds.size > 0) {
+            const ids = Array.from(selectedIds);
+            for (const id of ids) {
+              const task = tasks.find(t => t.id === id);
+              if (task?.parentTaskId) {
+                const parent = tasks.find(t => t.id === task.parentTaskId);
+                if (onBulkUpdate) {
+                  onBulkUpdate([id], 'parentTaskId', parent?.parentTaskId || '');
+                } else {
+                  onTaskUpdate(id, { parentTaskId: parent?.parentTaskId || null });
+                }
+              }
+            }
+          } else if (activeTaskId) {
+            const task = tasks.find(t => t.id === activeTaskId);
+            if (task?.parentTaskId) {
+              const parent = tasks.find(t => t.id === task.parentTaskId);
+              onTaskUpdate(activeTaskId, { parentTaskId: parent?.parentTaskId || null });
+            }
+          }
+        } else {
+          // Indent — make child of task above
+          const targetIds = selectedIds.size > 0 ? Array.from(selectedIds) : activeTaskId ? [activeTaskId] : [];
+          if (targetIds.length > 0) {
+            const flatList = visibleSorted;
+            for (const id of targetIds) {
+              const idx = flatList.findIndex(t => t.id === id);
+              if (idx > 0) {
+                const above = flatList[idx - 1];
+                if (!targetIds.includes(above.id)) {
+                  if (onBulkUpdate) {
+                    onBulkUpdate([id], 'parentTaskId', above.id);
+                  } else {
+                    onTaskUpdate(id, { parentTaskId: above.id });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Escape to close context menu
+      if (e.key === 'Escape' && contextMenu) {
+        setContextMenu(null);
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [selectedIds]);
+  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate]);
+
+  // Click-away to dismiss context menu
+  useEffect(() => {
+    if (!contextMenu) return;
+    const dismiss = () => setContextMenu(null);
+    document.addEventListener('click', dismiss);
+    return () => document.removeEventListener('click', dismiss);
+  }, [contextMenu]);
 
   const renderSaveIndicator = (taskId: string, field: string) => {
     if (isSaving(taskId, field)) {
@@ -1282,6 +1369,26 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             </button>
           </div>
         )}
+        {onUndo && (
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={onUndo}
+              disabled={!canUndo}
+              className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title={undoDescription ? `Undo: ${undoDescription}` : 'Undo (Ctrl+Z)'}
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={onRedo}
+              disabled={!canRedo}
+              className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title={redoDescription ? `Redo: ${redoDescription}` : 'Redo (Ctrl+Y)'}
+            >
+              <Redo2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
         <button
           onClick={() => exportTasksCSV(visibleSorted, 'tasks')}
           className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -1494,6 +1601,10 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                     data-row-idx={rowIdx}
                     className={`border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-all duration-150 group cursor-pointer ${isSelected ? 'bg-primary-50/40 dark:bg-primary-900/20' : ''} ${activeTaskId === task.id ? 'ring-1 ring-inset ring-primary-200 dark:ring-primary-700 bg-primary-50/60 dark:bg-primary-900/30' : ''} ${isDragTarget ? 'border-t-2 border-t-primary-400' : ''} ${rowDrag?.taskId === task.id ? 'relative z-10 scale-[1.02] shadow-lg shadow-primary-200/40 dark:shadow-primary-900/60 bg-primary-50 dark:bg-primary-900/40 opacity-90' : ''}`}
                     onClick={() => onTaskSelect?.(task)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setContextMenu({ x: e.clientX, y: e.clientY, task });
+                    }}
                   >
                     <td className="px-2 py-2">
                       <div className="flex items-center gap-1">
@@ -1646,12 +1757,92 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         </table>
       </div>
 
+      {/* Right-click context menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[180px]"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {onInsertBefore && (
+            <button
+              className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={() => { onInsertBefore(contextMenu.task.id, contextMenu.task.parentTaskId || undefined); setContextMenu(null); }}
+            >
+              <PlusCircle className="w-3.5 h-3.5" /> Insert Before
+            </button>
+          )}
+          {onInsertAfter && (
+            <button
+              className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={() => { onInsertAfter(contextMenu.task.id, contextMenu.task.parentTaskId || undefined); setContextMenu(null); }}
+            >
+              <PlusCircle className="w-3.5 h-3.5" /> Insert After
+            </button>
+          )}
+          <button
+            className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+            onClick={() => { onTaskClick(contextMenu.task); setContextMenu(null); }}
+          >
+            <Pencil className="w-3.5 h-3.5" /> Edit Task
+          </button>
+          {contextMenu.task.parentTaskId && (
+            <button
+              className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={() => {
+                const parent = tasks.find(t => t.id === contextMenu.task.parentTaskId);
+                onTaskUpdate(contextMenu.task.id, { parentTaskId: parent?.parentTaskId || null });
+                setContextMenu(null);
+              }}
+            >
+              <CornerDownLeft className="w-3.5 h-3.5" /> Outdent
+            </button>
+          )}
+          {(() => {
+            const idx = visibleSorted.findIndex(t => t.id === contextMenu.task.id);
+            return idx > 0 ? (
+              <button
+                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={() => {
+                  const above = visibleSorted[idx - 1];
+                  if (onBulkUpdate) {
+                    onBulkUpdate([contextMenu.task.id], 'parentTaskId', above.id);
+                  } else {
+                    onTaskUpdate(contextMenu.task.id, { parentTaskId: above.id });
+                  }
+                  setContextMenu(null);
+                }}
+              >
+                <CornerDownRight className="w-3.5 h-3.5" /> Indent
+              </button>
+            ) : null;
+          })()}
+          <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+          <button
+            className="w-full text-left px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+            onClick={() => {
+              const ids = new Set(selectedIds);
+              ids.add(contextMenu.task.id);
+              handleDeleteTasks(Array.from(ids));
+              setContextMenu(null);
+            }}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {selectedIds.size > 0 && !selectedIds.has(contextMenu.task.id)
+              ? `Delete ${selectedIds.size + 1} Tasks`
+              : selectedIds.size > 1
+              ? `Delete ${selectedIds.size} Tasks`
+              : 'Delete Task'}
+          </button>
+        </div>
+      )}
+
       {pendingDeleteIds && (
         <ConfirmModal
           title="Delete Tasks"
           message={pendingDeleteIds.length === 1
-            ? 'Are you sure you want to delete this task? This cannot be undone.'
-            : `Are you sure you want to delete ${pendingDeleteIds.length} tasks? This cannot be undone.`}
+            ? 'Are you sure you want to delete this task?'
+            : `Are you sure you want to delete ${pendingDeleteIds.length} tasks?`}
           confirmLabel="Delete"
           isPending={bulkLoading}
           onConfirm={() => { confirmAndDeleteTasks(pendingDeleteIds); setPendingDeleteIds(null); }}

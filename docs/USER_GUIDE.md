@@ -484,6 +484,16 @@ Column selections are saved per schedule and persist across page reloads. All vi
 
 **MPP-Style Empty Rows** -- The bottom of the table shows 5-8 persistent empty rows (MS Project style) with continuation row numbers. Click into the Task Name cell of any empty row and start typing. Press **Enter** to create the task — the input clears and empty rows remain for the next entry. Press **Escape** to cancel.
 
+**Right-Click Context Menu** -- Right-click any task row to open a context menu with: Insert Before, Insert After, Edit Task, Indent, Outdent, and Delete. When multiple tasks are selected, Delete shows the total count and removes all selected tasks plus the right-clicked task.
+
+**Tab Indent / Shift+Tab Outdent** -- Select a task (or multi-select several) and press **Tab** to indent under the task above, or **Shift+Tab** to outdent to the grandparent level. Works identically to the Gantt chart.
+
+**Delete Key** -- Press **Delete** to remove the active task or all selected tasks. A confirmation modal appears showing how many tasks will be deleted. Deletions can be undone with **Ctrl+Z**.
+
+**Undo / Redo** -- The table toolbar includes Undo and Redo buttons (also accessible via **Ctrl+Z** / **Ctrl+Y**). All edits, bulk updates, and deletions are tracked in the undo history. Hover over the buttons to see what action will be undone or redone.
+
+**Bulk Operations with Undo** -- Multi-select tasks using checkboxes, then use the bulk toolbar to change status, priority, or assignee. All bulk operations are tracked in the undo history, so you can reverse them with Ctrl+Z.
+
 #### Saved Views
 
 Click the **Views** button next to the Columns picker to save and load named view configurations. Each saved view stores the current column selection and sort order. You can:
