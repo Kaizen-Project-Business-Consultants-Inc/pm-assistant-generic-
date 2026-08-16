@@ -248,12 +248,12 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
     }
   };
 
+  const { dialogRef, handleKeyDown } = useModal(isOpen, onClose);
+
   if (!isOpen) return null;
 
   const previewRows = parsed?.rows.slice(0, 10) ?? [];
   const mappedCount = Object.values(columnMap).filter(Boolean).length;
-
-  const { dialogRef, handleKeyDown } = useModal(isOpen, onClose);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

@@ -54,6 +54,8 @@ export function AIScanReviewModal({ isOpen, onClose, onImport, candidates, impor
     }
   }, [isOpen, candidates]);
 
+  const { dialogRef, handleKeyDown } = useModal(isOpen, onClose);
+
   if (!isOpen) return null;
 
   const toggleSelect = (idx: number) => {
@@ -111,7 +113,6 @@ export function AIScanReviewModal({ isOpen, onClose, onImport, candidates, impor
   };
 
   const selectedCount = selected.size;
-  const { dialogRef, handleKeyDown } = useModal(isOpen, onClose);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">

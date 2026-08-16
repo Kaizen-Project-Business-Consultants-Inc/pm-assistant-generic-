@@ -209,6 +209,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
     }
   };
 
+  const { dialogRef, handleKeyDown } = useModal(isOpen, onClose);
+
   if (!isOpen) return null;
 
   const statuses = STATUSES[form.type] || STATUSES.risk;
@@ -227,7 +229,6 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   const labelClass = 'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1';
 
   const typeLabel = RAID_TYPES.find(t => t.value === form.type)?.label || 'Item';
-  const { dialogRef, handleKeyDown } = useModal(isOpen, onClose);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
