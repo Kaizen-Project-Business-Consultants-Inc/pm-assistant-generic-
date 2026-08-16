@@ -160,7 +160,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
     ? pricingData.tiers.map(mapApiToPlan)
     : FALLBACK_PLANS;
 
-  const currentTier = user?.subscriptionTier || 'trial';
+  const currentTier = isAuthenticated ? (user?.subscriptionTier || 'trial') : null;
   const isSubscribed = currentTier === 'consultant' || currentTier === 'sme';
 
   const handleSubscribe = async (tier: string) => {
