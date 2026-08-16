@@ -713,7 +713,13 @@ export class PredictiveIntelligenceService {
       const budgetUtil = budgetAllocated > 0 ? (spent / budgetAllocated) * 100 : 0;
 
       // Weighted health: 40% schedule (progress), 30% budget, 30% general health
-      const scheduleHealth = Math.min(completion, 100);
+      // Planning/completed projects shouldn't be penalized for low/high progress
+      const scheduleHealth =
+        p.status === 'planning'
+          ? 75 // not yet started — neutral
+          : p.status === 'completed'
+            ? 100
+            : Math.min(completion, 100);
       const budgetHealth =
         budgetUtil <= 100
           ? 100 - budgetUtil * 0.5
