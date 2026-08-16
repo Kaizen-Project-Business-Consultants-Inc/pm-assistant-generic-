@@ -384,7 +384,7 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - **Undo/Redo**: Press **Ctrl+Z** to undo and **Ctrl+Y** (or **Ctrl+Shift+Z**) to redo inline edits, bar drag operations, row reorders, bulk updates, and delete operations (single or bulk). Task data is captured before deletion so undo can fully recreate the tasks via the API. Undo/redo buttons also appear in the Gantt toolbar with tooltips showing the action description. The undo stack holds up to 50 actions per session and resets on navigation or page refresh. Creating new tasks is not undoable.
 - **Keyboard navigation**: Use **Arrow keys** to move between cells in the grid like a spreadsheet. Press **Enter** or **F2** to start editing the focused cell. Press **Escape** to clear the focus. Arrow Up/Down also selects the row. Focus is indicated by a blue ring around the cell.
 - **Predecessor column (Pred)** shows all predecessors as a comma-separated list in compact row-number format (e.g. "3FS+2d,5SS,7") with a colour-coded health dot: green (done), yellow (in progress), red (overdue). Click to edit inline using the same MS Project notation.
-- **Dependency arrows** are drawn for each predecessor individually, colour-coded by that predecessor's health: green for completed, yellow for in-progress, red for overdue.
+- **Dependency arrows** are drawn for each predecessor individually, colour-coded by that predecessor's health: green for completed, yellow for in-progress, red for overdue. Hover over any arrow to see a tooltip showing the predecessor name, successor name, dependency type, and lag days.
 - **Drag-and-drop rescheduling**: Drag a bar to move the task to new dates. Drag the right edge to resize (change end date only). Changes automatically cascade through dependencies. The timeline **auto-scrolls** when you drag near the left or right edge of the viewport.
 - **Interactive dependency drawing**: Hover over a task bar to see connector dots at the left (start) and right (finish) edges. Drag from a dot to another task bar to create a dependency link. The dependency type (FS/SS/FF/SF) is determined by which edges you drag from and to. A dashed blue preview line and target row highlight guide you during the drag.
 - **Recurring task indicator**: Template tasks display a repeat icon on their bar.
@@ -394,6 +394,7 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - **Column header sort**: Click any column header in the left panel to sort rows ascending, then descending, then back to default (none). A ▲ or ▼ indicator appears in the header to show the active sort direction. Sort preserves task hierarchy — children are sorted within their own sibling group, not mixed across levels. Row drag reorder is disabled while a sort is active.
 - **Copy/Paste cells**: Press **Ctrl+C** to copy the focused cell's value to the clipboard. Press **Ctrl+V** to paste the clipboard value into the focused cell (paste only applies when the field types match). A green flash confirms the paste.
 - **Copy/Paste rows**: When no cell is focused, **Ctrl+C** copies the selected or active task(s) and **Ctrl+V** pastes them as new duplicate tasks with `" (copy)"` appended to each name. Useful for quickly creating similar tasks without re-entering data.
+- **Duplicate shortcut (Ctrl+D)**: Duplicates the selected or active task(s) in one step — equivalent to Ctrl+C then Ctrl+V. Works in both Gantt Chart and Table View.
 - **Column auto-fit**: **Double-click** the right border of any column header (the resize handle) to auto-fit the column width to its longest content value. Width is capped at 400px.
 - **Baseline bar refinement**: When a baseline is active, ghost bars are shown only for tasks whose baseline dates differ from their current dates. Tasks that are exactly on schedule show no ghost bar, keeping the chart uncluttered.
 - **Indent/Outdent**: Click a task to select it, then press **Tab** to indent it (makes it a child of the task immediately above it). Press **Shift+Tab** to outdent (promotes the task up one level to its parent's parent). Also works when a cell is focused via arrow keys. **Multi-select indent**: select multiple tasks via checkboxes (click the # header for all, or individual rows), then press **Tab** to indent them all under the task above the first selected task, or **Shift+Tab** to outdent them all. Selected tasks won't indent under each other. Both operations go through the standard update path and are automatically undoable with Ctrl+Z.
@@ -500,7 +501,7 @@ Column selections are saved per schedule and persist across page reloads. All vi
 
 **Cell Copy/Paste** -- When a cell is focused, press **Ctrl+C** to copy its value to the clipboard and **Ctrl+V** to paste from the clipboard into the focused cell (same field type only). A green flash confirms.
 
-**Copy/Paste Rows** -- When no cell is focused, press **Ctrl+C** to copy the selected or active task(s) and **Ctrl+V** to paste them as duplicates. Each copy has `" (copy)"` appended to its name. Other fields (dates, status, priority) are carried over from the original.
+**Copy/Paste Rows** -- When no cell is focused, press **Ctrl+C** to copy the selected or active task(s) and **Ctrl+V** to paste them as duplicates. Each copy has `" (copy)"` appended to its name. Other fields (dates, status, priority) are carried over from the original. Press **Ctrl+D** to duplicate in one step (no separate copy needed).
 
 **Resource Column** -- Enable the **Resource** column from the Columns picker to add and remove resource assignments inline — the same quick-assign chips available in the Gantt chart. Click **"+"** to open a searchable resource dropdown; hover a chip and click **"×"** to remove.
 
@@ -1604,6 +1605,7 @@ Destructive actions throughout the application (deleting integrations, change re
 | Ctrl+V (cell focused) | Paste clipboard value into focused cell (Gantt/Table) |
 | Ctrl+C (no cell focused) | Copy selected/active task(s) as row copy (Gantt/Table) |
 | Ctrl+V (no cell focused) | Paste copied tasks as duplicates with "(copy)" suffix (Gantt/Table) |
+| Ctrl+D | Duplicate selected/active task(s) in one step (Gantt/Table) |
 | Double-click column resize handle | Auto-fit column width to content (Gantt/Table) |
 
 ---

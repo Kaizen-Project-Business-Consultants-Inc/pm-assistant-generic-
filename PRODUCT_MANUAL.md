@@ -1647,7 +1647,7 @@ Each predecessor in the list displays a colour-coded health dot indicating that 
 | Yellow | Predecessor is **in progress** — being worked on |
 | Red | Predecessor is **overdue** — not completed and past its end date |
 
-Health badges appear in the Table view Predecessor column, the Gantt left panel Pred column, and Gantt bar tooltips. Dependency arrows on the Gantt chart are drawn for each predecessor and colour-coded by health status (green, yellow, or red).
+Health badges appear in the Table view Predecessor column, the Gantt left panel Pred column, and Gantt bar tooltips. Dependency arrows on the Gantt chart are drawn for each predecessor and colour-coded by health status (green, yellow, or red). Hovering over any dependency arrow shows a native tooltip with the predecessor name, successor name, dependency type, and lag days (e.g., "Design → Build (FS, 2d lag)").
 
 ### Interactive Dependency Drawing (Gantt)
 
@@ -2671,6 +2671,7 @@ When no cell is focused, Ctrl+C / Ctrl+V operate at the task level in both Table
 
 - **Ctrl+C** copies the currently selected or active task(s).
 - **Ctrl+V** pastes them as new duplicate tasks. Each duplicate has `" (copy)"` appended to its task name. Other fields (dates, status, priority) are preserved from the original.
+- **Ctrl+D** duplicates the selected or active task(s) in a single shortcut (equivalent to Ctrl+C then Ctrl+V). Works in both Table View and Gantt Chart.
 - Implemented via the `onDuplicateTasks` prop on both view components.
 
 ### Resource Column in Table View

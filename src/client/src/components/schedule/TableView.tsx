@@ -959,6 +959,18 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         }
       }
 
+      // Ctrl+D: Duplicate active task or selected tasks
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && !isInput && onDuplicateTasks) {
+        e.preventDefault();
+        const toDup = selectedIds.size > 0
+          ? visibleSorted.filter(t => selectedIds.has(t.id))
+          : activeTaskId
+            ? visibleSorted.filter(t => t.id === activeTaskId)
+            : [];
+        if (toDup.length > 0) onDuplicateTasks(toDup);
+        return;
+      }
+
       // Tab indent / Shift+Tab outdent
       if (e.key === 'Tab' && !isInput) {
         e.preventDefault();

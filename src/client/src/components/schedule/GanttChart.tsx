@@ -1592,6 +1592,18 @@ export function GanttChart({
         }
       }
 
+      // Ctrl+D: Duplicate active task or selected tasks
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && onDuplicateTasks) {
+        e.preventDefault();
+        const toDup = someSelected
+          ? rows.filter(r => selectedIds.has(r.task.id)).map(r => r.task)
+          : activeTaskId
+            ? rows.filter(r => r.task.id === activeTaskId).map(r => r.task)
+            : [];
+        if (toDup.length > 0) onDuplicateTasks(toDup);
+        return;
+      }
+
       // Indent/outdent with Tab/Shift+Tab (works with multi-select, focusedCell, or activeTaskId)
       if (e.key === 'Tab' && (someSelected || focusedCell || activeTaskId)) {
         e.preventDefault();
@@ -1879,6 +1891,99 @@ export function GanttChart({
     if (today < minDate || today > maxDate) return null;
     return daysBetween(minDate, today) * dayPx;
   }, [minDate, maxDate]);
+
+  // Pre-compute dependency arrow paths so render doesn't recalculate
+  const arrowPaths = useMemo(() => {
+    const result: Array<{
+      key: string;
+      d: string;
+      color: string;
+      arrowheadId: string;
+      tooltip: string;
+    }> = [];
+    for (let idx = 0; idx < rows.length; idx++) {
+      const { task } = rows[idx];
+      if (!task.dependencies || task.dependencies.length === 0) continue;
+      if (shouldVirtualize && (idx < visStart || idx >= visEnd)) continue;
+      const taskStart = toDate(task.startDate);
+      const taskEnd = toDate(task.endDate);
+      if (!taskStart || !taskEnd) continue;
+
+      for (let di = 0; di < task.dependencies.length; di++) {
+        const dep = task.dependencies[di];
+        const depIdx = rowIdxMap.get(dep.dependencyId);
+        if (depIdx == null) continue;
+
+        const depTask = rows[depIdx].task;
+        const depStart = toDate(depTask.startDate);
+        const depEnd = toDate(depTask.endDate);
+        if (!depStart || !depEnd) continue;
+
+        const depType = (dep.dependencyType || 'FS').toUpperCase();
+        const y1 = HEADER_H + depIdx * ROW_H + ROW_H / 2;
+        const y2 = HEADER_H + idx * ROW_H + ROW_H / 2;
+
+        let x1: number, x2: number;
+        switch (depType) {
+          case 'SS':
+            x1 = daysBetween(minDate, depStart) * dayPx;
+            x2 = daysBetween(minDate, taskStart) * dayPx;
+            break;
+          case 'FF':
+            x1 = daysBetween(minDate, depEnd) * dayPx;
+            x2 = daysBetween(minDate, taskEnd) * dayPx;
+            break;
+          case 'SF':
+            x1 = daysBetween(minDate, depStart) * dayPx;
+            x2 = daysBetween(minDate, taskEnd) * dayPx;
+            break;
+          default: // FS
+            x1 = daysBetween(minDate, depEnd) * dayPx;
+            x2 = daysBetween(minDate, taskStart) * dayPx;
+            break;
+        }
+
+        const midX = x1 + (x1 <= x2 ? 10 : -10);
+        const health = getDepHealth(dep.dependencyId);
+        const color = healthColor(health);
+        const arrowheadId = health === 'satisfied' ? 'arrowhead-green' : health === 'in_progress' ? 'arrowhead-yellow' : 'arrowhead-red';
+        const lag = dep.lagDays || 0;
+        const tooltip = `${depTask.name} → ${task.name} (${depType}${lag ? `, ${lag}d lag` : ''})`;
+
+        result.push({
+          key: `dep-${task.id}-${di}`,
+          d: `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`,
+          color,
+          arrowheadId,
+          tooltip,
+        });
+      }
+    }
+    return result;
+  }, [rows, rowIdxMap, dayPx, minDate, shouldVirtualize, visStart, visEnd, getDepHealth]);
+
+  // Pre-compute minimap bar rectangles (expensive toDate/daysBetween for every row)
+  const minimapBars = useMemo(() => {
+    if (rows.length === 0) return [];
+    const contentH = HEADER_H + rows.length * ROW_H;
+    const MINIMAP_W = 200;
+    const MINIMAP_H = 80;
+    const scaleX = MINIMAP_W / timelineWidth;
+    const scaleY = MINIMAP_H / contentH;
+    return rows.map(({ task }, idx) => {
+      const s = toDate(task.startDate);
+      const en = toDate(task.endDate);
+      if (!s || !en) return null;
+      return {
+        key: task.id,
+        x: daysBetween(minDate, s) * dayPx * scaleX,
+        w: Math.max(daysBetween(s, en) * dayPx * scaleX, 1),
+        y: (HEADER_H + idx * ROW_H + 4) * scaleY,
+        h: Math.max((ROW_H - 8) * scaleY, 1),
+        fill: barColors[task.status]?.fill || '#9ca3af',
+      };
+    }).filter(Boolean) as Array<{ key: string; x: number; w: number; y: number; h: number; fill: string }>;
+  }, [rows, minDate, dayPx, timelineWidth]);
 
   const handleZoomToFit = useCallback(() => {
     const tl = timelineRef.current;
@@ -4073,64 +4178,20 @@ export function GanttChart({
                   <polygon points="0 0, 6 2, 0 4" fill="#ef4444" />
                 </marker>
               </defs>
-              {rows.flatMap(({ task }, idx) => {
-                if (!task.dependencies || task.dependencies.length === 0) return [];
-                if (shouldVirtualize && (idx < visStart || idx >= visEnd)) return [];
-                const taskStart = toDate(task.startDate);
-                const taskEnd = toDate(task.endDate);
-                if (!taskStart || !taskEnd) return [];
-
-                return task.dependencies.map((dep, di) => {
-                  const depIdx = rowIdxMap.get(dep.dependencyId);
-                  if (depIdx == null) return null;
-
-                  const depTask = rows[depIdx].task;
-                  const depStart = toDate(depTask.startDate);
-                  const depEnd = toDate(depTask.endDate);
-                  if (!depStart || !depEnd) return null;
-
-                  const depType = (dep.dependencyType || 'FS').toUpperCase();
-                  const y1 = HEADER_H + depIdx * ROW_H + ROW_H / 2;
-                  const y2 = HEADER_H + idx * ROW_H + ROW_H / 2;
-
-                  let x1: number, x2: number;
-                  switch (depType) {
-                    case 'SS':
-                      x1 = daysBetween(minDate, depStart) * dayPx;
-                      x2 = daysBetween(minDate, taskStart) * dayPx;
-                      break;
-                    case 'FF':
-                      x1 = daysBetween(minDate, depEnd) * dayPx;
-                      x2 = daysBetween(minDate, taskEnd) * dayPx;
-                      break;
-                    case 'SF':
-                      x1 = daysBetween(minDate, depStart) * dayPx;
-                      x2 = daysBetween(minDate, taskEnd) * dayPx;
-                      break;
-                    default: // FS
-                      x1 = daysBetween(minDate, depEnd) * dayPx;
-                      x2 = daysBetween(minDate, taskStart) * dayPx;
-                      break;
-                  }
-
-                  const midX = x1 + (x1 <= x2 ? 10 : -10);
-                  const health = getDepHealth(dep.dependencyId);
-                  const arrowColor = healthColor(health);
-                  const arrowheadId = health === 'satisfied' ? 'arrowhead-green' : health === 'in_progress' ? 'arrowhead-yellow' : 'arrowhead-red';
-
-                  return (
-                    <path
-                      key={`dep-${task.id}-${di}`}
-                      d={`M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`}
-                      fill="none"
-                      stroke={arrowColor}
-                      strokeWidth="1.5"
-                      markerEnd={`url(#${arrowheadId})`}
-                      opacity={0.7}
-                    />
-                  );
-                });
-              })}
+              {arrowPaths.map(({ key, d, color, arrowheadId, tooltip }) => (
+                <path
+                  key={key}
+                  d={d}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth="1.5"
+                  markerEnd={`url(#${arrowheadId})`}
+                  opacity={0.7}
+                  style={{ pointerEvents: 'auto' }}
+                >
+                  <title>{tooltip}</title>
+                </path>
+              ))}
               {/* Dep-draw preview line */}
               {depDraw && (
                 <>
@@ -4191,17 +4252,9 @@ export function GanttChart({
                 onMouseDown={handleMinimapMouse}
               >
                 <svg width={MINIMAP_W} height={MINIMAP_H}>
-                  {rows.map(({ task }, idx) => {
-                    const s = toDate(task.startDate);
-                    const en = toDate(task.endDate);
-                    if (!s || !en) return null;
-                    const x = daysBetween(minDate, s) * dayPx * scaleX;
-                    const w = Math.max(daysBetween(s, en) * dayPx * scaleX, 1);
-                    const y = (HEADER_H + idx * ROW_H + 4) * scaleY;
-                    const h = Math.max((ROW_H - 8) * scaleY, 1);
-                    const c = barColors[task.status]?.fill || '#9ca3af';
-                    return <rect key={task.id} x={x} y={y} width={w} height={h} fill={c} opacity={0.7} rx={0.5} />;
-                  })}
+                  {minimapBars.map(b => (
+                    <rect key={b.key} x={b.x} y={b.y} width={b.w} height={b.h} fill={b.fill} opacity={0.7} rx={0.5} />
+                  ))}
                   <rect
                     x={Math.max(0, vpX)}
                     y={Math.max(0, vpY)}

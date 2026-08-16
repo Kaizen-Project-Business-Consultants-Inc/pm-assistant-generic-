@@ -361,7 +361,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
   const { data: scenariosData } = useQuery({
     queryKey: ['scenarios', schedule.id],
     queryFn: () => apiService.getScenarios(schedule.id),
-    enabled: !schedule.isScenario,
+    enabled: !schedule.isScenario && viewMode === 'gantt',
   });
   const scenarios: any[] = scenariosData?.scenarios || [];
 
@@ -382,6 +382,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
   const { data: baselinesData } = useQuery({
     queryKey: ['baselines', schedule.id],
     queryFn: () => apiService.getBaselines(schedule.id),
+    enabled: showComparison || viewMode === 'gantt',
   });
 
   const baselines = baselinesData?.baselines || [];
@@ -529,6 +530,21 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
 
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
+  // Optimistically patch a single task in the query cache
+  const patchTaskInCache = useCallback((taskId: string, data: Record<string, unknown>) => {
+    queryClient.setQueryData(['tasks', schedule.id], (old: any) => {
+      if (!old) return old;
+      const list = old.data || old.tasks || old;
+      if (!Array.isArray(list)) return old;
+      const updated = list.map((t: any) =>
+        t.id === taskId ? { ...t, ...data } : t
+      );
+      if (old.data) return { ...old, data: updated };
+      if (old.tasks) return { ...old, tasks: updated };
+      return updated;
+    });
+  }, [queryClient, schedule.id]);
+
   // Update task with undo support
   const updateTaskWithUndo = useCallback((taskId: string, data: Record<string, unknown>) => {
     const task = tasks.find(t => t.id === taskId);
@@ -538,6 +554,8 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
       const val = (task as unknown as Record<string, unknown>)[key];
       oldValues[key] = val === undefined ? null : val;
     }
+    // Optimistically update the cache for instant UI feedback
+    patchTaskInCache(taskId, data);
     const fieldNames = Object.keys(data).join(', ');
     pushAction({
       description: `Edit ${task.name} (${fieldNames})`,
@@ -545,7 +563,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
       redo: () => updateMutation.mutate({ taskId, data }),
     });
     updateMutation.mutate({ taskId, data });
-  }, [tasks, updateMutation, pushAction]);
+  }, [tasks, updateMutation, pushAction, patchTaskInCache]);
 
   // Drag-end with undo (bar drag for dates)
   const handleTaskDragEndWithUndo = useCallback((taskId: string, newStart: string, newEnd: string) => {

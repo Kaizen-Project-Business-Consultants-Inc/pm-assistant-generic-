@@ -537,7 +537,7 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 | Row Numbers & MS Project-style Predecessors | Done | Enhancement |
 | Dependency Health Badges (green/yellow/red) | Done | Innovation |
 | Inline Predecessor Editing (multi-predecessor comma syntax) | Done | Enhancement |
-| Health-Colored Gantt Dependency Arrows (one per predecessor) | Done | Innovation |
+| Health-Colored Gantt Dependency Arrows (one per predecessor; hover tooltip shows predecessor→successor name, type, lag) | Done | Innovation |
 | Kanban WIP Limits | Done | Enhancement |
 | Comment @Mentions | Done | Enhancement |
 | Bulk CSV/Excel Task Import (with guardrails + Windows-1252 mojibake normalization) | Done | Enhancement |
@@ -621,7 +621,7 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 | Utilization Dashboard (12-week SVG line chart on Resource Management page; three series: Planned/Actual/Capacity; spot over/under-run trends before they occur) | Done | Enhancement |
 | Gantt Quick-Assign (toggleable Resource column in Gantt table; resource chips with hover-remove; "+" button opens searchable dropdown; inline task_assignment creation via onTaskUpdate; POST /resources/quick-assign backend for MCP; advisory over-allocation warning) | Done | Enhancement |
 | Table View Arrow Key Navigation (Arrow keys navigate cells; blue ring focus indicator; Enter/F2 to edit; Escape to unfocus; click-to-select-then-click-to-edit pattern; cell-level Ctrl+C/V copy-paste between same-field-type cells) | Done | Enhancement |
-| Copy/Paste Rows — Table View & Gantt (Ctrl+C copies selected/active tasks when no cell focused; Ctrl+V pastes as duplicates with "(copy)" suffix; onDuplicateTasks prop on both view components) | Done | Enhancement |
+| Copy/Paste Rows — Table View & Gantt (Ctrl+C copies selected/active tasks when no cell focused; Ctrl+V pastes as duplicates with "(copy)" suffix; Ctrl+D duplicates in one step; onDuplicateTasks prop on both view components) | Done | Enhancement |
 | Resource Column in Table View (ResourceQuickAssign chip dropdown now available in Table View column picker, matching Gantt Quick-Assign behavior) | Done | Enhancement |
 | Column Auto-Fit Double-Click (double-click column resize handle in Table View or Gantt to auto-fit width to content via canvas measureText; capped at 400px) | Done | Enhancement |
 | Calendar Templates (customizable working schedules: 5×8/4×10/6×6 presets + custom; CRUD at /resources/calendar-templates; affects capacity and workload calculations when assigned to a resource) | Done | Enhancement |
@@ -633,3 +633,4 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 | Capacity Planning by Role (GET /resources/capacity-by-role; Role Capacity sub-tab; groups resources by role; 12-week capacity vs demand table; green surplus/yellow tight/red over-committed color coding) | Done | Enhancement |
 | Effort-Driven Scheduling (work_hours + effort_driven on tasks; duration auto-recalculated on assignment add/remove; hours_per_day from resource capacity × allocation%; skips weekends; Work Hours + Effort Driven checkbox in TaskFormModal; migration 081) | Done | Enhancement |
 | Timesheet Approval Workflow (draft→submitted→approved/rejected status flow; week+project submission granularity; manager Approvals tab with TimesheetApprovalPanel; Approve/Reject with required reason; recall before review; status badges + lock icon on TimesheetGrid; 409 guard on edits to non-draft entries; notifications: timesheet_submitted/approved/rejected; role-gated to managers/owners; migration T019_timesheet_approval.sql) | Done | Enhancement |
+| Gantt/Schedule Performance Sprint (memoized dependency arrow paths + minimap bars via useMemo; optimistic single-task cache patching via setQueryData; lazy-loaded scenario/baseline queries with enabled guards; Ctrl+D duplicate shortcut in Gantt+Table; dependency arrow hover tooltips with predecessor→successor/type/lag) | Done | Performance |
