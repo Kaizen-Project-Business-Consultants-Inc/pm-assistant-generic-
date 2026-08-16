@@ -325,7 +325,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                   onChange={(e) => setGroupFilter(e.target.value)}
                   className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-xs focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">All Groups</option>
+                  <option value="">All Departments</option>
                   {allGroups.map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
               )}
@@ -380,9 +380,9 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                   <input type="number" value={formCostRate} onChange={(e) => setFormCostRate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0" step="0.01" placeholder="Optional" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Group</label>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Department</label>
                   <select value={formGroup} onChange={(e) => setFormGroup(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100">
-                    <option value="">No group</option>
+                    <option value="">No department</option>
                     {RESOURCE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
@@ -442,7 +442,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                   <tr className="bg-gray-50 dark:bg-gray-700">
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Name</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Role</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Group</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Department</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Skills</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Email</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Hours/Wk</th>
