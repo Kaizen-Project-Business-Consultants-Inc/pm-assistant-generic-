@@ -201,7 +201,7 @@ export function ProjectDetailPage() {
         queryKey: ['evmForecastAI', id],
         queryFn: () => apiService.getEVMAIPredictions(id),
         staleTime: 5 * 60 * 1000,
-      });
+      }).catch(() => { /* AI predictions are optional — budget exceeded or AI disabled */ });
     }
   }, [id, queryClient]);
 

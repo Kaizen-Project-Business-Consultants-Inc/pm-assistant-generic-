@@ -55,6 +55,9 @@ export async function evmForecastRoutes(fastify: FastifyInstance) {
       if (err.message?.includes('Project not found')) {
         return reply.status(404).send({ error: 'Project not found' });
       }
+      if (err.code === 'AI_BUDGET_EXCEEDED' || err.name === 'AIBudgetExceededError') {
+        return reply.status(429).send({ error: 'AI budget exceeded', message: 'AI token budget has been reached for this month. AI predictions are temporarily unavailable.' });
+      }
       fastify.log.error({ err }, 'EVM AI prediction generation failed');
       return reply.status(500).send({ error: 'Failed to generate AI predictions' });
     }
