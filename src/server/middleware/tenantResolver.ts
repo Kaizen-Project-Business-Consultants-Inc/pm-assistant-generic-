@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { config } from '../config';
 import { organizationService } from '../services/OrganizationService';
 import { getRequestContext } from './requestContext';
+import { repairTenantDatabase } from '../database/tenantProvisioner';
 import logger from '../utils/logger';
 
 // Routes that operate on the control plane DB, not tenant DBs
@@ -45,10 +46,23 @@ export async function tenantResolverHook(
   }
 
   if (!org.isProvisioned) {
-    return reply.status(503).send({
-      error: 'Organization provisioning',
-      message: 'Your organization is still being set up. Please try again in a moment.',
-    });
+    // Attempt auto-repair instead of just returning 503
+    logger.warn(`[tenantResolver] Org ${org.slug} not provisioned — attempting auto-repair`);
+    const repaired = await repairTenantDatabase(org.id);
+    if (!repaired) {
+      return reply.status(503).send({
+        error: 'Organization provisioning',
+        message: 'Your organization is still being set up. Please try again in a moment.',
+      });
+    }
+    // Refresh org data after repair
+    const refreshedOrg = await organizationService.findByUserId(request.user.userId);
+    if (!refreshedOrg || !refreshedOrg.isProvisioned) {
+      return reply.status(503).send({
+        error: 'Organization provisioning',
+        message: 'Your organization is still being set up. Please try again in a moment.',
+      });
+    }
   }
 
   // Set tenant context on request for route handlers
