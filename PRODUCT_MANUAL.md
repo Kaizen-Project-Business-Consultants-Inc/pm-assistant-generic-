@@ -589,7 +589,7 @@ Time entries follow a formal approval lifecycle before they are considered final
 | POST | `/time-entries/reject/:submissionId` | Reject a submission (reason required) |
 | GET | `/time-entries/timesheet-status` | Weekly view enriched with submission status |
 
-**Mutation guard:** `PUT` and `DELETE` on individual time entries return `409 Conflict` if the entry status is not `draft`. Approved or submitted entries are immutable until recalled/rejected.
+**Mutation guard:** `PUT` and `DELETE` on individual time entries return `409 Conflict` if the entry status is `submitted` or `approved`. Draft and rejected entries remain editable — rejected entries can be corrected and resubmitted without needing a recall.
 
 **Authorization:** Only project managers and owners can approve or reject submissions. Users may only recall their own submissions.
 

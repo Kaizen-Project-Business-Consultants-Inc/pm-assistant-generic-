@@ -977,14 +977,14 @@ Once you have logged your hours for a week, you can submit them to your project 
 
 1. Navigate to **Timesheets** in the sidebar and open the **My Timesheet** tab.
 2. Your entries appear grouped by project. Each entry shows a status badge: **gray** = draft, **blue** = submitted, **green** = approved, **red** = rejected.
-3. Non-draft entries display a lock icon — they cannot be edited until recalled or rejected.
+3. Submitted and approved entries display a lock icon and cannot be edited. Rejected entries remain editable so you can correct them directly.
 4. Click **Submit for Approval** on a project group to submit all draft entries for that week and project together.
 5. A blue status banner appears at the top confirming the submission is pending review.
 
 **If your timesheet is rejected:**
 
 - A red banner appears with the rejection reason provided by your manager.
-- All entries in that submission revert to **draft** status so you can make corrections.
+- Rejected entries stay in **rejected** status but are fully editable — you can update hours, descriptions, and dates directly.
 - Fix the entries and click **Submit for Approval** again to resubmit.
 
 **Recalling a submission:**
