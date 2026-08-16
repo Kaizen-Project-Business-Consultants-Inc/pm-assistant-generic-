@@ -1,5 +1,7 @@
 import { databaseService } from './connection';
 
+export type TimeEntryStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+
 export interface TimeEntry {
   id: string;
   taskId: string;
@@ -10,6 +12,9 @@ export interface TimeEntry {
   hours: number;
   description: string | null;
   billable: boolean;
+  status: TimeEntryStatus;
+  approvedBy: string | null;
+  approvedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -20,7 +25,11 @@ function rowToDTO(row: any): TimeEntry {
     projectId: row.project_id, userId: row.user_id,
     date: typeof row.date === 'string' ? row.date : new Date(row.date).toISOString().slice(0, 10),
     hours: Number(row.hours), description: row.description,
-    billable: !!row.billable, createdAt: row.created_at, updatedAt: row.updated_at,
+    billable: !!row.billable,
+    status: row.status || 'draft',
+    approvedBy: row.approved_by || null,
+    approvedAt: row.approved_at || null,
+    createdAt: row.created_at, updatedAt: row.updated_at,
   };
 }
 
@@ -83,6 +92,30 @@ class TimeEntryRepository {
       'SELECT task_id, SUM(hours) as total FROM time_entries WHERE schedule_id = ? GROUP BY task_id',
       [scheduleId],
     );
+  }
+
+  async updateStatusBatch(ids: string[], status: TimeEntryStatus, approvedBy?: string): Promise<void> {
+    if (ids.length === 0) return;
+    const placeholders = ids.map(() => '?').join(',');
+    if (status === 'approved' && approvedBy) {
+      await databaseService.query(
+        `UPDATE time_entries SET status = ?, approved_by = ?, approved_at = NOW() WHERE id IN (${placeholders})`,
+        [status, approvedBy, ...ids],
+      );
+    } else {
+      await databaseService.query(
+        `UPDATE time_entries SET status = ?, approved_by = NULL, approved_at = NULL WHERE id IN (${placeholders})`,
+        [status, ...ids],
+      );
+    }
+  }
+
+  async findByUserProjectWeek(userId: string, projectId: string, weekStart: string, weekEnd: string): Promise<TimeEntry[]> {
+    const rows = await databaseService.query(
+      'SELECT * FROM time_entries WHERE user_id = ? AND project_id = ? AND date >= ? AND date <= ? ORDER BY date',
+      [userId, projectId, weekStart, weekEnd],
+    );
+    return rows.map(rowToDTO);
   }
 
   async sumHoursByUserAndWeekRange(userId: string, startDate: string, endDate: string): Promise<{ weekStart: string; totalHours: number }[]> {

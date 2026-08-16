@@ -1617,6 +1617,44 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  async submitTimesheet(projectId: string, weekStart: string) {
+    const response = await this.api.post('/time-entries/submit', { projectId, weekStart });
+    return response.data;
+  }
+
+  async recallTimesheet(submissionId: string) {
+    const response = await this.api.post(`/time-entries/recall/${submissionId}`);
+    return response.data;
+  }
+
+  async getTimesheetSubmissions(startDate?: string, endDate?: string) {
+    const params: Record<string, string> = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    const response = await this.api.get('/time-entries/submissions', { params });
+    return response.data;
+  }
+
+  async getPendingApprovals() {
+    const response = await this.api.get('/time-entries/pending-approvals');
+    return response.data;
+  }
+
+  async approveTimesheet(submissionId: string) {
+    const response = await this.api.post(`/time-entries/approve/${submissionId}`);
+    return response.data;
+  }
+
+  async rejectTimesheet(submissionId: string, reason: string) {
+    const response = await this.api.post(`/time-entries/reject/${submissionId}`, { reason });
+    return response.data;
+  }
+
+  async getWeeklyTimesheetStatus(weekStart: string) {
+    const response = await this.api.get('/time-entries/timesheet-status', { params: { weekStart } });
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Expenses
   // -------------------------------------------------------------------------

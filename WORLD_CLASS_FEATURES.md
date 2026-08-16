@@ -327,6 +327,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Weekly timesheet view per resource with inline **"Log Time"** form (project/schedule/task dropdowns, date, hours, description) — create entries without leaving the page
 - Actual vs estimated hours comparison
 - Time-based cost calculations
+- **Timesheet Approval Workflow** — formal draft → submitted → approved/rejected lifecycle; submissions at week + project granularity; manager approval panel with Approve/Reject (reason required); rejection reverts entries to draft for correction and resubmission; recall before review; lock icon and status badges (gray/blue/green/red) on TimesheetGrid; mutation guard returns 409 on edits to non-draft entries; role-gated (managers/owners only); notifications for submitted/approved/rejected events; migration T019
 - **Benchmark:** MS Project, Wrike, Smartsheet
 
 ### 4.4 Project Templates
@@ -630,3 +631,4 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 | Rate Types — Overtime (overtime_rate_hourly on resources; rate_type ENUM on time_entries; cost calculation uses overtime rate for OT hours; fallback 1.5× standard; OT Rate field in form+table; migration 080) | Done | Enhancement |
 | Capacity Planning by Role (GET /resources/capacity-by-role; Role Capacity sub-tab; groups resources by role; 12-week capacity vs demand table; green surplus/yellow tight/red over-committed color coding) | Done | Enhancement |
 | Effort-Driven Scheduling (work_hours + effort_driven on tasks; duration auto-recalculated on assignment add/remove; hours_per_day from resource capacity × allocation%; skips weekends; Work Hours + Effort Driven checkbox in TaskFormModal; migration 081) | Done | Enhancement |
+| Timesheet Approval Workflow (draft→submitted→approved/rejected status flow; week+project submission granularity; manager Approvals tab with TimesheetApprovalPanel; Approve/Reject with required reason; recall before review; status badges + lock icon on TimesheetGrid; 409 guard on edits to non-draft entries; notifications: timesheet_submitted/approved/rejected; role-gated to managers/owners; migration T019_timesheet_approval.sql) | Done | Enhancement |

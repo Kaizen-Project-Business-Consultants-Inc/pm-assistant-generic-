@@ -29,6 +29,9 @@ const NOTIFICATION_TYPE_TO_CATEGORY: Record<string, string> = {
   task_completed: 'tasks',
   deadline_approaching: 'deadlines',
   task_comment: 'tasks',
+  timesheet_submitted: 'tasks',
+  timesheet_approved: 'tasks',
+  timesheet_rejected: 'tasks',
   member_added: 'collaboration',
 };
 

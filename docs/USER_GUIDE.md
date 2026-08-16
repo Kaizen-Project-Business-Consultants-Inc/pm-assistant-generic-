@@ -971,6 +971,36 @@ Each time log entry records:
 - Date of work.
 - Optional description/notes.
 
+### Submitting a Timesheet for Approval
+
+Once you have logged your hours for a week, you can submit them to your project manager for approval.
+
+1. Navigate to **Timesheets** in the sidebar and open the **My Timesheet** tab.
+2. Your entries appear grouped by project. Each entry shows a status badge: **gray** = draft, **blue** = submitted, **green** = approved, **red** = rejected.
+3. Non-draft entries display a lock icon — they cannot be edited until recalled or rejected.
+4. Click **Submit for Approval** on a project group to submit all draft entries for that week and project together.
+5. A blue status banner appears at the top confirming the submission is pending review.
+
+**If your timesheet is rejected:**
+
+- A red banner appears with the rejection reason provided by your manager.
+- All entries in that submission revert to **draft** status so you can make corrections.
+- Fix the entries and click **Submit for Approval** again to resubmit.
+
+**Recalling a submission:**
+
+- If your manager has not yet reviewed the submission, click the **Recall** button on the project group.
+- Entries revert to **draft** and you can edit them before resubmitting.
+
+### Approving Timesheets (Managers)
+
+Project managers and owners see an **Approvals** tab on the Timesheet page.
+
+1. Click the **Approvals** tab to open the **Timesheet Approval Panel**.
+2. The panel lists all pending submissions across your projects, showing the submitter, project, week, total hours, and individual entries.
+3. To approve: click **Approve**. The submitter receives an approval notification.
+4. To reject: click **Reject**, enter a reason (required), and confirm. The submitter receives a high-severity notification with your reason and their entries revert to draft for correction.
+
 ---
 
 ## 12. Reports

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Clock, BarChart3, Plus, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Clock, BarChart3, Plus, ChevronLeft, ChevronRight, X, ClipboardCheck } from 'lucide-react';
 import { apiService } from '../services/api';
 import { TimesheetGrid } from '../components/timetracking/TimesheetGrid';
+import { TimesheetApprovalPanel } from '../components/timetracking/TimesheetApprovalPanel';
 import { ActualVsEstimatedChart } from '../components/timetracking/ActualVsEstimatedChart';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 
-type Tab = 'my-timesheet' | 'project-summary';
+type Tab = 'my-timesheet' | 'project-summary' | 'approvals';
 
 export function TimesheetPage() {
   const queryClient = useQueryClient();
@@ -187,6 +188,13 @@ export function TimesheetPage() {
         >
           <BarChart3 className="w-4 h-4" /> Project Summary
         </button>
+        <button
+          onClick={() => setTab('approvals')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-md transition-colors
+            ${tab === 'approvals' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm dark:shadow-gray-900/30' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:text-white'}`}
+        >
+          <ClipboardCheck className="w-4 h-4" /> Approvals
+        </button>
       </div>
 
       {tab === 'my-timesheet' && (
@@ -234,6 +242,13 @@ export function TimesheetPage() {
               Select a project and schedule to view time comparison
             </div>
           )}
+        </div>
+      )}
+
+      {tab === 'approvals' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Pending Timesheet Approvals</h3>
+          <TimesheetApprovalPanel />
         </div>
       )}
     </div>

@@ -569,6 +569,34 @@ Aggregated time entry views per user per week, suitable for approval workflows a
 
 Compare logged hours against task estimated effort to identify underestimation patterns and improve future planning accuracy.
 
+### Timesheet Approval Workflow
+
+Time entries follow a formal approval lifecycle before they are considered finalized:
+
+**Status flow:** `draft` → `submitted` → `approved` or `rejected`. Rejected entries revert to `draft` so the user can correct and resubmit.
+
+**Submission granularity:** All entries for a given user within a specific week and project are submitted together as a single submission. Users cannot submit individual lines in isolation.
+
+**API endpoints:**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/time-entries/submit` | Submit a week+project timesheet |
+| POST | `/time-entries/recall/:submissionId` | Recall a submitted (unreviewed) timesheet |
+| GET | `/time-entries/submissions` | User's own submission history |
+| GET | `/time-entries/pending-approvals` | Manager's queue of pending submissions |
+| POST | `/time-entries/approve/:submissionId` | Approve a submission |
+| POST | `/time-entries/reject/:submissionId` | Reject a submission (reason required) |
+| GET | `/time-entries/timesheet-status` | Weekly view enriched with submission status |
+
+**Mutation guard:** `PUT` and `DELETE` on individual time entries return `409 Conflict` if the entry status is not `draft`. Approved or submitted entries are immutable until recalled/rejected.
+
+**Authorization:** Only project managers and owners can approve or reject submissions. Users may only recall their own submissions.
+
+**Notifications:** Submission triggers a `timesheet_submitted` notification to project managers. Approval sends `timesheet_approved` to the user. Rejection sends `timesheet_rejected` (high severity) with the rejection reason.
+
+**Database:** Migration `T019_timesheet_approval.sql` adds `status`, `approved_by`, and `approved_at` columns to `time_entries` and creates the `timesheet_submissions` table.
+
 ---
 
 ## 9. Custom Fields
