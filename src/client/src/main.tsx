@@ -5,19 +5,21 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import './index.css';
 
-const updateSW = registerSW({
+registerSW({
   immediate: true,
   onNeedRefresh() {
-    // New version deployed — activate the new SW and reload
-    updateSW(true);
+    // New version deployed — reload to pick up new assets.
+    // With registerType: 'autoUpdate' + skipWaiting + clientsClaim,
+    // the new SW is already active; just reload the page.
+    window.location.reload();
   },
   onOfflineReady() {
-    // Silently ready for offline use — no action needed
+    // Silently ready for offline use
   },
   onRegisteredSW(_swUrl, registration) {
-    // Check for updates every 5 minutes
     if (registration) {
-      setInterval(() => { registration.update(); }, 60 * 1000);
+      // Check for SW updates every 30 seconds
+      setInterval(() => { registration.update(); }, 30 * 1000);
     }
   },
 });
