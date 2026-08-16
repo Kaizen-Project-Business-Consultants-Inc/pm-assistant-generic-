@@ -85,15 +85,16 @@ export function AISummaryBanner() {
   const projectHealthScores: Array<{ projectId: string; healthScore: number; riskLevel: string }> = pred.projectHealthScores || [];
 
   // Compute an average portfolio health score from project scores
-  const portfolioHealthScore = projectHealthScores.length > 0
+  const hasHealthData = projectHealthScores.length > 0;
+  const portfolioHealthScore = hasHealthData
     ? Math.round(projectHealthScores.reduce((sum: number, p: any) => sum + (p.healthScore || 0), 0) / projectHealthScores.length)
-    : 50;
+    : null;
 
   return (
     <div className="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5">
       {/* Title row */}
       <div className="flex items-center gap-2 mb-4">
-        <span className={`h-2 w-2 rounded-full ${getStatusDot(portfolioHealthScore)}`} />
+        <span className={`h-2 w-2 rounded-full ${portfolioHealthScore != null ? getStatusDot(portfolioHealthScore) : 'bg-gray-400'}`} />
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Portfolio Intelligence</h2>
       </div>
 
@@ -102,22 +103,24 @@ export function AISummaryBanner() {
         {/* Left: Health Score */}
         <div className="flex items-center gap-4">
           <div
-            className={`flex h-14 w-14 items-center justify-center rounded-full border-2 ${getHealthBgColor(portfolioHealthScore)}`}
+            className={`flex h-14 w-14 items-center justify-center rounded-full border-2 ${portfolioHealthScore != null ? getHealthBgColor(portfolioHealthScore) : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700'}`}
           >
-            <span className={`text-xl font-bold ${getHealthColor(portfolioHealthScore)}`}>
-              {portfolioHealthScore}
+            <span className={`text-xl font-bold ${portfolioHealthScore != null ? getHealthColor(portfolioHealthScore) : 'text-gray-400 dark:text-gray-500'}`}>
+              {portfolioHealthScore != null ? portfolioHealthScore : '—'}
             </span>
           </div>
           <div>
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               Portfolio Health
             </p>
-            <p className={`text-sm font-semibold ${getHealthColor(portfolioHealthScore)}`}>
-              {portfolioHealthScore >= 75
-                ? 'Good'
-                : portfolioHealthScore >= 50
-                  ? 'Fair'
-                  : 'At Risk'}
+            <p className={`text-sm font-semibold ${portfolioHealthScore != null ? getHealthColor(portfolioHealthScore) : 'text-gray-400 dark:text-gray-500'}`}>
+              {portfolioHealthScore == null
+                ? 'No active projects'
+                : portfolioHealthScore >= 75
+                  ? 'Good'
+                  : portfolioHealthScore >= 50
+                    ? 'Fair'
+                    : 'At Risk'}
             </p>
           </div>
         </div>
