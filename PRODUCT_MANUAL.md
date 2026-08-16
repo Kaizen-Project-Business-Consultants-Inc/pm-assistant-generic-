@@ -212,7 +212,7 @@ The primary assignee is denormalized to `tasks.assigned_to` for backward compati
 
 ### Baselines
 
-The `BaselineService` captures point-in-time snapshots of a schedule. Each baseline records every task's start date, end date, estimated days, progress, and status. Baselines are immutable once created.
+The `BaselineService` captures point-in-time snapshots of a schedule. Each baseline records every task's start date, end date, estimated days, progress, and status. Baselines are immutable once created and are persisted to the database (`schedule_baselines` and `baseline_tasks` tables), so they survive server restarts. The `BaselineRepository` handles all CRUD operations.
 
 ### Variance Tracking
 

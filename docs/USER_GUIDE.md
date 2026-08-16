@@ -554,14 +554,14 @@ Use critical path analysis to focus management attention on the tasks that matte
 
 ## 6. Baselines
 
-Baselines capture a snapshot of the schedule at a point in time, enabling comparison against the current plan.
+Baselines capture a snapshot of the schedule at a point in time, enabling comparison against the current plan. Baselines are permanently saved to the database, so they persist across sessions and server restarts.
 
 ### Creating a Baseline
 
 1. Open a schedule with defined tasks.
 2. Click **Save Baseline** (or use the baselines panel).
 3. Enter a baseline name (e.g., "Original Plan", "Rev 2").
-4. The system captures a copy of all task dates, durations, and progress at that moment.
+4. The system captures a copy of all task dates, durations, and progress at that moment and stores it permanently.
 
 ### Comparing Baselines
 

@@ -65,6 +65,7 @@ An agentic AI project management platform that combines the scheduling power of 
 
 ### 1.2 Baseline Management
 - Save schedule baseline snapshots (planned start, planned end, progress)
+- Database-persisted baselines survive server restarts (`schedule_baselines` + `baseline_tasks` tables)
 - Compare baseline vs actual on Gantt (dual bars)
 - Start, end, and duration variance analysis per task
 - Multiple baseline support (Baseline 1, 2, 3...)
