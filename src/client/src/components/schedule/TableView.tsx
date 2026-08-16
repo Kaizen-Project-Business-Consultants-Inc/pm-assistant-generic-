@@ -103,6 +103,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   const [bulkMessage, setBulkMessage] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
+  const [notesPopup, setNotesPopup] = useState<{ taskId: string; value: string; x: number; y: number } | null>(null);
 
   const colDragKeys = useMemo(() => visibleColumns.map(c => c.key), [visibleColumns]);
   const colDrag = useColumnDragReorder({
@@ -835,6 +836,22 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     return () => document.removeEventListener('click', dismiss);
   }, [contextMenu]);
 
+  // Click-away to dismiss notes popup (auto-save)
+  useEffect(() => {
+    if (!notesPopup) return;
+    const dismiss = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.fixed.z-50')) return; // clicked inside popup
+      const task = tasks.find(t => t.id === notesPopup.taskId);
+      if (task && notesPopup.value !== (task.description || '')) {
+        onTaskUpdate(notesPopup.taskId, { description: notesPopup.value });
+      }
+      setNotesPopup(null);
+    };
+    document.addEventListener('mousedown', dismiss);
+    return () => document.removeEventListener('mousedown', dismiss);
+  }, [notesPopup, tasks, onTaskUpdate]);
+
   const renderSaveIndicator = (taskId: string, field: string) => {
     if (isSaving(taskId, field)) {
       return (
@@ -1240,28 +1257,19 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'notes': {
         const notesField: EditableField = 'notes';
         const notesText = task.description || '';
+        const isNotesOpen = notesPopup?.taskId === task.id;
         return (
           <td key={col.key}
             className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[200px] group/cell relative ${editableCellClass(task.id, notesField, task)}`}
-            onClick={() => { if (!isEditing(task.id, notesField)) startEditing(task.id, notesField, task); }}
+            onClick={(e) => {
+              if (!isNotesOpen) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setNotesPopup({ taskId: task.id, value: notesText, x: rect.left, y: rect.bottom + 4 });
+              }
+            }}
             style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}
           >
-            {isEditing(task.id, notesField) ? (
-              <textarea
-                ref={el => { if (el) el.focus(); }}
-                className="w-full text-xs p-1 rounded border border-primary-300 dark:border-primary-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-400 resize-y"
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                onBlur={() => saveEdit(task.id, notesField, editValue)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') { e.preventDefault(); cancelEditing(); }
-                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(task.id, notesField, editValue); }
-                }}
-                rows={3}
-              />
-            ) : (
-              <span className="truncate block" title={notesText}>{notesText || '-'}</span>
-            )}
+            <span className="truncate block">{notesText || '-'}</span>
             {renderSaveIndicator(task.id, notesField)}
             {renderHoverPencil(task.id, notesField)}
           </td>
@@ -1790,6 +1798,68 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           </tbody>
         </table>
       </div>
+
+      {/* Notes popup editor */}
+      {notesPopup && (
+        <div
+          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 w-80"
+          style={{
+            left: Math.min(notesPopup.x, window.innerWidth - 340),
+            top: Math.min(notesPopup.y, window.innerHeight - 260),
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Notes</span>
+            <button
+              onClick={() => {
+                const apiField = 'description';
+                const task = tasks.find(t => t.id === notesPopup.taskId);
+                if (task && notesPopup.value !== (task.description || '')) {
+                  onTaskUpdate(notesPopup.taskId, { [apiField]: notesPopup.value });
+                }
+                setNotesPopup(null);
+              }}
+              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <textarea
+            ref={el => { if (el) el.focus(); }}
+            className="w-full text-xs p-2 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-400 resize-y"
+            value={notesPopup.value}
+            onChange={e => setNotesPopup(prev => prev ? { ...prev, value: e.target.value } : null)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                setNotesPopup(null);
+              }
+            }}
+            rows={6}
+          />
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              onClick={() => setNotesPopup(null)}
+              className="text-xs px-2.5 py-1 rounded border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                const task = tasks.find(t => t.id === notesPopup.taskId);
+                if (task && notesPopup.value !== (task.description || '')) {
+                  onTaskUpdate(notesPopup.taskId, { description: notesPopup.value });
+                }
+                setNotesPopup(null);
+              }}
+              className="text-xs px-2.5 py-1 rounded bg-primary-600 text-white hover:bg-primary-700"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Right-click context menu */}
       {contextMenu && (
