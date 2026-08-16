@@ -393,6 +393,8 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - Hover over a bar to see task details including all predecessors (row number, task name, dependency type, lag, and health status per predecessor). Click to edit.
 - **Column header sort**: Click any column header in the left panel to sort rows ascending, then descending, then back to default (none). A ▲ or ▼ indicator appears in the header to show the active sort direction. Sort preserves task hierarchy — children are sorted within their own sibling group, not mixed across levels. Row drag reorder is disabled while a sort is active.
 - **Copy/Paste cells**: Press **Ctrl+C** to copy the focused cell's value to the clipboard. Press **Ctrl+V** to paste the clipboard value into the focused cell (paste only applies when the field types match). A green flash confirms the paste.
+- **Copy/Paste rows**: When no cell is focused, **Ctrl+C** copies the selected or active task(s) and **Ctrl+V** pastes them as new duplicate tasks with `" (copy)"` appended to each name. Useful for quickly creating similar tasks without re-entering data.
+- **Column auto-fit**: **Double-click** the right border of any column header (the resize handle) to auto-fit the column width to its longest content value. Width is capped at 400px.
 - **Baseline bar refinement**: When a baseline is active, ghost bars are shown only for tasks whose baseline dates differ from their current dates. Tasks that are exactly on schedule show no ghost bar, keeping the chart uncluttered.
 - **Indent/Outdent**: Click a task to select it, then press **Tab** to indent it (makes it a child of the task immediately above it). Press **Shift+Tab** to outdent (promotes the task up one level to its parent's parent). Also works when a cell is focused via arrow keys. **Multi-select indent**: select multiple tasks via checkboxes (click the # header for all, or individual rows), then press **Tab** to indent them all under the task above the first selected task, or **Shift+Tab** to outdent them all. Selected tasks won't indent under each other. Both operations go through the standard update path and are automatically undoable with Ctrl+Z.
 - **Bar progress drag**: Hover over the right edge of a task bar's progress fill to reveal a drag handle. Drag left or right to adjust the task's completion percentage directly on the timeline. The change is applied via the standard update path and is automatically undoable with Ctrl+Z.
@@ -493,6 +495,16 @@ Column selections are saved per schedule and persist across page reloads. All vi
 **Undo / Redo** -- The table toolbar includes Undo and Redo buttons (also accessible via **Ctrl+Z** / **Ctrl+Y**). All edits, bulk updates, and deletions are tracked in the undo history. Hover over the buttons to see what action will be undone or redone.
 
 **Bulk Operations with Undo** -- Multi-select tasks using checkboxes, then use the bulk toolbar to change status, priority, or assignee. All bulk operations are tracked in the undo history, so you can reverse them with Ctrl+Z.
+
+**Arrow Key Navigation** -- Use the **Arrow keys** to move between cells. The focused cell is highlighted with a blue ring. Press **Enter** or **F2** to enter edit mode; press **Escape** to clear the focus. The first click on a row selects it; a second click on a cell of the already-selected row enters edit mode (matching the Gantt chart behavior).
+
+**Cell Copy/Paste** -- When a cell is focused, press **Ctrl+C** to copy its value to the clipboard and **Ctrl+V** to paste from the clipboard into the focused cell (same field type only). A green flash confirms.
+
+**Copy/Paste Rows** -- When no cell is focused, press **Ctrl+C** to copy the selected or active task(s) and **Ctrl+V** to paste them as duplicates. Each copy has `" (copy)"` appended to its name. Other fields (dates, status, priority) are carried over from the original.
+
+**Resource Column** -- Enable the **Resource** column from the Columns picker to add and remove resource assignments inline — the same quick-assign chips available in the Gantt chart. Click **"+"** to open a searchable resource dropdown; hover a chip and click **"×"** to remove.
+
+**Column Auto-Fit** -- **Double-click** the right border of any column header (the resize handle) to auto-fit that column's width to its content. Width is capped at 400px.
 
 #### Notes Column
 
@@ -1509,6 +1521,14 @@ Destructive actions throughout the application (deleting integrations, change re
 | Shortcut | Action |
 |----------|--------|
 | Ctrl+K / Cmd+K | Open Command Palette |
+| Arrow keys | Navigate between cells in Gantt or Table View |
+| Enter / F2 | Enter edit mode on the focused cell (Gantt/Table) |
+| Escape | Clear cell focus / cancel edit (Gantt/Table) |
+| Ctrl+C (cell focused) | Copy focused cell value to clipboard (Gantt/Table) |
+| Ctrl+V (cell focused) | Paste clipboard value into focused cell (Gantt/Table) |
+| Ctrl+C (no cell focused) | Copy selected/active task(s) as row copy (Gantt/Table) |
+| Ctrl+V (no cell focused) | Paste copied tasks as duplicates with "(copy)" suffix (Gantt/Table) |
+| Double-click column resize handle | Auto-fit column width to content (Gantt/Table) |
 
 ---
 

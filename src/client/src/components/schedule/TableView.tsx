@@ -9,6 +9,7 @@ import type { ColumnKey, ColumnDef } from './tableColumns';
 import type { ColumnState } from '../../hooks/useColumnState';
 import { useColumnDragReorder } from '../../hooks/useColumnDragReorder';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { ResourceQuickAssign } from './ResourceQuickAssign';
 
 const barColors: Record<string, { bg: string; text: string }> = {
   completed: { bg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-400' },
@@ -69,6 +70,7 @@ interface TableViewProps {
   redoDescription?: string;
   onUndo?: () => void;
   onRedo?: () => void;
+  onDuplicateTasks?: (tasks: GanttTask[]) => void;
 }
 
 type GroupByField = '' | 'status' | 'priority' | 'assignedTo';
@@ -84,7 +86,7 @@ function addDaysToDate(baseDate: string, days: number): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo }: TableViewProps) {
+export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
   const [sortField, setSortField] = useState<ColumnKey | null>(null);
@@ -104,6 +106,11 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   const [bulkLoading, setBulkLoading] = useState(false);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
   const [notesPopup, setNotesPopup] = useState<{ taskId: string; value: string; x: number; y: number } | null>(null);
+  const [focusedCell, setFocusedCell] = useState<{ taskId: string; field: EditableField } | null>(null);
+  const [copiedValue, setCopiedValue] = useState<{ field: EditableField; value: string } | null>(null);
+  const [pasteFlash, setPasteFlash] = useState<{ taskId: string; field: string } | null>(null);
+  const [copiedTasks, setCopiedTasks] = useState<GanttTask[]>([]);
+  const measureCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const colDragKeys = useMemo(() => visibleColumns.map(c => c.key), [visibleColumns]);
   const colDrag = useColumnDragReorder({
@@ -199,6 +206,26 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     assign(null, '');
     return map;
   }, [tasks]);
+
+  // Map visible ColumnKeys to EditableField names for arrow key navigation
+  const visibleFieldOrder = useMemo(() => {
+    const colKeyToField: Record<string, EditableField> = {
+      name: 'name', status: 'status', priority: 'priority', startDate: 'startDate',
+      endDate: 'endDate', progressPercentage: 'progressPercentage', assignedTo: 'assignedTo',
+      duration: 'duration', dependency: 'dependency', notes: 'notes',
+      budgetAllocated: 'budgetAllocated', actualCost: 'actualCost',
+      constraintType: 'constraintType', constraintDate: 'constraintDate',
+    };
+    return visibleColumns
+      .filter(c => colKeyToField[c.key])
+      .map(c => colKeyToField[c.key]);
+  }, [visibleColumns]);
+
+  const isFocused = (taskId: string, field: string) =>
+    focusedCell?.taskId === taskId && focusedCell.field === field && !editingCell;
+
+  const isPasteFlash = (taskId: string, field: string) =>
+    pasteFlash?.taskId === taskId && pasteFlash.field === field;
 
   const toggleSort = useCallback((field: ColumnKey) => {
     if (sortField === field) {
@@ -538,6 +565,54 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     }
   };
 
+  // Column auto-fit: measure text width for all rows and set column width to max
+  const getCellText = useCallback((task: GanttTask, colKey: ColumnKey): string => {
+    switch (colKey) {
+      case 'name': return task.name || '';
+      case 'status': return task.status?.replace('_', ' ') || '';
+      case 'priority': return task.priority || 'medium';
+      case 'startDate': return task.startDate ? new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
+      case 'endDate': return task.endDate ? new Date(task.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
+      case 'progressPercentage': return `${task.progressPercentage ?? 0}%`;
+      case 'assignedTo': return task.assignedTo || '-';
+      case 'duration': {
+        if (task.startDate && task.endDate) {
+          const diff = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000);
+          return diff > 0 ? `${diff}d` : '-';
+        }
+        return task.estimatedDays != null ? `${task.estimatedDays}d` : '-';
+      }
+      case 'dependency': return getTaskFieldValue(task, 'dependency');
+      case 'notes': return task.description || '-';
+      case 'budgetAllocated': return (task as any).budgetAllocated != null ? `$${Number((task as any).budgetAllocated).toLocaleString()}` : '-';
+      case 'actualCost': return (task as any).actualCost != null ? `$${Number((task as any).actualCost).toLocaleString()}` : '-';
+      case 'wbs': return wbsMap.get(task.id) || '-';
+      case 'rowNum': return String(rowNumMap.get(task.id) || '-');
+      default: return '-';
+    }
+  }, [wbsMap, rowNumMap, getTaskFieldValue]);
+
+  const autoFitColumn = useCallback((colKey: ColumnKey) => {
+    if (!measureCanvasRef.current) {
+      measureCanvasRef.current = document.createElement('canvas');
+    }
+    const ctx = measureCanvasRef.current.getContext('2d');
+    if (!ctx) return;
+    ctx.font = '12px ui-sans-serif, system-ui, sans-serif';
+
+    const colDef = visibleColumns.find(c => c.key === colKey);
+    let maxW = ctx.measureText(colDef?.label || colKey).width;
+
+    for (const task of visibleSorted) {
+      const text = getCellText(task, colKey);
+      const w = ctx.measureText(text).width;
+      if (w > maxW) maxW = w;
+    }
+
+    const newWidth = Math.min(400, Math.max(60, Math.ceil(maxW + 32)));
+    setColWidths(prev => ({ ...prev, [colKey]: newWidth }));
+  }, [visibleColumns, visibleSorted, getCellText, setColWidths]);
+
   const SUMMARY_ROLLUP_FIELDS: Set<EditableField> = new Set(['startDate', 'endDate', 'progressPercentage', 'status', 'budgetAllocated', 'actualCost', 'duration']);
 
   const startEditing = (taskId: string, field: EditableField, task: GanttTask) => {
@@ -545,6 +620,19 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     if (task.isSummary && SUMMARY_ROLLUP_FIELDS.has(field)) return;
     setEditingCell({ taskId, field });
     setEditValue(getTaskFieldValue(task, field));
+  };
+
+  /** Click-to-select, click-again-to-edit: first click sets focus, second click edits */
+  const handleCellClick = (taskId: string, field: EditableField, task: GanttTask) => {
+    if (isEditing(taskId, field)) return;
+    if (activeTaskId === taskId) {
+      // Already selected — start editing
+      startEditing(taskId, field, task);
+    } else {
+      // First click — select row and focus cell
+      onTaskSelect?.(task);
+      setFocusedCell({ taskId, field });
+    }
   };
 
   const cancelEditing = () => {
@@ -663,6 +751,8 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     }
     const base = 'relative cursor-pointer transition-all duration-150';
     if (isEditing(taskId, field)) return `${base} ring-2 ring-blue-400 ring-inset rounded`;
+    if (isPasteFlash(taskId, field)) return `${base} ring-2 ring-green-400 ring-inset rounded bg-green-50 dark:bg-green-900/20`;
+    if (isFocused(taskId, field)) return `${base} ring-2 ring-primary-300 ring-inset rounded bg-primary-50/30 dark:bg-primary-900/20`;
     if (isSaved(taskId, field)) return `${base} bg-green-50 dark:bg-green-900/20`;
     return `${base} hover:bg-blue-50/50 dark:hover:bg-blue-900/20 group/cell`;
   };
@@ -755,7 +845,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; task: GanttTask } | null>(null);
 
-  // Keyboard Delete key + Tab indent/outdent support
+  // Keyboard: Delete, Tab indent/outdent, arrow key nav, copy/paste cells, copy/paste rows
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -772,34 +862,79 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         }
       }
 
+      // Ctrl+C / Ctrl+V: cell copy/paste when focused, row copy/paste otherwise
+      if ((e.ctrlKey || e.metaKey) && !isInput) {
+        if (e.key === 'c') {
+          if (focusedCell) {
+            // Cell copy
+            e.preventDefault();
+            const task = tasks.find(t => t.id === focusedCell.taskId);
+            if (task) {
+              const val = getTaskFieldValue(task, focusedCell.field);
+              setCopiedValue({ field: focusedCell.field, value: val });
+              navigator.clipboard.writeText(val).catch(() => {});
+            }
+          } else {
+            // Row copy
+            e.preventDefault();
+            const toCopy = selectedIds.size > 0
+              ? visibleSorted.filter(t => selectedIds.has(t.id))
+              : activeTaskId
+                ? visibleSorted.filter(t => t.id === activeTaskId)
+                : [];
+            if (toCopy.length > 0) {
+              setCopiedTasks(toCopy);
+              showBulkSuccess(`Copied ${toCopy.length} task${toCopy.length > 1 ? 's' : ''}`);
+            }
+          }
+          return;
+        }
+        if (e.key === 'v') {
+          if (focusedCell && copiedValue && copiedValue.field === focusedCell.field) {
+            // Cell paste
+            e.preventDefault();
+            const apiField = focusedCell.field === 'notes' ? 'description' : focusedCell.field;
+            const val = focusedCell.field === 'progressPercentage'
+              ? Math.max(0, Math.min(100, Number(copiedValue.value)))
+              : copiedValue.value;
+            onTaskUpdate(focusedCell.taskId, { [apiField]: val });
+            setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
+            setTimeout(() => setPasteFlash(null), 800);
+          } else if (copiedTasks.length > 0 && onDuplicateTasks) {
+            // Row paste
+            e.preventDefault();
+            onDuplicateTasks(copiedTasks);
+          }
+          return;
+        }
+      }
+
       // Tab indent / Shift+Tab outdent
       if (e.key === 'Tab' && !isInput) {
         e.preventDefault();
         if (e.shiftKey) {
           // Outdent
-          if (selectedIds.size > 0) {
-            const ids = Array.from(selectedIds);
-            for (const id of ids) {
-              const task = tasks.find(t => t.id === id);
-              if (task?.parentTaskId) {
-                const parent = tasks.find(t => t.id === task.parentTaskId);
-                if (onBulkUpdate) {
-                  onBulkUpdate([id], 'parentTaskId', parent?.parentTaskId || '');
-                } else {
-                  onTaskUpdate(id, { parentTaskId: parent?.parentTaskId || null });
-                }
-              }
-            }
-          } else if (activeTaskId) {
-            const task = tasks.find(t => t.id === activeTaskId);
+          const idsToProcess = selectedIds.size > 0
+            ? Array.from(selectedIds)
+            : focusedCell?.taskId ? [focusedCell.taskId]
+            : activeTaskId ? [activeTaskId] : [];
+          for (const id of idsToProcess) {
+            const task = tasks.find(t => t.id === id);
             if (task?.parentTaskId) {
               const parent = tasks.find(t => t.id === task.parentTaskId);
-              onTaskUpdate(activeTaskId, { parentTaskId: parent?.parentTaskId || null });
+              if (onBulkUpdate) {
+                onBulkUpdate([id], 'parentTaskId', parent?.parentTaskId || '');
+              } else {
+                onTaskUpdate(id, { parentTaskId: parent?.parentTaskId || null });
+              }
             }
           }
         } else {
           // Indent — make child of task above
-          const targetIds = selectedIds.size > 0 ? Array.from(selectedIds) : activeTaskId ? [activeTaskId] : [];
+          const targetIds = selectedIds.size > 0
+            ? Array.from(selectedIds)
+            : focusedCell?.taskId ? [focusedCell.taskId]
+            : activeTaskId ? [activeTaskId] : [];
           if (targetIds.length > 0) {
             const flatList = visibleSorted;
             for (const id of targetIds) {
@@ -819,14 +954,78 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         }
       }
 
-      // Escape to close context menu
-      if (e.key === 'Escape' && contextMenu) {
-        setContextMenu(null);
+      // Escape to close context menu or clear focused cell
+      if (e.key === 'Escape' && !isInput) {
+        if (contextMenu) {
+          setContextMenu(null);
+        } else if (focusedCell) {
+          setFocusedCell(null);
+        }
+      }
+
+      // Arrow key navigation when not editing
+      if (!editingCell && !isInput) {
+        if (!focusedCell) {
+          // Enter on selected row focuses the first field
+          if (e.key === 'Enter' && activeTaskId) {
+            e.preventDefault();
+            const field = visibleFieldOrder[0] || 'name';
+            setFocusedCell({ taskId: activeTaskId, field });
+          }
+          return;
+        }
+        const rowIdx = visibleSorted.findIndex(t => t.id === focusedCell.taskId);
+        const fieldIdx = visibleFieldOrder.indexOf(focusedCell.field);
+        if (rowIdx === -1 || fieldIdx === -1) return;
+
+        switch (e.key) {
+          case 'ArrowRight':
+            e.preventDefault();
+            if (fieldIdx < visibleFieldOrder.length - 1) {
+              setFocusedCell({ taskId: focusedCell.taskId, field: visibleFieldOrder[fieldIdx + 1] });
+            }
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            if (fieldIdx > 0) {
+              setFocusedCell({ taskId: focusedCell.taskId, field: visibleFieldOrder[fieldIdx - 1] });
+            }
+            break;
+          case 'ArrowDown':
+            e.preventDefault();
+            if (rowIdx < visibleSorted.length - 1) {
+              const nextTask = visibleSorted[rowIdx + 1];
+              setFocusedCell({ taskId: nextTask.id, field: focusedCell.field });
+              onTaskSelect?.(nextTask);
+            }
+            break;
+          case 'ArrowUp':
+            e.preventDefault();
+            if (rowIdx > 0) {
+              const prevTask = visibleSorted[rowIdx - 1];
+              setFocusedCell({ taskId: prevTask.id, field: focusedCell.field });
+              onTaskSelect?.(prevTask);
+            }
+            break;
+          case 'Enter':
+          case 'F2':
+            e.preventDefault();
+            startEditing(focusedCell.taskId, focusedCell.field, visibleSorted[rowIdx]);
+            break;
+        }
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate]);
+  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate, focusedCell, editingCell, visibleSorted, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue]);
+
+  // When editing ends, restore focusedCell so position isn't lost
+  useEffect(() => {
+    if (!editingCell) return;
+    return () => {
+      setFocusedCell(editingCell);
+    };
+  }, [editingCell]);
 
   // Click-away to dismiss context menu
   useEffect(() => {
@@ -909,7 +1108,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           <td
             key={col.key}
             className={`px-3 py-2 font-medium text-gray-900 dark:text-white min-w-[200px] ${editableCellClass(task.id, 'name', task)}`}
-            onClick={() => { if (!isEditing(task.id, 'name')) startEditing(task.id, 'name', task); }}
+            onClick={() => handleCellClick(task.id, 'name', task)}
           >
             {isEditing(task.id, 'name') ? (
               <input
@@ -953,7 +1152,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           <td
             key={col.key}
             className={`px-3 py-2 w-28 ${editableCellClass(task.id, 'status', task)}`}
-            onClick={() => { if (!isEditing(task.id, 'status')) startEditing(task.id, 'status', task); }}
+            onClick={() => handleCellClick(task.id, 'status', task)}
           >
             {isEditing(task.id, 'status') ? (
               <select
@@ -983,7 +1182,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           <td
             key={col.key}
             className={`px-3 py-2 w-24 ${editableCellClass(task.id, 'priority', task)}`}
-            onClick={() => { if (!isEditing(task.id, 'priority')) startEditing(task.id, 'priority', task); }}
+            onClick={() => handleCellClick(task.id, 'priority', task)}
           >
             {isEditing(task.id, 'priority') ? (
               <select
@@ -1013,7 +1212,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           <td
             key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${editableCellClass(task.id, 'startDate', task)}`}
-            onClick={() => { if (!isEditing(task.id, 'startDate')) startEditing(task.id, 'startDate', task); }}
+            onClick={() => handleCellClick(task.id, 'startDate', task)}
           >
             {isEditing(task.id, 'startDate') ? (
               <input
@@ -1038,7 +1237,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           <td
             key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${editableCellClass(task.id, 'endDate', task)}`}
-            onClick={() => { if (!isEditing(task.id, 'endDate')) startEditing(task.id, 'endDate', task); }}
+            onClick={() => handleCellClick(task.id, 'endDate', task)}
           >
             {isEditing(task.id, 'endDate') ? (
               <input
@@ -1063,7 +1262,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           <td
             key={col.key}
             className={`px-3 py-2 w-28 ${editableCellClass(task.id, 'progressPercentage', task)}`}
-            onClick={() => { if (!isEditing(task.id, 'progressPercentage')) startEditing(task.id, 'progressPercentage', task); }}
+            onClick={() => handleCellClick(task.id, 'progressPercentage', task)}
           >
             {isEditing(task.id, 'progressPercentage') ? (
               <input
@@ -1098,7 +1297,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           <td
             key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-32 ${editableCellClass(task.id, 'assignedTo', task)}`}
-            onClick={() => { if (!isEditing(task.id, 'assignedTo')) startEditing(task.id, 'assignedTo', task); }}
+            onClick={() => handleCellClick(task.id, 'assignedTo', task)}
           >
             {isEditing(task.id, 'assignedTo') ? (
               <input
@@ -1127,7 +1326,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         if (days == null && task.estimatedDays != null) days = task.estimatedDays;
         return (
           <td key={col.key} className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 relative group/cell ${editableCellClass(task.id, 'duration', task)}`}
-            onClick={() => { if (!isEditing(task.id, 'duration')) startEditing(task.id, 'duration', task); }}>
+            onClick={() => handleCellClick(task.id, 'duration', task)}>
             {isEditing(task.id, 'duration') ? (
               <input
                 autoFocus
@@ -1198,7 +1397,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           <td
             key={col.key}
             className={`px-3 py-2 text-xs w-28 ${hasDepError ? 'ring-2 ring-red-400 ring-inset rounded' : editableCellClass(task.id, 'dependency', task)}`}
-            onClick={() => { if (!isEditing(task.id, 'dependency')) startEditing(task.id, 'dependency', task); }}
+            onClick={() => handleCellClick(task.id, 'dependency', task)}
             title={hasDepError ? depError!.message : undefined}
           >
             {isEditing(task.id, 'dependency') ? (
@@ -1279,6 +1478,19 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'wbs':
         return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono">{wbsMap.get(task.id) || '-'}</td>;
 
+      case 'resource':
+        return (
+          <td key={col.key} className="px-3 py-2 text-xs overflow-visible" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+            {!task.isSummary && (
+              <ResourceQuickAssign
+                taskId={task.id}
+                assignments={task.assignments || []}
+                onUpdate={onTaskUpdate}
+              />
+            )}
+          </td>
+        );
+
       case 'budgetAllocated':
       case 'actualCost': {
         const budgetField = col.key as EditableField;
@@ -1287,7 +1499,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td key={col.key}
             className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 text-right font-mono w-28 ${editableCellClass(task.id, budgetField, task)}`}
-            onClick={() => { if (!isEditing(task.id, budgetField)) startEditing(task.id, budgetField, task); }}
+            onClick={() => handleCellClick(task.id, budgetField, task)}
           >
             {isEditing(task.id, budgetField) ? (
               <input
@@ -1320,7 +1532,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-24 ${editableCellClass(task.id, 'constraintType' as EditableField, task)}`}
-            onClick={() => startEditing(task.id, 'constraintType' as EditableField, task)}
+            onClick={() => handleCellClick(task.id, 'constraintType' as EditableField, task)}
           >
             {isEditing(task.id, 'constraintType' as EditableField) ? (
               <select
@@ -1353,7 +1565,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${needsDate ? editableCellClass(task.id, 'constraintDate' as EditableField, task) : ''}`}
-            onClick={() => { if (needsDate) startEditing(task.id, 'constraintDate' as EditableField, task); }}
+            onClick={() => { if (needsDate) handleCellClick(task.id, 'constraintDate' as EditableField, task); }}
           >
             {isEditing(task.id, 'constraintDate' as EditableField) ? (
               <input
@@ -1614,7 +1826,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                       {col.sortable && <SortIcon field={col.key} />}
                     </span>
                   </div>
-                  {/* Resize handle */}
+                  {/* Resize handle — double-click to auto-fit */}
                   <div
                     draggable={false}
                     className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize z-10 flex items-center justify-center"
@@ -1623,6 +1835,11 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                       e.stopPropagation();
                       const th = e.currentTarget.parentElement;
                       handleResizeStart(e, col.key, th?.offsetWidth ?? 120);
+                    }}
+                    onDoubleClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      autoFitColumn(col.key);
                     }}
                   >
                     <div className="w-0.5 h-4 bg-gray-200 dark:bg-gray-600 group-hover/th:bg-primary-400 rounded-full transition-colors" />

@@ -659,6 +659,25 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
     });
   }, [schedule.id, queryClient, tasks, pushAction]);
 
+  // Duplicate/paste tasks — creates copies with "(copy)" suffix
+  const handleDuplicateTasks = useCallback(async (srcTasks: GanttTask[]) => {
+    for (const t of srcTasks) {
+      await createMutation.mutateAsync({
+        name: `${t.name} (copy)`,
+        status: t.status || 'pending',
+        priority: t.priority || 'medium',
+        assignedTo: t.assignedTo || '',
+        startDate: t.startDate || '',
+        endDate: t.endDate || '',
+        progressPercentage: t.progressPercentage || 0,
+        description: t.description || '',
+        parentTaskId: t.parentTaskId || undefined,
+        estimatedDays: t.estimatedDays != null ? String(t.estimatedDays) : undefined,
+        isMilestone: t.isMilestone || undefined,
+      } as any);
+    }
+  }, [createMutation]);
+
   // Kanban status change
   const handleKanbanStatusChange = (taskId: string, newStatus: string) => {
     updateMutation.mutate({ taskId, data: { status: newStatus } });
@@ -1146,6 +1165,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             endDate: bt.endDate,
           }))}
           nonWorkingDates={nonWorkingDates}
+          onDuplicateTasks={handleDuplicateTasks}
         />
       )}
       {viewMode === 'kanban' && (
@@ -1193,6 +1213,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
           redoDescription={redoDescription}
           onUndo={undo}
           onRedo={redo}
+          onDuplicateTasks={handleDuplicateTasks}
         />
       )}
       {viewMode === 'calendar' && (

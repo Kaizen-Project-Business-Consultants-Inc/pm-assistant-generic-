@@ -368,6 +368,7 @@ export function GanttChart({
   onInsertAfter,
   onInsertBefore,
   nonWorkingDates,
+  onDuplicateTasks,
 }: {
   tasks: GanttTask[];
   scheduleName?: string;
@@ -418,6 +419,8 @@ export function GanttChart({
   onInsertBefore?: (beforeTaskId: string, parentTaskId?: string) => void;
   /** Non-working dates to shade on the timeline (YYYY-MM-DD strings) */
   nonWorkingDates?: Set<string>;
+  /** Called to duplicate/paste tasks */
+  onDuplicateTasks?: (tasks: GanttTask[]) => void;
 }) {
   const criticalSet = useMemo(() => new Set(criticalPathTaskIds || []), [criticalPathTaskIds]);
   const baselineMap = useMemo(() => {
@@ -1322,6 +1325,49 @@ export function GanttChart({
     }
   }, [rowNumMap]);
 
+  // Column auto-fit: measure text width and set width to max + padding
+  const getGanttCellText = useCallback((task: GanttTask, colKey: string): string => {
+    switch (colKey) {
+      case 'name': return task.name || '';
+      case 'pred': return getTaskFieldValue(task, 'dependency');
+      case 'start': return task.startDate ? formatShortDate(new Date(task.startDate)) : '';
+      case 'end': return task.endDate ? formatShortDate(new Date(task.endDate)) : '';
+      case 'dur': {
+        const s = toDate(task.startDate), en = toDate(task.endDate);
+        return s && en ? `${daysBetween(s, en)}d` : '';
+      }
+      case 'est': return task.estimatedDays != null ? `${task.estimatedDays}d` : '';
+      case 'work': return task.estimatedDurationHours != null ? `${task.estimatedDurationHours}h` : '';
+      case 'pct': return `${task.progressPercentage ?? 0}%`;
+      case 'priority': return task.priority || '';
+      case 'assigned': return task.assignedTo || '';
+      case 'status': return task.status?.replace('_', ' ') || '';
+      case 'notes': return task.description || '';
+      default: return '';
+    }
+  }, [getTaskFieldValue]);
+
+  const autoFitGanttColumn = useCallback((colKey: string) => {
+    if (!measureCanvasRef.current) {
+      measureCanvasRef.current = document.createElement('canvas');
+    }
+    const ctx = measureCanvasRef.current.getContext('2d');
+    if (!ctx) return;
+    ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+
+    const colDef = GANTT_COLUMNS.find(c => c.key === colKey);
+    if (!colDef || colDef.flex || colDef.fixed) return;
+
+    let maxW = ctx.measureText(colDef.label).width;
+    for (const { task } of rows) {
+      const text = getGanttCellText(task, colKey);
+      const w = ctx.measureText(text).width;
+      if (w > maxW) maxW = w;
+    }
+    const newWidth = Math.min(400, Math.max(colDef.minWidth ?? 36, Math.ceil(maxW + 24)));
+    setGanttColWidths(prev => ({ ...prev, [colKey]: newWidth }));
+  }, [rows, getGanttCellText]);
+
   const startEditing = useCallback((taskId: string, field: EditableField, task: GanttTask) => {
     if (!onTaskUpdate || drag) return;
     setEditingCell({ taskId, field });
@@ -1469,10 +1515,12 @@ export function GanttChart({
     focusedCell?.taskId === taskId && focusedCell.field === field && !editingCell;
 
   // -----------------------------------------------------------------------
-  // Copy/paste cell state
+  // Copy/paste cell state + row copy state
   // -----------------------------------------------------------------------
   const [copiedValue, setCopiedValue] = useState<{ field: EditableField; value: string } | null>(null);
   const [pasteFlash, setPasteFlash] = useState<{ taskId: string; field: string } | null>(null);
+  const [copiedTasks, setCopiedTasks] = useState<GanttTask[]>([]);
+  const measureCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   /** Get visible FIELD_ORDER (only fields whose columns are visible) */
   const visibleFieldOrder = useMemo(() => {
@@ -1495,26 +1543,50 @@ export function GanttChart({
       const isCheckbox = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox';
       if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') && !(isCheckbox && e.key === 'Tab')) return;
 
-      // Copy/paste when a cell is focused
-      if (focusedCell && (e.ctrlKey || e.metaKey)) {
-        if (e.key === 'c') {
-          e.preventDefault();
-          const task = tasks.find(t => t.id === focusedCell.taskId);
-          if (task) {
-            const val = getTaskFieldValue(task, focusedCell.field);
-            setCopiedValue({ field: focusedCell.field, value: val });
-            navigator.clipboard.writeText(val).catch(() => { /* Clipboard API may be unavailable */ });
-          }
-          return;
-        }
-        if (e.key === 'v') {
-          if (copiedValue && copiedValue.field === focusedCell.field) {
+      // Copy/paste: cell-level when focused, row-level otherwise
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'v')) {
+        if (focusedCell) {
+          // Cell copy/paste
+          if (e.key === 'c') {
             e.preventDefault();
-            onTaskUpdate(focusedCell.taskId, { [focusedCell.field === 'dependency' ? 'dependencies' : focusedCell.field]: focusedCell.field === 'progressPercentage' ? Math.max(0, Math.min(100, Number(copiedValue.value))) : (focusedCell.field === 'estimatedDays' || focusedCell.field === 'estimatedDurationHours') ? Math.max(0, Number(copiedValue.value)) : copiedValue.value });
-            setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
-            setTimeout(() => setPasteFlash(null), 800);
+            const task = tasks.find(t => t.id === focusedCell.taskId);
+            if (task) {
+              const val = getTaskFieldValue(task, focusedCell.field);
+              setCopiedValue({ field: focusedCell.field, value: val });
+              navigator.clipboard.writeText(val).catch(() => {});
+            }
+            return;
           }
-          return;
+          if (e.key === 'v') {
+            if (copiedValue && copiedValue.field === focusedCell.field) {
+              e.preventDefault();
+              onTaskUpdate(focusedCell.taskId, { [focusedCell.field === 'dependency' ? 'dependencies' : focusedCell.field]: focusedCell.field === 'progressPercentage' ? Math.max(0, Math.min(100, Number(copiedValue.value))) : (focusedCell.field === 'estimatedDays' || focusedCell.field === 'estimatedDurationHours') ? Math.max(0, Number(copiedValue.value)) : copiedValue.value });
+              setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
+              setTimeout(() => setPasteFlash(null), 800);
+            }
+            return;
+          }
+        } else {
+          // Row copy/paste
+          if (e.key === 'c') {
+            e.preventDefault();
+            const toCopy = someSelected
+              ? rows.filter(r => selectedIds.has(r.task.id)).map(r => r.task)
+              : activeTaskId
+                ? rows.filter(r => r.task.id === activeTaskId).map(r => r.task)
+                : [];
+            if (toCopy.length > 0) {
+              setCopiedTasks(toCopy);
+              setBulkMessage(`Copied ${toCopy.length} task${toCopy.length > 1 ? 's' : ''}`);
+              setTimeout(() => setBulkMessage(''), 2000);
+            }
+            return;
+          }
+          if (e.key === 'v' && copiedTasks.length > 0 && onDuplicateTasks) {
+            e.preventDefault();
+            onDuplicateTasks(copiedTasks);
+            return;
+          }
         }
       }
 
@@ -1636,7 +1708,7 @@ export function GanttChart({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [focusedCell, editingCell, rows, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue]);
+  }, [focusedCell, editingCell, rows, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds]);
 
   // When editing ends, restore focus to that cell
   useEffect(() => {
@@ -2846,6 +2918,7 @@ export function GanttChart({
                       draggable={false}
                       className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-10 hover:bg-primary-400/40 transition-colors"
                       onMouseDown={(e) => { e.stopPropagation(); handleColResizeStart(e, col.key, w); }}
+                      onDoubleClick={(e) => { e.stopPropagation(); autoFitGanttColumn(col.key); }}
                     />
                   )}
                 </div>
