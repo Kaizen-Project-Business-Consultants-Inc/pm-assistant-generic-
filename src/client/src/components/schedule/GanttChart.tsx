@@ -673,11 +673,12 @@ export function GanttChart({
 
     // If external columnState provides an order, use it
     if (_columnState && _columnState.columnOrder.length > 0) {
+      const fixedKeys = new Set(['rowNum', 'name', 'editIcon']);
       const mapped = _columnState.columnOrder
         .map(k => tableKeyToGanttKey[k])
-        .filter((k): k is string => !!k && colMap.has(k));
+        .filter((k): k is string => !!k && colMap.has(k) && !fixedKeys.has(k));
       // Start with fixed columns, then mapped order, then any Gantt-only columns not in the external order
-      const used = new Set(mapped);
+      const used = new Set([...mapped, ...fixedKeys]);
       const remaining = GANTT_COLUMNS
         .filter(c => !c.alwaysVisible && !used.has(c.key))
         .map(c => c.key);
