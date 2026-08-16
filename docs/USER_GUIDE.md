@@ -461,7 +461,7 @@ Toggle between Month / Week / Day using buttons in the calendar header. Navigati
 
 A spreadsheet-like view of all tasks with inline editing. Click the **Columns** button (gear icon) to open the column picker. Choose from 22 columns organized into four groups:
 
-- **Standard** -- # (row number, always visible), Name, Status, Priority, Start Date, End Date, Progress, Assigned To (visible by default, inline-editable)
+- **Standard** -- # (row number, always visible), Name, Status, Priority, Start Date, End Date, Progress, Assigned To (visible by default, inline-editable), Notes (hidden by default, inline-editable textarea)
 - **Scheduling (CPM)** -- Duration, Early Start, Early Finish, Late Start, Late Finish, Total Float, Free Float, Critical (read-only; enabling any of these triggers CPM computation automatically)
 - **Baseline** -- Baseline Start, Baseline End, Start Variance, End Variance (read-only; populated when a baseline comparison is active)
 - **Other** -- Predecessor (inline-editable), WBS (read-only; auto-computed from task hierarchy)

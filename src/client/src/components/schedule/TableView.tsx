@@ -76,7 +76,7 @@ type GroupByField = '' | 'status' | 'priority' | 'assignedTo';
 const statusOptions = ['pending', 'in_progress', 'completed'];
 const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 
-type EditableField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progressPercentage' | 'assignedTo' | 'dependency' | 'duration' | 'budgetAllocated' | 'actualCost' | 'constraintType' | 'constraintDate';
+type EditableField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progressPercentage' | 'assignedTo' | 'dependency' | 'duration' | 'budgetAllocated' | 'actualCost' | 'constraintType' | 'constraintDate' | 'notes';
 
 function addDaysToDate(baseDate: string, days: number): string {
   const d = new Date(baseDate);
@@ -226,6 +226,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'endDate': return task.endDate || '';
       case 'progressPercentage': return task.progressPercentage ?? 0;
       case 'assignedTo': return (task.assignedTo || '').toLowerCase();
+      case 'notes': return (task.description || '').toLowerCase();
       case 'duration': {
         if (task.estimatedDays != null) return task.estimatedDays;
         if (task.startDate && task.endDate) {
@@ -497,6 +498,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'endDate': return task.endDate?.split('T')[0] || '';
       case 'progressPercentage': return String(task.progressPercentage ?? 0);
       case 'assignedTo': return task.assignedTo || '';
+      case 'notes': return task.description || '';
       case 'duration': {
         if (task.startDate && task.endDate) {
           const diff = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000);
@@ -613,7 +615,8 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     setEditingCell(null);
     setEditValue('');
 
-    onTaskUpdate(taskId, { [field]: saveValue });
+    const apiField = field === 'notes' ? 'description' : field;
+    onTaskUpdate(taskId, { [apiField]: saveValue });
 
     setTimeout(() => {
       setSavingCell(null);
@@ -1233,6 +1236,37 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
       case 'rowNum':
         return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center w-12">{rowNumMap.get(task.id) || '-'}</td>;
+
+      case 'notes': {
+        const notesField: EditableField = 'notes';
+        const notesText = task.description || '';
+        return (
+          <td key={col.key}
+            className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[200px] group/cell relative ${editableCellClass(task.id, notesField, task)}`}
+            onClick={() => { if (!isEditing(task.id, notesField)) startEditing(task.id, notesField, task); }}
+            style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}
+          >
+            {isEditing(task.id, notesField) ? (
+              <textarea
+                ref={el => { if (el) el.focus(); }}
+                className="w-full text-xs p-1 rounded border border-primary-300 dark:border-primary-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-400 resize-y"
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                onBlur={() => saveEdit(task.id, notesField, editValue)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') { e.preventDefault(); cancelEditing(); }
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(task.id, notesField, editValue); }
+                }}
+                rows={3}
+              />
+            ) : (
+              <span className="truncate block" title={notesText}>{notesText || '-'}</span>
+            )}
+            {renderSaveIndicator(task.id, notesField)}
+            {renderHoverPencil(task.id, notesField)}
+          </td>
+        );
+      }
 
       case 'wbs':
         return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono">{wbsMap.get(task.id) || '-'}</td>;

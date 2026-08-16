@@ -207,6 +207,7 @@ const GANTT_COLUMNS: GanttColDef[] = [
   { key: 'assigned',  label: 'Assigned', defaultWidth: 96,  minWidth: 60,  resizable: true },
   { key: 'resource',  label: 'Resource', defaultWidth: 110, minWidth: 70,  resizable: true },
   { key: 'status',    label: 'Status',   defaultWidth: 64,  minWidth: 50,  resizable: true },
+  { key: 'notes',     label: 'Notes',    defaultWidth: 120, minWidth: 60,  resizable: true },
   { key: 'editIcon',  label: '',         defaultWidth: 72,  minWidth: 72,  resizable: false, fixed: true, alwaysVisible: true },
 ];
 
@@ -570,7 +571,7 @@ export function GanttChart({
   const ganttKeyToTableKey: Record<string, string> = {
     pred: 'dependency', start: 'startDate', end: 'endDate',
     dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
-    assigned: 'assignedTo', priority: 'priority', status: 'status',
+    assigned: 'assignedTo', priority: 'priority', status: 'status', notes: 'notes',
   };
 
   const isColVisible = useCallback((col: GanttColDef): boolean => {
@@ -3234,6 +3235,17 @@ export function GanttChart({
                           onUpdate={onTaskUpdate}
                         />
                       )}
+                    </div>
+                  );
+
+                  if (col.key === 'notes') return (
+                    <div
+                      key="notes"
+                      className="shrink-0 px-1.5 text-[11px] text-gray-500 dark:text-gray-400 truncate"
+                      style={{ width: getColWidth(col) }}
+                      title={task.description || ''}
+                    >
+                      {task.description ? task.description.slice(0, 40) + (task.description.length > 40 ? '…' : '') : '-'}
                     </div>
                   );
 
