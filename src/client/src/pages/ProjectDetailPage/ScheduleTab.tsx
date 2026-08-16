@@ -578,17 +578,17 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
     });
     pushAction({
       description: `Reorder tasks`,
-      undo: () => {
-        apiService.bulkUpdateTasks(oldOrders.map(o => ({ id: o.taskId, scheduleId: schedule.id, sortOrder: o.sortOrder })));
+      undo: async () => {
+        await apiService.bulkUpdateTasks(oldOrders.map(o => ({ id: o.taskId, scheduleId: schedule.id, sortOrder: o.sortOrder })));
         queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       },
-      redo: () => {
-        apiService.bulkUpdateTasks(updates.map(u => ({ id: u.taskId, scheduleId: schedule.id, sortOrder: u.sortOrder })));
+      redo: async () => {
+        await apiService.bulkUpdateTasks(updates.map(u => ({ id: u.taskId, scheduleId: schedule.id, sortOrder: u.sortOrder })));
         queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       },
     });
-    apiService.bulkUpdateTasks(updates.map(u => ({ id: u.taskId, scheduleId: schedule.id, sortOrder: u.sortOrder })));
-    queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+    apiService.bulkUpdateTasks(updates.map(u => ({ id: u.taskId, scheduleId: schedule.id, sortOrder: u.sortOrder })))
+      .then(() => queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] }));
   }, [tasks, schedule.id, pushAction, queryClient]);
 
   // Bulk update with undo
