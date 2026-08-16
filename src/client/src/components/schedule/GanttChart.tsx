@@ -401,7 +401,7 @@ export function GanttChart({
   /** Called when a task field is edited inline in the left panel */
   onTaskUpdate?: (taskId: string, data: Record<string, unknown>) => void;
   /** Called when rows are reordered via drag-and-drop */
-  onTaskReorder?: (updates: Array<{ taskId: string; sortOrder: number }>) => void;
+  onTaskReorder?: (updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }>) => void;
   /** Called when bulk field update is applied to selected tasks */
   onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
   /** Called when bulk delete is applied to selected tasks */
@@ -794,7 +794,6 @@ export function GanttChart({
   // -----------------------------------------------------------------------
   const [rowDrag, setRowDrag] = useState<{
     taskId: string;
-    parentTaskId: string | null;
     startIdx: number;
     targetIdx: number;
   } | null>(null);
@@ -2168,20 +2167,15 @@ export function GanttChart({
     e.dataTransfer.setData('text/plain', task.id);
     setRowDrag({
       taskId: task.id,
-      parentTaskId: task.parentTaskId || null,
       startIdx: rowIdx,
       targetIdx: rowIdx,
     });
   }, [editingCell, onTaskReorder]);
 
-  const handleRowDragOver = useCallback((e: React.DragEvent, task: GanttTask, rowIdx: number) => {
+  const handleRowDragOver = useCallback((e: React.DragEvent, _task: GanttTask, rowIdx: number) => {
     if (!rowDrag || !onTaskReorder) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    // Only allow reorder within same parent level
-    const draggedParent = rowDrag.parentTaskId;
-    const targetParent = task.parentTaskId || null;
-    if (draggedParent !== targetParent) return;
     setRowDrag(prev => prev ? { ...prev, targetIdx: rowIdx } : null);
   }, [rowDrag, onTaskReorder]);
 
@@ -2191,20 +2185,67 @@ export function GanttChart({
       setRowDrag(null);
       return;
     }
-    // Get all siblings of the same parent, in their current row order
-    const parentId = rowDrag.parentTaskId;
-    const siblings = rows
-      .map((r, idx) => ({ ...r, rowIdx: idx }))
-      .filter(r => (r.task.parentTaskId || null) === parentId);
-    // Compute new order by removing dragged task and inserting at target position
-    const draggedSibIdx = siblings.findIndex(s => s.task.id === rowDrag.taskId);
-    const targetSibIdx = siblings.findIndex(s => s.rowIdx === rowDrag.targetIdx);
-    if (draggedSibIdx === -1 || targetSibIdx === -1) { setRowDrag(null); return; }
-    const reordered = [...siblings];
-    const [removed] = reordered.splice(draggedSibIdx, 1);
-    reordered.splice(targetSibIdx, 0, removed);
-    // Assign sortOrder with gaps of 10
-    const updates = reordered.map((s, i) => ({ taskId: s.task.id, sortOrder: (i + 1) * 10 }));
+    const allTasks = rows.map(r => r.task);
+    const draggedTask = allTasks[rowDrag.startIdx];
+    const targetTask = allTasks[rowDrag.targetIdx];
+    if (!draggedTask || !targetTask) { setRowDrag(null); return; }
+
+    // Cycle prevention: cannot drop onto self or own descendants
+    const getDescendantIds = (taskId: string): Set<string> => {
+      const result = new Set<string>();
+      const stack = [taskId];
+      while (stack.length) {
+        const current = stack.pop()!;
+        for (const t of allTasks) {
+          if (t.parentTaskId === current && !result.has(t.id)) {
+            result.add(t.id);
+            stack.push(t.id);
+          }
+        }
+      }
+      return result;
+    };
+    const descendantIds = getDescendantIds(draggedTask.id);
+    if (targetTask.id === draggedTask.id || descendantIds.has(targetTask.id)) {
+      setRowDrag(null);
+      return;
+    }
+
+    // Determine new parent
+    const isTargetSummary = allTasks.some(t => t.parentTaskId === targetTask.id);
+    const newParentId = isTargetSummary ? targetTask.id : (targetTask.parentTaskId || null);
+
+    // Collect dragged block (task + descendants) in flat order
+    const blockIds = new Set([draggedTask.id, ...descendantIds]);
+    const block = allTasks.filter(t => blockIds.has(t.id));
+    const rest = allTasks.filter(t => !blockIds.has(t.id));
+
+    // Find insertion point
+    const targetIdxInRest = rest.findIndex(t => t.id === targetTask.id);
+    if (targetIdxInRest === -1) { setRowDrag(null); return; }
+
+    const insertAt = isTargetSummary
+      ? targetIdxInRest + 1
+      : rowDrag.targetIdx > rowDrag.startIdx
+        ? targetIdxInRest + 1
+        : targetIdxInRest;
+
+    const newList = [...rest];
+    newList.splice(insertAt, 0, ...block);
+
+    // Build updates
+    const oldParentId = draggedTask.parentTaskId || null;
+    const updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }> = [];
+    newList.forEach((t, i) => {
+      const entry: { taskId: string; sortOrder: number; parentTaskId?: string | null } = {
+        taskId: t.id, sortOrder: (i + 1) * 10,
+      };
+      if (t.id === draggedTask.id && newParentId !== oldParentId) {
+        entry.parentTaskId = newParentId;
+      }
+      updates.push(entry);
+    });
+
     onTaskReorder(updates);
     setRowDrag(null);
   }, [rowDrag, onTaskReorder, rows]);
@@ -2941,7 +2982,7 @@ export function GanttChart({
             return (
               <div
                 key={task.id}
-                className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer ${rowIdx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} ${activeTaskId === task.id ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-inset ring-primary-200 dark:ring-primary-700' : ''} ${rowDrag?.targetIdx === rowIdx && rowDrag?.taskId !== task.id && rowDrag?.parentTaskId === (task.parentTaskId || null) ? 'border-t-2 border-t-blue-500' : ''} ${rowDrag?.taskId === task.id ? 'opacity-40' : ''}`}
+                className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer ${rowIdx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} ${activeTaskId === task.id ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-inset ring-primary-200 dark:ring-primary-700' : ''} ${rowDrag?.targetIdx === rowIdx && rowDrag?.taskId !== task.id ? 'border-t-2 border-t-blue-500' : ''} ${rowDrag?.taskId === task.id ? 'opacity-40' : ''}`}
                 style={shouldVirtualize ? { height: ROW_H, position: 'absolute', top: rowIdx * ROW_H, left: 0, right: 0 } : { height: ROW_H }}
                 onClick={(e) => {
                   if (editingCell) return;

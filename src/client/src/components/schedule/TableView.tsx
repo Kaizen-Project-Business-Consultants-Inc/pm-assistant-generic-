@@ -53,7 +53,7 @@ interface TableViewProps {
   onTaskSelect?: (task: GanttTask) => void;
   activeTaskId?: string | null;
   onTaskUpdate: (taskId: string, data: Record<string, unknown>) => void;
-  onTaskReorder?: (updates: Array<{ taskId: string; sortOrder: number }>) => void;
+  onTaskReorder?: (updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }>) => void;
   onQuickAdd?: (name: string) => void;
   columnState: ColumnState;
   cpmData?: { tasks: CpmTaskData[]; criticalPathTaskIds: string[] };
@@ -382,7 +382,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   // Row drag reorder state — pointer-events-based (HTML5 drag on <tr> is unreliable)
   const [rowDrag, setRowDrag] = useState<{
     taskId: string;
-    parentTaskId: string | null;
     startIdx: number;
     targetIdx: number;
   } | null>(null);
@@ -400,6 +399,22 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
   const canDragRows = !!onTaskReorder && !editingCell && selectedIds.size === 0 && !sortField;
 
+  // Helper: collect all descendant task IDs of a given task
+  const getDescendantIds = useCallback((taskId: string, allTasks: GanttTask[]): Set<string> => {
+    const result = new Set<string>();
+    const stack = [taskId];
+    while (stack.length) {
+      const current = stack.pop()!;
+      for (const t of allTasks) {
+        if (t.parentTaskId === current && !result.has(t.id)) {
+          result.add(t.id);
+          stack.push(t.id);
+        }
+      }
+    }
+    return result;
+  }, []);
+
   const handleGripMouseDown = useCallback((e: React.MouseEvent, task: GanttTask, rowIdx: number) => {
     if (!canDragRows) return;
     e.preventDefault();
@@ -407,7 +422,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
     const state = {
       taskId: task.id,
-      parentTaskId: task.parentTaskId || null,
       startIdx: rowIdx,
       targetIdx: rowIdx,
     };
@@ -433,17 +447,53 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       document.removeEventListener('mouseup', onUp);
       setRowDrag(prev => {
         if (!prev || !onTaskReorder || prev.startIdx === prev.targetIdx) return null;
-        const parentId = prev.parentTaskId;
-        const siblings = visibleSorted
-          .map((t, idx) => ({ task: t, rowIdx: idx }))
-          .filter(r => (r.task.parentTaskId || null) === parentId);
-        const draggedSibIdx = siblings.findIndex(s => s.task.id === prev.taskId);
-        const targetSibIdx = siblings.findIndex(s => s.rowIdx === prev.targetIdx);
-        if (draggedSibIdx === -1 || targetSibIdx === -1) return null;
-        const reordered = [...siblings];
-        const [removed] = reordered.splice(draggedSibIdx, 1);
-        reordered.splice(targetSibIdx, 0, removed);
-        const updates = reordered.map((s, i) => ({ taskId: s.task.id, sortOrder: (i + 1) * 10 }));
+
+        const draggedTask = visibleSorted[prev.startIdx];
+        const targetTask = visibleSorted[prev.targetIdx];
+        if (!draggedTask || !targetTask) return null;
+
+        // Cycle prevention: cannot drop onto self or own descendants
+        const descendantIds = getDescendantIds(draggedTask.id, visibleSorted);
+        if (targetTask.id === draggedTask.id || descendantIds.has(targetTask.id)) return null;
+
+        // Determine new parent: if target is a summary task, become its child; otherwise become sibling of target
+        const isTargetSummary = visibleSorted.some(t => t.parentTaskId === targetTask.id);
+        const newParentId = isTargetSummary ? targetTask.id : (targetTask.parentTaskId || null);
+
+        // Collect the dragged block (task + descendants) in flat order
+        const blockIds = new Set([draggedTask.id, ...descendantIds]);
+        const block = visibleSorted.filter(t => blockIds.has(t.id));
+        const rest = visibleSorted.filter(t => !blockIds.has(t.id));
+
+        // Find insertion point in rest array
+        const targetIdxInRest = rest.findIndex(t => t.id === targetTask.id);
+        if (targetIdxInRest === -1) return null;
+
+        // Insert after target if dropping below start, or at target position if above
+        const insertAt = isTargetSummary
+          ? targetIdxInRest + 1 // insert as first child right after the summary
+          : prev.targetIdx > prev.startIdx
+            ? targetIdxInRest + 1 // insert after target
+            : targetIdxInRest;    // insert before target
+
+        const newList = [...rest];
+        newList.splice(insertAt, 0, ...block);
+
+        // Build updates: reassign sort orders for all tasks, and parentTaskId for reparented ones
+        const oldParentId = draggedTask.parentTaskId || null;
+        const updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }> = [];
+        newList.forEach((t, i) => {
+          const newSortOrder = (i + 1) * 10;
+          const entry: { taskId: string; sortOrder: number; parentTaskId?: string | null } = {
+            taskId: t.id, sortOrder: newSortOrder,
+          };
+          // Only include parentTaskId for the dragged task if its parent changed
+          if (t.id === draggedTask.id && newParentId !== oldParentId) {
+            entry.parentTaskId = newParentId;
+          }
+          updates.push(entry);
+        });
+
         onTaskReorder(updates);
         return null;
       });
@@ -451,7 +501,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
-  }, [canDragRows, onTaskReorder, visibleSorted]);
+  }, [canDragRows, onTaskReorder, visibleSorted, getDescendantIds]);
 
   // Row number map: taskId → sequential row number (1-based)
   const rowNumMap = useMemo(() => {
@@ -1853,7 +1903,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             {(() => {
               const renderTaskRow = (task: GanttTask, rowIdx: number) => {
                 const isSelected = selectedIds.has(task.id);
-                const isDragTarget = rowDrag && rowDrag.targetIdx === rowIdx && rowDrag.taskId !== task.id && (task.parentTaskId || null) === rowDrag.parentTaskId;
+                const isDragTarget = rowDrag && rowDrag.targetIdx === rowIdx && rowDrag.taskId !== task.id;
                 return (
                   <tr
                     key={task.id}

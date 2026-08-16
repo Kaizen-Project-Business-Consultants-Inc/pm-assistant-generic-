@@ -93,7 +93,8 @@ An agentic AI project management platform that combines the scheduling power of 
 - 11 columns in left panel: #, Task Name, Pred, Start, End, Duration, Est Days, %, Priority, Assigned, Status
 - Zoom and splitter width persist per schedule via localStorage
 - **Inline grid editing** — click any cell to edit directly in the left panel (11 editable fields: name, predecessor, start, end, duration, est days, work effort hours, %, priority, assigned, status). Tab/Shift+Tab navigates across cells and rows. Duration edits auto-compute end date. Enter saves, Escape cancels, blur auto-saves, green flash confirms success. Input types match field: text, date picker, number, select dropdown, MS Project predecessor notation.
-- **Benchmark:** MS Project, Primavera P6 — matches P6/MS Project zoom + dual header + resizable splitter + inline cell editing
+- **Cross-parent row drag reorder** — drag any task to any row position; tasks re-parent automatically to match the drop target (MSP-style free drag). Dropping on a summary task inserts as first child; dropping between tasks makes a sibling. Summary tasks move with their entire subtree. Cycle prevention blocks invalid drops. Sort order and parent changes are undoable.
+- **Benchmark:** MS Project, Primavera P6 — matches P6/MS Project zoom + dual header + resizable splitter + inline cell editing + cross-parent drag reorder
 
 ### 1.5 Kanban Board View
 - Toggle between Gantt / Kanban / Table views

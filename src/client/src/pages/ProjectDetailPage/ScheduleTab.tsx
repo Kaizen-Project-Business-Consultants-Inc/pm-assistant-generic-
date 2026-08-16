@@ -574,24 +574,33 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
     updateMutation.mutate({ taskId, data: { startDate: newStart, endDate: newEnd } });
   }, [tasks, updateMutation, pushAction, queryClient, schedule.id]);
 
-  // Row reorder with undo
-  const handleTaskReorder = useCallback((updates: Array<{ taskId: string; sortOrder: number }>) => {
-    const oldOrders = updates.map(u => {
+  // Row reorder with undo (supports cross-parent reparenting)
+  const handleTaskReorder = useCallback((updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }>) => {
+    const oldValues = updates.map(u => {
       const t = tasks.find(tt => tt.id === u.taskId);
-      return { taskId: u.taskId, sortOrder: t?.sortOrder ?? 0 };
+      return {
+        taskId: u.taskId,
+        sortOrder: t?.sortOrder ?? 0,
+        ...(u.parentTaskId !== undefined ? { parentTaskId: t?.parentTaskId || null } : {}),
+      };
+    });
+    const toBulk = (items: typeof updates) => items.map(u => {
+      const entry: { id: string; scheduleId: string; sortOrder: number; parentTaskId?: string | null } = { id: u.taskId, scheduleId: schedule.id, sortOrder: u.sortOrder };
+      if (u.parentTaskId !== undefined) entry.parentTaskId = u.parentTaskId;
+      return entry;
     });
     pushAction({
       description: `Reorder tasks`,
       undo: async () => {
-        await apiService.bulkUpdateTasks(oldOrders.map(o => ({ id: o.taskId, scheduleId: schedule.id, sortOrder: o.sortOrder })));
+        await apiService.bulkUpdateTasks(toBulk(oldValues));
         queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       },
       redo: async () => {
-        await apiService.bulkUpdateTasks(updates.map(u => ({ id: u.taskId, scheduleId: schedule.id, sortOrder: u.sortOrder })));
+        await apiService.bulkUpdateTasks(toBulk(updates));
         queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       },
     });
-    apiService.bulkUpdateTasks(updates.map(u => ({ id: u.taskId, scheduleId: schedule.id, sortOrder: u.sortOrder })))
+    apiService.bulkUpdateTasks(toBulk(updates))
       .then(() => queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] }));
   }, [tasks, schedule.id, pushAction, queryClient]);
 

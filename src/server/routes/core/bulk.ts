@@ -42,6 +42,7 @@ const bulkUpdateItemSchema = z.object({
   notes: z.string().optional(),
   wbs: z.string().optional(),
   sortOrder: z.number().optional(),
+  parentTaskId: z.string().nullable().optional(),
 });
 
 const bulkUpdateSchema = z.object({
@@ -152,6 +153,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             if (u.notes !== undefined) { sets.push('notes = ?'); params.push(u.notes); }
             if (u.wbs !== undefined) { sets.push('wbs = ?'); params.push(u.wbs); }
             if (u.sortOrder !== undefined) { sets.push('sort_order = ?'); params.push(u.sortOrder); }
+            if (u.parentTaskId !== undefined) { sets.push('parent_task_id = ?'); params.push(u.parentTaskId); }
 
             if (sets.length === 0) {
               failed.push({ id: u.id, error: 'No fields to update' });
