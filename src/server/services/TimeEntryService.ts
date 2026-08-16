@@ -30,7 +30,7 @@ export class TimeEntryService {
 
   async update(id: string, data: { date?: string; hours?: number; description?: string; billable?: boolean }): Promise<TimeEntry> {
     const entry = await timeEntryRepository.findById(id);
-    if (entry && entry.status !== 'draft') {
+    if (entry && (entry.status === 'submitted' || entry.status === 'approved')) {
       throw Object.assign(new Error('Cannot edit a time entry that has been submitted or approved'), { statusCode: 409 });
     }
     const sets: string[] = [];
@@ -45,7 +45,7 @@ export class TimeEntryService {
 
   async delete(id: string): Promise<void> {
     const entry = await timeEntryRepository.findById(id);
-    if (entry && entry.status !== 'draft') {
+    if (entry && (entry.status === 'submitted' || entry.status === 'approved')) {
       throw Object.assign(new Error('Cannot delete a time entry that has been submitted or approved'), { statusCode: 409 });
     }
     await timeEntryRepository.deleteById(id);
@@ -112,13 +112,13 @@ export class TimeEntryService {
   async submitTimesheet(userId: string, projectId: string, weekStart: string): Promise<TimesheetSubmission> {
     const weekEnd = this.getWeekEnd(weekStart);
     const entries = await timeEntryRepository.findByUserProjectWeek(userId, projectId, weekStart, weekEnd);
-    const draftEntries = entries.filter(e => e.status === 'draft');
-    if (draftEntries.length === 0) {
-      throw Object.assign(new Error('No draft entries to submit for this week'), { statusCode: 400 });
+    const submittableEntries = entries.filter(e => e.status === 'draft' || e.status === 'rejected');
+    if (submittableEntries.length === 0) {
+      throw Object.assign(new Error('No draft or rejected entries to submit for this week'), { statusCode: 400 });
     }
 
-    const totalHours = draftEntries.reduce((sum, e) => sum + e.hours, 0);
-    const ids = draftEntries.map(e => e.id);
+    const totalHours = submittableEntries.reduce((sum, e) => sum + e.hours, 0);
+    const ids = submittableEntries.map(e => e.id);
     await timeEntryRepository.updateStatusBatch(ids, 'submitted');
 
     const submission = await timesheetSubmissionRepository.insert(uuidv4(), userId, projectId, weekStart, totalHours);
