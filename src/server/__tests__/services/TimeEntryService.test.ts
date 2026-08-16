@@ -1,5 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../../database/connection', () => ({
+  databaseService: {
+    query: vi.fn().mockResolvedValue([]),
+    queryControlPlane: vi.fn().mockResolvedValue([]),
+    transaction: vi.fn(),
+  },
+}));
+
+vi.mock('../../config', () => ({
+  config: { jwtSecret: 'test', port: 3001 },
+}));
+
 vi.mock('../../database/TimeEntryRepository', () => {
   const mockRepo = {
     insert: vi.fn(),
@@ -14,9 +26,31 @@ vi.mock('../../database/TimeEntryRepository', () => {
   return { timeEntryRepository: mockRepo };
 });
 
+vi.mock('../../database/TimesheetSubmissionRepository', () => ({
+  timesheetSubmissionRepository: {
+    findByScheduleProjectUserWeek: vi.fn().mockResolvedValue(null),
+    insert: vi.fn(),
+    updateStatus: vi.fn(),
+    findById: vi.fn().mockResolvedValue(null),
+    findPendingByReviewer: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
     findTasksByScheduleId: vi.fn().mockResolvedValue([]),
+  },
+}));
+
+vi.mock('../../services/ProjectMemberService', () => ({
+  projectMemberService: {
+    hasRole: vi.fn().mockResolvedValue(true),
+  },
+}));
+
+vi.mock('../../services/NotificationService', () => ({
+  notificationService: {
+    createNotification: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
