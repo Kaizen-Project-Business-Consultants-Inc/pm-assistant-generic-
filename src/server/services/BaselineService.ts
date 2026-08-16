@@ -1,4 +1,5 @@
 import { scheduleService } from './ScheduleService';
+import { baselineRepository } from '../database/BaselineRepository';
 
 export interface BaselineTask {
   taskId: string;
@@ -79,12 +80,6 @@ function daysDuration(start: string, end: string): number {
 }
 
 export class BaselineService {
-  private static baselines: Baseline[] = [];
-
-  private get baselines() {
-    return BaselineService.baselines;
-  }
-
   async create(scheduleId: string, name: string, createdBy: string): Promise<Baseline> {
     const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
 
@@ -99,7 +94,7 @@ export class BaselineService {
     }));
 
     const baseline: Baseline = {
-      id: `bl-${Math.random().toString(36).substr(2, 9)}`,
+      id: crypto.randomUUID(),
       scheduleId,
       name,
       createdAt: new Date().toISOString(),
@@ -107,23 +102,20 @@ export class BaselineService {
       tasks: baselineTasks,
     };
 
-    BaselineService.baselines.push(baseline);
+    await baselineRepository.create(baseline);
     return baseline;
   }
 
   async findByScheduleId(scheduleId: string): Promise<Baseline[]> {
-    return this.baselines.filter((b) => b.scheduleId === scheduleId);
+    return baselineRepository.findByScheduleId(scheduleId);
   }
 
   async findById(id: string): Promise<Baseline | null> {
-    return this.baselines.find((b) => b.id === id) || null;
+    return baselineRepository.findById(id);
   }
 
   async delete(id: string): Promise<boolean> {
-    const idx = this.baselines.findIndex((b) => b.id === id);
-    if (idx === -1) return false;
-    BaselineService.baselines.splice(idx, 1);
-    return true;
+    return baselineRepository.deleteById(id);
   }
 
   async compareBaseline(baselineId: string): Promise<BaselineComparison | null> {
