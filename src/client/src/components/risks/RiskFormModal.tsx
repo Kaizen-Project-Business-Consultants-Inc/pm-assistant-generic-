@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, Sparkles, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { X, Sparkles, Loader2, MessageSquare, Send, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { useModal } from '../../hooks/useModal';
 
@@ -52,6 +53,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   const [saving, setSaving] = useState(false);
   const [suggestingMitigation, setSuggestingMitigation] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [updateText, setUpdateText] = useState('');
+  const [sendingUpdate, setSendingUpdate] = useState(false);
 
   const [form, setForm] = useState({
     type: defaultType as string,
@@ -210,6 +213,40 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   };
 
   const { dialogRef, handleKeyDown } = useModal(isOpen, onClose);
+
+  const { data: updatesData, refetch: refetchUpdates } = useQuery({
+    queryKey: ['raid-updates', editRisk?.id],
+    queryFn: () => apiService.getRaidUpdates(projectId, editRisk.id),
+    enabled: !!editRisk?.id && isOpen,
+  });
+  const updates: any[] = updatesData?.data || [];
+
+  const handleSendUpdate = async () => {
+    if (!updateText.trim() || !editRisk?.id) return;
+    setSendingUpdate(true);
+    try {
+      await apiService.addRaidUpdate(projectId, editRisk.id, updateText.trim());
+      setUpdateText('');
+      await refetchUpdates();
+    } catch { /* */ }
+    setSendingUpdate(false);
+  };
+
+  const handleDeleteUpdate = async (updateId: string) => {
+    if (!editRisk?.id) return;
+    try {
+      await apiService.deleteRaidUpdate(projectId, editRisk.id, updateId);
+      await refetchUpdates();
+    } catch { /* */ }
+  };
+
+  const memberName = (userId: string) => {
+    const m = members.find((m: any) => (m.userId || m.id) === userId);
+    return m ? (m.userName || m.user?.name || m.name || m.email) : userId?.slice(0, 8) || '';
+  };
+
+  const formatTimestamp = (d: string) =>
+    new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
   if (!isOpen) return null;
 
@@ -530,6 +567,59 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
             </>
           )}
         </div>
+
+        {/* Updates section — only when editing */}
+        {editRisk?.id && (
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Updates</h3>
+            {updates.length === 0 ? (
+              <p className="text-xs text-gray-400 mb-3">No updates yet</p>
+            ) : (
+              <div className="space-y-3 mb-3 max-h-48 overflow-y-auto">
+                {updates.map((u: any) => (
+                  <div key={u.id} className="flex gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{memberName(u.userId)}</span>
+                        <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0">{formatTimestamp(u.createdAt)}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUpdate(u.id)}
+                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500"
+                          title="Delete update"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 whitespace-pre-wrap">{u.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={updateText}
+                onChange={e => setUpdateText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSendUpdate()}
+                placeholder="Provide an update..."
+                className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              />
+              <button
+                type="button"
+                onClick={handleSendUpdate}
+                disabled={!updateText.trim() || sendingUpdate}
+                className="p-2 rounded-lg bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 text-white transition-colors"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
