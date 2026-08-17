@@ -11,7 +11,9 @@ import {
   DollarSign,
   Users,
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { apiService } from '../services/api';
+import { renderMarkdown } from '../utils/renderMarkdown';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -120,9 +122,10 @@ const ReportViewerModal: React.FC<{
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 dark:text-gray-200 leading-relaxed">
-            {report.content}
-          </pre>
+          <div
+            className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-200"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(report.content)) }}
+          />
         </div>
       </div>
     </div>
