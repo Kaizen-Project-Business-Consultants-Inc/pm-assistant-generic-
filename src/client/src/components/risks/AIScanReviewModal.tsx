@@ -208,6 +208,11 @@ export function AIScanReviewModal({ isOpen, onClose, onImport, candidates, impor
                             )}
                           </div>
 
+                          {/* Description — always visible */}
+                          {c.description && (
+                            <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap line-clamp-3">{c.description}</p>
+                          )}
+
                           {/* Inline controls row */}
                           <div className="flex items-center gap-3 text-xs">
                             <select
@@ -234,24 +239,21 @@ export function AIScanReviewModal({ isOpen, onClose, onImport, candidates, impor
                               P{c.probability} x I{c.impact} = <span className="font-bold">{score}</span>
                             </span>
 
-                            {/* Expand toggle */}
-                            <button
-                              onClick={() => setExpandedIdx(isExpanded ? null : idx)}
-                              className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                            >
-                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            </button>
+                            {/* Expand toggle for mitigations/affected tasks */}
+                            {(c.mitigations?.length > 0 || c.affectedTasks?.length > 0) && (
+                              <button
+                                onClick={() => setExpandedIdx(isExpanded ? null : idx)}
+                                className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1"
+                              >
+                                <span className="text-[10px]">Details</span>
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                            )}
                           </div>
 
-                          {/* Expanded details */}
+                          {/* Expanded details — mitigations & affected tasks */}
                           {isExpanded && (
                             <div className="mt-2 space-y-2 text-xs text-gray-600 dark:text-gray-400">
-                              {c.description && (
-                                <div>
-                                  <span className="font-medium text-gray-700 dark:text-gray-300">Description:</span>
-                                  <p className="mt-0.5 whitespace-pre-wrap">{c.description}</p>
-                                </div>
-                              )}
                               {c.mitigations?.length > 0 && (
                                 <div>
                                   <span className="font-medium text-gray-700 dark:text-gray-300">Mitigations:</span>
