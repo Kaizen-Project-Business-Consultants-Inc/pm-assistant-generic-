@@ -868,15 +868,18 @@ The RAID Report is a canned (non-AI) stakeholder report generated from live RAID
 
 ### Report History
 
-The Reports page maintains a history of all generated reports (AI reports, Status Reports, RAID Reports) with:
+The Reports page maintains a history of all generated reports (AI reports, Status Reports, RAID Reports) in a **sortable, paginated table** with server-side filtering:
 
-- **Type filter pills** with counts — filter by report type (All, Weekly Status, Risk Assessment, Budget Forecast, Resource Util., RAID, Status)
-- **Search** — filter by title or project name
-- **Date grouping** — reports organized into Today, Yesterday, This Week, This Month, Older
+- **Tiered type dropdown** — hierarchical filter: All Types → AI Reports (with sub-types: Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization) → Status Reports → RAID Reports. Sub-type filtering uses deterministic title matching on the server.
+- **Date range picker** — From/To date inputs for filtering by generation date. Server-side: `created_at >= dateFrom AND created_at < dateTo + 1 day`.
+- **Search** — filter by title (applied on Enter or blur)
+- **Sortable columns** — click Title or Date column headers to sort ascending/descending
+- **Pagination** — 20 reports per page with first/prev/page numbers/next/last controls. Server-side `LIMIT/OFFSET` — only fetches one page at a time.
+- **Clear button** — resets all filters (type, search, date range) in one click
 - **Delete** — soft-delete individual reports (sets `is_active = FALSE` in control plane DB)
-- **Download** — export any report as HTML
-- **Smart rendering** — HTML reports render directly, markdown reports rendered via `marked` + DOMPurify
-- **API**: `DELETE /api/v1/ai-reports/:id`
+- **Download** — export any report as HTML from the viewer modal
+- **Smart rendering** — HTML reports (Status, RAID) render directly, markdown reports (AI) rendered via `marked` + DOMPurify
+- **API**: `GET /api/v1/ai-reports/history?type=&subType=&search=&dateFrom=&dateTo=&sortBy=&sortOrder=&page=&limit=`, `DELETE /api/v1/ai-reports/:id`
 
 ### Portfolio Analytics
 

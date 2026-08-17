@@ -1041,14 +1041,17 @@ Navigate to **Reports** in the sidebar to generate reports:
 
 ### Report History
 
-All generated reports appear in the **Report History** section below the generator:
+All generated reports appear in the **Report History** table below the generator. Use the filter bar to find reports quickly:
 
-- **Filter by type** — click the type pills (All, Weekly Status, Risk Assessment, etc.) to narrow results. Each pill shows a count.
-- **Search** — use the search box to find reports by title or project name.
-- **Date groups** — reports are organized into Today, Yesterday, This Week, This Month, and Older.
-- **View** — click any report to open a full preview with proper formatting.
-- **Download** — click the download icon to save as HTML.
+- **Filter by type** — use the dropdown to select a report category. AI Reports expand into sub-types (Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization). You can also filter by Status Reports or RAID Reports.
+- **Date range** — set **From** and **To** dates to narrow results to a specific period.
+- **Search** — type a keyword and press Enter to search by report title.
+- **Sort** — click the **Title** or **Date** column headers to sort ascending or descending.
+- **Clear** — click the **Clear** button to reset all filters at once.
+- **View** — click any row to open a full preview with proper formatting.
+- **Download** — click the download icon in the viewer to save as HTML.
 - **Delete** — click the trash icon to remove a report from history.
+- **Pagination** — reports are shown 20 per page. Use the page controls to navigate.
 
 > **Note:** Regular users can delete report templates they created. Deleting another user's template still requires an admin role. When updating a template in the Report Designer, all configured sections are saved correctly.
 
