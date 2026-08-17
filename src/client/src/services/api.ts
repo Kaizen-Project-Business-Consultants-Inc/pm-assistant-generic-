@@ -616,6 +616,11 @@ class ApiService {
     return response.data;
   }
 
+  async deleteReport(id: string) {
+    const response = await this.api.delete(`/ai-reports/${id}`);
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Status Reports endpoints
   // -------------------------------------------------------------------------

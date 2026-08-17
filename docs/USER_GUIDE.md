@@ -1030,6 +1030,26 @@ For custom reports, use the **Report Builder**:
 2. The Report Preview renders live data into the configured sections. KPI cards, charts, and tables all render with the correct data shapes.
 3. Export or print the generated report as needed.
 
+### AI-Powered & RAID Reports
+
+Navigate to **Reports** in the sidebar to generate reports:
+
+1. Select a **Report Type** from the dropdown: Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization, or RAID Report.
+2. Optionally select a **Project** (required for RAID Reports).
+3. Click **Generate Report**. AI-powered reports use Claude for analysis; RAID Reports are data-driven with no AI.
+4. For RAID Reports, a modal opens with filter options (type, severity, owner, category), preview, email, and scheduling tabs.
+
+### Report History
+
+All generated reports appear in the **Report History** section below the generator:
+
+- **Filter by type** — click the type pills (All, Weekly Status, Risk Assessment, etc.) to narrow results. Each pill shows a count.
+- **Search** — use the search box to find reports by title or project name.
+- **Date groups** — reports are organized into Today, Yesterday, This Week, This Month, and Older.
+- **View** — click any report to open a full preview with proper formatting.
+- **Download** — click the download icon to save as HTML.
+- **Delete** — click the trash icon to remove a report from history.
+
 > **Note:** Regular users can delete report templates they created. Deleting another user's template still requires an admin role. When updating a template in the Report Designer, all configured sections are saved correctly.
 
 > **Trial accounts:** If you are on a trial plan, the Report Builder shows 3 sample templates (Weekly Status, Budget Overview, Time Tracking) so you can preview the feature. The New Report, Edit, Generate, and Delete buttons are replaced with an "Upgrade to use" label. An amber banner at the top of the page identifies the templates as samples. Upgrade to a paid plan to create and run your own custom report templates.

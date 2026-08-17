@@ -65,6 +65,36 @@ export async function aiReportRoutes(fastify: FastifyInstance) {
     },
   });
 
+  // DELETE /:id — soft-delete a report
+  fastify.delete('/:id', {
+    preHandler: [requireScope('write')],
+    schema: {
+      description: 'Delete a generated report',
+      tags: ['ai-reports'],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string' } },
+      },
+    },
+    handler: async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      try {
+        const user = request.user!;
+        await reportService.deleteReport(request.params.id, user.userId);
+        return { success: true };
+      } catch (error) {
+        fastify.log.error(
+          { err: error instanceof Error ? error : new Error(String(error)) },
+          'Failed to delete report',
+        );
+        return reply.code(500).send({
+          error: 'Failed to delete report',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    },
+  });
+
   // GET /history — list past generated reports
   fastify.get('/history', {
     preHandler: [requireScope('read')],

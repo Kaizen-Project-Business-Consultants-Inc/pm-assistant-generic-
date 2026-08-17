@@ -147,7 +147,7 @@ export class AIReportService {
     }
   }
 
-  async getReportHistory(userId?: string, limit: number = 20): Promise<Array<{
+  async getReportHistory(userId?: string, limit: number = 50): Promise<Array<{
     id: string;
     title: string;
     reportType: string;
@@ -155,17 +155,18 @@ export class AIReportService {
     projectId: string | null;
     aiPowered: boolean;
     content: string;
+    contextType: string;
   }>> {
     try {
       const query = userId
         ? `SELECT id, title, context_type, project_id, messages, token_count, created_at
            FROM ai_conversations
-           WHERE context_type = 'report' AND user_id = ? AND is_active = TRUE
+           WHERE context_type IN ('report', 'raid-report', 'status-report') AND user_id = ? AND is_active = TRUE
            ORDER BY created_at DESC
            LIMIT ?`
         : `SELECT id, title, context_type, project_id, messages, token_count, created_at
            FROM ai_conversations
-           WHERE context_type = 'report' AND is_active = TRUE
+           WHERE context_type IN ('report', 'raid-report', 'status-report') AND is_active = TRUE
            ORDER BY created_at DESC
            LIMIT ?`;
 
@@ -183,20 +184,33 @@ export class AIReportService {
           }
         } catch { /* ignore parse errors */ }
 
+        const contextType = row.context_type as string;
+        let reportType = reportData.reportType || 'unknown';
+        if (contextType === 'raid-report') reportType = 'raid-report';
+        if (contextType === 'status-report') reportType = 'status-report';
+
         return {
           id: row.id,
           title: row.title,
-          reportType: reportData.reportType || 'unknown',
+          reportType,
           generatedAt: row.created_at,
           projectId: row.project_id,
-          aiPowered: reportData.aiPowered ?? true,
+          aiPowered: reportData.aiPowered ?? (contextType !== 'raid-report'),
           content: reportData.content || '',
+          contextType,
         };
       });
     } catch (err) {
       logger.warn(`Failed to fetch report history: ${err instanceof Error ? err.message : String(err)}`);
       return [];
     }
+  }
+
+  async deleteReport(reportId: string, userId: string): Promise<void> {
+    await databaseService.queryControlPlane(
+      `UPDATE ai_conversations SET is_active = FALSE WHERE id = ? AND user_id = ? AND context_type IN ('report', 'raid-report', 'status-report')`,
+      [reportId, userId],
+    );
   }
 
   private async storeReport(report: GeneratedReport, userId: string): Promise<void> {

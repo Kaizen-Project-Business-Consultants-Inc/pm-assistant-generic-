@@ -591,6 +591,7 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 | PM Dashboard Design Gap Fixes (dark mode, KPI dots, linkPrefix) | Done | Enhancement |
 | RAID Management (Risk/Action/Issue/Decision register, sequential IDs, no-delete, AI Scan, agent writes) | Done | Enhancement |
 | RAID Report (data-driven report with filters, summary dashboard, overdue actions, key mitigations, download/email/schedule) | Done | Enhancement |
+| Report History Organization (type filter pills with counts, search, date grouping, delete, download, smart HTML/markdown rendering) | Done | Enhancement |
 | NL Workflow Builder (AI generates DAG workflows from plain English descriptions) | Done | Enhancement |
 | PWA Support (real service worker, app-shell caching, installable, offline banner, auto-update) | Done | Enhancement |
 | KPI Drill-In Enrichment (summary cards, trend badges, distribution bars, health sparklines + sub-scores) | Done | Enhancement |

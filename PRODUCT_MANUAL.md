@@ -851,7 +851,32 @@ The `ReportBuilderService` provides a configurable report engine:
 
 ### AI-Generated Reports
 
-The AI report endpoint generates narrative compliance and status reports using Claude, grounded in real project data.
+The AI report endpoint generates narrative compliance and status reports using Claude, grounded in real project data. Available report types: Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization.
+
+### RAID Report (Data-Driven)
+
+The RAID Report is a canned (non-AI) stakeholder report generated from live RAID item data. Available from both the Reports page (Generate Report dropdown) and the RAID tab toolbar.
+
+- **Filters**: type (Risk/Issue/Action/Decision), severity, owner, category — all optional, defaults to all open items
+- **Summary Dashboard**: 4 cards showing open counts with severity breakdowns
+- **All Items Table**: unified table sorted by severity (critical first), then days open
+- **Overdue Actions**: highlighted section for past-due action items
+- **Key Mitigations**: critical/high risks with mitigation plans listed
+- **Output**: HTML with inline CSS (email-compatible), preview, download, email, schedule
+- **API**: `POST /api/v1/raid-reports/:projectId/generate`, `POST /schedule`, `GET /schedules/:projectId`, `DELETE /schedule/:id`
+- **Trial users**: receive a sample report with dummy data
+
+### Report History
+
+The Reports page maintains a history of all generated reports (AI reports, Status Reports, RAID Reports) with:
+
+- **Type filter pills** with counts — filter by report type (All, Weekly Status, Risk Assessment, Budget Forecast, Resource Util., RAID, Status)
+- **Search** — filter by title or project name
+- **Date grouping** — reports organized into Today, Yesterday, This Week, This Month, Older
+- **Delete** — soft-delete individual reports (sets `is_active = FALSE` in control plane DB)
+- **Download** — export any report as HTML
+- **Smart rendering** — HTML reports render directly, markdown reports rendered via `marked` + DOMPurify
+- **API**: `DELETE /api/v1/ai-reports/:id`
 
 ### Portfolio Analytics
 
