@@ -24,7 +24,8 @@ interface Report {
   title: string;
   content: string;
   reportType: string;
-  createdAt: string;
+  createdAt?: string;
+  generatedAt?: string;
 }
 
 interface Project {
@@ -108,7 +109,7 @@ const ReportViewerModal: React.FC<{
               </span>
               <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
                 <Clock className="w-3 h-3" />
-                {formatDate(report.createdAt)}
+                {formatDate(report.createdAt || report.generatedAt || '')}
               </span>
             </div>
           </div>
@@ -345,7 +346,7 @@ export const ReportsPage: React.FC = () => {
                       </span>
                       <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
                         <Clock className="w-3 h-3" />
-                        {formatDate(report.createdAt)}
+                        {formatDate(report.createdAt || report.generatedAt || '')}
                       </span>
                     </div>
                   </div>
