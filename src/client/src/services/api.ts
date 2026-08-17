@@ -574,8 +574,8 @@ class ApiService {
     return response.data;
   }
 
-  async suggestRiskMitigation(projectId: string, riskId: string) {
-    const response = await this.api.post(`/projects/${projectId}/risks/${riskId}/suggest-mitigation`);
+  async suggestRiskMitigation(projectId: string, riskId: string, field: 'mitigation' | 'trigger' | 'response' = 'mitigation') {
+    const response = await this.api.post(`/projects/${projectId}/risks/${riskId}/suggest-mitigation?field=${field}`);
     return response.data;
   }
 

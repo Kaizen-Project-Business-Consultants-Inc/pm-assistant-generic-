@@ -6,13 +6,28 @@ import {
   type LessonLearned,
   type MitigationSuggestion,
 } from '../../schemas/lessonsLearnedSchemas';
-import { mitigationPrompt } from './prompts';
+import { mitigationPrompt, triggerConditionPrompt, responsePlanPrompt } from './prompts';
+
+export type SuggestionField = 'mitigation' | 'trigger' | 'response';
+
+const fieldPrompts = {
+  mitigation: mitigationPrompt,
+  trigger: triggerConditionPrompt,
+  response: responsePlanPrompt,
+};
+
+const fieldUserMessages: Record<SuggestionField, string> = {
+  mitigation: 'Based on the historical lessons and risk, suggest mitigations. Return the JSON.',
+  trigger: 'Based on the historical lessons and risk, suggest trigger conditions / early warning signs. Return the JSON.',
+  response: 'Based on the historical lessons and risk, suggest response/contingency plans. Return the JSON.',
+};
 
 export async function suggestMitigations(
   riskDescription: string,
   projectType: string,
   getAllLessons: () => Promise<LessonLearned[]>,
   findSimilarLessons: (query: string, topK?: number) => Promise<LessonLearned[]>,
+  field: SuggestionField = 'mitigation',
 ): Promise<MitigationSuggestion[]> {
   let relevantLessons: LessonLearned[];
 
@@ -50,7 +65,8 @@ export async function suggestMitigations(
         2,
       );
 
-      const systemPrompt = mitigationPrompt.render({
+      const prompt = fieldPrompts[field];
+      const systemPrompt = prompt.render({
         riskDescription,
         projectType,
         historicalLessons: historicalStr,
@@ -58,7 +74,7 @@ export async function suggestMitigations(
 
       const result = await claudeService.completeWithJsonSchema({
         systemPrompt,
-        userMessage: 'Based on the historical lessons and risk, suggest mitigations. Return the JSON.',
+        userMessage: fieldUserMessages[field],
         schema: MitigationAISchema,
         maxTokens: 2048,
       });

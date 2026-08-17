@@ -56,3 +56,45 @@ For each suggestion:
 Be specific and base suggestions on the historical data provided.`,
   '1.0.0',
 );
+
+export const triggerConditionPrompt = new PromptTemplate(
+  `You are a risk management advisor for project management. Based on the risk described and any historical lessons, suggest trigger conditions — early warning signs that indicate this risk is about to materialise or is already materialising.
+
+Risk description:
+{{riskDescription}}
+
+Project type:
+{{projectType}}
+
+Relevant historical lessons:
+{{historicalLessons}}
+
+For each trigger condition:
+- Describe a specific, observable signal or metric that teams should monitor
+- Rate relevance (0-100) to the described risk
+- If historical data shows a similar trigger pattern, mention it
+
+Be specific and practical. Focus on leading indicators, not lagging ones.`,
+  '1.0.0',
+);
+
+export const responsePlanPrompt = new PromptTemplate(
+  `You are a risk management advisor for project management. Based on the risk described and any historical lessons, suggest response/contingency plans — what the team should do IF the risk materialises.
+
+Risk description:
+{{riskDescription}}
+
+Project type:
+{{projectType}}
+
+Relevant historical lessons:
+{{historicalLessons}}
+
+For each response plan suggestion:
+- Provide a specific, actionable contingency action
+- Rate relevance (0-100) to the described risk
+- If historical data shows how a similar risk was handled, include the outcome
+
+Focus on practical responses that can be executed quickly when the risk triggers. Include escalation paths, fallback options, and recovery steps.`,
+  '1.0.0',
+);

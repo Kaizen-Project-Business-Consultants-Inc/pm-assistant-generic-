@@ -2186,7 +2186,12 @@ The RAID log integrates with the platform's AI agent layer in two ways:
 
 **Agent writes** — Background agents (e.g., the Risk Agent, Budget Agent) can write directly to the RAID log using the `importFromAgent` pathway. These records are tagged with `source: agent` and appear in the log alongside manually created entries. Agent-written records go through the same activity logging as manual records.
 
-The `suggest-mitigation` MCP tool surfaces historical lessons-learned data to suggest mitigation strategies for open risks, callable by AI assistants operating on behalf of risk managers or project managers.
+**Suggest with AI** — When editing a risk, the form offers "Suggest with AI" buttons on three fields:
+- **Mitigation Plan** — AI suggests preventive strategies based on historical lessons learned and RAG-based similarity search
+- **Trigger Condition** — AI suggests early warning signs and leading indicators to monitor
+- **Response Plan** — AI suggests contingency actions, escalation paths, and recovery steps
+
+All three use the same `POST /:projectId/risks/:riskId/suggest-mitigation?field=mitigation|trigger|response` endpoint, which queries the lessons-learned knowledge base via RAG (or deterministic fallback) and generates suggestions using Claude. The `suggest-mitigation` MCP tool also uses this pathway.
 
 ### Role-Based Permissions
 

@@ -468,6 +468,7 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 - Role-based permission matrix: all roles can create RAID items (triage-gated for non-PM roles); admin=all operations including reverse; project_manager/scrum_master/pmo/ba=create + triage + cancel; reverse restricted to admin
 - **AI Scan**: project-scoped AI analysis surfaces new Risks and Issues from schedule/task/budget data; user selects which findings to import; imported records tagged `source: ai_scan`
 - **Agent partnership**: background agents write directly to RAID log via `importFromAgent`; agent-written records tagged `source: agent`; `suggest-mitigation` MCP tool surfaces historical lessons-learned for open risks
+- **AI-assisted authoring**: "Suggest with AI" buttons on Mitigation Plan, Trigger Condition, and Response Plan fields; uses RAG-based lesson retrieval + Claude to generate field-specific suggestions (early warning signs for triggers, contingency actions for response plans, preventive strategies for mitigations)
 - Stats bar with live counts (Open Risks, Open Issues, Open Actions, Pending Decisions) + severity distribution bar
 - Search + collapsible multi-filter toolbar (type, status, severity, source) with active filter count badge
 - **Three view modes**: Table (sortable columns, inline status change, bulk select), Board (Kanban drag-and-drop by status), Risk Matrix (5×5 heatmap)

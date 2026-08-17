@@ -1958,7 +1958,7 @@ The RAID Log is a project-level register for Risks, Actions, Issues, and Decisio
 
 The RAID log header contains four **Add** buttons, one per type:
 
-- **+ Risk** — Opens the Risk form. Fill in title, description, severity (low / medium / high / critical), probability, impact, owner, and optional mitigation plan. Click **Save** to create. The record is assigned the next `R-NNN` ID automatically.
+- **+ Risk** — Opens the Risk form. Fill in title, description, severity (low / medium / high / critical), probability, impact, owner, and optional mitigation plan. Click **Save** to create. The record is assigned the next `R-NNN` ID automatically. When editing an existing risk, three fields offer a **"Suggest with AI"** button: **Mitigation Plan** (preventive strategies), **Trigger Condition** (early warning signs), and **Response Plan** (contingency actions). Click the button to have AI generate suggestions based on your organisation's lessons-learned knowledge base.
 - **+ Issue** — Opens the Issue form. Issues have their own fields distinct from risks: title, description, severity, category, owner, root cause ("Why did this happen?"), impact assessment, workaround ("Temporary fix"), resolution plan ("Permanent fix"), and target resolution date. Probability is not shown since the issue has already occurred. Assigned an `I-NNN` ID.
 - **+ Action** — Opens the Action form. Fill in title, description, owner, due date, and action type (Follow-Up / Decision Required / Information Only / Escalation). Assigned an `A-NNN` ID.
 - **+ Decision** — Opens the Decision form. Fill in title, description, decided by, rationale, decision date, and alternatives considered. Assigned a `D-NNN` ID.

@@ -52,6 +52,8 @@ const DEFAULT_STATUS: Record<string, string> = {
 export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, defaultType = 'risk', members = [] }: RiskFormModalProps) {
   const [saving, setSaving] = useState(false);
   const [suggestingMitigation, setSuggestingMitigation] = useState(false);
+  const [suggestingTrigger, setSuggestingTrigger] = useState(false);
+  const [suggestingResponse, setSuggestingResponse] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updateText, setUpdateText] = useState('');
   const [sendingUpdate, setSendingUpdate] = useState(false);
@@ -197,20 +199,22 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
     }
   };
 
-  const handleSuggestMitigation = async () => {
+  const handleSuggestAI = async (field: 'mitigation' | 'trigger' | 'response') => {
     if (!form.title.trim()) return;
-    setSuggestingMitigation(true);
+    const setLoading = field === 'mitigation' ? setSuggestingMitigation : field === 'trigger' ? setSuggestingTrigger : setSuggestingResponse;
+    const formKey = field === 'mitigation' ? 'mitigationPlan' : field === 'trigger' ? 'triggerCondition' : 'responsePlan';
+    setLoading(true);
     try {
-      const result = await apiService.suggestRiskMitigation(projectId, editRisk?.id || 'new');
+      const result = await apiService.suggestRiskMitigation(projectId, editRisk?.id || 'new', field);
       const suggestions = result?.data || result?.suggestions || [];
       if (suggestions.length > 0) {
         const text = suggestions.map((s: any) => typeof s === 'string' ? s : s.suggestion || s.mitigation || JSON.stringify(s)).join('\n\n');
-        setForm(prev => ({ ...prev, mitigationPlan: prev.mitigationPlan ? prev.mitigationPlan + '\n\n' + text : text }));
+        setForm(prev => ({ ...prev, [formKey]: prev[formKey] ? prev[formKey] + '\n\n' + text : text }));
       }
     } catch {
       // Silently fail
     } finally {
-      setSuggestingMitigation(false);
+      setLoading(false);
     }
   };
 
@@ -479,7 +483,20 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {/* Trigger Condition — risk/issue */}
           {showTrigger && (
             <div>
-              <label className={labelClass}>Trigger Condition</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className={labelClass + ' mb-0'}>Trigger Condition</label>
+                {editRisk?.id && (
+                  <button
+                    type="button"
+                    onClick={() => handleSuggestAI('trigger')}
+                    disabled={suggestingTrigger}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 disabled:opacity-50"
+                  >
+                    {suggestingTrigger ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    Suggest with AI
+                  </button>
+                )}
+              </div>
               <textarea
                 value={form.triggerCondition}
                 onChange={e => setForm(prev => ({ ...prev, triggerCondition: e.target.value }))}
@@ -497,7 +514,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 {editRisk?.id && (
                   <button
                     type="button"
-                    onClick={handleSuggestMitigation}
+                    onClick={() => handleSuggestAI('mitigation')}
                     disabled={suggestingMitigation}
                     className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 disabled:opacity-50"
                   >
@@ -518,7 +535,20 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {/* Response Plan — risk only */}
           {showResponse && (
             <div>
-              <label className={labelClass}>Response Plan</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className={labelClass + ' mb-0'}>Response Plan</label>
+                {editRisk?.id && (
+                  <button
+                    type="button"
+                    onClick={() => handleSuggestAI('response')}
+                    disabled={suggestingResponse}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 disabled:opacity-50"
+                  >
+                    {suggestingResponse ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    Suggest with AI
+                  </button>
+                )}
+              </div>
               <textarea
                 value={form.responsePlan}
                 onChange={e => setForm(prev => ({ ...prev, responsePlan: e.target.value }))}

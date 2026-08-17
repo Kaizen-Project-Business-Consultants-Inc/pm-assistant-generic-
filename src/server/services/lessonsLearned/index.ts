@@ -11,7 +11,7 @@ import {
 import { seedFromProjects } from './seeder';
 import { extractLessons } from './extractor';
 import { detectPatterns } from './patternDetector';
-import { suggestMitigations } from './mitigationAdvisor';
+import { suggestMitigations, type SuggestionField } from './mitigationAdvisor';
 
 // ── Row mapper ────────────────────────────────────────────────────────────
 
@@ -104,12 +104,13 @@ export class LessonsLearnedService {
     return detectPatterns(lessons, (p) => { LessonsLearnedService.patterns = p; });
   }
 
-  async suggestMitigations(riskDescription: string, projectType: string, _userId?: string): Promise<MitigationSuggestion[]> {
+  async suggestMitigations(riskDescription: string, projectType: string, _userId?: string, field: SuggestionField = 'mitigation'): Promise<MitigationSuggestion[]> {
     return suggestMitigations(
       riskDescription,
       projectType,
       this.getAllLessons.bind(this),
       this.findSimilarLessons.bind(this),
+      field,
     );
   }
 

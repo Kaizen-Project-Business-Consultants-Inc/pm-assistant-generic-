@@ -458,12 +458,20 @@ export async function riskRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // POST /api/v1/projects/:projectId/risks/:riskId/suggest-mitigation — AI mitigation suggestions
+  // POST /api/v1/projects/:projectId/risks/:riskId/suggest-mitigation — AI suggestions for risk fields
+  // Query param ?field=mitigation|trigger|response (defaults to 'mitigation')
   fastify.post('/:projectId/risks/:riskId/suggest-mitigation', {
     preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, riskId } = request.params as { projectId: string; riskId: string };
+      const { field = 'mitigation' } = request.query as { field?: string };
+
+      const validFields = ['mitigation', 'trigger', 'response'];
+      if (!validFields.includes(field)) {
+        return reply.status(400).send({ error: `Invalid field. Must be one of: ${validFields.join(', ')}` });
+      }
+
       const risk = await riskService.findById(riskId);
       if (!risk) return reply.status(404).send({ error: 'Risk not found' });
 
@@ -475,6 +483,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
         `${risk.title}: ${risk.description || ''}`,
         projectType,
         userId,
+        field as 'mitigation' | 'trigger' | 'response',
       );
       return reply.send({ data: suggestions });
     } catch (err) {
