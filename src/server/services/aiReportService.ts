@@ -170,7 +170,7 @@ export class AIReportService {
            LIMIT ?`;
 
       const params = userId ? [userId, limit] : [limit];
-      const rows = await databaseService.query(query, params);
+      const rows = await databaseService.queryControlPlane(query, params);
 
       return (rows as any[]).map((row: any) => {
         let reportData: any = {};
@@ -214,7 +214,7 @@ export class AIReportService {
         },
       ];
 
-      await databaseService.query(
+      await databaseService.queryControlPlane(
         `INSERT INTO ai_conversations (id, user_id, project_id, context_type, title, messages, token_count)
          VALUES (?, ?, ?, 'report', ?, ?, ?)`,
         [
