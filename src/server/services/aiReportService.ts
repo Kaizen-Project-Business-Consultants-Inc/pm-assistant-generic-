@@ -150,7 +150,10 @@ export class AIReportService {
   async getReportHistory(options: {
     userId?: string;
     type?: string;
+    subType?: string;
     search?: string;
+    dateFrom?: string;
+    dateTo?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     page?: number;
@@ -172,7 +175,7 @@ export class AIReportService {
     totalPages: number;
     typeCounts: Record<string, number>;
   }> {
-    const { userId, type, search, sortBy = 'created_at', sortOrder = 'desc', page = 1, limit = 20 } = options;
+    const { userId, type, subType, search, dateFrom, dateTo, sortBy = 'created_at', sortOrder = 'desc', page = 1, limit = 20 } = options;
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(100, Math.max(1, limit));
     const offset = (safePage - 1) * safeLimit;
@@ -209,9 +212,35 @@ export class AIReportService {
         }
       }
 
+      if (subType) {
+        // Sub-type filtering for AI reports (context_type='report')
+        // Title is deterministic: "Weekly Status Report", "Risk Assessment Report", etc.
+        const subTypeTitleMap: Record<string, string> = {
+          'weekly-status': 'Weekly Status Report',
+          'risk-assessment': 'Risk Assessment Report',
+          'budget-forecast': 'Budget Forecast Report',
+          'resource-utilization': 'Resource Utilization Report',
+        };
+        const subTitle = subTypeTitleMap[subType];
+        if (subTitle) {
+          conditions.push('title = ?');
+          params.push(subTitle);
+        }
+      }
+
       if (search) {
         conditions.push('title LIKE ?');
         params.push(`%${search}%`);
+      }
+
+      if (dateFrom) {
+        conditions.push('created_at >= ?');
+        params.push(dateFrom);
+      }
+
+      if (dateTo) {
+        conditions.push('created_at < DATE_ADD(?, INTERVAL 1 DAY)');
+        params.push(dateTo);
       }
 
       const whereClause = conditions.join(' AND ');

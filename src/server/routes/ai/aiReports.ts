@@ -105,7 +105,10 @@ export async function aiReportRoutes(fastify: FastifyInstance) {
         type: 'object',
         properties: {
           type: { type: 'string' },
+          subType: { type: 'string' },
           search: { type: 'string' },
+          dateFrom: { type: 'string' },
+          dateTo: { type: 'string' },
           sortBy: { type: 'string' },
           sortOrder: { type: 'string', enum: ['asc', 'desc'] },
           page: { type: 'integer', minimum: 1 },
@@ -114,15 +117,18 @@ export async function aiReportRoutes(fastify: FastifyInstance) {
       },
     },
     handler: async (request: FastifyRequest<{
-      Querystring: { type?: string; search?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; page?: number; limit?: number };
+      Querystring: { type?: string; subType?: string; search?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; page?: number; limit?: number };
     }>, reply: FastifyReply) => {
       try {
         const user = request.user!;
-        const { type, search, sortBy, sortOrder, page, limit } = request.query;
+        const { type, subType, search, dateFrom, dateTo, sortBy, sortOrder, page, limit } = request.query;
         const result = await reportService.getReportHistory({
           userId: user.userId,
           type,
+          subType,
           search,
+          dateFrom,
+          dateTo,
           sortBy,
           sortOrder,
           page,

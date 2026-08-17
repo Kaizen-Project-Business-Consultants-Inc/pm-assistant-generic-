@@ -19,6 +19,8 @@ import {
   Trash2,
   ChevronsLeft,
   ChevronsRight,
+  Calendar,
+  Filter,
 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../services/api';
@@ -78,11 +80,15 @@ const labelMap: Record<string, string> = {
   'report': 'AI Report',
 };
 
-const FILTER_TABS = [
-  { value: '', label: 'All' },
+const TYPE_FILTER_OPTIONS = [
+  { value: '', label: 'All Types' },
   { value: 'report', label: 'AI Reports' },
-  { value: 'raid-report', label: 'RAID' },
-  { value: 'status-report', label: 'Status' },
+  { value: 'report:weekly-status', label: '\u00A0\u00A0\u00A0Weekly Status' },
+  { value: 'report:risk-assessment', label: '\u00A0\u00A0\u00A0Risk Assessment' },
+  { value: 'report:budget-forecast', label: '\u00A0\u00A0\u00A0Budget Forecast' },
+  { value: 'report:resource-utilization', label: '\u00A0\u00A0\u00A0Resource Utilization' },
+  { value: 'status-report', label: 'Status Reports' },
+  { value: 'raid-report', label: 'RAID Reports' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -231,6 +237,8 @@ export const ReportsPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
@@ -241,6 +249,17 @@ export const ReportsPage: React.FC = () => {
     setSearchQuery(searchInput);
     setPage(1);
   }, [searchInput]);
+
+  const hasFilters = typeFilter || searchQuery || dateFrom || dateTo;
+
+  const clearFilters = useCallback(() => {
+    setTypeFilter('');
+    setSearchInput('');
+    setSearchQuery('');
+    setDateFrom('');
+    setDateTo('');
+    setPage(1);
+  }, []);
 
   const handleSort = useCallback((col: string) => {
     if (sortBy === col) {
@@ -259,15 +278,22 @@ export const ReportsPage: React.FC = () => {
     isLoading: historyLoading,
     isError: historyError,
   } = useQuery({
-    queryKey: ['reportHistory', typeFilter, searchQuery, sortBy, sortOrder, page],
-    queryFn: () => apiService.getReportHistory({
-      type: typeFilter || undefined,
-      search: searchQuery || undefined,
-      sortBy,
-      sortOrder,
-      page,
-      limit: PAGE_SIZE,
-    }),
+    queryKey: ['reportHistory', typeFilter, searchQuery, dateFrom, dateTo, sortBy, sortOrder, page],
+    queryFn: () => {
+      // Parse composite filter: "report:weekly-status" → type=report, subType=weekly-status
+      const [contextType, subType] = typeFilter.includes(':') ? typeFilter.split(':') : [typeFilter, ''];
+      return apiService.getReportHistory({
+        type: contextType || undefined,
+        subType: subType || undefined,
+        search: searchQuery || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        sortBy,
+        sortOrder,
+        page,
+        limit: PAGE_SIZE,
+      });
+    },
   });
 
   const {
@@ -447,7 +473,7 @@ export const ReportsPage: React.FC = () => {
       {/* Report History Table                                              */}
       {/* ----------------------------------------------------------------- */}
       <div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             Report History
@@ -455,45 +481,90 @@ export const ReportsPage: React.FC = () => {
               <span className="text-xs font-normal text-gray-400">({totalAll})</span>
             )}
           </h2>
-
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') applySearch(); }}
-              onBlur={applySearch}
-              placeholder="Search by title..."
-              className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 w-52 focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
         </div>
 
-        {/* Type filter pills */}
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {FILTER_TABS.map(tab => {
-            const count = tab.value === '' ? totalAll : (typeCounts[tab.value] || 0);
-            if (tab.value && !count) return null;
-            const isActive = typeFilter === tab.value;
-            return (
+        {/* Filter bar */}
+        <div className="card mb-3 py-3 px-4">
+          <div className="flex flex-wrap items-end gap-3">
+            {/* Type dropdown */}
+            <div className="min-w-[160px]">
+              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                <Filter className="w-3 h-3 inline mr-1" />
+                Type
+              </label>
+              <div className="relative">
+                <select
+                  value={typeFilter}
+                  onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
+                  className="input w-full text-xs appearance-none pr-7 py-1.5"
+                >
+                  {TYPE_FILTER_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="min-w-[180px] flex-1 max-w-[260px]">
+              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                <Search className="w-3 h-3 inline mr-1" />
+                Search
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') applySearch(); }}
+                  onBlur={applySearch}
+                  placeholder="Search by title..."
+                  className="input w-full text-xs py-1.5 pr-3"
+                />
+              </div>
+            </div>
+
+            {/* Date From */}
+            <div className="min-w-[140px]">
+              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                <Calendar className="w-3 h-3 inline mr-1" />
+                From
+              </label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                className="input w-full text-xs py-1.5"
+              />
+            </div>
+
+            {/* Date To */}
+            <div className="min-w-[140px]">
+              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                To
+              </label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                min={dateFrom || undefined}
+                className="input w-full text-xs py-1.5"
+              />
+            </div>
+
+            {/* Clear filters */}
+            {hasFilters && (
               <button
-                key={tab.value}
-                onClick={() => { setTypeFilter(tab.value); setPage(1); }}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors ${
-                  isActive
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
+                onClick={clearFilters}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors mb-[1px]"
+                title="Clear all filters"
               >
-                {tab.label}
-                <span className={`text-[10px] ${isActive ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'}`}>
-                  {count}
-                </span>
+                <X className="w-3.5 h-3.5" />
+                Clear
               </button>
-            );
-          })}
+            )}
+          </div>
         </div>
 
         {historyError ? (
