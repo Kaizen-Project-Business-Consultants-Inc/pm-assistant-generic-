@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Send, Ban, RotateCcw, Clock, MessageSquare, ArrowRightLeft, Pencil } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -68,6 +68,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
   const [reverseMode, setReverseMode] = useState(false);
   const [reasonText, setReasonText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const activityRef = useRef<HTMLDivElement>(null);
 
   const { data: itemData, refetch: refetchItem } = useQuery({
     queryKey: ['raid-item', raidId],
@@ -111,7 +112,8 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
     try {
       await apiService.addRaidComment(projectId, raidId, commentText.trim());
       setCommentText('');
-      refetchActivity();
+      await refetchActivity();
+      setTimeout(() => activityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } catch { /* */ }
     setSendingComment(false);
   };
@@ -454,7 +456,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
 
           {/* Activity timeline */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Activity</h3>
+            <h3 ref={activityRef} className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Activity</h3>
             {activity.length === 0 ? (
               <p className="text-xs text-gray-400">No activity yet</p>
             ) : (
