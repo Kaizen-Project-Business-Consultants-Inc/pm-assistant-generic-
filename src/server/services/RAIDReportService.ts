@@ -226,7 +226,7 @@ export class RAIDReportService {
     await databaseService.queryControlPlane(
       `INSERT INTO ai_conversations (id, user_id, project_id, context_type, title, messages, token_count)
        VALUES (?, ?, ?, 'raid-report', ?, ?, 0)`,
-      [id, userId, projectId, 'RAID Report', JSON.stringify(messages)],
+      [id, userId, projectId, `RAID Report — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, JSON.stringify(messages)],
     );
   }
 }

@@ -63,8 +63,10 @@ export class AIReportService {
     }
 
     const reportId = randomUUID();
-    const generatedAt = new Date().toISOString();
-    const title = REPORT_TITLES[reportType];
+    const now = new Date();
+    const generatedAt = now.toISOString();
+    const dateSuffix = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const title = `${REPORT_TITLES[reportType]} — ${dateSuffix}`;
 
     if (!claudeService.isAvailable()) {
       const content = this.generateFallbackReport(reportType, projectData);
@@ -214,7 +216,7 @@ export class AIReportService {
 
       if (subType) {
         // Sub-type filtering for AI reports (context_type='report')
-        // Title is deterministic: "Weekly Status Report", "Risk Assessment Report", etc.
+        // Titles start with the base name: "Weekly Status Report — Aug 17, 2026"
         const subTypeTitleMap: Record<string, string> = {
           'weekly-status': 'Weekly Status Report',
           'risk-assessment': 'Risk Assessment Report',
@@ -223,8 +225,8 @@ export class AIReportService {
         };
         const subTitle = subTypeTitleMap[subType];
         if (subTitle) {
-          conditions.push('title = ?');
-          params.push(subTitle);
+          conditions.push('title LIKE ?');
+          params.push(`${subTitle}%`);
         }
       }
 

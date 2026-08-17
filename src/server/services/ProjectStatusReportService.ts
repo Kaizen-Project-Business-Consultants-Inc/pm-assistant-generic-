@@ -235,7 +235,7 @@ export class ProjectStatusReportService {
       await databaseService.queryControlPlane(
         `INSERT INTO ai_conversations (id, user_id, project_id, context_type, title, messages, token_count)
          VALUES (?, ?, ?, 'status-report', ?, ?, 0)`,
-        [id, userId, projectId, 'Project Status Report', JSON.stringify(messages)],
+        [id, userId, projectId, `Project Status Report — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, JSON.stringify(messages)],
       );
     } catch (err) {
       logger.warn(`Failed to store status report (non-critical): ${err instanceof Error ? err.message : String(err)}`);
