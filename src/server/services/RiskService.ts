@@ -83,12 +83,11 @@ class RiskService {
       newValue: risk.recordId || risk.id,
     }).catch((error) => { logger.warn('Failed to log RAID activity', { raidItemId: risk.id, error }); });
 
-    // Notify project managers/owners when a new item needs triage
-    this.notifyProjectManagers(data.projectId, risk).catch((error) => { logger.warn('Failed to notify PMs about RAID item', { raidItemId: risk.id, error }); });
+    // Notify (awaited to preserve tenant DB context, but errors are non-fatal)
+    try { await this.notifyProjectManagers(data.projectId, risk); } catch (error) { logger.warn('Failed to notify PMs about RAID item', { raidItemId: risk.id, error }); }
 
-    // Notify assigned owner (if different from creator)
     if (data.ownerId && data.ownerId !== data.createdBy) {
-      this.notifyAssignment(data.projectId, risk, data.ownerId).catch((error) => { logger.warn('Failed to notify RAID assignment', { raidItemId: risk.id, error }); });
+      try { await this.notifyAssignment(data.projectId, risk, data.ownerId); } catch (error) { logger.warn('Failed to notify RAID assignment', { raidItemId: risk.id, error }); }
     }
 
     return risk;
@@ -298,8 +297,8 @@ class RiskService {
         }
       }
 
-      // Fire-and-forget notifications for key changes
-      this.notifyOnUpdate(existing, data, userId).catch((error) => { logger.warn('Failed to send RAID update notifications', { raidItemId: id, error }); });
+      // Notify (awaited to preserve tenant DB context, but errors are non-fatal)
+      try { await this.notifyOnUpdate(existing, data, userId); } catch (error) { logger.warn('Failed to send RAID update notifications', { raidItemId: id, error }); }
     }
 
     return updated;
@@ -384,8 +383,8 @@ class RiskService {
       actionType: 'update_added',
     }).catch((error) => { logger.warn('Failed to log RAID update_added', { raidItemId, error }); });
 
-    // Notify owner + PMs that an update was posted (excluding poster)
-    this.notifyUpdatePosted(raidItemId, projectId, userId, text).catch((error) => { logger.warn('Failed to notify RAID update posted', { raidItemId, error }); });
+    // Notify (awaited to preserve tenant DB context, but errors are non-fatal)
+    try { await this.notifyUpdatePosted(raidItemId, projectId, userId, text); } catch (error) { logger.warn('Failed to notify RAID update posted', { raidItemId, error }); }
 
     return update;
   }
