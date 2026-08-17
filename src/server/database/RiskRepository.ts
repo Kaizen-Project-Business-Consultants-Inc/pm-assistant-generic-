@@ -20,7 +20,7 @@ export interface ProjectRisk {
   mitigationPlan: string | null;
   responsePlan: string | null;
   ownerId: string | null;
-  source: 'manual' | 'ai_detected' | 'agent';
+  source: 'manual' | 'ai_detected' | 'agent' | 'imported';
   sourceAgentId: string | null;
   aiConfidence: number | null;
   linkedTaskIds: string[] | null;
@@ -261,7 +261,7 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
     mitigationPlan?: string;
     responsePlan?: string;
     ownerId?: string;
-    source?: 'manual' | 'ai_detected' | 'agent';
+    source?: 'manual' | 'ai_detected' | 'agent' | 'imported';
     sourceAgentId?: string;
     aiConfidence?: number;
     linkedTaskIds?: string[];

@@ -334,15 +334,17 @@ export async function riskRoutes(fastify: FastifyInstance) {
   // POST /api/v1/projects/:projectId/risks/batch — Batch import curated items
   const batchImportSchema = z.object({
     items: z.array(z.object({
+      type: z.enum(RAID_TYPES).optional(),
       title: z.string().min(1).max(255),
       description: z.string().max(5000).optional(),
       category: z.enum(CATEGORIES).optional(),
       severity: z.enum(SEVERITIES).optional(),
+      status: z.enum(ALL_STATUSES).optional(),
       probability: z.number().int().min(1).max(5).optional(),
       impact: z.number().int().min(1).max(5).optional(),
       mitigationPlan: z.string().max(5000).optional(),
       linkedTaskIds: z.array(z.string()).optional(),
-    })).min(1).max(50),
+    })).min(1).max(100),
   });
 
   fastify.post('/:projectId/risks/batch', {
@@ -357,16 +359,17 @@ export async function riskRoutes(fastify: FastifyInstance) {
       for (const item of body.items) {
         await riskService.create({
           projectId,
-          type: 'risk',
+          type: item.type || 'risk',
           title: item.title,
           description: item.description,
           category: item.category,
           severity: item.severity,
+          status: item.status,
           probability: item.probability,
           impact: item.impact,
           mitigationPlan: item.mitigationPlan,
           linkedTaskIds: item.linkedTaskIds,
-          source: 'ai_detected',
+          source: 'imported',
           createdBy: userId,
         });
         imported++;
