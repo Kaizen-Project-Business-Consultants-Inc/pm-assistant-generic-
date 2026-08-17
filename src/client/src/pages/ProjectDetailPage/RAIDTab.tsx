@@ -2,12 +2,13 @@ import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Bot, Activity, ShieldAlert, Search, Filter, X, ChevronUp, ChevronDown,
-  ArrowUpDown, AlertTriangle,
+  ArrowUpDown, AlertTriangle, FileText,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { RiskFormModal } from '../../components/risks/RiskFormModal';
 import { AIScanReviewModal } from '../../components/risks/AIScanReviewModal';
 import { RAIDDetailPanel } from '../../components/risks/RAIDDetailPanel';
+import { RAIDReportModal } from '../../components/risks/RAIDReportModal';
 
 type RaidType = 'risk' | 'issue' | 'action' | 'decision';
 type ViewMode = 'table' | 'board' | 'matrix';
@@ -36,7 +37,7 @@ const MATRIX_COLORS: Record<number, string> = {
   20: 'bg-red-200 dark:bg-red-900/50', 25: 'bg-red-300 dark:bg-red-900/70',
 };
 
-export function RAIDTab({ projectId }: { projectId: string }) {
+export function RAIDTab({ projectId, projectName }: { projectId: string; projectName: string }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editRisk, setEditRisk] = useState<any>(null);
@@ -59,6 +60,7 @@ export function RAIDTab({ projectId }: { projectId: string }) {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [inlineStatusId, setInlineStatusId] = useState<string | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const filters: Record<string, string> = {};
   if (filterType) filters.type = filterType;
@@ -398,6 +400,13 @@ export function RAIDTab({ projectId }: { projectId: string }) {
               {scanError}
             </span>
           )}
+          <button
+            onClick={() => setShowReportModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/30 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg transition-colors"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            RAID Report
+          </button>
 
           <div className="flex-1" />
 
@@ -816,6 +825,15 @@ export function RAIDTab({ projectId }: { projectId: string }) {
         importing={importing}
         aiPowered={scanAiPowered}
       />
+
+      {showReportModal && (
+        <RAIDReportModal
+          projectId={projectId}
+          projectName={projectName}
+          members={(members || []).map((m: any) => ({ userId: m.userId || m.id, userName: m.userName || m.name || m.email, email: m.email }))}
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
     </div>
   );
 }

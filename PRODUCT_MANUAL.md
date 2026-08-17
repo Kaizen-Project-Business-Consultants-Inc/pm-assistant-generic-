@@ -2207,6 +2207,36 @@ RAID items generate in-app notifications to keep the team informed without requi
 
 All notifications link directly to the RAID item. The poster/changer is excluded from their own notifications to avoid noise.
 
+### RAID Report
+
+A data-driven (no AI) RAID report that provides a comprehensive snapshot of all open RAID items with filtering, preview, download, email delivery, and recurring schedule support. The report follows the same preview/download/email/schedule pattern as the AI Status Report but does not consume AI tokens — all content is generated directly from project data.
+
+**How to access:** Navigate to the **RAID** tab on any project, then click the **RAID Report** button in the toolbar.
+
+**Report Filters:**
+- **Type** — Checkboxes for Risk, Issue, Action, and Decision. Select one or more to include in the report.
+- **Severity** — Filter by critical, high, medium, and/or low severity levels.
+- **Owner** — Dropdown to filter items by a specific owner.
+
+Click **Generate Report** to produce the report with the selected filters applied.
+
+**Report Sections:**
+1. **Summary Dashboard** — Four cards showing the count of open items by type (Risks, Issues, Actions, Decisions), each with a severity breakdown (critical / high / medium / low counts).
+2. **All Items Table** — A full table of all RAID items matching the current filters, with columns for ID, Title, Type, Severity, Status, Owner, and Date.
+3. **Overdue Actions** — A highlighted section listing all Action and Issue items past their due date or target resolution date, sorted by how overdue they are.
+4. **Key Mitigations** — A section showing active mitigation plans for open risks, so stakeholders can see what preventive measures are in place.
+
+**Actions:**
+- **Download HTML** — Download the rendered report as a standalone `.html` file for offline viewing or attachment to emails and governance documents.
+- **Email to recipients** — Enter comma-separated email addresses and send the report directly to stakeholders. The report is delivered as branded HTML email.
+- **Schedule recurring** — Set up automatic RAID report delivery on a daily, weekly, or monthly cadence with configurable day/time and recipient list. Schedules are stored with a `raid-report::` prefix to distinguish them from status report schedules. View and delete existing schedules from this tab.
+
+**API Endpoint:** `POST /api/v1/raid-reports/generate` — Generates the RAID report for a project with optional filters (types, severities, ownerId) and optional email recipients.
+
+**Trial User Experience:** Trial users are not blocked with a 403. Instead, the endpoint returns a **sample RAID report** populated with realistic demo data (example risks, issues, actions, and decisions with varied severities and statuses). An amber upgrade banner appears above the report. The Email, Schedule, and Download actions are locked with a lock icon. No database queries against real project data are performed for the sample report. Paid tier users receive full reports generated from their actual RAID data.
+
+**Feature Gating:** Full report generation requires a paid tier (consultant/sme/enterprise). Email delivery requires `RESEND_API_KEY`. Scheduling requires a paid tier.
+
 ### Role-Based Permissions
 
 | Role | Create Risk | Create Issue | Create Action | Create Decision | Cancel | Reverse |

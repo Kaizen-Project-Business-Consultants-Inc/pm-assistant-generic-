@@ -648,6 +648,41 @@ class ApiService {
   }
 
   // -------------------------------------------------------------------------
+  // RAID Reports endpoints
+  // -------------------------------------------------------------------------
+
+  async generateRAIDReport(
+    projectId: string,
+    filters?: { types?: string[]; severities?: string[]; owners?: string[]; categories?: string[] },
+    options?: { recipients?: string[]; sendEmail?: boolean },
+  ) {
+    const response = await this.api.post('/raid-reports/generate', { projectId, filters, ...options });
+    return response.data;
+  }
+
+  async scheduleRAIDReport(data: {
+    projectId: string;
+    frequency: 'daily' | 'weekly' | 'monthly';
+    dayOfWeek?: number;
+    dayOfMonth?: number;
+    timeOfDay?: string;
+    recipients: string[];
+  }) {
+    const response = await this.api.post('/raid-reports/schedule', data);
+    return response.data;
+  }
+
+  async getRAIDReportSchedules(projectId: string) {
+    const response = await this.api.get(`/raid-reports/schedules/${projectId}`);
+    return response.data;
+  }
+
+  async deleteRAIDReportSchedule(id: string) {
+    const response = await this.api.delete(`/raid-reports/schedule/${id}`);
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
   // AI Scheduling endpoints
   // -------------------------------------------------------------------------
 

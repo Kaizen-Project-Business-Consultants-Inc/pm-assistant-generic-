@@ -2090,6 +2090,36 @@ The **AI Scan** button in the RAID toolbar triggers a project-scoped analysis:
 
 AI Scan does not overwrite or modify existing records — it only proposes new ones.
 
+### RAID Report
+
+Click the **RAID Report** button in the RAID tab toolbar to generate a comprehensive, data-driven report of all open RAID items. This report does not use AI — it is built directly from your project's RAID data.
+
+#### Generating a Report
+
+1. Click **RAID Report** in the toolbar.
+2. A modal opens with filter controls:
+   - **Type** — Check or uncheck Risk, Issue, Action, and Decision to include or exclude each type.
+   - **Severity** — Select which severity levels to include (critical, high, medium, low).
+   - **Owner** — Choose a specific owner from the dropdown, or leave blank for all owners.
+3. Click **Generate Report**.
+
+#### Report Sections
+
+The generated report contains four sections:
+
+1. **Summary Dashboard** — Four cards (one per RAID type) showing the count of open items with a severity breakdown (how many are critical, high, medium, or low).
+2. **All Items Table** — A complete table of all RAID items matching your filters, with columns for ID, Title, Type, Severity, Status, Owner, and Date.
+3. **Overdue Actions** — A highlighted list of Action and Issue items that are past their due date or target resolution date, sorted by how overdue they are. Use this to quickly identify items that need immediate attention.
+4. **Key Mitigations** — A summary of active mitigation plans for open risks, so stakeholders can see what preventive measures are in place.
+
+#### Download, Email, and Schedule
+
+- **Download HTML** — Click the Download button to save the report as a standalone `.html` file. Share it as an email attachment, print it, or archive it for governance records.
+- **Email Report** — Enter comma-separated email addresses and click Send. The report is delivered as a branded HTML email to all recipients.
+- **Schedule Recurring** — Set up automatic RAID report delivery on a daily, weekly, or monthly cadence. Choose the day of week (or day of month), time, and recipients. View and delete existing schedules from this tab. Schedules use a `raid-report::` prefix to keep them separate from status report schedules.
+
+**Trial users:** A **sample report** is shown with realistic demo data so you can preview the format. An amber banner identifies it as sample data. The Download, Email, and Schedule options are locked — upgrade to a paid plan to generate RAID reports from your real project data.
+
 ---
 
 ## Tips

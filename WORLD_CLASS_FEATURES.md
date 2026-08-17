@@ -480,6 +480,7 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 - **RAID tab badge** — total open item count shown on the tab header
 - **Mobile card layout** — responsive cards on small screens with compact severity/status badges
 - **Benchmark:** BMC Remedy/Helix ITSM (no-delete audit semantics, sequential IDs, mandatory cancel reason); exceeds traditional PM tools with AI Scan, risk matrix heatmap, Kanban board, and inline status changes
+- **RAID Report**: data-driven (no AI) comprehensive RAID report with filter controls (type checkboxes, severity, owner dropdown); report sections include Summary Dashboard (4 cards with severity breakdown), All Items Table, Overdue Actions, and Key Mitigations; Download as HTML, email to stakeholders, schedule recurring delivery (daily/weekly/monthly with `raid-report::` prefix); trial users see sample report with locked email/schedule/download; same preview/download/email/schedule UX pattern as the AI Status Report; `POST /api/v1/raid-reports/generate` endpoint
 
 ---
 
@@ -589,6 +590,7 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 | Dashboard & Projects consolidation (PM pages promoted to primary) | Done | Enhancement |
 | PM Dashboard Design Gap Fixes (dark mode, KPI dots, linkPrefix) | Done | Enhancement |
 | RAID Management (Risk/Action/Issue/Decision register, sequential IDs, no-delete, AI Scan, agent writes) | Done | Enhancement |
+| RAID Report (data-driven report with filters, summary dashboard, overdue actions, key mitigations, download/email/schedule) | Done | Enhancement |
 | NL Workflow Builder (AI generates DAG workflows from plain English descriptions) | Done | Enhancement |
 | PWA Support (real service worker, app-shell caching, installable, offline banner, auto-update) | Done | Enhancement |
 | KPI Drill-In Enrichment (summary cards, trend badges, distribution bars, health sparklines + sub-scores) | Done | Enhancement |

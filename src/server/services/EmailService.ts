@@ -313,6 +313,31 @@ export class EmailService {
     });
   }
 
+  async sendRAIDReportEmail(recipients: string[], projectName: string, htmlContent: string): Promise<void> {
+    if (!this.isConfigured) {
+      logger.info(`[EmailService] RAID report email would be sent to ${recipients.map(r => maskPii(r)).join(', ')}: ${escapeHtml(projectName)}`);
+      return;
+    }
+
+    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const bodyHtml = `
+      ${htmlContent}
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${config.APP_URL}/dashboard" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+          Open Dashboard
+        </a>
+      </div>
+    `;
+
+    await this.sendEmail({
+      from: config.RESEND_FROM_EMAIL,
+      to: recipients,
+      subject: `RAID Report: ${projectName} — ${date}`,
+      html: this.wrapHtml(`RAID Report: ${projectName}`, bodyHtml),
+    });
+  }
+
   async sendStandupEmail(to: string, changes: any, narrative: string | null): Promise<void> {
     if (!this.isConfigured) {
       logger.info(`[EmailService] Standup email would be sent to ${maskPii(to)}`);
