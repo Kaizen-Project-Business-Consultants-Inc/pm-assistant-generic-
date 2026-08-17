@@ -611,8 +611,15 @@ class ApiService {
     return response.data;
   }
 
-  async getReportHistory() {
-    const response = await this.api.get('/ai-reports/history');
+  async getReportHistory(params?: {
+    type?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    page?: number;
+    limit?: number;
+  }) {
+    const response = await this.api.get('/ai-reports/history', { params });
     return response.data;
   }
 

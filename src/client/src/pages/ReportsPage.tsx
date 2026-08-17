@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FileText,
@@ -6,6 +6,9 @@ import {
   Clock,
   X,
   ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   FileBarChart,
   Shield,
   DollarSign,
@@ -14,6 +17,8 @@ import {
   Search,
   Download,
   Trash2,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../services/api';
@@ -60,23 +65,22 @@ const badgeColorMap: Record<string, string> = {
   'resource-utilization': 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
   'raid-report': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
   'status-report': 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400',
+  'report': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
 };
 
 const labelMap: Record<string, string> = {
   'weekly-status': 'Weekly Status',
   'risk-assessment': 'Risk Assessment',
   'budget-forecast': 'Budget Forecast',
-  'resource-utilization': 'Resource Utilization',
+  'resource-utilization': 'Resource Util.',
   'raid-report': 'RAID Report',
   'status-report': 'Status Report',
+  'report': 'AI Report',
 };
 
 const FILTER_TABS = [
   { value: '', label: 'All' },
-  { value: 'weekly-status', label: 'Weekly Status' },
-  { value: 'risk-assessment', label: 'Risk Assessment' },
-  { value: 'budget-forecast', label: 'Budget Forecast' },
-  { value: 'resource-utilization', label: 'Resource Util.' },
+  { value: 'report', label: 'AI Reports' },
   { value: 'raid-report', label: 'RAID' },
   { value: 'status-report', label: 'Status' },
 ];
@@ -101,29 +105,39 @@ function formatDate(dateStr: string): string {
   }
 }
 
-function getDateGroup(dateStr: string): string {
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return 'Unknown';
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today.getTime() - 86400000);
-    const weekAgo = new Date(today.getTime() - 7 * 86400000);
-    const monthAgo = new Date(today.getTime() - 30 * 86400000);
-
-    if (d >= today) return 'Today';
-    if (d >= yesterday) return 'Yesterday';
-    if (d >= weekAgo) return 'This Week';
-    if (d >= monthAgo) return 'This Month';
-    return 'Older';
-  } catch {
-    return 'Unknown';
-  }
-}
-
 function isHtmlContent(content: string): boolean {
   return content.trimStart().startsWith('<');
 }
+
+// ---------------------------------------------------------------------------
+// SortHeader
+// ---------------------------------------------------------------------------
+
+const SortHeader: React.FC<{
+  label: string;
+  column: string;
+  currentSort: string;
+  currentOrder: 'asc' | 'desc';
+  onSort: (col: string) => void;
+  className?: string;
+}> = ({ label, column, currentSort, currentOrder, onSort, className }) => {
+  const isActive = currentSort === column;
+  return (
+    <th
+      className={`px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 transition-colors ${className || ''}`}
+      onClick={() => onSort(column)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        {isActive ? (
+          currentOrder === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+        ) : (
+          <div className="w-3 h-3" />
+        )}
+      </div>
+    </th>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // ReportViewerModal
@@ -213,9 +227,30 @@ export const ReportsPage: React.FC = () => {
   const [viewingReport, setViewingReport] = useState<Report | null>(null);
   const [showRaidReport, setShowRaidReport] = useState(false);
 
-  // History filter state
-  const [historyFilter, setHistoryFilter] = useState('');
-  const [historySearch, setHistorySearch] = useState('');
+  // Table state
+  const [typeFilter, setTypeFilter] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  // Debounced search — apply on Enter or blur
+  const applySearch = useCallback(() => {
+    setSearchQuery(searchInput);
+    setPage(1);
+  }, [searchInput]);
+
+  const handleSort = useCallback((col: string) => {
+    if (sortBy === col) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(col);
+      setSortOrder(col === 'date' ? 'desc' : 'asc');
+    }
+    setPage(1);
+  }, [sortBy]);
 
   // ---- Queries ----
 
@@ -224,8 +259,15 @@ export const ReportsPage: React.FC = () => {
     isLoading: historyLoading,
     isError: historyError,
   } = useQuery({
-    queryKey: ['reportHistory'],
-    queryFn: () => apiService.getReportHistory(),
+    queryKey: ['reportHistory', typeFilter, searchQuery, sortBy, sortOrder, page],
+    queryFn: () => apiService.getReportHistory({
+      type: typeFilter || undefined,
+      search: searchQuery || undefined,
+      sortBy,
+      sortOrder,
+      page,
+      limit: PAGE_SIZE,
+    }),
   });
 
   const {
@@ -236,7 +278,11 @@ export const ReportsPage: React.FC = () => {
     queryFn: () => apiService.getProjects(),
   });
 
-  const allReports: Report[] = historyData?.reports || [];
+  const reports: Report[] = historyData?.reports || [];
+  const total: number = historyData?.total || 0;
+  const totalPages: number = historyData?.totalPages || 0;
+  const typeCounts: Record<string, number> = historyData?.typeCounts || {};
+  const totalAll = Object.values(typeCounts).reduce((a, b) => a + b, 0);
   const projects: Project[] = projectsData?.data || projectsData?.projects || [];
 
   const { data: membersData } = useQuery({
@@ -246,57 +292,10 @@ export const ReportsPage: React.FC = () => {
   });
 
   // Project name lookup
-  const projectNameMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const p of projects) map[p.id] = p.name;
-    return map;
-  }, [projects]);
+  const projectNameMap: Record<string, string> = {};
+  for (const p of projects) projectNameMap[p.id] = p.name;
 
-  // Filtered + searched reports
-  const filteredReports = useMemo(() => {
-    let filtered = allReports;
-    if (historyFilter) {
-      filtered = filtered.filter(r => r.reportType === historyFilter);
-    }
-    if (historySearch.trim()) {
-      const q = historySearch.trim().toLowerCase();
-      filtered = filtered.filter(r =>
-        r.title.toLowerCase().includes(q) ||
-        (r.projectId && projectNameMap[r.projectId]?.toLowerCase().includes(q))
-      );
-    }
-    return filtered;
-  }, [allReports, historyFilter, historySearch, projectNameMap]);
-
-  // Group by date
-  const groupedReports = useMemo(() => {
-    const groups: { label: string; reports: Report[] }[] = [];
-    const groupMap = new Map<string, Report[]>();
-    const order = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older', 'Unknown'];
-
-    for (const report of filteredReports) {
-      const group = getDateGroup(report.createdAt || report.generatedAt || '');
-      if (!groupMap.has(group)) groupMap.set(group, []);
-      groupMap.get(group)!.push(report);
-    }
-
-    for (const label of order) {
-      const items = groupMap.get(label);
-      if (items?.length) groups.push({ label, reports: items });
-    }
-    return groups;
-  }, [filteredReports]);
-
-  // Count per type for filter tabs
-  const typeCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const r of allReports) {
-      counts[r.reportType] = (counts[r.reportType] || 0) + 1;
-    }
-    return counts;
-  }, [allReports]);
-
-  // ---- Mutation ----
+  // ---- Mutations ----
 
   const generateMutation = useMutation({
     mutationFn: () =>
@@ -318,7 +317,7 @@ export const ReportsPage: React.FC = () => {
 
   // ---- Loading state ----
 
-  if (historyLoading || projectsLoading) {
+  if (projectsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
@@ -445,65 +444,67 @@ export const ReportsPage: React.FC = () => {
       </div>
 
       {/* ----------------------------------------------------------------- */}
-      {/* Report History                                                    */}
+      {/* Report History Table                                              */}
       {/* ----------------------------------------------------------------- */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             Report History
-            {allReports.length > 0 && (
-              <span className="text-xs font-normal text-gray-400">({allReports.length})</span>
+            {totalAll > 0 && (
+              <span className="text-xs font-normal text-gray-400">({totalAll})</span>
             )}
           </h2>
 
           {/* Search */}
-          {allReports.length > 0 && (
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <input
-                type="text"
-                value={historySearch}
-                onChange={e => setHistorySearch(e.target.value)}
-                placeholder="Search reports..."
-                className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 w-48 focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-          )}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') applySearch(); }}
+              onBlur={applySearch}
+              placeholder="Search by title..."
+              className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 w-52 focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
         </div>
 
         {/* Type filter pills */}
-        {allReports.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {FILTER_TABS.map(tab => {
-              const count = tab.value === '' ? allReports.length : (typeCounts[tab.value] || 0);
-              if (tab.value && !count) return null;
-              const isActive = historyFilter === tab.value;
-              return (
-                <button
-                  key={tab.value}
-                  onClick={() => setHistoryFilter(tab.value)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors ${
-                    isActive
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {tab.label}
-                  <span className={`text-[10px] ${isActive ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'}`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {FILTER_TABS.map(tab => {
+            const count = tab.value === '' ? totalAll : (typeCounts[tab.value] || 0);
+            if (tab.value && !count) return null;
+            const isActive = typeFilter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                onClick={() => { setTypeFilter(tab.value); setPage(1); }}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors ${
+                  isActive
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {tab.label}
+                <span className={`text-[10px] ${isActive ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
         {historyError ? (
           <div className="card text-center py-10">
             <p className="text-sm text-red-600">Failed to load report history.</p>
           </div>
-        ) : allReports.length === 0 ? (
+        ) : historyLoading ? (
+          <div className="card flex items-center justify-center py-12">
+            <div className="w-6 h-6 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+          </div>
+        ) : totalAll === 0 && !searchQuery && !typeFilter ? (
           <div className="card text-center py-12">
             <FileText className="mx-auto h-12 w-12 text-gray-300 mb-3" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">No reports yet</h3>
@@ -511,73 +512,160 @@ export const ReportsPage: React.FC = () => {
               Generate your first report using the form above.
             </p>
           </div>
-        ) : filteredReports.length === 0 ? (
+        ) : reports.length === 0 ? (
           <div className="card text-center py-8">
             <p className="text-sm text-gray-500 dark:text-gray-400">No reports match your filter.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {groupedReports.map(group => (
-              <div key={group.label}>
-                <h3 className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
-                  {group.label}
-                </h3>
-                <div className="space-y-2">
-                  {group.reports.map((report) => {
-                    const badgeColor = badgeColorMap[report.reportType] || 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200';
-                    const typeLabel = labelMap[report.reportType] || report.reportType;
-                    const projName = report.projectId ? projectNameMap[report.projectId as string] : null;
+          <>
+            {/* Table */}
+            <div className="card p-0 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                      <SortHeader label="Title" column="title" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} className="w-[40%]" />
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Project</th>
+                      <SortHeader label="Date" column="date" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                    {reports.map((report) => {
+                      const badgeColor = badgeColorMap[report.reportType] || 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200';
+                      const typeLabel = labelMap[report.reportType] || report.reportType;
+                      const projName = report.projectId ? projectNameMap[report.projectId as string] : null;
 
-                    return (
-                      <div
-                        key={report.id}
-                        className="card flex items-center justify-between gap-4 hover:shadow-md transition-shadow duration-200 py-3 px-4"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      return (
+                        <tr
+                          key={report.id}
+                          className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer"
+                          onClick={() => setViewingReport(report)}
+                        >
+                          <td className="px-4 py-3">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
                               {report.title}
-                            </h3>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeColor}`}>
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${badgeColor}`}>
                               {typeLabel}
                             </span>
-                            {projName && (
-                              <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[150px]">
-                                {projName}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500">
-                              <Clock className="w-2.5 h-2.5" />
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px] block">
+                              {projName || '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                               {formatDate(report.createdAt || report.generatedAt || '')}
                             </span>
-                          </div>
-                        </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => setViewingReport(report)}
+                                className="p-1.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                title="View report"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => { if (confirm('Delete this report?')) deleteMutation.mutate(report.id); }}
+                                className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                                title="Delete report"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <button
-                            onClick={() => setViewingReport(report)}
-                            className="btn flex items-center gap-1.5 text-xs"
-                          >
-                            <FileText className="w-3 h-3" />
-                            View
-                          </button>
-                          <button
-                            onClick={() => { if (confirm('Delete this report?')) deleteMutation.mutate(report.id); }}
-                            className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                            title="Delete report"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-3 px-1">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Showing {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(1)}
+                    disabled={page === 1}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    title="First page"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    title="Previous page"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  {/* Page numbers */}
+                  {(() => {
+                    const pages: (number | '...')[] = [];
+                    if (totalPages <= 7) {
+                      for (let i = 1; i <= totalPages; i++) pages.push(i);
+                    } else {
+                      pages.push(1);
+                      if (page > 3) pages.push('...');
+                      const start = Math.max(2, page - 1);
+                      const end = Math.min(totalPages - 1, page + 1);
+                      for (let i = start; i <= end; i++) pages.push(i);
+                      if (page < totalPages - 2) pages.push('...');
+                      pages.push(totalPages);
+                    }
+                    return pages.map((p, idx) =>
+                      p === '...' ? (
+                        <span key={`dots-${idx}`} className="px-1 text-xs text-gray-400">...</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p)}
+                          className={`min-w-[28px] h-7 text-xs rounded-lg transition-colors ${
+                            p === page
+                              ? 'bg-primary-600 text-white font-semibold'
+                              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
                     );
-                  })}
+                  })()}
+
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    title="Next page"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setPage(totalPages)}
+                    disabled={page === totalPages}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    title="Last page"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 

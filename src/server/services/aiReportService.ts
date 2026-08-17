@@ -147,33 +147,112 @@ export class AIReportService {
     }
   }
 
-  async getReportHistory(userId?: string, limit: number = 50): Promise<Array<{
-    id: string;
-    title: string;
-    reportType: string;
-    generatedAt: string;
-    projectId: string | null;
-    aiPowered: boolean;
-    content: string;
-    contextType: string;
-  }>> {
+  async getReportHistory(options: {
+    userId?: string;
+    type?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    page?: number;
+    limit?: number;
+  } = {}): Promise<{
+    reports: Array<{
+      id: string;
+      title: string;
+      reportType: string;
+      generatedAt: string;
+      projectId: string | null;
+      aiPowered: boolean;
+      content: string;
+      contextType: string;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    typeCounts: Record<string, number>;
+  }> {
+    const { userId, type, search, sortBy = 'created_at', sortOrder = 'desc', page = 1, limit = 20 } = options;
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(100, Math.max(1, limit));
+    const offset = (safePage - 1) * safeLimit;
+
+    // Allowlist sort columns to prevent SQL injection
+    const SORT_COLUMNS: Record<string, string> = {
+      date: 'created_at',
+      created_at: 'created_at',
+      title: 'title',
+      type: 'context_type',
+    };
+    const sortCol = SORT_COLUMNS[sortBy] || 'created_at';
+    const sortDir = sortOrder === 'asc' ? 'ASC' : 'DESC';
+
     try {
-      const query = userId
-        ? `SELECT id, title, context_type, project_id, messages, token_count, created_at
-           FROM ai_conversations
-           WHERE context_type IN ('report', 'raid-report', 'status-report') AND user_id = ? AND is_active = TRUE
-           ORDER BY created_at DESC
-           LIMIT ?`
-        : `SELECT id, title, context_type, project_id, messages, token_count, created_at
-           FROM ai_conversations
-           WHERE context_type IN ('report', 'raid-report', 'status-report') AND is_active = TRUE
-           ORDER BY created_at DESC
-           LIMIT ?`;
+      // Build WHERE conditions
+      const conditions: string[] = [
+        `context_type IN ('report', 'raid-report', 'status-report')`,
+        `is_active = TRUE`,
+      ];
+      const params: any[] = [];
 
-      const params = userId ? [userId, limit] : [limit];
-      const rows = await databaseService.queryControlPlane(query, params);
+      if (userId) {
+        conditions.push('user_id = ?');
+        params.push(userId);
+      }
 
-      return (rows as any[]).map((row: any) => {
+      if (type) {
+        // Validate against allowed context_type values
+        const validTypes = ['report', 'raid-report', 'status-report'];
+        if (validTypes.includes(type)) {
+          conditions.push('context_type = ?');
+          params.push(type);
+        }
+      }
+
+      if (search) {
+        conditions.push('title LIKE ?');
+        params.push(`%${search}%`);
+      }
+
+      const whereClause = conditions.join(' AND ');
+
+      // Get type counts (unfiltered except userId + is_active)
+      const countConditions = [
+        `context_type IN ('report', 'raid-report', 'status-report')`,
+        `is_active = TRUE`,
+      ];
+      const countParams: any[] = [];
+      if (userId) {
+        countConditions.push('user_id = ?');
+        countParams.push(userId);
+      }
+      const countRows = await databaseService.queryControlPlane(
+        `SELECT context_type, COUNT(*) as cnt FROM ai_conversations WHERE ${countConditions.join(' AND ')} GROUP BY context_type`,
+        countParams,
+      );
+      const typeCounts: Record<string, number> = {};
+      for (const row of countRows as any[]) {
+        typeCounts[row.context_type] = Number(row.cnt);
+      }
+
+      // Get total for current filter
+      const totalRows = await databaseService.queryControlPlane(
+        `SELECT COUNT(*) as total FROM ai_conversations WHERE ${whereClause}`,
+        params,
+      );
+      const total = Number((totalRows as any[])[0]?.total || 0);
+
+      // Get page of results
+      const rows = await databaseService.queryControlPlane(
+        `SELECT id, title, context_type, project_id, messages, token_count, created_at
+         FROM ai_conversations
+         WHERE ${whereClause}
+         ORDER BY ${sortCol} ${sortDir}
+         LIMIT ? OFFSET ?`,
+        [...params, safeLimit, offset],
+      );
+
+      const reports = (rows as any[]).map((row: any) => {
         let reportData: any = {};
         try {
           const messages = typeof row.messages === 'string' ? JSON.parse(row.messages) : row.messages;
@@ -200,9 +279,18 @@ export class AIReportService {
           contextType,
         };
       });
+
+      return {
+        reports,
+        total,
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.ceil(total / safeLimit),
+        typeCounts,
+      };
     } catch (err) {
       logger.warn(`Failed to fetch report history: ${err instanceof Error ? err.message : String(err)}`);
-      return [];
+      return { reports: [], total: 0, page: 1, limit: safeLimit, totalPages: 0, typeCounts: {} };
     }
   }
 

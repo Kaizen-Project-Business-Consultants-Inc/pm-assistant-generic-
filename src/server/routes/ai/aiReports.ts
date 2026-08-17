@@ -95,18 +95,40 @@ export async function aiReportRoutes(fastify: FastifyInstance) {
     },
   });
 
-  // GET /history — list past generated reports
+  // GET /history — list past generated reports (paginated)
   fastify.get('/history', {
     preHandler: [requireScope('read')],
     schema: {
-      description: 'List past generated reports',
+      description: 'List past generated reports with pagination and filtering',
       tags: ['ai-reports'],
+      querystring: {
+        type: 'object',
+        properties: {
+          type: { type: 'string' },
+          search: { type: 'string' },
+          sortBy: { type: 'string' },
+          sortOrder: { type: 'string', enum: ['asc', 'desc'] },
+          page: { type: 'integer', minimum: 1 },
+          limit: { type: 'integer', minimum: 1, maximum: 100 },
+        },
+      },
     },
-    handler: async (request: FastifyRequest, reply: FastifyReply) => {
+    handler: async (request: FastifyRequest<{
+      Querystring: { type?: string; search?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; page?: number; limit?: number };
+    }>, reply: FastifyReply) => {
       try {
         const user = request.user!;
-        const reports = await reportService.getReportHistory(user.userId);
-        return { reports };
+        const { type, search, sortBy, sortOrder, page, limit } = request.query;
+        const result = await reportService.getReportHistory({
+          userId: user.userId,
+          type,
+          search,
+          sortBy,
+          sortOrder,
+          page,
+          limit,
+        });
+        return result;
       } catch (error) {
         fastify.log.error(
           { err: error instanceof Error ? error : new Error(String(error)) },
