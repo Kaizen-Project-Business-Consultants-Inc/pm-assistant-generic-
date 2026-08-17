@@ -2158,19 +2158,25 @@ Clicking any row in the RAID log opens a slide-out panel from the right side of 
 
 - Full record header (ID, type badge, status pill, severity chip)
 - All type-specific fields (editable inline for permitted roles)
-- **Activity timeline** — a chronological log of every state change and comment, with actor name, timestamp, and change description
+- **Updates** — a dedicated section for team communication. Users with editor access can post updates and delete their own updates. Each update shows the author name, relative timestamp, and text.
+- **Activity** — a pure audit trail showing every state change, with actor name, timestamp, and change description. Comments are no longer mixed with audit entries.
 
-### Activity Logging
+### Updates vs Activity
 
-Every change to a RAID record is automatically logged to the activity timeline:
+RAID records have two distinct sections:
+
+**Updates** (`raid_updates` table) — User narratives and team communication. Posted via the input box at the bottom of the detail panel. Each update is attributed to its author and can be deleted by the author. Adding or deleting an update creates an audit entry (`update_added` / `update_deleted`) in the activity log.
+
+**Activity** (audit trail) — A read-only chronological log of every system-generated event:
 
 - Status transitions (e.g., `open → in_progress`, `decided → reversed`)
 - Field edits (title, description, owner, due date, rationale, etc.)
 - Cancel and reverse actions (with the mandatory reason recorded)
+- Update added / Update deleted audit entries
 - AI Scan findings imported as new records
 - Agent writes via `importFromAgent` or `importFromAIScan`
 
-Users can also add manual comments to any record via the comment box at the bottom of the detail panel. Manual comments appear in the timeline interleaved with auto-logged changes.
+Legacy comments (created before the Updates feature) remain in the activity log for backward compatibility but are hidden from the activity display.
 
 ### AI Agent Partnership
 

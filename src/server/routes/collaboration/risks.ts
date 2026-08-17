@@ -278,6 +278,62 @@ export async function riskRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // GET /api/v1/projects/:projectId/risks/:riskId/updates — Get updates
+  fastify.get('/:projectId/risks/:riskId/updates', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { riskId } = request.params as { projectId: string; riskId: string };
+      const updates = await riskService.getUpdates(riskId);
+      return reply.send({ data: updates });
+    } catch (err) {
+      fastify.log.error({ err }, 'Failed to get updates');
+      return reply.status(500).send({ error: 'Failed to get updates' });
+    }
+  });
+
+  // POST /api/v1/projects/:projectId/risks/:riskId/updates — Add update
+  const updateSchema = z.object({
+    text: z.string().min(1).max(5000),
+  });
+
+  fastify.post('/:projectId/risks/:riskId/updates', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId, riskId } = request.params as { projectId: string; riskId: string };
+      const { text } = updateSchema.parse(request.body);
+      const userId = request.user!.userId;
+
+      const item = await riskService.findById(riskId);
+      if (!item) return reply.status(404).send({ error: 'RAID item not found' });
+
+      const update = await riskService.addUpdate(riskId, projectId, userId, text);
+      return reply.status(201).send({ data: update });
+    } catch (err) {
+      if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
+      fastify.log.error({ err }, 'Failed to add update');
+      return reply.status(500).send({ error: 'Failed to add update' });
+    }
+  });
+
+  // DELETE /api/v1/projects/:projectId/risks/:riskId/updates/:updateId — Delete own update
+  fastify.delete('/:projectId/risks/:riskId/updates/:updateId', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { updateId } = request.params as { projectId: string; riskId: string; updateId: string };
+      const userId = request.user!.userId;
+      await riskService.deleteUpdate(updateId, userId);
+      return reply.send({ message: 'Update deleted' });
+    } catch (err) {
+      if (err instanceof Error && err.message === 'Update not found') return reply.status(404).send({ error: err.message });
+      if (err instanceof Error && err.message.includes('only delete your own')) return reply.status(403).send({ error: err.message });
+      fastify.log.error({ err }, 'Failed to delete update');
+      return reply.status(500).send({ error: 'Failed to delete update' });
+    }
+  });
+
   // POST /api/v1/projects/:projectId/risks/ai-scan — Scan only, return candidates
   fastify.post('/:projectId/risks/ai-scan', {
     preHandler: [requireScope('write'), requireProjectAccess('editor')],

@@ -52,12 +52,34 @@ export interface RaidActivityLog {
   raidItemId: string;
   projectId: string;
   userId: string;
-  actionType: 'comment' | 'status_change' | 'field_update' | 'created' | 'cancelled' | 'reversed' | 'linked';
+  actionType: 'comment' | 'status_change' | 'field_update' | 'created' | 'cancelled' | 'reversed' | 'linked' | 'update_added' | 'update_deleted';
   fieldName: string | null;
   oldValue: string | null;
   newValue: string | null;
   comment: string | null;
   createdAt: string;
+}
+
+export interface RaidUpdate {
+  id: string;
+  raidItemId: string;
+  projectId: string;
+  userId: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function mapUpdateRow(row: any): RaidUpdate {
+  return {
+    id: row.id,
+    raidItemId: row.raid_item_id,
+    projectId: row.project_id,
+    userId: row.user_id,
+    text: row.text,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }
 
 function mapRow(row: any): ProjectRisk {
@@ -416,6 +438,37 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
       [raidItemId],
     );
     return rows.map(mapActivityRow);
+  }
+
+  // --- RAID Updates (user narratives) ---
+
+  async createUpdate(data: { raidItemId: string; projectId: string; userId: string; text: string }): Promise<RaidUpdate> {
+    const id = uuidv4();
+    await databaseService.query(
+      `INSERT INTO raid_updates (id, raid_item_id, project_id, user_id, text) VALUES (?, ?, ?, ?, ?)`,
+      [id, data.raidItemId, data.projectId, data.userId, data.text],
+    );
+    return (await this.findUpdateById(id))!;
+  }
+
+  async getUpdates(raidItemId: string): Promise<RaidUpdate[]> {
+    const rows = await databaseService.query(
+      `SELECT * FROM raid_updates WHERE raid_item_id = ? ORDER BY created_at DESC`,
+      [raidItemId],
+    );
+    return rows.map(mapUpdateRow);
+  }
+
+  async findUpdateById(id: string): Promise<RaidUpdate | null> {
+    const rows = await databaseService.query(
+      `SELECT * FROM raid_updates WHERE id = ?`,
+      [id],
+    );
+    return rows.length ? mapUpdateRow(rows[0]) : null;
+  }
+
+  async deleteUpdate(id: string): Promise<void> {
+    await databaseService.query(`DELETE FROM raid_updates WHERE id = ?`, [id]);
   }
 }
 

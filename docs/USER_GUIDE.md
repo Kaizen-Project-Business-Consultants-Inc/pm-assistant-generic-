@@ -2031,13 +2031,16 @@ Click any row in the RAID table to open the detail panel on the right side of th
 
 - The record's full header: sequential ID (e.g., `R-007`), type badge, current status pill, and severity chip.
 - All fields for that record type, editable inline for users with the appropriate role.
-- An **Activity Timeline** at the bottom of the panel — a chronological list of every status change, field edit, cancel/reverse action, and manual comment. Each entry shows the actor name, relative timestamp, and a description of what changed.
+- An **Updates** section — for team communication. Each update shows the author name, relative timestamp, and text. You can delete your own updates.
+- An **Activity** section — a read-only audit trail showing every status change, field edit, cancel/reverse action, and update added/deleted event. Each entry shows the actor name, relative timestamp, and a description of what changed.
 
 Close the panel by clicking outside it or pressing **Escape**.
 
-### Adding Comments
+### Providing Updates
 
-In the detail panel, a comment box appears below the activity timeline. Type your comment and press **Add Comment**. The comment appears immediately in the timeline with your name and the current time. Comments are permanent — they cannot be edited or deleted.
+At the bottom of the detail panel, type your update in the input box and press **Enter** or click the send button. The update appears immediately in the Updates section with your name and the current timestamp. An "Update added" entry is also logged in the Activity section for audit purposes.
+
+To delete an update you posted, click the trash icon next to it. An "Update deleted" audit entry is logged automatically.
 
 ### Cancelling a Record
 

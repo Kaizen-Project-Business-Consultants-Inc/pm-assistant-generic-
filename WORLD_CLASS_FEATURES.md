@@ -462,8 +462,9 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 - Action records carry due_date and action_type (follow_up, decision_required, information_only, escalation)
 - Decision records carry rationale, decided_by, decision_date, and alternatives_considered
 - No-delete semantics: records are cancelled (with mandatory reason) rather than deleted; cancelled IDs are never reused; decision reversal (admin-only) creates a `reversed` terminal state
-- Slide-out detail panel with inline field editing and full activity timeline
-- Activity auto-logged on every status transition, field edit, cancel, or reverse; manual comments interleave with auto-logged entries
+- Slide-out detail panel with inline field editing, dedicated Updates section for team communication, and a pure audit Activity trail
+- Updates section: team narratives stored in `raid_updates` table, separate from audit log; users can post and delete their own updates
+- Activity auto-logged on every status transition, field edit, cancel, reverse, update added, or update deleted; legacy comments hidden from display
 - Role-based permission matrix: all roles can create RAID items (triage-gated for non-PM roles); admin=all operations including reverse; project_manager/scrum_master/pmo/ba=create + triage + cancel; reverse restricted to admin
 - **AI Scan**: project-scoped AI analysis surfaces new Risks and Issues from schedule/task/budget data; user selects which findings to import; imported records tagged `source: ai_scan`
 - **Agent partnership**: background agents write directly to RAID log via `importFromAgent`; agent-written records tagged `source: agent`; `suggest-mitigation` MCP tool surfaces historical lessons-learned for open risks

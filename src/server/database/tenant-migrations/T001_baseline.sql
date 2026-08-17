@@ -994,7 +994,7 @@ CREATE TABLE IF NOT EXISTS raid_activity_log (
   raid_item_id CHAR(36) NOT NULL,
   project_id CHAR(36) NOT NULL,
   user_id CHAR(36) NOT NULL,
-  action_type ENUM('comment','status_change','field_update','created','cancelled','reversed','linked') NOT NULL,
+  action_type ENUM('comment','status_change','field_update','created','cancelled','reversed','linked','update_added','update_deleted') NOT NULL,
   field_name VARCHAR(64) NULL,
   old_value TEXT NULL,
   new_value TEXT NULL,
@@ -1002,6 +1002,17 @@ CREATE TABLE IF NOT EXISTS raid_activity_log (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_raid_activity_item (raid_item_id, created_at),
   INDEX idx_raid_activity_project (project_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS raid_updates (
+  id CHAR(36) PRIMARY KEY,
+  raid_item_id CHAR(36) NOT NULL,
+  project_id CHAR(36) NOT NULL,
+  user_id CHAR(36) NOT NULL,
+  text TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_raid_updates_item (raid_item_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

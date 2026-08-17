@@ -539,6 +539,21 @@ class ApiService {
     return response.data;
   }
 
+  async getRaidUpdates(projectId: string, riskId: string) {
+    const response = await this.api.get(`/projects/${projectId}/risks/${riskId}/updates`);
+    return response.data;
+  }
+
+  async addRaidUpdate(projectId: string, riskId: string, text: string) {
+    const response = await this.api.post(`/projects/${projectId}/risks/${riskId}/updates`, { text });
+    return response.data;
+  }
+
+  async deleteRaidUpdate(projectId: string, riskId: string, updateId: string) {
+    const response = await this.api.delete(`/projects/${projectId}/risks/${riskId}/updates/${updateId}`);
+    return response.data;
+  }
+
   async addRaidComment(projectId: string, riskId: string, comment: string) {
     const response = await this.api.post(`/projects/${projectId}/risks/${riskId}/comments`, { comment });
     return response.data;

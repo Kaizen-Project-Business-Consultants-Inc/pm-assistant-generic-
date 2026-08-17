@@ -1,4 +1,4 @@
-import { riskRepository, ProjectRisk, RiskFilters, RiskStats } from '../database/RiskRepository';
+import { riskRepository, ProjectRisk, RiskFilters, RiskStats, RaidUpdate } from '../database/RiskRepository';
 import { notificationService } from './NotificationService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import logger from '../utils/logger';
@@ -237,6 +237,42 @@ class RiskService {
 
   async getActivity(raidItemId: string) {
     return riskRepository.getActivityLog(raidItemId);
+  }
+
+  // --- RAID Updates (user narratives) ---
+
+  async addUpdate(raidItemId: string, projectId: string, userId: string, text: string): Promise<RaidUpdate> {
+    const update = await riskRepository.createUpdate({ raidItemId, projectId, userId, text });
+
+    // Fire-and-forget activity log
+    riskRepository.createActivityLog({
+      raidItemId,
+      projectId,
+      userId,
+      actionType: 'update_added',
+    }).catch((error) => { logger.warn('Failed to log RAID update_added', { raidItemId, error }); });
+
+    return update;
+  }
+
+  async deleteUpdate(updateId: string, userId: string): Promise<void> {
+    const update = await riskRepository.findUpdateById(updateId);
+    if (!update) throw new Error('Update not found');
+    if (update.userId !== userId) throw new Error('You can only delete your own updates');
+
+    await riskRepository.deleteUpdate(updateId);
+
+    // Fire-and-forget activity log
+    riskRepository.createActivityLog({
+      raidItemId: update.raidItemId,
+      projectId: update.projectId,
+      userId,
+      actionType: 'update_deleted',
+    }).catch((error) => { logger.warn('Failed to log RAID update_deleted', { raidItemId: update.raidItemId, error }); });
+  }
+
+  async getUpdates(raidItemId: string): Promise<RaidUpdate[]> {
+    return riskRepository.getUpdates(raidItemId);
   }
 
   /**

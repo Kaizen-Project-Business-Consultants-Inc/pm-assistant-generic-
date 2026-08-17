@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Send, Ban, RotateCcw, Clock, MessageSquare, ArrowRightLeft, Pencil } from 'lucide-react';
+import { X, Send, Ban, RotateCcw, Clock, MessageSquare, ArrowRightLeft, Pencil, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface RAIDDetailPanelProps {
@@ -49,6 +49,8 @@ const ACTIVITY_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
   reversed: 'Reversed',
   linked: 'Linked',
+  update_added: 'Update added',
+  update_deleted: 'Update deleted',
 };
 
 function formatDate(d: string | null | undefined) {
@@ -63,12 +65,12 @@ function formatTimestamp(d: string) {
 export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }: RAIDDetailPanelProps) {
   const queryClient = useQueryClient();
   const [commentText, setCommentText] = useState('');
-  const [sendingComment, setSendingComment] = useState(false);
+  const [sendingUpdate, setSendingUpdate] = useState(false);
   const [cancelMode, setCancelMode] = useState(false);
   const [reverseMode, setReverseMode] = useState(false);
   const [reasonText, setReasonText] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const activityRef = useRef<HTMLDivElement>(null);
+  const updatesRef = useRef<HTMLDivElement>(null);
 
   const { data: itemData, refetch: refetchItem } = useQuery({
     queryKey: ['raid-item', raidId],
@@ -82,8 +84,16 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
     enabled: !!raidId,
   });
 
+  const { data: updatesData, refetch: refetchUpdates } = useQuery({
+    queryKey: ['raid-updates', raidId],
+    queryFn: () => apiService.getRaidUpdates(projectId, raidId),
+    enabled: !!raidId,
+  });
+
   const item = itemData?.data;
-  const activity: any[] = activityData?.data || [];
+  const updates: any[] = updatesData?.data || [];
+  // Filter out old 'comment' entries from activity — updates section replaces them
+  const activity: any[] = (activityData?.data || []).filter((a: any) => a.actionType !== 'comment');
 
   // Reset cancel/reverse mode when item changes
   useEffect(() => {
@@ -95,6 +105,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
   const invalidateAll = () => {
     refetchItem();
     refetchActivity();
+    refetchUpdates();
     queryClient.invalidateQueries({ queryKey: ['project-risks', projectId] });
     queryClient.invalidateQueries({ queryKey: ['project-risks-stats', projectId] });
   };
@@ -106,16 +117,23 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
     } catch { /* */ }
   };
 
-  const handleSendComment = async () => {
+  const handleSendUpdate = async () => {
     if (!commentText.trim()) return;
-    setSendingComment(true);
+    setSendingUpdate(true);
     try {
-      await apiService.addRaidComment(projectId, raidId, commentText.trim());
+      await apiService.addRaidUpdate(projectId, raidId, commentText.trim());
       setCommentText('');
-      await refetchActivity();
-      setTimeout(() => activityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      await Promise.all([refetchUpdates(), refetchActivity()]);
+      setTimeout(() => updatesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } catch { /* */ }
-    setSendingComment(false);
+    setSendingUpdate(false);
+  };
+
+  const handleDeleteUpdate = async (updateId: string) => {
+    try {
+      await apiService.deleteRaidUpdate(projectId, raidId, updateId);
+      await Promise.all([refetchUpdates(), refetchActivity()]);
+    } catch { /* */ }
   };
 
   const handleCancel = async () => {
@@ -454,9 +472,46 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
             </div>
           )}
 
-          {/* Activity timeline */}
+          {/* Updates section (user narratives) */}
           <div>
-            <h3 ref={activityRef} className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Activity</h3>
+            <h3 ref={updatesRef} className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Updates</h3>
+            {updates.length === 0 ? (
+              <p className="text-xs text-gray-400">No updates yet</p>
+            ) : (
+              <div className="space-y-3">
+                {updates.map((u: any) => (
+                  <div key={u.id} className="flex gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                          {memberName(u.userId)}
+                        </span>
+                        <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0">
+                          {formatTimestamp(u.createdAt)}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteUpdate(u.id)}
+                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500"
+                          title="Delete update"
+                          aria-label="Delete update"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 whitespace-pre-wrap">{u.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Activity timeline (audit trail only) */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Activity</h3>
             {activity.length === 0 ? (
               <p className="text-xs text-gray-400">No activity yet</p>
             ) : (
@@ -464,11 +519,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
                 {activity.map((a: any) => (
                   <div key={a.id} className="flex gap-3">
                     <div className="flex-shrink-0 mt-1">
-                      {a.actionType === 'comment' ? (
-                        <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
-                      ) : (
-                        <Clock className="w-3.5 h-3.5 text-gray-400" />
-                      )}
+                      <Clock className="w-3.5 h-3.5 text-gray-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -482,9 +533,6 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
                           {formatTimestamp(a.createdAt)}
                         </span>
                       </div>
-                      {a.actionType === 'comment' && a.comment && (
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 whitespace-pre-wrap">{a.comment}</p>
-                      )}
                       {a.actionType === 'status_change' && (
                         <p className="text-xs text-gray-500 mt-0.5">
                           <span className="line-through">{a.oldValue}</span> → <span className="font-medium">{a.newValue}</span>
@@ -507,22 +555,22 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
           </div>
         </div>
 
-        {/* Comment input at bottom */}
+        {/* Update input at bottom */}
         <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <input
               type="text"
               value={commentText}
               onChange={e => setCommentText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSendComment()}
-              placeholder="Add a comment..."
+              onKeyDown={e => e.key === 'Enter' && handleSendUpdate()}
+              placeholder="Provide an update..."
               className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
             />
             <button
-              onClick={handleSendComment}
-              disabled={!commentText.trim() || sendingComment}
+              onClick={handleSendUpdate}
+              disabled={!commentText.trim() || sendingUpdate}
               className="p-2 rounded-lg bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 text-white transition-colors"
-              aria-label="Send comment"
+              aria-label="Send update"
             >
               <Send className="w-4 h-4" />
             </button>
