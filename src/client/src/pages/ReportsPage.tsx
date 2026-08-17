@@ -10,10 +10,12 @@ import {
   Shield,
   DollarSign,
   Users,
+  ShieldAlert,
 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../services/api';
 import { renderMarkdown } from '../utils/renderMarkdown';
+import { RAIDReportModal } from '../components/risks/RAIDReportModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -146,6 +148,8 @@ export const ReportsPage: React.FC = () => {
 
   // Modal state
   const [viewingReport, setViewingReport] = useState<Report | null>(null);
+  const [showRaidReport, setShowRaidReport] = useState(false);
+  const [raidProjectId, setRaidProjectId] = useState<string>('');
 
   // ---- Queries ----
 
@@ -168,6 +172,12 @@ export const ReportsPage: React.FC = () => {
 
   const reports: Report[] = historyData?.reports || [];
   const projects: Project[] = projectsData?.data || projectsData?.projects || [];
+
+  const { data: membersData } = useQuery({
+    queryKey: ['project-members', raidProjectId],
+    queryFn: () => apiService.getProjectMembers(raidProjectId),
+    enabled: !!raidProjectId && showRaidReport,
+  });
 
   // ---- Mutation ----
 
@@ -305,6 +315,48 @@ export const ReportsPage: React.FC = () => {
       </div>
 
       {/* ----------------------------------------------------------------- */}
+      {/* RAID Report Card                                                  */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="card">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <ShieldAlert className="w-4 h-4 text-red-500" />
+          RAID Report
+        </h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          Generate a stakeholder-ready report of all open Risks, Issues, Actions, and Decisions with severity breakdowns, overdue actions, and key mitigations.
+        </p>
+        <div className="flex items-end gap-4">
+          <div className="flex-1">
+            <label htmlFor="raid-project" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+              Project
+            </label>
+            <div className="relative">
+              <select
+                id="raid-project"
+                value={raidProjectId}
+                onChange={(e) => setRaidProjectId(e.target.value)}
+                className="input w-full appearance-none pr-8"
+              >
+                <option value="">Select a project...</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+            </div>
+          </div>
+          <button
+            onClick={() => setShowRaidReport(true)}
+            disabled={!raidProjectId}
+            className="btn btn-primary flex items-center gap-2"
+          >
+            <ShieldAlert className="w-4 h-4" />
+            Generate RAID Report
+          </button>
+        </div>
+      </div>
+
+      {/* ----------------------------------------------------------------- */}
       {/* Report History                                                    */}
       {/* ----------------------------------------------------------------- */}
       <div>
@@ -372,6 +424,19 @@ export const ReportsPage: React.FC = () => {
         <ReportViewerModal
           report={viewingReport}
           onClose={() => setViewingReport(null)}
+        />
+      )}
+
+      {showRaidReport && raidProjectId && (
+        <RAIDReportModal
+          projectId={raidProjectId}
+          projectName={projects.find(p => p.id === raidProjectId)?.name || 'Project'}
+          members={(membersData?.members || membersData?.data || []).map((m: any) => ({
+            userId: m.userId || m.id,
+            userName: m.userName || m.name || m.email,
+            email: m.email,
+          }))}
+          onClose={() => setShowRaidReport(false)}
         />
       )}
     </div>
