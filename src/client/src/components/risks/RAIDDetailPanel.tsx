@@ -276,6 +276,10 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
                 <p className={labelClass}>Owner</p>
                 <p className={valueClass}>{memberName(item.ownerId)}</p>
               </div>
+              <div>
+                <p className={labelClass}>Raised By</p>
+                <p className={valueClass}>{memberName(item.createdBy) || '—'}</p>
+              </div>
               {item.type === 'risk' && (
                 <>
                   <div>

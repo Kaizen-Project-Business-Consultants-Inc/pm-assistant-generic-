@@ -389,8 +389,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
             </div>
           )}
 
-          {/* Row: Status + Owner */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Row: Status + Owner + Raised By */}
+          <div className={`grid gap-4 ${editRisk?.createdBy ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <div>
               <label className={labelClass}>Status</label>
               <select value={form.status} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} className={inputClass}>
@@ -408,6 +408,14 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 ))}
               </select>
             </div>
+            {editRisk?.createdBy && (
+              <div>
+                <label className={labelClass}>Raised By</label>
+                <p className="text-sm text-gray-700 dark:text-gray-300 py-1.5">
+                  {(() => { const m = members.find((m: any) => (m.userId || m.id) === editRisk.createdBy); return m ? (m.userName || m.user?.name || m.name || m.email) : editRisk.createdBy.slice(0, 8); })()}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Action-specific fields */}
