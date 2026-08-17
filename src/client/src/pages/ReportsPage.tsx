@@ -45,6 +45,7 @@ const REPORT_TYPES = [
   { value: 'risk-assessment', label: 'Risk Assessment', icon: Shield, badgeColor: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
   { value: 'budget-forecast', label: 'Budget Forecast', icon: DollarSign, badgeColor: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' },
   { value: 'resource-utilization', label: 'Resource Utilization', icon: Users, badgeColor: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' },
+  { value: 'raid-report', label: 'RAID Report', icon: ShieldAlert, badgeColor: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
 ] as const;
 
 const badgeColorMap: Record<string, string> = {
@@ -52,6 +53,7 @@ const badgeColorMap: Record<string, string> = {
   'risk-assessment': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
   'budget-forecast': 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
   'resource-utilization': 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
+  'raid-report': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
 };
 
 const labelMap: Record<string, string> = {
@@ -59,6 +61,7 @@ const labelMap: Record<string, string> = {
   'risk-assessment': 'Risk Assessment',
   'budget-forecast': 'Budget Forecast',
   'resource-utilization': 'Resource Utilization',
+  'raid-report': 'RAID Report',
 };
 
 // ---------------------------------------------------------------------------
@@ -143,13 +146,12 @@ export const ReportsPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Form state
-  const [selectedType, setSelectedType] = useState(REPORT_TYPES[0].value);
+  const [selectedType, setSelectedType] = useState<typeof REPORT_TYPES[number]['value']>(REPORT_TYPES[0].value);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
   // Modal state
   const [viewingReport, setViewingReport] = useState<Report | null>(null);
   const [showRaidReport, setShowRaidReport] = useState(false);
-  const [raidProjectId, setRaidProjectId] = useState<string>('');
 
   // ---- Queries ----
 
@@ -174,9 +176,9 @@ export const ReportsPage: React.FC = () => {
   const projects: Project[] = projectsData?.data || projectsData?.projects || [];
 
   const { data: membersData } = useQuery({
-    queryKey: ['project-members', raidProjectId],
-    queryFn: () => apiService.getProjectMembers(raidProjectId),
-    enabled: !!raidProjectId && showRaidReport,
+    queryKey: ['project-members', selectedProjectId],
+    queryFn: () => apiService.getProjectMembers(selectedProjectId),
+    enabled: !!selectedProjectId && showRaidReport,
   });
 
   // ---- Mutation ----
@@ -244,10 +246,10 @@ export const ReportsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Project selector (optional) */}
+          {/* Project selector */}
           <div>
             <label htmlFor="report-project" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Project (optional)
+              Project {selectedType === 'raid-report' ? '(required)' : '(optional)'}
             </label>
             <div className="relative">
               <select
@@ -271,8 +273,14 @@ export const ReportsPage: React.FC = () => {
           {/* Generate button */}
           <div className="flex items-end">
             <button
-              onClick={() => generateMutation.mutate()}
-              disabled={generateMutation.isPending}
+              onClick={() => {
+                if (selectedType === 'raid-report') {
+                  setShowRaidReport(true);
+                } else {
+                  generateMutation.mutate();
+                }
+              }}
+              disabled={generateMutation.isPending || (selectedType === 'raid-report' && !selectedProjectId)}
               className="btn btn-primary flex items-center gap-2 w-full justify-center"
             >
               {generateMutation.isPending ? (
@@ -312,48 +320,6 @@ export const ReportsPage: React.FC = () => {
             </button>
           </div>
         )}
-      </div>
-
-      {/* ----------------------------------------------------------------- */}
-      {/* RAID Report Card                                                  */}
-      {/* ----------------------------------------------------------------- */}
-      <div className="card">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-red-500" />
-          RAID Report
-        </h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Generate a stakeholder-ready report of all open Risks, Issues, Actions, and Decisions with severity breakdowns, overdue actions, and key mitigations.
-        </p>
-        <div className="flex items-end gap-4">
-          <div className="flex-1">
-            <label htmlFor="raid-project" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Project
-            </label>
-            <div className="relative">
-              <select
-                id="raid-project"
-                value={raidProjectId}
-                onChange={(e) => setRaidProjectId(e.target.value)}
-                className="input w-full appearance-none pr-8"
-              >
-                <option value="">Select a project...</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-            </div>
-          </div>
-          <button
-            onClick={() => setShowRaidReport(true)}
-            disabled={!raidProjectId}
-            className="btn btn-primary flex items-center gap-2"
-          >
-            <ShieldAlert className="w-4 h-4" />
-            Generate RAID Report
-          </button>
-        </div>
       </div>
 
       {/* ----------------------------------------------------------------- */}
@@ -427,10 +393,10 @@ export const ReportsPage: React.FC = () => {
         />
       )}
 
-      {showRaidReport && raidProjectId && (
+      {showRaidReport && selectedProjectId && (
         <RAIDReportModal
-          projectId={raidProjectId}
-          projectName={projects.find(p => p.id === raidProjectId)?.name || 'Project'}
+          projectId={selectedProjectId}
+          projectName={projects.find(p => p.id === selectedProjectId)?.name || 'Project'}
           members={(membersData?.members || membersData?.data || []).map((m: any) => ({
             userId: m.userId || m.id,
             userName: m.userName || m.name || m.email,
