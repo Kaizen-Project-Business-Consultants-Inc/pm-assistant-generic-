@@ -2042,6 +2042,20 @@ At the bottom of the detail panel, type your update in the input box and press *
 
 To delete an update you posted, click the trash icon next to it. An "Update deleted" audit entry is logged automatically.
 
+### Notifications
+
+RAID items generate notifications to keep the team informed:
+
+| Event | Who is notified |
+|-------|-----------------|
+| Owner assigned or reassigned | The new owner |
+| Status changed | Owner + project managers (excluding the person who made the change) |
+| Update posted | Owner + project managers (excluding the poster) |
+| Severity escalated to high/critical | Project managers |
+| New item created (triage) | Project managers |
+
+Notifications appear in the bell icon at the top of the page and link directly to the RAID item.
+
 ### Cancelling a Record
 
 To cancel a record (instead of deleting it — RAID records are never deleted):

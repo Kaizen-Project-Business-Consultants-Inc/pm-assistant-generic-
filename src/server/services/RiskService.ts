@@ -86,6 +86,11 @@ class RiskService {
     // Notify project managers/owners when a new item needs triage
     this.notifyProjectManagers(data.projectId, risk).catch((error) => { logger.warn('Failed to notify PMs about RAID item', { raidItemId: risk.id, error }); });
 
+    // Notify assigned owner (if different from creator)
+    if (data.ownerId && data.ownerId !== data.createdBy) {
+      this.notifyAssignment(data.projectId, risk, data.ownerId).catch((error) => { logger.warn('Failed to notify RAID assignment', { raidItemId: risk.id, error }); });
+    }
+
     return risk;
   }
 
@@ -123,6 +128,130 @@ class RiskService {
       }
     } catch (err) {
       logger.error('Failed to notify project managers about RAID item: %s', err);
+    }
+  }
+
+  /**
+   * Notify user when they are assigned as owner of a RAID item.
+   */
+  private async notifyAssignment(projectId: string, risk: ProjectRisk, ownerId: string): Promise<void> {
+    const typeLabel = risk.type.charAt(0).toUpperCase() + risk.type.slice(1);
+    await notificationService.create({
+      userId: ownerId,
+      type: 'raid_item',
+      severity: risk.severity === 'critical' ? 'critical' : risk.severity === 'high' ? 'high' : 'medium',
+      title: `${typeLabel} assigned to you: ${risk.title}`,
+      message: `You have been assigned as owner of ${risk.recordId || risk.id}: ${risk.title}.`,
+      projectId,
+      linkType: 'raid',
+      linkId: risk.id,
+    });
+  }
+
+  /**
+   * Notify relevant people when a RAID item is updated.
+   * - Owner reassigned → notify new owner
+   * - Status changed → notify owner + PMs (excluding changer)
+   * - Severity escalated to critical/high → notify PMs
+   */
+  private async notifyOnUpdate(existing: ProjectRisk, data: Record<string, any>, changedBy: string): Promise<void> {
+    const typeLabel = existing.type.charAt(0).toUpperCase() + existing.type.slice(1);
+    const label = existing.recordId || existing.id;
+    const recipients = new Set<string>();
+
+    // Owner reassigned
+    if (data.ownerId && data.ownerId !== existing.ownerId && data.ownerId !== changedBy) {
+      await notificationService.create({
+        userId: data.ownerId,
+        type: 'raid_item',
+        severity: 'medium',
+        title: `${typeLabel} assigned to you: ${existing.title}`,
+        message: `You have been assigned as owner of ${label}: ${existing.title}.`,
+        projectId: existing.projectId,
+        linkType: 'raid',
+        linkId: existing.id,
+      });
+    }
+
+    // Status changed → notify owner + PMs (excluding changer)
+    if (data.status && data.status !== existing.status) {
+      if (existing.ownerId && existing.ownerId !== changedBy) recipients.add(existing.ownerId);
+      // Also notify new owner if reassigned in same update
+      if (data.ownerId && data.ownerId !== changedBy) recipients.add(data.ownerId);
+
+      const members = await projectMemberRepository.findByProjectId(existing.projectId);
+      for (const m of members) {
+        if (['owner', 'manager'].includes(m.role) && m.userId !== changedBy) recipients.add(m.userId);
+      }
+
+      const statusLabel = String(data.status).replace(/_/g, ' ');
+      for (const uid of recipients) {
+        await notificationService.create({
+          userId: uid,
+          type: 'raid_item',
+          severity: data.status === 'cancelled' || data.status === 'reversed' ? 'high' : 'medium',
+          title: `${typeLabel} ${label} status → ${statusLabel}`,
+          message: `${existing.title} status changed from "${existing.status}" to "${statusLabel}".`,
+          projectId: existing.projectId,
+          linkType: 'raid',
+          linkId: existing.id,
+        });
+      }
+      return; // Already notified PMs, skip duplicate severity notification
+    }
+
+    // Severity escalated to critical/high → notify PMs
+    const HIGH_SEVERITIES = ['critical', 'high'];
+    if (data.severity && HIGH_SEVERITIES.includes(data.severity) && data.severity !== existing.severity) {
+      const members = await projectMemberRepository.findByProjectId(existing.projectId);
+      const pms = members.filter(m => ['owner', 'manager'].includes(m.role) && m.userId !== changedBy);
+      for (const pm of pms) {
+        await notificationService.create({
+          userId: pm.userId,
+          type: 'raid_item',
+          severity: data.severity === 'critical' ? 'critical' : 'high',
+          title: `${typeLabel} ${label} escalated to ${data.severity}`,
+          message: `${existing.title} severity changed from "${existing.severity}" to "${data.severity}".`,
+          projectId: existing.projectId,
+          linkType: 'raid',
+          linkId: existing.id,
+        });
+      }
+    }
+  }
+
+  /**
+   * Notify owner + PMs when an update (comment) is posted on a RAID item.
+   */
+  private async notifyUpdatePosted(raidItemId: string, projectId: string, posterId: string, text: string): Promise<void> {
+    const risk = await riskRepository.findById(raidItemId);
+    if (!risk) return;
+
+    const typeLabel = risk.type.charAt(0).toUpperCase() + risk.type.slice(1);
+    const label = risk.recordId || risk.id;
+    const preview = text.length > 80 ? text.substring(0, 80) + '...' : text;
+    const recipients = new Set<string>();
+
+    // Notify owner
+    if (risk.ownerId && risk.ownerId !== posterId) recipients.add(risk.ownerId);
+
+    // Notify PMs
+    const members = await projectMemberRepository.findByProjectId(projectId);
+    for (const m of members) {
+      if (['owner', 'manager'].includes(m.role) && m.userId !== posterId) recipients.add(m.userId);
+    }
+
+    for (const uid of recipients) {
+      await notificationService.create({
+        userId: uid,
+        type: 'raid_item',
+        severity: 'low',
+        title: `New update on ${typeLabel} ${label}`,
+        message: `Update posted on "${risk.title}": ${preview}`,
+        projectId,
+        linkType: 'raid',
+        linkId: raidItemId,
+      });
     }
   }
 
@@ -168,6 +297,9 @@ class RiskService {
           }).catch((error) => { logger.warn('Failed to log RAID field update', { raidItemId: id, field: key, error }); });
         }
       }
+
+      // Fire-and-forget notifications for key changes
+      this.notifyOnUpdate(existing, data, userId).catch((error) => { logger.warn('Failed to send RAID update notifications', { raidItemId: id, error }); });
     }
 
     return updated;
@@ -251,6 +383,9 @@ class RiskService {
       userId,
       actionType: 'update_added',
     }).catch((error) => { logger.warn('Failed to log RAID update_added', { raidItemId, error }); });
+
+    // Notify owner + PMs that an update was posted (excluding poster)
+    this.notifyUpdatePosted(raidItemId, projectId, userId, text).catch((error) => { logger.warn('Failed to notify RAID update posted', { raidItemId, error }); });
 
     return update;
   }

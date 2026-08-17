@@ -2193,6 +2193,20 @@ The RAID log integrates with the platform's AI agent layer in two ways:
 
 All three use the same `POST /:projectId/risks/:riskId/suggest-mitigation?field=mitigation|trigger|response` endpoint, which queries the lessons-learned knowledge base via RAG (or deterministic fallback) and generates suggestions using Claude. The `suggest-mitigation` MCP tool also uses this pathway.
 
+### RAID Notifications
+
+RAID items generate in-app notifications to keep the team informed without requiring manual follow-up:
+
+| Event | Recipients |
+|-------|-----------|
+| Owner assigned/reassigned | New owner |
+| Status changed | Owner + project managers (excluding changer) |
+| Update posted | Owner + project managers (excluding poster) |
+| Severity escalated to high/critical | Project managers |
+| New item created (triage) | Project managers |
+
+All notifications link directly to the RAID item. The poster/changer is excluded from their own notifications to avoid noise.
+
 ### Role-Based Permissions
 
 | Role | Create Risk | Create Issue | Create Action | Create Decision | Cancel | Reverse |
