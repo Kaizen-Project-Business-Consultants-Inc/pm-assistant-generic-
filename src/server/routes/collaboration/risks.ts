@@ -317,6 +317,25 @@ export async function riskRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // PUT /api/v1/projects/:projectId/risks/:riskId/updates/:updateId — Edit own update
+  fastify.put('/:projectId/risks/:riskId/updates/:updateId', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { updateId } = request.params as { projectId: string; riskId: string; updateId: string };
+      const { text } = updateSchema.parse(request.body);
+      const userId = request.user!.userId;
+      const update = await riskService.editUpdate(updateId, userId, text);
+      return reply.send({ data: update });
+    } catch (err) {
+      if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
+      if (err instanceof Error && err.message === 'Update not found') return reply.status(404).send({ error: err.message });
+      if (err instanceof Error && err.message.includes('only edit your own')) return reply.status(403).send({ error: err.message });
+      fastify.log.error({ err }, 'Failed to edit update');
+      return reply.status(500).send({ error: 'Failed to edit update' });
+    }
+  });
+
   // DELETE /api/v1/projects/:projectId/risks/:riskId/updates/:updateId — Delete own update
   fastify.delete('/:projectId/risks/:riskId/updates/:updateId', {
     preHandler: [requireScope('write'), requireProjectAccess('editor')],

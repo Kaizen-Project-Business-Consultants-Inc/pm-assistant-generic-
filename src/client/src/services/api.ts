@@ -549,6 +549,11 @@ class ApiService {
     return response.data;
   }
 
+  async editRaidUpdate(projectId: string, riskId: string, updateId: string, text: string) {
+    const response = await this.api.put(`/projects/${projectId}/risks/${riskId}/updates/${updateId}`, { text });
+    return response.data;
+  }
+
   async deleteRaidUpdate(projectId: string, riskId: string, updateId: string) {
     const response = await this.api.delete(`/projects/${projectId}/risks/${riskId}/updates/${updateId}`);
     return response.data;

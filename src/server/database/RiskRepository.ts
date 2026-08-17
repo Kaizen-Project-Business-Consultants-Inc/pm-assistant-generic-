@@ -467,6 +467,11 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
     return rows.length ? mapUpdateRow(rows[0]) : null;
   }
 
+  async editUpdate(id: string, text: string): Promise<RaidUpdate | null> {
+    await databaseService.query(`UPDATE raid_updates SET text = ? WHERE id = ?`, [text, id]);
+    return this.findUpdateById(id);
+  }
+
   async deleteUpdate(id: string): Promise<void> {
     await databaseService.query(`DELETE FROM raid_updates WHERE id = ?`, [id]);
   }

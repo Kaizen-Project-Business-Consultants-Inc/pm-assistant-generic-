@@ -70,6 +70,8 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
   const [reverseMode, setReverseMode] = useState(false);
   const [reasonText, setReasonText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [editingUpdateId, setEditingUpdateId] = useState<string | null>(null);
+  const [editingUpdateText, setEditingUpdateText] = useState('');
   const updatesRef = useRef<HTMLDivElement>(null);
 
   const { data: itemData, refetch: refetchItem } = useQuery({
@@ -133,6 +135,16 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
     try {
       await apiService.deleteRaidUpdate(projectId, raidId, updateId);
       await Promise.all([refetchUpdates(), refetchActivity()]);
+    } catch { /* */ }
+  };
+
+  const handleEditUpdate = async (updateId: string) => {
+    if (!editingUpdateText.trim()) return;
+    try {
+      await apiService.editRaidUpdate(projectId, raidId, updateId, editingUpdateText.trim());
+      setEditingUpdateId(null);
+      setEditingUpdateText('');
+      await refetchUpdates();
     } catch { /* */ }
   };
 
@@ -491,17 +503,38 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
                         </span>
                         <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0">
                           {formatTimestamp(u.createdAt)}
+                          {u.updatedAt !== u.createdAt && <span className="italic ml-1">(edited)</span>}
                         </span>
+                        <button
+                          onClick={() => { setEditingUpdateId(u.id); setEditingUpdateText(u.text); }}
+                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-500"
+                          title="Edit update"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
                         <button
                           onClick={() => handleDeleteUpdate(u.id)}
                           className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500"
                           title="Delete update"
-                          aria-label="Delete update"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 whitespace-pre-wrap">{u.text}</p>
+                      {editingUpdateId === u.id ? (
+                        <div className="mt-1 space-y-1.5">
+                          <textarea
+                            value={editingUpdateText}
+                            onChange={e => setEditingUpdateText(e.target.value)}
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white resize-none h-16"
+                          />
+                          <div className="flex gap-2">
+                            <button onClick={() => handleEditUpdate(u.id)} disabled={!editingUpdateText.trim()} className="px-2.5 py-1 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 rounded-lg">Save</button>
+                            <button onClick={() => { setEditingUpdateId(null); setEditingUpdateText(''); }} className="px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 whitespace-pre-wrap">{u.text}</p>
+                      )}
                     </div>
                   </div>
                 ))}

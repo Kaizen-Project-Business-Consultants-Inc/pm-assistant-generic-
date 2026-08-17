@@ -255,6 +255,14 @@ class RiskService {
     return update;
   }
 
+  async editUpdate(updateId: string, userId: string, text: string): Promise<RaidUpdate> {
+    const update = await riskRepository.findUpdateById(updateId);
+    if (!update) throw new Error('Update not found');
+    if (update.userId !== userId) throw new Error('You can only edit your own updates');
+    const edited = await riskRepository.editUpdate(updateId, text);
+    return edited!;
+  }
+
   async deleteUpdate(updateId: string, userId: string): Promise<void> {
     const update = await riskRepository.findUpdateById(updateId);
     if (!update) throw new Error('Update not found');
