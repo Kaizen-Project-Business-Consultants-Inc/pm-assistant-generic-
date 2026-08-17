@@ -791,7 +791,7 @@ export function RAIDTab({ projectId }: { projectId: string }) {
           projectId={projectId}
           raidId={selectedRaidId}
           onClose={() => setSelectedRaidId(null)}
-          onEdit={(item) => { setSelectedRaidId(null); openEdit(item); }}
+          onEdit={(item) => { openEdit(item); }}
           members={members}
         />
       )}
@@ -800,7 +800,7 @@ export function RAIDTab({ projectId }: { projectId: string }) {
       <RiskFormModal
         isOpen={showForm}
         onClose={() => setShowForm(false)}
-        onSaved={() => invalidateRaid()}
+        onSaved={() => { invalidateRaid(); if (selectedRaidId) { queryClient.invalidateQueries({ queryKey: ['raid-item', selectedRaidId] }); } }}
         projectId={projectId}
         editRisk={editRisk}
         defaultType={defaultType}
