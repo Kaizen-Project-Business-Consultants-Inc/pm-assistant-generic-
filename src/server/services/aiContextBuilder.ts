@@ -222,13 +222,17 @@ export class AIContextBuilder {
   }
 
   async buildStatusReportContext(projectId: string): Promise<StatusReportContext> {
-    const ctx = await this.buildProjectContext(projectId);
-    const allTasks = ctx.schedules.flatMap(s => s.tasks);
+    // Fetch project context, RAID, and change requests in parallel
+    const [ctx, raidResult, changeRequests] = await Promise.all([
+      this.buildProjectContext(projectId),
+      riskRepository.findByProject(projectId).catch(() => [] as ProjectRisk[]),
+      approvalWorkflowRepository.findChangeRequests(projectId).catch(() => [] as ChangeRequest[]),
+    ]);
 
-    // Milestones
-    const schedules = await this.scheduleService.findByProjectId(projectId);
-    const scheduleIds = schedules.map(s => s.id);
+    // buildProjectContext already fetches all tasks — reuse them via schedule IDs
+    const scheduleIds = ctx.schedules.map(s => s.id);
     const fullTasks: Task[] = await this.scheduleService.findTasksByScheduleIds(scheduleIds);
+
     const milestones = fullTasks.filter(t => t.isMilestone);
 
     // Completed tasks (last 14 days)
@@ -248,21 +252,9 @@ export class AIContextBuilder {
       return due && due >= now && due <= fourteenDaysAhead;
     });
 
-    // RAID items
-    let raidItems: ProjectRisk[] = [];
-    let criticalHighItems: ProjectRisk[] = [];
-    try {
-      raidItems = await riskRepository.findByProject(projectId);
-      criticalHighItems = raidItems.filter(r =>
-        r.severity === 'critical' || r.severity === 'high'
-      );
-    } catch { /* RAID may not exist for this project */ }
-
-    // Change requests
-    let changeRequests: ChangeRequest[] = [];
-    try {
-      changeRequests = await approvalWorkflowRepository.findChangeRequests(projectId);
-    } catch { /* Change requests table may not exist */ }
+    const criticalHighItems = raidResult.filter(r =>
+      r.severity === 'critical' || r.severity === 'high'
+    );
 
     return {
       projectContext: ctx,
@@ -270,7 +262,7 @@ export class AIContextBuilder {
       milestones,
       completedTasks,
       upcomingTasks,
-      raidItems,
+      raidItems: raidResult,
       criticalHighItems,
       changeRequests,
     };

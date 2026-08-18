@@ -89,36 +89,24 @@ export class ProjectStatusReportService {
     userId: string,
     options: StatusReportOptions = {},
   ): Promise<StatusReportResult> {
-    // Build enriched context
-    let srContext: StatusReportContext | null = null;
-    let projectName = 'Unknown Project';
-    let projectData = '';
-    try {
-      srContext = await this.contextBuilder.buildStatusReportContext(projectId);
-      projectData = srContext.promptString;
-      projectName = srContext.projectContext.project.name;
-    } catch {
-      projectData = `Project ID: ${projectId} (context unavailable)`;
-    }
+    // Run all data gathering in parallel
+    const [srContextResult, previousAreas, reportNumber, userResult] = await Promise.all([
+      this.contextBuilder.buildStatusReportContext(projectId).catch(() => null),
+      this.getPreviousRAG(projectId),
+      this.getNextReportNumber(projectId),
+      userService.findById(userId).catch(() => null),
+    ]);
 
-    // Get previous report RAG values
-    const previousAreas = await this.getPreviousRAG(projectId);
-
-    // Report number
-    const reportNumber = await this.getNextReportNumber(projectId);
+    const srContext = srContextResult;
+    const projectName = srContext?.projectContext.project.name || 'Unknown Project';
+    const projectData = srContext?.promptString || `Project ID: ${projectId} (context unavailable)`;
+    const preparedBy = userResult?.fullName || userResult?.username || 'System';
 
     // Reporting period
     const periodEnd = new Date();
     const periodStart = new Date();
     periodStart.setDate(periodStart.getDate() - 14);
     const reportingPeriod = `${this.formatShortDate(periodStart)} – ${this.formatShortDate(periodEnd)}`;
-
-    // Prepared by
-    let preparedBy = 'System';
-    try {
-      const user = await userService.findById(userId);
-      if (user) preparedBy = user.fullName || user.username;
-    } catch { /* fallback to 'System' */ }
 
     const reportId = randomUUID();
     const generatedAt = new Date().toISOString();
