@@ -46,10 +46,12 @@ export class AIReportService {
   ): Promise<GeneratedReport> {
     // Build context
     let projectData = '';
+    let projectName = '';
     if (options.projectId) {
       try {
         const ctx = await this.contextBuilder.buildProjectContext(options.projectId);
         projectData = this.contextBuilder.toPromptString(ctx);
+        projectName = ctx.project.name;
       } catch {
         projectData = `Project ID: ${options.projectId} (context unavailable)`;
       }
@@ -66,7 +68,9 @@ export class AIReportService {
     const now = new Date();
     const generatedAt = now.toISOString();
     const dateSuffix = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const title = `${REPORT_TITLES[reportType]} — ${dateSuffix}`;
+    const title = projectName
+      ? `${REPORT_TITLES[reportType]} — ${projectName} — ${dateSuffix}`
+      : `${REPORT_TITLES[reportType]} — Portfolio — ${dateSuffix}`;
 
     if (!claudeService.isAvailable()) {
       const content = this.generateFallbackReport(reportType, projectData);

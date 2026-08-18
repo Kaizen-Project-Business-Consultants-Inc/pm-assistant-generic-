@@ -171,7 +171,7 @@ export class ProjectStatusReportService {
     const html = renderStatusReportHtml(report);
 
     // Store report
-    await this.storeReport(reportId, projectId, report, generatedAt, userId);
+    await this.storeReport(reportId, projectId, projectName, report, generatedAt, userId);
 
     // Email if requested
     let emailSent = false;
@@ -214,7 +214,7 @@ export class ProjectStatusReportService {
   }
 
   private async storeReport(
-    id: string, projectId: string, report: StructuredStatusReport,
+    id: string, projectId: string, projectName: string, report: StructuredStatusReport,
     generatedAt: string, userId: string,
   ): Promise<void> {
     try {
@@ -235,7 +235,7 @@ export class ProjectStatusReportService {
       await databaseService.queryControlPlane(
         `INSERT INTO ai_conversations (id, user_id, project_id, context_type, title, messages, token_count)
          VALUES (?, ?, ?, 'status-report', ?, ?, 0)`,
-        [id, userId, projectId, `Project Status Report — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, JSON.stringify(messages)],
+        [id, userId, projectId, `Status Report — ${projectName} — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, JSON.stringify(messages)],
       );
     } catch (err) {
       logger.warn(`Failed to store status report (non-critical): ${err instanceof Error ? err.message : String(err)}`);

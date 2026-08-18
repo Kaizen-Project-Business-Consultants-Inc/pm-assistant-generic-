@@ -138,7 +138,7 @@ export class RAIDReportService {
     const html = renderRAIDReportHtml(reportData);
 
     // Store report (non-critical)
-    this.storeReport(reportId, projectId, reportData, generatedAt, userId).catch(err => {
+    this.storeReport(reportId, projectId, projectName, reportData, generatedAt, userId).catch(err => {
       logger.warn(`Failed to store RAID report (non-critical): ${err instanceof Error ? err.message : String(err)}`);
     });
 
@@ -207,7 +207,7 @@ export class RAIDReportService {
   }
 
   private async storeReport(
-    id: string, projectId: string, data: RAIDReportData,
+    id: string, projectId: string, projectName: string, data: RAIDReportData,
     generatedAt: string, userId: string,
   ): Promise<void> {
     const messages = [
@@ -226,7 +226,7 @@ export class RAIDReportService {
     await databaseService.queryControlPlane(
       `INSERT INTO ai_conversations (id, user_id, project_id, context_type, title, messages, token_count)
        VALUES (?, ?, ?, 'raid-report', ?, ?, 0)`,
-      [id, userId, projectId, `RAID Report — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, JSON.stringify(messages)],
+      [id, userId, projectId, `RAID Report — ${projectName} — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, JSON.stringify(messages)],
     );
   }
 }
