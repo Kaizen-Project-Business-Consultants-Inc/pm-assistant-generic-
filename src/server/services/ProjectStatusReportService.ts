@@ -359,6 +359,10 @@ export class ProjectStatusReportService {
           content: JSON.stringify({
             reportType: 'status-report',
             reportNumber: report.reportNumber,
+            reportingPeriod: report.reportingPeriod,
+            preparedBy: report.preparedBy,
+            projectName,
+            reportDate: report.reportDate,
             executiveSummary: report.executiveSummary,
             areas: report.areas.map(a => ({ name: a.name, status: a.status, comments: a.comments })),
             milestones: report.milestones,
