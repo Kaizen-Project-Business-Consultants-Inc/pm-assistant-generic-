@@ -65,7 +65,9 @@ jobs:
           ssh-keyscan -H 147.5.127.99 >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Deploy server
-        run: scp -r dist/server ubuntu@147.5.127.99:/opt/pm-app/dist/
+        run: |
+          ssh ubuntu@147.5.127.99 "rm -rf /opt/pm-app/dist/server && mkdir -p /opt/pm-app/dist"
+          scp -r dist/server ubuntu@147.5.127.99:/opt/pm-app/dist/
 
       - name: Deploy client
         run: |
