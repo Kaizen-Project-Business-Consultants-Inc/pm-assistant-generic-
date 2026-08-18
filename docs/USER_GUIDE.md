@@ -1244,13 +1244,30 @@ Click the **Status Report** button in the project header to generate an AI-power
   7. **For Management Attention** — Critical and high-severity RAID items needing leadership action, each with an impact-if-delayed consequence statement
   8. **Change Control** — Active change requests showing title, status, priority, and impact (data-driven, no AI)
 
-  Download the report as a styled `.html` file using the Download button.
-- **Email Report** — Enter comma-separated email addresses and send the report directly to stakeholders. A fresh report is generated and emailed in branded HTML format with all 8 sections.
+#### Editing the Report
+
+  Click the **Edit** button to modify any section before sending or exporting. In edit mode you can:
+  - Rewrite the executive summary
+  - Change RAG statuses (green/amber/red) for each dimension and update commentary
+  - Edit milestone comments
+  - Add, remove, or modify achievement and planned activity bullet items
+  - Update management attention items and change control rows
+
+  Click **Save** to apply your edits and re-render the report. Click **Cancel** to discard changes. Edits are reflected in the email, PDF, and Word exports — what you see is what gets sent.
+
+#### Exporting the Report
+
+  Three export formats are available via the toolbar buttons:
+  - **HTML** — Download the styled report as a `.html` file
+  - **PDF** — Generates a PDF directly in your browser (A4 format, high resolution)
+  - **Word (.docx)** — Downloads a professionally formatted Word document with proper styling: navy header rows, RAG cells with background colors (green/amber/red), Calibri font, and full-width tables. Section headings stay with their content across page breaks, and table headers repeat on multi-page tables.
+
+- **Email Report** — Enter comma-separated email addresses and send the displayed report (including any edits) directly to stakeholders in branded HTML format with all 8 sections.
 - **Schedule Recurring** — Set up automatic report delivery on a daily, weekly, or monthly cadence. Choose the day of week/month, time, and recipients. View and delete existing schedules from this tab.
 
 The report tracks trends by comparing against the previous report — if Schedule was Green last week and is now Amber, the trend arrow shows ↓ (declining). The Overall Status row always reflects the worst individual dimension: if any dimension is Red, Overall Status is Red. Report numbers increment automatically so you can reference specific reports (e.g., "as noted in SR-003"). Scheduled reports run automatically via the report scheduler cron and email the report to all configured recipients. Requires a paid subscription (Consultant, SME, or Enterprise tier).
 
-**Trial users:** Instead of an error, a **sample report** is shown with realistic demo data so you can preview the format. An amber banner at the top identifies it as sample data. The Email, Schedule, and Download options are locked — upgrade to a paid plan to generate live AI-powered reports for your project.
+**Trial users:** Instead of an error, a **sample report** is shown with realistic demo data so you can preview the format. An amber banner at the top identifies it as sample data. The Email, Schedule, Export, and Download options are locked — upgrade to a paid plan to generate live AI-powered reports for your project.
 
 ---
 

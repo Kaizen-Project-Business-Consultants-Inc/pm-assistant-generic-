@@ -424,6 +424,8 @@ An agentic AI project management platform that combines the scheduling power of 
 - Report Designer correctly persists all sections when updating an existing template
 - Scheduled report delivery via email (daily/weekly/monthly recurring schedules)
 - AI-powered project status reports following DBJ Template Standard with 8 sections: Header Metadata (auto-incrementing SR-001/SR-002 report numbers, 14-day reporting period), Executive Summary, Overall Status RAG table (7 dimensions including Overall Status rollup row and Governance & Stakeholders), Milestone Status (from `is_milestone` tasks), Achievements This Period (completed tasks in last 14 days), Planned Activities Next Period (upcoming tasks in next 14 days), For Management Attention (critical/high RAID items with impact-if-delayed consequences), and Change Control (data-driven from `change_requests` table, no AI); email delivery and MCP tool (`generate-status-report`); a project must be selected to generate — no "All Projects" batch mode (use scheduling for multi-project recurring delivery)
+- **Edit before sending**: inline editing of all report sections (executive summary, RAG statuses, commentary, milestones, achievements, planned activities, management attention, change control) with Save/Cancel; edits re-render via `POST /status-reports/render` and apply to email and exports
+- **Multi-format export**: PDF (client-side `html2pdf.js`, A4/2x scale), Word (.docx) via native `docx` package with full styling (navy #283480 header rows, RAG cell background colors green/amber/red, Calibri font, percentage column widths, `keepNext` section headings, `tableHeader` repeat on page breaks), HTML download (client-side Blob)
 - Report history list returns metadata only; full content is fetched on demand via `GET /api/v1/ai-reports/:id` when a report is opened, reducing bandwidth on the list view
 - Trial users receive a sample status report with demo data (realistic RAG statuses, trend arrows, management actions) instead of a 403 — no AI tokens consumed; Email/Schedule/Download locked with upgrade banner
 - **Trial sample report templates**: trial users see 3 sample Report Builder templates (Weekly Status, Budget Overview, Time Tracking) instead of a 403; New/Edit/Generate/Delete buttons are hidden with an "Upgrade to use" label; amber banner identifies sample state; no tokens or DB writes
@@ -530,7 +532,7 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 | Resource Availability Calendar | Done | Enhancement |
 | Customizable Dashboard Widgets | Done | Enhancement |
 | AI Task Slip Predictor | Done | Enhancement |
-| AI Status Report Generator (DBJ Template Standard — 8 sections, report numbers, milestone/achievement/change control tracking) + Email & Scheduling | Done | Enhancement |
+| AI Status Report Generator (DBJ Template Standard — 8 sections, report numbers, milestone/achievement/change control tracking) + Email & Scheduling + Edit Before Send + PDF/Word/HTML Export | Done | Enhancement |
 | AI Scope Creep Detector | Done | Enhancement |
 | Mobile-Optimized Views | Done | Enhancement |
 | Email Notifications & Digests | Done | Enhancement |

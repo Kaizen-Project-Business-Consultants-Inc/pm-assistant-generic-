@@ -793,8 +793,34 @@ AI-powered executive status report following the DBJ Template Standard with 8 st
 
 **Data Sources:** All sections use existing project data — no new database tables are required. Milestones come from tasks with `is_milestone = true`. Achievements and planned activities come from task completion/due dates within the 14-day windows. Management attention items come from open RAID items with critical/high severity. Change control data comes from the `change_requests` table.
 
+**Edit Before Sending:**
+
+Click the **Edit** button in the Report tab to enter inline editing mode. All sections become editable:
+- Executive summary text
+- RAG status dropdowns (green/amber/red) for each dimension with commentary fields
+- Milestone comments
+- Achievement and planned activity bullet items (add/remove/reorder)
+- Management attention items and change control rows
+
+Click **Save** to re-render the report with your edits (calls `POST /status-reports/render`). Click **Cancel** to discard changes and revert to the original. Edits apply to the displayed report, the emailed version, and exports — what you see is what gets sent.
+
+**Export Formats:**
+
+- **HTML** — Download the styled report as a `.html` file (client-side, no server call)
+- **PDF** — Export via the PDF button. Uses `html2pdf.js` client-side rendering with A4 format, 2x scale for crisp text
+- **Word (.docx)** — Export via the Word button. The server builds a native Word document using the `docx` package with full styling:
+  - Navy (#283480) header rows on all tables
+  - RAG cells with proper background colors (green #A8D5A2, amber #FFD966, red #FF9B9B)
+  - Calibri font throughout, matching the DBJ template
+  - Full-width tables with percentage column widths
+  - Section headings kept with their content across page breaks (`keepNext`)
+  - Table header rows repeat on multi-page tables (`tableHeader`)
+
 **API Endpoints:**
 - `POST /api/v1/status-reports/generate` — Generate a status report for a project, optionally email it to recipients
+- `POST /api/v1/status-reports/render` — Re-render HTML from edited structured report data
+- `POST /api/v1/status-reports/export/docx` — Export structured report data as a Word (.docx) file
+- `POST /api/v1/status-reports/email` — Email the displayed HTML report (including edits) to specified recipients
 - `POST /api/v1/status-reports/schedule` — Create a recurring schedule (daily/weekly/monthly) with recipient list
 - `GET /api/v1/status-reports/schedules/:projectId` — List active schedules for a project
 - `DELETE /api/v1/status-reports/schedule/:id` — Delete a schedule (owner or admin only)
