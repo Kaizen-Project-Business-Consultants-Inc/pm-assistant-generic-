@@ -6,6 +6,8 @@ import { requirePaidTier } from '../../middleware/requireTier';
 import { projectStatusReportService } from '../../services/ProjectStatusReportService';
 import { reportScheduleService } from '../../services/ReportScheduleService';
 import { userService } from '../../services/UserService';
+import { emailService } from '../../services/EmailService';
+import { renderStatusReportHtml, type StructuredStatusReport } from '../../utils/statusReportRenderer';
 import logger from '../../utils/logger';
 
 const generateSchema = z.object({
@@ -54,6 +56,43 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
       logger.error('Generate status report error', { error });
       return reply.status(500).send({ error: 'Failed to generate status report' });
+    }
+  });
+
+  // Re-render a report from edited structured data
+  fastify.post('/render', {
+    preHandler: [requireScope('write'), requirePaidTier],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const data = request.body as StructuredStatusReport;
+      if (!data || !data.projectName) {
+        return reply.status(400).send({ error: 'Invalid report data' });
+      }
+      const html = renderStatusReportHtml(data);
+      return { html };
+    } catch (error: any) {
+      logger.error('Render status report error', { error });
+      return reply.status(500).send({ error: 'Failed to render report' });
+    }
+  });
+
+  // Email a pre-rendered report (allows editing before sending)
+  fastify.post('/email', {
+    preHandler: [requireScope('write'), requirePaidTier],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const schema = z.object({
+        html: z.string().min(1),
+        projectName: z.string().min(1),
+        recipients: z.array(z.string().email()).min(1),
+      });
+      const body = schema.parse(request.body);
+      await emailService.sendStatusReportEmail(body.recipients, body.projectName, body.html);
+      return { success: true };
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      logger.error('Email status report error', { error });
+      return reply.status(500).send({ error: 'Failed to email report' });
     }
   });
 

@@ -667,6 +667,16 @@ class ApiService {
     return response.data;
   }
 
+  async renderStatusReport(data: any) {
+    const response = await this.api.post('/status-reports/render', data);
+    return response.data;
+  }
+
+  async emailStatusReport(html: string, projectName: string, recipients: string[]) {
+    const response = await this.api.post('/status-reports/email', { html, projectName, recipients });
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // RAID Reports endpoints
   // -------------------------------------------------------------------------

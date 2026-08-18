@@ -1,8 +1,65 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, X, Download, Mail, Calendar, Trash2, Lock } from 'lucide-react';
+import { FileText, X, Download, Mail, Calendar, Trash2, Lock, Pencil, Save, RotateCcw } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
+
+interface RAGArea {
+  name: string;
+  status: 'green' | 'amber' | 'red';
+  previousStatus?: 'green' | 'amber' | 'red' | null;
+  trend?: 'improving' | 'stable' | 'declining';
+  comments: string;
+}
+
+interface MilestoneRow {
+  ref: string;
+  name: string;
+  schedWeek: string;
+  dueDate: string;
+  status: string;
+  comments: string;
+}
+
+interface AttentionItem {
+  ref: string;
+  matter: string;
+  raised: string;
+  owner: string;
+  dateNeeded: string;
+  impactIfDelayed: string;
+}
+
+interface ChangeControlRow {
+  ref: string;
+  description: string;
+  status: string;
+  scheduleImpact: string;
+  costImpact: string;
+}
+
+interface ReportData {
+  reportNumber: string;
+  reportingPeriod: string;
+  preparedBy: string;
+  executiveSummary: string;
+  areas: RAGArea[];
+  milestones: MilestoneRow[];
+  achievements: string[];
+  plannedActivities: string[];
+  managementAttention: AttentionItem[];
+  changeControl: ChangeControlRow[];
+  projectName: string;
+  reportDate: string;
+  aiPowered: boolean;
+}
+
+const RAG_OPTIONS: Array<'green' | 'amber' | 'red'> = ['green', 'amber', 'red'];
+const RAG_COLORS: Record<string, string> = {
+  green: '#A8D5A2',
+  amber: '#FFD966',
+  red: '#FF9B9B',
+};
 
 export function StatusReportModal({ projectId, projectName, onClose }: { projectId: string; projectName: string; onClose: () => void }) {
   const [report, setReport] = useState<any>(null);
@@ -17,16 +74,33 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
   const [scheduleRecipients, setScheduleRecipients] = useState('');
   const queryClient = useQueryClient();
 
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState<ReportData | null>(null);
+  const [originalHtml, setOriginalHtml] = useState('');
+
   const mutation = useMutation({
     mutationFn: () => apiService.generateStatusReport(projectId),
     onSuccess: (data) => {
       setReport(data);
       if (data?.sample) setIsSample(true);
+      if (data?.report?.html) setOriginalHtml(data.report.html);
+    },
+  });
+
+  const renderMutation = useMutation({
+    mutationFn: (data: ReportData) => apiService.renderStatusReport(data),
+    onSuccess: (result) => {
+      setReport((prev: any) => ({
+        ...prev,
+        report: { ...prev.report, html: result.html },
+      }));
+      setIsEditing(false);
     },
   });
 
   const emailMutation = useMutation({
-    mutationFn: (recipients: string[]) => apiService.generateStatusReport(projectId, { recipients, sendEmail: true }),
+    mutationFn: (recipients: string[]) => apiService.emailStatusReport(html, projectName, recipients),
     onSuccess: () => setEmailSent(true),
   });
 
@@ -85,8 +159,103 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
     });
   };
 
+  const handleStartEdit = useCallback(() => {
+    const data = report?.report?.data as ReportData | undefined;
+    if (!data) return;
+    setEditData(JSON.parse(JSON.stringify(data)));
+    setIsEditing(true);
+  }, [report]);
+
+  const handleSaveEdit = () => {
+    if (!editData) return;
+    renderMutation.mutate(editData);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditData(null);
+    // Restore original HTML if user had previously saved edits
+    if (originalHtml) {
+      setReport((prev: any) => ({
+        ...prev,
+        report: { ...prev.report, html: originalHtml },
+      }));
+    }
+  };
+
+  const updateArea = (index: number, field: keyof RAGArea, value: string) => {
+    if (!editData) return;
+    const areas = [...editData.areas];
+    areas[index] = { ...areas[index], [field]: value };
+    setEditData({ ...editData, areas });
+  };
+
+  const updateAchievement = (index: number, value: string) => {
+    if (!editData) return;
+    const achievements = [...editData.achievements];
+    achievements[index] = value;
+    setEditData({ ...editData, achievements });
+  };
+
+  const removeAchievement = (index: number) => {
+    if (!editData) return;
+    setEditData({ ...editData, achievements: editData.achievements.filter((_, i) => i !== index) });
+  };
+
+  const addAchievement = () => {
+    if (!editData) return;
+    setEditData({ ...editData, achievements: [...editData.achievements, ''] });
+  };
+
+  const updatePlanned = (index: number, value: string) => {
+    if (!editData) return;
+    const plannedActivities = [...editData.plannedActivities];
+    plannedActivities[index] = value;
+    setEditData({ ...editData, plannedActivities });
+  };
+
+  const removePlanned = (index: number) => {
+    if (!editData) return;
+    setEditData({ ...editData, plannedActivities: editData.plannedActivities.filter((_, i) => i !== index) });
+  };
+
+  const addPlanned = () => {
+    if (!editData) return;
+    setEditData({ ...editData, plannedActivities: [...editData.plannedActivities, ''] });
+  };
+
+  const updateAttention = (index: number, field: keyof AttentionItem, value: string) => {
+    if (!editData) return;
+    const items = [...editData.managementAttention];
+    items[index] = { ...items[index], [field]: value };
+    setEditData({ ...editData, managementAttention: items });
+  };
+
+  const removeAttention = (index: number) => {
+    if (!editData) return;
+    setEditData({ ...editData, managementAttention: editData.managementAttention.filter((_, i) => i !== index) });
+  };
+
+  const addAttention = () => {
+    if (!editData) return;
+    setEditData({
+      ...editData,
+      managementAttention: [...editData.managementAttention, {
+        ref: `MA-${String(editData.managementAttention.length + 1).padStart(3, '0')}`,
+        matter: '',
+        raised: new Date().toISOString().slice(0, 10),
+        owner: '',
+        dateNeeded: '',
+        impactIfDelayed: '',
+      }],
+    });
+  };
+
   const schedules = schedulesData?.schedules || [];
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  const inputClass = 'w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white';
+  const labelClass = 'block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
@@ -97,11 +266,29 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Status Report — {projectName}</h2>
           </div>
           <div className="flex items-center gap-2">
-            {html && !isSample && (
-              <button onClick={handleDownload} className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                <Download className="w-3 h-3" />
-                Download
-              </button>
+            {html && !isSample && !isEditing && (
+              <>
+                <button onClick={handleStartEdit} className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                  <Pencil className="w-3 h-3" />
+                  Edit
+                </button>
+                <button onClick={handleDownload} className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                  <Download className="w-3 h-3" />
+                  Download
+                </button>
+              </>
+            )}
+            {isEditing && (
+              <>
+                <button onClick={handleSaveEdit} disabled={renderMutation.isPending} className="flex items-center gap-1 px-2 py-1 text-xs text-white bg-primary-600 hover:bg-primary-700 rounded disabled:opacity-50">
+                  <Save className="w-3 h-3" />
+                  {renderMutation.isPending ? 'Saving...' : 'Save'}
+                </button>
+                <button onClick={handleCancelEdit} className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                  <RotateCcw className="w-3 h-3" />
+                  Cancel
+                </button>
+              </>
             )}
             <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -154,13 +341,118 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
               {mutation.isPending ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-3" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Generating status report…</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Generating status report...</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">This may take a few seconds</p>
                 </div>
               ) : mutation.isError ? (
                 <div className="text-center py-8">
                   <p className="text-sm text-red-500">Failed to generate report</p>
                   <button onClick={() => mutation.mutate()} className="mt-2 text-xs text-primary-600 dark:text-primary-400 hover:underline">Try again</button>
+                </div>
+              ) : isEditing && editData ? (
+                <div className="space-y-5">
+                  {/* Executive Summary */}
+                  <div>
+                    <label className={labelClass}>Executive Summary</label>
+                    <textarea
+                      value={editData.executiveSummary}
+                      onChange={e => setEditData({ ...editData, executiveSummary: e.target.value })}
+                      rows={4}
+                      className={inputClass}
+                    />
+                  </div>
+
+                  {/* RAG Areas */}
+                  <div>
+                    <label className={labelClass}>Overall Status (RAG)</label>
+                    <div className="space-y-2 mt-1">
+                      {editData.areas.map((area, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span className="text-xs text-gray-700 dark:text-gray-300 w-40 flex-shrink-0 pt-1 font-medium">{area.name}</span>
+                          <select
+                            value={area.status}
+                            onChange={e => updateArea(i, 'status', e.target.value)}
+                            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white w-20"
+                            style={{ backgroundColor: RAG_COLORS[area.status] + '60' }}
+                          >
+                            {RAG_OPTIONS.map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
+                          </select>
+                          <input
+                            type="text"
+                            value={area.comments}
+                            onChange={e => updateArea(i, 'comments', e.target.value)}
+                            placeholder="Commentary"
+                            className={inputClass + ' flex-1'}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Achievements */}
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className={labelClass}>Achievements This Period</label>
+                      <button onClick={addAchievement} className="text-xs text-primary-600 dark:text-primary-400 hover:underline">+ Add</button>
+                    </div>
+                    <div className="space-y-1 mt-1">
+                      {editData.achievements.map((a, i) => (
+                        <div key={i} className="flex items-center gap-1">
+                          <input type="text" value={a} onChange={e => updateAchievement(i, e.target.value)} className={inputClass + ' flex-1'} />
+                          <button onClick={() => removeAchievement(i)} className="p-1 text-gray-400 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
+                        </div>
+                      ))}
+                      {editData.achievements.length === 0 && (
+                        <p className="text-xs text-gray-400 italic">No achievements listed</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Planned Activities */}
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className={labelClass}>Planned Activities — Next Period</label>
+                      <button onClick={addPlanned} className="text-xs text-primary-600 dark:text-primary-400 hover:underline">+ Add</button>
+                    </div>
+                    <div className="space-y-1 mt-1">
+                      {editData.plannedActivities.map((a, i) => (
+                        <div key={i} className="flex items-center gap-1">
+                          <input type="text" value={a} onChange={e => updatePlanned(i, e.target.value)} className={inputClass + ' flex-1'} />
+                          <button onClick={() => removePlanned(i)} className="p-1 text-gray-400 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
+                        </div>
+                      ))}
+                      {editData.plannedActivities.length === 0 && (
+                        <p className="text-xs text-gray-400 italic">No planned activities listed</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Management Attention */}
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className={labelClass}>For Management Attention</label>
+                      <button onClick={addAttention} className="text-xs text-primary-600 dark:text-primary-400 hover:underline">+ Add</button>
+                    </div>
+                    <div className="space-y-2 mt-1">
+                      {editData.managementAttention.map((item, i) => (
+                        <div key={i} className="p-2 border border-gray-200 dark:border-gray-600 rounded-lg space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{item.ref}</span>
+                            <button onClick={() => removeAttention(i)} className="p-0.5 text-gray-400 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
+                          </div>
+                          <input type="text" value={item.matter} onChange={e => updateAttention(i, 'matter', e.target.value)} placeholder="Matter requiring attention" className={inputClass} />
+                          <div className="grid grid-cols-3 gap-1">
+                            <input type="text" value={item.owner} onChange={e => updateAttention(i, 'owner', e.target.value)} placeholder="Owner" className={inputClass} />
+                            <input type="text" value={item.dateNeeded} onChange={e => updateAttention(i, 'dateNeeded', e.target.value)} placeholder="Date needed" className={inputClass} />
+                            <input type="text" value={item.impactIfDelayed} onChange={e => updateAttention(i, 'impactIfDelayed', e.target.value)} placeholder="Impact if delayed" className={inputClass} />
+                          </div>
+                        </div>
+                      ))}
+                      {editData.managementAttention.length === 0 && (
+                        <p className="text-xs text-gray-400 italic">No items requiring management attention</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : html ? (
                 <div
@@ -184,7 +476,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                 />
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                This will generate a fresh status report and email it to the specified recipients.
+                This will email the current report (including any edits) to the specified recipients.
               </p>
               {emailSent && (
                 <div className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg">
@@ -193,11 +485,11 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
               )}
               <button
                 onClick={handleEmailSend}
-                disabled={emailMutation.isPending || !emailRecipients.trim()}
+                disabled={emailMutation.isPending || !emailRecipients.trim() || !html}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Mail className="w-4 h-4" />
-                {emailMutation.isPending ? 'Sending…' : 'Send Report'}
+                {emailMutation.isPending ? 'Sending...' : 'Send Report'}
               </button>
             </div>
           )}
@@ -314,7 +606,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Calendar className="w-4 h-4" />
-                  {scheduleMutation.isPending ? 'Creating…' : 'Create Schedule'}
+                  {scheduleMutation.isPending ? 'Creating...' : 'Create Schedule'}
                 </button>
               </div>
             </div>
