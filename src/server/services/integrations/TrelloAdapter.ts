@@ -18,7 +18,7 @@ export class TrelloAdapter {
         { headers: { 'Accept': 'application/json' } },
       );
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as any;
         return { success: true, message: `Connected to Trello board "${data.name}" successfully` };
       }
       if (response.status === 401) {
@@ -100,7 +100,7 @@ export class TrelloAdapter {
         { headers: { 'Accept': 'application/json' } },
       );
       if (!response.ok) throw new Error(`Trello API error: ${response.status}`);
-      return await response.json();
+      return await response.json() as Array<{ id: string; name: string }>;
     } catch (error: any) {
       throw new Error(`Failed to get Trello lists: ${error.message}`);
     }

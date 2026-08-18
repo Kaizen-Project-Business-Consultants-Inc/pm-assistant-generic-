@@ -33,7 +33,7 @@ export class JiraAdapter {
         },
       );
       if (!response.ok) throw new Error(`Jira API error: ${response.status}`);
-      const data = await response.json();
+      const data = await response.json() as any;
       return { items: data.issues || [], count: data.total || 0 };
     } catch (error: any) {
       throw new Error(`Jira pull failed: ${error.message}`);

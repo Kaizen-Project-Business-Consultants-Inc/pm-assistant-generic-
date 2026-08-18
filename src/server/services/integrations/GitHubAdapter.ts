@@ -22,7 +22,7 @@ export class GitHubAdapter {
         { headers: this.headers(config) },
       );
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as any;
         return { success: true, message: `Connected to ${data.full_name} successfully` };
       }
       if (response.status === 404) {
