@@ -75,9 +75,9 @@ export function computeTrend(current: string, previous: string | null | undefine
 // ---------------------------------------------------------------------------
 const NAVY = '#283480';
 const LABEL_BG = '#EAECF6';
-const GREEN_BG = '#C6EFCE';
-const AMBER_BG = '#FFEB9C';
-const RED_BG = '#FFC7CE';
+const GREEN_BG = '#A8D5A2';
+const AMBER_BG = '#FFD966';
+const RED_BG = '#FF9B9B';
 const WHITE = '#FFFFFF';
 const BODY_TEXT = '#1f2937';
 const FONT = "Calibri, 'Segoe UI', Arial, sans-serif";
