@@ -270,11 +270,27 @@ Generate a complete, professional report in markdown format. Include an executiv
   ),
 
   statusReport: new PromptTemplate(
-    `You are generating an executive project status report for management. Analyze the project data and return a JSON object (no markdown, no code fences).
+    `You are generating a comprehensive executive project status report (DBJ template standard) for management. Analyze ALL provided data and return a JSON object (no markdown, no code fences).
 
 <project-data>
 {{projectData}}
 </project-data>
+
+<milestones>
+{{milestones}}
+</milestones>
+
+<completed-tasks>
+{{completedTasks}}
+</completed-tasks>
+
+<upcoming-tasks>
+{{upcomingTasks}}
+</upcoming-tasks>
+
+<raid-items>
+{{raidItems}}
+</raid-items>
 
 <rag-thresholds>
 {{ragThresholds}}
@@ -286,52 +302,50 @@ Generate a complete, professional report in markdown format. Include an executiv
 
 Return valid JSON with this exact structure:
 {
-  "executiveSummary": "A concise 3-5 sentence paragraph summarizing overall project health, key accomplishments this period, and items needing management attention.",
+  "executiveSummary": "A concise 3-5 sentence paragraph summarizing overall project health, key accomplishments this period, milestone status, and items needing management attention. Reference actual data.",
+  "overallStatus": {
+    "status": "green|amber|red",
+    "comments": "Rollup summary — worst status of all dimensions"
+  },
   "areas": [
-    {
-      "name": "Schedule",
-      "status": "green|amber|red",
-      "comments": "Brief data-driven comment about schedule health"
-    },
-    {
-      "name": "Budget",
-      "status": "green|amber|red",
-      "comments": "Brief data-driven comment about budget health"
-    },
-    {
-      "name": "Resources",
-      "status": "green|amber|red",
-      "comments": "Brief data-driven comment about resource health"
-    },
-    {
-      "name": "Risks",
-      "status": "green|amber|red",
-      "comments": "Brief data-driven comment about risk posture"
-    },
-    {
-      "name": "Scope",
-      "status": "green|amber|red",
-      "comments": "Brief data-driven comment about scope stability"
-    },
-    {
-      "name": "Quality",
-      "status": "green|amber|red",
-      "comments": "Brief data-driven comment about quality/data completeness"
-    }
+    { "name": "Schedule", "status": "green|amber|red", "comments": "Brief data-driven comment" },
+    { "name": "Budget", "status": "green|amber|red", "comments": "Brief data-driven comment" },
+    { "name": "Resources", "status": "green|amber|red", "comments": "Brief data-driven comment" },
+    { "name": "Risks", "status": "green|amber|red", "comments": "Brief data-driven comment" },
+    { "name": "Scope", "status": "green|amber|red", "comments": "Brief data-driven comment" },
+    { "name": "Quality", "status": "green|amber|red", "comments": "Brief data-driven comment" },
+    { "name": "Governance & Stakeholders", "status": "green|amber|red", "comments": "Brief data-driven comment" }
   ],
-  "managementActions": [
-    "Action item 1 requiring management decision or awareness",
-    "Action item 2..."
+  "achievements": [
+    "Completed task or accomplishment 1",
+    "Completed task or accomplishment 2"
+  ],
+  "plannedActivities": [
+    "Upcoming activity 1 — Owner — Target Date",
+    "Upcoming activity 2 — Owner — Target Date"
+  ],
+  "managementAttention": [
+    {
+      "ref": "MA-001",
+      "matter": "Description of the matter requiring attention",
+      "raised": "Date raised (YYYY-MM-DD)",
+      "owner": "Responsible person or role",
+      "dateNeeded": "Decision needed by date",
+      "impactIfDelayed": "Consequence if not addressed"
+    }
   ]
 }
 
 Rules:
 - Use the RAG thresholds to determine green/amber/red status for each area.
+- overallStatus should be the WORST status across all areas (if any area is red, overall is red; if any amber and none red, overall is amber).
 - If previous report data is available, use it for context but do NOT include previous statuses in your response — the system computes trends automatically.
+- achievements: summarize from the completed tasks data. Group related completions. 3-8 bullet points.
+- plannedActivities: derive from upcoming tasks. Include owner if available and target date. 3-8 bullet points.
+- managementAttention: derive from critical/high RAID items, overdue tasks, and budget overruns. Include consequence of delay. 2-6 items.
 - Be concise and data-driven. Use actual numbers from the project data.
-- managementActions should contain 3-6 specific, actionable items for executives.
 - Return ONLY the JSON object, no other text.`,
-    '2.0.0',
+    '3.0.0',
   ),
 
   meetingNotesExtraction: new PromptTemplate(

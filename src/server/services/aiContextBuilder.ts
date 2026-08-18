@@ -1,7 +1,10 @@
 import { FastifyInstance } from 'fastify';
 import { ProjectService } from './ProjectService';
-import { ScheduleService } from './ScheduleService';
+import { ScheduleService, type Task } from './ScheduleService';
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
+import { riskRepository, type ProjectRisk } from '../database/RiskRepository';
+import { approvalWorkflowRepository } from '../database/ApprovalWorkflowRepository';
+import type { ChangeRequest } from './ApprovalWorkflowService';
 
 export interface ProjectContext {
   project: {
@@ -217,4 +220,70 @@ export class AIContextBuilder {
 
     return s;
   }
+
+  async buildStatusReportContext(projectId: string): Promise<StatusReportContext> {
+    const ctx = await this.buildProjectContext(projectId);
+    const allTasks = ctx.schedules.flatMap(s => s.tasks);
+
+    // Milestones
+    const schedules = await this.scheduleService.findByProjectId(projectId);
+    const scheduleIds = schedules.map(s => s.id);
+    const fullTasks: Task[] = await this.scheduleService.findTasksByScheduleIds(scheduleIds);
+    const milestones = fullTasks.filter(t => t.isMilestone);
+
+    // Completed tasks (last 14 days)
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+    const completedTasks = fullTasks.filter(t =>
+      t.status === 'completed' && new Date(t.updatedAt) >= fourteenDaysAgo
+    );
+
+    // Upcoming tasks (next 14 days)
+    const fourteenDaysAhead = new Date();
+    fourteenDaysAhead.setDate(fourteenDaysAhead.getDate() + 14);
+    const now = new Date();
+    const upcomingTasks = fullTasks.filter(t => {
+      if (t.status === 'completed' || t.status === 'cancelled') return false;
+      const due = t.dueDate ? new Date(t.dueDate) : (t.endDate ? new Date(t.endDate) : null);
+      return due && due >= now && due <= fourteenDaysAhead;
+    });
+
+    // RAID items
+    let raidItems: ProjectRisk[] = [];
+    let criticalHighItems: ProjectRisk[] = [];
+    try {
+      raidItems = await riskRepository.findByProject(projectId);
+      criticalHighItems = raidItems.filter(r =>
+        r.severity === 'critical' || r.severity === 'high'
+      );
+    } catch { /* RAID may not exist for this project */ }
+
+    // Change requests
+    let changeRequests: ChangeRequest[] = [];
+    try {
+      changeRequests = await approvalWorkflowRepository.findChangeRequests(projectId);
+    } catch { /* Change requests table may not exist */ }
+
+    return {
+      projectContext: ctx,
+      promptString: this.toPromptString(ctx),
+      milestones,
+      completedTasks,
+      upcomingTasks,
+      raidItems,
+      criticalHighItems,
+      changeRequests,
+    };
+  }
+}
+
+export interface StatusReportContext {
+  projectContext: ProjectContext;
+  promptString: string;
+  milestones: Task[];
+  completedTasks: Task[];
+  upcomingTasks: Task[];
+  raidItems: ProjectRisk[];
+  criticalHighItems: ProjectRisk[];
+  changeRequests: ChangeRequest[];
 }

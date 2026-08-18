@@ -21,8 +21,17 @@ vi.mock('../../services/aiContextBuilder', () => ({
   AIContextBuilder: vi.fn().mockImplementation(() => ({
     buildProjectContext: vi.fn().mockResolvedValue({
       project: { name: 'Test Project', projectType: 'software' },
-      tasks: [],
-      risks: [],
+      schedules: [],
+    }),
+    buildStatusReportContext: vi.fn().mockResolvedValue({
+      projectContext: { project: { name: 'Test Project', projectType: 'software' }, schedules: [] },
+      promptString: 'Project: Test Project\nType: software',
+      milestones: [],
+      completedTasks: [],
+      upcomingTasks: [],
+      raidItems: [],
+      criticalHighItems: [],
+      changeRequests: [],
     }),
     toPromptString: vi.fn().mockReturnValue('Project: Test Project\nType: software'),
   })),
@@ -31,6 +40,12 @@ vi.mock('../../services/aiContextBuilder', () => ({
 vi.mock('../../services/EmailService', () => ({
   emailService: {
     sendStatusReportEmail: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock('../../services/UserService', () => ({
+  userService: {
+    findById: vi.fn().mockResolvedValue({ fullName: 'Test User', username: 'testuser' }),
   },
 }));
 
@@ -59,6 +74,7 @@ import { emailService } from '../../services/EmailService';
 
 const MOCK_AI_RESPONSE = JSON.stringify({
   executiveSummary: 'Project is on track with minor schedule concerns.',
+  overallStatus: { status: 'amber', comments: 'Schedule pressure' },
   areas: [
     { name: 'Schedule', status: 'amber', comments: '2 tasks overdue' },
     { name: 'Budget', status: 'green', comments: 'On track' },
@@ -66,10 +82,19 @@ const MOCK_AI_RESPONSE = JSON.stringify({
     { name: 'Risks', status: 'amber', comments: '1 high risk' },
     { name: 'Scope', status: 'green', comments: 'No changes' },
     { name: 'Quality', status: 'green', comments: 'All tasks have estimates' },
+    { name: 'Governance & Stakeholders', status: 'green', comments: 'On track' },
   ],
-  managementActions: [
-    'Review overdue tasks in sprint 3',
-    'Approve budget for Q3',
+  achievements: ['Completed sprint 3 deliverables', 'Resolved critical bug'],
+  plannedActivities: ['Start UAT — QA Lead — Aug 25', 'Deploy to staging — DevOps — Aug 20'],
+  managementAttention: [
+    {
+      ref: 'MA-001',
+      matter: 'Review overdue tasks in sprint 3',
+      raised: '2026-08-15',
+      owner: 'PM',
+      dateNeeded: '2026-08-20',
+      impactIfDelayed: '1-week schedule slip',
+    },
   ],
 });
 
@@ -94,11 +119,16 @@ describe('ProjectStatusReportService', () => {
 
     expect(result.aiPowered).toBe(true);
     expect(result.html).toContain('Executive Summary');
-    expect(result.html).toContain('Actions for Management');
-    expect(result.data.areas).toHaveLength(6);
-    expect(result.data.areas[0].name).toBe('Schedule');
-    expect(result.data.areas[0].status).toBe('amber');
-    expect(result.data.managementActions).toHaveLength(2);
+    expect(result.html).toContain('Overall Status');
+    // 1 overall + 7 dimensions = 8 areas
+    expect(result.data.areas).toHaveLength(8);
+    expect(result.data.areas[0].name).toBe('Overall Status');
+    expect(result.data.areas[1].name).toBe('Schedule');
+    expect(result.data.areas[1].status).toBe('amber');
+    expect(result.data.achievements).toHaveLength(2);
+    expect(result.data.managementAttention).toHaveLength(1);
+    expect(result.data.reportNumber).toMatch(/^SR-\d{3}$/);
+    expect(result.data.preparedBy).toBe('Test User');
     expect(result.emailSent).toBe(false);
   });
 
@@ -108,7 +138,8 @@ describe('ProjectStatusReportService', () => {
     const result = await service.generate('proj-1', 'user-1');
 
     expect(result.aiPowered).toBe(false);
-    expect(result.data.areas).toHaveLength(6);
+    // 1 overall + 7 dimensions = 8 areas
+    expect(result.data.areas).toHaveLength(8);
     expect(result.data.areas.every(a => a.status === 'amber')).toBe(true);
     expect(result.html).toContain('Template Report');
   });
@@ -120,7 +151,7 @@ describe('ProjectStatusReportService', () => {
     const result = await service.generate('proj-1', 'user-1');
 
     expect(result.aiPowered).toBe(false);
-    expect(result.data.areas).toHaveLength(6);
+    expect(result.data.areas).toHaveLength(8);
   });
 
   it('sends email with HTML when sendEmail is true', async () => {
@@ -184,22 +215,28 @@ describe('ProjectStatusReportService', () => {
 
   it('computes trend from previous report', async () => {
     const { databaseService } = await import('../../database/connection');
-    vi.mocked(databaseService.queryControlPlane).mockResolvedValueOnce([
-      {
-        messages: JSON.stringify([{
-          content: JSON.stringify({
-            areas: [
-              { name: 'Schedule', status: 'green' },
-              { name: 'Budget', status: 'green' },
-              { name: 'Resources', status: 'green' },
-              { name: 'Risks', status: 'green' },
-              { name: 'Scope', status: 'green' },
-              { name: 'Quality', status: 'green' },
-            ],
-          }),
-        }]),
-      },
-    ] as any);
+    // First call: getPreviousRAG, second call: getNextReportNumber, third+: storeReport
+    vi.mocked(databaseService.queryControlPlane)
+      .mockResolvedValueOnce([
+        {
+          messages: JSON.stringify([{
+            content: JSON.stringify({
+              areas: [
+                { name: 'Overall Status', status: 'green' },
+                { name: 'Schedule', status: 'green' },
+                { name: 'Budget', status: 'green' },
+                { name: 'Resources', status: 'green' },
+                { name: 'Risks', status: 'green' },
+                { name: 'Scope', status: 'green' },
+                { name: 'Quality', status: 'green' },
+                { name: 'Governance & Stakeholders', status: 'green' },
+              ],
+            }),
+          }]),
+        },
+      ] as any)
+      .mockResolvedValueOnce([{ cnt: 1 }] as any)
+      .mockResolvedValue([] as any);
 
     vi.mocked(claudeService.isAvailable).mockReturnValue(true);
     vi.mocked(claudeService.complete).mockResolvedValue({
@@ -217,5 +254,22 @@ describe('ProjectStatusReportService', () => {
     const budget = result.data.areas.find(a => a.name === 'Budget');
     expect(budget?.previousStatus).toBe('green');
     expect(budget?.trend).toBe('stable'); // green -> green
+
+    expect(result.data.reportNumber).toBe('SR-002');
+  });
+
+  it('includes all 8 sections in sample report', () => {
+    const result = service.generateSample('proj-1');
+
+    expect(result.data.reportNumber).toBe('SR-001');
+    expect(result.data.preparedBy).toBe('Sample User');
+    expect(result.data.milestones).toHaveLength(3);
+    expect(result.data.achievements).toHaveLength(3);
+    expect(result.data.plannedActivities).toHaveLength(3);
+    expect(result.data.managementAttention).toHaveLength(2);
+    expect(result.html).toContain('Milestone Status');
+    expect(result.html).toContain('Achievements This Period');
+    expect(result.html).toContain('Planned Activities');
+    expect(result.html).toContain('Management Attention');
   });
 });

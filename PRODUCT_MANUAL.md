@@ -748,18 +748,35 @@ Deterministic analysis comparing current project state against baselines:
 
 Severity thresholds: critical (10+ new tasks or 20+ days growth), high (5+/10+), medium (3+/5+ or 2+ change requests). Available at `GET /api/v1/predictions/project/:projectId/scope-creep`.
 
-### AI Status Report Generator (RAG Traffic Light)
+### AI Status Report Generator (DBJ Template Standard)
 
-AI-powered executive status report with a Red/Amber/Green (RAG) traffic light dashboard. Claude analyzes project data and produces a structured JSON response that is rendered as styled HTML for both the UI modal and email delivery.
+AI-powered executive status report following the DBJ Template Standard with 8 structured sections. Claude analyzes project data and produces a structured JSON response that is rendered as styled HTML for both the UI modal and email delivery.
 
-**Report Format:**
-1. **Executive Summary** — AI-generated paragraph summarizing overall project health, key concerns, and outlook
-2. **Traffic Light Dashboard** — Table with 6 areas (Schedule, Budget, Resources, Risks, Scope, Quality), each showing:
-   - Previous status (from last stored report)
-   - Current RAG status (🟢 Green / 🟡 Amber / 🔴 Red)
-   - Trend arrow (↑ Improving / → Stable / ↓ Declining)
-   - Comments explaining the assessment
-3. **Actions for Management** — Numbered list of recommended management actions
+**Report Format (8 Sections):**
+
+1. **Header Metadata** — Auto-incrementing report number (SR-001, SR-002, …), reporting period (last 14 days with start/end dates), prepared-by name, and generation date. Report numbers are sequential per project.
+
+2. **Executive Summary** — AI-generated paragraph summarizing overall project health, key concerns, and outlook for the reporting period.
+
+3. **Overall Status (RAG Traffic Light Dashboard)** — Table with 7 dimensions, each showing previous status, current RAG status (🟢 Green / 🟡 Amber / 🔴 Red), trend arrow (↑ Improving / → Stable / ↓ Declining), and comments:
+   - **Overall Status** — Rollup row showing the worst RAG across all other dimensions
+   - Schedule
+   - Budget
+   - Resources
+   - Risks
+   - Scope / Change Control
+   - **Governance & Stakeholders** — New dimension assessing stakeholder engagement and governance health
+   - Quality
+
+4. **Milestone Status** — Table of project milestones (sourced from tasks where `is_milestone = true`) showing milestone name, baseline date, forecast/actual date, and RAG status. Provides at-a-glance tracking of key deliverable dates.
+
+5. **Achievements This Period** — Summary of tasks completed within the last 14 days, automatically gathered from task completion data. Shows what was delivered during the reporting period.
+
+6. **Planned Activities Next Period** — Upcoming tasks due within the next 14 days, sourced from the project schedule. Shows what is planned for the coming period.
+
+7. **For Management Attention** — Critical and high-severity RAID items requiring leadership action, sourced from open RAID items. Each item includes an impact-if-delayed consequence statement to convey urgency.
+
+8. **Change Control** — Active change requests sourced from the `change_requests` table. This section is entirely data-driven (no AI generation) and shows request title, status, priority, and impact.
 
 **RAG Thresholds (configurable):**
 - Schedule: Green = <5% tasks overdue, Amber = 5–15%, Red = >15%
@@ -768,8 +785,13 @@ AI-powered executive status report with a Red/Amber/Green (RAG) traffic light da
 - Risks: Green = 0 high/critical, Amber = 1–2 high, Red = 3+ or any critical
 - Scope: Green = 0 change requests, Amber = 1–2 pending, Red = 3+ or unapproved growth
 - Quality: Green = <5% tasks missing data, Amber = 5–15%, Red = >15%
+- Governance & Stakeholders: AI-assessed based on stakeholder engagement signals and governance activity
+
+**Overall Status Rollup:** The Overall Status row automatically reflects the worst RAG across all individual dimensions. If any dimension is Red, Overall Status is Red. If none are Red but any are Amber, Overall Status is Amber. All Green means Overall Status is Green.
 
 **Trend Computation:** Compares current RAG status against the previous report (stored in `ai_conversations` with `context_type = 'status-report'`). If current is better than previous → improving (↑), same → stable (→), worse → declining (↓).
+
+**Data Sources:** All sections use existing project data — no new database tables are required. Milestones come from tasks with `is_milestone = true`. Achievements and planned activities come from task completion/due dates within the 14-day windows. Management attention items come from open RAID items with critical/high severity. Change control data comes from the `change_requests` table.
 
 **API Endpoints:**
 - `POST /api/v1/status-reports/generate` — Generate a status report for a project, optionally email it to recipients

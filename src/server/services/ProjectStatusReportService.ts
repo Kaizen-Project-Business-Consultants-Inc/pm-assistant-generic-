@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { claudeService, promptTemplates } from './claudeService';
-import { AIContextBuilder } from './aiContextBuilder';
+import { AIContextBuilder, type StatusReportContext } from './aiContextBuilder';
 import { emailService } from './EmailService';
 import { logAIUsage } from './aiUsageLogger';
 import { databaseService } from '../database/connection';
@@ -9,7 +9,11 @@ import {
   computeTrend,
   type StructuredStatusReport,
   type RAGArea,
+  type MilestoneRow,
+  type AttentionItem,
+  type ChangeControlRow,
 } from '../utils/statusReportRenderer';
+import { userService } from './UserService';
 import logger from '../utils/logger';
 
 // ---------------------------------------------------------------------------
@@ -50,6 +54,26 @@ const DEFAULT_RAG_THRESHOLDS: RAGThresholds = {
 };
 
 // ---------------------------------------------------------------------------
+// AI response shape (what Claude returns)
+// ---------------------------------------------------------------------------
+
+interface AIStatusReportResponse {
+  executiveSummary: string;
+  overallStatus: { status: string; comments: string };
+  areas: Array<{ name: string; status: string; comments: string }>;
+  achievements: string[];
+  plannedActivities: string[];
+  managementAttention: Array<{
+    ref: string;
+    matter: string;
+    raised: string;
+    owner: string;
+    dateNeeded: string;
+    impactIfDelayed: string;
+  }>;
+}
+
+// ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
 
@@ -65,13 +89,14 @@ export class ProjectStatusReportService {
     userId: string,
     options: StatusReportOptions = {},
   ): Promise<StatusReportResult> {
-    // Build project context
-    let projectData = '';
+    // Build enriched context
+    let srContext: StatusReportContext | null = null;
     let projectName = 'Unknown Project';
+    let projectData = '';
     try {
-      const ctx = await this.contextBuilder.buildProjectContext(projectId);
-      projectData = this.contextBuilder.toPromptString(ctx);
-      projectName = ctx.project.name;
+      srContext = await this.contextBuilder.buildStatusReportContext(projectId);
+      projectData = srContext.promptString;
+      projectName = srContext.projectContext.project.name;
     } catch {
       projectData = `Project ID: ${projectId} (context unavailable)`;
     }
@@ -79,13 +104,29 @@ export class ProjectStatusReportService {
     // Get previous report RAG values
     const previousAreas = await this.getPreviousRAG(projectId);
 
+    // Report number
+    const reportNumber = await this.getNextReportNumber(projectId);
+
+    // Reporting period
+    const periodEnd = new Date();
+    const periodStart = new Date();
+    periodStart.setDate(periodStart.getDate() - 14);
+    const reportingPeriod = `${this.formatShortDate(periodStart)} – ${this.formatShortDate(periodEnd)}`;
+
+    // Prepared by
+    let preparedBy = 'System';
+    try {
+      const user = await userService.findById(userId);
+      if (user) preparedBy = user.fullName || user.username;
+    } catch { /* fallback to 'System' */ }
+
     const reportId = randomUUID();
     const generatedAt = new Date().toISOString();
     const reportDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     });
 
-    let structuredData: { executiveSummary: string; areas: Array<{ name: string; status: string; comments: string }>; managementActions: string[] };
+    let aiResponse: AIStatusReportResponse;
     let aiPowered = false;
 
     if (claudeService.isAvailable()) {
@@ -95,18 +136,47 @@ export class ProjectStatusReportService {
           ? JSON.stringify(previousAreas.map(a => ({ name: a.name, status: a.status })))
           : 'No previous report available.';
 
+        // Build enriched context blocks
+        const milestonesText = srContext?.milestones.length
+          ? srContext.milestones.map(m =>
+            `- ${m.name} | Due: ${m.dueDate || 'N/A'} | Status: ${m.status} | Progress: ${m.progressPercentage ?? 0}%`
+          ).join('\n')
+          : 'No milestones defined.';
+
+        const completedText = srContext?.completedTasks.length
+          ? srContext.completedTasks.map(t =>
+            `- ${t.name} (completed, updated ${t.updatedAt})`
+          ).join('\n')
+          : 'No tasks completed in this period.';
+
+        const upcomingText = srContext?.upcomingTasks.length
+          ? srContext.upcomingTasks.map(t =>
+            `- ${t.name} | Due: ${t.dueDate || t.endDate || 'N/A'} | Status: ${t.status} | Assigned: ${t.assignedTo || 'Unassigned'}`
+          ).join('\n')
+          : 'No upcoming tasks in next 14 days.';
+
+        const raidText = srContext?.criticalHighItems.length
+          ? srContext.criticalHighItems.map(r =>
+            `- [${r.type.toUpperCase()}] ${r.title} | Severity: ${r.severity} | Status: ${r.status} | Owner: ${r.ownerId || 'Unassigned'}`
+          ).join('\n')
+          : 'No critical/high RAID items.';
+
         const systemPrompt = promptTemplates.statusReport.render({
           projectData,
+          milestones: milestonesText,
+          completedTasks: completedText,
+          upcomingTasks: upcomingText,
+          raidItems: raidText,
           ragThresholds: thresholdsText,
           previousReport: previousText,
         });
 
         const result = await claudeService.complete({
           systemPrompt,
-          userMessage: 'Analyze the project data and generate the executive status report JSON.',
+          userMessage: 'Analyze the project data and generate the comprehensive executive status report JSON.',
           responseFormat: 'json',
           temperature: 0.3,
-          maxTokens: 2048,
+          maxTokens: 3000,
         });
 
         // Strip markdown code fences if Claude wraps JSON in them
@@ -114,7 +184,7 @@ export class ProjectStatusReportService {
         if (jsonStr.startsWith('```')) {
           jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
         }
-        structuredData = JSON.parse(jsonStr);
+        aiResponse = JSON.parse(jsonStr);
         aiPowered = true;
 
         logAIUsage({
@@ -139,14 +209,23 @@ export class ProjectStatusReportService {
           errorMessage: error instanceof Error ? error.message : String(error),
         });
 
-        structuredData = this.generateFallbackData();
+        aiResponse = this.generateFallbackAIResponse();
       }
     } else {
-      structuredData = this.generateFallbackData();
+      aiResponse = this.generateFallbackAIResponse();
     }
 
-    // Build areas with previous status and trend
-    const areas: RAGArea[] = structuredData.areas.map(area => {
+    // Build areas with Overall Status row + 7 dimensions + previous status and trend
+    const overallArea: RAGArea = {
+      name: 'Overall Status',
+      status: aiResponse.overallStatus.status as 'green' | 'amber' | 'red',
+      previousStatus: previousAreas?.find(p => p.name === 'Overall Status')?.status as 'green' | 'amber' | 'red' || null,
+      trend: 'stable',
+      comments: aiResponse.overallStatus.comments,
+    };
+    overallArea.trend = computeTrend(overallArea.status, overallArea.previousStatus);
+
+    const dimensionAreas: RAGArea[] = aiResponse.areas.map(area => {
       const prev = previousAreas?.find(p => p.name === area.name);
       const status = area.status as 'green' | 'amber' | 'red';
       const previousStatus = (prev?.status as 'green' | 'amber' | 'red') || null;
@@ -159,10 +238,47 @@ export class ProjectStatusReportService {
       };
     });
 
+    const areas: RAGArea[] = [overallArea, ...dimensionAreas];
+
+    // Milestones from data (not AI)
+    const milestones: MilestoneRow[] = (srContext?.milestones || []).map((m, i) => ({
+      ref: `M${String(i + 1).padStart(2, '0')}`,
+      name: m.name,
+      dueDate: m.dueDate ? this.formatShortDate(new Date(m.dueDate)) : (m.endDate ? this.formatShortDate(new Date(m.endDate)) : 'TBD'),
+      status: m.status === 'completed' ? 'Complete' : m.status === 'in_progress' ? 'In Progress' : 'Pending',
+      comments: m.progressPercentage ? `${m.progressPercentage}% complete` : '',
+    }));
+
+    // Management attention from AI
+    const managementAttention: AttentionItem[] = (aiResponse.managementAttention || []).map(item => ({
+      ref: item.ref,
+      matter: item.matter,
+      raised: item.raised,
+      owner: item.owner,
+      dateNeeded: item.dateNeeded,
+      impactIfDelayed: item.impactIfDelayed,
+    }));
+
+    // Change control from data (not AI)
+    const changeControl: ChangeControlRow[] = (srContext?.changeRequests || []).map(cr => ({
+      ref: cr.id.substring(0, 8).toUpperCase(),
+      description: cr.title,
+      status: cr.status,
+      scheduleImpact: cr.impactSummary || 'To be assessed',
+      costImpact: 'To be assessed',
+    }));
+
     const report: StructuredStatusReport = {
-      executiveSummary: structuredData.executiveSummary,
+      reportNumber,
+      reportingPeriod,
+      preparedBy,
+      executiveSummary: aiResponse.executiveSummary,
       areas,
-      managementActions: structuredData.managementActions,
+      milestones,
+      achievements: aiResponse.achievements || [],
+      plannedActivities: aiResponse.plannedActivities || [],
+      managementAttention,
+      changeControl,
       projectName,
       reportDate,
       aiPowered,
@@ -185,6 +301,20 @@ export class ProjectStatusReportService {
     }
 
     return { id: reportId, projectId, html, data: report, generatedAt, aiPowered, emailSent };
+  }
+
+  private async getNextReportNumber(projectId: string): Promise<string> {
+    try {
+      const rows = await databaseService.queryControlPlane(
+        `SELECT COUNT(*) AS cnt FROM ai_conversations
+         WHERE project_id = ? AND context_type = 'status-report'`,
+        [projectId],
+      );
+      const count = Number((rows[0] as any)?.cnt || 0);
+      return `SR-${String(count + 1).padStart(3, '0')}`;
+    } catch {
+      return 'SR-001';
+    }
   }
 
   private async getPreviousRAG(projectId: string): Promise<Array<{ name: string; status: string }> | null> {
@@ -223,9 +353,14 @@ export class ProjectStatusReportService {
           role: 'system',
           content: JSON.stringify({
             reportType: 'status-report',
+            reportNumber: report.reportNumber,
             executiveSummary: report.executiveSummary,
             areas: report.areas.map(a => ({ name: a.name, status: a.status, comments: a.comments })),
-            managementActions: report.managementActions,
+            milestones: report.milestones,
+            achievements: report.achievements,
+            plannedActivities: report.plannedActivities,
+            managementAttention: report.managementAttention,
+            changeControl: report.changeControl,
             aiPowered: report.aiPowered,
           }),
           timestamp: generatedAt,
@@ -253,28 +388,55 @@ export class ProjectStatusReportService {
     ].join('\n');
   }
 
+  private formatShortDate(d: Date): string {
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
   generateSample(projectId: string): StatusReportResult {
     const reportDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     });
+    const periodEnd = new Date();
+    const periodStart = new Date();
+    periodStart.setDate(periodStart.getDate() - 14);
 
     const areas: RAGArea[] = [
+      { name: 'Overall Status', status: 'amber', previousStatus: 'green', trend: 'declining', comments: 'Budget pressure driving overall status to amber.' },
       { name: 'Schedule', status: 'green', previousStatus: 'green', trend: 'stable', comments: 'Project is tracking on schedule with 78% of milestones completed on time.' },
       { name: 'Budget', status: 'amber', previousStatus: 'green', trend: 'declining', comments: 'Spending is at 92% of allocated budget with 15% of deliverables remaining.' },
       { name: 'Resources', status: 'green', previousStatus: 'amber', trend: 'improving', comments: 'Resource gaps addressed — two new team members onboarded this sprint.' },
       { name: 'Risks', status: 'amber', previousStatus: 'amber', trend: 'stable', comments: '3 medium-severity risks open. Key dependency on third-party API delivery.' },
       { name: 'Scope', status: 'green', previousStatus: 'green', trend: 'stable', comments: 'No change requests pending. Scope baseline is intact.' },
       { name: 'Quality', status: 'green', previousStatus: 'amber', trend: 'improving', comments: 'Defect rate decreased 40% after additional code review process.' },
+      { name: 'Governance & Stakeholders', status: 'green', previousStatus: 'green', trend: 'stable', comments: 'Steering committee meeting held on schedule. No escalations.' },
     ];
 
     const report: StructuredStatusReport = {
-      executiveSummary: 'This is a sample status report demonstrating the AI-powered reporting feature. With a paid plan, this report will be generated using your actual project data — including real task progress, budget metrics, risk assessments, and trend analysis powered by AI.',
+      reportNumber: 'SR-001',
+      reportingPeriod: `${this.formatShortDate(periodStart)} – ${this.formatShortDate(periodEnd)}`,
+      preparedBy: 'Sample User',
+      executiveSummary: 'This is a sample status report demonstrating the AI-powered reporting feature. With a paid plan, this report will be generated using your actual project data — including real task progress, budget metrics, risk assessments, milestone tracking, and trend analysis powered by AI.',
       areas,
-      managementActions: [
-        'Review budget allocation for remaining deliverables',
-        'Monitor third-party API dependency timeline',
-        'Continue enhanced code review process to sustain quality gains',
+      milestones: [
+        { ref: 'M01', name: 'Requirements Sign-off', dueDate: 'Jul 15, 2026', status: 'Complete', comments: 'Approved by steering committee' },
+        { ref: 'M02', name: 'Design Review', dueDate: 'Aug 1, 2026', status: 'In Progress', comments: '75% complete' },
+        { ref: 'M03', name: 'UAT Start', dueDate: 'Sep 1, 2026', status: 'Pending', comments: '' },
       ],
+      achievements: [
+        'Completed API integration with third-party payment gateway',
+        'Onboarded 2 new developers to address resource gap',
+        'Delivered Phase 2 design documents ahead of schedule',
+      ],
+      plannedActivities: [
+        'Begin UAT preparation — QA Lead — Aug 25',
+        'Finalize infrastructure provisioning — DevOps — Aug 20',
+        'Complete design review milestone — Architect — Aug 1',
+      ],
+      managementAttention: [
+        { ref: 'MA-001', matter: 'Budget overrun risk on cloud infrastructure', raised: '2026-08-10', owner: 'Finance Officer', dateNeeded: '2026-08-20', impactIfDelayed: 'May exceed approved budget by 12%' },
+        { ref: 'MA-002', matter: 'Third-party API delivery dependency', raised: '2026-07-28', owner: 'Project Manager', dateNeeded: '2026-08-15', impactIfDelayed: '2-week schedule slip on integration milestone' },
+      ],
+      changeControl: [],
       projectName: 'Sample Project Report',
       reportDate,
       aiPowered: false,
@@ -293,9 +455,10 @@ export class ProjectStatusReportService {
     };
   }
 
-  private generateFallbackData() {
+  private generateFallbackAIResponse(): AIStatusReportResponse {
     return {
       executiveSummary: 'AI-powered analysis is currently unavailable. This is a template report based on available project data. Enable AI features for comprehensive executive analysis.',
+      overallStatus: { status: 'amber', comments: 'AI unavailable — manual review recommended' },
       areas: [
         { name: 'Schedule', status: 'amber', comments: 'Review project dashboard for schedule status' },
         { name: 'Budget', status: 'amber', comments: 'Review budget dashboard for financial status' },
@@ -303,11 +466,19 @@ export class ProjectStatusReportService {
         { name: 'Risks', status: 'amber', comments: 'Review RAID log for current risks' },
         { name: 'Scope', status: 'amber', comments: 'Review change requests' },
         { name: 'Quality', status: 'amber', comments: 'Review task data completeness' },
+        { name: 'Governance & Stakeholders', status: 'amber', comments: 'Review governance activities' },
       ],
-      managementActions: [
-        'Enable AI features for comprehensive project analysis',
-        'Review and update task statuses',
-        'Address any overdue items',
+      achievements: ['Enable AI features for comprehensive project analysis'],
+      plannedActivities: ['Review and update task statuses', 'Address any overdue items'],
+      managementAttention: [
+        {
+          ref: 'MA-001',
+          matter: 'Enable AI features for comprehensive project analysis',
+          raised: new Date().toISOString().split('T')[0],
+          owner: 'Admin',
+          dateNeeded: 'ASAP',
+          impactIfDelayed: 'Reports will lack AI-driven insights and trend analysis',
+        },
       ],
     };
   }

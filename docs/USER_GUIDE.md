@@ -1228,20 +1228,27 @@ Also in the **AI Insights** tab, the Scope Creep Detector compares the current p
 
 A severity badge (Low/Medium/High/Critical) flags the degree of scope drift. Create a baseline first to enable this feature.
 
-### Status Report Generator (RAG Traffic Light)
+### Status Report Generator (DBJ Template Standard)
 
-Click the **Status Report** button in the project header to generate an AI-powered executive status report. The report uses a Red/Amber/Green (RAG) traffic light format and is rendered as styled HTML. The modal has three tabs:
+Click the **Status Report** button in the project header to generate an AI-powered executive status report following the DBJ Template Standard. The report contains 8 structured sections and is rendered as styled HTML. The modal has three tabs:
 
-- **Report** — View the generated RAG traffic light report with three sections:
-  1. **Executive Summary** — AI-generated paragraph on overall project health
-  2. **Traffic Light Dashboard** — Table covering Schedule, Budget, Resources, Risks, Scope, and Quality. Each row shows previous status, current RAG status (🟢🟡🔴), trend arrow (↑→↓), and comments
-  3. **Actions for Management** — Recommended actions for leadership attention
+- **Report** — View the generated report with 8 sections:
+  1. **Header Metadata** — Report number (SR-001, SR-002, … auto-incrementing per project), reporting period (last 14 days with start and end dates), prepared-by name, and generation date
+  2. **Executive Summary** — AI-generated paragraph on overall project health and outlook for the period
+  3. **Overall Status (RAG Traffic Light Dashboard)** — Table with 7 dimensions. Each row shows previous status, current RAG status (🟢🟡🔴), trend arrow (↑→↓), and comments:
+     - **Overall Status** — Automatically shows the worst RAG across all other dimensions
+     - Schedule, Budget, Resources, Risks, Scope / Change Control, **Governance & Stakeholders**, Quality
+  4. **Milestone Status** — Table of project milestones (tasks marked as milestones) with baseline date, forecast/actual date, and RAG status
+  5. **Achievements This Period** — Tasks completed in the last 14 days, automatically gathered from your project data
+  6. **Planned Activities Next Period** — Tasks due in the next 14 days, sourced from your project schedule
+  7. **For Management Attention** — Critical and high-severity RAID items needing leadership action, each with an impact-if-delayed consequence statement
+  8. **Change Control** — Active change requests showing title, status, priority, and impact (data-driven, no AI)
 
   Download the report as a styled `.html` file using the Download button.
-- **Email Report** — Enter comma-separated email addresses and send the report directly to stakeholders. A fresh report is generated and emailed in branded HTML format with the full traffic light dashboard.
+- **Email Report** — Enter comma-separated email addresses and send the report directly to stakeholders. A fresh report is generated and emailed in branded HTML format with all 8 sections.
 - **Schedule Recurring** — Set up automatic report delivery on a daily, weekly, or monthly cadence. Choose the day of week/month, time, and recipients. View and delete existing schedules from this tab.
 
-The report tracks trends by comparing against the previous report — if Schedule was Green last week and is now Amber, the trend arrow shows ↓ (declining). Scheduled reports run automatically via the report scheduler cron and email the report to all configured recipients. Requires a paid subscription (Consultant, SME, or Enterprise tier).
+The report tracks trends by comparing against the previous report — if Schedule was Green last week and is now Amber, the trend arrow shows ↓ (declining). The Overall Status row always reflects the worst individual dimension: if any dimension is Red, Overall Status is Red. Report numbers increment automatically so you can reference specific reports (e.g., "as noted in SR-003"). Scheduled reports run automatically via the report scheduler cron and email the report to all configured recipients. Requires a paid subscription (Consultant, SME, or Enterprise tier).
 
 **Trial users:** Instead of an error, a **sample report** is shown with realistic demo data so you can preview the format. An amber banner at the top identifies it as sample data. The Email, Schedule, and Download options are locked — upgrade to a paid plan to generate live AI-powered reports for your project.
 
