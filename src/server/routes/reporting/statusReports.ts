@@ -88,7 +88,10 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
       const body = schema.parse(request.body);
 
       const HTMLtoDOCX = (await import('html-to-docx')).default;
-      const wrappedHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${body.html}</body></html>`;
+      // html-to-docx chokes on percentage widths and certain CSS in table cells
+      // Strip width styles from inline CSS to avoid "Invalid XML name: @w" errors
+      const sanitizedHtml = body.html.replace(/\s*width:\s*[^;]+;?/gi, '');
+      const wrappedHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${sanitizedHtml}</body></html>`;
       logger.info('Starting DOCX conversion', { htmlLength: wrappedHtml.length });
       const docxBuffer = await HTMLtoDOCX(wrappedHtml, null, {
         table: { row: { cantSplit: true } },
@@ -97,12 +100,10 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
 
       const buf = Buffer.isBuffer(docxBuffer) ? docxBuffer : Buffer.from(docxBuffer as ArrayBuffer);
       const filename = `status-report-${body.projectName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.docx`;
-      reply.raw.writeHead(200, {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': buf.length,
-      });
-      reply.raw.end(buf);
+      return reply
+        .header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        .header('Content-Disposition', `attachment; filename="${filename}"`)
+        .send(buf);
     } catch (error: any) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
       logger.error('Export DOCX error', { error: error.message, stack: error.stack });
