@@ -355,14 +355,19 @@ export class AIReportService {
 
     // Status reports store structured data, not HTML content — re-render on demand
     let content = reportData.content || '';
-    if (contextType === 'status-report' && !content && reportData.reportNumber) {
+    if (contextType === 'status-report' && !content) {
       try {
+        const dateStr = new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         content = renderStatusReportHtml({
           ...reportData,
-          projectName: row.title.replace(/^Status Report — /, '').replace(/ — .*$/, ''),
-          reportDate: row.created_at,
+          projectName: reportData.projectName || row.title.replace(/^Status Report — /, '').replace(/ — .*$/, ''),
+          reportDate: reportData.reportDate || dateStr,
+          reportingPeriod: reportData.reportingPeriod || dateStr,
+          preparedBy: reportData.preparedBy || 'AI-Generated',
         });
-      } catch { /* fall through to empty */ }
+      } catch (renderErr) {
+        logger.error('Failed to re-render status report', { id: row.id, error: (renderErr as Error).message });
+      }
     }
 
     return {
