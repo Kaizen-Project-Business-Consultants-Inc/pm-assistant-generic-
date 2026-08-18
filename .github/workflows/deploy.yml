@@ -55,7 +55,7 @@ jobs:
         run: npm run build
 
       - name: Copy migration SQL files
-        run: cp src/server/database/migrations/*.sql dist/server/database/migrations/
+        run: mkdir -p dist/server/database/migrations && cp src/server/database/migrations/*.sql dist/server/database/migrations/
 
       - name: Setup SSH key
         run: |
