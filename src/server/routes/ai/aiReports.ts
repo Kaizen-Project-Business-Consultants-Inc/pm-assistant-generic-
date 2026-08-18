@@ -44,13 +44,13 @@ export async function aiReportRoutes(fastify: FastifyInstance) {
         const body = generateReportSchema.parse(request.body);
         const user = request.user!;
 
-        const report = await reportService.generateReport(
+        const reports = await reportService.generateReports(
           body.reportType,
           { projectId: body.projectId },
           user.userId,
         );
 
-        return report;
+        return { reports, count: reports.length };
       } catch (error) {
         if (error instanceof z.ZodError) return reply.code(400).send({ error: 'Validation error', details: error.issues });
         fastify.log.error(

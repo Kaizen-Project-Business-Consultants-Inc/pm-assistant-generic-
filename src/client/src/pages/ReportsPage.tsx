@@ -438,7 +438,7 @@ export const ReportsPage: React.FC = () => {
               ) : (
                 <>
                   <Plus className="w-4 h-4" />
-                  Generate Report
+                  {selectedProjectId ? 'Generate Report' : 'Generate for All Projects'}
                 </>
               )}
             </button>
@@ -453,20 +453,27 @@ export const ReportsPage: React.FC = () => {
         )}
 
         {/* Generation success */}
-        {generateMutation.isSuccess && (
-          <div className="mt-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 flex items-center justify-between">
-            <span>Report generated successfully.</span>
-            <button
-              onClick={() => {
-                const generated = generateMutation.data?.report as Report | undefined;
-                if (generated) setViewingReport(generated);
-              }}
-              className="text-green-800 font-medium underline hover:no-underline text-sm"
-            >
-              View now
-            </button>
-          </div>
-        )}
+        {generateMutation.isSuccess && (() => {
+          const genReports = generateMutation.data?.reports as Report[] | undefined;
+          const count = generateMutation.data?.count as number || 0;
+          return (
+            <div className="mt-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 flex items-center justify-between">
+              <span>
+                {count === 1
+                  ? 'Report generated successfully.'
+                  : `${count} reports generated successfully.`}
+              </span>
+              {count === 1 && genReports?.[0] && (
+                <button
+                  onClick={() => setViewingReport(genReports[0])}
+                  className="text-green-800 font-medium underline hover:no-underline text-sm"
+                >
+                  View now
+                </button>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ----------------------------------------------------------------- */}

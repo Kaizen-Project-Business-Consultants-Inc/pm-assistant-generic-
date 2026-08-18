@@ -3,6 +3,7 @@ import { claudeService, promptTemplates } from './claudeService';
 import { AIContextBuilder } from './aiContextBuilder';
 import { logAIUsage } from './aiUsageLogger';
 import { databaseService } from '../database/connection';
+import { ProjectService } from './ProjectService';
 import logger from '../utils/logger';
 
 export type ReportType = 'weekly-status' | 'risk-assessment' | 'budget-forecast' | 'resource-utilization';
@@ -34,43 +35,65 @@ const REPORT_TITLES: Record<ReportType, string> = {
 
 export class AIReportService {
   private contextBuilder: AIContextBuilder;
+  private projectService: ProjectService;
 
   constructor() {
     this.contextBuilder = new AIContextBuilder(null as any);
+    this.projectService = new ProjectService();
   }
 
-  async generateReport(
+  /**
+   * Generate reports. If no projectId, generates one report per project the user is a member of.
+   */
+  async generateReports(
     reportType: ReportType,
     options: ReportOptions = {},
     userId: string = 'anonymous',
+  ): Promise<GeneratedReport[]> {
+    if (options.projectId) {
+      const report = await this.generateReport(reportType, options.projectId, userId);
+      return [report];
+    }
+
+    // "All Projects" — generate one report per user's project
+    const projects = await this.projectService.findByUserId(userId);
+    if (!projects.length) {
+      throw new Error('No projects found for this user');
+    }
+
+    const reports: GeneratedReport[] = [];
+    for (const project of projects) {
+      try {
+        const report = await this.generateReport(reportType, project.id, userId);
+        reports.push(report);
+      } catch (err) {
+        logger.warn(`Failed to generate ${reportType} for project ${project.name}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return reports;
+  }
+
+  private async generateReport(
+    reportType: ReportType,
+    projectId: string,
+    userId: string,
   ): Promise<GeneratedReport> {
     // Build context
     let projectData = '';
     let projectName = '';
-    if (options.projectId) {
-      try {
-        const ctx = await this.contextBuilder.buildProjectContext(options.projectId);
-        projectData = this.contextBuilder.toPromptString(ctx);
-        projectName = ctx.project.name;
-      } catch {
-        projectData = `Project ID: ${options.projectId} (context unavailable)`;
-      }
-    } else {
-      try {
-        const ctx = await this.contextBuilder.buildPortfolioContext();
-        projectData = this.contextBuilder.portfolioToPromptString(ctx);
-      } catch {
-        projectData = 'Portfolio context unavailable.';
-      }
+    try {
+      const ctx = await this.contextBuilder.buildProjectContext(projectId);
+      projectData = this.contextBuilder.toPromptString(ctx);
+      projectName = ctx.project.name;
+    } catch {
+      projectData = `Project ID: ${projectId} (context unavailable)`;
     }
 
     const reportId = randomUUID();
     const now = new Date();
     const generatedAt = now.toISOString();
     const dateSuffix = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const title = projectName
-      ? `${REPORT_TITLES[reportType]} — ${projectName} — ${dateSuffix}`
-      : `${REPORT_TITLES[reportType]} — Portfolio — ${dateSuffix}`;
+    const title = `${REPORT_TITLES[reportType]} — ${projectName || 'Unknown'} — ${dateSuffix}`;
 
     if (!claudeService.isAvailable()) {
       const content = this.generateFallbackReport(reportType, projectData);
@@ -81,7 +104,7 @@ export class AIReportService {
         content,
         generatedAt,
         aiPowered: false,
-        metadata: { projectId: options.projectId },
+        metadata: { projectId },
       };
       await this.storeReport(report, userId);
       return report;
@@ -108,7 +131,7 @@ export class AIReportService {
         generatedAt,
         aiPowered: true,
         metadata: {
-          projectId: options.projectId,
+          projectId,
           tokenCount: result.usage.inputTokens + result.usage.outputTokens,
         },
       };
@@ -120,7 +143,7 @@ export class AIReportService {
         usage: result.usage,
         latencyMs: result.latencyMs,
         success: true,
-        requestContext: { reportType, projectId: options.projectId },
+        requestContext: { reportType, projectId },
       });
 
       await this.storeReport(report, userId);
@@ -146,7 +169,7 @@ export class AIReportService {
         content,
         generatedAt,
         aiPowered: false,
-        metadata: { projectId: options.projectId },
+        metadata: { projectId },
       };
       await this.storeReport(report, userId);
       return report;
