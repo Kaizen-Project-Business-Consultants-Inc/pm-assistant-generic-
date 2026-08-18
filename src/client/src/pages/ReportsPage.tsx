@@ -456,14 +456,17 @@ export const ReportsPage: React.FC = () => {
         {generateMutation.isSuccess && (() => {
           const genReports = generateMutation.data?.reports as Report[] | undefined;
           const count = generateMutation.data?.count as number || 0;
+          const isAsync = generateMutation.data?.async as boolean;
           return (
             <div className="mt-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 flex items-center justify-between">
               <span>
-                {count === 1
-                  ? 'Report generated successfully.'
-                  : `${count} reports generated successfully.`}
+                {isAsync
+                  ? `Generating ${count} reports in the background. They will appear in the history below shortly.`
+                  : count === 1
+                    ? 'Report generated successfully.'
+                    : `${count} reports generated successfully.`}
               </span>
-              {count === 1 && genReports?.[0] && (
+              {!isAsync && count === 1 && genReports?.[0] && (
                 <button
                   onClick={() => setViewingReport(genReports[0])}
                   className="text-green-800 font-medium underline hover:no-underline text-sm"

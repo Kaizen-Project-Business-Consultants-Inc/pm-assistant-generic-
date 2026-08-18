@@ -44,13 +44,39 @@ export async function aiReportRoutes(fastify: FastifyInstance) {
         const body = generateReportSchema.parse(request.body);
         const user = request.user!;
 
-        const reports = await reportService.generateReports(
-          body.reportType,
-          { projectId: body.projectId },
-          user.userId,
-        );
+        if (body.projectId) {
+          // Single project — synchronous, return report for "View now"
+          const reports = await reportService.generateReports(
+            body.reportType,
+            { projectId: body.projectId },
+            user.userId,
+          );
+          return { reports, count: reports.length };
+        }
 
-        return { reports, count: reports.length };
+        // All projects — async, return immediately
+        // Count user's projects first so we can report how many will be generated
+        const projectService = new (await import('../../services/ProjectService')).ProjectService();
+        const projects = await projectService.findByUserId(user.userId);
+        const projectCount = projects.length;
+
+        if (!projectCount) {
+          return reply.code(400).send({ error: 'No projects found for this user' });
+        }
+
+        // Fire and forget — reports generate in background
+        reportService.generateReports(
+          body.reportType,
+          {},
+          user.userId,
+        ).catch(err => {
+          fastify.log.error(
+            { err: err instanceof Error ? err : new Error(String(err)) },
+            'Background batch report generation failed',
+          );
+        });
+
+        return { reports: [], count: projectCount, async: true };
       } catch (error) {
         if (error instanceof z.ZodError) return reply.code(400).send({ error: 'Validation error', details: error.issues });
         fastify.log.error(
