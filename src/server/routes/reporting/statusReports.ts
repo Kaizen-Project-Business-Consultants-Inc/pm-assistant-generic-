@@ -89,20 +89,23 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
 
       const HTMLtoDOCX = (await import('html-to-docx')).default;
       const wrappedHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${body.html}</body></html>`;
+      logger.info('Starting DOCX conversion', { htmlLength: wrappedHtml.length });
       const docxBuffer = await HTMLtoDOCX(wrappedHtml, null, {
         table: { row: { cantSplit: true } },
-        footer: true,
-        pageNumber: true,
       });
+      logger.info('DOCX conversion complete', { bufferSize: (docxBuffer as any)?.length || (docxBuffer as any)?.byteLength });
 
+      const buf = Buffer.isBuffer(docxBuffer) ? docxBuffer : Buffer.from(docxBuffer as ArrayBuffer);
       const filename = `status-report-${body.projectName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.docx`;
-      return reply
-        .header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-        .header('Content-Disposition', `attachment; filename="${filename}"`)
-        .send(Buffer.from(docxBuffer as ArrayBuffer));
+      reply.raw.writeHead(200, {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': buf.length,
+      });
+      reply.raw.end(buf);
     } catch (error: any) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
-      logger.error('Export DOCX error', { error });
+      logger.error('Export DOCX error', { error: error.message, stack: error.stack });
       return reply.status(500).send({ error: 'Failed to export Word document' });
     }
   });
