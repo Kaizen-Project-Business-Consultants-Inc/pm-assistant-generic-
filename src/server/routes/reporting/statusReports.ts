@@ -65,12 +65,13 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
         : runGenerate();
 
       generatePromise.then(result => {
+        logger.info('Background status report completed, sending via WebSocket', { jobId, userId, projectId: body.projectId });
         WebSocketService.sendToUser(userId, {
           type: 'status_report_ready',
           payload: { jobId, projectId: body.projectId, report: result },
         });
       }).catch(error => {
-        logger.error('Background status report generation failed', { error: error.message, jobId });
+        logger.error('Background status report generation failed', { error: error.message, stack: error.stack, jobId });
         WebSocketService.sendToUser(userId, {
           type: 'status_report_failed',
           payload: { jobId, projectId: body.projectId, error: 'Failed to generate status report' },
