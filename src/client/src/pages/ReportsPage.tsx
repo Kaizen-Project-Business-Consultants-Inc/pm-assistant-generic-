@@ -26,6 +26,7 @@ import DOMPurify from 'dompurify';
 import { apiService } from '../services/api';
 import { renderMarkdown } from '../utils/renderMarkdown';
 import { RAIDReportModal } from '../components/risks/RAIDReportModal';
+import { StatusReportModal } from './ProjectDetailPage/StatusReportModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,6 +62,7 @@ const REPORT_TYPES = [
   { value: 'budget-forecast', label: 'Budget Forecast', icon: DollarSign, badgeColor: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' },
   { value: 'resource-utilization', label: 'Resource Utilization', icon: Users, badgeColor: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' },
   { value: 'raid-report', label: 'RAID Report', icon: ShieldAlert, badgeColor: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
+  { value: 'status-report', label: 'Status Report', icon: FileText, badgeColor: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' },
 ] as const;
 
 const badgeColorMap: Record<string, string> = {
@@ -253,6 +255,7 @@ export const ReportsPage: React.FC = () => {
   // Modal state
   const [viewingReport, setViewingReport] = useState<ReportListItem | null>(null);
   const [showRaidReport, setShowRaidReport] = useState(false);
+  const [showStatusReport, setShowStatusReport] = useState(false);
 
   // Table state
   const [typeFilter, setTypeFilter] = useState('');
@@ -445,6 +448,8 @@ export const ReportsPage: React.FC = () => {
               onClick={() => {
                 if (selectedType === 'raid-report') {
                   setShowRaidReport(true);
+                } else if (selectedType === 'status-report') {
+                  setShowStatusReport(true);
                 } else {
                   generateMutation.mutate();
                 }
@@ -784,6 +789,14 @@ export const ReportsPage: React.FC = () => {
             email: m.email,
           }))}
           onClose={() => setShowRaidReport(false)}
+        />
+      )}
+
+      {showStatusReport && selectedProjectId && (
+        <StatusReportModal
+          projectId={selectedProjectId}
+          projectName={projects.find(p => p.id === selectedProjectId)?.name || 'Project'}
+          onClose={() => setShowStatusReport(false)}
         />
       )}
     </div>

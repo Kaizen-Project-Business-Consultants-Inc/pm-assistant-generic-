@@ -9,7 +9,10 @@ import { userService } from '../../services/UserService';
 import { emailService } from '../../services/EmailService';
 import { renderStatusReportHtml, type StructuredStatusReport } from '../../utils/statusReportRenderer';
 import { buildStatusReportDocx } from '../../utils/statusReportDocxBuilder';
+import { WebSocketService } from '../../services/WebSocketService';
+import { getTenantContext, runWithTenantContext } from '../../middleware/requestContext';
 import logger from '../../utils/logger';
+import crypto from 'crypto';
 
 const generateSchema = z.object({
   projectId: z.string().min(1),
@@ -29,8 +32,8 @@ const scheduleSchema = z.object({
 export async function statusReportRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
-  // Generate a status report (optionally email it)
-  // Trial users get a sample report (no AI tokens consumed) with an upgrade prompt.
+  // Generate a status report (background mode via WebSocket)
+  // Trial users get a sample report synchronously (no AI tokens consumed).
   fastify.post('/generate', {
     preHandler: [requireScope('write')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
@@ -38,7 +41,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
       const userId = request.user!.userId;
       const body = generateSchema.parse(request.body);
 
-      // Check if user is on trial tier — return sample report instead
+      // Check if user is on trial tier — return sample report synchronously
       if (request.user!.role !== 'admin') {
         const user = await userService.findById(userId);
         if (user && user.subscriptionTier === 'trial') {
@@ -47,12 +50,34 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
         }
       }
 
-      const result = await projectStatusReportService.generate(body.projectId, userId, {
+      // Return immediately with a jobId; generate in background
+      const jobId = crypto.randomUUID();
+      const tenantCtx = getTenantContext();
+
+      // Fire-and-forget: generate report and send result via WebSocket
+      const runGenerate = () => projectStatusReportService.generate(body.projectId, userId, {
         recipients: body.recipients,
         sendEmail: body.sendEmail,
       });
 
-      return { report: result };
+      const generatePromise = tenantCtx
+        ? runWithTenantContext(tenantCtx.dbName, tenantCtx.orgId, runGenerate)
+        : runGenerate();
+
+      generatePromise.then(result => {
+        WebSocketService.sendToUser(userId, {
+          type: 'status_report_ready',
+          payload: { jobId, projectId: body.projectId, report: result },
+        });
+      }).catch(error => {
+        logger.error('Background status report generation failed', { error: error.message, jobId });
+        WebSocketService.sendToUser(userId, {
+          type: 'status_report_failed',
+          payload: { jobId, projectId: body.projectId, error: 'Failed to generate status report' },
+        });
+      });
+
+      return { jobId, status: 'generating' };
     } catch (error: any) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
       logger.error('Generate status report error', { error });

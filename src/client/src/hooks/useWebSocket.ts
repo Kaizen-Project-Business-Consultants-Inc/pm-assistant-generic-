@@ -164,6 +164,18 @@ export function useWebSocket() {
                   queryClient.invalidateQueries({ queryKey: ['portfolio'] });
                 }, 500);
                 break;
+              case 'status_report_ready': {
+                window.dispatchEvent(new CustomEvent('ws:status_report_ready', {
+                  detail: message.payload,
+                }));
+                break;
+              }
+              case 'status_report_failed': {
+                window.dispatchEvent(new CustomEvent('ws:status_report_failed', {
+                  detail: message.payload,
+                }));
+                break;
+              }
               case 'presence_update': {
                 const { projectId, viewers, editors } = message.payload;
                 presenceMap.set(projectId, viewers);

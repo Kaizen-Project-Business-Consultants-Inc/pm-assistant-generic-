@@ -78,15 +78,50 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<ReportData | null>(null);
   const [originalHtml, setOriginalHtml] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: () => apiService.generateStatusReport(projectId),
     onSuccess: (data) => {
-      setReport(data);
-      if (data?.sample) setIsSample(true);
-      if (data?.report?.html) setOriginalHtml(data.report.html);
+      // Trial users get a synchronous sample response
+      if (data?.sample || data?.report) {
+        setReport(data);
+        if (data?.sample) setIsSample(true);
+        if (data?.report?.html) setOriginalHtml(data.report.html);
+        setGenerating(false);
+      } else if (data?.status === 'generating') {
+        // Background generation — wait for WebSocket event
+        setGenerating(true);
+        setGenerateError(null);
+      }
     },
   });
+
+  // Listen for background generation results via WebSocket
+  useEffect(() => {
+    const handleReady = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail.projectId === projectId) {
+        setReport({ report: detail.report });
+        if (detail.report?.html) setOriginalHtml(detail.report.html);
+        setGenerating(false);
+      }
+    };
+    const handleFailed = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail.projectId === projectId) {
+        setGenerating(false);
+        setGenerateError(detail.error || 'Failed to generate report');
+      }
+    };
+    window.addEventListener('ws:status_report_ready', handleReady);
+    window.addEventListener('ws:status_report_failed', handleFailed);
+    return () => {
+      window.removeEventListener('ws:status_report_ready', handleReady);
+      window.removeEventListener('ws:status_report_failed', handleFailed);
+    };
+  }, [projectId]);
 
   const renderMutation = useMutation({
     mutationFn: (data: ReportData) => apiService.renderStatusReport(data),
@@ -392,16 +427,16 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                   </div>
                 </div>
               )}
-              {mutation.isPending ? (
+              {(mutation.isPending || generating) ? (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-3" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Generating status report...</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">This may take a few seconds</p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-4" />
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Generating your status report...</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">This typically takes 20–30 seconds. Feel free to close this dialog and continue working — we'll notify you when it's ready.</p>
                 </div>
-              ) : mutation.isError ? (
+              ) : (mutation.isError || generateError) ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-red-500">Failed to generate report</p>
-                  <button onClick={() => mutation.mutate()} className="mt-2 text-xs text-primary-600 dark:text-primary-400 hover:underline">Try again</button>
+                  <p className="text-sm text-red-500">{generateError || 'Failed to generate report'}</p>
+                  <button onClick={() => { setGenerateError(null); mutation.mutate(); }} className="mt-2 text-xs text-primary-600 dark:text-primary-400 hover:underline">Try again</button>
                 </div>
               ) : isEditing && editData ? (
                 <div className="space-y-5">
