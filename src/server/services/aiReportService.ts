@@ -357,8 +357,16 @@ export class AIReportService {
     if (contextType === 'raid-report') reportType = 'raid-report';
     if (contextType === 'status-report') reportType = 'status-report';
 
-    // Status reports store structured data, not HTML content — re-render on demand
+    // AI reports stored before styled-HTML migration contain raw markdown — re-render on read
     let content = reportData.content || '';
+    if (contextType === 'report' && content && !content.trimStart().startsWith('<')) {
+      try {
+        content = renderAIReportHtml(row.title, content, reportType);
+      } catch (renderErr) {
+        logger.error('Failed to render AI report HTML', { id: row.id, error: (renderErr as Error).message });
+      }
+    }
+
     if (contextType === 'status-report' && !content) {
       try {
         const dateStr = new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
