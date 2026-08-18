@@ -227,10 +227,12 @@ export class AIReportService {
       ];
       const params: any[] = [];
 
-      if (userId) {
-        conditions.push('user_id = ?');
-        params.push(userId);
+      // userId is mandatory — never return reports across tenants
+      if (!userId) {
+        return { reports: [], total: 0, page: 1, limit: safeLimit, totalPages: 0, typeCounts: {} };
       }
+      conditions.push('user_id = ?');
+      params.push(userId);
 
       if (type) {
         // Validate against allowed context_type values
@@ -280,10 +282,8 @@ export class AIReportService {
         `is_active = TRUE`,
       ];
       const countParams: any[] = [];
-      if (userId) {
-        countConditions.push('user_id = ?');
-        countParams.push(userId);
-      }
+      countConditions.push('user_id = ?');
+      countParams.push(userId);
       const countRows = await databaseService.queryControlPlane(
         `SELECT context_type, COUNT(*) as cnt FROM ai_conversations WHERE ${countConditions.join(' AND ')} GROUP BY context_type`,
         countParams,
