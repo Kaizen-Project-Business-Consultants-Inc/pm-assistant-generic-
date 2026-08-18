@@ -14,6 +14,7 @@ export interface RAGArea {
 export interface MilestoneRow {
   ref: string;
   name: string;
+  schedWeek: string;
   dueDate: string;
   status: string;
   comments: string;
@@ -196,33 +197,35 @@ export function renderStatusReportHtml(report: StructuredStatusReport): string {
     </table>
     ${ragLegend}`;
 
-  // --- 3. Milestone Status ---
-  let milestoneHtml = '';
-  if (milestones.length > 0) {
-    const milestoneRows = milestones.map(m => `
+  // --- 3. Milestone Status (always shown) ---
+  const milestoneRows = milestones.length > 0
+    ? milestones.map(m => `
       <tr>
         <td style="${TD} text-align: center; width: 40px;">${escapeHtml(m.ref)}</td>
         <td style="${TD}">${escapeHtml(m.name)}</td>
+        <td style="${TD} text-align: center; width: 70px;">${escapeHtml(m.schedWeek)}</td>
         <td style="${TD} width: 90px;">${escapeHtml(m.dueDate)}</td>
         <td style="${TD} width: 100px;">${escapeHtml(m.status)}</td>
         <td style="${TD}">${escapeHtml(m.comments)}</td>
-      </tr>`).join('');
+      </tr>`).join('')
+    : `<tr><td colspan="6" style="${TD} text-align: center; color: #6b7280; font-style: italic;">No milestones defined — mark tasks as milestones in the schedule to populate this section.</td></tr>`;
 
-    milestoneHtml = `
-      ${sectionHeading(3, 'MILESTONE STATUS')}
-      <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-          <tr>
-            <th style="${TH} text-align: center; width: 40px;">M#</th>
-            <th style="${TH}">Milestone Deliverable</th>
-            <th style="${TH} width: 90px;">Due Date</th>
-            <th style="${TH} width: 100px;">Status</th>
-            <th style="${TH}">Comments</th>
-          </tr>
-        </thead>
-        <tbody>${milestoneRows}</tbody>
-      </table>`;
-  }
+  const milestoneHtml = `
+    ${sectionHeading(3, 'MILESTONE STATUS')}
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th style="${TH} text-align: center; width: 40px;">M#</th>
+          <th style="${TH}">Milestone Deliverable</th>
+          <th style="${TH} text-align: center; width: 70px;">Sched. Week</th>
+          <th style="${TH} width: 90px;">Due Date</th>
+          <th style="${TH} width: 100px;">Status</th>
+          <th style="${TH}">Comments</th>
+        </tr>
+      </thead>
+      <tbody>${milestoneRows}</tbody>
+    </table>
+    <p style="font-size: 11px; color: #6b7280; margin: 6px 0 0; line-height: 1.4;">A milestone is Complete only on formal acceptance. Submission alone does not close it.</p>`;
 
   // --- 5. Achievements This Period (numbering matches template — no section 4) ---
   let achievementsHtml = '';

@@ -232,13 +232,27 @@ export class ProjectStatusReportService {
     const areas: RAGArea[] = [overallArea, ...dimensionAreas];
 
     // Milestones from data (not AI)
-    const milestones: MilestoneRow[] = (srContext?.milestones || []).map((m, i) => ({
-      ref: `M${String(i + 1).padStart(2, '0')}`,
-      name: m.name,
-      dueDate: m.dueDate ? this.formatShortDate(new Date(m.dueDate)) : (m.endDate ? this.formatShortDate(new Date(m.endDate)) : 'TBD'),
-      status: m.status === 'completed' ? 'Complete' : m.status === 'in_progress' ? 'In Progress' : 'Pending',
-      comments: m.progressPercentage ? `${m.progressPercentage}% complete` : '',
-    }));
+    const projectStartDate = srContext?.projectContext.project.startDate
+      ? new Date(srContext.projectContext.project.startDate) : null;
+    const milestones: MilestoneRow[] = (srContext?.milestones || []).map((m, i) => {
+      const mDate = m.dueDate ? new Date(m.dueDate) : (m.endDate ? new Date(m.endDate) : null);
+      let schedWeek = '';
+      if (mDate && projectStartDate) {
+        const diffMs = mDate.getTime() - projectStartDate.getTime();
+        const weekNum = Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
+        schedWeek = `Wk ${weekNum}`;
+      }
+      return {
+        ref: `M${String(i + 1).padStart(1, '0')}`,
+        name: m.name,
+        schedWeek,
+        dueDate: mDate ? this.formatShortDate(mDate) : 'TBD',
+        status: m.status === 'completed' ? 'Complete'
+          : m.status === 'in_progress' ? 'In Progress'
+          : (mDate && mDate < new Date()) ? 'Delayed' : 'On Track',
+        comments: m.progressPercentage ? `${m.progressPercentage}% complete` : '',
+      };
+    });
 
     // Management attention from AI
     const managementAttention: AttentionItem[] = (aiResponse.managementAttention || []).map(item => ({
@@ -409,9 +423,9 @@ export class ProjectStatusReportService {
       executiveSummary: 'This is a sample status report demonstrating the AI-powered reporting feature. With a paid plan, this report will be generated using your actual project data — including real task progress, budget metrics, risk assessments, milestone tracking, and trend analysis powered by AI.',
       areas,
       milestones: [
-        { ref: 'M01', name: 'Requirements Sign-off', dueDate: 'Jul 15, 2026', status: 'Complete', comments: 'Approved by steering committee' },
-        { ref: 'M02', name: 'Design Review', dueDate: 'Aug 1, 2026', status: 'In Progress', comments: '75% complete' },
-        { ref: 'M03', name: 'UAT Start', dueDate: 'Sep 1, 2026', status: 'Pending', comments: '' },
+        { ref: 'M1', name: 'Requirements Sign-off', schedWeek: 'Wk 5', dueDate: 'Jul 15, 2026', status: 'Complete', comments: 'Approved by steering committee' },
+        { ref: 'M2', name: 'Design Review', schedWeek: 'Wk 12', dueDate: 'Aug 1, 2026', status: 'In Progress', comments: '75% complete' },
+        { ref: 'M3', name: 'UAT Start', schedWeek: 'Wk 20', dueDate: 'Sep 1, 2026', status: 'On Track', comments: '' },
       ],
       achievements: [
         'Completed API integration with third-party payment gateway',
