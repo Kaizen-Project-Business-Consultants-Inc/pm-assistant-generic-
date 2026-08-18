@@ -677,6 +677,11 @@ class ApiService {
     return response.data;
   }
 
+  async exportStatusReportDocx(html: string, projectName: string): Promise<Blob> {
+    const response = await this.api.post('/status-reports/export/docx', { html, projectName }, { responseType: 'blob' });
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // RAID Reports endpoints
   // -------------------------------------------------------------------------

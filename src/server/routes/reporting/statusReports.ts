@@ -76,6 +76,37 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Export report as Word (.docx)
+  fastify.post('/export/docx', {
+    preHandler: [requireScope('write'), requirePaidTier],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const schema = z.object({
+        html: z.string().min(1),
+        projectName: z.string().min(1),
+      });
+      const body = schema.parse(request.body);
+
+      const HTMLtoDOCX = (await import('html-to-docx')).default;
+      const wrappedHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${body.html}</body></html>`;
+      const docxBuffer = await HTMLtoDOCX(wrappedHtml, null, {
+        table: { row: { cantSplit: true } },
+        footer: true,
+        pageNumber: true,
+      });
+
+      const filename = `status-report-${body.projectName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.docx`;
+      return reply
+        .header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        .header('Content-Disposition', `attachment; filename="${filename}"`)
+        .send(Buffer.from(docxBuffer as ArrayBuffer));
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      logger.error('Export DOCX error', { error });
+      return reply.status(500).send({ error: 'Failed to export Word document' });
+    }
+  });
+
   // Email a pre-rendered report (allows editing before sending)
   fastify.post('/email', {
     preHandler: [requireScope('write'), requirePaidTier],

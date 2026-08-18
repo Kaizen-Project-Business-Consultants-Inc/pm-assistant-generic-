@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, X, Download, Mail, Calendar, Trash2, Lock, Pencil, Save, RotateCcw } from 'lucide-react';
+import { FileText, X, Download, Mail, Calendar, Trash2, Lock, Pencil, Save, RotateCcw, FileDown } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 
@@ -130,6 +130,9 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
 
   const html = report?.report?.html || '';
 
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState<'pdf' | 'docx' | null>(null);
+
   const handleDownload = () => {
     const blob = new Blob([html || 'No report generated'], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
@@ -138,6 +141,48 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
     a.download = `status-report-${projectName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.html`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const fileBaseName = `status-report-${projectName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}`;
+
+  const handleExportPdf = async () => {
+    if (!reportRef.current) return;
+    setExporting('pdf');
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      await html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          filename: `${fileBaseName}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        })
+        .from(reportRef.current)
+        .save();
+    } catch (err) {
+      console.error('PDF export failed', err);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportDocx = async () => {
+    if (!html) return;
+    setExporting('docx');
+    try {
+      const blob = await apiService.exportStatusReportDocx(html, projectName);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${fileBaseName}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('DOCX export failed', err);
+    } finally {
+      setExporting(null);
+    }
   };
 
   const handleEmailSend = () => {
@@ -272,9 +317,17 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                   <Pencil className="w-3 h-3" />
                   Edit
                 </button>
+                <button onClick={handleExportPdf} disabled={!!exporting} className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-50">
+                  <FileDown className="w-3 h-3" />
+                  {exporting === 'pdf' ? 'Exporting...' : 'PDF'}
+                </button>
+                <button onClick={handleExportDocx} disabled={!!exporting} className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-50">
+                  <FileDown className="w-3 h-3" />
+                  {exporting === 'docx' ? 'Exporting...' : 'Word'}
+                </button>
                 <button onClick={handleDownload} className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                   <Download className="w-3 h-3" />
-                  Download
+                  HTML
                 </button>
               </>
             )}
@@ -456,6 +509,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                 </div>
               ) : html ? (
                 <div
+                  ref={reportRef}
                   className={`status-report-container ${isSample ? 'opacity-80' : ''}`}
                   dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
                 />
