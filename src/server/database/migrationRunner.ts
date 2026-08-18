@@ -72,6 +72,9 @@ export async function runMigrations(): Promise<void> {
     'SELECT name FROM _migrations ORDER BY name'
   );
   const appliedSet = new Set(applied.map(r => r.name));
+  // Some older migrations self-inserted without .sql extension — check both forms
+  const isApplied = (file: string) =>
+    appliedSet.has(file) || appliedSet.has(file.replace(/\.sql$/, ''));
 
   // Read migration files, validate, and sort deterministically (exclude .down.sql rollback files)
   const rawFiles = fs.readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql') && !f.endsWith('.down.sql'));
@@ -88,7 +91,7 @@ export async function runMigrations(): Promise<void> {
   let ranCount = 0;
 
   for (const file of files) {
-    if (appliedSet.has(file)) continue;
+    if (isApplied(file)) continue;
 
     const num = parseMigrationNumber(file);
     const filePath = path.join(MIGRATIONS_DIR, file);
