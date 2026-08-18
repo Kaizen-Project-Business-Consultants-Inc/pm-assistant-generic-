@@ -247,7 +247,7 @@ export const ReportsPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Form state
-  const [selectedType, setSelectedType] = useState<typeof REPORT_TYPES[number]['value']>(REPORT_TYPES[0].value);
+  const [selectedType, setSelectedType] = useState<string>('');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
   // Modal state
@@ -401,9 +401,10 @@ export const ReportsPage: React.FC = () => {
               <select
                 id="report-type"
                 value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value as typeof selectedType)}
+                onChange={(e) => setSelectedType(e.target.value)}
                 className="input w-full appearance-none pr-8"
               >
+                <option value="">Select type of report...</option>
                 {REPORT_TYPES.map((rt) => (
                   <option key={rt.value} value={rt.value}>
                     {rt.label}
@@ -448,7 +449,7 @@ export const ReportsPage: React.FC = () => {
                   generateMutation.mutate();
                 }
               }}
-              disabled={generateMutation.isPending || !selectedProjectId}
+              disabled={generateMutation.isPending || !selectedProjectId || !selectedType}
               className="btn btn-primary flex items-center gap-2 w-full justify-center"
             >
               {generateMutation.isPending ? (
