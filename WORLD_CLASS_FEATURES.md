@@ -423,7 +423,8 @@ An agentic AI project management platform that combines the scheduling power of 
 - Regular users can delete their own templates (no longer requires admin role)
 - Report Designer correctly persists all sections when updating an existing template
 - Scheduled report delivery via email (daily/weekly/monthly recurring schedules)
-- AI-powered project status reports with email delivery and MCP tool (`generate-status-report`)
+- AI-powered project status reports with email delivery and MCP tool (`generate-status-report`); a project must be selected to generate — no "All Projects" batch mode (use scheduling for multi-project recurring delivery)
+- Report history list returns metadata only; full content is fetched on demand via `GET /api/v1/ai-reports/:id` when a report is opened, reducing bandwidth on the list view
 - Trial users receive a sample status report with demo data (realistic RAG statuses, trend arrows, management actions) instead of a 403 — no AI tokens consumed; Email/Schedule/Download locked with upgrade banner
 - **Trial sample report templates**: trial users see 3 sample Report Builder templates (Weekly Status, Budget Overview, Time Tracking) instead of a 403; New/Edit/Generate/Delete buttons are hidden with an "Upgrade to use" label; amber banner identifies sample state; no tokens or DB writes
 - **Trial sample exports**: all 3 export formats (CSV, XML, JSON/PDF) return a sample project with 5 tasks across 2 phases instead of a 403; amber banner shown before download; no real project data read

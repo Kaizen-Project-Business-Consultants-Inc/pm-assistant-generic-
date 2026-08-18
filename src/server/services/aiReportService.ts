@@ -3,15 +3,9 @@ import { claudeService, promptTemplates } from './claudeService';
 import { AIContextBuilder } from './aiContextBuilder';
 import { logAIUsage } from './aiUsageLogger';
 import { databaseService } from '../database/connection';
-import { ProjectService } from './ProjectService';
 import logger from '../utils/logger';
 
 export type ReportType = 'weekly-status' | 'risk-assessment' | 'budget-forecast' | 'resource-utilization';
-
-export interface ReportOptions {
-  projectId?: string;
-  dateRange?: { start: string; end: string };
-}
 
 export interface GeneratedReport {
   id: string;
@@ -35,45 +29,15 @@ const REPORT_TITLES: Record<ReportType, string> = {
 
 export class AIReportService {
   private contextBuilder: AIContextBuilder;
-  private projectService: ProjectService;
 
   constructor() {
     this.contextBuilder = new AIContextBuilder(null as any);
-    this.projectService = new ProjectService();
   }
 
   /**
-   * Generate reports. If no projectId, generates one report per project the user is a member of.
+   * Generate a single report for a specific project.
    */
-  async generateReports(
-    reportType: ReportType,
-    options: ReportOptions = {},
-    userId: string = 'anonymous',
-  ): Promise<GeneratedReport[]> {
-    if (options.projectId) {
-      const report = await this.generateReport(reportType, options.projectId, userId);
-      return [report];
-    }
-
-    // "All Projects" — generate one report per user's project
-    const projects = await this.projectService.findByUserId(userId);
-    if (!projects.length) {
-      throw new Error('No projects found for this user');
-    }
-
-    const reports: GeneratedReport[] = [];
-    for (const project of projects) {
-      try {
-        const report = await this.generateReport(reportType, project.id, userId);
-        reports.push(report);
-      } catch (err) {
-        logger.warn(`Failed to generate ${reportType} for project ${project.name}: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
-    return reports;
-  }
-
-  private async generateReport(
+  async generateReport(
     reportType: ReportType,
     projectId: string,
     userId: string,
@@ -195,7 +159,6 @@ export class AIReportService {
       generatedAt: string;
       projectId: string | null;
       aiPowered: boolean;
-      content: string;
       contextType: string;
     }>;
     total: number;
@@ -300,9 +263,9 @@ export class AIReportService {
       );
       const total = Number((totalRows as any[])[0]?.total || 0);
 
-      // Get page of results
+      // Get page of results — metadata only (no messages/content)
       const rows = await databaseService.queryControlPlane(
-        `SELECT id, title, context_type, project_id, messages, token_count, created_at
+        `SELECT id, title, context_type, project_id, created_at
          FROM ai_conversations
          WHERE ${whereClause}
          ORDER BY ${sortCol} ${sortDir}
@@ -311,20 +274,22 @@ export class AIReportService {
       );
 
       const reports = (rows as any[]).map((row: any) => {
-        let reportData: any = {};
-        try {
-          const messages = typeof row.messages === 'string' ? JSON.parse(row.messages) : row.messages;
-          if (messages && messages.length > 0) {
-            reportData = typeof messages[0].content === 'string'
-              ? (() => { try { return JSON.parse(messages[0].content); } catch { return {}; } })()
-              : messages[0].content;
-          }
-        } catch { /* ignore parse errors */ }
-
         const contextType = row.context_type as string;
-        let reportType = reportData.reportType || 'unknown';
-        if (contextType === 'raid-report') reportType = 'raid-report';
-        if (contextType === 'status-report') reportType = 'status-report';
+        // Derive reportType from contextType and title
+        let reportType = 'unknown';
+        if (contextType === 'raid-report') {
+          reportType = 'raid-report';
+        } else if (contextType === 'status-report') {
+          reportType = 'status-report';
+        } else if (contextType === 'report') {
+          // Determine sub-type from title prefix
+          const title = (row.title || '') as string;
+          if (title.startsWith('Weekly Status Report')) reportType = 'weekly-status';
+          else if (title.startsWith('Risk Assessment Report')) reportType = 'risk-assessment';
+          else if (title.startsWith('Budget Forecast Report')) reportType = 'budget-forecast';
+          else if (title.startsWith('Resource Utilization Report')) reportType = 'resource-utilization';
+          else reportType = 'report';
+        }
 
         return {
           id: row.id,
@@ -332,8 +297,7 @@ export class AIReportService {
           reportType,
           generatedAt: row.created_at,
           projectId: row.project_id,
-          aiPowered: reportData.aiPowered ?? (contextType !== 'raid-report'),
-          content: reportData.content || '',
+          aiPowered: contextType !== 'raid-report',
           contextType,
         };
       });
@@ -350,6 +314,54 @@ export class AIReportService {
       logger.warn(`Failed to fetch report history: ${err instanceof Error ? err.message : String(err)}`);
       return { reports: [], total: 0, page: 1, limit: safeLimit, totalPages: 0, typeCounts: {} };
     }
+  }
+
+  async getReportById(reportId: string, userId: string): Promise<{
+    id: string;
+    title: string;
+    reportType: string;
+    generatedAt: string;
+    projectId: string | null;
+    aiPowered: boolean;
+    content: string;
+    contextType: string;
+  } | null> {
+    const rows = await databaseService.queryControlPlane(
+      `SELECT id, title, context_type, project_id, messages, created_at
+       FROM ai_conversations
+       WHERE id = ? AND user_id = ? AND context_type IN ('report', 'raid-report', 'status-report') AND is_active = TRUE`,
+      [reportId, userId],
+    );
+
+    if (!rows.length) return null;
+
+    const row = (rows as any[])[0];
+    const contextType = row.context_type as string;
+
+    let reportData: any = {};
+    try {
+      const messages = typeof row.messages === 'string' ? JSON.parse(row.messages) : row.messages;
+      if (messages && messages.length > 0) {
+        reportData = typeof messages[0].content === 'string'
+          ? (() => { try { return JSON.parse(messages[0].content); } catch { return {}; } })()
+          : messages[0].content;
+      }
+    } catch { /* ignore parse errors */ }
+
+    let reportType = reportData.reportType || 'unknown';
+    if (contextType === 'raid-report') reportType = 'raid-report';
+    if (contextType === 'status-report') reportType = 'status-report';
+
+    return {
+      id: row.id,
+      title: row.title,
+      reportType,
+      generatedAt: row.created_at,
+      projectId: row.project_id,
+      aiPowered: reportData.aiPowered ?? (contextType !== 'raid-report'),
+      content: reportData.content || '',
+      contextType,
+    };
   }
 
   async deleteReport(reportId: string, userId: string): Promise<void> {

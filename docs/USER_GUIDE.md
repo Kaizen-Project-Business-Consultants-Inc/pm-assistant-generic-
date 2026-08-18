@@ -1035,7 +1035,7 @@ For custom reports, use the **Report Builder**:
 Navigate to **Reports** in the sidebar to generate reports:
 
 1. Select a **Report Type** from the dropdown: Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization, or RAID Report.
-2. Optionally select a **Project** (required for RAID Reports).
+2. Select a **Project** — a project must be selected for all report types. There is no "All Projects" batch generation option. To receive reports across multiple projects, use the scheduling feature to set up per-project recurring deliveries.
 3. Click **Generate Report**. AI-powered reports use Claude for analysis; RAID Reports are data-driven with no AI.
 4. For RAID Reports, a modal opens with filter options (type, severity, owner, category), preview, email, and scheduling tabs.
 
@@ -1048,7 +1048,7 @@ All generated reports appear in the **Report History** table below the generator
 - **Search** — type a keyword and press Enter to search by report title.
 - **Sort** — click the **Title** or **Date** column headers to sort ascending or descending.
 - **Clear** — click the **Clear** button to reset all filters at once.
-- **View** — click any row to open a full preview with proper formatting.
+- **View** — click any row to open a full preview with proper formatting. Report content is fetched on demand when you click a row, keeping the history list fast to load.
 - **Download** — click the download icon in the viewer to save as HTML.
 - **Delete** — click the trash icon to remove a report from history.
 - **Pagination** — reports are shown 20 per page. Use the page controls to navigate.

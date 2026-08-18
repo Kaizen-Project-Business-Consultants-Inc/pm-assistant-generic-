@@ -31,15 +31,18 @@ import { RAIDReportModal } from '../components/risks/RAIDReportModal';
 // Types
 // ---------------------------------------------------------------------------
 
-interface Report {
+interface ReportListItem {
   id: string;
   title: string;
-  content: string;
   reportType: string;
   createdAt?: string;
   generatedAt?: string;
   projectId?: string | null;
   contextType?: string;
+}
+
+interface ReportDetail extends ReportListItem {
+  content: string;
 }
 
 interface Project {
@@ -150,17 +153,26 @@ const SortHeader: React.FC<{
 // ---------------------------------------------------------------------------
 
 const ReportViewerModal: React.FC<{
-  report: Report;
+  report: ReportListItem;
   onClose: () => void;
 }> = ({ report, onClose }) => {
   const badgeColor = badgeColorMap[report.reportType] || 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200';
   const typeLabel = labelMap[report.reportType] || report.reportType;
   const dateStr = report.createdAt || report.generatedAt || '';
-  const html = isHtmlContent(report.content);
+
+  // Fetch full content on demand
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['report', report.id],
+    queryFn: () => apiService.getReport(report.id),
+  });
+
+  const content: string = data?.report?.content || '';
+  const html = content ? isHtmlContent(content) : false;
 
   const handleDownload = () => {
-    const content = html ? report.content : `<html><body>${renderMarkdown(report.content)}</body></html>`;
-    const blob = new Blob([content], { type: 'text/html' });
+    if (!content) return;
+    const downloadContent = html ? content : `<html><body>${renderMarkdown(content)}</body></html>`;
+    const blob = new Blob([downloadContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -189,7 +201,8 @@ const ReportViewerModal: React.FC<{
           <div className="flex items-center gap-1 ml-4">
             <button
               onClick={handleDownload}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              disabled={!content}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30"
               title="Download"
             >
               <Download className="w-4 h-4" />
@@ -204,12 +217,20 @@ const ReportViewerModal: React.FC<{
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          {html ? (
-            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(report.content) }} />
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-6 h-6 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+            </div>
+          ) : isError ? (
+            <div className="text-center py-8 text-sm text-red-600">Failed to load report content.</div>
+          ) : !content ? (
+            <div className="text-center py-8 text-sm text-gray-500">No content available.</div>
+          ) : html ? (
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
           ) : (
             <div
               className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-200"
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(report.content)) }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(content)) }}
             />
           )}
         </div>
@@ -230,7 +251,7 @@ export const ReportsPage: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
   // Modal state
-  const [viewingReport, setViewingReport] = useState<Report | null>(null);
+  const [viewingReport, setViewingReport] = useState<ReportListItem | null>(null);
   const [showRaidReport, setShowRaidReport] = useState(false);
 
   // Table state
@@ -304,7 +325,7 @@ export const ReportsPage: React.FC = () => {
     queryFn: () => apiService.getProjects(),
   });
 
-  const reports: Report[] = historyData?.reports || [];
+  const reports: ReportListItem[] = historyData?.reports || [];
   const total: number = historyData?.total || 0;
   const totalPages: number = historyData?.totalPages || 0;
   const typeCounts: Record<string, number> = historyData?.typeCounts || {};
@@ -327,7 +348,7 @@ export const ReportsPage: React.FC = () => {
     mutationFn: () =>
       apiService.generateReport({
         reportType: selectedType,
-        ...(selectedProjectId ? { projectId: selectedProjectId } : {}),
+        projectId: selectedProjectId,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reportHistory'] });
@@ -396,7 +417,7 @@ export const ReportsPage: React.FC = () => {
           {/* Project selector */}
           <div>
             <label htmlFor="report-project" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Project {selectedType === 'raid-report' ? '(required)' : '(optional)'}
+              Project
             </label>
             <div className="relative">
               <select
@@ -406,7 +427,7 @@ export const ReportsPage: React.FC = () => {
                 className="input w-full appearance-none pr-8"
                 disabled={projectsLoading}
               >
-                <option value="">All Projects</option>
+                <option value="">Select a project...</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -427,7 +448,7 @@ export const ReportsPage: React.FC = () => {
                   generateMutation.mutate();
                 }
               }}
-              disabled={generateMutation.isPending || (selectedType === 'raid-report' && !selectedProjectId)}
+              disabled={generateMutation.isPending || !selectedProjectId}
               className="btn btn-primary flex items-center gap-2 w-full justify-center"
             >
               {generateMutation.isPending ? (
@@ -438,7 +459,7 @@ export const ReportsPage: React.FC = () => {
               ) : (
                 <>
                   <Plus className="w-4 h-4" />
-                  {selectedProjectId ? 'Generate Report' : 'Generate for All Projects'}
+                  Generate Report
                 </>
               )}
             </button>
@@ -454,21 +475,13 @@ export const ReportsPage: React.FC = () => {
 
         {/* Generation success */}
         {generateMutation.isSuccess && (() => {
-          const genReports = generateMutation.data?.reports as Report[] | undefined;
-          const count = generateMutation.data?.count as number || 0;
-          const isAsync = generateMutation.data?.async as boolean;
+          const genReport = generateMutation.data?.report as ReportDetail | undefined;
           return (
             <div className="mt-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 flex items-center justify-between">
-              <span>
-                {isAsync
-                  ? `Generating ${count} reports in the background. They will appear in the history below shortly.`
-                  : count === 1
-                    ? 'Report generated successfully.'
-                    : `${count} reports generated successfully.`}
-              </span>
-              {!isAsync && count === 1 && genReports?.[0] && (
+              <span>Report generated successfully.</span>
+              {genReport && (
                 <button
-                  onClick={() => setViewingReport(genReports[0])}
+                  onClick={() => setViewingReport(genReport)}
                   className="text-green-800 font-medium underline hover:no-underline text-sm"
                 >
                   View now

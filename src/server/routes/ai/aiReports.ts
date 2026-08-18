@@ -13,7 +13,7 @@ const VALID_REPORT_TYPES: ReportType[] = [
 
 const generateReportSchema = z.object({
   reportType: z.enum(['weekly-status', 'risk-assessment', 'budget-forecast', 'resource-utilization']),
-  projectId: z.string().optional(),
+  projectId: z.string().min(1),
 });
 
 export async function aiReportRoutes(fastify: FastifyInstance) {
@@ -29,7 +29,7 @@ export async function aiReportRoutes(fastify: FastifyInstance) {
       tags: ['ai-reports'],
       body: {
         type: 'object',
-        required: ['reportType'],
+        required: ['reportType', 'projectId'],
         properties: {
           reportType: {
             type: 'string',
@@ -44,39 +44,12 @@ export async function aiReportRoutes(fastify: FastifyInstance) {
         const body = generateReportSchema.parse(request.body);
         const user = request.user!;
 
-        if (body.projectId) {
-          // Single project — synchronous, return report for "View now"
-          const reports = await reportService.generateReports(
-            body.reportType,
-            { projectId: body.projectId },
-            user.userId,
-          );
-          return { reports, count: reports.length };
-        }
-
-        // All projects — async, return immediately
-        // Count user's projects first so we can report how many will be generated
-        const projectService = new (await import('../../services/ProjectService')).ProjectService();
-        const projects = await projectService.findByUserId(user.userId);
-        const projectCount = projects.length;
-
-        if (!projectCount) {
-          return reply.code(400).send({ error: 'No projects found for this user' });
-        }
-
-        // Fire and forget — reports generate in background
-        reportService.generateReports(
+        const report = await reportService.generateReport(
           body.reportType,
-          {},
+          body.projectId,
           user.userId,
-        ).catch(err => {
-          fastify.log.error(
-            { err: err instanceof Error ? err : new Error(String(err)) },
-            'Background batch report generation failed',
-          );
-        });
-
-        return { reports: [], count: projectCount, async: true };
+        );
+        return { report };
       } catch (error) {
         if (error instanceof z.ZodError) return reply.code(400).send({ error: 'Validation error', details: error.issues });
         fastify.log.error(
@@ -85,6 +58,39 @@ export async function aiReportRoutes(fastify: FastifyInstance) {
         );
         return reply.code(500).send({
           error: 'Failed to generate report',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    },
+  });
+
+  // GET /:id — fetch a single report with full content
+  fastify.get('/:id', {
+    preHandler: [requireScope('read')],
+    schema: {
+      description: 'Get a single report by ID with full content',
+      tags: ['ai-reports'],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string' } },
+      },
+    },
+    handler: async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      try {
+        const user = request.user!;
+        const report = await reportService.getReportById(request.params.id, user.userId);
+        if (!report) {
+          return reply.code(404).send({ error: 'Report not found' });
+        }
+        return { report };
+      } catch (error) {
+        fastify.log.error(
+          { err: error instanceof Error ? error : new Error(String(error)) },
+          'Failed to fetch report',
+        );
+        return reply.code(500).send({
+          error: 'Failed to fetch report',
           message: error instanceof Error ? error.message : 'Unknown error',
         });
       }

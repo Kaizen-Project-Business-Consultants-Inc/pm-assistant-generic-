@@ -851,7 +851,7 @@ The `ReportBuilderService` provides a configurable report engine:
 
 ### AI-Generated Reports
 
-The AI report endpoint generates narrative compliance and status reports using Claude, grounded in real project data. Available report types: Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization.
+The AI report endpoint generates narrative compliance and status reports using Claude, grounded in real project data. Available report types: Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization. A `projectId` is required to generate a report — there is no batch "All Projects" generation mode. For cross-project reporting, use the scheduling feature to generate per-project reports on a recurring cadence.
 
 ### RAID Report (Data-Driven)
 
@@ -879,7 +879,8 @@ The Reports page maintains a history of all generated reports (AI reports, Statu
 - **Delete** — soft-delete individual reports (sets `is_active = FALSE` in control plane DB)
 - **Download** — export any report as HTML from the viewer modal
 - **Smart rendering** — HTML reports (Status, RAID) render directly, markdown reports (AI) rendered via `marked` + DOMPurify
-- **API**: `GET /api/v1/ai-reports/history?type=&subType=&search=&dateFrom=&dateTo=&sortBy=&sortOrder=&page=&limit=`, `DELETE /api/v1/ai-reports/:id`
+- **On-demand content loading** — the history list endpoint returns metadata only (title, type, date, project). Full report content is fetched separately via `GET /api/v1/ai-reports/:id` when the user clicks to view a report, reducing bandwidth on the list view.
+- **API**: `GET /api/v1/ai-reports/history?type=&subType=&search=&dateFrom=&dateTo=&sortBy=&sortOrder=&page=&limit=`, `GET /api/v1/ai-reports/:id`, `DELETE /api/v1/ai-reports/:id`
 
 ### Portfolio Analytics
 
