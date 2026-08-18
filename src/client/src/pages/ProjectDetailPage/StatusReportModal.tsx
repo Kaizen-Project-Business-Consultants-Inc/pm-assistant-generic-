@@ -168,10 +168,11 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
   };
 
   const handleExportDocx = async () => {
-    if (!html) return;
+    const data = editData || report?.report?.data;
+    if (!data) return;
     setExporting('docx');
     try {
-      const blob = await apiService.exportStatusReportDocx(html, projectName);
+      const blob = await apiService.exportStatusReportDocx(data as Record<string, unknown>);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

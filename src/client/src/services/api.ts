@@ -677,8 +677,8 @@ class ApiService {
     return response.data;
   }
 
-  async exportStatusReportDocx(html: string, projectName: string): Promise<Blob> {
-    const response = await this.api.post('/status-reports/export/docx', { html, projectName }, { responseType: 'blob' });
+  async exportStatusReportDocx(data: Record<string, unknown>): Promise<Blob> {
+    const response = await this.api.post('/status-reports/export/docx', data, { responseType: 'blob' });
     return response.data;
   }
 

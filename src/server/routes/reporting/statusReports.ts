@@ -8,6 +8,7 @@ import { reportScheduleService } from '../../services/ReportScheduleService';
 import { userService } from '../../services/UserService';
 import { emailService } from '../../services/EmailService';
 import { renderStatusReportHtml, type StructuredStatusReport } from '../../utils/statusReportRenderer';
+import { buildStatusReportDocx } from '../../utils/statusReportDocxBuilder';
 import logger from '../../utils/logger';
 
 const generateSchema = z.object({
@@ -81,31 +82,18 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('write'), requirePaidTier],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const schema = z.object({
-        html: z.string().min(1),
-        projectName: z.string().min(1),
-      });
-      const body = schema.parse(request.body);
+      const data = request.body as StructuredStatusReport;
+      if (!data || !data.projectName) {
+        return reply.status(400).send({ error: 'Invalid report data' });
+      }
 
-      const HTMLtoDOCX = (await import('html-to-docx')).default;
-      // html-to-docx chokes on percentage widths and certain CSS in table cells
-      // Strip width styles from inline CSS to avoid "Invalid XML name: @w" errors
-      const sanitizedHtml = body.html.replace(/\s*width:\s*[^;]+;?/gi, '');
-      const wrappedHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${sanitizedHtml}</body></html>`;
-      logger.info('Starting DOCX conversion', { htmlLength: wrappedHtml.length });
-      const docxBuffer = await HTMLtoDOCX(wrappedHtml, null, {
-        table: { row: { cantSplit: true } },
-      });
-      logger.info('DOCX conversion complete', { bufferSize: (docxBuffer as any)?.length || (docxBuffer as any)?.byteLength });
-
-      const buf = Buffer.isBuffer(docxBuffer) ? docxBuffer : Buffer.from(docxBuffer as ArrayBuffer);
-      const filename = `status-report-${body.projectName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.docx`;
+      const buf = await buildStatusReportDocx(data);
+      const filename = `status-report-${data.projectName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.docx`;
       return reply
         .header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
         .header('Content-Disposition', `attachment; filename="${filename}"`)
         .send(buf);
     } catch (error: any) {
-      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
       logger.error('Export DOCX error', { error: error.message, stack: error.stack });
       return reply.status(500).send({ error: 'Failed to export Word document' });
     }
