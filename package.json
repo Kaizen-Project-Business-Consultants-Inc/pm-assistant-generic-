@@ -54,6 +54,7 @@
     "html-to-docx": "^1.8.0",
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.2",
+    "marked": "^18.0.10",
     "mysql2": "^3.15.1",
     "node-cron": "^4.2.1",
     "resend": "^6.9.2",

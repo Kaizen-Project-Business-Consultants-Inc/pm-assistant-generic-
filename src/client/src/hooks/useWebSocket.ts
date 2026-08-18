@@ -200,6 +200,15 @@ export function useWebSocket() {
                 showStatusReportToast('Status report generation failed.', 'error');
                 break;
               }
+              case 'ai_report_ready': {
+                queryClient.invalidateQueries({ queryKey: ['reportHistory'] });
+                showStatusReportToast('Your AI report is ready.', 'success');
+                break;
+              }
+              case 'ai_report_failed': {
+                showStatusReportToast('AI report generation failed. Please try again.', 'error');
+                break;
+              }
               case 'presence_update': {
                 const { projectId, viewers, editors } = message.payload;
                 presenceMap.set(projectId, viewers);

@@ -1,8 +1,12 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { AIReportService, ReportType } from '../../services/aiReportService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { WebSocketService } from '../../services/WebSocketService';
+import { getTenantContext, runWithTenantContext } from '../../middleware/requestContext';
+import logger from '../../utils/logger';
 
 const VALID_REPORT_TYPES: ReportType[] = [
   'weekly-status',
@@ -42,14 +46,36 @@ export async function aiReportRoutes(fastify: FastifyInstance) {
     handler: async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const body = generateReportSchema.parse(request.body);
-        const user = request.user!;
+        const userId = request.user!.userId;
+        const jobId = crypto.randomUUID();
+        const tenantCtx = getTenantContext();
 
-        const report = await reportService.generateReport(
+        // Fire-and-forget: generate in background, deliver via WebSocket
+        const runGenerate = () => reportService.generateReport(
           body.reportType,
           body.projectId,
-          user.userId,
+          userId,
         );
-        return { report };
+
+        const generatePromise = tenantCtx
+          ? runWithTenantContext(tenantCtx.dbName, tenantCtx.orgId, runGenerate)
+          : runGenerate();
+
+        generatePromise.then(report => {
+          logger.info('Background AI report completed', { jobId, userId, reportType: body.reportType, projectId: body.projectId });
+          WebSocketService.sendToUser(userId, {
+            type: 'ai_report_ready',
+            payload: { jobId, report },
+          });
+        }).catch(error => {
+          logger.error('Background AI report generation failed', { error: (error as Error).message, stack: (error as Error).stack, jobId });
+          WebSocketService.sendToUser(userId, {
+            type: 'ai_report_failed',
+            payload: { jobId, reportType: body.reportType, error: 'Failed to generate report' },
+          });
+        });
+
+        return { jobId, status: 'generating' };
       } catch (error) {
         if (error instanceof z.ZodError) return reply.code(400).send({ error: 'Validation error', details: error.issues });
         fastify.log.error(

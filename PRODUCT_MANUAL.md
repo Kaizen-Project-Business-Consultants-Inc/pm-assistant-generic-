@@ -868,6 +868,9 @@ All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the
 
 The `aiReportService` generates narrative project reports using AI, summarizing status, risks, and recommendations in natural language.
 
+- **Background generation** — AI reports (risk-assessment, budget-forecast, resource-utilization) are generated asynchronously. The API returns a `jobId` immediately, and the completed report is delivered via WebSocket (`ai_report_ready` / `ai_report_failed`). This prevents Nginx 502 timeouts on long-running AI calls.
+- **Styled HTML output** — AI report markdown is rendered to styled HTML matching the status report theme (navy #283480 headers, Calibri font, alternating-row tables). The `renderAIReportHtml()` utility in `src/server/utils/aiReportRenderer.ts` handles conversion via `marked`.
+
 ### Proactive Alerts
 
 The `proactiveAlertService` continuously monitors project metrics and generates alerts when thresholds are breached (schedule slip, budget overrun, resource over-allocation).

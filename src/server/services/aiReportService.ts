@@ -4,6 +4,7 @@ import { AIContextBuilder } from './aiContextBuilder';
 import { logAIUsage } from './aiUsageLogger';
 import { databaseService } from '../database/connection';
 import { renderStatusReportHtml } from '../utils/statusReportRenderer';
+import { renderAIReportHtml } from '../utils/aiReportRenderer';
 import logger from '../utils/logger';
 
 export type ReportType = 'weekly-status' | 'risk-assessment' | 'budget-forecast' | 'resource-utilization';
@@ -61,7 +62,8 @@ export class AIReportService {
     const title = `${REPORT_TITLES[reportType]} — ${projectName || 'Unknown'} — ${dateSuffix}`;
 
     if (!claudeService.isAvailable()) {
-      const content = this.generateFallbackReport(reportType, projectData);
+      const fallbackMd = this.generateFallbackReport(reportType, projectData);
+      const content = renderAIReportHtml(title, fallbackMd, reportType);
       const report: GeneratedReport = {
         id: reportId,
         reportType,
@@ -88,11 +90,12 @@ export class AIReportService {
         maxTokens: 4096,
       });
 
+      const styledContent = renderAIReportHtml(title, result.content, reportType);
       const report: GeneratedReport = {
         id: reportId,
         reportType,
         title,
-        content: result.content,
+        content: styledContent,
         generatedAt,
         aiPowered: true,
         metadata: {
@@ -126,7 +129,8 @@ export class AIReportService {
         errorMessage: error instanceof Error ? error.message : String(error),
       });
 
-      const content = this.generateFallbackReport(reportType, projectData);
+      const errorFallbackMd = this.generateFallbackReport(reportType, projectData);
+      const content = renderAIReportHtml(title, errorFallbackMd, reportType);
       const report: GeneratedReport = {
         id: reportId,
         reportType,

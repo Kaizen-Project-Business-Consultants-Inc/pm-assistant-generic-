@@ -1036,7 +1036,7 @@ Navigate to **Reports** in the sidebar to generate reports:
 
 1. Select a **Report Type** from the dropdown: Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization, or RAID Report.
 2. Select a **Project** — a project must be selected for all report types. There is no "All Projects" batch generation option. To receive reports across multiple projects, use the scheduling feature to set up per-project recurring deliveries.
-3. Click **Generate Report**. AI-powered reports use Claude for analysis; RAID Reports are data-driven with no AI.
+3. Click **Generate Report**. AI-powered reports (Risk Assessment, Budget Forecast, Resource Utilization) generate in the background — you'll see a "generating" confirmation and receive a toast notification when the report is ready. The report history refreshes automatically. RAID Reports are data-driven with no AI.
 4. For RAID Reports, a modal opens with filter options (type, severity, owner, category), preview, email, and scheduling tabs.
 
 ### Report History

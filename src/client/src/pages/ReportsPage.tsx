@@ -42,10 +42,6 @@ interface ReportListItem {
   contextType?: string;
 }
 
-interface ReportDetail extends ReportListItem {
-  content: string;
-}
-
 interface Project {
   id: string;
   name: string;
@@ -351,9 +347,6 @@ export const ReportsPage: React.FC = () => {
         reportType: selectedType,
         projectId: selectedProjectId,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reportHistory'] });
-    },
   });
 
   const deleteMutation = useMutation({
@@ -477,23 +470,12 @@ export const ReportsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Generation success */}
-        {generateMutation.isSuccess && (() => {
-          const genReport = generateMutation.data?.report as ReportDetail | undefined;
-          return (
-            <div className="mt-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 flex items-center justify-between">
-              <span>Report generated successfully.</span>
-              {genReport && (
-                <button
-                  onClick={() => setViewingReport(genReport)}
-                  className="text-green-800 font-medium underline hover:no-underline text-sm"
-                >
-                  View now
-                </button>
-              )}
-            </div>
-          );
-        })()}
+        {/* Generation success — report is generating in background */}
+        {generateMutation.isSuccess && (
+          <div className="mt-4 rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700">
+            Report is being generated. You&apos;ll be notified when it&apos;s ready.
+          </div>
+        )}
       </div>
 
       {/* ----------------------------------------------------------------- */}
