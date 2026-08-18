@@ -125,26 +125,29 @@ export class ProjectStatusReportService {
           : 'No previous report available.';
 
         // Build enriched context blocks
+        // Cap lists to keep prompt size reasonable (reduces AI latency)
+        const CAP = 20;
+
         const milestonesText = srContext?.milestones.length
-          ? srContext.milestones.map(m =>
+          ? srContext.milestones.slice(0, CAP).map(m =>
             `- ${m.name} | Due: ${m.dueDate || 'N/A'} | Status: ${m.status} | Progress: ${m.progressPercentage ?? 0}%`
           ).join('\n')
           : 'No milestones defined.';
 
         const completedText = srContext?.completedTasks.length
-          ? srContext.completedTasks.map(t =>
+          ? srContext.completedTasks.slice(0, CAP).map(t =>
             `- ${t.name} (completed, updated ${t.updatedAt})`
           ).join('\n')
           : 'No tasks completed in this period.';
 
         const upcomingText = srContext?.upcomingTasks.length
-          ? srContext.upcomingTasks.map(t =>
+          ? srContext.upcomingTasks.slice(0, CAP).map(t =>
             `- ${t.name} | Due: ${t.dueDate || t.endDate || 'N/A'} | Status: ${t.status} | Assigned: ${t.assignedTo || 'Unassigned'}`
           ).join('\n')
           : 'No upcoming tasks in next 14 days.';
 
         const raidText = srContext?.criticalHighItems.length
-          ? srContext.criticalHighItems.map(r =>
+          ? srContext.criticalHighItems.slice(0, 10).map(r =>
             `- [${r.type.toUpperCase()}] ${r.title} | Severity: ${r.severity} | Status: ${r.status} | Owner: ${r.ownerId || 'Unassigned'}`
           ).join('\n')
           : 'No critical/high RAID items.';
@@ -164,7 +167,7 @@ export class ProjectStatusReportService {
           userMessage: 'Analyze the project data and generate the comprehensive executive status report JSON.',
           responseFormat: 'json',
           temperature: 0.3,
-          maxTokens: 3000,
+          maxTokens: 2000,
         });
 
         // Strip markdown code fences if Claude wraps JSON in them

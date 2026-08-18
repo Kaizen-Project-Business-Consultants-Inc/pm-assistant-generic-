@@ -221,6 +221,34 @@ export class AIContextBuilder {
     return s;
   }
 
+  toSummaryPromptString(ctx: ProjectContext): string {
+    let s = `Project: ${sanitizeForPrompt(ctx.project.name)}\n`;
+    s += `Type: ${ctx.project.projectType}`;
+    if (ctx.project.methodology) s += ` | Methodology: ${ctx.project.methodology}`;
+    s += '\n';
+    s += `Status: ${ctx.project.status} | Priority: ${ctx.project.priority}\n`;
+    if (ctx.project.description) s += `Description: ${sanitizeForPrompt(ctx.project.description)}\n`;
+    if (ctx.project.budgetAllocated) s += `Budget: $${ctx.project.budgetAllocated.toLocaleString()} allocated, $${(ctx.project.budgetSpent || 0).toLocaleString()} spent\n`;
+    if (ctx.project.completionPercentage !== undefined) s += `Completion: ${ctx.project.completionPercentage}%\n`;
+    if (ctx.project.location) s += `Location: ${ctx.project.location}\n`;
+
+    if (ctx.schedules.length > 0) {
+      s += `\nSchedules (${ctx.schedules.length}):\n`;
+      for (const sched of ctx.schedules) {
+        const total = sched.tasks.length;
+        const completed = sched.tasks.filter(t => t.status === 'completed').length;
+        const overdue = sched.tasks.filter(t => {
+          if (t.status === 'completed') return false;
+          const due = t.dueDate;
+          return due && new Date(due) < new Date();
+        }).length;
+        s += `  - ${sched.name} (${sched.startDate} to ${sched.endDate}) — ${total} tasks, ${completed} completed, ${overdue} overdue\n`;
+      }
+    }
+
+    return s;
+  }
+
   async buildStatusReportContext(projectId: string): Promise<StatusReportContext> {
     // Fetch project context, RAID, and change requests in parallel
     const [ctx, raidResult, changeRequests] = await Promise.all([
@@ -258,7 +286,7 @@ export class AIContextBuilder {
 
     return {
       projectContext: ctx,
-      promptString: this.toPromptString(ctx),
+      promptString: this.toSummaryPromptString(ctx),
       milestones,
       completedTasks,
       upcomingTasks,
