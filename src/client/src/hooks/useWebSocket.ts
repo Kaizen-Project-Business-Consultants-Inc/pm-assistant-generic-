@@ -25,6 +25,28 @@ export function sendWsMessage(data: object) {
   }
 }
 
+// Module-level toast for status report notifications
+function showStatusReportToast(message: string, type: 'success' | 'error') {
+  const toast = document.createElement('div');
+  const bg = type === 'success'
+    ? 'background:#065f46;border:1px solid #059669;'
+    : 'background:#991b1b;border:1px solid #dc2626;';
+  toast.setAttribute('style', `
+    position:fixed;bottom:24px;right:24px;z-index:99999;
+    ${bg}color:white;padding:14px 20px;border-radius:8px;
+    font-size:14px;font-family:system-ui,sans-serif;
+    box-shadow:0 4px 12px rgba(0,0,0,0.3);
+    animation:slideIn 0.3s ease-out;max-width:360px;
+  `);
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 5000);
+}
+
 // Module-level presence state with custom event dispatch
 const PRESENCE_EVENT = 'ws:presence_update';
 const presenceMap = new Map<string, { userId: string; username: string }[]>();
@@ -168,12 +190,14 @@ export function useWebSocket() {
                 window.dispatchEvent(new CustomEvent('ws:status_report_ready', {
                   detail: message.payload,
                 }));
+                showStatusReportToast('Your status report is ready.', 'success');
                 break;
               }
               case 'status_report_failed': {
                 window.dispatchEvent(new CustomEvent('ws:status_report_failed', {
                   detail: message.payload,
                 }));
+                showStatusReportToast('Status report generation failed.', 'error');
                 break;
               }
               case 'presence_update': {

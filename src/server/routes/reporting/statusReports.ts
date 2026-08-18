@@ -112,8 +112,10 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'Invalid report data' });
       }
 
-      const buf = await buildStatusReportDocx(data);
-      const filename = `status-report-${data.projectName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.docx`;
+      const docxBuf = await buildStatusReportDocx(data);
+      const buf = Buffer.from(docxBuf);
+      const safeName = data.projectName.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
+      const filename = `status-report-${safeName}-${new Date().toISOString().slice(0, 10)}.docx`;
       return reply
         .header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
         .header('Content-Disposition', `attachment; filename="${filename}"`)
