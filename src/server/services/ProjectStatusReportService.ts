@@ -390,12 +390,12 @@ export class ProjectStatusReportService {
 
     const areas: RAGArea[] = [
       { name: 'Overall Status', status: 'amber', previousStatus: 'green', trend: 'declining', comments: 'Budget pressure driving overall status to amber.' },
-      { name: 'Schedule', status: 'green', previousStatus: 'green', trend: 'stable', comments: 'Project is tracking on schedule with 78% of milestones completed on time.' },
-      { name: 'Budget', status: 'amber', previousStatus: 'green', trend: 'declining', comments: 'Spending is at 92% of allocated budget with 15% of deliverables remaining.' },
-      { name: 'Resources', status: 'green', previousStatus: 'amber', trend: 'improving', comments: 'Resource gaps addressed — two new team members onboarded this sprint.' },
-      { name: 'Risks', status: 'amber', previousStatus: 'amber', trend: 'stable', comments: '3 medium-severity risks open. Key dependency on third-party API delivery.' },
       { name: 'Scope', status: 'green', previousStatus: 'green', trend: 'stable', comments: 'No change requests pending. Scope baseline is intact.' },
+      { name: 'Schedule', status: 'green', previousStatus: 'green', trend: 'stable', comments: 'Project is tracking on schedule with 78% of milestones completed on time.' },
+      { name: 'Cost / Budget', status: 'amber', previousStatus: 'green', trend: 'declining', comments: 'Spending is at 92% of allocated budget with 15% of deliverables remaining.' },
       { name: 'Quality', status: 'green', previousStatus: 'amber', trend: 'improving', comments: 'Defect rate decreased 40% after additional code review process.' },
+      { name: 'Risks & Issues', status: 'amber', previousStatus: 'amber', trend: 'stable', comments: '3 medium-severity risks open. Key dependency on third-party API delivery.' },
+      { name: 'Resources', status: 'green', previousStatus: 'amber', trend: 'improving', comments: 'Resource gaps addressed — two new team members onboarded this sprint.' },
       { name: 'Governance & Stakeholders', status: 'green', previousStatus: 'green', trend: 'stable', comments: 'Steering committee meeting held on schedule. No escalations.' },
     ];
 
@@ -448,12 +448,12 @@ export class ProjectStatusReportService {
       executiveSummary: 'AI-powered analysis is currently unavailable. This is a template report based on available project data. Enable AI features for comprehensive executive analysis.',
       overallStatus: { status: 'amber', comments: 'AI unavailable — manual review recommended' },
       areas: [
-        { name: 'Schedule', status: 'amber', comments: 'Review project dashboard for schedule status' },
-        { name: 'Budget', status: 'amber', comments: 'Review budget dashboard for financial status' },
-        { name: 'Resources', status: 'amber', comments: 'Review resource allocation' },
-        { name: 'Risks', status: 'amber', comments: 'Review RAID log for current risks' },
         { name: 'Scope', status: 'amber', comments: 'Review change requests' },
+        { name: 'Schedule', status: 'amber', comments: 'Review project dashboard for schedule status' },
+        { name: 'Cost / Budget', status: 'amber', comments: 'Review budget dashboard for financial status' },
         { name: 'Quality', status: 'amber', comments: 'Review task data completeness' },
+        { name: 'Risks & Issues', status: 'amber', comments: 'Review RAID log for current risks and issues' },
+        { name: 'Resources', status: 'amber', comments: 'Review resource allocation' },
         { name: 'Governance & Stakeholders', status: 'amber', comments: 'Review governance activities' },
       ],
       achievements: ['Enable AI features for comprehensive project analysis'],

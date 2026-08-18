@@ -308,12 +308,12 @@ Return valid JSON with this exact structure:
     "comments": "Rollup summary — worst status of all dimensions"
   },
   "areas": [
-    { "name": "Schedule", "status": "green|amber|red", "comments": "Brief data-driven comment" },
-    { "name": "Budget", "status": "green|amber|red", "comments": "Brief data-driven comment" },
-    { "name": "Resources", "status": "green|amber|red", "comments": "Brief data-driven comment" },
-    { "name": "Risks", "status": "green|amber|red", "comments": "Brief data-driven comment" },
     { "name": "Scope", "status": "green|amber|red", "comments": "Brief data-driven comment" },
+    { "name": "Schedule", "status": "green|amber|red", "comments": "Brief data-driven comment" },
+    { "name": "Cost / Budget", "status": "green|amber|red", "comments": "Brief data-driven comment" },
     { "name": "Quality", "status": "green|amber|red", "comments": "Brief data-driven comment" },
+    { "name": "Risks & Issues", "status": "green|amber|red", "comments": "Brief data-driven comment" },
+    { "name": "Resources", "status": "green|amber|red", "comments": "Brief data-driven comment" },
     { "name": "Governance & Stakeholders", "status": "green|amber|red", "comments": "Brief data-driven comment" }
   ],
   "achievements": [

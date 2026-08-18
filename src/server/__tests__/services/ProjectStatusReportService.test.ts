@@ -76,12 +76,12 @@ const MOCK_AI_RESPONSE = JSON.stringify({
   executiveSummary: 'Project is on track with minor schedule concerns.',
   overallStatus: { status: 'amber', comments: 'Schedule pressure' },
   areas: [
-    { name: 'Schedule', status: 'amber', comments: '2 tasks overdue' },
-    { name: 'Budget', status: 'green', comments: 'On track' },
-    { name: 'Resources', status: 'green', comments: 'Fully staffed' },
-    { name: 'Risks', status: 'amber', comments: '1 high risk' },
     { name: 'Scope', status: 'green', comments: 'No changes' },
+    { name: 'Schedule', status: 'amber', comments: '2 tasks overdue' },
+    { name: 'Cost / Budget', status: 'green', comments: 'On track' },
     { name: 'Quality', status: 'green', comments: 'All tasks have estimates' },
+    { name: 'Risks & Issues', status: 'amber', comments: '1 high risk' },
+    { name: 'Resources', status: 'green', comments: 'Fully staffed' },
     { name: 'Governance & Stakeholders', status: 'green', comments: 'On track' },
   ],
   achievements: ['Completed sprint 3 deliverables', 'Resolved critical bug'],
@@ -118,13 +118,14 @@ describe('ProjectStatusReportService', () => {
     const result = await service.generate('proj-1', 'user-1');
 
     expect(result.aiPowered).toBe(true);
-    expect(result.html).toContain('Executive Summary');
-    expect(result.html).toContain('Overall Status');
+    expect(result.html).toContain('EXECUTIVE SUMMARY');
+    expect(result.html).toContain('OVERALL STATUS');
     // 1 overall + 7 dimensions = 8 areas
     expect(result.data.areas).toHaveLength(8);
     expect(result.data.areas[0].name).toBe('Overall Status');
-    expect(result.data.areas[1].name).toBe('Schedule');
-    expect(result.data.areas[1].status).toBe('amber');
+    expect(result.data.areas[1].name).toBe('Scope');
+    expect(result.data.areas[2].name).toBe('Schedule');
+    expect(result.data.areas[2].status).toBe('amber');
     expect(result.data.achievements).toHaveLength(2);
     expect(result.data.managementAttention).toHaveLength(1);
     expect(result.data.reportNumber).toMatch(/^SR-\d{3}$/);
@@ -172,7 +173,7 @@ describe('ProjectStatusReportService', () => {
     expect(emailService.sendStatusReportEmail).toHaveBeenCalledWith(
       ['test@example.com'],
       'Test Project',
-      expect.stringContaining('Executive Summary'),
+      expect.stringContaining('EXECUTIVE SUMMARY'),
     );
   });
 
@@ -210,7 +211,7 @@ describe('ProjectStatusReportService', () => {
     });
 
     expect(result.emailSent).toBe(false);
-    expect(result.html).toContain('Executive Summary');
+    expect(result.html).toContain('EXECUTIVE SUMMARY');
   });
 
   it('computes trend from previous report', async () => {
@@ -223,12 +224,12 @@ describe('ProjectStatusReportService', () => {
             content: JSON.stringify({
               areas: [
                 { name: 'Overall Status', status: 'green' },
-                { name: 'Schedule', status: 'green' },
-                { name: 'Budget', status: 'green' },
-                { name: 'Resources', status: 'green' },
-                { name: 'Risks', status: 'green' },
                 { name: 'Scope', status: 'green' },
+                { name: 'Schedule', status: 'green' },
+                { name: 'Cost / Budget', status: 'green' },
                 { name: 'Quality', status: 'green' },
+                { name: 'Risks & Issues', status: 'green' },
+                { name: 'Resources', status: 'green' },
                 { name: 'Governance & Stakeholders', status: 'green' },
               ],
             }),
@@ -251,7 +252,7 @@ describe('ProjectStatusReportService', () => {
     const schedule = result.data.areas.find(a => a.name === 'Schedule');
     expect(schedule?.previousStatus).toBe('green');
     expect(schedule?.trend).toBe('declining'); // green -> amber
-    const budget = result.data.areas.find(a => a.name === 'Budget');
+    const budget = result.data.areas.find(a => a.name === 'Cost / Budget');
     expect(budget?.previousStatus).toBe('green');
     expect(budget?.trend).toBe('stable'); // green -> green
 
@@ -267,9 +268,9 @@ describe('ProjectStatusReportService', () => {
     expect(result.data.achievements).toHaveLength(3);
     expect(result.data.plannedActivities).toHaveLength(3);
     expect(result.data.managementAttention).toHaveLength(2);
-    expect(result.html).toContain('Milestone Status');
-    expect(result.html).toContain('Achievements This Period');
-    expect(result.html).toContain('Planned Activities');
-    expect(result.html).toContain('Management Attention');
+    expect(result.html).toContain('MILESTONE STATUS');
+    expect(result.html).toContain('ACHIEVEMENTS THIS PERIOD');
+    expect(result.html).toContain('PLANNED ACTIVITIES');
+    expect(result.html).toContain('FOR MANAGEMENT ATTENTION');
   });
 });

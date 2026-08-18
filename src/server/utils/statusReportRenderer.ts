@@ -1,6 +1,6 @@
 /**
  * Renders a structured status report to styled HTML for UI and email.
- * DBJ Template Standard — 8 sections.
+ * Matches DBJ_LMS_Status_Report.docx template exactly.
  */
 
 export interface RAGArea {
@@ -60,24 +60,6 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
-const STATUS_CIRCLES: Record<string, string> = {
-  green: '🟢',
-  amber: '🟡',
-  red: '🔴',
-};
-
-const TREND_ARROWS: Record<string, string> = {
-  improving: '↑',
-  stable: '→',
-  declining: '↓',
-};
-
-const TREND_COLORS: Record<string, string> = {
-  improving: '#166534',
-  stable: '#6b7280',
-  declining: '#991b1b',
-};
-
 export function computeTrend(current: string, previous: string | null | undefined): 'improving' | 'stable' | 'declining' {
   if (!previous) return 'stable';
   const order: Record<string, number> = { green: 0, amber: 1, red: 2 };
@@ -89,16 +71,41 @@ export function computeTrend(current: string, previous: string | null | undefine
 }
 
 // ---------------------------------------------------------------------------
-// Shared styles
+// DBJ Template colours
 // ---------------------------------------------------------------------------
+const NAVY = '#283480';
+const LABEL_BG = '#EAECF6';
+const GREEN_BG = '#C6EFCE';
+const AMBER_BG = '#FFEB9C';
+const RED_BG = '#FFC7CE';
+const WHITE = '#FFFFFF';
+const BODY_TEXT = '#1f2937';
+const FONT = "Calibri, 'Segoe UI', Arial, sans-serif";
 
-const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-const TH_STYLE = 'padding: 8px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; border-bottom: 2px solid #e2e8f0; background: #f1f5f9;';
-const TD_STYLE = 'padding: 8px 12px; color: #1f2937; border-bottom: 1px solid #e5e7eb; font-size: 13px;';
-const SECTION_TITLE = 'color: #1f2937; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 12px;';
+const RAG_CELL: Record<string, { bg: string; letter: string }> = {
+  green: { bg: GREEN_BG, letter: 'G' },
+  amber: { bg: AMBER_BG, letter: 'A' },
+  red:   { bg: RED_BG,   letter: 'R' },
+};
 
-function sectionHeading(title: string, num: number): string {
-  return `<h2 style="${SECTION_TITLE}">${num}. ${escapeHtml(title)}</h2>`;
+const TREND_ARROWS: Record<string, string> = {
+  improving: '\u2191',
+  stable: '\u2192',
+  declining: '\u2193',
+};
+
+// Shared cell styles
+const TH = `padding: 8px 10px; background: ${NAVY}; color: ${WHITE}; font-size: 11px; font-weight: 700; text-align: left; border: 1px solid ${NAVY};`;
+const TD = `padding: 8px 10px; font-size: 12px; color: ${BODY_TEXT}; border: 1px solid #d1d5db; vertical-align: top;`;
+const SECTION_TITLE = `color: ${NAVY}; font-size: 14px; font-weight: 700; margin: 24px 0 8px; padding: 0;`;
+
+function sectionHeading(num: number, title: string): string {
+  return `<p style="${SECTION_TITLE}">${num}. ${escapeHtml(title)}</p>`;
+}
+
+function ragCell(status: string): string {
+  const rag = RAG_CELL[status] || RAG_CELL.amber;
+  return `<td style="${TD} text-align: center; background: ${rag.bg}; font-weight: 700; width: 70px;">${rag.letter}</td>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,117 +119,131 @@ export function renderStatusReportHtml(report: StructuredStatusReport): string {
     changeControl, projectName, reportDate, aiPowered,
   } = report;
 
-  // --- 1. Header Metadata ---
-  const headerHtml = `
-    <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed); padding: 20px 24px; border-radius: 12px 12px 0 0;">
-      <h1 style="color: white; margin: 0; font-size: 18px; font-weight: 700;">Project Status Report</h1>
-      <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0; font-size: 13px;">${escapeHtml(projectName)}</p>
-    </div>
-    <div style="background: #f8fafc; padding: 14px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; gap: 24px; font-size: 13px; color: #374151;">
-      <span><strong>Report No.:</strong> ${escapeHtml(reportNumber)}</span>
-      <span><strong>Period:</strong> ${escapeHtml(reportingPeriod)}</span>
-      <span><strong>Date Issued:</strong> ${escapeHtml(reportDate)}</span>
-      <span><strong>Prepared By:</strong> ${escapeHtml(preparedBy)}</span>
-    </div>`;
+  // --- Title banner ---
+  const titleHtml = `
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
+      <tr>
+        <td style="background: ${NAVY}; padding: 18px 20px; border-radius: 6px 6px 0 0;">
+          <p style="color: ${WHITE}; margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.5px;">PROJECT STATUS REPORT</p>
+          <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0; font-size: 11px;">${escapeHtml(projectName)}</p>
+        </td>
+      </tr>
+    </table>`;
 
-  // --- 2. Executive Summary ---
+  // --- Metadata grid (4 rows × 4 cols) ---
+  const metaRow = (label1: string, val1: string, label2: string, val2: string) => `
+    <tr>
+      <td style="${TD} background: ${LABEL_BG}; font-weight: 600; width: 18%;">${escapeHtml(label1)}</td>
+      <td style="${TD} width: 32%;">${escapeHtml(val1)}</td>
+      <td style="${TD} background: ${LABEL_BG}; font-weight: 600; width: 18%;">${escapeHtml(label2)}</td>
+      <td style="${TD} width: 32%;">${escapeHtml(val2)}</td>
+    </tr>`;
+
+  const metadataHtml = `
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+      ${metaRow('Report No.', reportNumber, 'Reporting Period', reportingPeriod)}
+      ${metaRow('Date Issued', reportDate, 'Prepared By', preparedBy)}
+    </table>`;
+
+  // --- 1. Executive Summary ---
   const summaryHtml = `
-    <div style="padding: 20px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
-      ${sectionHeading('Executive Summary', 2)}
-      <p style="color: #374151; line-height: 1.7; margin: 0; font-size: 14px;">${escapeHtml(executiveSummary)}</p>
-    </div>`;
+    ${sectionHeading(1, 'EXECUTIVE SUMMARY')}
+    <p style="font-size: 13px; color: ${BODY_TEXT}; line-height: 1.65; margin: 0 0 8px;">${escapeHtml(executiveSummary)}</p>`;
 
-  // --- 3. Overall Status (RAG Table) ---
+  // --- 2. Overall Status (RAG Table) ---
   const ragRows = areas.map(area => {
-    const currCircle = STATUS_CIRCLES[area.status] || '🟡';
-    const prevCircle = area.previousStatus ? STATUS_CIRCLES[area.previousStatus] || '—' : '—';
     const trend = area.trend || 'stable';
     const trendArrow = TREND_ARROWS[trend];
-    const trendColor = TREND_COLORS[trend];
     const isOverall = area.name === 'Overall Status';
-    const rowBg = isOverall ? 'background: #f1f5f9; font-weight: 600;' : '';
+    const nameBg = isOverall ? ` background: ${LABEL_BG}; font-weight: 700;` : '';
+    const prevCell = area.previousStatus ? ragCell(area.previousStatus) : `<td style="${TD} text-align: center;">—</td>`;
 
     return `
-      <tr style="${rowBg}">
-        <td style="${TD_STYLE} font-weight: ${isOverall ? '700' : '600'};">${escapeHtml(area.name)}</td>
-        <td style="${TD_STYLE} text-align: center; font-size: 18px;">${currCircle}</td>
-        <td style="${TD_STYLE} text-align: center; font-size: 18px;">${prevCircle}</td>
-        <td style="${TD_STYLE} text-align: center; font-size: 16px; font-weight: 700; color: ${trendColor};">${trendArrow}</td>
-        <td style="${TD_STYLE}">${escapeHtml(area.comments)}</td>
+      <tr>
+        <td style="${TD}${nameBg}">${escapeHtml(area.name)}</td>
+        ${ragCell(area.status)}
+        ${prevCell}
+        <td style="${TD} text-align: center; font-weight: 600;">${trendArrow}</td>
+        <td style="${TD} font-size: 12px;">${escapeHtml(area.comments)}</td>
       </tr>`;
   }).join('');
 
-  const ragHtml = `
-    <div style="padding: 20px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
-      ${sectionHeading('Overall Status', 3)}
-      <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-          <tr>
-            <th style="${TH_STYLE}">Dimension</th>
-            <th style="${TH_STYLE} text-align: center;">This Period</th>
-            <th style="${TH_STYLE} text-align: center;">Last Period</th>
-            <th style="${TH_STYLE} text-align: center;">Trend</th>
-            <th style="${TH_STYLE}">Commentary</th>
-          </tr>
-        </thead>
-        <tbody>${ragRows}</tbody>
-      </table>
-    </div>`;
+  const ragLegend = `
+    <table style="width: auto; border-collapse: collapse; margin-top: 6px;">
+      <tr>
+        <td style="padding: 4px 10px; background: ${GREEN_BG}; font-weight: 700; font-size: 11px; border: 1px solid #d1d5db;">G</td>
+        <td style="padding: 4px 10px; font-size: 11px; border: 1px solid #d1d5db;">On track — no intervention required</td>
+        <td style="padding: 4px 10px; background: ${AMBER_BG}; font-weight: 700; font-size: 11px; border: 1px solid #d1d5db;">A</td>
+        <td style="padding: 4px 10px; font-size: 11px; border: 1px solid #d1d5db;">At risk — recoverable within the team</td>
+        <td style="padding: 4px 10px; background: ${RED_BG}; font-weight: 700; font-size: 11px; border: 1px solid #d1d5db;">R</td>
+        <td style="padding: 4px 10px; font-size: 11px; border: 1px solid #d1d5db;">Off track — management action needed</td>
+      </tr>
+    </table>`;
 
-  // --- 4. Milestone Status ---
+  const ragHtml = `
+    ${sectionHeading(2, 'OVERALL STATUS')}
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th style="${TH}">Dimension</th>
+          <th style="${TH} text-align: center; width: 70px;">This Period</th>
+          <th style="${TH} text-align: center; width: 70px;">Last Period</th>
+          <th style="${TH} text-align: center; width: 50px;">Trend</th>
+          <th style="${TH}">Commentary</th>
+        </tr>
+      </thead>
+      <tbody>${ragRows}</tbody>
+    </table>
+    ${ragLegend}`;
+
+  // --- 3. Milestone Status ---
   let milestoneHtml = '';
   if (milestones.length > 0) {
     const milestoneRows = milestones.map(m => `
       <tr>
-        <td style="${TD_STYLE}">${escapeHtml(m.ref)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(m.name)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(m.dueDate)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(m.status)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(m.comments)}</td>
+        <td style="${TD} text-align: center; width: 40px;">${escapeHtml(m.ref)}</td>
+        <td style="${TD}">${escapeHtml(m.name)}</td>
+        <td style="${TD} width: 90px;">${escapeHtml(m.dueDate)}</td>
+        <td style="${TD} width: 100px;">${escapeHtml(m.status)}</td>
+        <td style="${TD}">${escapeHtml(m.comments)}</td>
       </tr>`).join('');
 
     milestoneHtml = `
-      <div style="padding: 20px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
-        ${sectionHeading('Milestone Status', 4)}
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr>
-              <th style="${TH_STYLE}">M#</th>
-              <th style="${TH_STYLE}">Milestone</th>
-              <th style="${TH_STYLE}">Due Date</th>
-              <th style="${TH_STYLE}">Status</th>
-              <th style="${TH_STYLE}">Comments</th>
-            </tr>
-          </thead>
-          <tbody>${milestoneRows}</tbody>
-        </table>
-      </div>`;
+      ${sectionHeading(3, 'MILESTONE STATUS')}
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="${TH} text-align: center; width: 40px;">M#</th>
+            <th style="${TH}">Milestone Deliverable</th>
+            <th style="${TH} width: 90px;">Due Date</th>
+            <th style="${TH} width: 100px;">Status</th>
+            <th style="${TH}">Comments</th>
+          </tr>
+        </thead>
+        <tbody>${milestoneRows}</tbody>
+      </table>`;
   }
 
-  // --- 5. Achievements This Period ---
+  // --- 5. Achievements This Period (numbering matches template — no section 4) ---
   let achievementsHtml = '';
   if (achievements.length > 0) {
     const items = achievements.map(a =>
-      `<li style="color: #1f2937; margin: 4px 0; line-height: 1.5;">${escapeHtml(a)}</li>`
+      `<li style="color: ${BODY_TEXT}; margin: 3px 0; line-height: 1.5; font-size: 12px;">${escapeHtml(a)}</li>`
     ).join('');
     achievementsHtml = `
-      <div style="padding: 20px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
-        ${sectionHeading('Achievements This Period', 5)}
-        <ul style="margin: 0; padding-left: 20px;">${items}</ul>
-      </div>`;
+      ${sectionHeading(5, 'ACHIEVEMENTS THIS PERIOD')}
+      <ul style="margin: 0; padding-left: 20px;">${items}</ul>`;
   }
 
   // --- 6. Planned Activities — Next Period ---
   let plannedHtml = '';
   if (plannedActivities.length > 0) {
     const items = plannedActivities.map(a =>
-      `<li style="color: #1f2937; margin: 4px 0; line-height: 1.5;">${escapeHtml(a)}</li>`
+      `<li style="color: ${BODY_TEXT}; margin: 3px 0; line-height: 1.5; font-size: 12px;">${escapeHtml(a)}</li>`
     ).join('');
     plannedHtml = `
-      <div style="padding: 20px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
-        ${sectionHeading('Planned Activities — Next Period', 6)}
-        <ul style="margin: 0; padding-left: 20px;">${items}</ul>
-      </div>`;
+      ${sectionHeading(6, 'PLANNED ACTIVITIES \u2014 NEXT PERIOD')}
+      <ul style="margin: 0; padding-left: 20px;">${items}</ul>`;
   }
 
   // --- 7. For Management Attention ---
@@ -230,31 +251,30 @@ export function renderStatusReportHtml(report: StructuredStatusReport): string {
   if (managementAttention.length > 0) {
     const mgmtRows = managementAttention.map(item => `
       <tr>
-        <td style="${TD_STYLE}">${escapeHtml(item.ref)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(item.matter)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(item.raised)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(item.owner)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(item.dateNeeded)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(item.impactIfDelayed)}</td>
+        <td style="${TD} width: 55px;">${escapeHtml(item.ref)}</td>
+        <td style="${TD}">${escapeHtml(item.matter)}</td>
+        <td style="${TD} width: 75px;">${escapeHtml(item.raised)}</td>
+        <td style="${TD} width: 90px;">${escapeHtml(item.owner)}</td>
+        <td style="${TD} width: 75px;">${escapeHtml(item.dateNeeded)}</td>
+        <td style="${TD}">${escapeHtml(item.impactIfDelayed)}</td>
       </tr>`).join('');
 
     mgmtHtml = `
-      <div style="background: #fffbeb; padding: 20px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; border-top: 2px solid #f59e0b;">
-        ${sectionHeading('For Management Attention', 7)}
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr>
-              <th style="${TH_STYLE}">Ref</th>
-              <th style="${TH_STYLE}">Matter</th>
-              <th style="${TH_STYLE}">Raised</th>
-              <th style="${TH_STYLE}">Owner</th>
-              <th style="${TH_STYLE}">Date Needed</th>
-              <th style="${TH_STYLE}">Impact if Delayed</th>
-            </tr>
-          </thead>
-          <tbody>${mgmtRows}</tbody>
-        </table>
-      </div>`;
+      ${sectionHeading(7, 'FOR MANAGEMENT ATTENTION')}
+      <p style="font-size: 12px; color: #6b7280; margin: 0 0 8px;">Matters requiring a management decision or intervention. Each carries a named owner, a date needed, and the stated consequence of delay.</p>
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="${TH} width: 55px;">Ref</th>
+            <th style="${TH}">Matter Requiring Attention</th>
+            <th style="${TH} width: 75px;">Raised</th>
+            <th style="${TH} width: 90px;">Owner</th>
+            <th style="${TH} width: 75px;">Date Needed</th>
+            <th style="${TH}">Impact if Delayed</th>
+          </tr>
+        </thead>
+        <tbody>${mgmtRows}</tbody>
+      </table>`;
   }
 
   // --- 8. Change Control ---
@@ -262,42 +282,40 @@ export function renderStatusReportHtml(report: StructuredStatusReport): string {
   if (changeControl.length > 0) {
     const changeRows = changeControl.map(cr => `
       <tr>
-        <td style="${TD_STYLE}">${escapeHtml(cr.ref)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(cr.description)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(cr.status)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(cr.scheduleImpact)}</td>
-        <td style="${TD_STYLE}">${escapeHtml(cr.costImpact)}</td>
+        <td style="${TD} width: 65px;">${escapeHtml(cr.ref)}</td>
+        <td style="${TD}">${escapeHtml(cr.description)}</td>
+        <td style="${TD} width: 100px;">${escapeHtml(cr.status)}</td>
+        <td style="${TD} width: 85px;">${escapeHtml(cr.scheduleImpact)}</td>
+        <td style="${TD} width: 85px;">${escapeHtml(cr.costImpact)}</td>
       </tr>`).join('');
 
     changeHtml = `
-      <div style="padding: 20px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
-        ${sectionHeading('Change Control', 8)}
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr>
-              <th style="${TH_STYLE}">CR Ref</th>
-              <th style="${TH_STYLE}">Description</th>
-              <th style="${TH_STYLE}">Status</th>
-              <th style="${TH_STYLE}">Schedule Impact</th>
-              <th style="${TH_STYLE}">Cost Impact</th>
-            </tr>
-          </thead>
-          <tbody>${changeRows}</tbody>
-        </table>
-      </div>`;
+      ${sectionHeading(8, 'CHANGE CONTROL')}
+      <p style="font-size: 12px; color: #6b7280; margin: 0 0 8px;">Requests that alter scope, schedule, or cost.</p>
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="${TH} width: 65px;">CR Ref</th>
+            <th style="${TH}">Description</th>
+            <th style="${TH} width: 100px;">Status</th>
+            <th style="${TH} width: 85px;">Schedule Impact</th>
+            <th style="${TH} width: 85px;">Cost Impact</th>
+          </tr>
+        </thead>
+        <tbody>${changeRows}</tbody>
+      </table>`;
   }
 
   // --- Footer ---
   const footerHtml = `
-    <div style="padding: 12px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; background: #f8fafc;">
-      <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">
-        ${aiPowered ? 'AI-Generated Report' : 'Template Report (AI unavailable)'} — Kovarti PM Assistant
-      </p>
-    </div>`;
+    <p style="color: #9ca3af; font-size: 10px; text-align: center; margin-top: 20px;">
+      ${aiPowered ? 'AI-Generated Report' : 'Template Report (AI unavailable)'} — Kovarti PM Assistant
+    </p>`;
 
   return `
-    <div style="font-family: ${FONT}; max-width: 800px; margin: 0 auto;">
-      ${headerHtml}
+    <div style="font-family: ${FONT}; max-width: 800px; margin: 0 auto; color: ${BODY_TEXT};">
+      ${titleHtml}
+      ${metadataHtml}
       ${summaryHtml}
       ${ragHtml}
       ${milestoneHtml}
