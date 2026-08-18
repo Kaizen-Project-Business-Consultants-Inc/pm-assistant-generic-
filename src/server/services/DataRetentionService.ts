@@ -7,6 +7,7 @@ const DEFAULT_DEAD_LETTER_RETENTION_DAYS = 30;
 const DEFAULT_NOTIFICATION_RETENTION_DAYS = 90;
 const DEFAULT_API_KEY_LOG_RETENTION_DAYS = 90;
 const DEFAULT_MCP_INVOCATION_RETENTION_DAYS = 90;
+const DEFAULT_REPORT_CONTENT_KEEP_COUNT = 10;
 
 function envInt(name: string, fallback: number): number {
   const val = process.env[name];
@@ -49,6 +50,9 @@ export class DataRetentionService {
     const mcpDays = envInt('RETENTION_MCP_INVOCATION_DAYS', DEFAULT_MCP_INVOCATION_RETENTION_DAYS);
     results.mcpToolInvocations = await this.deleteOlderThanControlPlane('mcp_tool_invocations', mcpDays);
 
+    // 7. Purge report content beyond the Nth most recent per user
+    results.reportContentPurged = await this.purgeReportContent();
+
     logger.info('[DataRetention] Purge complete', results);
     return results;
   }
@@ -89,6 +93,32 @@ export class DataRetentionService {
       return result.affectedRows ?? 0;
     } catch (err) {
       logger.error(`[DataRetention] Failed to purge ${table}`, err instanceof Error ? err.message : err);
+      return 0;
+    }
+  }
+
+  private async purgeReportContent(): Promise<number> {
+    const keepCount = envInt('RETENTION_REPORT_CONTENT_KEEP', DEFAULT_REPORT_CONTENT_KEEP_COUNT);
+    try {
+      const result: any = await databaseService.queryControlPlane(
+        `UPDATE ai_conversations ac
+         INNER JOIN (
+           SELECT id FROM (
+             SELECT id,
+                    ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC) AS rn
+             FROM ai_conversations
+             WHERE context_type IN ('report', 'status-report')
+               AND is_active = TRUE
+               AND messages IS NOT NULL
+           ) ranked
+           WHERE ranked.rn > ?
+         ) expired ON ac.id = expired.id
+         SET ac.messages = NULL`,
+        [keepCount],
+      );
+      return result.affectedRows ?? 0;
+    } catch (err) {
+      logger.error('[DataRetention] Failed to purge report content', err instanceof Error ? err.message : err);
       return 0;
     }
   }

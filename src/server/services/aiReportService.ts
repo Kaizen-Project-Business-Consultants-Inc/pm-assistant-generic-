@@ -165,6 +165,7 @@ export class AIReportService {
       projectId: string | null;
       aiPowered: boolean;
       contextType: string;
+      contentAvailable: boolean;
     }>;
     total: number;
     page: number;
@@ -270,7 +271,8 @@ export class AIReportService {
 
       // Get page of results — metadata only (no messages/content)
       const rows = await databaseService.queryControlPlane(
-        `SELECT id, title, context_type, project_id, created_at
+        `SELECT id, title, context_type, project_id, created_at,
+                (messages IS NOT NULL) AS has_content
          FROM ai_conversations
          WHERE ${whereClause}
          ORDER BY ${sortCol} ${sortDir}
@@ -304,6 +306,7 @@ export class AIReportService {
           projectId: row.project_id,
           aiPowered: contextType !== 'raid-report',
           contextType,
+          contentAvailable: Boolean(row.has_content),
         };
       });
 
@@ -330,6 +333,7 @@ export class AIReportService {
     aiPowered: boolean;
     content: string;
     contextType: string;
+    contentPurged: boolean;
   } | null> {
     const rows = await databaseService.queryControlPlane(
       `SELECT id, title, context_type, project_id, messages, created_at
@@ -342,6 +346,26 @@ export class AIReportService {
 
     const row = (rows as any[])[0];
     const contextType = row.context_type as string;
+
+    // Content was purged by retention — return metadata only
+    if (row.messages === null || row.messages === undefined) {
+      let reportType = 'unknown';
+      if (contextType === 'raid-report') reportType = 'raid-report';
+      else if (contextType === 'status-report') reportType = 'status-report';
+      else if (contextType === 'report') reportType = 'report';
+
+      return {
+        id: row.id,
+        title: row.title,
+        reportType,
+        generatedAt: row.created_at,
+        projectId: row.project_id,
+        aiPowered: contextType !== 'raid-report',
+        content: '',
+        contextType,
+        contentPurged: true,
+      };
+    }
 
     let reportData: any = {};
     try {
@@ -391,6 +415,7 @@ export class AIReportService {
       aiPowered: reportData.aiPowered ?? (contextType !== 'raid-report'),
       content,
       contextType,
+      contentPurged: false,
     };
   }
 

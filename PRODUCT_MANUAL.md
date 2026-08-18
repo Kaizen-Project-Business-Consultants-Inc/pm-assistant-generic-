@@ -931,7 +931,10 @@ The Reports page maintains a history of all generated reports (AI reports, Statu
 - **Download** — export any report as HTML from the viewer modal
 - **Smart rendering** — HTML reports (Status, RAID) render directly, markdown reports (AI) rendered via `marked` + DOMPurify
 - **On-demand content loading** — the history list endpoint returns metadata only (title, type, date, project). Full report content is fetched separately via `GET /api/v1/ai-reports/:id` when the user clicks to view a report, reducing bandwidth on the list view.
+- **Content retention** — to manage storage, only the most recent N reports per user retain full content (default: 10, configurable via `RETENTION_REPORT_CONTENT_KEEP` env var). Older reports keep metadata (title, type, date, project) but their content is set to `NULL`. The history table shows an "EXPIRED" badge next to purged reports. Clicking an expired report shows a "Content Expired" message with a **Regenerate** button that re-runs the report generator for that project/type. RAID reports are excluded from purging (they are lightweight). Purging runs as step 7 of the `DataRetentionService.purgeStaleData()` cron.
 - **API**: `GET /api/v1/ai-reports/history?type=&subType=&search=&dateFrom=&dateTo=&sortBy=&sortOrder=&page=&limit=`, `GET /api/v1/ai-reports/:id`, `DELETE /api/v1/ai-reports/:id`
+  - History responses include `contentAvailable: boolean` per report
+  - Detail responses include `contentPurged: boolean`
 
 ### Portfolio Analytics
 

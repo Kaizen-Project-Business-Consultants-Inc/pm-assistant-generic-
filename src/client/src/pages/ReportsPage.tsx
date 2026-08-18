@@ -21,6 +21,7 @@ import {
   ChevronsRight,
   Calendar,
   Filter,
+  RefreshCw,
 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../services/api';
@@ -40,6 +41,7 @@ interface ReportListItem {
   generatedAt?: string;
   projectId?: string | null;
   contextType?: string;
+  contentAvailable?: boolean;
 }
 
 interface Project {
@@ -151,7 +153,8 @@ const SortHeader: React.FC<{
 const ReportViewerModal: React.FC<{
   report: ReportListItem;
   onClose: () => void;
-}> = ({ report, onClose }) => {
+  onRegenerate?: (report: ReportListItem) => void;
+}> = ({ report, onClose, onRegenerate }) => {
   const badgeColor = badgeColorMap[report.reportType] || 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200';
   const typeLabel = labelMap[report.reportType] || report.reportType;
   const dateStr = report.createdAt || report.generatedAt || '';
@@ -162,6 +165,7 @@ const ReportViewerModal: React.FC<{
     queryFn: () => apiService.getReport(report.id),
   });
 
+  const contentPurged: boolean = data?.report?.contentPurged === true;
   const content: string = data?.report?.content || '';
   const html = content ? isHtmlContent(content) : false;
 
@@ -219,6 +223,23 @@ const ReportViewerModal: React.FC<{
             </div>
           ) : isError ? (
             <div className="text-center py-8 text-sm text-red-600">Failed to load report content.</div>
+          ) : contentPurged ? (
+            <div className="text-center py-12">
+              <Clock className="mx-auto h-10 w-10 text-amber-400 mb-3" />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Content Expired</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-4">
+                This report's content has been automatically purged to save storage. Only the most recent reports retain full content.
+              </p>
+              {onRegenerate && (
+                <button
+                  onClick={() => onRegenerate(report)}
+                  className="btn btn-primary inline-flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Regenerate Report
+                </button>
+              )}
+            </div>
           ) : !content ? (
             <div className="text-center py-8 text-sm text-gray-500">No content available.</div>
           ) : html ? (
@@ -626,6 +647,11 @@ export const ReportsPage: React.FC = () => {
                           <td className="px-4 py-3">
                             <span className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
                               {report.title}
+                              {report.contentAvailable === false && (
+                                <span className="ml-2 inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                                  Expired
+                                </span>
+                              )}
                             </span>
                           </td>
                           <td className="px-4 py-3">
@@ -756,6 +782,22 @@ export const ReportsPage: React.FC = () => {
         <ReportViewerModal
           report={viewingReport}
           onClose={() => setViewingReport(null)}
+          onRegenerate={(r) => {
+            setViewingReport(null);
+            if (r.contextType === 'status-report' && r.projectId) {
+              setSelectedProjectId(r.projectId);
+              setShowStatusReport(true);
+            } else if (r.contextType === 'report' && r.projectId) {
+              setSelectedProjectId(r.projectId);
+              // Determine report sub-type from title for regeneration
+              const title = r.title || '';
+              if (title.startsWith('Risk Assessment')) setSelectedType('risk-assessment');
+              else if (title.startsWith('Budget Forecast')) setSelectedType('budget-forecast');
+              else if (title.startsWith('Resource Utilization')) setSelectedType('resource-utilization');
+              else setSelectedType('weekly-status');
+              generateMutation.mutate();
+            }
+          }}
         />
       )}
 
