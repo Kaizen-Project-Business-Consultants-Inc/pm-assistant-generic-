@@ -3,6 +3,7 @@ import { claudeService, promptTemplates } from './claudeService';
 import { AIContextBuilder } from './aiContextBuilder';
 import { logAIUsage } from './aiUsageLogger';
 import { databaseService } from '../database/connection';
+import { renderStatusReportHtml } from '../utils/statusReportRenderer';
 import logger from '../utils/logger';
 
 export type ReportType = 'weekly-status' | 'risk-assessment' | 'budget-forecast' | 'resource-utilization';
@@ -352,6 +353,18 @@ export class AIReportService {
     if (contextType === 'raid-report') reportType = 'raid-report';
     if (contextType === 'status-report') reportType = 'status-report';
 
+    // Status reports store structured data, not HTML content — re-render on demand
+    let content = reportData.content || '';
+    if (contextType === 'status-report' && !content && reportData.reportNumber) {
+      try {
+        content = renderStatusReportHtml({
+          ...reportData,
+          projectName: row.title.replace(/^Status Report — /, '').replace(/ — .*$/, ''),
+          reportDate: row.created_at,
+        });
+      } catch { /* fall through to empty */ }
+    }
+
     return {
       id: row.id,
       title: row.title,
@@ -359,7 +372,7 @@ export class AIReportService {
       generatedAt: row.created_at,
       projectId: row.project_id,
       aiPowered: reportData.aiPowered ?? (contextType !== 'raid-report'),
-      content: reportData.content || '',
+      content,
       contextType,
     };
   }
