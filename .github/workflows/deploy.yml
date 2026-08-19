@@ -64,24 +64,21 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 147.5.127.99 >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Stop app before deploy
-        run: ssh ubuntu@147.5.127.99 "sudo systemctl stop pm-app"
-
       - name: Deploy server
         run: |
           tar czf /tmp/server-dist.tar.gz -C dist server
           scp /tmp/server-dist.tar.gz ubuntu@147.5.127.99:/tmp/
-          ssh ubuntu@147.5.127.99 "rm -rf /opt/pm-app/dist/server && tar xzf /tmp/server-dist.tar.gz -C /opt/pm-app/dist && rm /tmp/server-dist.tar.gz"
+          ssh ubuntu@147.5.127.99 "sudo rm -rf /opt/pm-app/dist/server && sudo tar xzf /tmp/server-dist.tar.gz -C /opt/pm-app/dist && sudo ln -sf /opt/pm-app/migrations /opt/pm-app/dist/server/database/migrations && sudo chown -R ubuntu:ubuntu /opt/pm-app/dist && rm /tmp/server-dist.tar.gz"
 
       - name: Deploy client
         run: |
           tar czf /tmp/client-dist.tar.gz -C src/client/dist .
           scp /tmp/client-dist.tar.gz ubuntu@147.5.127.99:/tmp/
-          ssh ubuntu@147.5.127.99 "rm -rf /opt/pm-app/client-dist/assets && tar xzf /tmp/client-dist.tar.gz -C /opt/pm-app/client-dist && rm /tmp/client-dist.tar.gz"
+          ssh ubuntu@147.5.127.99 "sudo rm -rf /opt/pm-app/client-dist/assets && sudo tar xzf /tmp/client-dist.tar.gz -C /opt/pm-app/client-dist && sudo chown -R www-data:www-data /opt/pm-app/client-dist && rm /tmp/client-dist.tar.gz"
 
-      - name: Start & verify
+      - name: Restart & verify
         run: |
-          ssh ubuntu@147.5.127.99 "sudo systemctl start pm-app"
+          ssh ubuntu@147.5.127.99 "sudo systemctl restart pm-app"
           sleep 5
           ssh ubuntu@147.5.127.99 "sudo systemctl is-active pm-app"
           ssh ubuntu@147.5.127.99 "curl -sf http://127.0.0.1:3001/health | head -c 200"
