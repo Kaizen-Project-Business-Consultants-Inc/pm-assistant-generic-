@@ -112,6 +112,9 @@ import { revenueRoutes } from './routes/admin/revenue';
 import { mcpAnalyticsRoutes } from './routes/admin/mcpAnalytics';
 
 export async function registerRoutes(fastify: FastifyInstance) {
+  // Health check — unauthenticated, for uptime monitors
+  fastify.get('/api/v1/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+
   // Core
   await fastify.register(authRoutes, { prefix: '/api/v1/auth' });
   await fastify.register(projectRoutes, { prefix: '/api/v1/projects' });
