@@ -57,7 +57,7 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 ### Logging In
 
 1. Go to the login page (`/login`) and enter your username and password.
-2. Click **Sign In**. You will be redirected to the Dashboard.
+2. Click **Sign In**. You will be redirected to the **My Work** page.
 3. If your session expires, you will be returned to the login page automatically.
 4. Use **Forgot Password** if you need to reset your credentials.
 
@@ -106,7 +106,8 @@ The left sidebar provides access to all areas of the application:
 
 | Menu Item      | Description                                 |
 |----------------|---------------------------------------------|
-| Dashboard      | Home view with project overview             |
+| My Work        | Personal task aggregation across all projects (default landing page) |
+| Dashboard      | Portfolio overview with KPI tiles and widgets |
 | Projects       | Create and manage projects                  |
 | Reports        | Pre-built report templates                  |
 | Portfolio      | Cross-project Gantt and portfolio view      |
@@ -2294,6 +2295,43 @@ The generated report contains four sections:
 - **Schedule Recurring** — Set up automatic RAID report delivery on a daily, weekly, or monthly cadence. Choose the day of week (or day of month), time, and recipients. View and delete existing schedules from this tab. Schedules use a `raid-report::` prefix to keep them separate from status report schedules.
 
 **Trial users:** A **sample report** is shown with realistic demo data so you can preview the format. An amber banner identifies it as sample data. The Download, Email, and Schedule options are locked — upgrade to a paid plan to generate RAID reports from your real project data.
+
+---
+
+## 32. My Work
+
+The **My Work** page (`/my-work`) is the first page you see after logging in. It shows all tasks assigned to you across every project in one place, so you do not need to open each project individually to find your work.
+
+### Task Buckets
+
+Tasks are grouped into six collapsible sections:
+
+| Section | What it shows |
+|---|---|
+| **Overdue** | Tasks past their due date that are not yet complete |
+| **Due Today** | Tasks due today |
+| **Due This Week** | Tasks due within the next 7 days |
+| **In Progress** | Tasks you have started with no imminent due date |
+| **Upcoming** | Not-started tasks with a future due date beyond this week |
+| **Recently Completed** | Tasks you completed in the last 14 days |
+
+Each section header shows a count of how many tasks it contains. Empty sections are hidden automatically. If you have no assigned tasks at all, a message is shown.
+
+### Reading the Task List
+
+Each row shows:
+
+- A **colored priority dot** (red = critical, orange = high, yellow = medium, gray = low)
+- The **task name**
+- The **project name**, which links to the project detail page
+- The **due date**, shown as a relative label (e.g., "2 days ago", "Today", "Aug 22")
+- A **status chip** matching the color scheme used throughout the app
+
+Click any task row to go directly to that project's Schedule tab with the task selected.
+
+### Collapsing and Expanding Sections
+
+Click any section header to collapse or expand it. This is useful if one bucket is large and you want to focus on another, such as **Overdue** or **Due Today**.
 
 ---
 

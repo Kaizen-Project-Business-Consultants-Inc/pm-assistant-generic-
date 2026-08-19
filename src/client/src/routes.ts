@@ -17,6 +17,7 @@ export const ROUTES = {
   guide: '/guide',
   waitlistAdmin: '/waitlist-admin',
   onboarding: '/onboarding',
+  myWork: '/my-work',
   dashboard: '/dashboard',
   projects: '/projects',
   reports: '/reports',

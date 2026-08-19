@@ -2972,3 +2972,49 @@ In both Table View and Gantt Chart, double-clicking a column's resize handle (th
 - Width is calculated by measuring the longest text value in the column using the HTML5 Canvas `measureText` API.
 - The resulting width is capped at **400px** to prevent excessively wide columns.
 - The auto-fit width is applied immediately and saved to localStorage alongside manually dragged widths.
+
+---
+
+## 53. My Work
+
+The **My Work** page (`/my-work`) is the default landing page for authenticated users. It aggregates every task assigned to the current user across all projects into a single, prioritized view — replacing the need to open each project individually to find personal work items.
+
+### How Tasks Are Collected
+
+The API (`GET /api/v1/my-work`) queries two assignment paths:
+
+- **Direct assignment** — tasks where `tasks.assigned_to` matches the current user's resource record (via `resources.user_id`).
+- **Team assignments** — tasks where the user appears in the `task_assignments` junction table.
+
+Results are deduplicated and span all projects the user belongs to. Completed tasks are included only if completed within the last 14 days (Recently Completed bucket).
+
+### Buckets
+
+Tasks are grouped into six collapsible sections, evaluated in priority order:
+
+| Bucket | Criteria |
+|---|---|
+| **Overdue** | Due date is in the past and status is not complete |
+| **Due Today** | Due date is today |
+| **Due This Week** | Due date is within the next 7 days (excludes today) |
+| **In Progress** | Status = `in_progress` with no near due date |
+| **Upcoming** | Status = `not_started` or `planning` with a future due date beyond this week |
+| **Recently Completed** | Completed within the last 14 days |
+
+Each section header shows a count badge. Sections with no tasks are hidden. If the user has no assigned tasks at all, an empty state is shown.
+
+### Task Row Layout
+
+Each row displays:
+
+- **Priority dot** — color-coded (red = critical, orange = high, yellow = medium, gray = low)
+- **Task name**
+- **Project name** — linked, navigates to `/project/:id`
+- **Due date** — relative label (e.g., "2 days ago", "Today", "Aug 22") with color coding
+- **Status chip** — matches the standard status color scheme used elsewhere in the app
+
+Clicking a task row navigates to the project's Schedule tab with that task pre-selected and scrolled into view.
+
+### Sidebar Position
+
+**My Work** appears as the first item in the **Work** section of the sidebar, above Dashboard. It is the entry point for the application after login.

@@ -88,6 +88,9 @@ import { killSwitchRoutes } from './routes/agent/killSwitch';
 import { autonomyRoutes } from './routes/agent/autonomy';
 import { agentMemoryRoutes } from './routes/agent/memory';
 
+// My Work
+import { myWorkRoutes } from './routes/myWork';
+
 // Integrations
 import { integrationRoutes } from './routes/integrations/integrations';
 import { webhookRoutes } from './routes/integrations/webhooks';
@@ -196,6 +199,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(killSwitchRoutes, { prefix: '/api/v1/agent' });
   await fastify.register(autonomyRoutes, { prefix: '/api/v1/agent/autonomy' });
   await fastify.register(agentMemoryRoutes, { prefix: '/api/v1/agent/memory' });
+
+  // My Work
+  await fastify.register(myWorkRoutes, { prefix: '/api/v1/my-work' });
 
   // Integrations
   await fastify.register(integrationRoutes, { prefix: '/api/v1/integrations' });

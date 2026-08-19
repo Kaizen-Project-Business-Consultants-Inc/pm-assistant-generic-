@@ -26,7 +26,8 @@
     "help": "Aide",
     "resources": "Ressources",
     "evm": "Tableau EVM",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "myWork": "Mon travail"
   },
   "section": {
     "plan": "Planifier",

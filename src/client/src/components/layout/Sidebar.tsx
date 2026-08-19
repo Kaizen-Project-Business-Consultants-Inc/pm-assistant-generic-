@@ -39,6 +39,7 @@ import {
   Bot,
   Calendar,
   CalendarClock,
+  CheckSquare,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -68,6 +69,7 @@ const pmNavSections: NavSection[] = [
   {
     titleKey: 'section.work',
     items: [
+      { labelKey: 'nav.myWork', icon: CheckSquare, path: '/my-work' },
       { labelKey: 'nav.dashboard', icon: Gauge, path: '/dashboard' },
       { labelKey: 'nav.projects', icon: Briefcase, path: '/projects' },
       { labelKey: 'nav.portfolio', icon: Layers, path: '/portfolio', roles: ['admin', 'executive', 'pmo'] },

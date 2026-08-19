@@ -37,7 +37,8 @@
     "help": "Help",
     "resources": "Resources",
     "evm": "EVM Dashboard",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "myWork": "My Work"
   },
   "section": {
     "plan": "Plan",
