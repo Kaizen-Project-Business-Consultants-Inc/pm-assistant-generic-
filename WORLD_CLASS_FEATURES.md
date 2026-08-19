@@ -417,6 +417,12 @@ An agentic AI project management platform that combines the scheduling power of 
 - Full dark mode across all sprint views (list, planning, board, burndown, flow, capacity)
 - Mobile-responsive layouts with flex-wrap, condensed labels, and touch-friendly card sizing
 - Sprint retrospective summaries (AI-generated)
+- **Task Types** — Story/Bug/Task/Epic type selector per task; color-coded badges (blue/red/grey/purple) across Gantt, Sprint Board, Kanban Board, and Backlog
+- **Acceptance Criteria** — markdown checkbox syntax (`- [ ] criterion`) on tasks; completion count badge on Sprint Board cards and Task Form
+- **Epics** — group stories/tasks under epics; Epic dropdown in Task Form; Backlog "Group by Epic" toggle; `GET /:scheduleId/epics` endpoint with progress rollup
+- **Custom Workflow Statuses** — 7 statuses (pending/in_progress/in_review/testing/completed/blocked/cancelled); Sprint Board 5 columns + badge overlay for blocked/cancelled; Kanban Board 7 columns; color-coded across all views
+- **Burnup Chart** — scope (blue) and completed (green) lines with remaining work area; "burnup" tab in Sprint view switcher; summary stat tiles
+- **Flow Metrics** — Lead Time (created→done) and Cycle Time (started→done) with avg/median stats and distribution histogram; "metrics" tab; `GET /:scheduleId/flow-metrics` endpoint
 - **Benchmark:** Jira, Azure DevOps, Monday.com
 
 ### 5.6 Reports & Report Builder
@@ -693,3 +699,9 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Schedule UI Audit — Group 1: Tab Consolidation (UI-2) — project detail page reduced from 12 tab items to 6 primary + single More overflow; Waterfall primary: Overview/Schedule/Team/Risks & Issues/Financials/Changes; Agile primary: Overview/Sprints/Backlog/Schedule/Risks & Issues/Team; Hybrid primary: Overview/Schedule/Sprints/Backlog/Risks & Issues/Team; overflow: Time/Files/Performance/AI Insights/Resources/Agent Activity + methodology extras; RAID tab renamed to "Risks & Issues"; tab badge shows critical count only | Done | UX |
 | My Work page (/my-work) — cross-project personal task aggregation; default post-login landing page; dual assignment query (assigned_to + task_assignments junction); 6 priority buckets (Overdue/Due Today/Due This Week/In Progress/Upcoming/Recently Completed); collapsible sections with count badges; task rows show priority dot, task name, linked project name, due date, status chip; click row navigates to project schedule with task selected; empty state when no assignments; first item in sidebar Work section | Done | UX |
 | New Surfaces Audit (Settings/Reports/Resources/Timesheets/Import) — replaced all remaining native confirm()/alert() with ConfirmModal across 10 files; added missing delete confirmation on ResourceManagementPage; fixed raw UUID display in TimesheetGrid (project/task names via enriched API); fixed raw UUIDs in TimesheetApprovalPanel expanded detail; fixed Log Time wrong query key invalidation; fixed setState-during-render in ResourceManagementPage auto-select; added FileReader.onerror to ResourceImportModal; made CSV drop zone keyboard-accessible with focus ring; added delete confirmation to TimesheetGrid entries | Done | UX/A11y |
+| Scrum Enhancements — Task Types (Story/Bug/Task/Epic type selector; color-coded badges across Gantt, Sprint Board, Kanban Board, Backlog) | Done | Enhancement |
+| Scrum Enhancements — Acceptance Criteria (markdown checkbox syntax on tasks; completion count on Sprint Board cards and Task Form) | Done | Enhancement |
+| Scrum Enhancements — Epics (group tasks under epics; Epic dropdown in Task Form; Backlog "Group by Epic" toggle; epics endpoint with progress rollup) | Done | Enhancement |
+| Scrum Enhancements — Custom Workflow Statuses (7 statuses: pending/in_progress/in_review/testing/completed/blocked/cancelled; Sprint Board 5 columns + badge overlay; Kanban Board 7 columns; color-coded across all views) | Done | Enhancement |
+| Scrum Enhancements — Burnup Chart (scope + completed lines with remaining work area; "burnup" tab in Sprint view switcher; summary stat tiles) | Done | Enhancement |
+| Scrum Enhancements — Flow Metrics (Lead Time created→done, Cycle Time started→done; avg/median stats; distribution histogram; "metrics" tab; flow-metrics API endpoint) | Done | Enhancement |

@@ -7,13 +7,19 @@ interface CumulativeFlowChartProps {
 
 const STATUS_COLORS: Record<string, string> = {
   completed: '#22c55e',
+  testing: '#f59e0b',
+  in_review: '#a855f7',
   in_progress: '#3b82f6',
+  blocked: '#ef4444',
   not_started: '#d1d5db',
 };
 
 const STATUS_LABELS: Record<string, string> = {
   completed: 'Completed',
+  testing: 'Testing',
+  in_review: 'In Review',
   in_progress: 'In Progress',
+  blocked: 'Blocked',
   not_started: 'Not Started',
 };
 
@@ -51,7 +57,7 @@ export function CumulativeFlowChart({ sprintId }: CumulativeFlowChartProps) {
     );
   }
 
-  const statusOrder = ['not_started', 'in_progress', 'completed'];
+  const statusOrder = ['not_started', 'blocked', 'in_progress', 'in_review', 'testing', 'completed'];
   const maxTotal = Math.max(
     ...dates.map((_: string, i: number) =>
       statusOrder.reduce((sum, s) => sum + (series[s]?.[i] || 0), 0)

@@ -40,8 +40,11 @@ export interface Task {
   scheduleId: string;
   name: string;
   description?: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'in_progress' | 'in_review' | 'testing' | 'completed' | 'blocked' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'urgent';
+  taskType: 'task' | 'story' | 'bug' | 'epic';
+  epicId?: string;
+  acceptanceCriteria?: string;
   assignedTo?: string;
   dueDate?: string;
   estimatedDays?: number;
@@ -95,8 +98,11 @@ export interface CreateTaskData {
   scheduleId: string;
   name: string;
   description?: string;
-  status?: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status?: 'pending' | 'in_progress' | 'in_review' | 'testing' | 'completed' | 'blocked' | 'cancelled';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
+  taskType?: 'task' | 'story' | 'bug' | 'epic';
+  epicId?: string;
+  acceptanceCriteria?: string;
   assignedTo?: string;
   dueDate?: Date | string;
   estimatedDays?: number;
@@ -213,6 +219,31 @@ export class ScheduleService {
 
   async delete(id: string): Promise<boolean> {
     return scheduleRepository.deleteById(id);
+  }
+
+  // -------------------------------------------------------------------------
+  // Epics
+  // -------------------------------------------------------------------------
+
+  async getEpics(scheduleId: string): Promise<Array<{ id: string; name: string; status: string; childCount: number; progress: number }>> {
+    const rows = await databaseService.query(
+      `SELECT e.id, e.name, e.status,
+              COUNT(c.id) AS child_count,
+              ROUND(COALESCE(AVG(c.progress_percentage), 0)) AS avg_progress
+       FROM tasks e
+       LEFT JOIN tasks c ON c.epic_id = e.id
+       WHERE e.schedule_id = ? AND e.task_type = 'epic'
+       GROUP BY e.id, e.name, e.status
+       ORDER BY e.sort_order, e.name`,
+      [scheduleId],
+    );
+    return rows.map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      status: r.status,
+      childCount: Number(r.child_count),
+      progress: Number(r.avg_progress),
+    }));
   }
 
   // -------------------------------------------------------------------------
@@ -444,21 +475,26 @@ export class ScheduleService {
         sortOrder = (maxRows[0]?.max_order ?? -1) + 1;
       }
 
+      // Auto-set is_summary for epics
+      const effectiveIsSummary = data.taskType === 'epic' ? 1 : (data.isMilestone ? 0 : 0);
+
       await q(
-        `INSERT INTO tasks (id, schedule_id, name, description, status, priority, assigned_to,
+        `INSERT INTO tasks (id, schedule_id, name, description, acceptance_criteria, status, priority, task_type, assigned_to,
           due_date, estimated_days, estimated_duration_hours, actual_duration_hours,
           start_date, end_date, progress_percentage, dependency, dependency_type,
-          risks, issues, comments, parent_task_id, is_milestone, dependency_lag_days, sort_order, created_by,
+          risks, issues, comments, parent_task_id, epic_id, is_milestone, dependency_lag_days, sort_order, created_by,
           recurrence_rule, recurrence_parent_id, is_recurrence_template, budget_allocated, actual_cost,
-          constraint_type, constraint_date, work_hours, effort_driven)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          constraint_type, constraint_date, work_hours, effort_driven, is_summary)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           data.scheduleId,
           data.name,
           data.description || null,
+          data.acceptanceCriteria || null,
           data.status || 'pending',
           data.priority || 'medium',
+          data.taskType || 'task',
           data.assignedTo || null,
           toDateStr(data.dueDate),
           data.estimatedDays ?? null,
@@ -473,6 +509,7 @@ export class ScheduleService {
           data.issues || null,
           data.comments || null,
           data.parentTaskId || null,
+          data.epicId || null,
           data.isMilestone ? 1 : 0,
           legacyLag,
           sortOrder,
@@ -486,6 +523,7 @@ export class ScheduleService {
           toDateStr(data.constraintDate) || null,
           data.workHours ?? null,
           data.effortDriven ? 1 : 0,
+          data.taskType === 'epic' ? 1 : 0,
         ],
       );
 
@@ -562,11 +600,24 @@ export class ScheduleService {
       await this.validateDependency(id, data.dependency, oldTask.scheduleId);
     }
 
+    // Prevent epic self-reference
+    if (data.epicId && data.epicId === id) {
+      throw new DependencyValidationError('A task cannot be its own epic');
+    }
+
+    // Auto-set is_summary when task_type changes to epic
+    if (data.taskType === 'epic') {
+      (data as any).isSummary = true;
+    }
+
     const columnMap: Record<string, string> = {
       name: 'name',
       description: 'description',
+      acceptanceCriteria: 'acceptance_criteria',
       status: 'status',
       priority: 'priority',
+      taskType: 'task_type',
+      epicId: 'epic_id',
       assignedTo: 'assigned_to',
       dueDate: 'due_date',
       estimatedDays: 'estimated_days',

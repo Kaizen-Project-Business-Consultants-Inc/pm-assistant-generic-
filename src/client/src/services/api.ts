@@ -2124,6 +2124,16 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  async getEpics(scheduleId: string) {
+    const response = await this.api.get(`/schedules/${scheduleId}/epics`);
+    return response.data;
+  }
+
+  async getFlowMetrics(scheduleId: string) {
+    const response = await this.api.get(`/schedules/${scheduleId}/flow-metrics`);
+    return response.data;
+  }
+
   async getCapacityRecommendation(sprintId: string) {
     const response = await this.api.get(`/sprints/${sprintId}/capacity`);
     return response.data;

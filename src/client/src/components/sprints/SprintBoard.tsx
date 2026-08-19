@@ -11,6 +11,8 @@ interface BoardTask {
   assignedTo?: string;
   story_points?: number;
   storyPoints?: number;
+  taskType?: string;
+  acceptanceCriteria?: string;
 }
 
 interface SprintBoardProps {
@@ -20,8 +22,24 @@ interface SprintBoardProps {
 const COLUMNS: { id: string; label: string; headerBg: string; headerText: string; bg: string; border: string; darkHeaderBg: string; darkBg: string; darkBorder: string }[] = [
   { id: 'pending', label: 'Todo', headerBg: 'bg-gray-100', headerText: 'text-gray-700', bg: 'bg-gray-50', border: 'border-gray-200', darkHeaderBg: 'dark:bg-gray-700', darkBg: 'dark:bg-gray-800/50', darkBorder: 'dark:border-gray-600' },
   { id: 'in_progress', label: 'In Progress', headerBg: 'bg-blue-100', headerText: 'text-blue-700', bg: 'bg-blue-50/30', border: 'border-blue-200', darkHeaderBg: 'dark:bg-blue-900/40', darkBg: 'dark:bg-blue-900/10', darkBorder: 'dark:border-blue-800' },
+  { id: 'in_review', label: 'In Review', headerBg: 'bg-purple-100', headerText: 'text-purple-700', bg: 'bg-purple-50/30', border: 'border-purple-200', darkHeaderBg: 'dark:bg-purple-900/40', darkBg: 'dark:bg-purple-900/10', darkBorder: 'dark:border-purple-800' },
+  { id: 'testing', label: 'Testing', headerBg: 'bg-amber-100', headerText: 'text-amber-700', bg: 'bg-amber-50/30', border: 'border-amber-200', darkHeaderBg: 'dark:bg-amber-900/40', darkBg: 'dark:bg-amber-900/10', darkBorder: 'dark:border-amber-800' },
   { id: 'completed', label: 'Done', headerBg: 'bg-green-100', headerText: 'text-green-700', bg: 'bg-green-50/30', border: 'border-green-200', darkHeaderBg: 'dark:bg-green-900/40', darkBg: 'dark:bg-green-900/10', darkBorder: 'dark:border-green-800' },
 ];
+
+const taskTypeBadge: Record<string, { bg: string; text: string; label: string }> = {
+  story: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', label: 'Story' },
+  bug: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', label: 'Bug' },
+  epic: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', label: 'Epic' },
+};
+
+function getAcCount(ac?: string): { checked: number; total: number } | null {
+  if (!ac) return null;
+  const lines = ac.split('\n').filter(l => l.trim().startsWith('- ['));
+  if (lines.length === 0) return null;
+  const checked = lines.filter(l => l.includes('[x]') || l.includes('[X]')).length;
+  return { checked, total: lines.length };
+}
 
 const priorityBadge: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
   urgent: { bg: 'bg-red-100', text: 'text-red-700', darkBg: 'dark:bg-red-900/30', darkText: 'dark:text-red-300' },
@@ -231,7 +249,12 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
           )}
           <div className="flex gap-3 p-4 overflow-x-auto" style={{ minHeight: group.label ? '200px' : '400px' }}>
             {COLUMNS.map((col) => {
-              const columnTasks = group.tasks.filter((t) => t.status === col.id);
+              const columnTasks = group.tasks.filter((t) => {
+                if (t.status === col.id) return true;
+                // blocked/cancelled tasks show in Todo column with a badge
+                if (col.id === 'pending' && (t.status === 'blocked' || t.status === 'cancelled')) return true;
+                return false;
+              });
               const isOver = dragOverColumn === col.id;
               const colPoints = columnTasks.reduce((sum, t) => sum + getPoints(t), 0);
               const wipLimit = wipLimits[col.id];
@@ -292,8 +315,20 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                           onDragStart={(e) => handleDragStart(e, task.id)}
                           className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-3 shadow-sm hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20 transition-shadow cursor-grab active:cursor-grabbing"
                         >
-                          <div className="text-xs font-medium text-gray-900 dark:text-white mb-2 line-clamp-2">
-                            {task.name}
+                          <div className="flex items-center gap-1.5 mb-2">
+                            {task.taskType && task.taskType !== 'task' && taskTypeBadge[task.taskType] && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${taskTypeBadge[task.taskType].bg} ${taskTypeBadge[task.taskType].text}`}>
+                                {taskTypeBadge[task.taskType].label}
+                              </span>
+                            )}
+                            {(task.status === 'blocked' || task.status === 'cancelled') && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${task.status === 'blocked' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
+                                {task.status === 'blocked' ? 'Blocked' : 'Cancelled'}
+                              </span>
+                            )}
+                            <span className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">
+                              {task.name}
+                            </span>
                           </div>
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span
@@ -306,6 +341,15 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                                 {points} pts
                               </span>
                             )}
+                            {(() => {
+                              const ac = getAcCount(task.acceptanceCriteria);
+                              if (!ac) return null;
+                              return (
+                                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ac.checked === ac.total ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>
+                                  {ac.checked}/{ac.total} AC
+                                </span>
+                              );
+                            })()}
                           </div>
                           {task.assignedTo && avatarColor && (
                             <div className="mt-2 flex items-center gap-1.5">

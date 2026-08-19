@@ -3027,3 +3027,79 @@ Clicking a task row navigates to the project's Schedule tab with that task pre-s
 ### Sidebar Position
 
 **My Work** appears as the first item in the **Work** section of the sidebar, above Dashboard. It is the entry point for the application after login.
+
+---
+
+## 54. Scrum Enhancements
+
+A suite of agile/scrum features that bring task typing, acceptance criteria, epic grouping, expanded workflow statuses, burnup charting, and flow metrics to PM Assistant.
+
+### Task Types
+
+Every task can be assigned a type: **Story**, **Bug**, **Task**, or **Epic**. The type is selected via a dropdown in the Task Form modal. Color-coded type badges appear consistently across all views:
+
+- **Gantt chart** — type badge next to the task name in the left panel
+- **Sprint Board** — type badge on each card
+- **Kanban Board** — type badge on each card
+- **Backlog View** — type badge in each task row
+
+Color coding: Story = blue, Bug = red, Task = grey, Epic = purple.
+
+### Acceptance Criteria
+
+Tasks support acceptance criteria using markdown checkbox syntax:
+
+```
+- [ ] User can log in with email and password
+- [x] Error message shown for invalid credentials
+- [ ] Session persists across page refresh
+```
+
+The Task Form modal includes a dedicated Acceptance Criteria text area. On Sprint Board cards, a completion count badge shows progress (e.g., "2/3" meaning 2 of 3 criteria met). Criteria are stored as part of the task record and rendered with the standard markdown parser.
+
+### Epics
+
+Epics group related stories and tasks into larger bodies of work. Any task with type **Epic** can serve as a parent grouping. Features:
+
+- **Epic dropdown** in the Task Form modal — assign a task to an epic
+- **Backlog View** — "Group by Epic" toggle organizes backlog tasks under their parent epic with collapsible headers showing epic name and progress rollup
+- **Epic progress API** — `GET /api/v1/projects/:projectId/schedules/:scheduleId/epics` returns all epics with child task counts, completed counts, and percentage progress
+
+Tasks not assigned to any epic appear under an "Unassigned" group when grouping is enabled.
+
+### Custom Workflow Statuses
+
+Tasks support 7 workflow statuses: **pending**, **in_progress**, **in_review**, **testing**, **completed**, **blocked**, and **cancelled**. Each status has a distinct color:
+
+| Status | Color |
+|--------|-------|
+| pending | grey |
+| in_progress | blue |
+| in_review | amber |
+| testing | purple |
+| completed | green |
+| blocked | red |
+| cancelled | dark grey |
+
+**Sprint Board** renders 5 columns: Pending, In Progress, In Review, Testing, and Completed. Tasks with **blocked** or **cancelled** status appear in their current column with a status badge overlay rather than a dedicated column. **Kanban Board** renders all 7 statuses as separate columns. Status colors are consistent across Gantt, Table, Sprint Board, Kanban Board, and Backlog views.
+
+### Burnup Chart
+
+The Sprint Burnup Chart visualizes sprint progress as two lines plotted over the sprint timebox:
+
+- **Scope line** (blue) — total story points in the sprint over time, showing scope changes
+- **Completed line** (green) — cumulative completed story points over time
+- The area between the two lines represents **remaining work**
+
+Accessible via the **"burnup"** tab in the Sprint view switcher (alongside List, Planning, Board, Burndown, Flow, and Capacity). Summary stats tiles show Total Scope, Completed, Remaining, and Days Left.
+
+### Flow Metrics
+
+Flow metrics provide insight into team throughput and delivery predictability:
+
+- **Lead Time** — elapsed time from task creation to completion (created → done)
+- **Cycle Time** — elapsed time from work started to completion (started → done)
+- **Statistics** — average and median values for both lead time and cycle time
+- **Distribution histogram** — visual distribution of lead/cycle times across configurable buckets
+
+Accessible via the **"metrics"** tab in the Sprint view switcher. The API endpoint `GET /api/v1/projects/:projectId/schedules/:scheduleId/flow-metrics` returns lead time and cycle time arrays with avg/median summaries for the specified sprint or schedule.

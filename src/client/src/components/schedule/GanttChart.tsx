@@ -33,6 +33,9 @@ export interface GanttTask {
   dependencyType?: string;
   /** @deprecated Use dependencies[] */
   dependencyLagDays?: number;
+  taskType?: string;
+  epicId?: string;
+  acceptanceCriteria?: string;
   parentTaskId?: string;
   assignedTo?: string;
   estimatedDays?: number;
@@ -135,9 +138,12 @@ const barColors: Record<string, { bg: string; fill: string; text: string }> = {
   completed: { bg: '#dcfce7', fill: '#22c55e', text: '#166534' },
   done: { bg: '#dcfce7', fill: '#22c55e', text: '#166534' },
   in_progress: { bg: '#dbeafe', fill: '#3b82f6', text: '#1e40af' },
+  in_review: { bg: '#f3e8ff', fill: '#a855f7', text: '#6b21a8' },
+  testing: { bg: '#fef3c7', fill: '#f59e0b', text: '#92400e' },
   pending: { bg: '#f3f4f6', fill: '#9ca3af', text: '#374151' },
   not_started: { bg: '#f3f4f6', fill: '#9ca3af', text: '#374151' },
-  cancelled: { bg: '#fee2e2', fill: '#ef4444', text: '#991b1b' },
+  blocked: { bg: '#fee2e2', fill: '#ef4444', text: '#991b1b' },
+  cancelled: { bg: '#fce4ec', fill: '#78909c', text: '#37474f' },
 };
 
 const AVATAR_PALETTE = [
@@ -161,8 +167,11 @@ const statusLabels: Record<string, string> = {
   completed: 'Complete',
   done: 'Complete',
   in_progress: 'In Progress',
+  in_review: 'In Review',
+  testing: 'Testing',
   pending: 'Not Started',
   not_started: 'Not Started',
+  blocked: 'Blocked',
   cancelled: 'Cancelled',
 };
 
@@ -944,7 +953,7 @@ export function GanttChart({
     if (!sortField || !sortDirection) return filteredRows;
     // Sort within sibling groups to preserve hierarchy
     const priorityOrder: Record<string, number> = { low: 0, medium: 1, high: 2, urgent: 3 };
-    const statusOrder: Record<string, number> = { pending: 0, in_progress: 1, completed: 2, cancelled: 3 };
+    const statusOrder: Record<string, number> = { pending: 0, in_progress: 1, in_review: 2, testing: 3, completed: 4, blocked: 5, cancelled: 6 };
 
     const getSortValue = (task: GanttTask): string | number => {
       switch (sortField) {
@@ -1244,7 +1253,7 @@ export function GanttChart({
   // -----------------------------------------------------------------------
   type EditableField = 'name' | 'dependency' | 'startDate' | 'endDate' | 'duration' | 'estimatedDays' | 'estimatedDurationHours' | 'progressPercentage' | 'priority' | 'assignedTo' | 'status';
   const FIELD_ORDER: EditableField[] = ['name', 'dependency', 'startDate', 'endDate', 'duration', 'estimatedDays', 'estimatedDurationHours', 'progressPercentage', 'priority', 'assignedTo', 'status'];
-  const statusOptions = ['pending', 'in_progress', 'completed'];
+  const statusOptions = ['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled'];
   const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 
   const [editingCell, setEditingCell] = useState<{ taskId: string; field: EditableField } | null>(null);
@@ -2758,7 +2767,7 @@ export function GanttChart({
           {/* Status multi-select */}
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-semibold text-gray-400 uppercase">Status</span>
-            {['pending', 'in_progress', 'completed', 'cancelled'].map(s => (
+            {['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled'].map(s => (
               <label key={s} className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
                 <input
                   type="checkbox"
@@ -3196,6 +3205,15 @@ export function GanttChart({
                           <svg className="w-2.5 h-2.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                           </svg>
+                        </span>
+                      )}
+                      {task.taskType && task.taskType !== 'task' && (
+                        <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex-shrink-0 leading-none ${
+                          task.taskType === 'story' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                          task.taskType === 'bug' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                          task.taskType === 'epic' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : ''
+                        }`}>
+                          {task.taskType === 'story' ? 'S' : task.taskType === 'bug' ? 'B' : 'E'}
                         </span>
                       )}
                       {task.priority && !task.isMilestone && !(task as any).isRecurrenceTemplate && !(task as any).recurrenceParentId && (

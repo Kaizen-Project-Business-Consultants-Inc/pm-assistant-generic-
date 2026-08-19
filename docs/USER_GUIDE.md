@@ -37,6 +37,8 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 29. [Dashboard Widget Drag-to-Reorder](#29-dashboard-widget-drag-to-reorder)
 30. [Dashboard & Projects](#30-dashboard--projects)
 31. [RAID Log](#31-raid-log)
+32. [My Work](#32-my-work)
+33. [Scrum Enhancements](#33-scrum-enhancements)
 
 ---
 
@@ -2342,6 +2344,105 @@ Click any task row to go directly to that project's Schedule tab with the task s
 ### Collapsing and Expanding Sections
 
 Click any section header to collapse or expand it. This is useful if one bucket is large and you want to focus on another, such as **Overdue** or **Due Today**.
+
+---
+
+## 33. Scrum Enhancements
+
+PM Assistant includes a suite of scrum/agile enhancements that add task typing, acceptance criteria, epic grouping, expanded workflow statuses, burnup charting, and flow metrics.
+
+### Task Types
+
+You can assign a type to any task: **Story**, **Bug**, **Task**, or **Epic**.
+
+1. Open the Task Form (click a task or create a new one).
+2. Select a type from the **Type** dropdown.
+3. A color-coded badge appears on the task across all views:
+   - **Story** -- blue badge
+   - **Bug** -- red badge
+   - **Task** -- grey badge
+   - **Epic** -- purple badge
+
+Type badges are visible in the Gantt chart, Sprint Board, Kanban Board, and Backlog View.
+
+### Acceptance Criteria
+
+Define acceptance criteria on any task using markdown checkbox syntax.
+
+1. Open the Task Form.
+2. In the **Acceptance Criteria** text area, write criteria using checkbox syntax:
+   ```
+   - [ ] User can log in with email and password
+   - [x] Error message shown for invalid credentials
+   - [ ] Session persists across page refresh
+   ```
+3. Save the task. The Sprint Board card shows a completion count badge (e.g., "2/3") summarizing how many criteria are checked.
+
+### Epics
+
+Epics let you group related stories and tasks into larger bodies of work.
+
+**Assigning a task to an epic:**
+1. Open the Task Form for any story or task.
+2. Select an epic from the **Epic** dropdown.
+3. Save. The task is now grouped under that epic.
+
+**Viewing epics in the Backlog:**
+1. Navigate to the Backlog tab.
+2. Toggle **Group by Epic** to organize tasks under their parent epic.
+3. Each epic header shows the epic name and a progress summary (completed / total tasks).
+4. Tasks not assigned to any epic appear under an "Unassigned" group.
+
+**Epic progress API:**
+- `GET /api/v1/projects/:projectId/schedules/:scheduleId/epics` returns all epics with child task counts and completion percentages.
+
+### Custom Workflow Statuses
+
+Tasks support 7 workflow statuses instead of the basic 3:
+
+| Status | Color | Description |
+|--------|-------|-------------|
+| Pending | Grey | Not yet started |
+| In Progress | Blue | Work is underway |
+| In Review | Amber | Awaiting review |
+| Testing | Purple | Being tested / QA |
+| Completed | Green | Done |
+| Blocked | Red | Cannot proceed |
+| Cancelled | Dark grey | No longer needed |
+
+**How statuses appear on boards:**
+- **Sprint Board** -- 5 columns: Pending, In Progress, In Review, Testing, Completed. Blocked and cancelled tasks show a badge overlay in their current column.
+- **Kanban Board** -- All 7 statuses appear as separate columns.
+
+Drag cards between columns to change status. The color coding is consistent across Gantt, Table, Sprint Board, Kanban Board, and Backlog views.
+
+### Burnup Chart
+
+The Burnup Chart shows sprint progress as two trend lines:
+
+1. Navigate to the Sprints tab and select a sprint.
+2. Click the **"burnup"** tab in the view switcher.
+3. The chart displays:
+   - **Scope line** (blue) -- total story points in the sprint over time, including any scope changes.
+   - **Completed line** (green) -- cumulative completed story points.
+   - The area between the lines represents remaining work.
+4. Summary tiles above the chart show Total Scope, Completed, Remaining, and Days Left.
+
+The burnup chart is complementary to the burndown chart -- burndown shows remaining work decreasing, while burnup shows completed work increasing and makes scope changes visible.
+
+### Flow Metrics
+
+Flow metrics help you understand team throughput and delivery predictability.
+
+1. Navigate to the Sprints tab and select a sprint.
+2. Click the **"metrics"** tab in the view switcher.
+3. View the following metrics:
+   - **Lead Time** -- time from task creation to completion (created to done).
+   - **Cycle Time** -- time from work started to completion (started to done).
+   - **Average and median** values for both metrics.
+   - **Distribution histogram** -- visual breakdown of how lead/cycle times are distributed.
+
+Shorter and more consistent cycle times indicate a healthier, more predictable delivery flow. Use these metrics during retrospectives to identify bottlenecks.
 
 ---
 

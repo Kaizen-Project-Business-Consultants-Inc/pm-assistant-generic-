@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { scheduleService, DependencyValidationError } from '../../services/ScheduleService';
+import { flowMetricsService } from '../../services/FlowMetricsService';
 import { criticalPathService } from '../../services/CriticalPathService';
 import { baselineService } from '../../services/BaselineService';
 import { dagWorkflowService } from '../../services/DagWorkflowService';
@@ -36,8 +37,11 @@ const createTaskSchema = z.object({
   scheduleId: z.string(),
   name: z.string().min(1),
   description: z.string().optional(),
-  status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).default('pending'),
+  status: z.enum(['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled']).default('pending'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  taskType: z.enum(['task', 'story', 'bug', 'epic']).default('task'),
+  epicId: z.string().optional(),
+  acceptanceCriteria: z.string().optional(),
   assignedTo: z.string().optional(),
   dueDate: z.string().date().optional(),
   estimatedDays: z.number().positive().optional(),
@@ -591,6 +595,36 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     } catch (error) {
       logger.error('Compare schedules error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to compare schedules' });
+    }
+  });
+
+  // Get epics for a schedule (tasks where task_type = 'epic')
+  fastify.get('/:scheduleId/epics', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    schema: { description: 'Get epics for a schedule with child count and progress', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const epics = await scheduleService.getEpics(scheduleId);
+      return { epics };
+    } catch (error) {
+      logger.error('Get epics error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch epics' });
+    }
+  });
+
+  // Get flow metrics (lead time / cycle time) for a schedule
+  fastify.get('/:scheduleId/flow-metrics', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    schema: { description: 'Get lead time and cycle time metrics', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const metrics = await flowMetricsService.getFlowMetrics(scheduleId);
+      return { metrics };
+    } catch (error) {
+      logger.error('Get flow metrics error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch flow metrics' });
     }
   });
 

@@ -164,6 +164,9 @@ export class SprintRepository extends BaseRepository<Sprint> {
       priority: row.priority || null,
       assignedTo: row.assigned_to || null,
       storyPoints: row.story_points != null ? Number(row.story_points) : null,
+      taskType: row.task_type || 'task',
+      epicId: row.epic_id || null,
+      acceptanceCriteria: row.acceptance_criteria || null,
     }));
 
     return { scheduleId, tasks };
@@ -188,9 +191,17 @@ export class SprintRepository extends BaseRepository<Sprint> {
     );
   }
 
+  async getSprintTasksWithAddedDates(sprintId: string): Promise<{ story_points: number; added_at: string }[]> {
+    return this.queryRaw(
+      `SELECT story_points, added_at FROM sprint_tasks WHERE sprint_id = ? ORDER BY added_at`,
+      [sprintId],
+    );
+  }
+
   async getBacklogTasks(scheduleId: string): Promise<any[]> {
     const rows = await this.queryRaw(
-      `SELECT t.id, t.name, t.status, t.priority, t.assigned_to, t.due_date, t.estimated_days, t.progress_percentage
+      `SELECT t.id, t.name, t.status, t.priority, t.task_type, t.epic_id, t.acceptance_criteria,
+              t.assigned_to, t.due_date, t.estimated_days, t.progress_percentage
        FROM tasks t
        LEFT JOIN sprint_tasks st ON t.id = st.task_id
        WHERE t.schedule_id = ? AND st.id IS NULL
@@ -203,6 +214,9 @@ export class SprintRepository extends BaseRepository<Sprint> {
       name: row.name,
       status: row.status,
       priority: row.priority || null,
+      taskType: row.task_type || 'task',
+      epicId: row.epic_id || null,
+      acceptanceCriteria: row.acceptance_criteria || null,
       assignedTo: row.assigned_to || null,
       dueDate: row.due_date || null,
       estimatedDays: row.estimated_days != null ? Number(row.estimated_days) : null,

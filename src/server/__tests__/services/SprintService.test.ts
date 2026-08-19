@@ -15,6 +15,7 @@ vi.mock('../../database/SprintRepository', () => {
     getSprintBoard: vi.fn().mockResolvedValue({ scheduleId: null, tasks: [] }),
     getTotalPoints: vi.fn().mockResolvedValue(0),
     getCompletedTasksWithDates: vi.fn().mockResolvedValue([]),
+    getSprintTasksWithAddedDates: vi.fn().mockResolvedValue([]),
     getVelocityHistory: vi.fn().mockResolvedValue([]),
   };
   return { sprintRepository: mockRepo };

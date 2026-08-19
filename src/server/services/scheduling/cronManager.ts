@@ -295,6 +295,7 @@ export async function runOverdueScanImpl(
       name: row.name,
       status: row.status,
       priority: row.priority || 'medium',
+      taskType: row.task_type || 'task',
       assignedTo: row.assigned_to || undefined,
       startDate: row.start_date ? String(row.start_date) : undefined,
       endDate: row.end_date ? String(row.end_date) : undefined,

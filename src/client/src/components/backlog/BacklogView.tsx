@@ -8,6 +8,9 @@ interface BacklogTask {
   name: string;
   status: string;
   priority: string | null;
+  taskType?: string;
+  epicId?: string | null;
+  acceptanceCriteria?: string | null;
   assignedTo: string | null;
   dueDate: string | null;
   estimatedDays: number | null;
@@ -34,13 +37,25 @@ const priorityBadge: Record<string, { bg: string; text: string }> = {
 const statusBadge: Record<string, { bg: string; text: string }> = {
   pending: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300' },
   in_progress: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400' },
+  in_review: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400' },
+  testing: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
   completed: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400' },
+  blocked: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
+  cancelled: { bg: 'bg-gray-200 dark:bg-gray-600', text: 'text-gray-500 dark:text-gray-400' },
+};
+
+const taskTypeBadge: Record<string, { bg: string; text: string; label: string }> = {
+  story: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400', label: 'Story' },
+  bug: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', label: 'Bug' },
+  epic: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400', label: 'Epic' },
 };
 
 export function BacklogView({ projectId }: BacklogViewProps) {
   const queryClient = useQueryClient();
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [groupByEpic, setGroupByEpic] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [assignSprintId, setAssignSprintId] = useState('');
 
@@ -95,9 +110,11 @@ export function BacklogView({ projectId }: BacklogViewProps) {
 
   // Filter tasks
   const filtered = useMemo(() => {
-    if (priorityFilter === 'all') return tasks;
-    return tasks.filter(t => (t.priority || 'medium') === priorityFilter);
-  }, [tasks, priorityFilter]);
+    let result = tasks;
+    if (priorityFilter !== 'all') result = result.filter(t => (t.priority || 'medium') === priorityFilter);
+    if (typeFilter !== 'all') result = result.filter(t => (t.taskType || 'task') === typeFilter);
+    return result;
+  }, [tasks, priorityFilter, typeFilter]);
 
   const toggleTask = (id: string) => {
     setSelectedTasks(prev => {
@@ -146,6 +163,18 @@ export function BacklogView({ projectId }: BacklogViewProps) {
           )}
 
           <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm"
+          >
+            <option value="all">All types</option>
+            <option value="task">Task</option>
+            <option value="story">Story</option>
+            <option value="bug">Bug</option>
+            <option value="epic">Epic</option>
+          </select>
+
+          <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm"
@@ -156,6 +185,13 @@ export function BacklogView({ projectId }: BacklogViewProps) {
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+
+          <button
+            onClick={() => setGroupByEpic(g => !g)}
+            className={`px-3 py-1.5 text-sm rounded-md transition-colors ${groupByEpic ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          >
+            Group by Epic
+          </button>
         </div>
       </div>
 
@@ -214,6 +250,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
                     className="rounded border-gray-300 dark:border-gray-600"
                   />
                 </th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-16">Type</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Task</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-24">Priority</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-24">Status</th>
@@ -222,7 +259,52 @@ export function BacklogView({ projectId }: BacklogViewProps) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(task => {
+              {(() => {
+                // Epic grouping: group tasks under epic headers when enabled
+                if (groupByEpic) {
+                  const epicMap = new Map<string, BacklogTask[]>();
+                  const noEpic: BacklogTask[] = [];
+                  for (const t of filtered) {
+                    if (t.epicId) {
+                      if (!epicMap.has(t.epicId)) epicMap.set(t.epicId, []);
+                      epicMap.get(t.epicId)!.push(t);
+                    } else {
+                      noEpic.push(t);
+                    }
+                  }
+                  // Find epic names from tasks list
+                  const epicNames = new Map<string, string>();
+                  for (const t of tasks) {
+                    if (t.taskType === 'epic') epicNames.set(t.id, t.name);
+                  }
+                  const groups: Array<{ epicId: string | null; epicName: string; tasks: BacklogTask[] }> = [];
+                  for (const [eid, eTasks] of epicMap) {
+                    groups.push({ epicId: eid, epicName: epicNames.get(eid) || 'Unknown Epic', tasks: eTasks });
+                  }
+                  if (noEpic.length > 0) groups.push({ epicId: null, epicName: 'No Epic', tasks: noEpic });
+
+                  return groups.map(g => (
+                    <React.Fragment key={g.epicId || '__none'}>
+                      <tr className="bg-purple-50 dark:bg-purple-900/10 border-b border-purple-200 dark:border-purple-800">
+                        <td colSpan={7} className="px-3 py-2">
+                          <span className="text-xs font-bold text-purple-700 dark:text-purple-300">{g.epicName}</span>
+                          <span className="ml-2 text-[10px] text-gray-400">{g.tasks.length} task{g.tasks.length !== 1 ? 's' : ''}</span>
+                        </td>
+                      </tr>
+                      {g.tasks.map(task => renderTaskRow(task))}
+                    </React.Fragment>
+                  ));
+                }
+                return filtered.map(task => renderTaskRow(task));
+              })()}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
+  function renderTaskRow(task: BacklogTask) {
                 const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
                 const sBadge = statusBadge[task.status] || statusBadge.pending;
                 return (
@@ -239,6 +321,15 @@ export function BacklogView({ projectId }: BacklogViewProps) {
                         onChange={() => toggleTask(task.id)}
                         className="rounded border-gray-300 dark:border-gray-600"
                       />
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {task.taskType && task.taskType !== 'task' && taskTypeBadge[task.taskType] ? (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${taskTypeBadge[task.taskType].bg} ${taskTypeBadge[task.taskType].text}`}>
+                          {taskTypeBadge[task.taskType].label}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-400">Task</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <span className="font-medium text-gray-900 dark:text-gray-100">{task.name}</span>
@@ -261,11 +352,5 @@ export function BacklogView({ projectId }: BacklogViewProps) {
                     </td>
                   </tr>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
+  }
 }

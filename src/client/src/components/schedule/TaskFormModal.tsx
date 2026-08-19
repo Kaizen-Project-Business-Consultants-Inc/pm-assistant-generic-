@@ -23,6 +23,9 @@ export interface TaskFormData {
   description: string;
   status: string;
   priority: string;
+  taskType: string;
+  epicId: string;
+  acceptanceCriteria: string;
   assignedTo: string;
   startDate: string;
   endDate: string;
@@ -107,6 +110,9 @@ export function TaskFormModal({
     description: '',
     status: 'pending',
     priority: 'medium',
+    taskType: 'task',
+    epicId: '',
+    acceptanceCriteria: '',
     assignedTo: '',
     startDate: initialStartDate || '',
     endDate: initialEndDate || '',
@@ -146,6 +152,9 @@ export function TaskFormModal({
         description: task.description || '',
         status: task.status || 'pending',
         priority: task.priority || 'medium',
+        taskType: (task as any).taskType || 'task',
+        epicId: (task as any).epicId || '',
+        acceptanceCriteria: (task as any).acceptanceCriteria || '',
         assignedTo: task.assignedTo || '',
         startDate: toInputDate(task.startDate),
         endDate: toInputDate(task.endDate),
@@ -298,6 +307,28 @@ export function TaskFormModal({
             </div>
           )}
 
+          {/* Task Type selector */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Type</label>
+            <div className="flex gap-1.5">
+              {([
+                { value: 'task', label: 'Task', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200', active: 'bg-gray-600 text-white dark:bg-gray-500' },
+                { value: 'story', label: 'Story', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', active: 'bg-green-600 text-white dark:bg-green-700' },
+                { value: 'bug', label: 'Bug', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', active: 'bg-red-600 text-white dark:bg-red-700' },
+                { value: 'epic', label: 'Epic', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300', active: 'bg-purple-600 text-white dark:bg-purple-700' },
+              ] as const).map(t => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, taskType: t.value }))}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${form.taskType === t.value ? t.active : t.color}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Status + Priority row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -311,7 +342,11 @@ export function TaskFormModal({
               >
                 <option value="pending">Not Started</option>
                 <option value="in_progress">In Progress</option>
+                <option value="in_review">In Review</option>
+                <option value="testing">Testing</option>
                 <option value="completed">Completed</option>
+                <option value="blocked">Blocked</option>
+                <option value="cancelled">Cancelled</option>
               </select>
             </div>
             <div>
@@ -328,6 +363,48 @@ export function TaskFormModal({
                 <option value="urgent">Urgent</option>
               </select>
             </div>
+          </div>
+
+          {/* Epic dropdown (visible when type != 'epic') */}
+          {form.taskType !== 'epic' && (() => {
+            const epics = allTasks.filter(t => (t as any).taskType === 'epic');
+            if (epics.length === 0) return null;
+            return (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Epic</label>
+                <select
+                  name="epicId"
+                  value={form.epicId}
+                  onChange={handleChange}
+                  className="input w-full"
+                >
+                  <option value="">None</option>
+                  {epics.map(e => (
+                    <option key={e.id} value={e.id}>{e.name}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          })()}
+
+          {/* Acceptance Criteria */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Acceptance Criteria
+              {form.acceptanceCriteria && (() => {
+                const lines = form.acceptanceCriteria.split('\n').filter(l => l.trim().startsWith('- ['));
+                const checked = lines.filter(l => l.includes('[x]') || l.includes('[X]')).length;
+                return lines.length > 0 ? <span className="ml-2 text-gray-400">({checked}/{lines.length} met)</span> : null;
+              })()}
+            </label>
+            <textarea
+              name="acceptanceCriteria"
+              value={form.acceptanceCriteria}
+              onChange={handleChange}
+              rows={3}
+              placeholder={"- [ ] Criterion 1\n- [ ] Criterion 2\n- [ ] Criterion 3"}
+              className="input w-full resize-none font-mono text-xs"
+            />
           </div>
 
           {/* Dates row */}

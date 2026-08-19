@@ -167,6 +167,7 @@ export class SprintService {
     ideal: number[];
     actual: number[];
     totalPoints: number;
+    burnup?: { scope: number[]; completed: number[] };
   }> {
     const sprint = await this.getById(id);
     if (!sprint) {
@@ -175,6 +176,9 @@ export class SprintService {
 
     const totalPoints = await sprintRepository.getTotalPoints(id);
     const completedRows = await sprintRepository.getCompletedTasksWithDates(id);
+
+    // Get scope changes over time (tasks added to sprint with their added_at dates)
+    const scopeRows = await sprintRepository.getSprintTasksWithAddedDates(id);
 
     const startDate = new Date(sprint.startDate);
     const endDate = new Date(sprint.endDate);
@@ -187,6 +191,8 @@ export class SprintService {
     const dates: string[] = [];
     const ideal: number[] = [];
     const actual: number[] = [];
+    const scope: number[] = [];
+    const completed: number[] = [];
 
     for (let dayIndex = 0; dayIndex <= totalDays; dayIndex++) {
       const currentDate = new Date(startDate.getTime() + dayIndex * DAY_MS);
@@ -207,12 +213,26 @@ export class SprintService {
           }
         }
         actual.push(totalPoints - completedPoints);
+        completed.push(completedPoints);
+
+        // Scope: cumulative points of tasks added by this date
+        let scopePoints = 0;
+        for (const row of scopeRows) {
+          const addedDate = new Date(row.added_at);
+          addedDate.setHours(0, 0, 0, 0);
+          if (addedDate <= currentDate) {
+            scopePoints += Number(row.story_points) || 0;
+          }
+        }
+        scope.push(scopePoints);
       } else {
         actual.push(-1);
+        scope.push(-1);
+        completed.push(-1);
       }
     }
 
-    return { dates, ideal, actual, totalPoints };
+    return { dates, ideal, actual, totalPoints, burnup: { scope, completed } };
   }
 
   async getBacklogTasks(scheduleId: string): Promise<any[]> {
@@ -244,10 +264,21 @@ export class SprintService {
     const totalDays = Math.max(1, Math.round((cutoff.getTime() - startDate.getTime()) / DAY_MS));
     const dates: string[] = [];
 
-    // Determine status groups
-    const statusOrder = ['completed', 'in_progress', 'not_started'];
+    // Determine status groups — map new statuses to flow buckets
+    const statusOrder = ['completed', 'testing', 'in_review', 'in_progress', 'blocked', 'not_started'];
     const series: Record<string, number[]> = {};
     for (const s of statusOrder) series[s] = [];
+
+    // Map raw status to flow bucket
+    const mapStatus = (status: string): string => {
+      if (status === 'completed') return 'completed';
+      if (status === 'testing') return 'testing';
+      if (status === 'in_review') return 'in_review';
+      if (status === 'in_progress') return 'in_progress';
+      if (status === 'blocked') return 'blocked';
+      if (status === 'cancelled') return 'not_started';
+      return 'not_started'; // pending
+    };
 
     // For each day, count tasks in each status
     // We use updated_at to infer when tasks moved to their current status
@@ -256,19 +287,19 @@ export class SprintService {
       const dateStr = currentDate.toISOString().slice(0, 10);
       dates.push(dateStr);
 
-      const counts: Record<string, number> = { completed: 0, in_progress: 0, not_started: 0 };
+      const counts: Record<string, number> = {};
+      for (const s of statusOrder) counts[s] = 0;
 
       for (const row of rows) {
         const updatedAt = new Date(row.updated_at);
         updatedAt.setHours(0, 0, 0, 0);
-        const status = row.status || 'not_started';
+        const bucket = mapStatus(row.status || 'pending');
 
-        if (status === 'completed' && updatedAt <= currentDate) {
+        if (bucket === 'completed' && updatedAt <= currentDate) {
           counts.completed++;
-        } else if (status === 'in_progress' && updatedAt <= currentDate) {
-          counts.in_progress++;
-        } else if (status === 'completed' && updatedAt > currentDate) {
-          // Task was completed after this date — it was likely in_progress or not_started
+        } else if (bucket !== 'not_started' && bucket !== 'completed' && updatedAt <= currentDate) {
+          counts[bucket]++;
+        } else if (bucket === 'completed' && updatedAt > currentDate) {
           counts.in_progress++;
         } else {
           counts.not_started++;
