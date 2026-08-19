@@ -2203,6 +2203,20 @@ The `apiService.updateProfile()` call in Step 1 accepts an optional `role` param
 
 Component: `src/client/src/components/onboarding/WelcomeModal.tsx`
 
+### Project Detail Tabs
+
+The project detail page shows **6 primary tabs** plus a single **More** overflow menu. The visible primary tabs depend on the project methodology:
+
+| Methodology | Primary tabs (left → right) |
+|-------------|----------------------------|
+| **Waterfall** | Overview, Schedule, Team, Risks & Issues, Financials, Changes |
+| **Agile** | Overview, Sprints, Backlog, Schedule, Risks & Issues, Team |
+| **Hybrid** | Overview, Schedule, Sprints, Backlog, Risks & Issues, Team |
+
+**More overflow (all methodologies):** Time, Files, Performance, AI Insights, Resources, Agent Activity, plus any methodology-specific tabs not shown as primary.
+
+The RAID log tab is labelled **Risks & Issues** in the tab bar. Its badge shows the **critical-item count only** (not total open items).
+
 ### Project Readiness Bar
 
 A methodology-aware progress bar displayed above the tabs on the project detail page. It guides new project setup with 5 sequential steps that vary by methodology:
