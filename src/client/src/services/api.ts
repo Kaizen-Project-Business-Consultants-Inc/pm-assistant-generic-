@@ -683,6 +683,15 @@ class ApiService {
   }
 
   // -------------------------------------------------------------------------
+  // Strategic Risk Scan endpoints
+  // -------------------------------------------------------------------------
+
+  async runStrategicRiskScan(projectId: string) {
+    const response = await this.api.post('/strategic-risk-scan/scan', { projectId });
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
   // RAID Reports endpoints
   // -------------------------------------------------------------------------
 

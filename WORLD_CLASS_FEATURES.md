@@ -487,6 +487,32 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 - **Benchmark:** BMC Remedy/Helix ITSM (no-delete audit semantics, sequential IDs, mandatory cancel reason); exceeds traditional PM tools with AI Scan, risk matrix heatmap, Kanban board, and inline status changes
 - **RAID Report**: data-driven (no AI) comprehensive RAID report with filter controls (type checkboxes, severity, owner dropdown); report sections include Summary Dashboard (4 cards with severity breakdown), All Items Table, Overdue Actions, and Key Mitigations; Download as HTML, email to stakeholders, schedule recurring delivery (daily/weekly/monthly with `raid-report::` prefix); trial users see sample report with locked email/schedule/download; same preview/download/email/schedule UX pattern as the AI Status Report; `POST /api/v1/raid-reports/generate` endpoint
 
+### 5.9 Strategic Risk Analysis (Risk Scan)
+
+Hybrid algorithmic + AI structural risk analysis that examines a project's plan holistically to identify risks invisible from individual task views.
+
+**Capabilities:**
+- Amber "Risk Scan" button (ShieldAlert icon) on Project Detail page
+- Background generation via WebSocket (`risk_scan_ready`) — same async pattern as Status Report
+- 5 algorithmic detectors run first; AI enhancement polishes findings and adds cross-category insights (optional, paid tiers only)
+- No content stored — generated on demand from current project data
+- Export: PDF (client-side, A4) and HTML download
+- Trial users receive sample report with demo findings; exports locked; no AI tokens consumed
+
+**Five Detectors with Severity Thresholds:**
+
+| Detector | What It Checks | Critical | High | Medium |
+|----------|---------------|----------|------|--------|
+| Schedule | Overdue tasks, schedule compression, critical path vulnerability | >20% tasks overdue | >10% | >5% |
+| Resource | Over-allocation, single points of failure, skill gaps | 3+ over-allocated | 2 | 1 |
+| Dependency | Long chains (cascade risk), circular patterns, excessive predecessors | Chain depth >8 | >5 | >3 |
+| Milestone | Clustering, unsupported milestones, critical path milestones with low float | 3+ at risk | 2 | 1 |
+| Budget | Burn rate vs. progress, cost overrun trajectory, unfunded remaining work | >120% CPI deviation | >110% | >100% |
+
+**AI Enhancement (paid tiers):** Claude refines algorithmic risk descriptions, identifies cross-category compound risks (e.g., resource bottleneck on a critical-path milestone), and prioritizes findings by overall project impact.
+
+- **Benchmark:** Primavera Risk Analysis, Safran Risk; algorithmic-first approach with optional AI enhancement is unique to PM Assistant
+
 ---
 
 ## Implementation Status
@@ -536,6 +562,7 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 | AI Task Slip Predictor | Done | Enhancement |
 | AI Status Report Generator (DBJ Template Standard — 8 sections, report numbers, milestone/achievement/change control tracking) + Email & Scheduling + Edit Before Send + PDF/Word/HTML Export | Done | Enhancement |
 | AI Scope Creep Detector | Done | Enhancement |
+| Strategic Risk Analysis (Risk Scan — 5 algorithmic detectors + optional AI enhancement, background generation, PDF/HTML export) | Done | Enhancement |
 | Mobile-Optimized Views | Done | Enhancement |
 | Email Notifications & Digests | Done | Enhancement |
 | Scheduled Report Delivery | Done | Enhancement |

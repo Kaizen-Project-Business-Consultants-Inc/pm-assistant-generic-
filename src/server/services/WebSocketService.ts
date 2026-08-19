@@ -3,7 +3,7 @@ import logger from '../utils/logger';
 import { projectMemberService } from './ProjectMemberService';
 
 export interface WSMessage {
-  type: 'task_updated' | 'task_created' | 'task_deleted' | 'schedule_updated' | 'notification' | 'presence_update' | 'status_report_ready' | 'status_report_failed' | 'ai_report_ready' | 'ai_report_failed';
+  type: 'task_updated' | 'task_created' | 'task_deleted' | 'schedule_updated' | 'notification' | 'presence_update' | 'status_report_ready' | 'status_report_failed' | 'ai_report_ready' | 'ai_report_failed' | 'strategic_risk_scan_ready' | 'strategic_risk_scan_failed';
   payload: unknown;
 }
 

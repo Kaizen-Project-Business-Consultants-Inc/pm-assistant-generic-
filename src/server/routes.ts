@@ -72,6 +72,7 @@ import { reportScheduleRoutes } from './routes/reporting/reportSchedules';
 import { dashboardDataRoutes } from './routes/reporting/dashboardData';
 import { briefingRoutes } from './routes/reporting/briefing';
 import { statusReportRoutes } from './routes/reporting/statusReports';
+import { strategicRiskScanRoutes } from './routes/reporting/strategicRiskScan';
 import { raidReportRoutes } from './routes/reporting/raidReports';
 import { standupRoutes } from './routes/reporting/standup';
 
@@ -179,6 +180,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(dashboardDataRoutes, { prefix: '/api/v1/dashboard' });
   await fastify.register(briefingRoutes, { prefix: '/api/v1/briefing' });
   await fastify.register(statusReportRoutes, { prefix: '/api/v1/status-reports' });
+  await fastify.register(strategicRiskScanRoutes, { prefix: '/api/v1/strategic-risk-scan' });
   await fastify.register(raidReportRoutes, { prefix: '/api/v1/raid-reports' });
   await fastify.register(standupRoutes, { prefix: '/api/v1/standup' });
 

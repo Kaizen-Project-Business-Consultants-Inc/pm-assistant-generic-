@@ -1270,6 +1270,40 @@ The report tracks trends by comparing against the previous report — if Schedul
 
 **Trial users:** Instead of an error, a **sample report** is shown with realistic demo data so you can preview the format. An amber banner at the top identifies it as sample data. The Email, Schedule, Export, and Download options are locked — upgrade to a paid plan to generate live AI-powered reports for your project.
 
+### Strategic Risk Analysis (Risk Scan)
+
+The Risk Scan analyzes your project's structure to identify risks that are not visible from individual tasks — schedule compression, resource bottlenecks, dependency chains, milestone clustering, and budget trajectory issues.
+
+#### Running a Risk Scan
+
+1. Open a project and navigate to the **Project Detail** page.
+2. Click the amber **Risk Scan** button (shield icon) in the project header.
+3. A progress indicator appears while the analysis runs in the background.
+4. When complete, a modal opens displaying the risk findings organized by category.
+
+#### Understanding the Results
+
+The scan produces findings across five categories:
+
+- **Schedule Risk** — Tasks that are overdue or at risk of slipping, compressed timelines, and critical path vulnerabilities.
+- **Resource Risk** — Over-allocated team members, single points of failure (one person on too many critical tasks), and skill coverage gaps.
+- **Dependency Risk** — Long dependency chains where a single slip cascades through many tasks, and tasks with excessive predecessors.
+- **Milestone Risk** — Milestones clustered too closely together, milestones without supporting tasks, and milestones on the critical path with insufficient float.
+- **Budget Risk** — Burn rate outpacing progress, cost overrun trajectories, and unfunded remaining work.
+
+Each finding has a severity level (Critical, High, or Medium) based on configurable thresholds. When AI is enabled on a paid plan, the findings are enhanced with refined descriptions and cross-category insights — for example, flagging when a resource bottleneck coincides with a critical-path milestone.
+
+#### Exporting the Results
+
+Two export formats are available via toolbar buttons:
+
+- **PDF** — Download the risk analysis as a PDF document.
+- **HTML** — Download the styled report as an `.html` file.
+
+Results are generated on demand and not stored — run the scan again at any time for a fresh analysis based on current project data.
+
+**Trial users:** A **sample risk scan** is shown with realistic demo findings across all five categories. An amber banner identifies it as sample data. Export buttons are locked — upgrade to a paid plan to run live risk analysis on your project.
+
 ---
 
 ## 15. Templates

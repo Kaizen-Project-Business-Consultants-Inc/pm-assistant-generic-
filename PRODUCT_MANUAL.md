@@ -831,6 +831,47 @@ Click **Save** to re-render the report with your edits (calls `POST /status-repo
 
 **Feature Gating:** Full AI report generation requires a paid tier (consultant/sme/enterprise). AI generation requires `AI_ENABLED=true`; falls back to all-amber template when disabled. Email delivery requires `RESEND_API_KEY`.
 
+### Strategic Risk Analysis (Risk Scan)
+
+On-demand structural risk analysis that examines a project's schedule, milestones, dependencies, resources, and budget to identify risks that may not be visible from individual task views. The analysis uses a hybrid approach: five algorithmic detectors run first to surface data-driven findings, then (for paid tiers with AI enabled) Claude polishes the risk statements and adds cross-category insights.
+
+**How to Use:**
+
+Click the amber **Risk Scan** button (ShieldAlert icon) in the project header on the Project Detail page. The scan runs in the background using the same WebSocket pattern as the Status Report — a progress indicator displays while the analysis completes, and the finished report is delivered via WebSocket (`risk_scan_ready`).
+
+**Five Detector Categories:**
+
+1. **Schedule Risk** — Identifies tasks overdue or at risk of slipping, schedule compression (too many tasks in too few days), and critical path vulnerability. Severity thresholds: critical (>20% tasks overdue), high (>10%), medium (>5%).
+
+2. **Resource Risk** — Detects over-allocated resources, single points of failure (one person assigned to many critical tasks), and skill coverage gaps. Severity thresholds: critical (3+ over-allocated resources), high (2), medium (1).
+
+3. **Dependency Risk** — Finds long dependency chains (high cascade risk), circular dependency patterns, and tasks with excessive predecessors. Severity thresholds: critical (chain depth >8), high (>5), medium (>3).
+
+4. **Milestone Risk** — Evaluates milestone clustering (too many milestones in a narrow window), milestones without supporting tasks, and milestones on the critical path with insufficient float. Severity thresholds: critical (3+ milestones at risk), high (2), medium (1).
+
+5. **Budget Risk** — Analyzes burn rate vs. progress, cost overrun trajectories, and unfunded remaining work. Severity thresholds: critical (>120% cost performance index deviation), high (>110%), medium (>100%).
+
+**AI Enhancement (Optional):**
+
+When AI is enabled and the user is on a paid tier, Claude reviews the algorithmic findings to:
+- Refine risk descriptions with project-specific context
+- Identify cross-category compound risks (e.g., a resource bottleneck on a critical-path milestone)
+- Prioritize findings by overall project impact
+
+When AI is disabled or for trial users, the algorithmic findings are presented as-is.
+
+**Export Formats:**
+
+- **PDF** — Download the risk analysis as a PDF document (client-side rendering, A4 format)
+- **HTML** — Download the styled report as an `.html` file
+
+**No Content Stored:** Risk scan results are generated on demand and not persisted in the database. Run the scan again at any time for a fresh analysis based on current project data.
+
+**Trial User Experience:** Trial users receive a **sample risk scan** with realistic demo findings across all five categories. An amber upgrade banner identifies the report as sample data. Export buttons are locked. No AI tokens are consumed.
+
+**API Endpoint:**
+- `POST /api/v1/risk-scan/generate` — Generate a strategic risk analysis for a project
+
 ### Anomaly Detection
 
 The `anomalyDetectionService` identifies unusual patterns in project data such as sudden progress drops, budget spikes, or resource utilization anomalies.

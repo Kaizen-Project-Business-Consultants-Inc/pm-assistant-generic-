@@ -209,6 +209,20 @@ export function useWebSocket() {
                 showStatusReportToast('AI report generation failed. Please try again.', 'error');
                 break;
               }
+              case 'strategic_risk_scan_ready': {
+                window.dispatchEvent(new CustomEvent('ws:strategic_risk_scan_ready', {
+                  detail: message.payload,
+                }));
+                showStatusReportToast('Your strategic risk scan is ready.', 'success');
+                break;
+              }
+              case 'strategic_risk_scan_failed': {
+                window.dispatchEvent(new CustomEvent('ws:strategic_risk_scan_failed', {
+                  detail: message.payload,
+                }));
+                showStatusReportToast('Strategic risk scan failed.', 'error');
+                break;
+              }
               case 'presence_update': {
                 const { projectId, viewers, editors } = message.payload;
                 presenceMap.set(projectId, viewers);
