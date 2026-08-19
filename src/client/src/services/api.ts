@@ -2597,6 +2597,16 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  async runReportScheduleNow(id: string) {
+    const response = await this.api.post(`/report-schedules/${id}/run-now`);
+    return response.data;
+  }
+
+  async getAdminReportSchedules() {
+    const response = await this.api.get('/report-schedules/admin/all');
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Goals / OKR
   // -------------------------------------------------------------------------

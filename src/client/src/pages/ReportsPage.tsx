@@ -18,6 +18,12 @@ import {
   Filter,
   RefreshCw,
   Star,
+  Play,
+  Pause,
+  Pencil,
+  Plus,
+  CalendarClock,
+  AlertCircle,
 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../services/api';
@@ -29,6 +35,7 @@ import { REPORT_CATALOG, type ReportDefinition } from '../components/reports/rep
 import { ReportCategorySection } from '../components/reports/ReportCategorySection';
 import { ReportTile } from '../components/reports/ReportTile';
 import { InstantReportModal } from '../components/reports/InstantReportModal';
+import { ReportScheduleModal } from '../components/reports/ReportScheduleModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -272,6 +279,9 @@ export const ReportsPage: React.FC = () => {
   const [activeInstantReport, setActiveInstantReport] = useState<{ html: string; title: string } | null>(null);
   const [generatingReportType, setGeneratingReportType] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [showSchedules, setShowSchedules] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
 
   // Favorites
   const [favoriteReportIds, setFavoriteReportIds] = useState<string[]>([]);
@@ -398,9 +408,61 @@ export const ReportsPage: React.FC = () => {
     enabled: !!selectedProjectId && showRaidReport,
   });
 
+  // Scheduled reports
+  const { data: schedulesData, isLoading: schedulesLoading } = useQuery({
+    queryKey: ['reportSchedules'],
+    queryFn: () => apiService.getReportSchedules(),
+    enabled: showSchedules,
+  });
+
+  const schedules = schedulesData?.schedules || [];
+
+  const toggleScheduleMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      apiService.updateReportSchedule(id, { isActive }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reportSchedules'] }),
+  });
+
+  const runNowMutation = useMutation({
+    mutationFn: (id: string) => apiService.runReportScheduleNow(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reportSchedules'] }),
+  });
+
+  const deleteScheduleMutation = useMutation({
+    mutationFn: (id: string) => apiService.deleteReportSchedule(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reportSchedules'] }),
+  });
+
   // Project name lookup
   const projectNameMap: Record<string, string> = {};
   for (const p of projects) projectNameMap[p.id] = p.name;
+
+  const getScheduleProjectName = (templateId: string) => {
+    if (templateId.startsWith('status-report::')) {
+      const pid = templateId.replace('status-report::', '');
+      return projectNameMap[pid] || 'Unknown Project';
+    }
+    if (templateId.startsWith('raid-report::')) {
+      const pid = templateId.replace('raid-report::', '');
+      return projectNameMap[pid] || 'Unknown Project';
+    }
+    return templateId;
+  };
+
+  const getScheduleReportType = (templateId: string) => {
+    if (templateId.startsWith('status-report::')) return 'Status Report';
+    if (templateId.startsWith('raid-report::')) return 'RAID Report';
+    return 'Custom Report';
+  };
+
+  const formatFrequency = (s: any) => {
+    if (s.frequency === 'daily') return `Daily at ${s.timeOfDay || '08:00'}`;
+    if (s.frequency === 'weekly') {
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return `Weekly on ${days[s.dayOfWeek ?? 1]} at ${s.timeOfDay || '08:00'}`;
+    }
+    return `Monthly on day ${s.dayOfMonth ?? 1} at ${s.timeOfDay || '08:00'}`;
+  };
 
   // ---- Mutations ----
 
@@ -524,6 +586,133 @@ export const ReportsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Scheduled Reports                                                 */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="card p-0 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5">
+          <button
+            onClick={() => setShowSchedules(prev => !prev)}
+            className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
+          >
+            {showSchedules ? (
+              <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            )}
+            <CalendarClock className="w-4 h-4 text-primary-500 flex-shrink-0" />
+            <span className="text-sm font-semibold text-gray-900 dark:text-white">Scheduled Reports</span>
+            {schedules.length > 0 && (
+              <span className="text-xs text-gray-400 dark:text-gray-500">{schedules.length}</span>
+            )}
+          </button>
+          <button
+            onClick={() => { setEditingScheduleId(null); setShowScheduleModal(true); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Schedule Report
+          </button>
+        </div>
+
+        {showSchedules && (
+          <div className="px-5 pb-4">
+            {schedulesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-5 h-5 border-3 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+              </div>
+            ) : schedules.length === 0 ? (
+              <div className="text-center py-6">
+                <CalendarClock className="mx-auto h-8 w-8 text-gray-300 dark:text-gray-600 mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">No scheduled reports yet. Click "Schedule Report" to create one.</p>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[600px]">
+                    <thead>
+                      <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Report</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Project</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Frequency</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Next Run</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                      {schedules.map((s: any) => (
+                        <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                          <td className="px-4 py-2.5">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">{getScheduleReportType(s.templateId)}</span>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{getScheduleProjectName(s.templateId)}</span>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className="text-xs text-gray-600 dark:text-gray-300">{formatFrequency(s)}</span>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {s.isActive ? formatDate(s.nextRunAt) : 'Paused'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            {s.lastRunStatus === 'error' ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400" title={s.lastRunError || 'Error'}>
+                                <AlertCircle className="w-3 h-3" />
+                                Error
+                              </span>
+                            ) : s.lastRunStatus === 'success' ? (
+                              <span className="text-xs text-green-600 dark:text-green-400">Success</span>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => { setEditingScheduleId(s.id); setShowScheduleModal(true); }}
+                                className="p-1.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                title="Edit schedule"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => toggleScheduleMutation.mutate({ id: s.id, isActive: !s.isActive })}
+                                className="p-1.5 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                                title={s.isActive ? 'Pause' : 'Resume'}
+                              >
+                                {s.isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                              </button>
+                              <button
+                                onClick={() => runNowMutation.mutate(s.id)}
+                                disabled={runNowMutation.isPending}
+                                className="p-1.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors disabled:opacity-30"
+                                title="Run now"
+                              >
+                                <RefreshCw className={`w-3.5 h-3.5 ${runNowMutation.isPending ? 'animate-spin' : ''}`} />
+                              </button>
+                              <button
+                                onClick={() => { if (confirm('Delete this schedule?')) deleteScheduleMutation.mutate(s.id); }}
+                                className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                                title="Delete schedule"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ----------------------------------------------------------------- */}
       {/* Report Categories                                                 */}
@@ -889,6 +1078,15 @@ export const ReportsPage: React.FC = () => {
           projectId={selectedProjectId}
           projectName={projects.find(p => p.id === selectedProjectId)?.name || 'Project'}
           onClose={() => setShowStatusReport(false)}
+        />
+      )}
+
+      {showScheduleModal && (
+        <ReportScheduleModal
+          projects={projects}
+          initialProjectId={selectedProjectId}
+          editScheduleId={editingScheduleId || undefined}
+          onClose={() => { setShowScheduleModal(false); setEditingScheduleId(null); }}
         />
       )}
 

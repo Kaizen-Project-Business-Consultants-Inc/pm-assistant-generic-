@@ -1145,6 +1145,31 @@ Report templates from the Report Builder can be scheduled for automatic email de
 
 The `ReportScheduleService` executes due schedules every 15 minutes via cron. Each execution generates the report, exports to CSV, and emails to all recipients. API endpoints at `/api/v1/report-schedules` provide full CRUD. The schedule modal is accessible via the clock icon on each report template card in the Report Builder.
 
+### Scheduled Reports — Reports Page
+
+The **Reports page** exposes a first-class **Scheduled Reports** section between the Favorites row and the Report Categories. It lists all schedules the current user has created in a table with columns: Report, Project, Frequency, Next Run, Status, and Actions.
+
+**Actions per row:**
+- **Edit** — opens `ReportScheduleModal` pre-populated with the existing schedule (by ID)
+- **Pause / Resume** — toggles the schedule's active/paused state
+- **Run Now** — calls `POST /api/v1/report-schedules/:id/run-now`, which triggers `ReportScheduleService.executeOne(id)` immediately regardless of the Next Run time; delivers the report to all recipients
+- **Delete** — removes the schedule after confirmation
+
+**Creating a schedule** — the **Schedule Report** button (top-right of the section) opens `ReportScheduleModal` with a project selector dropdown, allowing the user to pick any project they have access to. When opened from a specific report tile the project is pre-filled from the page's project selector.
+
+**ReportScheduleModal enhancements:**
+- Project selector dropdown when invoked from the Reports page (not locked to a template context)
+- Supports edit mode by schedule ID: fields are pre-populated and the save path calls PATCH instead of POST
+
+### Admin Schedules Page (`/admin/schedules`)
+
+Admins can access all schedules across all users via the **Admin > Schedules** page.
+
+- **Table columns**: Creator, Report, Project, Frequency, Next Run, Last Run, Status
+- **Status filter**: All / Active / Paused / Error dropdown
+- **Pause / Resume** action available inline per row
+- **Backend**: `GET /api/v1/report-schedules/admin/all` calls `ReportScheduleService.listAll()` → `ReportScheduleRepository.findAll()` (no tenant scoping — returns all rows)
+
 ---
 
 ## 16. Stakeholder Portal

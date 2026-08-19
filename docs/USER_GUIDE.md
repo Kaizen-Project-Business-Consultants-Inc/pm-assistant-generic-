@@ -1089,6 +1089,39 @@ All generated reports appear in the **Report History** table below the report ca
 
 > **Trial accounts:** If you are on a trial plan, the Report Builder shows 3 sample templates (Weekly Status, Budget Overview, Time Tracking) so you can preview the feature. The New Report, Edit, Generate, and Delete buttons are replaced with an "Upgrade to use" label. An amber banner at the top of the page identifies the templates as samples. Upgrade to a paid plan to create and run your own custom report templates.
 
+### Scheduled Reports
+
+The **Scheduled Reports** section appears on the Reports page between the Favorites row and the Report Categories. It shows all recurring report schedules you have created.
+
+#### Viewing Your Schedules
+
+The section displays a table with the following columns:
+
+| Column | Description |
+|--------|-------------|
+| **Report** | The report template name |
+| **Project** | The project the report runs against |
+| **Frequency** | Daily, Weekly (day of week), or Monthly (day of month) |
+| **Next Run** | Date and time of the next scheduled delivery |
+| **Status** | Active, Paused, or Error |
+| **Actions** | Edit, Pause/Resume, Run Now, Delete |
+
+#### Creating a Schedule
+
+1. Click **Schedule Report** (top-right of the Scheduled Reports section).
+2. In the modal, select a **project** from the dropdown.
+3. Choose the report template, frequency, delivery time, and recipient email addresses.
+4. Click **Save** to activate the schedule.
+
+#### Managing Schedules
+
+- **Edit** — click the edit icon to reopen the schedule modal with all fields pre-filled. Change any setting and save.
+- **Pause / Resume** — click to toggle the schedule on or off without deleting it. Paused schedules are skipped by the delivery cron job.
+- **Run Now** — click to deliver the report immediately, regardless of when the next scheduled run is. Useful for sending a one-off delivery on demand.
+- **Delete** — removes the schedule permanently after a confirmation prompt.
+
+> **Note:** If you opened the schedule modal from a specific report tile, the project and report type are pre-filled from the page context. If you click **Schedule Report** from the section header, you must select both the project and the report template manually.
+
 ### Analytics Dashboard
 
 The **Analytics** page provides a summary dashboard with key metrics across all projects, including task completion rates, budget utilization, and schedule adherence.

@@ -38,6 +38,7 @@ import {
   Plug,
   Bot,
   Calendar,
+  CalendarClock,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -131,6 +132,7 @@ const adminNavSections: NavSection[] = [
       { labelKey: 'nav.adminAiUsage', icon: Cpu, path: '/admin/ai-usage' },
       { labelKey: 'nav.adminSystem', icon: Settings, path: '/admin/system' },
       { labelKey: 'nav.adminAudit', icon: ScrollText, path: '/admin/audit' },
+      { labelKey: 'nav.adminSchedules', icon: CalendarClock, path: '/admin/schedules' },
     ],
   },
   {

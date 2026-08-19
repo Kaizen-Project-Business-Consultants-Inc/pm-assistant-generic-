@@ -52,6 +52,7 @@ const AdminOperationsPage = lazy(() => import('./pages/admin/AdminOperationsPage
 const AdminFeedbackPage = lazy(() => import('./pages/admin/AdminFeedbackPage').then(m => ({ default: m.AdminFeedbackPage })));
 const AdminRevenuePage = lazy(() => import('./pages/admin/AdminRevenuePage').then(m => ({ default: m.AdminRevenuePage })));
 const AdminPricingPage = lazy(() => import('./pages/admin/AdminPricingPage').then(m => ({ default: m.AdminPricingPage })));
+const AdminSchedulesPage = lazy(() => import('./pages/admin/AdminSchedulesPage').then(m => ({ default: m.AdminSchedulesPage })));
 const AgentProposalsPage = lazy(() => import('./pages/AgentProposalsPage').then(m => ({ default: m.AgentProposalsPage })));
 const ChangeRequestsPage = lazy(() => import('./pages/ChangeRequestsPage').then(m => ({ default: m.ChangeRequestsPage })));
 const GoalsPage = lazy(() => import('./pages/GoalsPage').then(m => ({ default: m.GoalsPage })));
@@ -166,6 +167,7 @@ function App() {
         <Route path={ROUTES.adminFeedback} element={<PrivateRoute><AdminFeedbackPage /></PrivateRoute>} />
         <Route path={ROUTES.adminRevenue} element={<PrivateRoute><AdminRevenuePage /></PrivateRoute>} />
         <Route path={ROUTES.adminPricing} element={<PrivateRoute><AdminPricingPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminSchedules} element={<PrivateRoute><AdminSchedulesPage /></PrivateRoute>} />
         <Route path={ROUTES.admin} element={<Navigate to={ROUTES.adminUsers} replace />} />
 
         {/* Catch-all */}

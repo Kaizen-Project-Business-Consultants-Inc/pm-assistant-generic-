@@ -4,35 +4,64 @@ import { X, Clock, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { useModal } from '../../hooks/useModal';
 
+interface Project {
+  id: string;
+  name: string;
+}
+
 interface ReportScheduleModalProps {
-  templateId: string;
-  templateName: string;
+  /** If provided, lock to this template (existing behavior from project detail pages). */
+  templateId?: string;
+  templateName?: string;
+  /** If provided, show project selector for creating new schedules from Reports page. */
+  projects?: Project[];
+  /** Pre-selected project when opened from Reports page with a project already chosen. */
+  initialProjectId?: string;
+  /** Existing schedule to edit (when clicking Edit from the schedules table). */
+  editScheduleId?: string;
   onClose: () => void;
 }
 
 export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
-  templateId,
+  templateId: fixedTemplateId,
   templateName,
+  projects,
+  initialProjectId,
+  editScheduleId,
   onClose,
 }) => {
   const queryClient = useQueryClient();
+  const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId || '');
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [dayOfWeek, setDayOfWeek] = useState(1);
   const [dayOfMonth, setDayOfMonth] = useState(1);
   const [timeOfDay, setTimeOfDay] = useState('08:00');
   const [recipients, setRecipients] = useState('');
   const [isActive, setIsActive] = useState(true);
-  const [existingId, setExistingId] = useState<string | null>(null);
+  const [existingId, setExistingId] = useState<string | null>(editScheduleId || null);
 
-  const { data: existingData } = useQuery({
-    queryKey: ['report-schedules-template', templateId],
-    queryFn: () => apiService.getReportSchedulesByTemplate(templateId),
+  // Compute the effective templateId
+  const effectiveTemplateId = fixedTemplateId || (selectedProjectId ? `status-report::${selectedProjectId}` : '');
+  const showProjectSelector = !fixedTemplateId && projects && projects.length > 0;
+
+  // Load existing schedule if editing by id
+  const { data: editData } = useQuery({
+    queryKey: ['report-schedule', editScheduleId],
+    queryFn: () => apiService.getReportSchedule(editScheduleId!),
+    enabled: !!editScheduleId,
   });
 
+  // Load existing schedules for template (original behavior)
+  const { data: existingData } = useQuery({
+    queryKey: ['report-schedules-template', effectiveTemplateId],
+    queryFn: () => apiService.getReportSchedulesByTemplate(effectiveTemplateId),
+    enabled: !!fixedTemplateId && !!effectiveTemplateId,
+  });
+
+  // Populate from edit data (editing existing schedule by id)
   useEffect(() => {
-    const schedules = existingData?.schedules || [];
-    if (schedules.length > 0) {
-      const s = schedules[0];
+    if (editData?.schedule) {
+      const s = editData.schedule;
       setExistingId(s.id);
       setFrequency(s.frequency);
       setDayOfWeek(s.dayOfWeek ?? 1);
@@ -40,13 +69,34 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
       setTimeOfDay(s.timeOfDay || '08:00');
       setRecipients((s.recipients || []).join(', '));
       setIsActive(s.isActive);
+      // Extract projectId from templateId for display
+      if (s.templateId?.startsWith('status-report::')) {
+        setSelectedProjectId(s.templateId.replace('status-report::', ''));
+      }
     }
-  }, [existingData]);
+  }, [editData]);
+
+  // Populate from template query (original behavior)
+  useEffect(() => {
+    if (!editScheduleId && fixedTemplateId) {
+      const schedules = existingData?.schedules || [];
+      if (schedules.length > 0) {
+        const s = schedules[0];
+        setExistingId(s.id);
+        setFrequency(s.frequency);
+        setDayOfWeek(s.dayOfWeek ?? 1);
+        setDayOfMonth(s.dayOfMonth ?? 1);
+        setTimeOfDay(s.timeOfDay || '08:00');
+        setRecipients((s.recipients || []).join(', '));
+        setIsActive(s.isActive);
+      }
+    }
+  }, [existingData, editScheduleId, fixedTemplateId]);
 
   const createMutation = useMutation({
     mutationFn: () =>
       apiService.createReportSchedule({
-        templateId,
+        templateId: effectiveTemplateId,
         frequency,
         dayOfWeek: frequency === 'weekly' ? dayOfWeek : undefined,
         dayOfMonth: frequency === 'monthly' ? dayOfMonth : undefined,
@@ -55,7 +105,8 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
         isActive,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['report-schedules-template', templateId] });
+      queryClient.invalidateQueries({ queryKey: ['report-schedules-template', effectiveTemplateId] });
+      queryClient.invalidateQueries({ queryKey: ['reportSchedules'] });
       onClose();
     },
   });
@@ -71,7 +122,9 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
         isActive,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['report-schedules-template', templateId] });
+      queryClient.invalidateQueries({ queryKey: ['report-schedules-template', effectiveTemplateId] });
+      queryClient.invalidateQueries({ queryKey: ['reportSchedules'] });
+      queryClient.invalidateQueries({ queryKey: ['report-schedule', editScheduleId] });
       onClose();
     },
   });
@@ -79,7 +132,8 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
   const deleteMutation = useMutation({
     mutationFn: () => apiService.deleteReportSchedule(existingId!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['report-schedules-template', templateId] });
+      queryClient.invalidateQueries({ queryKey: ['report-schedules-template', effectiveTemplateId] });
+      queryClient.invalidateQueries({ queryKey: ['reportSchedules'] });
       onClose();
     },
   });
@@ -94,7 +148,12 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const recipientList = recipients.split(',').map((r) => r.trim()).filter(Boolean);
+  const canSave = recipientList.length > 0 && !!effectiveTemplateId;
   const { dialogRef, handleKeyDown } = useModal(true, onClose);
+
+  // Derive display name
+  const displayName = templateName
+    || (selectedProjectId && projects ? `Status Report — ${projects.find(p => p.id === selectedProjectId)?.name || 'Project'}` : 'Status Report');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -113,8 +172,25 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
         </div>
 
         <div className="px-6 py-4 space-y-4">
+          {/* Project selector (Reports page mode) */}
+          {showProjectSelector && !editScheduleId && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Project</label>
+              <select
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">Select a project...</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Schedule <span className="font-medium text-gray-700 dark:text-gray-200">{templateName}</span> for automatic delivery via email.
+            Schedule <span className="font-medium text-gray-700 dark:text-gray-200">{displayName}</span> for automatic delivery via email.
           </p>
 
           {/* Frequency */}
@@ -226,10 +302,10 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
             </button>
             <button
               onClick={handleSave}
-              disabled={isSaving || recipientList.length === 0}
+              disabled={isSaving || !canSave}
               className="px-4 py-2 rounded-lg text-sm bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
             >
-              {isSaving ? 'Saving…' : existingId ? 'Update' : 'Create Schedule'}
+              {isSaving ? 'Saving...' : existingId ? 'Update' : 'Create Schedule'}
             </button>
           </div>
         </div>

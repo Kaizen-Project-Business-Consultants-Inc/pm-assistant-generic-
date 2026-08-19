@@ -85,6 +85,42 @@ export class ReportScheduleService {
     await reportScheduleRepository.deleteById(id);
   }
 
+  async listAll(): Promise<ReportSchedule[]> {
+    return reportScheduleRepository.findAll();
+  }
+
+  async executeOne(id: string): Promise<void> {
+    const schedule = await this.getById(id);
+    if (!schedule) throw new Error('Schedule not found');
+
+    try {
+      if (schedule.templateId.startsWith('status-report::')) {
+        const projectId = schedule.templateId.replace('status-report::', '');
+        await projectStatusReportService.generate(projectId, schedule.createdBy, {
+          recipients: schedule.recipients,
+          sendEmail: true,
+        });
+      } else if (schedule.templateId.startsWith('raid-report::')) {
+        const projectId = schedule.templateId.replace('raid-report::', '');
+        await raidReportService.generate(projectId, schedule.createdBy, {
+          recipients: schedule.recipients,
+          sendEmail: true,
+        });
+      } else {
+        const template = await reportBuilderService.getTemplateById(schedule.templateId);
+        if (!template) throw new Error('Template not found');
+        const { data: csvContent } = await reportBuilderService.exportReport(schedule.templateId, 'csv');
+        await emailService.sendReportEmail(schedule.recipients, template.name, csvContent as string);
+      }
+
+      await this.updateRunStatus(id, 'success', null);
+    } catch (err: any) {
+      logger.error(`[ReportScheduleService] Manual run failed for schedule ${id}:`, err);
+      await this.updateRunStatus(id, 'error', err.message || 'Unknown error');
+      throw err;
+    }
+  }
+
   async getDueSchedules(): Promise<ReportSchedule[]> {
     const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
     return reportScheduleRepository.findDue(now);

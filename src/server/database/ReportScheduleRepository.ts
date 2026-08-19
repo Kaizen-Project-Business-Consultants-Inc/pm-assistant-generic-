@@ -78,6 +78,13 @@ class ReportScheduleRepository {
     await databaseService.query('DELETE FROM report_schedules WHERE id = ?', [id]);
   }
 
+  async findAll(): Promise<ReportSchedule[]> {
+    const rows = await databaseService.query(
+      'SELECT * FROM report_schedules ORDER BY created_at DESC',
+    );
+    return rows.map(rowToDTO);
+  }
+
   async findDue(now: string): Promise<ReportSchedule[]> {
     const rows = await databaseService.query(
       'SELECT * FROM report_schedules WHERE is_active = TRUE AND next_run_at <= ?',

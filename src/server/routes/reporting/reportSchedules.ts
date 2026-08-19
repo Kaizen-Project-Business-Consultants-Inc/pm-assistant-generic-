@@ -51,6 +51,40 @@ export async function reportScheduleRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Admin: list all schedules across all users
+  fastify.get('/admin/all', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      if (request.user!.role !== 'admin') {
+        return reply.status(403).send({ error: 'Admin access required' });
+      }
+      const schedules = await reportScheduleService.listAll();
+      return { schedules };
+    } catch (error) {
+      logger.error('Admin list report schedules error', { error });
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
+  });
+
+  // Run a schedule immediately
+  fastify.post('/:id/run-now', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const schedule = await reportScheduleService.getById(id);
+      if (!schedule) return reply.status(404).send({ error: 'Schedule not found' });
+
+      // Only owner or admin can trigger
+      if (schedule.createdBy !== request.user!.userId && request.user!.role !== 'admin') {
+        return reply.status(403).send({ error: 'Not authorized' });
+      }
+
+      await reportScheduleService.executeOne(id);
+      return { success: true };
+    } catch (error: any) {
+      logger.error('Run now report schedule error', { error });
+      return reply.status(500).send({ error: error.message || 'Failed to execute schedule' });
+    }
+  });
+
   // Get by id
   fastify.get('/:id', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
