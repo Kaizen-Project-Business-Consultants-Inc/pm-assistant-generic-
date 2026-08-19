@@ -56,7 +56,7 @@ export const COLUMN_DEFS: ColumnDef[] = [
 
   // Other
   { key: 'notes', label: 'Notes', group: 'standard', defaultVisible: false, editable: true, sortable: true },
-  { key: 'dependency', label: 'Predecessor', group: 'standard', defaultVisible: true, editable: true, sortable: false },
+  { key: 'dependency', label: 'Predecessor', group: 'standard', defaultVisible: false, editable: true, sortable: false },
   { key: 'wbs', label: 'WBS', group: 'other', defaultVisible: false, editable: false, sortable: false },
   { key: 'resource', label: 'Resource', group: 'standard', defaultVisible: false, editable: false, sortable: false },
 ];

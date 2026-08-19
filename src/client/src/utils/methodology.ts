@@ -87,14 +87,14 @@ export function getReadinessSteps(m: Methodology): ReadinessStepConfig[] {
       { key: 'tasks', label: 'Tasks', tooltip: 'Import or create tasks to build your schedule', doneKey: 'tasks', targetTab: 'schedule' },
       { key: 'sprint', label: 'Sprint', tooltip: 'Create sprints for iterative delivery', doneKey: 'sprints', targetTab: 'sprints' },
       { key: 'resources', label: 'Resources', tooltip: 'Add team members for workload forecasting', doneKey: 'resources', targetTab: 'resources' },
-      { key: 'dependencies', label: 'Dependencies', tooltip: 'Link tasks to reveal your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
+      { key: 'dependencies', label: 'Predecessors', tooltip: 'Link predecessor tasks to build your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
     ];
   }
 
   // Waterfall (default)
   return [
     { key: 'tasks', label: 'Tasks', tooltip: 'Import or create tasks to build your schedule', doneKey: 'tasks', targetTab: 'schedule' },
-    { key: 'dependencies', label: 'Dependencies', tooltip: 'Link tasks to reveal your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
+    { key: 'dependencies', label: 'Predecessors', tooltip: 'Link predecessor tasks to build your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
     { key: 'resources', label: 'Resources', tooltip: 'Add team members for workload and cost forecasting', doneKey: 'resources', targetTab: 'resources' },
   ];
 }

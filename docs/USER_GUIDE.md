@@ -189,11 +189,11 @@ The project detail page shows 5 context cards at the top: the first and last car
 
 Below the context cards, a **readiness bar** guides new project setup. The steps change per methodology:
 
-- **Waterfall:** Tasks, Dependencies, Resources, Critical Path, Simulation
-- **Agile:** Backlog, Sprint, Team, Velocity, Burndown
-- **Hybrid:** Tasks, Sprint, Resources, Critical Path, Velocity
+- **Waterfall:** Tasks, Predecessors, Resources
+- **Agile:** Backlog, Sprint, Team
+- **Hybrid:** Tasks, Sprint, Resources, Predecessors
 
-Each step turns green when complete. Data-driven steps (tasks, dependencies, resources, sprints) auto-detect completion. Click-driven steps (critical path, simulation, velocity, burndown) mark complete on first click. Dismiss the bar with the X button.
+Each step turns green when complete. All steps are data-driven and auto-detect completion (tasks exist, predecessor links exist, resources assigned, sprints created). Dismiss the bar with the X button.
 
 #### Tabs
 
@@ -276,7 +276,7 @@ When a project has more than one schedule, a **pill/tab strip** appears at the t
 The schedule toolbar is a compact single row of controls:
 
 ```
-[Search] [Filters] | [Columns] [Critical Path] | [CPM info] | [⋯]
+[Search] [Filters] | [Columns] [Critical Path] | [⋯]
 ```
 
 The **⋯ overflow menu** groups less-frequent actions:
@@ -438,7 +438,7 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - **Progress Mode (Duration vs Work)**: Use the **% Mode** dropdown in the toolbar to switch between **Duration** and **Work** modes. In **Duration** mode (default), parent task progress is calculated as the simple average of child progress percentages. In **Work** mode, parent progress is weighted by each child's estimated duration in hours — a 40-hour task contributes more to the parent's progress than an 8-hour task. The setting is saved per schedule.
 - **What-If Scenarios**: Click **Create Scenario** (indigo button) in the toolbar to clone the current schedule into an independent what-if scenario. The clone copies all tasks, dependencies, and assignments. Edit the scenario freely without affecting the base schedule. Use the scenario dropdown to switch between the base schedule and its scenarios. Click **Compare** to see a side-by-side diff: summary cards show counts of modified, added, and removed tasks plus total duration change, while a detail table highlights date and duration changes per task. Click **Promote to Base** to replace the base schedule's task dates with the scenario's values, then delete the scenario.
 - **Resource overallocation warnings**: Click the **Overalloc** button (warning triangle icon) in the toolbar to highlight tasks with overlapping resource assignments. The system detects when the same person is assigned to multiple tasks with overlapping dates, then marks those bars with an amber border, glow effect, and a small "!" warning dot. A badge on the button shows the total count of flagged bars. The legend adds an "Overallocated" entry when active. Toggle the button off to hide the highlights.
-- **Minimap**: A small overview panel (200×80px) appears in the bottom-right corner of the timeline, showing the entire schedule at a glance. Each task is shown as a coloured rectangle matching its status colour. A semi-transparent blue rectangle indicates the currently visible area. Click anywhere on the minimap to jump to that position, or drag the viewport rectangle to scroll proportionally. Toggle the **Map** button in the toolbar to show or hide the minimap. Enabled by default.
+- **Minimap**: A small overview panel (200×80px) appears in the bottom-right corner of the timeline, showing the entire schedule at a glance. Each task is shown as a coloured rectangle matching its status colour. A semi-transparent blue rectangle indicates the currently visible area. Click anywhere on the minimap to jump to that position, or drag the viewport rectangle to scroll proportionally. Toggle the **Minimap** button in the toolbar to show or hide the minimap. Enabled by default.
 - **Touch gestures (mobile/tablet)**: All Gantt drag interactions support touch input for tablets and touch-enabled laptops. Touch-drag a task bar to move or resize it, touch-drag the progress handle to adjust completion percentage, and touch-drag on empty timeline space to create a new task. Single-finger gestures only; page scrolling is suppressed during drag operations.
 - **Row action icons**: Each row shows three action icons on hover — **Edit** (pencil, opens the task editor), **Insert Below** (+ icon, opens the add form to create a new task after the current row, inheriting the parent if the row is a subtask), and **Delete** (trash, opens a confirmation modal before deleting; if multiple tasks are selected, the trash icon deletes the entire selection). Icons fade in on row hover.
 
@@ -454,7 +454,7 @@ A cross-view **filter bar** appears above all schedule views (Gantt, Kanban, Cal
 
 #### Mobile Schedule View
 
-On mobile, the Schedule tab switches to a dedicated mobile experience with a **view switcher** (List / Kanban / Calendar):
+On mobile, the Schedule tab switches to a dedicated mobile experience with a **view switcher** (List / Kanban / Calendar). The mobile view initializes from the desktop view mode — if you were on Kanban or Calendar on desktop, the mobile view starts with that same mode selected:
 
 - **List view** — `TaskCardMobile` cards with swipe-to-complete (swipe right past 80px to mark complete) and tap-to-cycle status badges.
 - **Kanban view** — mobile-friendly columns with horizontal scrolling.
@@ -567,8 +567,9 @@ The critical path identifies the longest chain of dependent tasks that determine
 ### Viewing the Critical Path
 
 1. Open a project schedule.
-2. Navigate to the **Critical Path** view or panel.
-3. Tasks on the critical path are highlighted (typically in red or with a special indicator).
+2. Toggle the **Critical Path** checkbox in the schedule toolbar.
+3. Tasks on the critical path are highlighted with red borders on the Gantt chart.
+4. A **Critical Path info banner** appears below the toolbar showing the total project duration (in days) and the number of critical tasks.
 
 ### Key Information
 

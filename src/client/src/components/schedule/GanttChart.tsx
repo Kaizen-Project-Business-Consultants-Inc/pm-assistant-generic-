@@ -75,8 +75,12 @@ function daysBetween(a: Date, b: Date): number {
   return Math.max(1, Math.round((b.getTime() - a.getTime()) / DAY_MS));
 }
 
-function formatShortDate(d: Date): string {
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+function formatShortDate(d: Date, referenceYear?: number): string {
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  if (referenceYear != null && d.getFullYear() !== referenceYear) {
+    opts.year = '2-digit';
+  }
+  return d.toLocaleDateString(undefined, opts);
 }
 
 /** Build a flat, sorted list of tasks with WBS numbers & hierarchy levels.
@@ -1337,8 +1341,8 @@ export function GanttChart({
     switch (colKey) {
       case 'name': return task.name || '';
       case 'pred': return getTaskFieldValue(task, 'dependency');
-      case 'start': return task.startDate ? formatShortDate(new Date(task.startDate)) : '';
-      case 'end': return task.endDate ? formatShortDate(new Date(task.endDate)) : '';
+      case 'start': return task.startDate ? formatShortDate(new Date(task.startDate), new Date().getFullYear()) : '';
+      case 'end': return task.endDate ? formatShortDate(new Date(task.endDate), new Date().getFullYear()) : '';
       case 'dur': {
         const s = toDate(task.startDate), en = toDate(task.endDate);
         return s && en ? `${daysBetween(s, en)}d` : '';
@@ -2697,12 +2701,12 @@ export function GanttChart({
             <button
               onClick={() => setShowMinimap(v => !v)}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors print:hidden ${showMinimap ? 'text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-900/30' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-              title="Toggle timeline overview"
+              title="Toggle minimap"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
               </svg>
-              Overview
+              Minimap
             </button>
             {/* Saved views */}
             {scheduleId && (
@@ -3284,7 +3288,7 @@ export function GanttChart({
                           onKeyDown={e => handleKeyDown(e, task.id, 'startDate')}
                         />
                       ) : (
-                        start ? formatShortDate(start) : '—'
+                        start ? formatShortDate(start, new Date().getFullYear()) : '—'
                       )}
                     </div>
                   );
@@ -3307,7 +3311,7 @@ export function GanttChart({
                           onKeyDown={e => handleKeyDown(e, task.id, 'endDate')}
                         />
                       ) : (
-                        end ? formatShortDate(end) : '—'
+                        end ? formatShortDate(end, new Date().getFullYear()) : '—'
                       )}
                     </div>
                   );
@@ -3883,7 +3887,7 @@ export function GanttChart({
                         {isCritical && <span className="text-red-400">[Critical] </span>}
                         Milestone: {task.name}
                       </div>
-                      <div className="text-gray-300 mt-0.5">{formatShortDate(start)}</div>
+                      <div className="text-gray-300 mt-0.5">{formatShortDate(start, new Date().getFullYear())}</div>
                     </div>
                   </div>
                 );
@@ -3946,7 +3950,7 @@ export function GanttChart({
                     {/* Tooltip */}
                     <div className="invisible group-hover/bar:visible absolute z-30 left-1/2 -translate-x-1/2 -top-16 bg-gray-900 dark:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-lg pointer-events-none">
                       <div className="font-semibold">{task.name}</div>
-                      <div className="text-gray-300 mt-0.5">{formatShortDate(start)} – {formatShortDate(end)} | {task.progressPercentage ?? 0}%</div>
+                      <div className="text-gray-300 mt-0.5">{formatShortDate(start, new Date().getFullYear())} – {formatShortDate(end, new Date().getFullYear())} | {task.progressPercentage ?? 0}%</div>
                     </div>
                   </div>
                 );
@@ -4124,7 +4128,7 @@ export function GanttChart({
                       {task.name}
                     </div>
                     <div className="text-gray-300 mt-0.5">
-                      {formatShortDate(start)} — {formatShortDate(end)} &middot;{' '}
+                      {formatShortDate(start, new Date().getFullYear())} — {formatShortDate(end, new Date().getFullYear())} &middot;{' '}
                       {daysBetween(start, end)}d &middot; {pct}% complete
                       {floatDays > 0 && <span className="text-yellow-400"> &middot; Float: {floatDays}d</span>}
                     </div>
@@ -4402,6 +4406,14 @@ export function GanttChart({
             <span className="text-xs text-gray-500 dark:text-gray-400">Resource Conflict</span>
           </div>
         )}
+        {/* Priority dots */}
+        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+        {(['urgent', 'high', 'medium', 'low'] as const).map(p => (
+          <div key={p} className="flex items-center gap-1">
+            <div className={`w-2 h-2 rounded-full ${priorityDot[p]}`} />
+            <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{p}</span>
+          </div>
+        ))}
       </div>
 
       {/* Print CSS */}

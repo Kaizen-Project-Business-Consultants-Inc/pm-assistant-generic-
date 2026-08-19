@@ -73,7 +73,7 @@ export function ProjectReadinessBar({ projectId, tasks, resources, methodology =
   }
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto">
+    <div className="flex items-center gap-1 px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
       {steps.map((step, i) => (
         <span key={step.key} className="contents">
           {i > 0 && <span className="text-gray-300 dark:text-gray-600 text-xs mx-0.5 flex-shrink-0 hidden sm:inline">&middot;</span>}

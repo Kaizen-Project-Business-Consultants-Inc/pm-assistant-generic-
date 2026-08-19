@@ -201,14 +201,14 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
   const safeIdx = selectedScheduleIdx >= schedules.length ? 0 : selectedScheduleIdx;
 
   if (isMobile) {
-    return <MobileScheduleView schedules={schedules} selectedIdx={safeIdx} onSelectSchedule={setSelectedScheduleIdx} />;
+    return <MobileScheduleView schedules={schedules} selectedIdx={safeIdx} onSelectSchedule={setSelectedScheduleIdx} desktopViewMode={viewMode} />;
   }
 
   return (
     <div className="space-y-4">
       {/* View Toggle + Schedule Selector */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5 overflow-x-auto">
+        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5">
           {([
             { mode: 'gantt' as const, icon: GanttChartSquare, label: 'Gantt' },
             { mode: 'kanban' as const, icon: Kanban, label: 'Kanban' },
@@ -256,9 +256,13 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
   );
 }
 
-function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule }: { schedules: any[]; selectedIdx: number; onSelectSchedule: (idx: number) => void }) {
+function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule, desktopViewMode }: { schedules: any[]; selectedIdx: number; onSelectSchedule: (idx: number) => void; desktopViewMode?: string }) {
   const queryClient = useQueryClient();
-  const [mobileView, setMobileView] = useState<'list' | 'kanban' | 'calendar'>('list');
+  const [mobileView, setMobileView] = useState<'list' | 'kanban' | 'calendar'>(() => {
+    if (desktopViewMode === 'kanban') return 'kanban';
+    if (desktopViewMode === 'calendar') return 'calendar';
+    return 'list';
+  });
   const schedule = schedules[selectedIdx] || schedules[0];
   const { data: tasksData } = useQuery({
     queryKey: ['tasks', schedule?.id],
@@ -880,11 +884,6 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
               Critical Path
             </label>
 
-            {cpmData && showCriticalPath && (
-              <span className="text-xs text-gray-400 dark:text-gray-500 hidden lg:inline">
-                CPM: {cpmData.projectDuration}d &middot; {cpmData.criticalPathTaskIds?.length || 0} critical
-              </span>
-            )}
           </>
         )}
 
@@ -1022,6 +1021,14 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
               <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{ width: `${taskStats.pct}%` }} />
             </div>
           </span>
+        </div>
+      )}
+
+      {showCriticalPath && cpmData && (
+        <div className="flex items-center gap-4 px-3 py-1.5 mb-2 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg text-xs">
+          <span className="font-medium text-red-700 dark:text-red-400">Critical Path</span>
+          <span className="text-red-600 dark:text-red-300">{cpmData.projectDuration} days</span>
+          <span className="text-red-600 dark:text-red-300">{cpmData.criticalPathTaskIds?.length || 0} critical tasks</span>
         </div>
       )}
 
@@ -1667,7 +1674,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
                 onClick={() => { props.onCreateScenario(); setOpen(false); }}
                 className={itemClass}
               >
-                <svg className="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                <svg className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                 Create Scenario
               </button>
               {props.scenarios.length > 0 && (
@@ -1689,7 +1696,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
                   onClick={() => props.setShowScenarioCompare(!props.showScenarioCompare)}
                   className={itemClass}
                 >
-                  <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
+                  <BarChart3 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                   {props.showScenarioCompare ? 'Hide Comparison' : 'Compare'}
                 </button>
               )}
@@ -1703,7 +1710,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
             onClick={() => { props.setShowImportModal(true); setOpen(false); }}
             className={itemClass}
           >
-            <Upload className="w-3.5 h-3.5 text-green-500" />
+            <Upload className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
             Import
           </button>
           <button
@@ -1722,7 +1729,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
             onClick={() => { props.setShowReschedulePanel(true); setOpen(false); }}
             className={itemClass}
           >
-            <Bot className="w-3.5 h-3.5 text-purple-500" />
+            <Bot className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
             AI Reschedule
           </button>
           <button
@@ -1730,7 +1737,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
             disabled={props.levelingBusy}
             className={`${itemClass} disabled:opacity-50`}
           >
-            <BarChart3 className="w-3.5 h-3.5 text-orange-500" />
+            <BarChart3 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
             Level Resources
           </button>
           <div className="px-3 py-1.5 flex items-center gap-2">

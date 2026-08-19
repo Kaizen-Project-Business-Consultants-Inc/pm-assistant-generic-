@@ -483,7 +483,7 @@ export function ProjectDetailPage() {
       />
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+      <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex gap-3 sm:gap-4 md:gap-6">
           {getPrimaryTabs(methodology).map((tab) => {
             const criticalCount = tab.id === 'raid' ? (riskStats?.critical ?? 0) : 0;

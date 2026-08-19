@@ -119,7 +119,7 @@ An agentic AI project management platform that combines the scheduling power of 
 
 ### 1.6a Gantt Overallocation Warnings & Minimap
 - **Overallocation warnings**: Toggle "Overalloc" button in Gantt toolbar; client-side detection of overlapping assignments per resource; amber 2px border + glow + "!" dot on flagged bars; count badge on toolbar button; legend entry
-- **Minimap**: 200×80px overview panel (bottom-right); colored rectangles per task matching status colors; semi-transparent blue viewport rectangle tracks scroll position; click/drag to scroll timeline proportionally; enabled by default, toggleable via "Map" button
+- **Minimap**: 200×80px overview panel (bottom-right); colored rectangles per task matching status colors; semi-transparent blue viewport rectangle tracks scroll position; click/drag to scroll timeline proportionally; enabled by default, toggleable via "Minimap" button
 - **Benchmark:** MS Project (overallocation indicators), Primavera P6 (minimap navigation)
 
 ### 1.6b Comments & Activity Feed

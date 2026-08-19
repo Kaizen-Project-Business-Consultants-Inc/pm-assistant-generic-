@@ -33,8 +33,12 @@ When a project has more than one schedule, a **pill/tab strip** renders at the t
 The Gantt toolbar is a compact single row:
 
 ```
-[Search] [Filters] | [Columns] [Critical Path] | [CPM info] | [⋯]
+[Search] [Filters] | [Columns] [Critical Path] | [⋯]
 ```
+
+When **Critical Path** is enabled, a styled banner appears below the toolbar showing total project duration (days) and the number of critical tasks.
+
+**Date formatting**: dates in the Gantt left panel show month and day (e.g. "Aug 19"). When a date falls in a different year than the current year, a 2-digit year is appended (e.g. "Jan 15, '27") for cross-year visibility.
 
 The **⋯ overflow menu** exposes infrequently-used actions in grouped sections:
 
@@ -1712,7 +1716,7 @@ The `TaskListMobile` component wraps multiple cards with filter chips (status fi
 
 ### Mobile Schedule View
 
-On mobile, the project Schedule tab renders a dedicated mobile experience with a **view switcher** offering three modes:
+On mobile, the project Schedule tab renders a dedicated mobile experience with a **view switcher** offering three modes. The mobile view initializes from the desktop view mode — if you selected Kanban or Calendar on desktop, the mobile view starts with that mode. All other desktop modes (Gantt, Table, Network, Burndown) map to List on mobile.
 
 - **List view** — scrollable card-based task list using `TaskCardMobile` components with touch-optimized interactions.
 - **Kanban view** — mobile-friendly Kanban board with horizontal scrolling columns.
@@ -2003,6 +2007,7 @@ A toggle button labelled **"Overalloc"** (with a warning triangle icon) in the G
 - Overallocated task bars receive an **amber highlight** — a 2px amber border with a glow effect — plus a small amber **"!" warning dot** on the bar.
 - A **badge with count** appears on the toolbar button showing how many bars are currently flagged.
 - The Gantt **legend** includes an entry showing an amber-bordered box labelled "Overallocated".
+- The legend also includes a **priority section** (separated by a divider) showing coloured dots for Urgent (red), High (orange), Medium (yellow), and Low (green) — matching the inline priority dots on task rows.
 
 Detection is entirely client-side (no server API required). Toggle the button off to hide all overallocation highlights.
 
@@ -2010,7 +2015,7 @@ Detection is entirely client-side (no server API required). Toggle the button of
 
 ## 35. Gantt Minimap
 
-A **200×80px overview panel** in the bottom-right corner of the Gantt timeline provides a bird's-eye view of the entire schedule. Toggle it with the **"Map"** button (map icon) in the toolbar. The minimap is enabled by default.
+A **200×80px overview panel** in the bottom-right corner of the Gantt timeline provides a bird's-eye view of the entire schedule. Toggle it with the **"Minimap"** button (map icon) in the toolbar. The minimap is enabled by default.
 
 - Each task bar is represented as a small coloured rectangle matching its status colour (blue for in progress, green for completed, grey for pending).
 - A **semi-transparent blue viewport rectangle** shows the currently visible portion of the timeline and tracks scroll position in real time.
@@ -2219,17 +2224,16 @@ The RAID log tab is labelled **Risks & Issues** in the tab bar. Its badge shows 
 
 ### Project Readiness Bar
 
-A methodology-aware progress bar displayed above the tabs on the project detail page. It guides new project setup with 5 sequential steps that vary by methodology:
+A methodology-aware progress bar displayed above the tabs on the project detail page. It guides new project setup with data-driven steps that vary by methodology:
 
 | Waterfall | Agile | Hybrid |
 |-----------|-------|--------|
 | Tasks | Backlog | Tasks |
-| Dependencies | Sprint | Sprint |
+| Predecessors | Sprint | Sprint |
 | Resources | Team | Resources |
-| Critical Path | Velocity | Critical Path |
-| Simulation | Burndown | Velocity |
+| | | Predecessors |
 
-Data-driven steps (tasks, dependencies, resources, sprints) auto-detect completion from existing data. Click-driven steps (critical path, simulation, velocity, burndown) mark complete on first click and persist via `localStorage`. The bar can be dismissed per project.
+All steps are data-driven and auto-detect completion (tasks exist, predecessor links exist, resources assigned, sprints created). The bar can be dismissed per project.
 
 Component: `src/client/src/components/onboarding/ProjectReadinessBar.tsx`
 Step configurations: `src/client/src/utils/methodology.ts`
