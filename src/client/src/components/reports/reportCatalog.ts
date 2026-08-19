@@ -12,7 +12,6 @@ import {
   TrendingUp,
   BarChart3,
   PieChart,
-  Brain,
   CalendarClock,
   Activity,
   type LucideIcon,
@@ -103,6 +102,14 @@ export const REPORT_CATALOG: ReportCategory[] = [
         badge: 'instant',
         generationType: 'instant',
       },
+      {
+        id: 'risk-assessment',
+        name: 'Risk Assessment',
+        description: 'AI-generated risk analysis and mitigation recommendations',
+        icon: Shield,
+        badge: 'ai',
+        generationType: 'ai-background',
+      },
     ],
     seeAlso: [
       { label: 'For Monte Carlo simulation, see Simulation', path: '/monte-carlo' },
@@ -170,6 +177,14 @@ export const REPORT_CATALOG: ReportCategory[] = [
         badge: 'instant',
         generationType: 'instant',
       },
+      {
+        id: 'resource-utilization',
+        name: 'Resource Utilization',
+        description: 'AI analysis of resource allocation and optimization',
+        icon: PieChart,
+        badge: 'ai',
+        generationType: 'ai-background',
+      },
     ],
   },
   {
@@ -213,30 +228,6 @@ export const REPORT_CATALOG: ReportCategory[] = [
     ],
     seeAlso: [
       { label: 'For interactive EVM forecasting, see EVM Dashboard', path: '/evm' },
-    ],
-  },
-  {
-    id: 'ai-analysis',
-    title: 'AI Analysis',
-    icon: Brain,
-    defaultExpanded: false,
-    reports: [
-      {
-        id: 'risk-assessment',
-        name: 'Risk Assessment',
-        description: 'AI-generated risk analysis and mitigation recommendations',
-        icon: Shield,
-        badge: 'ai',
-        generationType: 'ai-background',
-      },
-      {
-        id: 'resource-utilization',
-        name: 'Resource Utilization',
-        description: 'AI analysis of resource allocation and optimization',
-        icon: PieChart,
-        badge: 'ai',
-        generationType: 'ai-background',
-      },
     ],
   },
 ];
