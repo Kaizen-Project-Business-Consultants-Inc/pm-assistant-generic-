@@ -7,7 +7,6 @@ const DEFAULT_DEAD_LETTER_RETENTION_DAYS = 30;
 const DEFAULT_NOTIFICATION_RETENTION_DAYS = 90;
 const DEFAULT_API_KEY_LOG_RETENTION_DAYS = 90;
 const DEFAULT_MCP_INVOCATION_RETENTION_DAYS = 90;
-const DEFAULT_REPORT_CONTENT_KEEP_COUNT = 10;
 
 function envInt(name: string, fallback: number): number {
   const val = process.env[name];
@@ -98,23 +97,15 @@ export class DataRetentionService {
   }
 
   private async purgeReportContent(): Promise<number> {
-    const keepCount = envInt('RETENTION_REPORT_CONTENT_KEEP', DEFAULT_REPORT_CONTENT_KEEP_COUNT);
     try {
+      // Purge all AI report content — these are regenerable on demand.
+      // Status reports (context_type='status-report') are kept permanently.
       const result: any = await databaseService.queryControlPlane(
-        `UPDATE ai_conversations ac
-         INNER JOIN (
-           SELECT id FROM (
-             SELECT id,
-                    ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC) AS rn
-             FROM ai_conversations
-             WHERE context_type IN ('report', 'status-report')
-               AND is_active = TRUE
-               AND messages IS NOT NULL
-           ) ranked
-           WHERE ranked.rn > ?
-         ) expired ON ac.id = expired.id
-         SET ac.messages = NULL`,
-        [keepCount],
+        `UPDATE ai_conversations
+         SET messages = NULL
+         WHERE context_type = 'report'
+           AND messages IS NOT NULL`,
+        [],
       );
       return result.affectedRows ?? 0;
     } catch (err) {

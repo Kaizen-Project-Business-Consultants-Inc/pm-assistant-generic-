@@ -1052,7 +1052,7 @@ All generated reports appear in the **Report History** table below the generator
 - **Download** — click the download icon in the viewer to save as HTML.
 - **Delete** — click the trash icon to remove a report from history.
 - **Pagination** — reports are shown 20 per page. Use the page controls to navigate.
-- **Content expiry** — to save storage, only your most recent 10 reports keep their full content. Older reports show an **EXPIRED** badge in the table. You can still see the title, date, and type of expired reports. Click an expired report to view the "Content Expired" message and use the **Regenerate** button to create a fresh copy of the report.
+- **Content storage** — **Status reports** are kept permanently for your records. **AI reports** (risk, budget, resource) are available for download when generated but are not stored long-term — they can always be regenerated from current project data, which gives you a fresher result anyway. Reports without stored content show an **EXPIRED** badge; click to see a **Regenerate** button.
 
 > **Note:** Regular users can delete report templates they created. Deleting another user's template still requires an admin role. When updating a template in the Report Designer, all configured sections are saved correctly.
 

@@ -428,28 +428,15 @@ export class AIReportService {
 
   private async storeReport(report: GeneratedReport, userId: string): Promise<void> {
     try {
-      const messages = [
-        {
-          role: 'system',
-          content: JSON.stringify({
-            reportType: report.reportType,
-            content: report.content,
-            aiPowered: report.aiPowered,
-            metadata: report.metadata,
-          }),
-          timestamp: report.generatedAt,
-        },
-      ];
-
+      // Store metadata only — AI report content is not persisted (available via download at generation time)
       await databaseService.queryControlPlane(
         `INSERT INTO ai_conversations (id, user_id, project_id, context_type, title, messages, token_count)
-         VALUES (?, ?, ?, 'report', ?, ?, ?)`,
+         VALUES (?, ?, ?, 'report', ?, NULL, ?)`,
         [
           report.id,
           userId,
           report.metadata.projectId || null,
           report.title,
-          JSON.stringify(messages),
           report.metadata.tokenCount || 0,
         ],
       );
