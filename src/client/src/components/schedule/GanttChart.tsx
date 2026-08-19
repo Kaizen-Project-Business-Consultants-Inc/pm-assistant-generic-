@@ -129,8 +129,10 @@ function buildFlatRows(tasks: GanttTask[], collapsedIds?: Set<string>): FlatRow[
 
 const barColors: Record<string, { bg: string; fill: string; text: string }> = {
   completed: { bg: '#dcfce7', fill: '#22c55e', text: '#166534' },
+  done: { bg: '#dcfce7', fill: '#22c55e', text: '#166534' },
   in_progress: { bg: '#dbeafe', fill: '#3b82f6', text: '#1e40af' },
   pending: { bg: '#f3f4f6', fill: '#9ca3af', text: '#374151' },
+  not_started: { bg: '#f3f4f6', fill: '#9ca3af', text: '#374151' },
   cancelled: { bg: '#fee2e2', fill: '#ef4444', text: '#991b1b' },
 };
 
@@ -153,8 +155,10 @@ function avatarInitials(name: string): string {
 
 const statusLabels: Record<string, string> = {
   completed: 'Complete',
+  done: 'Complete',
   in_progress: 'In Progress',
   pending: 'Not Started',
+  not_started: 'Not Started',
   cancelled: 'Cancelled',
 };
 
@@ -1054,20 +1058,24 @@ export function GanttChart({
   }, [selectedIds, onBulkDelete]);
 
   const confirmBulkDelete = useCallback(async () => {
-    if (!onBulkDelete || pendingDeleteIds.length === 0) return;
+    if (pendingDeleteIds.length === 0) return;
     const idsToDelete = [...pendingDeleteIds];
     setPendingDeleteIds([]);
-    setBulkLoading(true);
-    try {
-      await onBulkDelete(idsToDelete);
-      showBulkMessage(`Deleted ${idsToDelete.length} task${idsToDelete.length > 1 ? 's' : ''}`);
-      clearBulkState();
-    } catch {
-      showBulkMessage('Some deletes failed');
-    } finally {
-      setBulkLoading(false);
+    if (onBulkDelete) {
+      setBulkLoading(true);
+      try {
+        await onBulkDelete(idsToDelete);
+        showBulkMessage(`Deleted ${idsToDelete.length} task${idsToDelete.length > 1 ? 's' : ''}`);
+        clearBulkState();
+      } catch {
+        showBulkMessage('Some deletes failed');
+      } finally {
+        setBulkLoading(false);
+      }
+    } else if (onDeleteTask && idsToDelete.length === 1) {
+      onDeleteTask(idsToDelete[0]);
     }
-  }, [pendingDeleteIds, onBulkDelete, showBulkMessage, clearBulkState]);
+  }, [pendingDeleteIds, onBulkDelete, onDeleteTask, showBulkMessage, clearBulkState]);
 
   // Delete key for single or bulk delete
   useEffect(() => {
@@ -1083,10 +1091,7 @@ export function GanttChart({
         // Single selected task — use same bulk delete flow for consistency & undo support
         setPendingDeleteIds([activeTaskId]);
       } else if (activeTaskId && onDeleteTask) {
-        const task = tasks.find(t => t.id === activeTaskId);
-        if (task && confirm(`Delete "${task.name}"?`)) {
-          onDeleteTask(activeTaskId);
-        }
+        setPendingDeleteIds([activeTaskId]);
       }
     };
     document.addEventListener('keydown', onKeyDown);
@@ -2564,11 +2569,7 @@ export function GanttChart({
             {onDeleteTask && (
               <button
                 onClick={() => {
-                  if (!activeTaskId) return;
-                  const task = tasks.find(t => t.id === activeTaskId);
-                  if (task && confirm(`Delete "${task.name}"?`)) {
-                    onDeleteTask(activeTaskId);
-                  }
+                  if (activeTaskId) setPendingDeleteIds([activeTaskId]);
                 }}
                 disabled={!activeTaskId}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
@@ -3572,7 +3573,7 @@ export function GanttChart({
                       className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/30"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm(`Delete "${task.name}"?`)) onDeleteTask(task.id);
+                        setPendingDeleteIds([task.id]);
                       }}
                       title="Delete task"
                     >
@@ -4326,7 +4327,7 @@ export function GanttChart({
                   ids.add(contextMenu.task.id);
                   setPendingDeleteIds(Array.from(ids));
                 } else if (onDeleteTask) {
-                  if (confirm(`Delete "${contextMenu.task.name}"?`)) onDeleteTask(contextMenu.task.id);
+                  setPendingDeleteIds([contextMenu.task.id]);
                 }
                 setContextMenu(null);
               }}
@@ -4473,9 +4474,9 @@ export function GanttChart({
 
       {pendingDeleteIds.length > 0 && (
         <ConfirmModal
-          title="Delete Tasks"
+          title={pendingDeleteIds.length === 1 ? 'Delete Task' : 'Delete Tasks'}
           message={pendingDeleteIds.length === 1
-            ? 'Are you sure you want to delete this task?'
+            ? `Delete "${tasks.find(t => t.id === pendingDeleteIds[0])?.name || 'this task'}"?`
             : `Are you sure you want to delete ${pendingDeleteIds.length} tasks?`}
           confirmLabel="Delete"
           onConfirm={confirmBulkDelete}

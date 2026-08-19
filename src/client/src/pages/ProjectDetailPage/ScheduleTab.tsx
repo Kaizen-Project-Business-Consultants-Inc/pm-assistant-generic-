@@ -36,6 +36,7 @@ import { useUndoRedo } from '../../hooks/useUndoRedo';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { COLUMN_DEFS } from '../../components/schedule/tableColumns';
 import { exportTasksCSV } from '../../utils/exportUtils';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 
 export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt' }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string }) {
@@ -354,6 +355,10 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
   const [levelingBusy, setLevelingBusy] = useState(false);
   const [showScenarioCompare, setShowScenarioCompare] = useState(false);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showPromoteConfirm, setShowPromoteConfirm] = useState(false);
+  const [showScenarioPrompt, setShowScenarioPrompt] = useState(false);
+  const [scenarioName, setScenarioName] = useState(`Scenario ${new Date().toLocaleDateString()}`);
   const cpmNeeded = columnState.cpmNeeded;
 
   const { data: tasksData, isLoading: tasksLoading } = useQuery({
@@ -916,11 +921,10 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             }}
             exportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
             queryClient={queryClient}
-            onDeleteSchedule={() => {
-              if (!confirm(`Delete schedule "${schedule.name}"? All tasks, baselines, and scenarios will be permanently removed.`)) return;
-              apiService.deleteSchedule(schedule.id).then(() => {
-                queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
-              });
+            onDeleteSchedule={() => setShowDeleteConfirm(true)}
+            onCreateScenario={() => {
+              setScenarioName(`Scenario ${new Date().toLocaleDateString()}`);
+              setShowScenarioPrompt(true);
             }}
           />
         )}
@@ -1253,15 +1257,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={async () => {
-                  if (!confirm('Promote this scenario? This will update the base schedule with scenario dates and delete the scenario.')) return;
-                  await apiService.promoteScenario(schedule.id, selectedScenarioId);
-                  setShowScenarioCompare(false);
-                  setSelectedScenarioId('');
-                  queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-                  queryClient.invalidateQueries({ queryKey: ['scenarios', schedule.id] });
-                  queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
-                }}
+                onClick={() => setShowPromoteConfirm(true)}
                 className="px-2.5 py-1 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
               >
                 Promote to Base
@@ -1478,6 +1474,92 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
           </button>
         </div>
       )}
+
+      {/* Delete Schedule Confirm */}
+      {showDeleteConfirm && (
+        <ConfirmModal
+          title="Delete Schedule"
+          message={`Delete "${schedule.name}"? All tasks, baselines, and scenarios will be permanently removed.`}
+          confirmLabel="Delete"
+          variant="danger"
+          onConfirm={() => {
+            setShowDeleteConfirm(false);
+            apiService.deleteSchedule(schedule.id).then(() => {
+              queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+            });
+          }}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
+
+      {/* Promote Scenario Confirm */}
+      {showPromoteConfirm && (
+        <ConfirmModal
+          title="Promote Scenario"
+          message="This will update the base schedule with scenario dates and delete the scenario."
+          confirmLabel="Promote"
+          variant="warning"
+          onConfirm={async () => {
+            setShowPromoteConfirm(false);
+            await apiService.promoteScenario(schedule.id, selectedScenarioId);
+            setShowScenarioCompare(false);
+            setSelectedScenarioId('');
+            queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+            queryClient.invalidateQueries({ queryKey: ['scenarios', schedule.id] });
+            queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+          }}
+          onCancel={() => setShowPromoteConfirm(false)}
+        />
+      )}
+
+      {/* Create Scenario Prompt */}
+      {showScenarioPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowScenarioPrompt(false)} />
+          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-sm mx-4 w-full">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Create Scenario</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Enter a name for the scenario.</p>
+            <input
+              type="text"
+              value={scenarioName}
+              onChange={(e) => setScenarioName(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && scenarioName.trim()) {
+                  setShowScenarioPrompt(false);
+                  apiService.cloneSchedule(schedule.id, scenarioName.trim()).then(() => {
+                    queryClient.invalidateQueries({ queryKey: ['scenarios', schedule.id] });
+                    queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+                  });
+                }
+              }}
+            />
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setShowScenarioPrompt(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!scenarioName.trim()) return;
+                  setShowScenarioPrompt(false);
+                  apiService.cloneSchedule(schedule.id, scenarioName.trim()).then(() => {
+                    queryClient.invalidateQueries({ queryKey: ['scenarios', schedule.id] });
+                    queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+                  });
+                }}
+                disabled={!scenarioName.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -1507,6 +1589,7 @@ interface ScheduleOverflowMenuProps {
   exportCSV: () => void;
   queryClient: ReturnType<typeof useQueryClient>;
   onDeleteSchedule: () => void;
+  onCreateScenario: () => void;
 }
 
 function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
@@ -1581,13 +1664,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
             <>
               <div className={groupLabel}>Scenarios</div>
               <button
-                onClick={async () => {
-                  const label = prompt('Scenario name:', `Scenario ${new Date().toLocaleDateString()}`);
-                  if (!label) return;
-                  await apiService.cloneSchedule(props.schedule.id, label);
-                  props.queryClient.invalidateQueries({ queryKey: ['scenarios', props.schedule.id] });
-                  props.queryClient.invalidateQueries({ queryKey: ['schedules', props.projectId] });
-                }}
+                onClick={() => { props.onCreateScenario(); setOpen(false); }}
                 className={itemClass}
               >
                 <svg className="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
