@@ -415,8 +415,13 @@ An agentic AI project management platform that combines the scheduling power of 
 - Sprint retrospective summaries (AI-generated)
 - **Benchmark:** Jira, Azure DevOps, Monday.com
 
-### 5.6 Custom Report Builder
-- Drag-and-drop report designer
+### 5.6 Reports & Report Builder
+- **Category-based Reports page** with persistent project selector and 5 collapsible sections: Project Status, Schedule & Risk, Resources, Budget & Cost, AI Analysis
+- **16 report types** — 6 AI-powered reports (Status Report, RAID Report, Strategic Risk Scan, Budget Forecast, Risk Assessment, Resource Utilization) + 10 instant data-driven reports (Milestone Report, Critical Tasks, Late & Slipping Tasks, Resource Overview, Who Does What, Resource Availability, Resource Cost Overview, Overallocated Resources, Cost Overview, Earned Value Summary)
+- **Instant reports** return immediately with styled HTML (navy #283480 theme, inline CSS) — no AI, no WebSocket wait. Results displayed in InstantReportModal with PDF/HTML export. API: `POST /api/v1/instant-reports/generate`
+- **Report tiles** show name, description, and AI/Instant badge per report type
+- **"See Also" links** to EVM Dashboard and Monte Carlo Simulation for deeper analytical views
+- Drag-and-drop report designer (Report Builder)
 - Configurable data sources and filters
 - KPI, chart, and table sections render with correct data shapes (fixed section rendering bugs)
 - `groupBy` parameter validated against an allowlist for SQL injection protection

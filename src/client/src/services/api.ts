@@ -637,6 +637,15 @@ class ApiService {
   }
 
   // -------------------------------------------------------------------------
+  // Instant Reports endpoints
+  // -------------------------------------------------------------------------
+
+  async generateInstantReport(data: { reportType: string; projectId: string }) {
+    const response = await this.api.post('/instant-reports/generate', data);
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
   // Status Reports endpoints
   // -------------------------------------------------------------------------
 

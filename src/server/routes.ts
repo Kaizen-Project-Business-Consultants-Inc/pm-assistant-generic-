@@ -75,6 +75,7 @@ import { statusReportRoutes } from './routes/reporting/statusReports';
 import { strategicRiskScanRoutes } from './routes/reporting/strategicRiskScan';
 import { raidReportRoutes } from './routes/reporting/raidReports';
 import { standupRoutes } from './routes/reporting/standup';
+import { instantReportRoutes } from './routes/reporting/instantReports';
 
 // Agent
 import { agentRoutes } from './routes/agent/agent';
@@ -183,6 +184,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(strategicRiskScanRoutes, { prefix: '/api/v1/strategic-risk-scan' });
   await fastify.register(raidReportRoutes, { prefix: '/api/v1/raid-reports' });
   await fastify.register(standupRoutes, { prefix: '/api/v1/standup' });
+  await fastify.register(instantReportRoutes, { prefix: '/api/v1/instant-reports' });
 
   // Agent
   await fastify.register(agentRoutes, { prefix: '/api/v1/agent' });

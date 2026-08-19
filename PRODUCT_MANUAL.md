@@ -837,7 +837,7 @@ On-demand structural risk analysis that examines a project's schedule, milestone
 
 **How to Use:**
 
-Click the amber **Risk Scan** button (ShieldAlert icon) in the project header on the Project Detail page. The scan runs in the background using the same WebSocket pattern as the Status Report — a progress indicator displays while the analysis completes, and the finished report is delivered via WebSocket (`risk_scan_ready`).
+Navigate to the **Reports** page, select a project, and click the **Strategic Risk Scan** tile in the Schedule & Risk category. The scan runs in the background using the same WebSocket pattern as the Status Report — a progress indicator displays while the analysis completes, and the finished report is delivered via WebSocket (`risk_scan_ready`).
 
 **Five Detector Categories:**
 
@@ -941,13 +941,42 @@ The `ReportBuilderService` provides a configurable report engine:
 
 **Trial User Experience:** Trial users who navigate to the Report Builder are not blocked with a 403. Instead, `GET /api/v1/report-builder/templates` returns **3 sample report templates** (Weekly Status, Budget Overview, Time Tracking) so the page renders meaningfully. The **New Report**, **Edit**, **Generate**, and **Delete** buttons are hidden or replaced with an "Upgrade to use" label — trial users cannot create, modify, generate, or delete templates. An amber upgrade banner at the top of the page reads: "Sample Templates — You are viewing sample report templates. Upgrade to a paid plan to build and generate custom reports." No database writes are performed for trial users on this page.
 
-### AI-Generated Reports
+### Reports Page (Category-Based Layout)
 
-The AI report endpoint generates narrative compliance and status reports using Claude, grounded in real project data. Available report types: Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization. A `projectId` is required to generate a report — there is no batch "All Projects" generation mode. For cross-project reporting, use the scheduling feature to generate per-project reports on a recurring cadence.
+The Reports page provides a unified report catalog organized into 5 collapsible category sections, replacing the previous flat dropdown-based generator. A **persistent project selector** at the top of the page determines which project all reports are generated against.
+
+**Report Categories and Tiles:**
+
+Each category section displays report tiles that can be clicked to generate a report. There are 16 total reports — 6 AI-powered reports and 10 instant (data-driven) reports:
+
+1. **Project Status** — Status Report (AI), RAID Report (data-driven)
+2. **Schedule & Risk** — Strategic Risk Scan (AI), Milestone Report (instant), Critical Tasks (instant), Late & Slipping Tasks (instant)
+3. **Resources** — Resource Utilization (AI), Resource Overview (instant), Who Does What (instant), Resource Availability (instant)
+4. **Budget & Cost** — Budget Forecast (AI), Risk Assessment (AI), Resource Cost Overview (instant), Cost Overview (instant), Earned Value Summary (instant)
+5. **AI Analysis** — all AI-powered report types grouped for visibility
+
+Each tile shows the report name, a brief description, and a badge indicating whether it is an **AI** report or an **Instant** report.
+
+**Instant Reports:**
+
+Instant reports (Milestone Report, Critical Tasks, Late & Slipping Tasks, Resource Overview, Who Does What, Resource Availability, Resource Cost Overview, Overallocated Resources, Cost Overview, Earned Value Summary) are generated immediately from live project data with no AI involvement and no WebSocket wait. Results are rendered as styled HTML (navy #283480 theme, inline CSS) and displayed in the **InstantReportModal** with PDF and HTML export options.
+
+- **API**: `POST /api/v1/instant-reports/generate` — accepts `{ projectId, reportType }` and returns styled HTML immediately
+- **Service**: `InstantReportService` orchestrates data gathering, `instantReportRenderer` produces themed HTML
+
+**AI Reports:**
+
+AI-powered reports (Risk Assessment, Budget Forecast, Resource Utilization) still generate asynchronously in the background. The API returns a `jobId` immediately, and the completed report is delivered via WebSocket (`ai_report_ready` / `ai_report_failed`). This prevents Nginx 502 timeouts on long-running AI calls.
+
+- **Styled HTML output** — AI report markdown is rendered to styled HTML matching the status report theme (navy #283480 headers, Calibri font, alternating-row tables). The `renderAIReportHtml()` utility in `src/server/utils/aiReportRenderer.ts` handles conversion via `marked`.
+
+**See Also Links:**
+
+The Reports page includes "See Also" links to the **EVM Dashboard** and **Monte Carlo Simulation** pages for users who need deeper analytical views.
 
 ### RAID Report (Data-Driven)
 
-The RAID Report is a canned (non-AI) stakeholder report generated from live RAID item data. Available from both the Reports page (Generate Report dropdown) and the RAID tab toolbar.
+The RAID Report is a canned (non-AI) stakeholder report generated from live RAID item data. Available from both the Reports page and the RAID tab toolbar.
 
 - **Filters**: type (Risk/Issue/Action/Decision), severity, owner, category — all optional, defaults to all open items
 - **Summary Dashboard**: 4 cards showing open counts with severity breakdowns
@@ -960,7 +989,7 @@ The RAID Report is a canned (non-AI) stakeholder report generated from live RAID
 
 ### Report History
 
-The Reports page maintains a history of all generated reports (AI reports, Status Reports, RAID Reports) in a **sortable, paginated table** with server-side filtering:
+The Reports page maintains a history of all generated reports (AI reports, Status Reports, RAID Reports, Instant Reports) in a **sortable, paginated table** below the report catalog, with server-side filtering:
 
 - **Tiered type dropdown** — hierarchical filter: All Types → AI Reports (with sub-types: Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization) → Status Reports → RAID Reports. Sub-type filtering uses deterministic title matching on the server.
 - **Date range picker** — From/To date inputs for filtering by generation date. Server-side: `created_at >= dateFrom AND created_at < dateTo + 1 day`.
@@ -1653,7 +1682,7 @@ Several pages received targeted responsive fixes to avoid overflow and cramped l
 - **Agent Proposals Page** — Proposal history stat cards use the same `grid-cols-2 sm:grid-cols-4` pattern.
 - **Goals Page** — The new/edit goal modal form grid changes from a fixed `grid-cols-3` to `grid-cols-1 sm:grid-cols-3`, stacking fields vertically on mobile.
 - **Resource Management Page** — The tab bar uses `overflow-x-auto` with `min-w-max` tabs for horizontal scroll instead of wrapping; tab labels display shortened names on mobile; the resource table container switches from `overflow-hidden` to `overflow-x-auto` so wide tables scroll cleanly.
-- **Project Detail Page** — Action buttons condense on mobile (Status Report label hidden, Save as Template button hidden on small screens); tab navigation changes from `flex-wrap` to `overflow-x-auto` horizontal scroll with `min-w-max` tab items.
+- **Project Detail Page** — Action buttons condense on mobile (Save as Template button hidden on small screens); tab navigation changes from `flex-wrap` to `overflow-x-auto` horizontal scroll with `min-w-max` tab items.
 - **Portfolio Page** — Project Comparison, CPI/SPI, and Resource Utilization tables get `min-w-[600–700px]` so wide data tables scroll horizontally instead of compressing columns.
 
 ### Mobile-Responsive Gantt (Touch Gestures)

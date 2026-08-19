@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FileText,
-  Plus,
   Clock,
   X,
   ChevronDown,
@@ -10,10 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   FileBarChart,
-  Shield,
-  DollarSign,
-  Users,
-  ShieldAlert,
   Search,
   Download,
   Trash2,
@@ -29,6 +24,9 @@ import { renderMarkdown } from '../utils/renderMarkdown';
 import { RAIDReportModal } from '../components/risks/RAIDReportModal';
 import { StatusReportModal } from './ProjectDetailPage/StatusReportModal';
 import { StrategicRiskScanModal } from './ProjectDetailPage/StrategicRiskScanModal';
+import { REPORT_CATALOG, type ReportDefinition } from '../components/reports/reportCatalog';
+import { ReportCategorySection } from '../components/reports/ReportCategorySection';
+import { InstantReportModal } from '../components/reports/InstantReportModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,15 +52,6 @@ interface Project {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-const REPORT_TYPES = [
-  { value: 'status-report', label: 'Status Report', icon: FileText, badgeColor: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' },
-  { value: 'risk-assessment', label: 'Risk Assessment', icon: Shield, badgeColor: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
-  { value: 'budget-forecast', label: 'Budget Forecast', icon: DollarSign, badgeColor: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' },
-  { value: 'resource-utilization', label: 'Resource Utilization', icon: Users, badgeColor: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' },
-  { value: 'raid-report', label: 'RAID Report', icon: ShieldAlert, badgeColor: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
-  { value: 'strategic-risk-scan', label: 'Strategic Risk Scan', icon: ShieldAlert, badgeColor: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' },
-] as const;
 
 const badgeColorMap: Record<string, string> = {
   'risk-assessment': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
@@ -265,15 +254,21 @@ const ReportViewerModal: React.FC<{
 export const ReportsPage: React.FC = () => {
   const queryClient = useQueryClient();
 
-  // Form state
-  const [selectedType, setSelectedType] = useState<string>('');
+  // Project selector
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+
+  // Category expansion state — initialize from catalog defaults
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    () => new Set(REPORT_CATALOG.filter(c => c.defaultExpanded).map(c => c.id))
+  );
 
   // Modal state
   const [viewingReport, setViewingReport] = useState<ReportListItem | null>(null);
   const [showRaidReport, setShowRaidReport] = useState(false);
   const [showStatusReport, setShowStatusReport] = useState(false);
   const [showRiskScan, setShowRiskScan] = useState(false);
+  const [activeInstantReport, setActiveInstantReport] = useState<{ html: string; title: string } | null>(null);
+  const [generatingReportType, setGeneratingReportType] = useState<string | null>(null);
 
   // Table state
   const [typeFilter, setTypeFilter] = useState('');
@@ -313,6 +308,15 @@ export const ReportsPage: React.FC = () => {
     setPage(1);
   }, [sortBy]);
 
+  const toggleCategory = useCallback((categoryId: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) next.delete(categoryId);
+      else next.add(categoryId);
+      return next;
+    });
+  }, []);
+
   // ---- Queries ----
 
   const {
@@ -322,7 +326,6 @@ export const ReportsPage: React.FC = () => {
   } = useQuery({
     queryKey: ['reportHistory', typeFilter, searchQuery, dateFrom, dateTo, sortBy, sortOrder, page],
     queryFn: () => {
-      // Parse composite filter: "report:weekly-status" → type=report, subType=weekly-status
       const [contextType, subType] = typeFilter.includes(':') ? typeFilter.split(':') : [typeFilter, ''];
       return apiService.getReportHistory({
         type: contextType || undefined,
@@ -366,11 +369,8 @@ export const ReportsPage: React.FC = () => {
   // ---- Mutations ----
 
   const generateMutation = useMutation({
-    mutationFn: () =>
-      apiService.generateReport({
-        reportType: selectedType,
-        projectId: selectedProjectId,
-      }),
+    mutationFn: (data: { reportType: string; projectId: string }) =>
+      apiService.generateReport(data),
   });
 
   const deleteMutation = useMutation({
@@ -379,6 +379,43 @@ export const ReportsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['reportHistory'] });
     },
   });
+
+  // ---- Report tile click handler ----
+
+  const handleReportClick = useCallback(async (report: ReportDefinition) => {
+    if (!selectedProjectId) return;
+
+    switch (report.generationType) {
+      case 'modal-existing':
+        if (report.modalType === 'status') setShowStatusReport(true);
+        else if (report.modalType === 'raid') setShowRaidReport(true);
+        else if (report.modalType === 'strategic-risk') setShowRiskScan(true);
+        break;
+
+      case 'ai-background':
+        generateMutation.mutate({ reportType: report.id, projectId: selectedProjectId });
+        break;
+
+      case 'instant':
+        setGeneratingReportType(report.id);
+        try {
+          const result = await apiService.generateInstantReport({
+            reportType: report.id,
+            projectId: selectedProjectId,
+          });
+          setActiveInstantReport({ html: result.html, title: result.title });
+        } catch {
+          // Show error in a simple way
+          setActiveInstantReport({
+            html: '<div style="text-align: center; padding: 40px; color: #dc2626;">Failed to generate report. Please try again.</div>',
+            title: report.name,
+          });
+        } finally {
+          setGeneratingReportType(null);
+        }
+        break;
+    }
+  }, [selectedProjectId, generateMutation]);
 
   // ---- Loading state ----
 
@@ -396,113 +433,64 @@ export const ReportsPage: React.FC = () => {
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Reports</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Generate AI-powered project reports and review past analyses.
+          Generate instant and AI-powered project reports.
         </p>
       </div>
 
       {/* ----------------------------------------------------------------- */}
-      {/* Report Generator Card                                             */}
+      {/* Persistent Project Selector                                       */}
       {/* ----------------------------------------------------------------- */}
       <div className="card">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <FileBarChart className="w-4 h-4 text-primary-500" />
-          Generate Report
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Report type selector */}
-          <div>
-            <label htmlFor="report-type" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Report Type
-            </label>
-            <div className="relative">
-              <select
-                id="report-type"
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="input w-full appearance-none pr-8"
-              >
-                <option value="">Select type of report...</option>
-                {REPORT_TYPES.map((rt) => (
-                  <option key={rt.value} value={rt.value}>
-                    {rt.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-            </div>
-          </div>
-
-          {/* Project selector */}
-          <div>
-            <label htmlFor="report-project" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Project
-            </label>
-            <div className="relative">
-              <select
-                id="report-project"
-                value={selectedProjectId}
-                onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="input w-full appearance-none pr-8"
-                disabled={projectsLoading}
-              >
-                <option value="">Select a project...</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-            </div>
-          </div>
-
-          {/* Generate button */}
-          <div className="flex items-end">
-            <button
-              onClick={() => {
-                if (selectedType === 'raid-report') {
-                  setShowRaidReport(true);
-                } else if (selectedType === 'status-report') {
-                  setShowStatusReport(true);
-                } else if (selectedType === 'strategic-risk-scan') {
-                  setShowRiskScan(true);
-                } else {
-                  generateMutation.mutate();
-                }
-              }}
-              disabled={generateMutation.isPending || !selectedProjectId || !selectedType}
-              className="btn btn-primary flex items-center gap-2 w-full justify-center"
-            >
-              {generateMutation.isPending ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  Generate Report
-                </>
-              )}
-            </button>
-          </div>
+        <label htmlFor="report-project" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
+          <FileBarChart className="w-3.5 h-3.5 inline mr-1.5 text-primary-500" />
+          Select Project
+        </label>
+        <div className="relative max-w-md">
+          <select
+            id="report-project"
+            value={selectedProjectId}
+            onChange={(e) => setSelectedProjectId(e.target.value)}
+            className="input w-full appearance-none pr-8"
+          >
+            <option value="">Select a project to generate reports...</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
         </div>
-
-        {/* Generation error */}
-        {generateMutation.isError && (
-          <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            Failed to generate report. Please try again.
-          </div>
-        )}
-
-        {/* Generation success — report is generating in background */}
-        {generateMutation.isSuccess && (
-          <div className="mt-4 rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700">
-            Report is being generated. You&apos;ll be notified when it&apos;s ready.
-          </div>
-        )}
       </div>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Report Categories                                                 */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="space-y-3">
+        {REPORT_CATALOG.map(category => (
+          <ReportCategorySection
+            key={category.id}
+            category={category}
+            expanded={expandedCategories.has(category.id)}
+            onToggle={() => toggleCategory(category.id)}
+            disabled={!selectedProjectId}
+            generatingReportType={generatingReportType}
+            onReportClick={handleReportClick}
+          />
+        ))}
+      </div>
+
+      {/* AI generation feedback */}
+      {generateMutation.isError && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          Failed to generate report. Please try again.
+        </div>
+      )}
+      {generateMutation.isSuccess && (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700">
+          Report is being generated. You&apos;ll be notified when it&apos;s ready.
+        </div>
+      )}
 
       {/* ----------------------------------------------------------------- */}
       {/* Report History Table                                              */}
@@ -615,7 +603,7 @@ export const ReportsPage: React.FC = () => {
             <FileText className="mx-auto h-12 w-12 text-gray-300 mb-3" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">No reports yet</h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Generate your first report using the form above.
+              Select a project and generate your first report using the tiles above.
             </p>
           </div>
         ) : reports.length === 0 ? (
@@ -794,15 +782,22 @@ export const ReportsPage: React.FC = () => {
               setShowStatusReport(true);
             } else if (r.contextType === 'report' && r.projectId) {
               setSelectedProjectId(r.projectId);
-              // Determine report sub-type from title for regeneration
               const title = r.title || '';
-              if (title.startsWith('Risk Assessment')) setSelectedType('risk-assessment');
-              else if (title.startsWith('Budget Forecast')) setSelectedType('budget-forecast');
-              else if (title.startsWith('Resource Utilization')) setSelectedType('resource-utilization');
-              else setSelectedType('weekly-status');
-              generateMutation.mutate();
+              let reportType = 'weekly-status';
+              if (title.startsWith('Risk Assessment')) reportType = 'risk-assessment';
+              else if (title.startsWith('Budget Forecast')) reportType = 'budget-forecast';
+              else if (title.startsWith('Resource Utilization')) reportType = 'resource-utilization';
+              generateMutation.mutate({ reportType, projectId: r.projectId });
             }
           }}
+        />
+      )}
+
+      {activeInstantReport && (
+        <InstantReportModal
+          title={activeInstantReport.title}
+          html={activeInstantReport.html}
+          onClose={() => setActiveInstantReport(null)}
         />
       )}
 

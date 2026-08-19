@@ -1006,9 +1006,49 @@ Project managers and owners see an **Approvals** tab on the Timesheet page.
 
 ## 12. Reports
 
-### Pre-Built Reports
+Navigate to **Reports** in the sidebar to access the report catalog. The page is organized into a persistent **project selector** at the top and **5 collapsible category sections** with clickable report tiles.
 
-Navigate to **Reports** in the sidebar to access standard project reports with pre-configured views and filters.
+### Selecting a Project
+
+Use the project dropdown at the top of the Reports page to choose which project to report on. All reports (both AI and instant) are generated for the selected project. A project must be selected before generating any report.
+
+### Report Categories
+
+Reports are organized into 5 categories. Click a category header to expand or collapse it:
+
+1. **Project Status** — Status Report (AI), RAID Report (data-driven)
+2. **Schedule & Risk** — Strategic Risk Scan (AI), Milestone Report, Critical Tasks, Late & Slipping Tasks
+3. **Resources** — Resource Utilization (AI), Resource Overview, Who Does What, Resource Availability
+4. **Budget & Cost** — Budget Forecast (AI), Risk Assessment (AI), Resource Cost Overview, Cost Overview, Earned Value Summary
+5. **AI Analysis** — all AI-powered report types grouped together
+
+Each tile shows the report name, a brief description, and a badge indicating whether it is an **AI** report or an **Instant** report.
+
+### Generating Instant Reports
+
+Click any tile marked **Instant** to generate it immediately:
+
+1. Select a project in the project selector.
+2. Click the report tile (e.g., Milestone Report, Critical Tasks, Resource Overview).
+3. The report is generated instantly from live project data and displayed in a modal.
+4. Use the **PDF** or **HTML** export buttons in the modal to download the report.
+
+Instant reports do not use AI and return results immediately — no waiting for background processing.
+
+### Generating AI Reports
+
+Click any tile marked **AI** to start an AI-powered report:
+
+1. Select a project in the project selector.
+2. Click the report tile (e.g., Budget Forecast, Risk Assessment, Resource Utilization).
+3. The report generates in the background. You will see a "generating" confirmation and receive a toast notification when the report is ready.
+4. The report appears in the Report History table below and can be viewed, downloaded, or emailed.
+
+For **Status Reports** and **RAID Reports**, a modal opens with additional options (editing, email delivery, scheduling, and multi-format export). For **Strategic Risk Scan**, the scan runs in the background and the finished report is delivered via WebSocket.
+
+### See Also
+
+The Reports page includes links to the **EVM Dashboard** and **Monte Carlo Simulation** pages for deeper analytical views beyond standard reports.
 
 ### Report Builder
 
@@ -1024,26 +1064,11 @@ For custom reports, use the **Report Builder**:
 4. Save the report template with a name and description.
 5. Mark as **Shared** to make it available to other team members.
 
-### Generating Reports
-
-1. From the report list, click **Generate** on any saved template.
-2. The Report Preview renders live data into the configured sections. KPI cards, charts, and tables all render with the correct data shapes.
-3. Export or print the generated report as needed.
-
-### AI-Powered & RAID Reports
-
-Navigate to **Reports** in the sidebar to generate reports:
-
-1. Select a **Report Type** from the dropdown: Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization, or RAID Report.
-2. Select a **Project** — a project must be selected for all report types. There is no "All Projects" batch generation option. To receive reports across multiple projects, use the scheduling feature to set up per-project recurring deliveries.
-3. Click **Generate Report**. AI-powered reports (Risk Assessment, Budget Forecast, Resource Utilization) generate in the background — you'll see a "generating" confirmation and receive a toast notification when the report is ready. The report history refreshes automatically. RAID Reports are data-driven with no AI.
-4. For RAID Reports, a modal opens with filter options (type, severity, owner, category), preview, email, and scheduling tabs.
-
 ### Report History
 
-All generated reports appear in the **Report History** table below the generator. Use the filter bar to find reports quickly:
+All generated reports appear in the **Report History** table below the report catalog. Use the filter bar to find reports quickly:
 
-- **Filter by type** — use the dropdown to select a report category. AI Reports expand into sub-types (Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization). You can also filter by Status Reports or RAID Reports.
+- **Filter by type** — use the dropdown to select a report category. AI Reports expand into sub-types (Weekly Status, Risk Assessment, Budget Forecast, Resource Utilization). You can also filter by Status Reports, RAID Reports, or Instant Reports.
 - **Date range** — set **From** and **To** dates to narrow results to a specific period.
 - **Search** — type a keyword and press Enter to search by report title.
 - **Sort** — click the **Title** or **Date** column headers to sort ascending or descending.
@@ -1231,7 +1256,7 @@ A severity badge (Low/Medium/High/Critical) flags the degree of scope drift. Cre
 
 ### Status Report Generator (DBJ Template Standard)
 
-Click the **Status Report** button in the project header to generate an AI-powered executive status report following the DBJ Template Standard. The report contains 8 structured sections and is rendered as styled HTML. The modal has three tabs:
+Navigate to the **Reports** page, select a project, and click the **Status Report** tile in the Project Status category to generate an AI-powered executive status report following the DBJ Template Standard. The report contains 8 structured sections and is rendered as styled HTML. The modal has three tabs:
 
 - **Report** — View the generated report with 8 sections:
   1. **Header Metadata** — Report number (SR-001, SR-002, … auto-incrementing per project), reporting period (last 14 days with start and end dates), prepared-by name, and generation date
@@ -1276,10 +1301,11 @@ The Risk Scan analyzes your project's structure to identify risks that are not v
 
 #### Running a Risk Scan
 
-1. Open a project and navigate to the **Project Detail** page.
-2. Click the amber **Risk Scan** button (shield icon) in the project header.
-3. A progress indicator appears while the analysis runs in the background.
-4. When complete, a modal opens displaying the risk findings organized by category.
+1. Navigate to the **Reports** page.
+2. Select a project from the project selector at the top.
+3. Click the **Strategic Risk Scan** tile in the Schedule & Risk category.
+4. A progress indicator appears while the analysis runs in the background.
+5. When complete, a modal opens displaying the risk findings organized by category.
 
 #### Understanding the Results
 
