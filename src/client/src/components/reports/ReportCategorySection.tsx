@@ -40,12 +40,6 @@ export const ReportCategorySection: React.FC<ReportCategorySectionProps> = ({
 
       {expanded && (
         <div className="px-5 pb-4">
-          {disabled && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 mb-3 flex items-center gap-1.5">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500" />
-              Select a project above to generate reports
-            </p>
-          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {category.reports.map(report => (
               <ReportTile
