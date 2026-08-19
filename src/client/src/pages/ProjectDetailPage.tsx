@@ -13,7 +13,6 @@ import {
   Download,
   Printer,
   Save,
-  FileText,
   Pencil,
   Zap,
 } from 'lucide-react';
@@ -25,8 +24,6 @@ import { usePresence } from '../hooks/usePresence';
 import { SetupChecklist } from '../components/project/SetupChecklist';
 import { ProjectReadinessBar } from '../components/onboarding/ProjectReadinessBar';
 import { EditProjectModal } from '../components/project/EditProjectModal';
-import { StatusReportModal } from './ProjectDetailPage/StatusReportModal';
-import { StrategicRiskScanModal } from './ProjectDetailPage/StrategicRiskScanModal';
 import { getPrimaryTabs, getDefaultViewMode, type Methodology } from '../utils/methodology';
 import { PresenceIndicator } from '../components/presence/PresenceIndicator';
 
@@ -97,8 +94,6 @@ export function ProjectDetailPage() {
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
-  const [showStatusReport, setShowStatusReport] = useState(false);
-  const [showRiskScan, setShowRiskScan] = useState(false);
   const [showEditProject, setShowEditProject] = useState(false);
 
   const { user } = useAuthStore();
@@ -341,20 +336,6 @@ export function ProjectDetailPage() {
               </button>
             )}
             <button
-              onClick={() => setShowStatusReport(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 hover:bg-primary-100 dark:hover:bg-primary-900/40 rounded-lg transition-colors"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Status Report</span>
-            </button>
-            <button
-              onClick={() => setShowRiskScan(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors"
-            >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Risk Scan</span>
-            </button>
-            <button
               onClick={() => setShowSaveTemplate(true)}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 hover:bg-primary-100 dark:hover:bg-primary-900/40 rounded-lg transition-colors"
             >
@@ -590,22 +571,6 @@ export function ProjectDetailPage() {
           onSave={(data) => updateProjectMutation.mutate(data)}
           onClose={() => setShowEditProject(false)}
           saving={updateProjectMutation.isPending}
-        />
-      )}
-
-      {showStatusReport && (
-        <StatusReportModal
-          projectId={id!}
-          projectName={project?.name || ''}
-          onClose={() => setShowStatusReport(false)}
-        />
-      )}
-
-      {showRiskScan && (
-        <StrategicRiskScanModal
-          projectId={id!}
-          projectName={project?.name || ''}
-          onClose={() => setShowRiskScan(false)}
         />
       )}
 

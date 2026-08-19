@@ -28,6 +28,7 @@ import { apiService } from '../services/api';
 import { renderMarkdown } from '../utils/renderMarkdown';
 import { RAIDReportModal } from '../components/risks/RAIDReportModal';
 import { StatusReportModal } from './ProjectDetailPage/StatusReportModal';
+import { StrategicRiskScanModal } from './ProjectDetailPage/StrategicRiskScanModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,6 +61,7 @@ const REPORT_TYPES = [
   { value: 'budget-forecast', label: 'Budget Forecast', icon: DollarSign, badgeColor: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' },
   { value: 'resource-utilization', label: 'Resource Utilization', icon: Users, badgeColor: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' },
   { value: 'raid-report', label: 'RAID Report', icon: ShieldAlert, badgeColor: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
+  { value: 'strategic-risk-scan', label: 'Strategic Risk Scan', icon: ShieldAlert, badgeColor: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' },
 ] as const;
 
 const badgeColorMap: Record<string, string> = {
@@ -271,6 +273,7 @@ export const ReportsPage: React.FC = () => {
   const [viewingReport, setViewingReport] = useState<ReportListItem | null>(null);
   const [showRaidReport, setShowRaidReport] = useState(false);
   const [showStatusReport, setShowStatusReport] = useState(false);
+  const [showRiskScan, setShowRiskScan] = useState(false);
 
   // Table state
   const [typeFilter, setTypeFilter] = useState('');
@@ -462,6 +465,8 @@ export const ReportsPage: React.FC = () => {
                   setShowRaidReport(true);
                 } else if (selectedType === 'status-report') {
                   setShowStatusReport(true);
+                } else if (selectedType === 'strategic-risk-scan') {
+                  setShowRiskScan(true);
                 } else {
                   generateMutation.mutate();
                 }
@@ -819,6 +824,14 @@ export const ReportsPage: React.FC = () => {
           projectId={selectedProjectId}
           projectName={projects.find(p => p.id === selectedProjectId)?.name || 'Project'}
           onClose={() => setShowStatusReport(false)}
+        />
+      )}
+
+      {showRiskScan && selectedProjectId && (
+        <StrategicRiskScanModal
+          projectId={selectedProjectId}
+          projectName={projects.find(p => p.id === selectedProjectId)?.name || 'Project'}
+          onClose={() => setShowRiskScan(false)}
         />
       )}
     </div>
