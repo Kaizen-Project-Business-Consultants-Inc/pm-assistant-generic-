@@ -20,6 +20,9 @@ import {
   renderOverallocatedReport,
   renderCostOverviewReport,
   renderEarnedValueReport,
+  renderResourceStatusReport,
+  renderWhoDoesWhatWhenReport,
+  renderOverbudgetResourcesReport,
 } from '../utils/instantReportRenderer';
 import logger from '../utils/logger';
 
@@ -34,6 +37,9 @@ const REPORT_TITLES: Record<string, string> = {
   'overallocated-resources': 'Overallocated Resources',
   'cost-overview': 'Cost Overview',
   'earned-value-summary': 'Earned Value Summary',
+  'resource-status': 'Resource Status',
+  'who-does-what-when': 'Who Does What When',
+  'overbudget-resources': 'Overbudget Resources',
 };
 
 export class InstantReportService {
@@ -65,6 +71,12 @@ export class InstantReportService {
         return { html: await this.costOverviewReport(projectId, projectName), title };
       case 'earned-value-summary':
         return { html: await this.earnedValueReport(projectId, projectName), title };
+      case 'resource-status':
+        return { html: await this.resourceStatusReport(projectId, projectName), title };
+      case 'who-does-what-when':
+        return { html: await this.whoDoesWhatWhenReport(projectId, projectName), title };
+      case 'overbudget-resources':
+        return { html: await this.overbudgetResourcesReport(projectId, projectName), title };
       default:
         throw new Error(`Unknown instant report type: ${reportType}`);
     }
@@ -381,6 +393,252 @@ export class InstantReportService {
         forecasts: { eacCumulative: 0, eacComposite: 0, eacManagement: 0 },
       });
     }
+  }
+  private async resourceStatusReport(projectId: string, projectName: string): Promise<string> {
+    const [resources, workload] = await Promise.all([
+      resourceService.findAllResources(),
+      resourceService.computeWorkload(projectId),
+    ]);
+
+    const totalResources = resources.length;
+    const activeResources = resources.filter(r => r.isActive).length;
+    const inactiveResources = totalResources - activeResources;
+
+    // Count by role
+    const roleCounts = new Map<string, number>();
+    for (const r of resources) {
+      const role = r.role || 'Unassigned';
+      roleCounts.set(role, (roleCounts.get(role) || 0) + 1);
+    }
+    const byRole = Array.from(roleCounts.entries())
+      .map(([role, count]) => ({ role, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Count by group
+    const groupCounts = new Map<string, number>();
+    for (const r of resources) {
+      const group = r.resourceGroup || 'Ungrouped';
+      groupCounts.set(group, (groupCounts.get(group) || 0) + 1);
+    }
+    const byGroup = Array.from(groupCounts.entries())
+      .map(([group, count]) => ({ group, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Utilization distribution buckets
+    const buckets = [
+      { label: '0%', min: 0, max: 0, count: 0 },
+      { label: '1–50%', min: 1, max: 50, count: 0 },
+      { label: '51–80%', min: 51, max: 80, count: 0 },
+      { label: '81–100%', min: 81, max: 100, count: 0 },
+      { label: '>100%', min: 101, max: Infinity, count: 0 },
+    ];
+    let utilizationSum = 0;
+    let overallocatedCount = 0;
+    let totalCapacityHours = 0;
+
+    for (const w of workload) {
+      const util = Math.round(w.averageUtilization);
+      utilizationSum += util;
+      if (w.isOverAllocated) overallocatedCount++;
+      totalCapacityHours += w.weeks.reduce((s, wk) => s + wk.capacity, 0);
+
+      for (const b of buckets) {
+        if (util >= b.min && util <= b.max) {
+          b.count++;
+          break;
+        }
+      }
+    }
+
+    const averageUtilization = workload.length > 0 ? Math.round(utilizationSum / workload.length) : 0;
+
+    return renderResourceStatusReport({
+      projectName,
+      totalResources,
+      activeResources,
+      inactiveResources,
+      byRole,
+      byGroup,
+      utilizationBuckets: buckets.map(b => ({ label: b.label, count: b.count })),
+      averageUtilization,
+      overallocatedCount,
+      totalCapacityHours,
+    });
+  }
+
+  private async whoDoesWhatWhenReport(projectId: string, projectName: string): Promise<string> {
+    const schedules = await scheduleService.findByProjectId(projectId);
+    if (schedules.length === 0) {
+      return renderWhoDoesWhatWhenReport({ projectName, resources: [] });
+    }
+
+    const [allResources, tasks, workload] = await Promise.all([
+      resourceService.findAllResources(),
+      scheduleService.findTasksByScheduleIds(schedules.map(s => s.id)),
+      resourceService.computeWorkload(projectId),
+    ]);
+
+    const taskIds = tasks.map(t => t.id);
+    const assignmentMap = await taskAssignmentService.getForTasks(taskIds);
+    const taskMap = new Map(tasks.map(t => [t.id, t]));
+    const resourceMap = new Map(allResources.map(r => [r.id, r]));
+    const workloadMap = new Map(workload.map(w => [w.resourceId, w]));
+
+    // Build per-resource, per-week task assignments
+    // First, collect all assignments grouped by resource
+    const resourceTasksByWeek = new Map<string, Map<string, Array<{ taskName: string; hours: number }>>>();
+
+    for (const [taskId, assignments] of assignmentMap) {
+      const task = taskMap.get(taskId);
+      if (!task || task.isSummary) continue;
+
+      const taskStart = task.startDate ? new Date(task.startDate) : null;
+      const taskEnd = task.endDate ? new Date(task.endDate) : null;
+      if (!taskStart || !taskEnd) continue;
+
+      for (const a of assignments) {
+        if (!resourceTasksByWeek.has(a.resourceId)) {
+          resourceTasksByWeek.set(a.resourceId, new Map());
+        }
+        const weekMap = resourceTasksByWeek.get(a.resourceId)!;
+
+        // Spread task hours across its weeks
+        const totalDays = Math.max(1, Math.ceil((taskEnd.getTime() - taskStart.getTime()) / (1000 * 60 * 60 * 24)));
+        const hoursPerDay = (a.hoursPlanned || 0) / totalDays;
+
+        // Walk through each week the task spans
+        const cursor = new Date(taskStart);
+        cursor.setDate(cursor.getDate() - cursor.getDay() + 1); // Align to Monday
+        while (cursor <= taskEnd) {
+          const weekKey = cursor.toISOString().slice(0, 10);
+          // Count working days this week that overlap with the task
+          let daysThisWeek = 0;
+          for (let d = 0; d < 7; d++) {
+            const day = new Date(cursor);
+            day.setDate(day.getDate() + d);
+            if (day >= taskStart && day <= taskEnd && day.getDay() !== 0 && day.getDay() !== 6) {
+              daysThisWeek++;
+            }
+          }
+          const hoursThisWeek = Math.round(hoursPerDay * daysThisWeek * 10) / 10;
+          if (hoursThisWeek > 0) {
+            if (!weekMap.has(weekKey)) weekMap.set(weekKey, []);
+            weekMap.get(weekKey)!.push({ taskName: task.name, hours: hoursThisWeek });
+          }
+          cursor.setDate(cursor.getDate() + 7);
+        }
+      }
+    }
+
+    // Build the output structure
+    const resourcesOut = Array.from(resourceTasksByWeek.entries())
+      .map(([resourceId, weekMap]) => {
+        const resource = resourceMap.get(resourceId);
+        const wl = workloadMap.get(resourceId);
+
+        const weeks = Array.from(weekMap.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([weekStart, taskList]) => {
+            const wlWeek = wl?.weeks.find(w => w.weekStart === weekStart);
+            return {
+              weekStart,
+              tasks: taskList,
+              totalHours: Math.round(taskList.reduce((s, t) => s + t.hours, 0) * 10) / 10,
+              capacity: wlWeek?.capacity ?? (resource?.capacityHoursPerWeek ?? 40),
+            };
+          });
+
+        return {
+          resourceName: resource?.name || 'Unknown',
+          role: resource?.role || '',
+          weeks,
+        };
+      })
+      .filter(r => r.weeks.length > 0)
+      .sort((a, b) => a.resourceName.localeCompare(b.resourceName));
+
+    return renderWhoDoesWhatWhenReport({ projectName, resources: resourcesOut });
+  }
+
+  private async overbudgetResourcesReport(projectId: string, projectName: string): Promise<string> {
+    const schedules = await scheduleService.findByProjectId(projectId);
+    if (schedules.length === 0) {
+      return renderOverbudgetResourcesReport({
+        projectName,
+        resources: [],
+        totalPlannedCost: 0,
+        totalActualCost: 0,
+        totalVariance: 0,
+      });
+    }
+
+    const [allResources, tasks, workload] = await Promise.all([
+      resourceService.findAllResources(),
+      scheduleService.findTasksByScheduleIds(schedules.map(s => s.id)),
+      resourceService.computeWorkload(projectId),
+    ]);
+
+    const taskIds = tasks.map(t => t.id);
+    const assignmentMap = await taskAssignmentService.getForTasks(taskIds);
+    const resourceMap = new Map(allResources.map(r => [r.id, r]));
+    const workloadMap = new Map(workload.map(w => [w.resourceId, w]));
+
+    // Calculate planned vs actual hours per resource
+    const resourceHours = new Map<string, { planned: number; actual: number }>();
+
+    for (const [, assignments] of assignmentMap) {
+      for (const a of assignments) {
+        const curr = resourceHours.get(a.resourceId) || { planned: 0, actual: 0 };
+        curr.planned += a.hoursPlanned || 0;
+        resourceHours.set(a.resourceId, curr);
+      }
+    }
+
+    // Get actual hours from workload
+    for (const w of workload) {
+      const curr = resourceHours.get(w.resourceId) || { planned: 0, actual: 0 };
+      curr.actual = w.weeks.reduce((s, wk) => s + (wk.actual || 0), 0);
+      resourceHours.set(w.resourceId, curr);
+    }
+
+    let totalPlannedCost = 0;
+    let totalActualCost = 0;
+
+    const overbudget = Array.from(resourceHours.entries())
+      .map(([resourceId, hours]) => {
+        const resource = resourceMap.get(resourceId);
+        const rate = resource?.costRateHourly ?? 0;
+        const plannedCost = Math.round(hours.planned * rate * 100) / 100;
+        const actualCost = Math.round(hours.actual * rate * 100) / 100;
+        const variance = Math.round((actualCost - plannedCost) * 100) / 100;
+        const variancePct = plannedCost > 0 ? Math.round((variance / plannedCost) * 1000) / 10 : 0;
+
+        totalPlannedCost += plannedCost;
+        totalActualCost += actualCost;
+
+        return {
+          resourceName: resource?.name || 'Unknown',
+          role: resource?.role || '',
+          costRateHourly: rate || null,
+          plannedHours: Math.round(hours.planned * 10) / 10,
+          actualHours: Math.round(hours.actual * 10) / 10,
+          plannedCost,
+          actualCost,
+          variance,
+          variancePct,
+        };
+      })
+      .filter(r => r.variance > 0) // Only over-budget
+      .sort((a, b) => b.variance - a.variance)
+      .slice(0, 200);
+
+    return renderOverbudgetResourcesReport({
+      projectName,
+      resources: overbudget,
+      totalPlannedCost: Math.round(totalPlannedCost * 100) / 100,
+      totalActualCost: Math.round(totalActualCost * 100) / 100,
+      totalVariance: Math.round((totalActualCost - totalPlannedCost) * 100) / 100,
+    });
   }
 }
 

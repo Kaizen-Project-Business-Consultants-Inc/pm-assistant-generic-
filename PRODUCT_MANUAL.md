@@ -947,19 +947,25 @@ The Reports page provides a unified report catalog organized into 5 collapsible 
 
 **Report Categories and Tiles:**
 
-Each category section displays report tiles that can be clicked to generate a report. There are 16 total reports — 6 AI-powered reports and 10 instant (data-driven) reports:
+Each category section displays report tiles that can be clicked to generate a report. There are 19 total reports — 6 AI-powered reports and 13 instant (data-driven) reports:
 
 1. **Project Status** — Status Report (AI), RAID Report (data-driven)
 2. **Schedule & Risk** — Strategic Risk Scan (AI), Milestone Report (instant), Critical Tasks (instant), Late & Slipping Tasks (instant)
-3. **Resources** — Resource Utilization (AI), Resource Overview (instant), Who Does What (instant), Resource Availability (instant)
-4. **Budget & Cost** — Budget Forecast (AI), Risk Assessment (AI), Resource Cost Overview (instant), Cost Overview (instant), Earned Value Summary (instant)
+3. **Resources** — Resource Utilization (AI), Resource Overview (instant), Who Does What (instant), Resource Availability (instant), Resource Status (instant), Who Does What When (instant)
+4. **Budget & Cost** — Budget Forecast (AI), Risk Assessment (AI), Resource Cost Overview (instant), Cost Overview (instant), Earned Value Summary (instant), Overbudget Resources (instant)
 5. **AI Analysis** — all AI-powered report types grouped for visibility
 
 Each tile shows the report name, a brief description, and a badge indicating whether it is an **AI** report or an **Instant** report.
 
 **Instant Reports:**
 
-Instant reports (Milestone Report, Critical Tasks, Late & Slipping Tasks, Resource Overview, Who Does What, Resource Availability, Resource Cost Overview, Overallocated Resources, Cost Overview, Earned Value Summary) are generated immediately from live project data with no AI involvement and no WebSocket wait. Results are rendered as styled HTML (navy #283480 theme, inline CSS) and displayed in the **InstantReportModal** with PDF and HTML export options.
+Instant reports (Milestone Report, Critical Tasks, Late & Slipping Tasks, Resource Overview, Who Does What, Resource Availability, Resource Cost Overview, Overallocated Resources, Cost Overview, Earned Value Summary, Resource Status, Who Does What When, Overbudget Resources) are generated immediately from live project data with no AI involvement and no WebSocket wait. Results are rendered as styled HTML (navy #283480 theme, inline CSS) and displayed in the **InstantReportModal** with PDF and HTML export options.
+
+The three newest instant reports are:
+
+- **Resource Status** (Resources category) — Dashboard overview of resource counts by role and group, utilization distribution buckets (0%, 1–50%, 51–80%, 81–100%, >100%), average utilization percentage, overallocated resource count, and total capacity hours across the project team.
+- **Who Does What When** (Resources category) — Time-phased weekly breakdown showing each resource's task assignments by week, hours per task per week, total hours across the reporting window, and capacity per week. Useful for communicating individual workloads to stakeholders.
+- **Overbudget Resources** (Budget & Cost category) — Shows only resources where actual cost exceeds planned cost. Displays planned vs. actual hours and costs, variance amount, and variance percentage for each overbudget resource. Resources within budget are excluded.
 
 - **API**: `POST /api/v1/instant-reports/generate` — accepts `{ projectId, reportType }` and returns styled HTML immediately
 - **Service**: `InstantReportService` orchestrates data gathering, `instantReportRenderer` produces themed HTML

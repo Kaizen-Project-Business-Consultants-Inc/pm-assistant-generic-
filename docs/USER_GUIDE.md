@@ -1018,8 +1018,8 @@ Reports are organized into 5 categories. Click a category header to expand or co
 
 1. **Project Status** — Status Report (AI), RAID Report (data-driven)
 2. **Schedule & Risk** — Strategic Risk Scan (AI), Milestone Report, Critical Tasks, Late & Slipping Tasks
-3. **Resources** — Resource Utilization (AI), Resource Overview, Who Does What, Resource Availability
-4. **Budget & Cost** — Budget Forecast (AI), Risk Assessment (AI), Resource Cost Overview, Cost Overview, Earned Value Summary
+3. **Resources** — Resource Utilization (AI), Resource Overview, Who Does What, Resource Availability, Resource Status, Who Does What When
+4. **Budget & Cost** — Budget Forecast (AI), Risk Assessment (AI), Resource Cost Overview, Cost Overview, Earned Value Summary, Overbudget Resources
 5. **AI Analysis** — all AI-powered report types grouped together
 
 Each tile shows the report name, a brief description, and a badge indicating whether it is an **AI** report or an **Instant** report.
@@ -1034,6 +1034,12 @@ Click any tile marked **Instant** to generate it immediately:
 4. Use the **PDF** or **HTML** export buttons in the modal to download the report.
 
 Instant reports do not use AI and return results immediately — no waiting for background processing.
+
+**Available instant reports include:**
+
+- **Resource Status** — Dashboard overview showing resource counts by role and group, utilization distribution across five buckets (0%, 1–50%, 51–80%, 81–100%, >100%), average utilization percentage, overallocated resource count, and total capacity hours.
+- **Who Does What When** — Time-phased weekly breakdown of each resource's task assignments. Shows hours per task per week, total hours across the reporting window, and available capacity per week. Useful for sharing individual workload plans with stakeholders.
+- **Overbudget Resources** — Lists only resources where actual cost exceeds planned cost. Shows planned vs. actual hours and costs, variance amount, and variance percentage for each resource. Resources within budget are not shown.
 
 ### Generating AI Reports
 

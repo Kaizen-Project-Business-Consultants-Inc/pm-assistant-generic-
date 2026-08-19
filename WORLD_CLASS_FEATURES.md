@@ -417,7 +417,10 @@ An agentic AI project management platform that combines the scheduling power of 
 
 ### 5.6 Reports & Report Builder
 - **Category-based Reports page** with persistent project selector and 5 collapsible sections: Project Status, Schedule & Risk, Resources, Budget & Cost, AI Analysis
-- **16 report types** — 6 AI-powered reports (Status Report, RAID Report, Strategic Risk Scan, Budget Forecast, Risk Assessment, Resource Utilization) + 10 instant data-driven reports (Milestone Report, Critical Tasks, Late & Slipping Tasks, Resource Overview, Who Does What, Resource Availability, Resource Cost Overview, Overallocated Resources, Cost Overview, Earned Value Summary)
+- **19 report types** — 6 AI-powered reports (Status Report, RAID Report, Strategic Risk Scan, Budget Forecast, Risk Assessment, Resource Utilization) + 13 instant data-driven reports (Milestone Report, Critical Tasks, Late & Slipping Tasks, Resource Overview, Who Does What, Resource Availability, Resource Cost Overview, Overallocated Resources, Cost Overview, Earned Value Summary, Resource Status, Who Does What When, Overbudget Resources)
+- **Resource Status** (instant, Resources category) — dashboard overview of resource counts by role and group, utilization distribution buckets (0%, 1–50%, 51–80%, 81–100%, >100%), average utilization, overallocated count, and total capacity hours
+- **Who Does What When** (instant, Resources category) — time-phased weekly breakdown of each resource's task assignments: hours per task per week, total hours, and capacity per week; designed for stakeholder workload communication
+- **Overbudget Resources** (instant, Budget & Cost category) — filters to only resources where actual cost exceeds planned cost; shows planned vs. actual hours and costs, variance amount and percentage per resource
 - **Instant reports** return immediately with styled HTML (navy #283480 theme, inline CSS) — no AI, no WebSocket wait. Results displayed in InstantReportModal with PDF/HTML export. API: `POST /api/v1/instant-reports/generate`
 - **Report tiles** show name, description, and AI/Instant badge per report type
 - **"See Also" links** to EVM Dashboard and Monte Carlo Simulation for deeper analytical views

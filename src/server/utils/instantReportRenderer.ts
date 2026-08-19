@@ -785,3 +785,285 @@ export function renderEarnedValueReport(data: EarnedValueReportData): string {
 
   return wrapReport('EARNED VALUE SUMMARY', 'EVM metrics, forecasts, and early warnings', data.projectName, new Date().toLocaleDateString('en-US'), metricsTable + forecastTable + warningsHtml);
 }
+
+// ---------------------------------------------------------------------------
+// Resource Status Report (dashboard-style)
+// ---------------------------------------------------------------------------
+export interface ResourceStatusReportData {
+  projectName: string;
+  totalResources: number;
+  activeResources: number;
+  inactiveResources: number;
+  byRole: Array<{ role: string; count: number }>;
+  byGroup: Array<{ group: string; count: number }>;
+  utilizationBuckets: Array<{ label: string; count: number }>;
+  averageUtilization: number;
+  overallocatedCount: number;
+  totalCapacityHours: number;
+}
+
+export function renderResourceStatusReport(data: ResourceStatusReportData): string {
+  const {
+    totalResources, activeResources, inactiveResources,
+    byRole, byGroup, utilizationBuckets,
+    averageUtilization, overallocatedCount, totalCapacityHours,
+  } = data;
+
+  if (totalResources === 0) {
+    return wrapReport('RESOURCE STATUS', 'Resource dashboard overview', data.projectName, new Date().toLocaleDateString('en-US'), emptyState('No resources defined. Add resources in the Resource Management page.'));
+  }
+
+  // Summary cards row
+  const summaryHtml = `
+    ${sectionHeading('OVERVIEW')}
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+      <tr>
+        <td style="${TD} background: ${LABEL_BG}; font-weight: 600; width: 25%;">Total Resources</td>
+        <td style="${TD} width: 25%; font-weight: 700; font-size: 16px;">${totalResources}</td>
+        <td style="${TD} background: ${LABEL_BG}; font-weight: 600; width: 25%;">Active / Inactive</td>
+        <td style="${TD} width: 25%;"><span style="color: #16a34a; font-weight: 700;">${activeResources}</span> / <span style="color: #6b7280;">${inactiveResources}</span></td>
+      </tr>
+      <tr>
+        <td style="${TD} background: ${LABEL_BG}; font-weight: 600;">Avg Utilization</td>
+        <td style="${TD} font-weight: 700;">${Math.round(averageUtilization)}%</td>
+        <td style="${TD} background: ${LABEL_BG}; font-weight: 600;">Overallocated</td>
+        <td style="${TD}${overallocatedCount > 0 ? ' color: #dc2626; font-weight: 700;' : ''}">${overallocatedCount}</td>
+      </tr>
+      <tr>
+        <td style="${TD} background: ${LABEL_BG}; font-weight: 600;">Total Weekly Capacity</td>
+        <td style="${TD}">${num(totalCapacityHours, 0)}h</td>
+        <td style="${TD} background: ${LABEL_BG}; font-weight: 600;">&nbsp;</td>
+        <td style="${TD}">&nbsp;</td>
+      </tr>
+    </table>`;
+
+  // By Role
+  const roleRows = byRole.map(r => `
+    <tr>
+      <td style="${TD}">${escapeHtml(r.role || 'Unassigned')}</td>
+      <td style="${TD} text-align: center; font-weight: 600;">${r.count}</td>
+      <td style="${TD}"><div style="background: ${NAVY}; height: 14px; border-radius: 3px; width: ${totalResources > 0 ? Math.round((r.count / totalResources) * 100) : 0}%;"></div></td>
+    </tr>`).join('');
+
+  const roleHtml = `
+    ${sectionHeading('BY ROLE')}
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead><tr>
+        <th style="${TH} width: 40%;">Role</th>
+        <th style="${TH} text-align: center; width: 60px;">Count</th>
+        <th style="${TH}">Distribution</th>
+      </tr></thead>
+      <tbody>${roleRows}</tbody>
+    </table>`;
+
+  // By Group
+  let groupHtml = '';
+  if (byGroup.length > 0) {
+    const groupRows = byGroup.map(g => `
+      <tr>
+        <td style="${TD}">${escapeHtml(g.group || 'Ungrouped')}</td>
+        <td style="${TD} text-align: center; font-weight: 600;">${g.count}</td>
+      </tr>`).join('');
+
+    groupHtml = `
+      ${sectionHeading('BY GROUP')}
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead><tr>
+          <th style="${TH}">Group</th>
+          <th style="${TH} text-align: center; width: 80px;">Count</th>
+        </tr></thead>
+        <tbody>${groupRows}</tbody>
+      </table>`;
+  }
+
+  // Utilization distribution
+  let utilHtml = '';
+  if (utilizationBuckets.length > 0) {
+    const bucketColors: Record<string, string> = {
+      'Idle (0%)': '#F3F4F6',
+      'Low (1-50%)': '#DBEAFE',
+      'Medium (51-80%)': GREEN_BG,
+      'High (81-100%)': AMBER_BG,
+      'Overallocated (>100%)': RED_BG,
+    };
+    const bucketRows = utilizationBuckets.map(b => `
+      <tr>
+        <td style="${TD}"><span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background: ${bucketColors[b.label] || '#F3F4F6'}; vertical-align: middle; margin-right: 6px;"></span>${escapeHtml(b.label)}</td>
+        <td style="${TD} text-align: center; font-weight: 600;">${b.count}</td>
+      </tr>`).join('');
+
+    utilHtml = `
+      ${sectionHeading('UTILIZATION DISTRIBUTION')}
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead><tr>
+          <th style="${TH}">Utilization Range</th>
+          <th style="${TH} text-align: center; width: 80px;">Resources</th>
+        </tr></thead>
+        <tbody>${bucketRows}</tbody>
+      </table>`;
+  }
+
+  return wrapReport('RESOURCE STATUS', 'Resource dashboard overview', data.projectName, new Date().toLocaleDateString('en-US'), summaryHtml + roleHtml + groupHtml + utilHtml);
+}
+
+// ---------------------------------------------------------------------------
+// Who Does What When Report (time-phased)
+// ---------------------------------------------------------------------------
+export interface WhoDoesWhatWhenReportData {
+  projectName: string;
+  resources: Array<{
+    resourceName: string;
+    role: string;
+    weeks: Array<{
+      weekStart: string;
+      tasks: Array<{ taskName: string; hours: number }>;
+      totalHours: number;
+      capacity: number;
+    }>;
+  }>;
+}
+
+export function renderWhoDoesWhatWhenReport(data: WhoDoesWhatWhenReportData): string {
+  const { resources } = data;
+  if (resources.length === 0) {
+    return wrapReport('WHO DOES WHAT WHEN', 'Time-phased resource assignments', data.projectName, new Date().toLocaleDateString('en-US'), emptyState('No resource assignments found. Assign resources to tasks to populate this report.'));
+  }
+
+  let body = `
+    ${sectionHeading('SUMMARY')}
+    <p style="font-size: 13px; color: ${BODY_TEXT}; margin: 0 0 16px;">${resources.length} resource${resources.length !== 1 ? 's' : ''} with weekly assignment data.</p>`;
+
+  for (const r of resources) {
+    if (r.weeks.length === 0) continue;
+
+    // Build weekly table for this resource
+    const weekHeaders = r.weeks.map(w => {
+      const d = new Date(w.weekStart);
+      const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `<th style="${TH} text-align: center; width: 70px; font-size: 10px;">${escapeHtml(label)}</th>`;
+    }).join('');
+
+    // Collect all unique tasks across all weeks
+    const allTaskNames = new Set<string>();
+    for (const w of r.weeks) {
+      for (const t of w.tasks) allTaskNames.add(t.taskName);
+    }
+
+    const taskRows = Array.from(allTaskNames).slice(0, 50).map(taskName => {
+      const cells = r.weeks.map(w => {
+        const entry = w.tasks.find(t => t.taskName === taskName);
+        const hours = entry ? entry.hours : 0;
+        return `<td style="${TD} text-align: center; font-size: 11px;${hours > 0 ? '' : ' color: #d1d5db;'}">${hours > 0 ? num(hours, 1) + 'h' : '—'}</td>`;
+      }).join('');
+      return `<tr><td style="${TD} font-size: 11px;">${escapeHtml(taskName)}</td>${cells}</tr>`;
+    }).join('');
+
+    // Totals row
+    const totalCells = r.weeks.map(w => {
+      const overCap = w.totalHours > w.capacity;
+      return `<td style="${TD} text-align: center; font-weight: 700; font-size: 11px;${overCap ? ' color: #dc2626;' : ''}">${num(w.totalHours, 1)}h</td>`;
+    }).join('');
+
+    const capacityCells = r.weeks.map(w =>
+      `<td style="${TD} text-align: center; font-size: 10px; color: #6b7280;">${num(w.capacity, 0)}h</td>`
+    ).join('');
+
+    body += `
+      ${sectionHeading(`${r.resourceName} (${r.role || 'No Role'})`)}
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead><tr>
+            <th style="${TH}">Task</th>
+            ${weekHeaders}
+          </tr></thead>
+          <tbody>
+            ${taskRows}
+            <tr style="border-top: 2px solid ${NAVY};">
+              <td style="${TD} font-weight: 700;">Total</td>
+              ${totalCells}
+            </tr>
+            <tr>
+              <td style="${TD} font-size: 10px; color: #6b7280;">Capacity</td>
+              ${capacityCells}
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  return wrapReport('WHO DOES WHAT WHEN', 'Time-phased resource assignments', data.projectName, new Date().toLocaleDateString('en-US'), body);
+}
+
+// ---------------------------------------------------------------------------
+// Overbudget Resources Report
+// ---------------------------------------------------------------------------
+export interface OverbudgetResourcesReportData {
+  projectName: string;
+  resources: Array<{
+    resourceName: string;
+    role: string;
+    costRateHourly: number | null;
+    plannedHours: number;
+    actualHours: number;
+    plannedCost: number;
+    actualCost: number;
+    variance: number;
+    variancePct: number;
+  }>;
+  totalPlannedCost: number;
+  totalActualCost: number;
+  totalVariance: number;
+}
+
+export function renderOverbudgetResourcesReport(data: OverbudgetResourcesReportData): string {
+  const { resources, totalPlannedCost, totalActualCost, totalVariance } = data;
+  if (resources.length === 0) {
+    return wrapReport('OVERBUDGET RESOURCES', 'Resources exceeding planned cost', data.projectName, new Date().toLocaleDateString('en-US'), emptyState('No overbudget resources found. All resources are within their planned cost, or no cost data is available.'));
+  }
+
+  const rows = resources.map(r => `
+    <tr>
+      <td style="${TD} font-weight: 600;">${escapeHtml(r.resourceName)}</td>
+      <td style="${TD}">${escapeHtml(r.role || '—')}</td>
+      <td style="${TD} text-align: right;">${r.costRateHourly != null ? currency(r.costRateHourly) + '/h' : '—'}</td>
+      <td style="${TD} text-align: right;">${num(r.plannedHours, 1)}h</td>
+      <td style="${TD} text-align: right;">${num(r.actualHours, 1)}h</td>
+      <td style="${TD} text-align: right;">${currency(r.plannedCost)}</td>
+      <td style="${TD} text-align: right;">${currency(r.actualCost)}</td>
+      <td style="${TD} text-align: right; color: #dc2626; font-weight: 700;">${currency(r.variance)} (${Math.round(r.variancePct)}%)</td>
+    </tr>`).join('');
+
+  const body = `
+    ${sectionHeading('SUMMARY')}
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+      <tr>
+        <td style="${TD} background: ${LABEL_BG}; font-weight: 600; width: 25%;">Overbudget Resources</td>
+        <td style="${TD} width: 25%; color: #dc2626; font-weight: 700;">${resources.length}</td>
+        <td style="${TD} background: ${LABEL_BG}; font-weight: 600; width: 25%;">Total Overrun</td>
+        <td style="${TD} width: 25%; color: #dc2626; font-weight: 700;">${currency(totalVariance)}</td>
+      </tr>
+      <tr>
+        <td style="${TD} background: ${LABEL_BG}; font-weight: 600;">Total Planned Cost</td>
+        <td style="${TD}">${currency(totalPlannedCost)}</td>
+        <td style="${TD} background: ${LABEL_BG}; font-weight: 600;">Total Actual Cost</td>
+        <td style="${TD}">${currency(totalActualCost)}</td>
+      </tr>
+    </table>
+    ${sectionHeading('OVERBUDGET RESOURCES')}
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead><tr>
+        <th style="${TH}">Resource</th>
+        <th style="${TH} width: 80px;">Role</th>
+        <th style="${TH} text-align: right; width: 70px;">Rate</th>
+        <th style="${TH} text-align: right; width: 70px;">Planned h</th>
+        <th style="${TH} text-align: right; width: 70px;">Actual h</th>
+        <th style="${TH} text-align: right; width: 80px;">Planned $</th>
+        <th style="${TH} text-align: right; width: 80px;">Actual $</th>
+        <th style="${TH} text-align: right; width: 100px;">Overrun</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="font-size: 11px; color: #6b7280; margin: 6px 0 0;">Resources where actual cost exceeds planned cost based on allocated hours and cost rates.</p>`;
+
+  return wrapReport('OVERBUDGET RESOURCES', 'Resources exceeding planned cost', data.projectName, new Date().toLocaleDateString('en-US'), body);
+}
