@@ -136,7 +136,9 @@ export function DashboardPM() {
 
   const overdueTasks  = analytics?.tasks?.overdue ?? 0;
   const risks         = pred?.risks;
-  const openRisks     = risks ? (risks.critical || 0) + (risks.high || 0) + (risks.medium || 0) : 0;
+  const criticalRisks = risks?.critical || 0;
+  const highRisks     = risks?.high || 0;
+  const openRisks     = risks ? criticalRisks + highRisks + (risks.medium || 0) : 0;
   const atRiskCount   = analytics?.portfolio?.atRiskProjects?.length ?? 0;
 
   const allocated     = analytics?.budget?.totalAllocated ?? 0;
@@ -144,9 +146,8 @@ export function DashboardPM() {
   const variance      = allocated - spent;
   const utilization   = analytics?.budget?.utilizationPercent ?? 0;
 
-  const varianceStr   = variance >= 0
-    ? `+$${formatCompact(variance)}`
-    : `-$${formatCompact(Math.abs(variance))}`;
+  // D7: Budget display — handle zero-allocated case
+  const budgetValue   = allocated === 0 ? 'No budget set' : (variance >= 0 ? `+$${formatCompact(variance)}` : `-$${formatCompact(Math.abs(variance))}`);
 
   const kpiColor = (v: number, goodBelow: boolean, warnThresh: number, badThresh: number): 'green' | 'amber' | 'red' | 'teal' | 'gray' => {
     if (goodBelow) {
@@ -157,7 +158,22 @@ export function DashboardPM() {
 
   const healthColor: 'green' | 'amber' | 'red' | 'teal' | 'gray' =
     healthScores.length === 0 ? 'gray' : avgHealth >= 75 ? 'teal' : avgHealth >= 50 ? 'amber' : 'red';
-  const varianceColor: 'green' | 'amber' | 'red' | 'teal' | 'gray' = variance >= 0 ? 'green' : 'red';
+
+  // D4: Risk tile — color by severity, not volume
+  const riskColor: 'green' | 'amber' | 'red' | 'teal' | 'gray' =
+    criticalRisks > 0 ? 'red' : highRisks > 0 ? 'amber' : 'green';
+  const riskSubtitle = criticalRisks > 0
+    ? `${criticalRisks} critical`
+    : atRiskCount > 0
+      ? `${atRiskCount} project${atRiskCount !== 1 ? 's' : ''} at risk`
+      : undefined;
+
+  // D7: Budget tile — color against expected burn, gray when no budget
+  const budgetColor: 'green' | 'amber' | 'red' | 'teal' | 'gray' =
+    allocated === 0 ? 'gray'
+    : utilization > 100 ? 'red'
+    : utilization > 85 ? 'amber'
+    : 'green';
   // ─── Widget renderer ──────────────────────────────────────────────────────
 
   const renderWidget = useCallback((id: string): ReactNode => {
@@ -169,8 +185,8 @@ export function DashboardPM() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <KpiTilePM label="Portfolio Health" value={`${avgHealth}%`} icon={Activity} color={healthColor} statusDot={healthColor} drillPath="/portfolio" />
             <KpiTilePM label="Overdue Tasks" value={overdueTasks} icon={Clock} color={kpiColor(overdueTasks, true, 5, 10)} statusDot={kpiColor(overdueTasks, true, 5, 10)} drillPath="/kpi/overdue" />
-            <KpiTilePM label="Open Risks" value={openRisks} subtitle={atRiskCount > 0 ? `${atRiskCount} project${atRiskCount !== 1 ? 's' : ''} at risk` : undefined} icon={AlertTriangle} color={kpiColor(openRisks, true, 3, 7)} statusDot={kpiColor(openRisks, true, 3, 7)} drillPath="/kpi/risks" />
-            <KpiTilePM label="Budget" value={varianceStr} subtitle={`${Math.round(utilization)}% utilized`} icon={DollarSign} color={varianceColor} statusDot={varianceColor} drillPath="/kpi/budget" />
+            <KpiTilePM label="Open Risks" value={openRisks} subtitle={riskSubtitle} icon={AlertTriangle} color={riskColor} statusDot={riskColor} drillPath="/kpi/risks" />
+            <KpiTilePM label="Budget" value={budgetValue} subtitle={allocated > 0 ? `${Math.round(utilization)}% utilized` : undefined} icon={DollarSign} color={budgetColor} statusDot={budgetColor} drillPath="/kpi/budget" />
           </div>
         );
       case 'intel':
@@ -200,7 +216,7 @@ export function DashboardPM() {
       default:
         return null;
     }
-  }, [avgHealth, healthColor, overdueTasks, openRisks, atRiskCount, varianceStr, varianceColor, utilization, projectsWithHealth, projectSummaries, activeProjects, kpiColor]);
+  }, [avgHealth, healthColor, overdueTasks, openRisks, riskColor, riskSubtitle, budgetValue, budgetColor, utilization, allocated, projectsWithHealth, projectSummaries, activeProjects, kpiColor]);
 
   // ─── Loading state ──────────────────────────────────────────────────────────
 

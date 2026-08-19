@@ -90,25 +90,31 @@ export function MorningBriefingWidget({ scope }: Props) {
           {/* ON FIRE */}
           <div className="bg-white dark:bg-gray-800 p-4">
             <h3 className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wide mb-2">On Fire</h3>
-            <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
-              <li>
-                <Link to="/kpi/overdue" className="hover:text-red-600 dark:hover:text-red-400">
-                  <span className="font-medium">{overdueCount}</span> overdue task{overdueCount !== 1 ? 's' : ''}
-                </Link>
-              </li>
-              {criticalRisks > 0 && (
-                <li>
-                  <Link to="/kpi/risks" className="hover:text-red-600 dark:hover:text-red-400">
-                    <span className="font-medium">{criticalRisks}</span> critical risk{criticalRisks !== 1 ? 's' : ''} (new)
-                  </Link>
-                </li>
-              )}
-              {briefing.overdueTasks?.slice(0, 3).map((t: any) => (
-                <li key={t.id} className="text-xs text-gray-500 dark:text-gray-400 pl-2">
-                  &bull; {t.name} ({t.overdueDays}d overdue)
-                </li>
-              ))}
-            </ul>
+            {overdueCount === 0 && criticalRisks === 0 ? (
+              <p className="text-xs text-gray-400 dark:text-gray-500">Nothing on fire today</p>
+            ) : (
+              <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                {overdueCount > 0 && (
+                  <li>
+                    <Link to="/kpi/overdue" className="hover:text-red-600 dark:hover:text-red-400">
+                      <span className="font-medium">{overdueCount}</span> overdue task{overdueCount !== 1 ? 's' : ''}
+                    </Link>
+                  </li>
+                )}
+                {criticalRisks > 0 && (
+                  <li>
+                    <Link to="/kpi/risks" className="hover:text-red-600 dark:hover:text-red-400">
+                      <span className="font-medium">{criticalRisks}</span> critical risk{criticalRisks !== 1 ? 's' : ''} (new)
+                    </Link>
+                  </li>
+                )}
+                {briefing.overdueTasks?.slice(0, 3).map((t: any) => (
+                  <li key={t.id} className="text-xs text-gray-500 dark:text-gray-400 pl-2">
+                    &bull; {t.name} ({t.overdueDays}d overdue)
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* NEEDS YOUR DECISION */}
@@ -145,19 +151,27 @@ export function MorningBriefingWidget({ scope }: Props) {
           {/* DUE SOON */}
           <div className="bg-white dark:bg-gray-800 p-4">
             <h3 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">Due Soon</h3>
-            <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
-              <li>
-                <span className="font-medium">{dueTodayCount}</span> task{dueTodayCount !== 1 ? 's' : ''} due today
-              </li>
-              <li>
-                <span className="font-medium">{dueWeekCount}</span> task{dueWeekCount !== 1 ? 's' : ''} due this week
-              </li>
-              {milestoneCount > 0 && (
-                <li>
-                  <span className="font-medium">{milestoneCount}</span> milestone{milestoneCount !== 1 ? 's' : ''} upcoming
-                </li>
-              )}
-            </ul>
+            {dueTodayCount === 0 && dueWeekCount === 0 && milestoneCount === 0 ? (
+              <p className="text-xs text-gray-400 dark:text-gray-500">Nothing due soon</p>
+            ) : (
+              <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                {dueTodayCount > 0 && (
+                  <li>
+                    <span className="font-medium">{dueTodayCount}</span> task{dueTodayCount !== 1 ? 's' : ''} due today
+                  </li>
+                )}
+                {dueWeekCount > 0 && (
+                  <li>
+                    <span className="font-medium">{dueWeekCount}</span> task{dueWeekCount !== 1 ? 's' : ''} due this week
+                  </li>
+                )}
+                {milestoneCount > 0 && (
+                  <li>
+                    <span className="font-medium">{milestoneCount}</span> milestone{milestoneCount !== 1 ? 's' : ''} upcoming
+                  </li>
+                )}
+              </ul>
+            )}
           </div>
 
           {/* PORTFOLIO PULSE */}
