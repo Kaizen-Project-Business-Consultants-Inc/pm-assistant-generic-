@@ -318,7 +318,14 @@ function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule, desktopV
       </div>
 
       {mobileView === 'list' && (
-        <TaskListMobile tasks={tasks} onStatusChange={handleStatusChange} />
+        <>
+          {desktopViewMode && !['table', 'kanban', 'calendar'].includes(desktopViewMode) && (
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+              {desktopViewMode.charAt(0).toUpperCase() + desktopViewMode.slice(1)} view requires a wider screen. Showing task list instead.
+            </p>
+          )}
+          <TaskListMobile tasks={tasks} onStatusChange={handleStatusChange} />
+        </>
       )}
       {mobileView === 'kanban' && (
         <KanbanBoard
@@ -821,8 +828,8 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
     <>
       {/* Compact toolbar: Search | Filters | Columns | Critical Path | overflow */}
       <div className="flex items-center gap-2 mb-2">
-        {/* Search */}
-        {tasks.length > 0 && (
+        {/* Search — hidden in Gantt mode (GanttChart has its own Ctrl+F search) */}
+        {tasks.length > 0 && viewMode !== 'gantt' && (
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
@@ -1556,7 +1563,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
                   });
                 }}
                 disabled={!scenarioName.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
               >
                 Create
               </button>

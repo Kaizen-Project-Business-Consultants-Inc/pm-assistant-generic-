@@ -29,14 +29,13 @@ export function getPrimaryTabs(m: Methodology): { id: Tab; label: string }[] {
     ];
   }
 
-  // Waterfall
+  // Waterfall — 5 primary tabs; Changes moves to overflow
   return [
     { id: 'overview', label: 'Overview' },
     { id: 'schedule', label: 'Schedule' },
     { id: 'team', label: 'Team' },
     { id: 'raid', label: 'Risks & Issues' },
     { id: 'budget', label: 'Financials' },
-    { id: 'change-requests', label: 'Changes' },
   ];
 }
 
@@ -51,7 +50,8 @@ export function getOverflowTabs(m: Methodology): { id: Tab; label: string }[] {
   ];
 
   if (m === 'waterfall') {
-    // Budget + Changes are primary for waterfall; add Sprints to overflow
+    // Budget is primary for waterfall; Changes + Sprints go to overflow
+    allOverflow.push({ id: 'change-requests', label: 'Changes' });
     allOverflow.push({ id: 'sprints', label: 'Sprints' });
     allOverflow.push({ id: 'backlog', label: 'Backlog' });
     allOverflow.push({ id: 'scenarios', label: 'What-If' });

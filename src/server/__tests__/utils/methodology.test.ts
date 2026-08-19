@@ -19,16 +19,16 @@ describe('getDefaultViewMode', () => {
 });
 
 describe('getPrimaryTabs', () => {
-  it('waterfall: 6 primary tabs', () => {
+  it('waterfall: 5 primary tabs (Changes moved to overflow)', () => {
     const tabs = getPrimaryTabs('waterfall');
     const ids = tabs.map(t => t.id);
-    expect(tabs).toHaveLength(6);
+    expect(tabs).toHaveLength(5);
     expect(ids[0]).toBe('overview');
     expect(ids[1]).toBe('schedule');
     expect(ids[2]).toBe('team');
     expect(ids[3]).toBe('raid');
     expect(ids[4]).toBe('budget');
-    expect(ids[5]).toBe('change-requests');
+    expect(ids).not.toContain('change-requests');
   });
 
   it('agile: 6 primary tabs with sprints + backlog after overview', () => {
@@ -71,11 +71,11 @@ describe('getPrimaryTabs', () => {
     expect(h).toContain('backlog');
   });
 
-  it('all methodologies have same number of primary tabs', () => {
+  it('agile and hybrid have 6 primary tabs, waterfall has 5', () => {
     const w = getPrimaryTabs('waterfall');
     const a = getPrimaryTabs('agile');
     const h = getPrimaryTabs('hybrid');
-    expect(w.length).toBe(6);
+    expect(w.length).toBe(5);
     expect(a.length).toBe(6);
     expect(h.length).toBe(6);
   });
@@ -94,10 +94,11 @@ describe('getOverflowTabs', () => {
     }
   });
 
-  it('waterfall overflow includes sprints and backlog', () => {
+  it('waterfall overflow includes sprints, backlog, and changes', () => {
     const ids = getOverflowTabs('waterfall').map(t => t.id);
     expect(ids).toContain('sprints');
     expect(ids).toContain('backlog');
+    expect(ids).toContain('change-requests');
   });
 
   it('agile/hybrid overflow includes budget and changes', () => {

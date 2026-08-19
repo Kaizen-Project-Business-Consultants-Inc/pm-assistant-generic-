@@ -3,7 +3,6 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
-  Calendar,
   DollarSign,
   TrendingUp,
   Clock,
@@ -377,7 +376,7 @@ export function ProjectDetailPage() {
       </div>
 
       {/* Context Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className={`grid grid-cols-2 gap-4 ${methodology === 'waterfall' ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`}>
         {methodology === 'agile' ? (
           <ContextCard
             label="Velocity"
@@ -392,14 +391,14 @@ export function ProjectDetailPage() {
             value={`${progress}%`}
             icon={TrendingUp}
             color="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-            detail={
+            detail={progress > 0 ? (
               <div className="mt-2 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
                 <div
                   className="h-full rounded-full bg-blue-500 transition-all"
                   style={{ width: `${Math.min(progress, 100)}%` }}
                 />
               </div>
-            }
+            ) : undefined}
           />
         )}
         <ContextCard
@@ -462,14 +461,7 @@ export function ProjectDetailPage() {
             color="bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
             detail={<p className="mt-1 text-xs text-gray-500">avg pts/sprint</p>}
           />
-        ) : (
-          <ContextCard
-            label="Status"
-            value={status.label}
-            icon={Calendar}
-            color={status.color}
-          />
-        )}
+        ) : null}
       </div>
 
       {/* Readiness Bar */}
