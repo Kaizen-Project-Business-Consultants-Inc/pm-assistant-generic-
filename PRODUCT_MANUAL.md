@@ -24,6 +24,29 @@ Full CRUD lifecycle for projects with the following attributes:
 
 Each project contains one or more schedules. A schedule groups tasks into a logical timeline and serves as the unit for critical path analysis, baselines, and Monte Carlo simulation.
 
+#### Schedule Selector (Multi-Schedule Navigation)
+
+When a project has more than one schedule, a **pill/tab strip** renders at the top of the Schedule tab. Only the selected schedule is rendered — no duplicate toolbars or simultaneous views. On mobile, the strip collapses to a native `<select>` dropdown for touch-friendly switching.
+
+#### Schedule Toolbar
+
+The Gantt toolbar is a compact single row:
+
+```
+[Search] [Filters] | [Columns] [Critical Path] | [CPM info] | [⋯]
+```
+
+The **⋯ overflow menu** exposes infrequently-used actions in grouped sections:
+
+| Group | Actions |
+|-------|---------|
+| **Baseline** | Save baseline, Select baseline, Show variance |
+| **Scenarios** | Create scenario, Select scenario, Compare |
+| **Data** | Import (CSV / Excel / XML), Export CSV |
+| **Automation** | AI Reschedule, Level Resources, % Mode |
+| **Help** | Keyboard shortcuts |
+| **Danger** | Delete schedule (red, destructive) |
+
 ### Tasks
 
 Tasks are the atomic unit of work. Each task supports:
@@ -2334,7 +2357,7 @@ A horizontal stacked bar chart in the stats row showing the breakdown of critica
 
 ### Tab Badge
 
-The RAID tab header shows a count badge with the total number of open items (open risks + open issues + open actions + pending decisions) to provide at-a-glance visibility.
+The **Risks & Issues** tab header (formerly labelled RAID) shows a count badge with the number of **critical-severity open items** only — not the total count of all open items. Surfacing only the critical count keeps the badge meaningful and avoids alert fatigue when a project has many low-severity items open.
 
 ### Slide-Out Detail Panel
 

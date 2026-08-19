@@ -177,7 +177,7 @@ The project detail page adapts its layout based on the project's **methodology**
 | Aspect | Waterfall (default) | Agile | Hybrid |
 |--------|-------------------|-------|--------|
 | **Default view** | Gantt | Kanban | Gantt |
-| **Tab order** | Overview, Schedule, RAID, Sprints... | Overview, **Sprints**, Schedule, RAID... | Overview, Schedule, **Sprints**, RAID... |
+| **Primary tabs** | Overview, Schedule, Team, Risks & Issues, Financials, Changes | Overview, Sprints, Backlog, Schedule, Risks & Issues, Team | Overview, Schedule, Sprints, Backlog, Risks & Issues, Team |
 | **Context card 1** | Progress % | Velocity (avg pts/sprint) | Progress % |
 | **Context card 5** | Status | Sprint count | Velocity (avg pts/sprint) |
 
@@ -197,13 +197,17 @@ Each step turns green when complete. Data-driven steps (tasks, dependencies, res
 
 #### Tabs
 
-Tabs are organized into primary tabs shown directly, plus **Financials** and **More** dropdowns:
+The project detail page shows **6 primary tabs** plus a single **More** overflow menu. Which tabs appear as primary depends on the project methodology:
 
-**Primary tabs:** Overview, Schedule, RAID, Sprints, Team, Time, Files, Performance, AI Insights, Changes (order varies by methodology)
+| Methodology | Primary tabs (left → right) |
+|-------------|----------------------------|
+| **Waterfall** | Overview, Schedule, Team, Risks & Issues, Financials, Changes |
+| **Agile** | Overview, Sprints, Backlog, Schedule, Risks & Issues, Team |
+| **Hybrid** | Overview, Schedule, Sprints, Backlog, Risks & Issues, Team |
 
-**Financials dropdown:** Budget, What-If
+**More overflow menu (all methodologies):** Time, Files, Performance, AI Insights, Resources, Agent Activity — plus any methodology-specific tabs not shown as primary.
 
-**More dropdown:** Resources, Agent Activity
+> **Note:** The RAID log is labelled **Risks & Issues** in the tab bar. The tab badge shows the **critical-item count only** (not the total of all open items) to surface the most urgent items at a glance.
 
 The **Overview** tab presents 15 information cards in a responsive grid layout. Cards can be **drag-and-drop reordered** (grip handle on hover) and **shown/hidden** via a Customize dropdown. Card order persists in localStorage.
 
@@ -262,6 +266,29 @@ Presence automatically re-joins after a WebSocket reconnect (e.g., if your conne
    - **Create Schedule** -- creates a blank schedule ready for adding tasks manually.
    - **Upload Schedule (.xlsx / .csv)** -- import tasks from a spreadsheet file.
 3. You can have multiple schedules per project (e.g., baseline schedule, revised schedule).
+
+### Switching Between Schedules
+
+When a project has more than one schedule, a **pill/tab strip** appears at the top of the Schedule tab, letting you switch between them without leaving the page. Only the selected schedule is rendered — there are no duplicate toolbars or overlapping views. On mobile, the strip is replaced by a **dropdown (`<select>`)** for touch-friendly switching.
+
+### Schedule Toolbar
+
+The schedule toolbar is a compact single row of controls:
+
+```
+[Search] [Filters] | [Columns] [Critical Path] | [CPM info] | [⋯]
+```
+
+The **⋯ overflow menu** groups less-frequent actions:
+
+| Group | Items |
+|-------|-------|
+| **Baseline** | Save baseline, Select baseline, Show variance |
+| **Scenarios** | Create scenario, Select scenario, Compare |
+| **Data** | Import (CSV / Excel / XML), Export CSV |
+| **Automation** | AI Reschedule, Level Resources, % Mode |
+| **Help** | Keyboard shortcuts |
+| **Danger** | Delete schedule (shown in red) |
 
 ### Adding Tasks
 
