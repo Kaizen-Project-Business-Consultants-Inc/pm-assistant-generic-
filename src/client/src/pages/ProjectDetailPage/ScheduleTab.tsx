@@ -819,7 +819,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
 
   return (
     <>
-      {/* Compact toolbar: Search | Filters | Columns | Critical Path | CPM info | overflow */}
+      {/* Compact toolbar: Search | Filters | Columns | Critical Path | overflow */}
       <div className="flex items-center gap-2 mb-2">
         {/* Search */}
         {tasks.length > 0 && (
@@ -873,7 +873,6 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
         />
 
         {viewMode === 'gantt' && (
-          <>
             <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
               <input
                 type="checkbox"
@@ -883,8 +882,6 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
               />
               Critical Path
             </label>
-
-          </>
         )}
 
         {/* Overflow menu */}
@@ -1259,7 +1256,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
         <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+              <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
               <h3 className="text-base font-semibold text-gray-900 dark:text-white">Scenario Comparison</h3>
             </div>
             <div className="flex items-center gap-2">
