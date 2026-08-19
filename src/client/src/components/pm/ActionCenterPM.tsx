@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Clock,
   Zap,
+  CalendarClock,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
@@ -16,125 +17,130 @@ interface ActionCenterPMProps {
   projects: Array<{ id: string; name: string }>;
 }
 
-// ─── Priorities (left column) ────────────────────────────────────────────────
+// ─── Priorities — deadline-driven (left column) ─────────────────────────────
 
 interface PriorityRow {
   id: string;
-  type: 'task' | 'risk' | 'issue' | 'milestone';
+  type: 'overdue' | 'due-today' | 'due-week' | 'milestone';
   title: string;
   projectName: string;
+  projectId?: string;
   dueLabel: string;
   isOverdue: boolean;
-  daysUntilDue: number;
 }
 
+const priorityTypeLabels: Record<string, string> = {
+  'overdue': 'Overdue',
+  'due-today': 'Due Today',
+  'due-week': 'Due This Week',
+  'milestone': 'Milestone',
+};
+
+const priorityTypePillCls: Record<string, string> = {
+  'overdue':   'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+  'due-today': 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+  'due-week':  'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+  'milestone': 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+};
+
 function PrioritiesList({ projects }: { projects: Array<{ id: string; name: string }> }) {
-  const { data: predictionsData } = useQuery({
-    queryKey: ['pm-predictions-action'],
-    queryFn: () => apiService.getDashboardPredictions(),
-    staleTime: 60_000,
+  const navigate = useNavigate();
+
+  const { data: overdueData } = useQuery({
+    queryKey: ['pm-dashboard-overdue'],
+    queryFn: () => apiService.getDashboardOverdueTasks(),
+    staleTime: 120_000,
   });
 
-  const { data: notifData } = useQuery({
-    queryKey: ['pm-notif-action'],
-    queryFn: () => apiService.getNotifications(20),
-    staleTime: 30_000,
+  const { data: milestonesData } = useQuery({
+    queryKey: ['pm-dashboard-milestones'],
+    queryFn: () => apiService.getDashboardMilestones(undefined, 5),
+    staleTime: 120_000,
   });
 
   const rows: PriorityRow[] = [];
-
-  // Build project name map
   const nameMap = new Map(projects.map(p => [p.id, p.name]));
+  const today = new Date().toISOString().slice(0, 10);
+  const endOfWeek = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + (7 - d.getDay()));
+    return d.toISOString().slice(0, 10);
+  })();
 
-  // Pull overdue / at-risk tasks from predictions highlights
-  const predictions = predictionsData?.data || predictionsData;
-  if (predictions?.highlights) {
-    for (const h of (predictions.highlights as Array<any>).slice(0, 3)) {
-      const text: string = typeof h === 'string' ? h : (h.text || '');
-      if (!text) continue;
-      rows.push({
-        id: `hl-${rows.length}`,
-        type: 'task',
-        title: text,
-        projectName: '',
-        dueLabel: 'Flagged',
-        isOverdue: text.toLowerCase().includes('overdue') || text.toLowerCase().includes('late'),
-        daysUntilDue: 0,
-      });
-    }
-  }
-
-  // High-severity notifications not yet read → surface as priority items
-  const notifications: any[] = notifData?.data || notifData?.notifications || [];
-  const urgent = notifications
-    .filter((n: any) => !n.read_at && (n.severity === 'high' || n.severity === 'critical'))
-    .slice(0, 5 - rows.length);
-
-  for (const n of urgent) {
-    const daysUntil = n.due_date
-      ? Math.ceil((new Date(n.due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-      : 0;
+  // Overdue tasks
+  const overdueTasks: any[] = overdueData?.tasks || [];
+  for (const t of overdueTasks.slice(0, 5)) {
     rows.push({
-      id: `notif-${n.id}`,
-      type: 'issue',
-      title: n.title || n.message || 'Urgent notification',
-      projectName: nameMap.get(n.project_id || '') || '',
-      dueLabel: n.due_date
-        ? daysUntil < 0 ? `${Math.abs(daysUntil)}d overdue` : `Due in ${daysUntil}d`
-        : 'Urgent',
-      isOverdue: daysUntil < 0,
-      daysUntilDue: daysUntil,
+      id: `overdue-${t.id}`,
+      type: 'overdue',
+      title: t.name || 'Untitled task',
+      projectName: t.projectName || nameMap.get(t.projectId) || '',
+      projectId: t.projectId,
+      dueLabel: t.overdueDays ? `${t.overdueDays}d overdue` : 'Overdue',
+      isOverdue: true,
     });
   }
 
-  const typeLabels: Record<string, string> = {
-    task: 'Task',
-    risk: 'Risk',
-    issue: 'Issue',
-    milestone: 'Milestone',
-  };
+  // Upcoming milestones
+  const milestones: any[] = milestonesData?.milestones || milestonesData?.data || [];
+  for (const m of milestones.slice(0, 3)) {
+    const dueDate = m.dueDate || m.end_date || '';
+    const dueDateStr = dueDate ? String(dueDate).slice(0, 10) : '';
+    const isDueToday = dueDateStr === today;
+    const isDueThisWeek = dueDateStr > today && dueDateStr <= endOfWeek;
 
-  const typePillCls: Record<string, string> = {
-    task:      'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-    risk:      'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
-    issue:     'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-    milestone: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
-  };
+    rows.push({
+      id: `milestone-${m.id}`,
+      type: isDueToday ? 'due-today' : isDueThisWeek ? 'due-week' : 'milestone',
+      title: m.name || m.title || 'Milestone',
+      projectName: m.projectName || nameMap.get(m.projectId) || '',
+      projectId: m.projectId,
+      dueLabel: dueDateStr || 'Upcoming',
+      isOverdue: false,
+    });
+  }
 
   return (
     <div className="flex-1 min-w-0">
-      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-        Today's Priorities
-      </p>
+      <div className="flex items-center gap-1.5 mb-3">
+        <CalendarClock className="w-3.5 h-3.5 text-gray-400" />
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          Today's Priorities
+        </p>
+      </div>
 
       {rows.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 py-6 text-center">No urgent items</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 py-6 text-center">No urgent deadlines</p>
       ) : (
         <ul className="space-y-2">
           {rows.slice(0, 5).map(row => (
-            <li key={row.id} className="flex items-start gap-2.5">
-              {/* Semantic dot */}
-              <span className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${
-                row.isOverdue
-                  ? 'bg-red-500'
-                  : row.daysUntilDue <= 2
-                    ? 'bg-orange-500'
-                    : 'bg-amber-400'
-              }`} />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-900 dark:text-gray-100 truncate">{row.title}</p>
-                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${typePillCls[row.type]}`}>
-                    {typeLabels[row.type]}
-                  </span>
-                  {row.projectName && (
-                    <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{row.projectName}</span>
-                  )}
-                  <span className={`text-[10px] font-medium ${row.isOverdue ? 'text-red-500' : 'text-gray-400'}`}>
-                    {row.dueLabel}
-                  </span>
+            <li key={row.id}>
+              <button
+                type="button"
+                onClick={() => row.projectId
+                  ? navigate(`/project/${row.projectId}?tab=schedule`)
+                  : navigate('/kpi/overdue')
+                }
+                className="w-full text-left flex items-start gap-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 py-1.5 transition-colors"
+              >
+                <span className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${
+                  row.isOverdue ? 'bg-red-500' : row.type === 'due-today' ? 'bg-orange-500' : 'bg-blue-400'
+                }`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-900 dark:text-gray-100 truncate">{row.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${priorityTypePillCls[row.type]}`}>
+                      {priorityTypeLabels[row.type]}
+                    </span>
+                    {row.projectName && (
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{row.projectName}</span>
+                    )}
+                    <span className={`text-[10px] font-medium ${row.isOverdue ? 'text-red-500' : 'text-gray-400'}`}>
+                      {row.dueLabel}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </button>
             </li>
           ))}
         </ul>
@@ -143,7 +149,7 @@ function PrioritiesList({ projects }: { projects: Array<{ id: string; name: stri
   );
 }
 
-// ─── AI Next Best Actions (right column) ─────────────────────────────────────
+// ─── AI Next Best Actions — decision-driven (right column) ───────────────────
 
 interface ActionItem {
   id: string;
@@ -163,7 +169,7 @@ const TYPE_CONFIG = {
   Investigate: { icon: AlertTriangle, color: 'text-red-600 dark:text-red-400',    bg: 'bg-red-50 dark:bg-red-900/30',    badge: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' },
 };
 
-function AINextBestActions() {
+function AINextBestActions({ notifications }: { notifications: any[] }) {
   const navigate = useNavigate();
 
   const { data: proposalsData } = useQuery({
@@ -172,20 +178,16 @@ function AINextBestActions() {
     staleTime: 30_000,
   });
 
-  const { data: notificationsData } = useQuery({
-    queryKey: ['pm-notif-nba'],
-    queryFn: () => apiService.getNotifications(10),
-    staleTime: 30_000,
-  });
-
+  // Use shared analytics query key (same as DashboardPM)
   const { data: analyticsData } = useQuery({
-    queryKey: ['pm-analytics-action'],
+    queryKey: ['pm-analytics'],
     queryFn: () => apiService.getAnalyticsSummary(),
-    staleTime: 60_000,
+    staleTime: 120_000,
   });
 
   const actions: ActionItem[] = [];
 
+  // Pending agent proposals → Approve
   const proposals = proposalsData?.data || proposalsData?.proposals || [];
   for (const p of proposals.slice(0, 5)) {
     const confidence = typeof p.confidence_score === 'number' ? p.confidence_score : undefined;
@@ -203,7 +205,7 @@ function AINextBestActions() {
     });
   }
 
-  const notifications: any[] = notificationsData?.data || notificationsData?.notifications || [];
+  // Critical/high notifications → Investigate (no duplicates with left column)
   for (const n of notifications.filter((n: any) => !n.read_at && (n.severity === 'critical' || n.severity === 'high')).slice(0, 3)) {
     actions.push({
       id: `notif-${n.id}`,
@@ -215,6 +217,7 @@ function AINextBestActions() {
     });
   }
 
+  // Low-health projects → Review
   const summary = analyticsData?.data || analyticsData;
   for (const p of (summary?.projectBreakdown || []).filter((p: any) => (p.healthScore ?? 100) < 60).slice(0, 3)) {
     actions.push({
@@ -305,6 +308,15 @@ function AINextBestActions() {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ActionCenterPM({ projects }: ActionCenterPMProps) {
+  // Single notifications query shared between columns (D8)
+  const { data: notifData } = useQuery({
+    queryKey: ['pm-notifications'],
+    queryFn: () => apiService.getNotifications(20),
+    staleTime: 30_000,
+  });
+
+  const notifications: any[] = notifData?.data || notifData?.notifications || [];
+
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
       {/* Header */}
@@ -324,9 +336,8 @@ export function ActionCenterPM({ projects }: ActionCenterPMProps) {
       {/* Two columns with vertical divider */}
       <div className="flex gap-4">
         <PrioritiesList projects={projects} />
-        {/* Vertical divider */}
         <div className="w-px bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
-        <AINextBestActions />
+        <AINextBestActions notifications={notifications} />
       </div>
     </div>
   );
