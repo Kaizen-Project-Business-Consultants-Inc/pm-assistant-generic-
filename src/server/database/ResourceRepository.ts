@@ -48,7 +48,7 @@ export class ResourceRepository extends BaseRepository<Resource> {
   }
 
   async findByUserId(userId: string): Promise<Resource[]> {
-    const rows = await this.queryRaw('SELECT * FROM resources WHERE user_id = ? AND deleted_at IS NULL', [userId]);
+    const rows = await this.queryRaw('SELECT * FROM resources WHERE user_id = ?', [userId]);
     return this.mapRows(rows);
   }
 

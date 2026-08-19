@@ -166,8 +166,9 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setDropdownOpen(false);
+    try { await apiService.logout(); } catch { /* ignore */ }
     logout();
   };
 
