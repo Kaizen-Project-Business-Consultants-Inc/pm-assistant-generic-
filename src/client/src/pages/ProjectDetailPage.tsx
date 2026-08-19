@@ -24,7 +24,7 @@ import { usePresence } from '../hooks/usePresence';
 import { SetupChecklist } from '../components/project/SetupChecklist';
 import { ProjectReadinessBar } from '../components/onboarding/ProjectReadinessBar';
 import { EditProjectModal } from '../components/project/EditProjectModal';
-import { getPrimaryTabs, getDefaultViewMode, type Methodology } from '../utils/methodology';
+import { getPrimaryTabs, getOverflowTabs, getDefaultViewMode, type Methodology } from '../utils/methodology';
 import { PresenceIndicator } from '../components/presence/PresenceIndicator';
 
 // Lazy-loaded tab components
@@ -45,16 +45,6 @@ const BudgetTab = lazy(() => import('../components/project/BudgetTab').then(m =>
 const AttachmentPanel = lazy(() => import('../components/attachments/AttachmentPanel').then(m => ({ default: m.AttachmentPanel })));
 
 type Tab = 'overview' | 'schedule' | 'raid' | 'ai-insights' | 'performance' | 'scenarios' | 'team' | 'agent-activity' | 'change-requests' | 'sprints' | 'backlog' | 'resources' | 'time' | 'files' | 'budget';
-
-const financialTabs: { id: Tab; label: string }[] = [
-  { id: 'budget', label: 'Budget' },
-  { id: 'scenarios', label: 'What-If' },
-];
-
-const moreTabs: { id: Tab; label: string }[] = [
-  { id: 'resources', label: 'Resources' },
-  { id: 'agent-activity', label: 'Agent Activity' },
-];
 
 
 const statusStyles: Record<string, { label: string; color: string }> = {
@@ -496,9 +486,9 @@ export function ProjectDetailPage() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-        <nav className="-mb-px flex gap-3 sm:gap-4 md:gap-6 min-w-max">
+        <nav className="-mb-px flex gap-3 sm:gap-4 md:gap-6">
           {getPrimaryTabs(methodology).map((tab) => {
-            const openRaidCount = tab.id === 'raid' ? ((riskStats?.openRisks ?? 0) + (riskStats?.openIssues ?? 0) + (riskStats?.openActions ?? 0) + (riskStats?.pendingDecisions ?? 0)) : 0;
+            const criticalCount = tab.id === 'raid' ? (riskStats?.critical ?? 0) : 0;
             return (
             <button
               key={tab.id}
@@ -510,21 +500,16 @@ export function ProjectDetailPage() {
               }`}
             >
               {tab.label}
-              {tab.id === 'raid' && openRaidCount > 0 && (
+              {tab.id === 'raid' && criticalCount > 0 && (
                 <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                  {openRaidCount}
+                  {criticalCount}
                 </span>
               )}
             </button>
             );
           })}
-          <FinancialsDropdown
-            tabs={financialTabs}
-            activeTab={activeTab}
-            onSelect={setActiveTab}
-          />
-          <MoreTabsDropdown
-            tabs={moreTabs}
+          <TabOverflow
+            tabs={getOverflowTabs(methodology)}
             activeTab={activeTab}
             onSelect={setActiveTab}
           />
@@ -647,11 +632,11 @@ function ContextCard({
 }
 
 // ---------------------------------------------------------------------------
-// More Tabs Dropdown
+// Tab Overflow Dropdown (⋯)
 // ---------------------------------------------------------------------------
 
-function MoreTabsDropdown({
-  tabs: dropdownTabs,
+function TabOverflow({
+  tabs: overflowTabs,
   activeTab,
   onSelect,
 }: {
@@ -661,8 +646,8 @@ function MoreTabsDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const isActiveInMore = dropdownTabs.some(t => t.id === activeTab);
-  const activeLabel = dropdownTabs.find(t => t.id === activeTab)?.label;
+  const isActiveInOverflow = overflowTabs.some(t => t.id === activeTab);
+  const activeLabel = overflowTabs.find(t => t.id === activeTab)?.label;
 
   useEffect(() => {
     if (!open) return;
@@ -678,79 +663,17 @@ function MoreTabsDropdown({
       <button
         onClick={() => setOpen(v => !v)}
         className={`border-b-2 pb-3 text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
-          isActiveInMore
+          isActiveInOverflow
             ? 'border-primary-600 text-primary-600 dark:text-primary-400'
             : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
         }`}
       >
-        {isActiveInMore ? activeLabel : 'More'}
+        {isActiveInOverflow ? activeLabel : 'More'}
         <ChevronDown className="w-3.5 h-3.5" />
       </button>
       {open && (
         <div className="absolute left-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
-          {dropdownTabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => { onSelect(t.id); setOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                activeTab === t.id
-                  ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Financials Dropdown
-// ---------------------------------------------------------------------------
-
-function FinancialsDropdown({
-  tabs: dropdownTabs,
-  activeTab,
-  onSelect,
-}: {
-  tabs: { id: Tab; label: string }[];
-  activeTab: Tab;
-  onSelect: (id: Tab) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const isActiveInFinancials = dropdownTabs.some(t => t.id === activeTab);
-  const activeLabel = dropdownTabs.find(t => t.id === activeTab)?.label;
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  return (
-    <div className="relative flex-shrink-0" ref={ref}>
-      <button
-        onClick={() => setOpen(v => !v)}
-        className={`border-b-2 pb-3 text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
-          isActiveInFinancials
-            ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-        }`}
-      >
-        <DollarSign className="w-3.5 h-3.5" />
-        {isActiveInFinancials ? activeLabel : 'Financials'}
-        <ChevronDown className="w-3.5 h-3.5" />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
-          {dropdownTabs.map(t => (
+          {overflowTabs.map(t => (
             <button
               key={t.id}
               onClick={() => { onSelect(t.id); setOpen(false); }}

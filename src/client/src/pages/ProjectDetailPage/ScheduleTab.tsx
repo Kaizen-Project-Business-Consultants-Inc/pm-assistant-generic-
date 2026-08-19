@@ -17,6 +17,7 @@ import {
   X,
   Download,
   Trash2,
+  MoreVertical,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { GanttChart, type GanttTask } from '../../components/schedule/GanttChart';
@@ -196,14 +197,18 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
     );
   }
 
+  const [selectedScheduleIdx, setSelectedScheduleIdx] = useState(0);
+  // Guard against out-of-bounds (e.g. after schedule deletion)
+  const safeIdx = selectedScheduleIdx >= schedules.length ? 0 : selectedScheduleIdx;
+
   if (isMobile) {
-    return <MobileScheduleView schedules={schedules} />;
+    return <MobileScheduleView schedules={schedules} selectedIdx={safeIdx} onSelectSchedule={setSelectedScheduleIdx} />;
   }
 
   return (
     <div className="space-y-4">
-      {/* View Toggle */}
-      <div className="flex items-center gap-2">
+      {/* View Toggle + Schedule Selector */}
+      <div className="flex items-center gap-2 flex-wrap">
         <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5 overflow-x-auto">
           {([
             { mode: 'gantt' as const, icon: GanttChartSquare, label: 'Gantt' },
@@ -227,26 +232,42 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
             </button>
           ))}
         </div>
+
+        {schedules.length > 1 && (
+          <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5">
+            {schedules.map((s: any, idx: number) => (
+              <button
+                key={s.id}
+                onClick={() => setSelectedScheduleIdx(idx)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                  safeIdx === idx
+                    ? 'bg-primary-600 text-white'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                {s.name || `Schedule ${idx + 1}`}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {schedules.map((schedule: any) => (
-        <ScheduleGantt key={schedule.id} schedule={schedule} viewMode={viewMode} projectId={projectId} />
-      ))}
+      <ScheduleGantt key={schedules[safeIdx].id} schedule={schedules[safeIdx]} viewMode={viewMode} projectId={projectId} />
     </div>
   );
 }
 
-function MobileScheduleView({ schedules }: { schedules: any[] }) {
+function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule }: { schedules: any[]; selectedIdx: number; onSelectSchedule: (idx: number) => void }) {
   const queryClient = useQueryClient();
   const [mobileView, setMobileView] = useState<'list' | 'kanban' | 'calendar'>('list');
+  const schedule = schedules[selectedIdx] || schedules[0];
   const { data: tasksData } = useQuery({
-    queryKey: ['tasks', schedules[0]?.id],
-    queryFn: () => apiService.getTasks(schedules[0]?.id),
-    enabled: schedules.length > 0,
+    queryKey: ['tasks', schedule?.id],
+    queryFn: () => apiService.getTasks(schedule?.id),
+    enabled: !!schedule,
   });
 
   const tasks = tasksData?.data || tasksData?.tasks || [];
-  const schedule = schedules[0];
 
   const handleStatusChange = useCallback((taskId: string, newStatus: string) => {
     apiService.updateTask(schedule.id, taskId, { status: newStatus }).then(() => {
@@ -256,7 +277,18 @@ function MobileScheduleView({ schedules }: { schedules: any[] }) {
 
   return (
     <div className="space-y-3">
-      {/* Mobile view switcher */}
+      {/* Schedule selector + Mobile view switcher */}
+      {schedules.length > 1 && (
+        <select
+          value={selectedIdx}
+          onChange={(e) => onSelectSchedule(Number(e.target.value))}
+          className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 mb-2"
+        >
+          {schedules.map((s: any, idx: number) => (
+            <option key={s.id} value={idx}>{s.name || `Schedule ${idx + 1}`}</option>
+          ))}
+        </select>
+      )}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
           {schedule?.name || 'Tasks'}
@@ -315,7 +347,6 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
   const [selectedBaselineId, setSelectedBaselineId] = useState<string>('');
   const [showComparison, setShowComparison] = useState(false);
   const [showReschedulePanel, setShowReschedulePanel] = useState(false);
-  const [showShortcuts, setShowShortcuts] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterPriority, setFilterPriority] = useState<string>('');
@@ -781,255 +812,10 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
 
   return (
     <>
-      {/* Controls bar */}
-      <div className="flex items-center gap-2 flex-wrap mb-2">
-        <ColumnPickerDropdown
-          columns={COLUMN_DEFS}
-          visibleKeys={columnState.visibleKeys}
-          onToggle={columnState.toggleColumn}
-          onToggleGroup={columnState.toggleGroup}
-          onMoveColumn={columnState.moveColumn}
-          columnOrder={columnState.columnOrder}
-          onResetOrder={() => columnState.setColumnOrder([])}
-        />
-
-        {viewMode === 'gantt' && (
-          <>
-          <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
-          <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showCriticalPath}
-              onChange={(e) => setShowCriticalPath(e.target.checked)}
-              className="accent-red-600 w-3.5 h-3.5"
-            />
-            Show Critical Path
-          </label>
-
-          <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
-
-          <button
-            onClick={() => createBaselineMutation.mutate()}
-            disabled={createBaselineMutation.isPending}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/40 rounded-md transition-colors"
-          >
-            <Save className="w-3 h-3" />
-            Save Baseline
-          </button>
-
-          {baselines.length > 0 && (
-            <>
-              <select
-                value={selectedBaselineId}
-                onChange={(e) => { setSelectedBaselineId(e.target.value); setShowComparison(false); }}
-                className="text-xs border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800"
-              >
-                <option value="">No baseline overlay</option>
-                {baselines.map((b: any) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} ({new Date(b.createdAt).toLocaleDateString()})
-                  </option>
-                ))}
-              </select>
-              {selectedBaselineId && (
-                <button
-                  onClick={() => setShowComparison(!showComparison)}
-                  className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                    showComparison
-                      ? 'bg-primary-600 text-white'
-                      : 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/40'
-                  }`}
-                >
-                  <BarChart3 className="w-3 h-3" />
-                  Variance Report
-                </button>
-              )}
-            </>
-          )}
-
-          <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
-
-          <button
-            onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-md transition-colors"
-          >
-            <Upload className="w-3 h-3" />
-            Import
-          </button>
-
-          <button
-            onClick={() => setShowReschedulePanel(true)}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors"
-          >
-            <Bot className="w-3 h-3" />
-            AI Reschedule
-          </button>
-
-          <button
-            onClick={async () => {
-              setLevelingBusy(true);
-              try {
-                const res = await apiService.levelResources(schedule.id);
-                const adjustments = res?.result?.adjustedTasks || res?.adjustedTasks || [];
-                if (adjustments.length === 0) {
-                  setLevelingResult([]);
-                } else {
-                  setLevelingResult(adjustments);
-                }
-              } catch {
-                setLevelingResult([]);
-              } finally {
-                setLevelingBusy(false);
-              }
-            }}
-            disabled={levelingBusy}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-md transition-colors disabled:opacity-50"
-          >
-            {levelingBusy ? (
-              <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"/><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="opacity-75"/></svg>
-            ) : (
-              <BarChart3 className="w-3 h-3" />
-            )}
-            Level Resources
-          </button>
-
-          <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
-
-          <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">% Mode:</span>
-            <select
-              value={schedule.progressMode || 'duration'}
-              onChange={async (e) => {
-                const mode = e.target.value as 'duration' | 'work';
-                await apiService.updateSchedule(schedule.id, { progressMode: mode } as any);
-                queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
-                queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-              }}
-              className="text-xs border border-gray-200 dark:border-gray-700 rounded-md px-1.5 py-0.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-            >
-              <option value="duration">Duration</option>
-              <option value="work">Work (Hours)</option>
-            </select>
-          </div>
-
-          {!schedule.isScenario && (
-            <>
-              <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
-              <button
-                onClick={async () => {
-                  const label = prompt('Scenario name:', `Scenario ${new Date().toLocaleDateString()}`);
-                  if (!label) return;
-                  await apiService.cloneSchedule(schedule.id, label);
-                  queryClient.invalidateQueries({ queryKey: ['scenarios', schedule.id] });
-                  queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
-                }}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/40 dark:text-indigo-400 rounded-md transition-colors"
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                Create Scenario
-              </button>
-              {scenarios.length > 0 && (
-                <>
-                  <select
-                    value={selectedScenarioId}
-                    onChange={(e) => { setSelectedScenarioId(e.target.value); setShowScenarioCompare(false); }}
-                    className="text-xs border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800"
-                  >
-                    <option value="">Select scenario...</option>
-                    {scenarios.map((s: any) => (
-                      <option key={s.id} value={s.id}>{s.scenarioLabel || s.name}</option>
-                    ))}
-                  </select>
-                  {selectedScenarioId && (
-                    <button
-                      onClick={() => setShowScenarioCompare(!showScenarioCompare)}
-                      className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                        showScenarioCompare
-                          ? 'bg-indigo-600 text-white'
-                          : 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/40'
-                      }`}
-                    >
-                      Compare
-                    </button>
-                  )}
-                </>
-              )}
-            </>
-          )}
-
-          {cpmData && showCriticalPath && (
-            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
-              Project duration: {cpmData.projectDuration} days | Critical tasks: {cpmData.criticalPathTaskIds?.length || 0}
-            </span>
-          )}
-          </>
-        )}
-
-        {/* Export */}
-        <button
-          onClick={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors ml-auto"
-          title="Export tasks to CSV"
-        >
-          <Download className="w-3 h-3" />
-          CSV
-        </button>
-
-        {/* Keyboard shortcuts */}
-        <div className="relative">
-          <button
-            onClick={() => setShowShortcuts(!showShortcuts)}
-            className="w-6 h-6 flex items-center justify-center text-xs font-bold text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border border-gray-200 dark:border-gray-600 rounded transition-colors"
-            title="Keyboard shortcuts"
-          >
-            ?
-          </button>
-          {showShortcuts && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowShortcuts(false)} />
-              <div className="absolute right-0 top-8 z-50 w-56 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg p-3">
-                <p className="text-xs font-semibold text-gray-900 dark:text-white mb-2">Keyboard Shortcuts</p>
-                <div className="space-y-1.5 text-xs">
-                  {[
-                    ['Ctrl + Z', 'Undo'],
-                    ['Ctrl + Y', 'Redo'],
-                    ['Delete', 'Delete task'],
-                    ['Click', 'Select task'],
-                    ['Double-click', 'Edit task'],
-                    ['Drag bar', 'Move dates'],
-                    ['Drag handle', 'Reorder rows'],
-                    ['Shift + Click', 'Multi-select'],
-                  ].map(([key, desc]) => (
-                    <div key={key} className="flex items-center justify-between">
-                      <span className="text-gray-500 dark:text-gray-400">{desc}</span>
-                      <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono text-[10px]">{key}</kbd>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Delete Schedule */}
-        <button
-          onClick={() => {
-            if (!confirm(`Delete schedule "${schedule.name}"? All tasks, baselines, and scenarios will be permanently removed.`)) return;
-            apiService.deleteSchedule(schedule.id).then(() => {
-              queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
-            });
-          }}
-          className="w-6 h-6 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 border border-gray-200 dark:border-gray-600 rounded transition-colors"
-          title="Delete schedule"
-        >
-          <Trash2 className="w-3 h-3" />
-        </button>
-      </div>
-
-      {/* Search + Filter Bar */}
-      {tasks.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap mb-1">
-          {/* Search */}
+      {/* Compact toolbar: Search | Filters | Columns | Critical Path | CPM info | overflow */}
+      <div className="flex items-center gap-2 mb-2">
+        {/* Search */}
+        {tasks.length > 0 && (
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
@@ -1037,7 +823,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search tasks..."
-              className="w-48 pl-7 pr-7 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-400 focus:border-primary-400"
+              className="w-40 lg:w-48 pl-7 pr-7 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-400 focus:border-primary-400"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -1045,8 +831,10 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
               </button>
             )}
           </div>
+        )}
 
-          {/* Filter toggle */}
+        {/* Filter toggle */}
+        {tasks.length > 0 && (
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
@@ -1063,44 +851,135 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
               </span>
             )}
           </button>
+        )}
 
-          {/* Inline filters (shown when toggled) */}
-          {showFilters && (
-            <>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-              >
-                <option value="">All statuses</option>
-                {uniqueStatuses.map(s => (
-                  <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-                ))}
-              </select>
-              <select
-                value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
-                className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-              >
-                <option value="">All priorities</option>
-                {uniquePriorities.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-              <select
-                value={filterAssignee}
-                onChange={(e) => setFilterAssignee(e.target.value)}
-                className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-              >
-                <option value="">All assignees</option>
-                {uniqueAssignees.map(a => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
-            </>
-          )}
+        <div className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
 
-          {/* Clear all */}
+        <ColumnPickerDropdown
+          columns={COLUMN_DEFS}
+          visibleKeys={columnState.visibleKeys}
+          onToggle={columnState.toggleColumn}
+          onToggleGroup={columnState.toggleGroup}
+          onMoveColumn={columnState.moveColumn}
+          columnOrder={columnState.columnOrder}
+          onResetOrder={() => columnState.setColumnOrder([])}
+        />
+
+        {viewMode === 'gantt' && (
+          <>
+            <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showCriticalPath}
+                onChange={(e) => setShowCriticalPath(e.target.checked)}
+                className="accent-red-600 w-3.5 h-3.5"
+              />
+              Critical Path
+            </label>
+
+            {cpmData && showCriticalPath && (
+              <span className="text-xs text-gray-400 dark:text-gray-500 hidden lg:inline">
+                CPM: {cpmData.projectDuration}d &middot; {cpmData.criticalPathTaskIds?.length || 0} critical
+              </span>
+            )}
+          </>
+        )}
+
+        {/* Overflow menu */}
+        {viewMode === 'gantt' && (
+          <ScheduleOverflowMenu
+            schedule={schedule}
+            projectId={projectId}
+            baselines={baselines}
+            selectedBaselineId={selectedBaselineId}
+            setSelectedBaselineId={setSelectedBaselineId}
+            showComparison={showComparison}
+            setShowComparison={setShowComparison}
+            createBaselineMutation={createBaselineMutation}
+            scenarios={scenarios}
+            selectedScenarioId={selectedScenarioId}
+            setSelectedScenarioId={setSelectedScenarioId}
+            showScenarioCompare={showScenarioCompare}
+            setShowScenarioCompare={setShowScenarioCompare}
+            setShowImportModal={setShowImportModal}
+            setShowReschedulePanel={setShowReschedulePanel}
+            levelingBusy={levelingBusy}
+            onLevelResources={async () => {
+              setLevelingBusy(true);
+              try {
+                const res = await apiService.levelResources(schedule.id);
+                const adjustments = res?.result?.adjustedTasks || res?.adjustedTasks || [];
+                setLevelingResult(adjustments.length === 0 ? [] : adjustments);
+              } catch {
+                setLevelingResult([]);
+              } finally {
+                setLevelingBusy(false);
+              }
+            }}
+            exportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
+            queryClient={queryClient}
+            onDeleteSchedule={() => {
+              if (!confirm(`Delete schedule "${schedule.name}"? All tasks, baselines, and scenarios will be permanently removed.`)) return;
+              apiService.deleteSchedule(schedule.id).then(() => {
+                queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+              });
+            }}
+          />
+        )}
+
+        {/* CSV export for non-gantt views */}
+        {viewMode !== 'gantt' && (
+          <button
+            onClick={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors ml-auto"
+            title="Export tasks to CSV"
+          >
+            <Download className="w-3 h-3" />
+            CSV
+          </button>
+        )}
+
+        {/* Filter result count */}
+        {hasActiveFilters && (
+          <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
+            {filteredTasks.length} of {tasks.length} tasks
+          </span>
+        )}
+      </div>
+
+      {/* Expanded filter dropdowns (shown when toggled) */}
+      {showFilters && tasks.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+          >
+            <option value="">All statuses</option>
+            {uniqueStatuses.map(s => (
+              <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
+            className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+          >
+            <option value="">All priorities</option>
+            {uniquePriorities.map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+          <select
+            value={filterAssignee}
+            onChange={(e) => setFilterAssignee(e.target.value)}
+            className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+          >
+            <option value="">All assignees</option>
+            {uniqueAssignees.map(a => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
           {hasActiveFilters && (
             <button
               onClick={clearAllFilters}
@@ -1109,13 +988,6 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
               <X className="w-3 h-3" />
               Clear
             </button>
-          )}
-
-          {/* Filter result count */}
-          {hasActiveFilters && (
-            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
-              {filteredTasks.length} of {tasks.length} tasks
-            </span>
           )}
         </div>
       )}
@@ -1609,5 +1481,243 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
         </div>
       )}
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Schedule Overflow Menu (⋯)
+// ---------------------------------------------------------------------------
+
+interface ScheduleOverflowMenuProps {
+  schedule: any;
+  projectId: string;
+  baselines: any[];
+  selectedBaselineId: string;
+  setSelectedBaselineId: (id: string) => void;
+  showComparison: boolean;
+  setShowComparison: (v: boolean) => void;
+  createBaselineMutation: { mutate: () => void; isPending: boolean };
+  scenarios: any[];
+  selectedScenarioId: string;
+  setSelectedScenarioId: (id: string) => void;
+  showScenarioCompare: boolean;
+  setShowScenarioCompare: (v: boolean) => void;
+  setShowImportModal: (v: boolean) => void;
+  setShowReschedulePanel: (v: boolean) => void;
+  levelingBusy: boolean;
+  onLevelResources: () => void;
+  exportCSV: () => void;
+  queryClient: ReturnType<typeof useQueryClient>;
+  onDeleteSchedule: () => void;
+}
+
+function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
+  const [open, setOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const itemClass = 'w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2';
+  const groupLabel = 'px-3 pt-2 pb-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider';
+  const divider = 'border-t border-gray-100 dark:border-gray-700 my-1';
+
+  return (
+    <div className="relative ml-auto" ref={ref}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-7 h-7 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-md transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+        title="More actions"
+      >
+        <MoreVertical className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1 max-h-[70vh] overflow-y-auto">
+          {/* Baseline */}
+          <div className={groupLabel}>Baseline</div>
+          <button
+            onClick={() => { props.createBaselineMutation.mutate(); }}
+            disabled={props.createBaselineMutation.isPending}
+            className={itemClass}
+          >
+            <Save className="w-3.5 h-3.5 text-primary-500" />
+            Save Baseline
+          </button>
+          {props.baselines.length > 0 && (
+            <div className="px-3 py-1.5">
+              <select
+                value={props.selectedBaselineId}
+                onChange={(e) => { props.setSelectedBaselineId(e.target.value); props.setShowComparison(false); }}
+                className="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800"
+              >
+                <option value="">No baseline overlay</option>
+                {props.baselines.map((b: any) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} ({new Date(b.createdAt).toLocaleDateString()})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {props.selectedBaselineId && (
+            <button
+              onClick={() => props.setShowComparison(!props.showComparison)}
+              className={itemClass}
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-primary-500" />
+              {props.showComparison ? 'Hide Variance Report' : 'Variance Report'}
+            </button>
+          )}
+
+          <div className={divider} />
+
+          {/* Scenarios */}
+          {!props.schedule.isScenario && (
+            <>
+              <div className={groupLabel}>Scenarios</div>
+              <button
+                onClick={async () => {
+                  const label = prompt('Scenario name:', `Scenario ${new Date().toLocaleDateString()}`);
+                  if (!label) return;
+                  await apiService.cloneSchedule(props.schedule.id, label);
+                  props.queryClient.invalidateQueries({ queryKey: ['scenarios', props.schedule.id] });
+                  props.queryClient.invalidateQueries({ queryKey: ['schedules', props.projectId] });
+                }}
+                className={itemClass}
+              >
+                <svg className="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                Create Scenario
+              </button>
+              {props.scenarios.length > 0 && (
+                <div className="px-3 py-1.5">
+                  <select
+                    value={props.selectedScenarioId}
+                    onChange={(e) => { props.setSelectedScenarioId(e.target.value); props.setShowScenarioCompare(false); }}
+                    className="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800"
+                  >
+                    <option value="">Select scenario...</option>
+                    {props.scenarios.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.scenarioLabel || s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {props.selectedScenarioId && (
+                <button
+                  onClick={() => props.setShowScenarioCompare(!props.showScenarioCompare)}
+                  className={itemClass}
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
+                  {props.showScenarioCompare ? 'Hide Comparison' : 'Compare'}
+                </button>
+              )}
+              <div className={divider} />
+            </>
+          )}
+
+          {/* Data */}
+          <div className={groupLabel}>Data</div>
+          <button
+            onClick={() => { props.setShowImportModal(true); setOpen(false); }}
+            className={itemClass}
+          >
+            <Upload className="w-3.5 h-3.5 text-green-500" />
+            Import
+          </button>
+          <button
+            onClick={() => { props.exportCSV(); setOpen(false); }}
+            className={itemClass}
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export visible tasks (CSV)
+          </button>
+
+          <div className={divider} />
+
+          {/* Automation */}
+          <div className={groupLabel}>Automation</div>
+          <button
+            onClick={() => { props.setShowReschedulePanel(true); setOpen(false); }}
+            className={itemClass}
+          >
+            <Bot className="w-3.5 h-3.5 text-purple-500" />
+            AI Reschedule
+          </button>
+          <button
+            onClick={() => { props.onLevelResources(); setOpen(false); }}
+            disabled={props.levelingBusy}
+            className={`${itemClass} disabled:opacity-50`}
+          >
+            <BarChart3 className="w-3.5 h-3.5 text-orange-500" />
+            Level Resources
+          </button>
+          <div className="px-3 py-1.5 flex items-center gap-2">
+            <span className="text-[10px] font-semibold text-gray-400 uppercase">% Mode:</span>
+            <select
+              value={props.schedule.progressMode || 'duration'}
+              onChange={async (e) => {
+                const mode = e.target.value as 'duration' | 'work';
+                await apiService.updateSchedule(props.schedule.id, { progressMode: mode } as any);
+                props.queryClient.invalidateQueries({ queryKey: ['schedules', props.projectId] });
+                props.queryClient.invalidateQueries({ queryKey: ['tasks', props.schedule.id] });
+              }}
+              className="text-xs border border-gray-200 dark:border-gray-700 rounded-md px-1.5 py-0.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+            >
+              <option value="duration">Duration</option>
+              <option value="work">Work (Hours)</option>
+            </select>
+          </div>
+
+          <div className={divider} />
+
+          {/* Help */}
+          <div className={groupLabel}>Help</div>
+          <button
+            onClick={() => setShowShortcuts(!showShortcuts)}
+            className={itemClass}
+          >
+            <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] font-bold border border-gray-300 dark:border-gray-600 rounded">?</span>
+            Keyboard Shortcuts
+          </button>
+          {showShortcuts && (
+            <div className="px-3 pb-2 space-y-1 text-xs">
+              {[
+                ['Ctrl+Z', 'Undo'],
+                ['Ctrl+Y', 'Redo'],
+                ['Delete', 'Delete task'],
+                ['Click', 'Select'],
+                ['Dbl-click', 'Edit'],
+                ['Drag bar', 'Move dates'],
+                ['Drag handle', 'Reorder'],
+                ['Shift+Click', 'Multi-select'],
+              ].map(([key, desc]) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{desc}</span>
+                  <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono text-[10px]">{key}</kbd>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className={divider} />
+
+          {/* Danger */}
+          <button
+            onClick={() => { props.onDeleteSchedule(); setOpen(false); }}
+            className="w-full text-left px-3 py-2 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete Schedule
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
