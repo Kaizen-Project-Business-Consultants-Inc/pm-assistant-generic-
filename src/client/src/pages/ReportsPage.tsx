@@ -288,8 +288,6 @@ export const ReportsPage: React.FC = () => {
     setPage(1);
   }, [searchInput]);
 
-  const hasFilters = typeFilter || searchQuery || dateFrom || dateTo;
-
   const clearFilters = useCallback(() => {
     setTypeFilter('');
     setSearchInput('');
@@ -320,6 +318,8 @@ export const ReportsPage: React.FC = () => {
 
   // ---- Queries ----
 
+  const hasHistorySearch = !!(typeFilter || searchQuery || dateFrom || dateTo);
+
   const {
     data: historyData,
     isLoading: historyLoading,
@@ -340,6 +340,7 @@ export const ReportsPage: React.FC = () => {
         limit: PAGE_SIZE,
       });
     },
+    enabled: showHistory && hasHistorySearch,
   });
 
   const {
@@ -353,8 +354,6 @@ export const ReportsPage: React.FC = () => {
   const reports: ReportListItem[] = historyData?.reports || [];
   const total: number = historyData?.total || 0;
   const totalPages: number = historyData?.totalPages || 0;
-  const typeCounts: Record<string, number> = historyData?.typeCounts || {};
-  const totalAll = Object.values(typeCounts).reduce((a, b) => a + b, 0);
   const projects: Project[] = projectsData?.data || projectsData?.projects || [];
 
   const { data: membersData } = useQuery({
@@ -508,9 +507,6 @@ export const ReportsPage: React.FC = () => {
           )}
           <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
           <span className="text-sm font-semibold text-gray-900 dark:text-white">Report History</span>
-          {totalAll > 0 && (
-            <span className="text-xs text-gray-400 dark:text-gray-500">{totalAll}</span>
-          )}
         </button>
 
         {showHistory && <div className="px-5 pb-4">
@@ -586,7 +582,7 @@ export const ReportsPage: React.FC = () => {
             </div>
 
             {/* Clear filters */}
-            {hasFilters && (
+            {hasHistorySearch && (
               <button
                 onClick={clearFilters}
                 className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors mb-[1px]"
@@ -599,7 +595,14 @@ export const ReportsPage: React.FC = () => {
           </div>
         </div>
 
-        {historyError ? (
+        {!hasHistorySearch ? (
+          <div className="text-center py-8">
+            <Search className="mx-auto h-8 w-8 text-gray-300 dark:text-gray-600 mb-2" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Search by title, filter by type, or select a date range to find past reports.
+            </p>
+          </div>
+        ) : historyError ? (
           <div className="text-center py-10">
             <p className="text-sm text-red-600">Failed to load report history.</p>
           </div>
@@ -607,17 +610,9 @@ export const ReportsPage: React.FC = () => {
           <div className="flex items-center justify-center py-12">
             <div className="w-6 h-6 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
           </div>
-        ) : totalAll === 0 && !searchQuery && !typeFilter ? (
-          <div className="text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">No reports yet</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Select a project and generate your first report using the tiles above.
-            </p>
-          </div>
         ) : reports.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-sm text-gray-500 dark:text-gray-400">No reports match your filter.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">No reports match your search.</p>
           </div>
         ) : (
           <>
