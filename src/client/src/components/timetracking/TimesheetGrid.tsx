@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Trash2, Send, Undo2, Lock, AlertCircle } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { ConfirmModal } from '../ui/ConfirmModal';
 
 function getMonday(date: Date): Date {
   const d = new Date(date);
@@ -63,6 +64,7 @@ export function TimesheetGrid() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['timesheet-status', weekStart] }),
   });
 
+  const [deleteConfirmIds, setDeleteConfirmIds] = useState<string[] | null>(null);
   const entries: any[] = data?.entries || [];
   const days: string[] = data?.days || [];
   const totalHours: number = data?.totalHours || 0;
@@ -70,9 +72,9 @@ export function TimesheetGrid() {
 
   // Group entries by project then by task
   const projectGroups = useMemo(() => {
-    const map = new Map<string, { projectId: string; tasks: Map<string, any[]> }>();
+    const map = new Map<string, { projectId: string; projectName: string; tasks: Map<string, any[]> }>();
     for (const e of entries) {
-      if (!map.has(e.projectId)) map.set(e.projectId, { projectId: e.projectId, tasks: new Map() });
+      if (!map.has(e.projectId)) map.set(e.projectId, { projectId: e.projectId, projectName: e.projectName || e.projectId.slice(0, 8), tasks: new Map() });
       const group = map.get(e.projectId)!;
       if (!group.tasks.has(e.taskId)) group.tasks.set(e.taskId, []);
       group.tasks.get(e.taskId)!.push(e);
@@ -155,7 +157,7 @@ export function TimesheetGrid() {
                   </td>
                 </tr>
               ) : (
-                projectGroups.map(({ projectId, tasks }) => {
+                projectGroups.map(({ projectId, projectName, tasks }) => {
                   const sub = getSubmission(projectId);
                   const taskRows = Array.from(tasks.entries());
                   const hasDraftEntries = taskRows.some(([, ents]) => ents.some((e: any) => (e.status || 'draft') === 'draft'));
@@ -166,7 +168,7 @@ export function TimesheetGrid() {
                       {/* Project header row */}
                       <tr className="bg-gray-50 dark:bg-gray-800/50">
                         <td colSpan={days.length + 1} className="py-2 px-3 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                          Project: {projectId.slice(0, 8)}...
+                          {projectName}
                         </td>
                         <td colSpan={2} className="py-2 px-3 text-right">
                           {sub?.status === 'submitted' && (
@@ -213,7 +215,7 @@ export function TimesheetGrid() {
                             <td className="py-2 px-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                               <div className="flex items-center gap-1.5">
                                 {isLocked && <Lock className="w-3 h-3 text-gray-400 shrink-0" />}
-                                <span className="truncate">{taskEntries[0]?.description || taskId}</span>
+                                <span className="truncate">{taskEntries[0]?.taskName || taskEntries[0]?.description || taskId}</span>
                               </div>
                             </td>
                             <td className="text-center py-2 px-2">
@@ -229,7 +231,8 @@ export function TimesheetGrid() {
                                     {!isLocked && (
                                       <button
                                         className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 p-0.5 text-red-400 hover:text-red-600"
-                                        onClick={() => { d.entries.forEach((e: any) => deleteMutation.mutate(e.id)); }}
+                                        onClick={() => setDeleteConfirmIds(d.entries.map((e: any) => e.id))}
+                                        aria-label="Delete time entry"
                                       >
                                         <Trash2 className="w-3 h-3" />
                                       </button>
@@ -266,6 +269,17 @@ export function TimesheetGrid() {
             </tfoot>
           </table>
         </div>
+      )}
+
+      {deleteConfirmIds && (
+        <ConfirmModal
+          title="Delete Time Entry"
+          message="Delete this time entry? This cannot be undone."
+          confirmLabel="Delete"
+          isPending={deleteMutation.isPending}
+          onConfirm={() => { deleteConfirmIds.forEach(id => deleteMutation.mutate(id)); setDeleteConfirmIds(null); }}
+          onCancel={() => setDeleteConfirmIds(null)}
+        />
       )}
     </div>
   );

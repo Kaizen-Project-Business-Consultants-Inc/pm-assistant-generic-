@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, Trash2, X, Calendar } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { ConfirmModal } from '../ui/ConfirmModal';
 
 interface CalendarTemplate {
   id: string;
@@ -29,6 +30,7 @@ export function CalendarTemplateManager() {
   const [formDays, setFormDays] = useState<string[]>(['mon', 'tue', 'wed', 'thu', 'fri']);
   const [formHours, setFormHours] = useState('8');
   const [formDefault, setFormDefault] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['calendarTemplates'],
@@ -162,11 +164,22 @@ export function CalendarTemplateManager() {
               </div>
               <div className="flex items-center gap-1">
                 <button onClick={() => openEdit(t)} className="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit template"><Edit2 className="w-3.5 h-3.5" /></button>
-                <button onClick={() => { if (confirm('Delete this calendar template?')) deleteMutation.mutate(t.id); }} className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete template"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setDeleteConfirmId(t.id)} className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete template"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {deleteConfirmId && (
+        <ConfirmModal
+          title="Delete Calendar Template"
+          message="Delete this calendar template? This cannot be undone."
+          confirmLabel="Delete"
+          isPending={deleteMutation.isPending}
+          onConfirm={() => { deleteMutation.mutate(deleteConfirmId); setDeleteConfirmId(null); }}
+          onCancel={() => setDeleteConfirmId(null)}
+        />
       )}
     </div>
   );

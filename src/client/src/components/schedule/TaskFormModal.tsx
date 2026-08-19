@@ -5,6 +5,7 @@ import { TaskActivityPanel } from './TaskActivityPanel';
 import { TimeLogForm } from '../timetracking/TimeLogForm';
 import { CustomFieldsSection } from '../customfields/CustomFieldsSection';
 import { AttachmentPanel } from '../attachments/AttachmentPanel';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import { apiService } from '../../services/api';
 
 // ---------------------------------------------------------------------------
@@ -191,6 +192,7 @@ export function TaskFormModal({
 
   const [estimating, setEstimating] = useState(false);
   const [estimationHint, setEstimationHint] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleAiEstimate = async () => {
     if (!form.name.trim() || !projectId) return;
@@ -733,11 +735,7 @@ export function TaskFormModal({
             {isEdit && onDelete && (
               <button
                 type="button"
-                onClick={() => {
-                  if (task && confirm('Delete this task?')) {
-                    onDelete(task.id);
-                  }
-                }}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -774,6 +772,16 @@ export function TaskFormModal({
           </div>
         </div>
       </div>
+
+      {showDeleteConfirm && task && onDelete && (
+        <ConfirmModal
+          title="Delete Task"
+          message={`Delete "${task.name}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          onConfirm={() => { onDelete(task.id); setShowDeleteConfirm(false); }}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
     </div>
   );
 }

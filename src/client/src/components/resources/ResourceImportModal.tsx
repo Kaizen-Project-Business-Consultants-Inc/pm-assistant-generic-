@@ -12,6 +12,7 @@ export function ResourceImportModal({ onClose }: ResourceImportModalProps) {
   const [csvText, setCsvText] = useState('');
   const [fileName, setFileName] = useState('');
   const [preview, setPreview] = useState<string[][]>([]);
+  const [fileError, setFileError] = useState('');
 
   const importMutation = useMutation({
     mutationFn: (csv: string) => apiService.importResources(csv),
@@ -21,8 +22,9 @@ export function ResourceImportModal({ onClose }: ResourceImportModalProps) {
   });
 
   const handleFile = useCallback((file: File) => {
+    setFileError('');
     if (file.size > 5 * 1024 * 1024) {
-      alert('File exceeds 5MB limit');
+      setFileError('File exceeds 5MB limit');
       return;
     }
     setFileName(file.name);
@@ -30,10 +32,12 @@ export function ResourceImportModal({ onClose }: ResourceImportModalProps) {
     reader.onload = (e) => {
       const text = e.target?.result as string;
       setCsvText(text);
-      // Parse preview (first 6 rows)
       const lines = text.split('\n').filter(l => l.trim());
       const rows = lines.slice(0, 6).map(l => l.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
       setPreview(rows);
+    };
+    reader.onerror = () => {
+      setFileError('Failed to read file. Please try again.');
     };
     reader.readAsText(file);
   }, []);
@@ -66,12 +70,34 @@ export function ResourceImportModal({ onClose }: ResourceImportModalProps) {
             <code className="text-[11px] text-blue-600 dark:text-blue-400">name, role, email, capacityHoursPerWeek, skills (semicolon-separated), costRateHourly, resourceGroup</code>
           </div>
 
+          {fileError && (
+            <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+              {fileError}
+            </div>
+          )}
+
           {/* File Drop Zone */}
           {!result && (
             <div
               onDragOver={e => e.preventDefault()}
               onDrop={handleDrop}
-              className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-primary-400 transition-colors"
+              role="button"
+              tabIndex={0}
+              aria-label="Drop a CSV file here or press Enter to browse"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.csv';
+                  input.onchange = (ev) => {
+                    const file = (ev.target as HTMLInputElement).files?.[0];
+                    if (file) handleFile(file);
+                  };
+                  input.click();
+                }
+              }}
+              className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-primary-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-colors"
               onClick={() => {
                 const input = document.createElement('input');
                 input.type = 'file';

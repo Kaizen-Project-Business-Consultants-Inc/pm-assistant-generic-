@@ -62,6 +62,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
   const [showWorkflowSelect, setShowWorkflowSelect] = useState(false);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['change-request', crId],
@@ -394,11 +395,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
           {canWithdraw && (
             <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
               <button
-                onClick={() => {
-                  if (confirm('Are you sure you want to withdraw this change request?')) {
-                    withdrawMutation.mutate();
-                  }
-                }}
+                onClick={() => setShowWithdrawConfirm(true)}
                 disabled={isActionPending}
                 className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
               >
@@ -424,6 +421,17 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
           isPending={deleteMutation.isPending}
           onConfirm={() => deleteMutation.mutate()}
           onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
+      {showWithdrawConfirm && (
+        <ConfirmModal
+          title="Withdraw Change Request"
+          message="Are you sure you want to withdraw this change request?"
+          confirmLabel="Withdraw"
+          variant="warning"
+          isPending={withdrawMutation.isPending}
+          onConfirm={() => { withdrawMutation.mutate(); setShowWithdrawConfirm(false); }}
+          onCancel={() => setShowWithdrawConfirm(false)}
         />
       )}
     </div>

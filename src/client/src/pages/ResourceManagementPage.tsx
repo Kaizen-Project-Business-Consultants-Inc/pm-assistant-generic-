@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, AlertTriangle, ChevronDown, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, Lock, LineChart, Calendar } from 'lucide-react';
 import { apiService } from '../services/api';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { UtilizationTrendChart } from '../components/resources/UtilizationTrendChart';
 import { CalendarTemplateManager } from '../components/resources/CalendarTemplateManager';
 
@@ -130,6 +131,7 @@ export function ResourceManagementPage() {
   const [newSkillLevel, setNewSkillLevel] = useState(3);
   const [groupFilter, setGroupFilter] = useState('');
   const [trendResourceId, setTrendResourceId] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Queries
   const { data: projectsData } = useQuery({
@@ -273,9 +275,11 @@ export function ResourceManagementPage() {
   }, [workload]);
 
   // Auto-select first schedule
-  if (schedules.length > 0 && !selectedScheduleId) {
-    setSelectedScheduleId(schedules[0].id);
-  }
+  useEffect(() => {
+    if (schedules.length > 0 && !selectedScheduleId) {
+      setSelectedScheduleId(schedules[0].id);
+    }
+  }, [schedules, selectedScheduleId]);
 
   const needsProjectSelector = activeTab === 'workload' || activeTab === 'histogram' || activeTab === 'forecast';
 
@@ -501,7 +505,7 @@ export function ResourceManagementPage() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => openEdit(r)} className="p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit resource"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => deleteResourceMutation.mutate(r.id)} className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete resource"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setDeleteConfirmId(r.id)} className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete resource"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -853,6 +857,17 @@ export function ResourceManagementPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <CalendarTemplateManager />
         </div>
+      )}
+
+      {deleteConfirmId && (
+        <ConfirmModal
+          title="Delete Resource"
+          message="Delete this resource? Any assignments will also be removed."
+          confirmLabel="Delete"
+          isPending={deleteResourceMutation.isPending}
+          onConfirm={() => { deleteResourceMutation.mutate(deleteConfirmId); setDeleteConfirmId(null); }}
+          onCancel={() => setDeleteConfirmId(null)}
+        />
       )}
     </div>
   );

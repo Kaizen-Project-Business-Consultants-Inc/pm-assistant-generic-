@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Edit3 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { CustomFieldEditorModal } from './CustomFieldEditorModal';
+import { ConfirmModal } from '../ui/ConfirmModal';
 
 interface CustomFieldManagerProps {
   projectId: string;
@@ -13,6 +14,7 @@ export function CustomFieldManager({ projectId, entityType }: CustomFieldManager
   const queryClient = useQueryClient();
   const [editField, setEditField] = useState<any | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['custom-fields', projectId, entityType],
@@ -72,7 +74,7 @@ export function CustomFieldManager({ projectId, entityType }: CustomFieldManager
                   <Edit3 className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => { if (confirm('Delete this custom field? All values will be lost.')) deleteMutation.mutate(field.id); }}
+                  onClick={() => setDeleteConfirmId(field.id)}
                   className="p-1 text-gray-400 hover:text-red-600"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -89,6 +91,17 @@ export function CustomFieldManager({ projectId, entityType }: CustomFieldManager
           entityType={entityType}
           field={editField}
           onClose={() => { setShowCreate(false); setEditField(null); }}
+        />
+      )}
+
+      {deleteConfirmId && (
+        <ConfirmModal
+          title="Delete Custom Field"
+          message="Delete this custom field? All values will be lost."
+          confirmLabel="Delete"
+          isPending={deleteMutation.isPending}
+          onConfirm={() => { deleteMutation.mutate(deleteConfirmId); setDeleteConfirmId(null); }}
+          onCancel={() => setDeleteConfirmId(null)}
         />
       )}
     </div>

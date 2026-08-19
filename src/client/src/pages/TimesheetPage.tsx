@@ -68,7 +68,7 @@ export function TimesheetPage() {
       description: logDescription || undefined,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['timesheet'] });
+      queryClient.invalidateQueries({ queryKey: ['timesheet-status'] });
       setShowLogForm(false);
       setLogTaskId('');
       setLogHours('');

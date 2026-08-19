@@ -36,6 +36,7 @@ import { ReportCategorySection } from '../components/reports/ReportCategorySecti
 import { ReportTile } from '../components/reports/ReportTile';
 import { InstantReportModal } from '../components/reports/InstantReportModal';
 import { ReportScheduleModal } from '../components/reports/ReportScheduleModal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -326,6 +327,8 @@ export const ReportsPage: React.FC = () => {
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
+  const [deleteScheduleConfirmId, setDeleteScheduleConfirmId] = useState<string | null>(null);
+  const [deleteReportConfirmId, setDeleteReportConfirmId] = useState<string | null>(null);
   const PAGE_SIZE = 20;
 
   // Debounced search — apply on Enter or blur
@@ -695,7 +698,7 @@ export const ReportsPage: React.FC = () => {
                                 <RefreshCw className={`w-3.5 h-3.5 ${runNowMutation.isPending ? 'animate-spin' : ''}`} />
                               </button>
                               <button
-                                onClick={() => { if (confirm('Delete this schedule?')) deleteScheduleMutation.mutate(s.id); }}
+                                onClick={() => setDeleteScheduleConfirmId(s.id)}
                                 className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                                 title="Delete schedule"
                               >
@@ -929,7 +932,7 @@ export const ReportsPage: React.FC = () => {
                                 <FileText className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                onClick={() => { if (confirm('Delete this report?')) deleteMutation.mutate(report.id); }}
+                                onClick={() => setDeleteReportConfirmId(report.id)}
                                 className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                                 title="Delete report"
                               >
@@ -1095,6 +1098,27 @@ export const ReportsPage: React.FC = () => {
           projectId={selectedProjectId}
           projectName={projects.find(p => p.id === selectedProjectId)?.name || 'Project'}
           onClose={() => setShowRiskScan(false)}
+        />
+      )}
+
+      {deleteScheduleConfirmId && (
+        <ConfirmModal
+          title="Delete Schedule"
+          message="Delete this report schedule? This cannot be undone."
+          confirmLabel="Delete"
+          isPending={deleteScheduleMutation.isPending}
+          onConfirm={() => { deleteScheduleMutation.mutate(deleteScheduleConfirmId); setDeleteScheduleConfirmId(null); }}
+          onCancel={() => setDeleteScheduleConfirmId(null)}
+        />
+      )}
+      {deleteReportConfirmId && (
+        <ConfirmModal
+          title="Delete Report"
+          message="Delete this report? This cannot be undone."
+          confirmLabel="Delete"
+          isPending={deleteMutation.isPending}
+          onConfirm={() => { deleteMutation.mutate(deleteReportConfirmId); setDeleteReportConfirmId(null); }}
+          onCancel={() => setDeleteReportConfirmId(null)}
         />
       )}
     </div>

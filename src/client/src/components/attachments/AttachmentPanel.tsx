@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { File, Image, FileText, Trash2, Download, Clock, UploadCloud } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { AttachmentVersionHistory } from './AttachmentVersionHistory';
+import { ConfirmModal } from '../ui/ConfirmModal';
 
 interface AttachmentPanelProps {
   entityType: 'task' | 'project';
@@ -27,6 +28,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
   const [versionHistoryId, setVersionHistoryId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -153,7 +155,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
                   <Download className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => { if (confirm('Delete this file?')) deleteMutation.mutate(att.id); }}
+                  onClick={() => setDeleteConfirmId(att.id)}
                   className="p-1 text-gray-400 hover:text-red-600" title="Delete" aria-label="Delete file"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -179,6 +181,17 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
             <img src={previewUrl} alt="Preview" className="max-w-full" onError={() => setPreviewUrl(null)} />
           </div>
         </div>
+      )}
+
+      {deleteConfirmId && (
+        <ConfirmModal
+          title="Delete File"
+          message="Delete this file? This cannot be undone."
+          confirmLabel="Delete"
+          isPending={deleteMutation.isPending}
+          onConfirm={() => { deleteMutation.mutate(deleteConfirmId); setDeleteConfirmId(null); }}
+          onCancel={() => setDeleteConfirmId(null)}
+        />
       )}
     </div>
   );

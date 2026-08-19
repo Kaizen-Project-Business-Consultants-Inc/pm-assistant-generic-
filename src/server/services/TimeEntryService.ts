@@ -4,6 +4,7 @@ import { timesheetSubmissionRepository, TimesheetSubmission } from '../database/
 import { scheduleService } from './ScheduleService';
 import { projectMemberService } from './ProjectMemberService';
 import { notificationService } from './NotificationService';
+import { databaseService } from '../database/connection';
 import logger from '../utils/logger';
 
 export type { TimeEntry } from '../database/TimeEntryRepository';
@@ -216,7 +217,7 @@ export class TimeEntryService {
   }
 
   async getWeeklyTimesheetStatus(userId: string, weekStart: string): Promise<{
-    entries: TimeEntry[];
+    entries: (TimeEntry & { projectName?: string; taskName?: string })[];
     days: string[];
     totalHours: number;
     submissions: TimesheetSubmission[];
@@ -224,12 +225,34 @@ export class TimeEntryService {
     const result = await this.getWeeklyTimesheet(userId, weekStart);
     // Get all project IDs from entries
     const projectIds = [...new Set(result.entries.map(e => e.projectId))];
+    const taskIds = [...new Set(result.entries.map(e => e.taskId))];
     const submissions: TimesheetSubmission[] = [];
     for (const pid of projectIds) {
       const sub = await timesheetSubmissionRepository.findByUserProjectWeek(userId, pid, weekStart);
       if (sub) submissions.push(sub);
     }
-    return { ...result, submissions };
+
+    // Look up project and task names
+    const projectNameMap = new Map<string, string>();
+    const taskNameMap = new Map<string, string>();
+    if (projectIds.length > 0) {
+      const ph = projectIds.map(() => '?').join(',');
+      const pRows = await databaseService.query<any>(`SELECT id, name FROM projects WHERE id IN (${ph})`, projectIds);
+      for (const r of pRows) projectNameMap.set(r.id, r.name);
+    }
+    if (taskIds.length > 0) {
+      const th = taskIds.map(() => '?').join(',');
+      const tRows = await databaseService.query<any>(`SELECT id, name FROM tasks WHERE id IN (${th})`, taskIds);
+      for (const r of tRows) taskNameMap.set(r.id, r.name);
+    }
+
+    const enrichedEntries = result.entries.map(e => ({
+      ...e,
+      projectName: projectNameMap.get(e.projectId),
+      taskName: taskNameMap.get(e.taskId),
+    }));
+
+    return { entries: enrichedEntries, days: result.days, totalHours: result.totalHours, submissions };
   }
 
   private async notifyProjectManagers(projectId: string, userId: string, weekStart: string, totalHours: number): Promise<void> {

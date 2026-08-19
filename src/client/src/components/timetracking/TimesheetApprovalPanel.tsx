@@ -135,13 +135,14 @@ export function TimesheetApprovalPanel() {
             </div>
           )}
 
-          {/* Expanded detail (placeholder - could load individual entries) */}
+          {/* Expanded detail */}
           {expandedId === sub.id && rejectingId !== sub.id && (
             <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-3">
               <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                <p><span className="font-medium">User ID:</span> {sub.userId}</p>
-                <p><span className="font-medium">Project ID:</span> {sub.projectId}</p>
+                <p><span className="font-medium">Submitted by:</span> {sub.userName || 'Unknown'}</p>
+                <p><span className="font-medium">Project:</span> {sub.projectName || 'Unknown'}</p>
                 <p><span className="font-medium">Total Hours:</span> {sub.totalHours}h</p>
+                <p><span className="font-medium">Submitted:</span> {new Date(sub.submittedAt).toLocaleString()}</p>
               </div>
             </div>
           )}

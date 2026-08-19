@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Clock, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { useModal } from '../../hooks/useModal';
+import { ConfirmModal } from '../ui/ConfirmModal';
 
 interface Project {
   id: string;
@@ -39,6 +40,7 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
   const [recipients, setRecipients] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [existingId, setExistingId] = useState<string | null>(editScheduleId || null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Compute the effective templateId
   const effectiveTemplateId = fixedTemplateId || (selectedProjectId ? `status-report::${selectedProjectId}` : '');
@@ -287,7 +289,7 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
           <div>
             {existingId && (
               <button
-                onClick={() => { if (confirm('Delete this schedule?')) deleteMutation.mutate(); }}
+                onClick={() => setShowDeleteConfirm(true)}
                 disabled={deleteMutation.isPending}
                 className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700"
               >
@@ -310,6 +312,17 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
           </div>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <ConfirmModal
+          title="Delete Schedule"
+          message="Delete this report schedule? This cannot be undone."
+          confirmLabel="Delete"
+          isPending={deleteMutation.isPending}
+          onConfirm={() => { deleteMutation.mutate(); setShowDeleteConfirm(false); }}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
     </div>
   );
 };

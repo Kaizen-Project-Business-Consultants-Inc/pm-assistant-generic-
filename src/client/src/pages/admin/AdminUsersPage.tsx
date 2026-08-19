@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { AdminPageWrapper } from './AdminPageWrapper';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import {
   ToggleLeft,
   ToggleRight,
@@ -125,6 +126,7 @@ export function AdminUsersPage() {
   const [budgetInput, setBudgetInput] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [toggleConfirm, setToggleConfirm] = useState<{ user: any; active: boolean; message: string } | null>(null);
   const [historyUserId, setHistoryUserId] = useState<string | null>(null);
   const [historyUserName, setHistoryUserName] = useState('');
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
@@ -567,9 +569,10 @@ export function AdminUsersPage() {
                               const msg = hasSub
                                 ? `${u.full_name || u.email} has an active subscription (${u.subscription_status}). Cancel their Stripe subscription first before deactivating. Proceed anyway?`
                                 : `Deactivate ${u.full_name || u.email}? They will be unable to log in.`;
-                              if (!confirm(msg)) return;
+                              setToggleConfirm({ user: u, active: !active, message: msg });
+                            } else {
+                              toggleStatus.mutate({ id: u.id, active: !active });
                             }
-                            toggleStatus.mutate({ id: u.id, active: !active });
                           }}
                           disabled={toggleStatus.isPending}
                           title={active ? 'Deactivate user' : 'Activate user'}
@@ -664,6 +667,17 @@ export function AdminUsersPage() {
             </div>
           </div>
         </div>
+      )}
+      {toggleConfirm && (
+        <ConfirmModal
+          title="Deactivate User"
+          message={toggleConfirm.message}
+          confirmLabel="Deactivate"
+          variant="warning"
+          isPending={toggleStatus.isPending}
+          onConfirm={() => { toggleStatus.mutate({ id: toggleConfirm.user.id, active: toggleConfirm.active }); setToggleConfirm(null); }}
+          onCancel={() => setToggleConfirm(null)}
+        />
       )}
     </AdminPageWrapper>
   );
