@@ -279,6 +279,7 @@ export async function userRoutes(fastify: FastifyInstance) {
     projectsViewMode: z.enum(['card', 'table']).optional(),
     aiPanelOpen: z.boolean().optional(),
     columnStates: z.record(z.string(), columnStateSchema).optional(),
+    favoriteReportIds: z.array(z.string()).max(10).optional(),
   });
 
   fastify.get('/me/view-preferences', {

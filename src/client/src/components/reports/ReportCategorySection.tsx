@@ -10,6 +10,8 @@ interface ReportCategorySectionProps {
   disabled?: boolean;
   generatingReportType: string | null;
   onReportClick: (report: ReportDefinition) => void;
+  favoriteReportIds: string[];
+  onToggleFavorite: (reportId: string) => void;
 }
 
 export const ReportCategorySection: React.FC<ReportCategorySectionProps> = ({
@@ -19,6 +21,8 @@ export const ReportCategorySection: React.FC<ReportCategorySectionProps> = ({
   disabled,
   generatingReportType,
   onReportClick,
+  favoriteReportIds,
+  onToggleFavorite,
 }) => {
   const Icon = category.icon;
 
@@ -47,6 +51,8 @@ export const ReportCategorySection: React.FC<ReportCategorySectionProps> = ({
                 report={report}
                 disabled={disabled}
                 loading={generatingReportType === report.id}
+                isFavorite={favoriteReportIds.includes(report.id)}
+                onToggleFavorite={() => onToggleFavorite(report.id)}
                 onClick={() => onReportClick(report)}
               />
             ))}

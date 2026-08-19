@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FileText,
@@ -17,6 +17,7 @@ import {
   Calendar,
   Filter,
   RefreshCw,
+  Star,
 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../services/api';
@@ -26,6 +27,7 @@ import { StatusReportModal } from './ProjectDetailPage/StatusReportModal';
 import { StrategicRiskScanModal } from './ProjectDetailPage/StrategicRiskScanModal';
 import { REPORT_CATALOG, type ReportDefinition } from '../components/reports/reportCatalog';
 import { ReportCategorySection } from '../components/reports/ReportCategorySection';
+import { ReportTile } from '../components/reports/ReportTile';
 import { InstantReportModal } from '../components/reports/InstantReportModal';
 
 // ---------------------------------------------------------------------------
@@ -271,6 +273,40 @@ export const ReportsPage: React.FC = () => {
   const [generatingReportType, setGeneratingReportType] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
+  // Favorites
+  const [favoriteReportIds, setFavoriteReportIds] = useState<string[]>([]);
+
+  const { data: viewPrefsData } = useQuery({
+    queryKey: ['viewPreferences'],
+    queryFn: () => apiService.getViewPreferences(),
+  });
+
+  useEffect(() => {
+    const ids = viewPrefsData?.preferences?.favoriteReportIds;
+    if (Array.isArray(ids)) setFavoriteReportIds(ids);
+  }, [viewPrefsData]);
+
+  const toggleFavorite = useCallback((reportId: string) => {
+    setFavoriteReportIds(prev => {
+      const next = prev.includes(reportId)
+        ? prev.filter(id => id !== reportId)
+        : prev.length >= 10 ? prev : [...prev, reportId];
+      apiService.updateViewPreferences({ favoriteReportIds: next });
+      return next;
+    });
+  }, []);
+
+  // Build flat lookup of all reports from catalog
+  const allReportsMap = new Map<string, ReportDefinition>();
+  for (const cat of REPORT_CATALOG) {
+    for (const r of cat.reports) {
+      allReportsMap.set(r.id, r);
+    }
+  }
+  const favoriteReports = favoriteReportIds
+    .map(id => allReportsMap.get(id))
+    .filter((r): r is ReportDefinition => !!r);
+
   // Table state
   const [typeFilter, setTypeFilter] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -464,6 +500,32 @@ export const ReportsPage: React.FC = () => {
       </div>
 
       {/* ----------------------------------------------------------------- */}
+      {/* Favorites                                                         */}
+      {/* ----------------------------------------------------------------- */}
+      {favoriteReports.length > 0 && (
+        <div className="card">
+          <div className="flex items-center gap-2 mb-3">
+            <Star className="w-4 h-4 text-amber-400 fill-current" />
+            <span className="text-sm font-semibold text-gray-900 dark:text-white">Favorites</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">{favoriteReports.length}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {favoriteReports.map(report => (
+              <ReportTile
+                key={report.id}
+                report={report}
+                disabled={!selectedProjectId}
+                loading={generatingReportType === report.id}
+                isFavorite={true}
+                onToggleFavorite={() => toggleFavorite(report.id)}
+                onClick={() => handleReportClick(report)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------------- */}
       {/* Report Categories                                                 */}
       {/* ----------------------------------------------------------------- */}
       <div className="space-y-3">
@@ -476,6 +538,8 @@ export const ReportsPage: React.FC = () => {
             disabled={!selectedProjectId}
             generatingReportType={generatingReportType}
             onReportClick={handleReportClick}
+            favoriteReportIds={favoriteReportIds}
+            onToggleFavorite={toggleFavorite}
           />
         ))}
       </div>

@@ -1,13 +1,16 @@
+import { Star } from 'lucide-react';
 import type { ReportDefinition } from './reportCatalog';
 
 interface ReportTileProps {
   report: ReportDefinition;
   disabled?: boolean;
   loading?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
   onClick: () => void;
 }
 
-export const ReportTile: React.FC<ReportTileProps> = ({ report, disabled, loading, onClick }) => {
+export const ReportTile: React.FC<ReportTileProps> = ({ report, disabled, loading, isFavorite, onToggleFavorite, onClick }) => {
   const Icon = report.icon;
   const isAI = report.badge === 'ai';
 
@@ -27,6 +30,22 @@ export const ReportTile: React.FC<ReportTileProps> = ({ report, disabled, loadin
             Please select a project to generate this report
           </div>
           <div className="mx-auto w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45 -mt-1" />
+        </div>
+      )}
+      {onToggleFavorite && (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); onToggleFavorite(); } }}
+          className={`absolute top-2 right-2 p-1 rounded-md transition-colors z-10
+            ${isFavorite
+              ? 'text-amber-400 hover:text-amber-500'
+              : 'text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400 dark:hover:text-amber-400'
+            }`}
+          title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          <Star className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`} />
         </div>
       )}
       {loading && (
