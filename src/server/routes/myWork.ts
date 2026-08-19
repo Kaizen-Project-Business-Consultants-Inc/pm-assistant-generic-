@@ -10,7 +10,12 @@ export async function myWorkRoutes(fastify: FastifyInstance) {
     const user = request.user!;
     if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
 
-    const result = await myWorkService.getMyWork(Number(user.userId));
-    return result;
+    try {
+      const result = await myWorkService.getMyWork(user.userId);
+      return result;
+    } catch (err: any) {
+      request.log.error({ err: err.message, stack: err.stack }, 'my-work failed');
+      return reply.status(500).send({ error: 'Internal server error', message: err.message });
+    }
   });
 }

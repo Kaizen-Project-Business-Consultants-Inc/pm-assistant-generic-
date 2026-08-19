@@ -15,7 +15,7 @@ export interface MyWorkTask {
 }
 
 class MyWorkService {
-  async getMyWork(userId: number): Promise<{ tasks: MyWorkTask[] }> {
+  async getMyWork(userId: string): Promise<{ tasks: MyWorkTask[] }> {
     const resources = await resourceRepository.findByUserId(userId);
     if (resources.length === 0) {
       return { tasks: [] };
@@ -27,7 +27,7 @@ class MyWorkService {
     const rows = await databaseService.query<any>(
       `SELECT DISTINCT t.id, t.name, t.status, t.priority,
               t.start_date AS startDate, t.end_date AS endDate,
-              t.percent_complete AS percentComplete,
+              t.progress_percentage AS percentComplete,
               p.id AS projectId, p.name AS projectName,
               t.schedule_id AS scheduleId
        FROM tasks t
