@@ -249,9 +249,13 @@ export function ProjectTable({ projects }: Props) {
               >
                 {/* Name */}
                 <td className="px-3 py-3 max-w-[220px]">
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary-600 truncate block">
+                  <Link
+                    to={`/project/${project.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary-600 hover:underline truncate block focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+                  >
                     {project.name}
-                  </span>
+                  </Link>
                 </td>
 
                 {/* Health Score */}

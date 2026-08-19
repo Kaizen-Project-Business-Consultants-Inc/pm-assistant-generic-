@@ -85,7 +85,7 @@ export function WidgetGrid({ widgets, enabledIds, widgetOrder, onReorder, render
       <div className="absolute left-0 top-0 bottom-0 w-6 flex items-center justify-center z-10 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
         <GripVertical className="w-4 h-4 text-gray-300 dark:text-gray-600" />
       </div>
-      <div className="pl-0 group-hover:pl-6 transition-all">
+      <div className="pl-6">
         {renderWidget(id)}
       </div>
     </div>

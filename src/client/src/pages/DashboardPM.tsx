@@ -105,12 +105,19 @@ export function DashboardPM() {
   // ─── Derived data ───────────────────────────────────────────────────────────
 
   const myProjects: ProjectRow[]  = myProjectsData?.data  || myProjectsData?.projects  || [];
-  const activeProjects  = myProjects;
+  const activeProjects  = myProjects.filter(
+    p => p.status !== 'completed' && p.status !== 'cancelled'
+  );
+
+  // ─── Unwrap prediction/analytics payloads ─────────────────────────────────
+
+  const pred = predictions?.data || predictions;
+  const analytics = analyticsData?.data || analyticsData;
 
   // Merge health scores
   const healthMap = new Map<string, number>();
-  if (predictions?.projectHealthScores) {
-    for (const h of predictions.projectHealthScores) {
+  if (pred?.projectHealthScores) {
+    for (const h of pred.projectHealthScores) {
       healthMap.set(h.projectId, h.healthScore);
     }
   }
@@ -121,11 +128,6 @@ export function DashboardPM() {
 
   // Slim project list for ActionCenter
   const projectSummaries = activeProjects.map(p => ({ id: p.id, name: p.name }));
-
-  // ─── KPI values ─────────────────────────────────────────────────────────────
-
-  const pred = predictions?.data || predictions;
-  const analytics = analyticsData?.data || analyticsData;
 
   const healthScores: number[] = pred?.projectHealthScores?.map((s: any) => s.healthScore) || [];
   const avgHealth = healthScores.length > 0
@@ -225,7 +227,7 @@ export function DashboardPM() {
             to="/projects"
             className="px-3 py-1 text-xs font-medium rounded-md bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
           >
-            My Projects · {myProjects.length}
+            My Projects · {activeProjects.length}
           </Link>
           <CustomizeDropdown
             widgets={PM_WIDGETS}

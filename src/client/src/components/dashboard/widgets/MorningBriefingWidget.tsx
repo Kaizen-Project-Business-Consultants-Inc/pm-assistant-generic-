@@ -43,7 +43,17 @@ export function MorningBriefingWidget({ scope }: Props) {
     );
   }
 
-  if (!briefing) return null;
+  if (!briefing) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+        <div className="flex items-center gap-2">
+          <Sun className="w-4 h-4 text-amber-500" />
+          <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">Morning Briefing</span>
+        </div>
+        <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">No briefing data available.</p>
+      </div>
+    );
+  }
 
   const overdueCount = briefing.overdueTasks?.length ?? 0;
   const criticalRisks = briefing.recentHighRisks?.filter((r: any) => r.severity === 'critical').length ?? 0;
