@@ -26,6 +26,8 @@ import {
   GripVertical,
   Mic,
   FileText,
+  BookOpen,
+  X,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ProjectBriefCard } from '../../components/project/ProjectBriefCard';
@@ -39,6 +41,7 @@ interface ProjectOverview {
   priority?: string;
   category?: string;
   type?: string;
+  status?: string;
   methodology?: string;
   location?: string;
   currency?: string;
@@ -169,6 +172,16 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     enabled: !!project.id,
     staleTime: 300_000,
   });
+
+  // Kickoff lessons — show relevant lessons for planning-stage projects
+  const [dismissedKickoffLessons, setDismissedKickoffLessons] = useState(false);
+  const { data: kickoffLessonsData } = useQuery({
+    queryKey: ['kickoff-lessons', project.type, project.category],
+    queryFn: () => apiService.getRelevantLessons(project.type || undefined, project.category || undefined),
+    enabled: project.status === 'planning' && !dismissedKickoffLessons,
+    staleTime: 300_000,
+  });
+  const kickoffLessons: any[] = (kickoffLessonsData?.lessons || []).slice(0, 5);
 
   const members: any[] = membersData?.members || [];
   const summary = analyticsData?.summary || analyticsData;
@@ -984,6 +997,35 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
           >
             <Users className="w-3.5 h-3.5" /> Manage Team
           </button>
+        </div>
+      )}
+
+      {/* Kickoff Lessons Banner — planning-stage projects */}
+      {project.status === 'planning' && kickoffLessons.length > 0 && !dismissedKickoffLessons && (
+        <div className="rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50/50 dark:bg-primary-900/10 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+              <h3 className="text-sm font-semibold text-primary-800 dark:text-primary-300">Lessons from Similar Projects</h3>
+            </div>
+            <button onClick={() => setDismissedKickoffLessons(true)} className="p-1 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-800/50" aria-label="Dismiss">
+              <X className="w-3.5 h-3.5 text-primary-500" />
+            </button>
+          </div>
+          <p className="text-xs text-primary-600 dark:text-primary-400 mb-2">
+            These lessons from past projects may help during your planning phase:
+          </p>
+          <div className="space-y-1.5">
+            {kickoffLessons.map((lesson: any) => (
+              <div key={lesson.id} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-primary-100 dark:border-primary-900/30">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{lesson.title}</p>
+                  {lesson.recommendation && <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{lesson.recommendation}</p>}
+                </div>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-medium shrink-0">{lesson.category}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

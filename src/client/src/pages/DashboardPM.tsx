@@ -28,6 +28,7 @@ import { StandupSummaryWidget } from '../components/dashboard/widgets/StandupSum
 import { SprintSnapshotWidget } from '../components/dashboard/widgets/SprintSnapshotWidget';
 import { GoalsWidget } from '../components/dashboard/widgets/GoalsWidget';
 import { TeamWorkloadWidget } from '../components/dashboard/widgets/TeamWorkloadWidget';
+import { LessonsInsightsWidget } from '../components/dashboard/widgets/LessonsInsightsWidget';
 
 // ─── Widget registry ──────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ const PM_WIDGETS: WidgetDef[] = [
   { id: 'goals',         label: 'Goals Progress',         group: 'Details',  defaultOn: false, size: 'full' },
   { id: 'workload',      label: 'Team Workload',          group: 'Details',  defaultOn: false, size: 'full' },
   { id: 'standup',       label: 'Standup Summary',        group: 'AI',       defaultOn: false, size: 'full' },
+  { id: 'lessons',       label: 'Lessons & Insights',     group: 'AI',       defaultOn: false, size: 'full' },
 ];
 
 // ─── KPI computation helpers ──────────────────────────────────────────────────
@@ -217,6 +219,8 @@ export function DashboardPM() {
         return <TeamWorkloadWidget projects={projectSummaries} />;
       case 'standup':
         return <StandupSummaryWidget projects={projectSummaries} />;
+      case 'lessons':
+        return <LessonsInsightsWidget />;
       default:
         return null;
     }

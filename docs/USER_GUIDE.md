@@ -966,12 +966,13 @@ Additional responsive improvements were made across several pages:
 ### My Timesheet
 
 1. Navigate to **Timesheets** in the sidebar.
-2. The **My Timesheet** tab shows a weekly grid.
-3. Select a project and schedule.
+2. The **My Timesheet** tab shows a weekly grid grouped by project and task.
+3. Project names and task names are displayed (not internal IDs).
 4. Log hours for each task by day:
    - Enter hours in the grid cells.
    - Add optional notes for each entry.
-5. The system tracks total hours per task and per day.
+5. Deleting a time entry requires confirmation before removal.
+6. The system tracks total hours per task and per day.
 
 ### Logging Time from the Timesheet Page
 
@@ -1629,6 +1630,15 @@ The AI analyzes your lessons learned database and identifies recurring patterns:
 
 - **Pattern cards** show the title, description, frequency, related project types, and recommendations.
 - Use patterns to proactively apply learned improvements to new projects.
+
+### Lessons in Context — Integration Points
+
+Lessons surface automatically at key moments so you benefit from past experience without having to search manually:
+
+- **Dashboard Widget** — Add the "Lessons & Insights" widget from the AI group via **Customize Dashboard**. It displays trending patterns and your most recent lessons at a glance.
+- **Project Closeout** — When you change a project's status to **Completed**, a prompt appears offering to run an AI analysis and extract lessons learned from that project automatically.
+- **Risk & Issue Creation** — When entering a new risk or issue in the Risk form, type a title of 10 or more characters and a collapsible **Similar Lessons** panel will appear below the title field, showing relevant lessons from past projects. Expand it to review before continuing.
+- **Project Kickoff** — On the **Overview** tab of any project in **Planning** status, a banner shows lessons from projects with similar types or categories. Dismiss it once you've reviewed it.
 
 ---
 

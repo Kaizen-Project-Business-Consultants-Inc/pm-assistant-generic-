@@ -14,6 +14,9 @@ import {
   Save,
   Pencil,
   Zap,
+  BookOpen,
+  Loader2,
+  CheckCircle,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useUIStore } from '../stores/uiStore';
@@ -152,6 +155,9 @@ export function ProjectDetailPage() {
 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [showCloseoutModal, setShowCloseoutModal] = useState(false);
+  const [extractingLessons, setExtractingLessons] = useState(false);
+  const [extractedLessons, setExtractedLessons] = useState<any[] | null>(null);
 
   const statusMutation = useMutation({
     mutationFn: ({ status, cancellationReason }: { status: string; cancellationReason?: string }) =>
@@ -271,6 +277,9 @@ export function ProjectDetailPage() {
                     const newStatus = e.target.value;
                     if (newStatus === 'cancelled') {
                       setShowCancelModal(true);
+                    } else if (newStatus === 'completed') {
+                      statusMutation.mutate({ status: newStatus });
+                      setShowCloseoutModal(true);
                     } else {
                       statusMutation.mutate({ status: newStatus });
                     }
@@ -583,6 +592,99 @@ export function ProjectDetailPage() {
                 {statusMutation.isPending ? 'Cancelling...' : 'Cancel Project'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showCloseoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowCloseoutModal(false)} />
+          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30">
+                <BookOpen className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Project Completed</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Capture lessons learned for future projects</p>
+              </div>
+            </div>
+
+            {!extractedLessons ? (
+              <>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Would you like to extract lessons learned from this project? AI will analyze your project data to identify key takeaways, what went well, and areas for improvement.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowCloseoutModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Skip
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setExtractingLessons(true);
+                      try {
+                        const result = await apiService.extractLessons(id!);
+                        setExtractedLessons(result.lessons || []);
+                      } catch {
+                        setExtractedLessons([]);
+                      } finally {
+                        setExtractingLessons(false);
+                      }
+                    }}
+                    disabled={extractingLessons}
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                  >
+                    {extractingLessons ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Extracting...</>
+                    ) : (
+                      'Extract Lessons'
+                    )}
+                  </button>
+                </div>
+              </>
+            ) : extractedLessons.length === 0 ? (
+              <>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  No lessons could be extracted at this time. You can manually add lessons from the Lessons Learned page.
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => { setShowCloseoutModal(false); setExtractedLessons(null); }}
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {extractedLessons.length} lesson{extractedLessons.length !== 1 ? 's' : ''} captured
+                  </span>
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
+                  {extractedLessons.map((lesson: any, i: number) => (
+                    <div key={i} className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{lesson.title}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{lesson.category} &middot; {lesson.impact}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => { setShowCloseoutModal(false); setExtractedLessons(null); }}
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+                  >
+                    Done
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

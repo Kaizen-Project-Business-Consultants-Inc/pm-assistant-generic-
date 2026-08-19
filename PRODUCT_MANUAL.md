@@ -413,7 +413,7 @@ A dedicated page accessible from the sidebar under the **Analyze** section. Feat
 - **Project selector** dropdown to choose which project to view.
 - **Summary cards**: Total Resources, Over-allocated count, Average Utilization, Estimated Cost (shown when resources have cost rates).
 - **Four tabs**:
-  - **Team** — Full table of all resources with create, edit, and delete capabilities. Managers can add new resources, update roles/capacity/cost rates, and remove resources directly from this tab.
+  - **Team** — Full table of all resources with create, edit, and delete capabilities. Managers can add new resources, update roles/capacity/cost rates, and remove resources directly from this tab. Delete requires confirmation via modal dialog. CSV import includes keyboard-accessible drop zone with file size validation and read-error handling.
   - **Workload Heatmap** — Table showing all resources with weekly utilization percentages as colored cells (green < 80%, blue 80–100%, amber 100–120%, red > 120%). Displays resource name, role, average utilization, cost per resource, and per-week cells with cost tooltips.
   - **Resource Histogram** — SVG bar chart per resource showing daily demand hours with an 8-hour capacity line. Red bars for over-allocated days. Includes an over-allocation summary with count and details.
   - **Capacity Forecast** — 8-week bottleneck predictions table (resource, week, demand, capacity, severity) and AI-generated recommendations.
@@ -590,7 +590,7 @@ The `TimeEntryService` records individual time logs:
 
 ### Timesheets
 
-Aggregated time entry views per user per week, suitable for approval workflows and payroll integration. The Timesheet page includes a **"Log Time"** button that opens an inline form with project, schedule, and task dropdowns plus date, hours, and description fields, allowing time entries to be created directly from the timesheet without navigating away. Mobile week navigation icons are also displayed correctly on small screens.
+Aggregated time entry views per user per week, suitable for approval workflows and payroll integration. The Timesheet page includes a **"Log Time"** button that opens an inline form with project, schedule, and task dropdowns plus date, hours, and description fields, allowing time entries to be created directly from the timesheet without navigating away. Mobile week navigation icons are also displayed correctly on small screens. The weekly grid displays project and task **names** (not raw IDs), and the approval panel shows submitter and project names in the expanded detail view. All destructive actions (delete entries, deactivate users) require confirmation via a modal dialog.
 
 ### Actual vs. Estimated
 
@@ -734,6 +734,15 @@ The `MeetingIntelligenceService` processes meeting transcripts or notes to extra
 ### Lessons Learned
 
 The `LessonsLearnedService` captures and retrieves project retrospective insights, categorized and searchable, to improve future project execution. Lessons can be edited and deleted directly from the Lessons Learned page: the edit action opens the same lesson modal pre-filled with existing values; the delete action presents a styled `ConfirmModal` before removing the record. The page supports **"Load More" pagination** so large lesson databases load incrementally rather than all at once.
+
+#### Integration Points
+
+Lessons learned surface proactively at four points in the project lifecycle:
+
+- **Dashboard Widget** — The "Lessons & Insights" widget (AI group, opt-in via Customize) displays trending patterns and recent lessons from the knowledge base directly on the dashboard.
+- **Project Closeout Prompt** — When a project's status is changed to "completed", a modal prompts the user to trigger an AI analysis to extract and record lessons learned from that project.
+- **Risk Creation — Similar Lessons** — In `RiskFormModal`, a collapsible panel auto-appears once the risk/issue title reaches 10+ characters, showing relevant historical lessons from past projects to inform the current entry.
+- **Project Kickoff — Relevant Lessons** — On the Overview tab of projects in "planning" status, a dismissible banner surfaces lessons from similar project types and categories to guide early decisions.
 
 ### Task Prioritization
 
