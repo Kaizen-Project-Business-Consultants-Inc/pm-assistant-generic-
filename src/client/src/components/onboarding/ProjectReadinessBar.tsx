@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Circle, X } from 'lucide-react';
 import { getReadinessSteps, type Methodology } from '../../utils/methodology';
 
@@ -15,32 +14,17 @@ interface ProjectReadinessBarProps {
   projectId: string;
   tasks: any[];
   resources: any[];
-  scheduleId?: string;
   methodology?: Methodology;
   sprintCount?: number;
   onTabChange: (tab: string) => void;
 }
 
 const STORAGE_PREFIX = 'readiness-dismissed-';
-const STEP_PREFIX = 'readiness-step-';
 
-export function ProjectReadinessBar({ projectId, tasks, resources, scheduleId, methodology = 'waterfall', sprintCount = 0, onTabChange }: ProjectReadinessBarProps) {
-  const navigate = useNavigate();
+export function ProjectReadinessBar({ projectId, tasks, resources, methodology = 'waterfall', sprintCount = 0, onTabChange }: ProjectReadinessBarProps) {
   const [dismissed, setDismissed] = useState(() =>
     localStorage.getItem(`${STORAGE_PREFIX}${projectId}`) === '1'
   );
-  const [clickedSteps, setClickedSteps] = useState<Record<string, boolean>>(() => {
-    try {
-      const stored = localStorage.getItem(`${STEP_PREFIX}${projectId}`);
-      return stored ? JSON.parse(stored) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem(`${STEP_PREFIX}${projectId}`, JSON.stringify(clickedSteps));
-  }, [clickedSteps, projectId]);
 
   if (dismissed) return null;
 
@@ -57,20 +41,8 @@ export function ProjectReadinessBar({ projectId, tasks, resources, scheduleId, m
     else if (cfg.doneKey === 'dependencies') done = hasDependencies;
     else if (cfg.doneKey === 'resources') done = hasResources;
     else if (cfg.doneKey === 'sprints') done = hasSprints;
-    else if (cfg.doneKey === 'clicked') done = !!clickedSteps[cfg.clickedStepKey!];
 
-    const action = () => {
-      if (cfg.clickedStepKey) {
-        setClickedSteps(prev => ({ ...prev, [cfg.clickedStepKey!]: true }));
-      }
-      if (cfg.targetTab === 'simulation') {
-        navigate(scheduleId ? `/monte-carlo?scheduleId=${scheduleId}` : '/monte-carlo');
-      } else {
-        onTabChange(cfg.targetTab);
-      }
-    };
-
-    return { key: cfg.key, label: cfg.label, tooltip: cfg.tooltip, done, action };
+    return { key: cfg.key, label: cfg.label, tooltip: cfg.tooltip, done, action: () => onTabChange(cfg.targetTab) };
   });
 
   const completedCount = steps.filter(s => s.done).length;

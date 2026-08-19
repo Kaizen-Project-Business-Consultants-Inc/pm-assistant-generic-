@@ -36,26 +36,24 @@ import { useUndoRedo } from '../../hooks/useUndoRedo';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { COLUMN_DEFS } from '../../components/schedule/tableColumns';
 import { exportTasksCSV } from '../../utils/exportUtils';
-import { getViewPref, setViewPref } from '../../hooks/useViewPreferences';
+
 
 export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt' }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string }) {
   const queryClient = useQueryClient();
   const breakpoint = useBreakpoint();
   const isMobile = breakpoint === 'mobile';
+  const viewModeKey = `schedule-view-mode-${projectId}`;
   const [viewMode, setViewModeRaw] = useState<'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown'>(() => {
-    const serverPref = getViewPref('scheduleViewMode');
-    if (serverPref) return serverPref;
     try {
-      const saved = localStorage.getItem('schedule-view-mode');
+      const saved = localStorage.getItem(viewModeKey);
       if (saved && ['gantt', 'kanban', 'table', 'calendar', 'network', 'burndown'].includes(saved)) return saved as any;
     } catch { /* noop */ }
     return defaultViewMode as any;
   });
   const setViewMode = useCallback((mode: typeof viewMode) => {
     setViewModeRaw(mode);
-    try { localStorage.setItem('schedule-view-mode', mode); } catch { /* noop */ }
-    setViewPref('scheduleViewMode', mode);
-  }, []);
+    try { localStorage.setItem(viewModeKey, mode); } catch { /* noop */ }
+  }, [viewModeKey]);
   const [uploadingSchedule, setUploadingSchedule] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const scheduleFileRef = useRef<HTMLInputElement>(null);

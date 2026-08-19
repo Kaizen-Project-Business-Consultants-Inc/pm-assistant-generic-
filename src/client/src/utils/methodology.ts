@@ -69,8 +69,7 @@ export interface ReadinessStepConfig {
   key: string;
   label: string;
   tooltip: string;
-  doneKey: 'tasks' | 'dependencies' | 'resources' | 'sprints' | 'clicked';
-  clickedStepKey?: string;
+  doneKey: 'tasks' | 'dependencies' | 'resources' | 'sprints';
   targetTab: string;
 }
 
@@ -80,8 +79,6 @@ export function getReadinessSteps(m: Methodology): ReadinessStepConfig[] {
       { key: 'backlog', label: 'Backlog', tooltip: 'Create user stories in your backlog', doneKey: 'tasks', targetTab: 'schedule' },
       { key: 'sprint', label: 'Sprint', tooltip: 'Create your first sprint to start iterating', doneKey: 'sprints', targetTab: 'sprints' },
       { key: 'team', label: 'Team', tooltip: 'Add team members for capacity planning', doneKey: 'resources', targetTab: 'resources' },
-      { key: 'velocity', label: 'Velocity', tooltip: 'Review velocity to forecast future sprints', doneKey: 'clicked', clickedStepKey: 'velocity', targetTab: 'sprints' },
-      { key: 'burndown', label: 'Burndown', tooltip: 'Track sprint progress with burndown charts', doneKey: 'clicked', clickedStepKey: 'burndown', targetTab: 'sprints' },
     ];
   }
 
@@ -90,8 +87,7 @@ export function getReadinessSteps(m: Methodology): ReadinessStepConfig[] {
       { key: 'tasks', label: 'Tasks', tooltip: 'Import or create tasks to build your schedule', doneKey: 'tasks', targetTab: 'schedule' },
       { key: 'sprint', label: 'Sprint', tooltip: 'Create sprints for iterative delivery', doneKey: 'sprints', targetTab: 'sprints' },
       { key: 'resources', label: 'Resources', tooltip: 'Add team members for workload forecasting', doneKey: 'resources', targetTab: 'resources' },
-      { key: 'critical-path', label: 'Critical Path', tooltip: 'See which tasks drive your finish date', doneKey: 'clicked', clickedStepKey: 'critical-path', targetTab: 'schedule' },
-      { key: 'velocity', label: 'Velocity', tooltip: 'Track team velocity across sprints', doneKey: 'clicked', clickedStepKey: 'velocity', targetTab: 'sprints' },
+      { key: 'dependencies', label: 'Dependencies', tooltip: 'Link tasks to reveal your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
     ];
   }
 
@@ -100,8 +96,6 @@ export function getReadinessSteps(m: Methodology): ReadinessStepConfig[] {
     { key: 'tasks', label: 'Tasks', tooltip: 'Import or create tasks to build your schedule', doneKey: 'tasks', targetTab: 'schedule' },
     { key: 'dependencies', label: 'Dependencies', tooltip: 'Link tasks to reveal your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
     { key: 'resources', label: 'Resources', tooltip: 'Add team members for workload and cost forecasting', doneKey: 'resources', targetTab: 'resources' },
-    { key: 'critical-path', label: 'Critical Path', tooltip: 'See which tasks drive your finish date', doneKey: 'clicked', clickedStepKey: 'critical-path', targetTab: 'schedule' },
-    { key: 'simulation', label: 'Simulation', tooltip: 'Run Monte Carlo to quantify schedule risk', doneKey: 'clicked', clickedStepKey: 'simulation', targetTab: 'simulation' },
   ];
 }
 
