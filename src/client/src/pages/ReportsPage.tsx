@@ -269,6 +269,7 @@ export const ReportsPage: React.FC = () => {
   const [showRiskScan, setShowRiskScan] = useState(false);
   const [activeInstantReport, setActiveInstantReport] = useState<{ html: string; title: string } | null>(null);
   const [generatingReportType, setGeneratingReportType] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Table state
   const [typeFilter, setTypeFilter] = useState('');
@@ -493,21 +494,29 @@ export const ReportsPage: React.FC = () => {
       )}
 
       {/* ----------------------------------------------------------------- */}
-      {/* Report History Table                                              */}
+      {/* Report History (collapsed by default)                             */}
       {/* ----------------------------------------------------------------- */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            Report History
-            {totalAll > 0 && (
-              <span className="text-xs font-normal text-gray-400">({totalAll})</span>
-            )}
-          </h2>
-        </div>
+      <div className="card p-0 overflow-hidden">
+        <button
+          onClick={() => setShowHistory(prev => !prev)}
+          className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+        >
+          {showHistory ? (
+            <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          )}
+          <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">Report History</span>
+          {totalAll > 0 && (
+            <span className="text-xs text-gray-400 dark:text-gray-500">{totalAll}</span>
+          )}
+        </button>
+
+        {showHistory && <div className="px-5 pb-4">
 
         {/* Filter bar */}
-        <div className="card mb-3 py-3 px-4">
+        <div className="mb-3 py-3 px-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex flex-wrap items-end gap-3">
             {/* Type dropdown */}
             <div className="min-w-[160px]">
@@ -591,15 +600,15 @@ export const ReportsPage: React.FC = () => {
         </div>
 
         {historyError ? (
-          <div className="card text-center py-10">
+          <div className="text-center py-10">
             <p className="text-sm text-red-600">Failed to load report history.</p>
           </div>
         ) : historyLoading ? (
-          <div className="card flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-12">
             <div className="w-6 h-6 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
           </div>
         ) : totalAll === 0 && !searchQuery && !typeFilter ? (
-          <div className="card text-center py-12">
+          <div className="text-center py-12">
             <FileText className="mx-auto h-12 w-12 text-gray-300 mb-3" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">No reports yet</h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -607,13 +616,13 @@ export const ReportsPage: React.FC = () => {
             </p>
           </div>
         ) : reports.length === 0 ? (
-          <div className="card text-center py-8">
+          <div className="text-center py-8">
             <p className="text-sm text-gray-500 dark:text-gray-400">No reports match your filter.</p>
           </div>
         ) : (
           <>
             {/* Table */}
-            <div className="card p-0 overflow-hidden">
+            <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[600px]">
                   <thead>
@@ -766,6 +775,8 @@ export const ReportsPage: React.FC = () => {
             )}
           </>
         )}
+
+        </div>}
       </div>
 
       {/* ----------------------------------------------------------------- */}
