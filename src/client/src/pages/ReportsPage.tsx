@@ -440,7 +440,7 @@ export const ReportsPage: React.FC = () => {
       {/* ----------------------------------------------------------------- */}
       {/* Persistent Project Selector                                       */}
       {/* ----------------------------------------------------------------- */}
-      <div className="card">
+      <div className={`card ${!selectedProjectId ? 'ring-2 ring-primary-300 dark:ring-primary-600' : ''}`}>
         <label htmlFor="report-project" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
           <FileBarChart className="w-3.5 h-3.5 inline mr-1.5 text-primary-500" />
           Select Project
