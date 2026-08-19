@@ -233,7 +233,7 @@ export function ProjectTable({ projects }: Props) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-          {sorted.map((project) => {
+          {sorted.slice(0, 10).map((project) => {
             const status = statusConfig[project.status] || statusConfig.planning;
             const progress = project.progressPercentage ?? 0;
             const budgetAllocated = project.budgetAllocated ?? 0;
@@ -358,6 +358,16 @@ export function ProjectTable({ projects }: Props) {
           })}
         </tbody>
       </table>
+      {sorted.length > 10 && (
+        <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700 text-center">
+          <Link
+            to="/projects"
+            className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline"
+          >
+            View all {sorted.length} projects
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

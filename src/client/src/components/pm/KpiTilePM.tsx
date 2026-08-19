@@ -9,7 +9,6 @@ interface KpiTilePMProps {
   icon: React.ElementType;
   color: Color;
   drillPath?: string;
-  statusDot?: Color;
 }
 
 const chipBg: Record<Color, string> = {
@@ -20,20 +19,9 @@ const chipBg: Record<Color, string> = {
   gray:  'bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400',
 };
 
-const dotBg: Record<Color, string> = {
-  green: 'bg-green-500',
-  amber: 'bg-amber-500',
-  red:   'bg-red-500',
-  teal:  'bg-primary-500',
-  gray:  'bg-gray-400',
-};
-
-export function KpiTilePM({ label, value, subtitle, icon: Icon, color, drillPath, statusDot }: KpiTilePMProps) {
+export function KpiTilePM({ label, value, subtitle, icon: Icon, color, drillPath }: KpiTilePMProps) {
   const content = (
     <>
-      {statusDot && (
-        <span className={`absolute top-2.5 right-2.5 h-2 w-2 rounded-full ${dotBg[statusDot]}`} />
-      )}
       <div className="flex items-center gap-2 mb-2">
         <div className={`flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0 ${chipBg[color]}`}>
           <Icon className="h-4 w-4" />

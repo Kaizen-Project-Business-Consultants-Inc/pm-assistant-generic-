@@ -315,7 +315,39 @@ export function ActionCenterPM({ projects }: ActionCenterPMProps) {
     staleTime: 30_000,
   });
 
+  // Check if left column has data (overdue tasks or milestones)
+  const { data: overdueData } = useQuery({
+    queryKey: ['pm-dashboard-overdue'],
+    queryFn: () => apiService.getDashboardOverdueTasks(),
+    staleTime: 120_000,
+  });
+  const { data: milestonesData } = useQuery({
+    queryKey: ['pm-dashboard-milestones'],
+    queryFn: () => apiService.getDashboardMilestones(undefined, 5),
+    staleTime: 120_000,
+  });
+
+  // Check if right column has data (proposals, notifications, low-health)
+  const { data: proposalsData } = useQuery({
+    queryKey: ['pm-proposals-action'],
+    queryFn: () => apiService.getAgentProposals({ status: 'pending', limit: 10 }),
+    staleTime: 30_000,
+  });
+  const { data: analyticsData } = useQuery({
+    queryKey: ['pm-analytics'],
+    queryFn: () => apiService.getAnalyticsSummary(),
+    staleTime: 120_000,
+  });
+
   const notifications: any[] = notifData?.data || notifData?.notifications || [];
+
+  const leftEmpty = ((overdueData?.tasks || []).length === 0) &&
+    ((milestonesData?.milestones || milestonesData?.data || []).length === 0);
+  const proposals = proposalsData?.data || proposalsData?.proposals || [];
+  const urgentNotifs = notifications.filter((n: any) => !n.read_at && (n.severity === 'critical' || n.severity === 'high'));
+  const summary = analyticsData?.data || analyticsData;
+  const lowHealth = (summary?.projectBreakdown || []).filter((p: any) => (p.healthScore ?? 100) < 60);
+  const rightEmpty = proposals.length === 0 && urgentNotifs.length === 0 && lowHealth.length === 0;
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
@@ -333,12 +365,17 @@ export function ActionCenterPM({ projects }: ActionCenterPMProps) {
         </Link>
       </div>
 
-      {/* Two columns with vertical divider */}
-      <div className="flex gap-4">
-        <PrioritiesList projects={projects} />
-        <div className="w-px bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
-        <AINextBestActions notifications={notifications} />
-      </div>
+      {leftEmpty && rightEmpty ? (
+        <p className="text-xs text-gray-400 dark:text-gray-500 py-6 text-center">
+          No urgent items or actions right now
+        </p>
+      ) : (
+        <div className="flex gap-4">
+          <PrioritiesList projects={projects} />
+          <div className="w-px bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
+          <AINextBestActions notifications={notifications} />
+        </div>
+      )}
     </div>
   );
 }

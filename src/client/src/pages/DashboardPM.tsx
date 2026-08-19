@@ -1,11 +1,12 @@
 import { useEffect, useCallback, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
   Clock,
   AlertTriangle,
   DollarSign,
+  RefreshCw,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useUIStore } from '../stores/uiStore';
@@ -63,12 +64,15 @@ function formatRelativeTime(timestamp: number): string {
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) return `${minutes} min ago`;
   const hours = Math.round(minutes / 60);
-  return `${hours}h ago`;
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return `${days}d ago`;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function DashboardPM() {
+  const queryClient = useQueryClient();
   const {
     enabledIds,
     widgetOrder,
@@ -183,10 +187,10 @@ export function DashboardPM() {
       case 'kpi':
         return (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <KpiTilePM label="Portfolio Health" value={`${avgHealth}%`} icon={Activity} color={healthColor} statusDot={healthColor} drillPath="/portfolio" />
-            <KpiTilePM label="Overdue Tasks" value={overdueTasks} icon={Clock} color={kpiColor(overdueTasks, true, 5, 10)} statusDot={kpiColor(overdueTasks, true, 5, 10)} drillPath="/kpi/overdue" />
-            <KpiTilePM label="Open Risks" value={openRisks} subtitle={riskSubtitle} icon={AlertTriangle} color={riskColor} statusDot={riskColor} drillPath="/kpi/risks" />
-            <KpiTilePM label="Budget" value={budgetValue} subtitle={allocated > 0 ? `${Math.round(utilization)}% utilized` : undefined} icon={DollarSign} color={budgetColor} statusDot={budgetColor} drillPath="/kpi/budget" />
+            <KpiTilePM label="Portfolio Health" value={`${avgHealth}%`} icon={Activity} color={healthColor} drillPath="/kpi/health" />
+            <KpiTilePM label="Overdue Tasks" value={overdueTasks} icon={Clock} color={kpiColor(overdueTasks, true, 5, 10)} drillPath="/kpi/overdue" />
+            <KpiTilePM label="Open Risks" value={openRisks} subtitle={riskSubtitle} icon={AlertTriangle} color={riskColor} drillPath="/kpi/risks" />
+            <KpiTilePM label="Budget" value={budgetValue} subtitle={allocated > 0 ? `${Math.round(utilization)}% utilized` : undefined} icon={DollarSign} color={budgetColor} drillPath="/kpi/budget-variance" />
           </div>
         );
       case 'intel':
@@ -241,9 +245,9 @@ export function DashboardPM() {
         <div className="flex items-center gap-2">
           <Link
             to="/projects"
-            className="px-3 py-1 text-xs font-medium rounded-md bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
+            className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline"
           >
-            My Projects · {activeProjects.length}
+            {activeProjects.length} project{activeProjects.length !== 1 ? 's' : ''}
           </Link>
           <CustomizeDropdown
             widgets={PM_WIDGETS}
@@ -265,7 +269,21 @@ export function DashboardPM() {
 
       {/* ── Footer ── */}
       <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 pt-2 border-t border-gray-100 dark:border-gray-800">
-        <span>Updated {dataUpdatedAt ? formatRelativeTime(dataUpdatedAt) : '—'}</span>
+        <div className="flex items-center gap-2">
+          <span>Updated {dataUpdatedAt ? formatRelativeTime(dataUpdatedAt) : '—'}</span>
+          <button
+            type="button"
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['pm-projects'] });
+              queryClient.invalidateQueries({ queryKey: ['pm-predictions'] });
+              queryClient.invalidateQueries({ queryKey: ['pm-analytics'] });
+            }}
+            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            title="Refresh data"
+          >
+            <RefreshCw className="w-3 h-3" />
+          </button>
+        </div>
         <span>Kovarti PM</span>
       </div>
 

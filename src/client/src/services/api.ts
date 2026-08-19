@@ -2686,7 +2686,7 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
-  async updateDashboardPreferences(prefs: { enabledWidgets: string[]; widgetOrder: string[]; scope: string }) {
+  async updateDashboardPreferences(prefs: { enabledWidgets: string[]; widgetOrder: string[]; scope?: string }) {
     const response = await this.api.put('/users/me/dashboard-preferences', prefs);
     return response.data;
   }
