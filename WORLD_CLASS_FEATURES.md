@@ -333,6 +333,10 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Forecast comparison bar chart**: horizontal bars for each EAC method with a dashed BAC reference line; bars exceeding BAC are red, under BAC are green — displayed above the forecast comparison table
 - **S-Curve on EVM Dashboard**: cumulative PV/EV/AC S-Curve chart (reuses existing `SCurveChart` component) now shown on the `/evm` dashboard alongside trend chart; `sCurveData` included in the EVM forecast API response
 - **EVM PDF export**: "Export PDF" button captures the full dashboard (narrative, KPIs with gauges, S-curve, trend chart, warnings, forecast comparison, AI predictions) as A3 landscape PDF via `html2pdf.js`
+- **What-If Scenario Simulator**: collapsible section with Target CPI (0.5–1.5) and Budget Adjustment (±30–50% BAC) sliders; real-time EAC/ETC/VAC/TCPI recalculation with current-vs-simulated deltas; reset to actuals; no data persisted
+- **Variance Breakdown (Pareto)**: per-task CV/SV via `GET /evm-forecast/:projectId/task-variances`; horizontal bar chart of top 10 tasks by absolute cost variance (green under budget, red over budget); compact detail table with budget, actual, CV, SV, progress %
+- **Earned Schedule (ES) Metrics**: client-side ES, AT, SV(t), SPI(t) computed from S-curve data; time-based schedule variance that remains meaningful near project end (unlike SV($)); plain-English interpretation
+- **TCPI Dual Target Analysis**: side-by-side TCPI for BAC vs EAC targets; color-coded green (<1.05) / amber (1.05–1.2) / red (>1.2); rebaseline callout when BAC-based TCPI is unrealistic but EAC-based is achievable
 - **Budget Tab**: donut chart (SVG category breakdown), semi-circle health gauge, sortable expense table, search + category filter, cumulative spend line, CSV export, mobile card layout
 
 ### 3.8 Agent Activity Log
