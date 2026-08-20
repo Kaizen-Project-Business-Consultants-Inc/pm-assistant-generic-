@@ -151,7 +151,7 @@ export class UserRepository extends BaseRepository<User> {
 
   async update(id: string, data: Record<string, any>): Promise<User | null> {
     const result = this.buildUpdate(data, USER_COLUMN_MAP, (key, val) => {
-      if (key === 'notificationTypePreferences' && val != null) return JSON.stringify(val);
+      if ((key === 'notificationTypePreferences' || key === 'digestSections') && val != null) return JSON.stringify(val);
       return val;
     });
     if (!result) return this.findById(id);
