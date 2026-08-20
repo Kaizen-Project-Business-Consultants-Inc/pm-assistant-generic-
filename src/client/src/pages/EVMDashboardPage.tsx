@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, Activity, Target, BarChart3, Lock, Download } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, Activity, Target, BarChart3, Lock, Download, SlidersHorizontal, Clock, ListOrdered, ChevronRight } from 'lucide-react';
 import { apiService } from '../services/api';
 import { EVMMetricTooltip } from '../components/evm/EVMMetricTooltip';
 import type { MetricValues } from '../components/evm/EVMMetricTooltip';
@@ -65,6 +65,19 @@ interface EVMResult {
   forecastComparison: ForecastComparison[];
   aiPredictions?: AIPrediction;
   sCurveData?: SCurveDataPoint[];
+}
+
+interface TaskVariance {
+  taskId: string;
+  taskName: string;
+  budgetAllocated: number;
+  actualCost: number;
+  ev: number;
+  pv: number;
+  cv: number;
+  sv: number;
+  progressPct: number;
+  cumulativePct?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -194,6 +207,88 @@ function ForecastBarChart({ comparisons, bac }: { comparisons: ForecastCompariso
 }
 
 // ---------------------------------------------------------------------------
+// Earned Schedule computation from S-curve data
+// ---------------------------------------------------------------------------
+
+function computeEarnedSchedule(sCurveData: SCurveDataPoint[], currentEV: number): { es: number; at: number; svt: number; spit: number } | null {
+  if (!sCurveData || sCurveData.length < 2) return null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const startDate = new Date(sCurveData[0].date).getTime();
+  const DAY_MS = 86400000;
+
+  // AT = actual elapsed time in weeks from project start
+  const at = (new Date(today).getTime() - startDate) / (DAY_MS * 7);
+  if (at <= 0) return null;
+
+  // Find the point on the PV curve where PV = current EV (interpolate)
+  let esWeeks = 0;
+  for (let i = 0; i < sCurveData.length - 1; i++) {
+    const pvI = sCurveData[i].pv;
+    const pvNext = sCurveData[i + 1].pv;
+    const tI = (new Date(sCurveData[i].date).getTime() - startDate) / (DAY_MS * 7);
+    const tNext = (new Date(sCurveData[i + 1].date).getTime() - startDate) / (DAY_MS * 7);
+
+    if (currentEV <= pvNext) {
+      // Interpolate
+      const fraction = pvNext > pvI ? (currentEV - pvI) / (pvNext - pvI) : 0;
+      esWeeks = tI + fraction * (tNext - tI);
+      break;
+    }
+    esWeeks = tNext; // EV exceeds all PV points — ES = last point
+  }
+
+  const svt = parseFloat((esWeeks - at).toFixed(2));
+  const spit = at > 0 ? parseFloat((esWeeks / at).toFixed(4)) : 1;
+
+  return { es: parseFloat(esWeeks.toFixed(2)), at: parseFloat(at.toFixed(2)), svt, spit };
+}
+
+// ---------------------------------------------------------------------------
+// Variance Pareto Chart Component
+// ---------------------------------------------------------------------------
+
+function VarianceParetoChart({ variances }: { variances: TaskVariance[] }) {
+  const top10 = variances.slice(0, 10);
+  if (top10.length === 0) return <div className="text-center py-6 text-gray-400 text-sm">No task-level variance data available.</div>;
+
+  const maxAbsCV = Math.max(...top10.map(v => Math.abs(v.cv)), 1);
+  const barH = 22;
+  const gap = 4;
+  const labelW = 160;
+  const chartW = 350;
+  const valueW = 80;
+  const svgW = labelW + chartW + valueW;
+  const svgH = top10.length * (barH + gap) + gap;
+
+  return (
+    <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" style={{ maxHeight: 320 }}>
+      {/* Center line (zero) */}
+      <line x1={labelW + chartW / 2} y1={0} x2={labelW + chartW / 2} y2={svgH} stroke="#d1d5db" strokeWidth={1} strokeDasharray="3 2" />
+
+      {top10.map((v, i) => {
+        const y = gap + i * (barH + gap);
+        const pct = v.cv / maxAbsCV; // -1 to 1
+        const barW = Math.abs(pct) * (chartW / 2);
+        const x = v.cv >= 0 ? labelW + chartW / 2 : labelW + chartW / 2 - barW;
+        const color = v.cv >= 0 ? '#4ade80' : '#f87171';
+        const truncName = v.taskName.length > 22 ? v.taskName.slice(0, 20) + '...' : v.taskName;
+
+        return (
+          <g key={v.taskId}>
+            <text x={labelW - 4} y={y + barH / 2 + 4} fontSize={9} fill="#6b7280" textAnchor="end">{truncName}</text>
+            <rect x={x} y={y} width={barW} height={barH} rx={3} fill={color} opacity={0.8} />
+            <text x={labelW + chartW + 4} y={y + barH / 2 + 4} fontSize={9} fill={v.cv >= 0 ? '#22c55e' : '#ef4444'} fontWeight="600">
+              {v.cv >= 0 ? '+' : ''}{formatCurrency(v.cv)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -216,6 +311,19 @@ export function EVMDashboardPage() {
   const result: EVMResult | null = evmData?.result || null;
   const aiPowered: boolean = evmData?.aiPowered || false;
   const isSample: boolean = evmData?.sample || false;
+
+  // Task variance data (for Pareto chart)
+  const { data: varianceData } = useQuery({
+    queryKey: ['evm-variances', selectedProjectId],
+    queryFn: () => apiService.getEVMTaskVariances(selectedProjectId),
+    enabled: !!selectedProjectId && !isSample,
+  });
+  const taskVariances: TaskVariance[] = varianceData?.variances || [];
+
+  // What-If simulator state
+  const [whatIfOpen, setWhatIfOpen] = useState(false);
+  const [whatIfCPI, setWhatIfCPI] = useState<number | null>(null);
+  const [whatIfBudgetAdd, setWhatIfBudgetAdd] = useState(0);
 
   const m = result?.currentMetrics;
 
@@ -620,6 +728,233 @@ export function EVMDashboardPage() {
                         <td className={`px-4 py-2 text-right font-medium ${fc.varianceFromBAC < 0 ? 'text-red-600' : 'text-green-600'}`}>
                           {fc.varianceFromBAC >= 0 ? '+' : ''}{formatCurrency(fc.varianceFromBAC)}
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TCPI Dual Target + Earned Schedule */}
+          {(() => {
+            const tcpiBac = (m.BAC - m.AC) > 0 ? (m.BAC - m.EV) / (m.BAC - m.AC) : Infinity;
+            const tcpiEac = (m.EAC - m.AC) > 0 ? (m.BAC - m.EV) / (m.EAC - m.AC) : Infinity;
+            const es = result.sCurveData ? computeEarnedSchedule(result.sCurveData, m.EV) : null;
+
+            return (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* TCPI Dual Target */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-primary-500" />
+                    TCPI — Dual Target Analysis
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500 mb-1">To finish on <strong>original budget</strong> (BAC)</div>
+                      <div className={`text-3xl font-bold ${tcpiBac > 1.2 ? 'text-red-600' : tcpiBac > 1.05 ? 'text-amber-600' : 'text-green-600'}`}>
+                        {tcpiBac === Infinity ? '—' : tcpiBac.toFixed(2)}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {tcpiBac > 1.2 ? 'Unrealistic — consider rebaselining' : tcpiBac > 1.05 ? 'Challenging but achievable' : 'Achievable at current pace'}
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500 mb-1">To finish on <strong>current forecast</strong> (EAC)</div>
+                      <div className={`text-3xl font-bold ${tcpiEac > 1.2 ? 'text-red-600' : tcpiEac > 1.05 ? 'text-amber-600' : 'text-green-600'}`}>
+                        {tcpiEac === Infinity ? '—' : tcpiEac.toFixed(2)}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {tcpiEac > 1.2 ? 'Even adjusted forecast at risk' : tcpiEac > 1.05 ? 'Moderate effort needed' : 'On track for adjusted forecast'}
+                      </div>
+                    </div>
+                  </div>
+                  {tcpiBac > 1.2 && tcpiEac <= 1.1 && (
+                    <div className="mt-3 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+                      The gap between TCPI(BAC) and TCPI(EAC) suggests the original budget is no longer realistic. Consider a formal rebaseline to {formatCurrency(m.EAC)}.
+                    </div>
+                  )}
+                </div>
+
+                {/* Earned Schedule */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-primary-500" />
+                    Earned Schedule (Time-Based)
+                  </h3>
+                  {es ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-xs text-gray-500">Earned Schedule (ES)</div>
+                          <div className="text-lg font-bold text-gray-900 dark:text-white">{es.es.toFixed(1)} wks</div>
+                          <div className="text-[10px] text-gray-400">Planned time to earn current EV</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500">Actual Time (AT)</div>
+                          <div className="text-lg font-bold text-gray-900 dark:text-white">{es.at.toFixed(1)} wks</div>
+                          <div className="text-[10px] text-gray-400">Elapsed since project start</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-xs text-gray-500">SV(t) — Schedule Variance (time)</div>
+                          <div className={`text-lg font-bold ${es.svt >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {es.svt >= 0 ? '+' : ''}{es.svt.toFixed(1)} wks
+                          </div>
+                          <div className="text-[10px] text-gray-400">{es.svt >= 0 ? 'Ahead of schedule' : 'Behind schedule'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500">SPI(t) — Schedule Performance (time)</div>
+                          <div className="text-lg font-bold" style={{ color: indexColor(es.spit) }}>{es.spit.toFixed(2)}</div>
+                          <div className="text-[10px] text-gray-400">{es.spit >= 1 ? 'Earning value faster than planned' : 'Earning value slower than planned'}</div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                        Unlike SV($) which converges to zero as a project nears completion, SV(t) remains meaningful throughout the entire project lifecycle.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-gray-400 text-sm">Not enough S-curve data to compute earned schedule.</div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* What-If Scenario Simulator */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setWhatIfOpen(!whatIfOpen)}
+              className="w-full flex items-center justify-between px-5 py-4 text-left"
+            >
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-primary-500" />
+                What-If Scenario Simulator
+              </h3>
+              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${whatIfOpen ? 'rotate-90' : ''}`} />
+            </button>
+            {whatIfOpen && (() => {
+              const simCPI = whatIfCPI ?? m.CPI;
+              const simBAC = m.BAC + whatIfBudgetAdd;
+              const simEAC = simCPI > 0 ? simBAC / simCPI : simBAC;
+              const simETC = Math.max(0, simEAC - m.AC);
+              const simVAC = simBAC - simEAC;
+              const simTCPI = (simBAC - m.AC) > 0 ? (simBAC - m.EV) / (simBAC - m.AC) : 1;
+
+              return (
+                <div className="px-5 pb-5 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">
+                        Target CPI: <span className="font-bold text-gray-900 dark:text-white">{simCPI.toFixed(2)}</span>
+                        <span className="text-gray-400 ml-1">(current: {m.CPI.toFixed(2)})</span>
+                      </label>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="1.5"
+                        step="0.01"
+                        value={simCPI}
+                        onChange={(e) => setWhatIfCPI(parseFloat(e.target.value))}
+                        className="w-full accent-primary-500"
+                      />
+                      <div className="flex justify-between text-[10px] text-gray-400">
+                        <span>0.50</span><span>1.00</span><span>1.50</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">
+                        Budget Adjustment: <span className="font-bold text-gray-900 dark:text-white">{whatIfBudgetAdd >= 0 ? '+' : ''}{formatCurrency(whatIfBudgetAdd)}</span>
+                      </label>
+                      <input
+                        type="range"
+                        min={-m.BAC * 0.3}
+                        max={m.BAC * 0.5}
+                        step={Math.max(100, Math.round(m.BAC * 0.01))}
+                        value={whatIfBudgetAdd}
+                        onChange={(e) => setWhatIfBudgetAdd(parseFloat(e.target.value))}
+                        className="w-full accent-primary-500"
+                      />
+                      <div className="flex justify-between text-[10px] text-gray-400">
+                        <span>-{formatCurrency(m.BAC * 0.3)}</span><span>0</span><span>+{formatCurrency(m.BAC * 0.5)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { label: 'Simulated EAC', current: m.EAC, sim: simEAC, warn: simEAC > simBAC },
+                      { label: 'Simulated ETC', current: m.ETC, sim: simETC, warn: false },
+                      { label: 'Simulated VAC', current: m.VAC, sim: simVAC, warn: simVAC < 0 },
+                      { label: 'Simulated TCPI', current: m.TCPI, sim: simTCPI, warn: simTCPI > 1.1, isIndex: true },
+                    ].map((s) => {
+                      const changed = Math.abs(s.sim - s.current) > 0.01;
+                      return (
+                        <div key={s.label} className={`rounded-lg border p-3 ${s.warn ? 'border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}>
+                          <div className="text-[10px] text-gray-500 uppercase font-semibold">{s.label}</div>
+                          <div className={`text-lg font-bold ${s.warn ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
+                            {s.isIndex ? s.sim.toFixed(2) : formatCurrency(s.sim)}
+                          </div>
+                          {changed && (
+                            <div className="text-[10px] text-gray-400">
+                              was {s.isIndex ? s.current.toFixed(2) : formatCurrency(s.current)}
+                              <span className={`ml-1 font-semibold ${(s.label.includes('VAC') ? s.sim > s.current : s.sim < s.current) ? 'text-green-500' : 'text-red-500'}`}>
+                                ({s.sim > s.current ? '+' : ''}{s.isIndex ? (s.sim - s.current).toFixed(2) : formatCurrency(s.sim - s.current)})
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => { setWhatIfCPI(null); setWhatIfBudgetAdd(0); }}
+                    className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                  >
+                    Reset to actuals
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Variance Breakdown (Pareto) */}
+          {taskVariances.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                <ListOrdered className="w-4 h-4 text-primary-500" />
+                Cost Variance Breakdown — Top Tasks
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Tasks ranked by absolute cost variance (CV = Earned Value − Actual Cost). Green bars show under-budget tasks; red bars show over-budget tasks.
+              </p>
+              <VarianceParetoChart variances={taskVariances} />
+
+              {/* Compact table */}
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-gray-50 dark:bg-gray-700">
+                      <th className="text-left px-3 py-1.5 font-semibold text-gray-600 dark:text-gray-400">Task</th>
+                      <th className="text-right px-3 py-1.5 font-semibold text-gray-600 dark:text-gray-400">Budget</th>
+                      <th className="text-right px-3 py-1.5 font-semibold text-gray-600 dark:text-gray-400">Actual</th>
+                      <th className="text-right px-3 py-1.5 font-semibold text-gray-600 dark:text-gray-400">CV</th>
+                      <th className="text-right px-3 py-1.5 font-semibold text-gray-600 dark:text-gray-400">SV</th>
+                      <th className="text-right px-3 py-1.5 font-semibold text-gray-600 dark:text-gray-400">Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {taskVariances.slice(0, 10).map((v) => (
+                      <tr key={v.taskId} className="border-t border-gray-100 dark:border-gray-700">
+                        <td className="px-3 py-1.5 text-gray-900 dark:text-white max-w-[200px] truncate">{v.taskName}</td>
+                        <td className="px-3 py-1.5 text-right text-gray-600 dark:text-gray-400">{formatCurrency(v.budgetAllocated)}</td>
+                        <td className="px-3 py-1.5 text-right text-gray-600 dark:text-gray-400">{formatCurrency(v.actualCost)}</td>
+                        <td className={`px-3 py-1.5 text-right font-medium ${v.cv >= 0 ? 'text-green-600' : 'text-red-600'}`}>{v.cv >= 0 ? '+' : ''}{formatCurrency(v.cv)}</td>
+                        <td className={`px-3 py-1.5 text-right font-medium ${v.sv >= 0 ? 'text-green-600' : 'text-red-600'}`}>{v.sv >= 0 ? '+' : ''}{formatCurrency(v.sv)}</td>
+                        <td className="px-3 py-1.5 text-right text-gray-600 dark:text-gray-400">{v.progressPct}%</td>
                       </tr>
                     ))}
                   </tbody>

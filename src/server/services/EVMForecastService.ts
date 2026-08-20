@@ -1,6 +1,7 @@
 import { claudeService, PromptTemplate } from './claudeService';
 import { sCurveService, SCurveDataPoint } from './SCurveService';
 import { projectService, Project } from './ProjectService';
+import { scheduleService } from './ScheduleService';
 import { redisService } from './RedisService';
 import { config } from '../config';
 import logger from '../utils/logger';
@@ -557,6 +558,82 @@ export class EVMForecastService {
 
     return result.data;
   }
+
+  // -------------------------------------------------------------------------
+  // Per-task variance breakdown (Pareto data)
+  // -------------------------------------------------------------------------
+
+  async getTaskVariances(projectId: string): Promise<TaskVariance[]> {
+    const project = await projectService.findById(projectId);
+    if (!project) throw new Error(`Project not found: ${projectId}`);
+
+    const schedules = await scheduleService.findByProjectId(projectId);
+    if (schedules.length === 0) return [];
+
+    const allTasks = await scheduleService.findTasksByScheduleIds(schedules.map(s => s.id));
+    const now = Date.now();
+    const DAY_MS = 86400000;
+
+    const variances: TaskVariance[] = allTasks
+      .filter(t => (t.budgetAllocated && t.budgetAllocated > 0) || (t.actualCost && t.actualCost > 0))
+      .map(t => {
+        const budget = t.budgetAllocated ?? 0;
+        const actual = t.actualCost ?? 0;
+        const progress = (t.progressPercentage ?? 0) / 100;
+
+        // Cost variance: EV - AC (positive = under budget)
+        const ev = budget * progress;
+        const cv = ev - actual;
+
+        // Schedule variance: EV - PV
+        let pv = 0;
+        if (t.startDate && t.endDate) {
+          const start = new Date(t.startDate).getTime();
+          const end = new Date(t.endDate).getTime();
+          const duration = Math.max(1, (end - start) / DAY_MS);
+          const elapsed = Math.max(0, (now - start) / DAY_MS);
+          const plannedPct = Math.min(1, elapsed / duration);
+          pv = budget * plannedPct;
+        }
+        const sv = ev - pv;
+
+        return {
+          taskId: t.id,
+          taskName: t.name,
+          budgetAllocated: budget,
+          actualCost: actual,
+          ev: parseFloat(ev.toFixed(2)),
+          pv: parseFloat(pv.toFixed(2)),
+          cv: parseFloat(cv.toFixed(2)),
+          sv: parseFloat(sv.toFixed(2)),
+          progressPct: Math.round(progress * 100),
+        };
+      })
+      .sort((a, b) => Math.abs(b.cv) - Math.abs(a.cv));
+
+    // Compute cumulative % for Pareto
+    const totalAbsCV = variances.reduce((sum, v) => sum + Math.abs(v.cv), 0);
+    let cumulative = 0;
+    for (const v of variances) {
+      cumulative += Math.abs(v.cv);
+      (v as any).cumulativePct = totalAbsCV > 0 ? parseFloat((cumulative / totalAbsCV * 100).toFixed(1)) : 0;
+    }
+
+    return variances.slice(0, 20); // top 20 tasks
+  }
+}
+
+export interface TaskVariance {
+  taskId: string;
+  taskName: string;
+  budgetAllocated: number;
+  actualCost: number;
+  ev: number;
+  pv: number;
+  cv: number;
+  sv: number;
+  progressPct: number;
+  cumulativePct?: number;
 }
 
 export const evmForecastService = new EVMForecastService();

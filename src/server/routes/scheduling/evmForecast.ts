@@ -62,4 +62,21 @@ export async function evmForecastRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: 'Failed to generate AI predictions' });
     }
   });
+
+  // GET /:projectId/task-variances — per-task cost/schedule variance for Pareto analysis
+  fastify.get('/:projectId/task-variances', {
+    preHandler: [requireScope('read')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      const variances = await evmForecastService.getTaskVariances(projectId);
+      return reply.send({ variances });
+    } catch (err: any) {
+      if (err.message?.includes('Project not found')) {
+        return reply.status(404).send({ error: 'Project not found' });
+      }
+      fastify.log.error({ err }, 'EVM task variance query failed');
+      return reply.status(500).send({ error: 'Failed to get task variances' });
+    }
+  });
 }

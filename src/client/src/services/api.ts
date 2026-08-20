@@ -1206,6 +1206,11 @@ class ApiService {
     return response.data;
   }
 
+  async getEVMTaskVariances(projectId: string) {
+    const response = await this.api.get(`/evm-forecast/${projectId}/task-variances`);
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Auto-Reschedule
   // -------------------------------------------------------------------------
