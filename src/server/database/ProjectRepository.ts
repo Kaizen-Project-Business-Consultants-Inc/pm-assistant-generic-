@@ -31,6 +31,7 @@ function rowToProject(row: any): Project {
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     archivedAt: row.archived_at ? String(row.archived_at) : undefined,
+    groupId: row.group_id ?? undefined,
   };
 }
 

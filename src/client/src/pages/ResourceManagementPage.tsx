@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, AlertTriangle, ChevronDown, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, Lock, LineChart, Calendar } from 'lucide-react';
+import { Users, AlertTriangle, ChevronDown, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, Lock, LineChart, Calendar, FileInput } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { UtilizationTrendChart } from '../components/resources/UtilizationTrendChart';
 import { CalendarTemplateManager } from '../components/resources/CalendarTemplateManager';
+import { ResourceRequestList } from '../components/resources/ResourceRequestList';
+import { ResourceRequestApprovalPanel } from '../components/resources/ResourceRequestApprovalPanel';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -106,7 +108,7 @@ function formatWeek(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-type TabKey = 'team' | 'workload' | 'histogram' | 'forecast' | 'trends' | 'templates';
+type TabKey = 'team' | 'workload' | 'histogram' | 'forecast' | 'trends' | 'templates' | 'requests';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -308,6 +310,7 @@ export function ResourceManagementPage() {
             { key: 'forecast' as const, label: 'Capacity Forecast', icon: TrendingUp },
             { key: 'trends' as const, label: 'Trends', icon: LineChart },
             { key: 'templates' as const, label: 'Calendar Templates', icon: Calendar },
+            { key: 'requests' as const, label: 'Requests', icon: FileInput },
           ]).map(tab => (
             <button
               key={tab.key}
@@ -856,6 +859,19 @@ export function ResourceManagementPage() {
       {activeTab === 'templates' && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <CalendarTemplateManager />
+        </div>
+      )}
+
+      {activeTab === 'requests' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Resource Requests</h3>
+            <ResourceRequestList projectId={selectedProjectId || undefined} />
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Pending Approvals</h3>
+            <ResourceRequestApprovalPanel />
+          </div>
         </div>
       )}
 

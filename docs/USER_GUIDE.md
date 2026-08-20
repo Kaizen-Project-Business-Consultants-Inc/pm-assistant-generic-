@@ -39,6 +39,8 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 31. [RAID Log](#31-raid-log)
 32. [My Work](#32-my-work)
 33. [Scrum Enhancements](#33-scrum-enhancements)
+34. [Project Grouping (Folders/Spaces)](#34-project-grouping-foldersspaces)
+35. [Resource Request/Approval Workflow](#35-resource-requestapproval-workflow)
 
 ---
 
@@ -100,7 +102,7 @@ All users see a single **Unified Dashboard** with customizable widgets:
 
 **Scope toggle**: If you have fewer projects than the full portfolio, a **My Projects / All Projects** toggle appears. Switching scope updates all widgets.
 
-Click **Customize** next to the dashboard title to toggle widget sections on/off. Your selections are saved automatically and persist across sessions. The three new widgets (Sprint Snapshot, Goals, Team Workload) are off by default — enable them via Customize.
+Click **Customize** next to the dashboard title to toggle widget sections on/off. Your selections are saved automatically and persist across sessions. The opt-in widgets (Sprint Snapshot, Goals, Team Workload, Change Requests) are off by default — enable them via Customize.
 
 ### Sidebar Navigation
 
@@ -938,6 +940,18 @@ The change request list supports:
 - **Status filter** — All, Draft, Pending, In Review, Approved, Rejected, Withdrawn
 - **Priority filter** — All, Low, Medium, High, Urgent
 - **Sort direction** — Toggle between newest-first and oldest-first
+
+### Email Notifications for Approval Actions
+
+When a change request is approved, rejected, or returned, the requester automatically receives an **email notification** in addition to the in-app notification. The email includes:
+
+- The change request title
+- The action taken (approved, rejected, or returned)
+- The workflow step name
+- The reviewer's comment (if any)
+- A direct link to view the change request
+
+Email notifications are only sent if you have email notifications enabled in your **Settings**. They are sent in the background and do not delay the approval action.
 
 ### Status Report Integration
 
@@ -2172,7 +2186,15 @@ The unified dashboard supports toggling widget sections on/off and drag-and-drop
 
 Available sections: Morning Briefing, KPI Tiles, Portfolio Intelligence, Projects Table, Action Center, Issues Trend, Sprint Velocity, Milestones, Budget Watch, Activity Feed, Standup Summary.
 
-Opt-in sections (disabled by default): Sprint Snapshot, Goals Progress, Team Workload.
+Opt-in sections (disabled by default): Sprint Snapshot, Goals Progress, Team Workload, Change Requests.
+
+### Change Requests Widget
+
+The **Change Requests** widget (opt-in via Customize) provides an at-a-glance summary of change request activity across your projects:
+
+- **Status summary** — Colored badges showing pending, approved, and rejected counts
+- **Top 5 pending CRs** — Lists the most urgent pending change requests with project name and how many days each has been waiting
+- **Drill-down link** — Click to navigate to the full change request view for details and actions
 
 ---
 
@@ -2629,6 +2651,77 @@ On Sprint Board cards, a progress fraction (e.g., "3/5") shows how many Definiti
 - Keep criteria concise and actionable (e.g., "Unit tests written" rather than "Quality is good").
 - Review and refine your definitions periodically -- retrospectives are a good time.
 - Start with a small number of criteria (3-5 each) and add more as the team matures.
+
+---
+
+## 34. Project Grouping (Folders/Spaces)
+
+Organize your projects into groups for easier navigation and filtering on the Projects page.
+
+### Creating and Managing Groups
+
+1. On the **Projects** page, click **Manage Groups** in the header area.
+2. In the modal, click **Add Group** to create a new group. Give it a **name** and choose a **color**.
+3. Use the drag handles to **reorder** groups -- the display order on the Projects page matches the order in the modal.
+4. Click the edit icon to rename or change the color of an existing group. Click the delete icon to remove a group (projects in that group become ungrouped).
+
+### Assigning Projects to Groups
+
+- When creating or editing a project, select a **Group** from the dropdown to assign it.
+- Projects can belong to zero or one group. Leave the group empty to keep a project ungrouped.
+
+### Using Groups on the Projects Page
+
+- When groups exist, the Projects page displays **collapsible group headers** with colored dots matching each group's color.
+- Projects are listed under their assigned group. Ungrouped projects appear in a separate section.
+- Use the **Group filter** dropdown in the header to show only projects from a specific group.
+- Click a group header to **collapse or expand** its project list.
+
+---
+
+## 35. Resource Request/Approval Workflow
+
+Request resources formally, get manager approval, and track fulfillment -- all from the Resource Management page.
+
+### Creating a Resource Request
+
+1. Navigate to the **Resource Management** page (`/resources`).
+2. Click the **Requests** tab.
+3. Click **New Request** and fill in:
+   - **Role** — the type of resource needed (e.g., Developer, QA Engineer)
+   - **Group** — optional department or team
+   - **Hours** — estimated hours required
+   - **Start / End Date** — when the resource is needed
+   - **Skills** — required skills or expertise
+   - **Priority** — Low, Medium, High, or Urgent
+   - **Justification** — explain why this resource is needed
+4. Click **Save** to create the request in **Draft** status.
+
+### Submitting for Approval
+
+Once your request is ready, click **Submit** to move it from Draft to **Pending** status. The request is now visible to managers for review.
+
+### Approving or Rejecting Requests (Managers)
+
+Managers see pending requests in the **Pending Approvals** panel on the Requests tab:
+
+- Click **Approve** to approve the request. Add an optional comment.
+- Click **Reject** to reject the request. A comment explaining the reason is required.
+
+### Fulfilling a Request
+
+After a request is approved, it can be **fulfilled** by assigning a specific resource to satisfy it. Click **Fulfill** and select the resource to assign.
+
+### Notifications
+
+- When your resource request is **approved** or **rejected**, you receive both an **in-app notification** and an **email notification** (if email notifications are enabled in your Settings).
+- The email includes the request details, the action taken, and the reviewer's comment.
+
+### Status Flow
+
+Draft → Pending → Approved or Rejected → Fulfilled or Cancelled
+
+You can **cancel** a request at any time before it is fulfilled.
 
 ---
 

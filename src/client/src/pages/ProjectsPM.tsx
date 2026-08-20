@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, FolderKanban, Archive, LayoutGrid, List, ChevronUp, ChevronDown } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, FolderKanban, Archive, LayoutGrid, List, ChevronUp, ChevronDown, Folder, ChevronRight } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 import { FilterBarPM } from '../components/pm/FilterBarPM';
 import { ProjectCardPM } from '../components/pm/ProjectCardPM';
 import { TemplatePicker } from '../components/templates/TemplatePicker';
+import { ProjectGroupManager } from '../components/projects/ProjectGroupManager';
 import { getViewPref, setViewPref } from '../hooks/useViewPreferences';
 import type { ProjectSummaryPM } from '../types/pm';
 
@@ -34,6 +35,11 @@ export function ProjectsPM() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [showArchived, setShowArchived] = useState(false);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [groupManagerOpen, setGroupManagerOpen] = useState(false);
+  const [groupFilter, setGroupFilter] = useState<string>('all');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const queryClient = useQueryClient();
 
   // Auto-open TemplatePicker when navigating with ?new=1
   useEffect(() => {
@@ -81,6 +87,15 @@ export function ProjectsPM() {
     staleTime: 120_000,
   });
 
+  const { data: groupsData } = useQuery<{ groups: Array<{ id: string; name: string; color: string; icon: string | null; sortOrder: number }> }>({
+    queryKey: ['project-groups'],
+    queryFn: () => apiService.getProjectGroups(),
+    staleTime: 120_000,
+  });
+  const groups = groupsData?.groups || [];
+
+  // assignProject/unassignProject available via apiService for future inline assignment UI
+
   // Merge health scores into projects
   const rawProjects: any[] = allProjectsData?.data || allProjectsData?.projects || [];
   const healthMap = new Map<string, number>();
@@ -105,6 +120,7 @@ export function ProjectsPM() {
     budgetSpent: p.budgetSpent ?? p.spent ?? 0,
     endDate: p.endDate || p.plannedEndDate || '',
     archivedAt: p.archivedAt ?? undefined,
+    groupId: p.group_id || p.groupId || null,
     daysLeft: p.daysLeft ?? (() => {
       if (!p.endDate && !p.plannedEndDate) return undefined;
       try {
@@ -147,12 +163,19 @@ export function ProjectsPM() {
         const ns = normalizeStatus(p.status);
         if (ns !== statusFilter) return false;
       }
+      if (groupFilter !== 'all') {
+        if (groupFilter === 'ungrouped') {
+          if ((p as any).groupId) return false;
+        } else {
+          if ((p as any).groupId !== groupFilter) return false;
+        }
+      }
       return true;
     }),
-    [projects, debouncedSearch, healthFilter, statusFilter]
+    [projects, debouncedSearch, healthFilter, statusFilter, groupFilter]
   );
 
-  const hasActiveFilters = search.trim() !== '' || healthFilter !== 'all' || statusFilter !== 'all';
+  const hasActiveFilters = search.trim() !== '' || healthFilter !== 'all' || statusFilter !== 'all' || groupFilter !== 'all';
 
   // Sort for table mode
   const sorted = useMemo(() => {
@@ -180,7 +203,35 @@ export function ProjectsPM() {
     setSearch('');
     setHealthFilter('all');
     setStatusFilter('all');
+    setGroupFilter('all');
   }
+
+  const toggleGroup = useCallback((groupId: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
+      return next;
+    });
+  }, []);
+
+  // Build grouped project sections
+  const groupedSections = useMemo(() => {
+    if (groups.length === 0 || groupFilter !== 'all') return null;
+    const sections: Array<{ id: string; name: string; color: string; projects: typeof sorted }> = [];
+    const assigned = new Set<string>();
+    for (const g of groups) {
+      const gProjects = sorted.filter(p => (p as any).groupId === g.id);
+      if (gProjects.length > 0) {
+        sections.push({ id: g.id, name: g.name, color: g.color, projects: gProjects });
+        for (const p of gProjects) assigned.add(p.id);
+      }
+    }
+    const ungrouped = sorted.filter(p => !assigned.has(p.id));
+    if (ungrouped.length > 0) {
+      sections.push({ id: '__ungrouped', name: 'Ungrouped', color: '#9ca3af', projects: ungrouped });
+    }
+    return sections;
+  }, [sorted, groups, groupFilter]);
 
   return (
     <div className="p-6 space-y-6">
@@ -221,6 +272,29 @@ export function ProjectsPM() {
               <List className="w-4 h-4" />
             </button>
           </div>
+          {/* Group filter */}
+          {groups.length > 0 && (
+            <select
+              value={groupFilter}
+              onChange={e => setGroupFilter(e.target.value)}
+              className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+            >
+              <option value="all">All Groups</option>
+              <option value="ungrouped">Ungrouped</option>
+              {groups.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            onClick={() => setGroupManagerOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+            title="Manage project groups"
+          >
+            <Folder className="w-4 h-4" />
+            Groups
+          </button>
           <button
             type="button"
             onClick={() => setShowArchived(v => !v)}
@@ -274,6 +348,29 @@ export function ProjectsPM() {
               Clear filters
             </button>
           )}
+        </div>
+      ) : viewMode === 'card' && groupedSections ? (
+        <div className="space-y-6">
+          {groupedSections.map(section => (
+            <div key={section.id}>
+              <button
+                onClick={() => toggleGroup(section.id)}
+                className="flex items-center gap-2 mb-3 group cursor-pointer"
+              >
+                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${collapsedGroups.has(section.id) ? '' : 'rotate-90'}`} />
+                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: section.color }} />
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{section.name}</span>
+                <span className="text-xs text-gray-400">({section.projects.length})</span>
+              </button>
+              {!collapsedGroups.has(section.id) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {section.projects.map(project => (
+                    <ProjectCardPM key={project.id} project={project} isFavourite={favouriteSet.has(project.id)} />
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -350,6 +447,9 @@ export function ProjectsPM() {
 
       {/* Template picker modal */}
       <TemplatePicker isOpen={templatePickerOpen} onClose={() => setTemplatePickerOpen(false)} />
+
+      {/* Group manager modal */}
+      <ProjectGroupManager isOpen={groupManagerOpen} onClose={() => { setGroupManagerOpen(false); queryClient.invalidateQueries({ queryKey: ['project-groups'] }); }} />
     </div>
   );
 }

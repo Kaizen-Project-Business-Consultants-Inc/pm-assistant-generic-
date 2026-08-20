@@ -399,6 +399,8 @@ An agentic AI project management platform that combines the scheduling power of 
 - Status lifecycle: draft → pending → in_review → approved | rejected | withdrawn
 - Rejected CRs can be edited and re-submitted without creating a new request
 - In-app notifications to CR requester on approve/reject/return actions
+- Email notifications to CR requester on approve/reject/return (fire-and-forget, respects user preference)
+- CR Dashboard Widget: status summary (pending/approved/rejected counts), top 5 pending CRs with project name and days waiting (opt-in via Customize)
 - Webhook events for all CR lifecycle events (created, approved, rejected, returned, withdrawn)
 - Project-scoped authorization on all endpoints (detail, action, submit, withdraw)
 - Orphan protection: workflows cannot be deleted while active CRs reference them
@@ -547,6 +549,25 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 **AI Enhancement (paid tiers):** Claude refines algorithmic risk descriptions, identifies cross-category compound risks (e.g., resource bottleneck on a critical-path milestone), and prioritizes findings by overall project impact.
 
 - **Benchmark:** Primavera Risk Analysis, Safran Risk; algorithmic-first approach with optional AI enhancement is unique to PM Assistant
+
+### 5.10 Project Grouping (Folders/Spaces)
+- Flat project groups with name, color, and display order (no nesting)
+- Create, edit, delete, and reorder groups via "Manage Groups" modal
+- Projects assignable to a group; unassigned projects shown separately
+- Projects page renders collapsible group headers with color dots when groups exist
+- Group filter dropdown in header for single-group filtering
+- Migration T022: `project_groups` table + `group_id` on `projects`
+- **Benchmark:** ClickUp Spaces/Folders, Monday.com Workspaces, Asana Teams
+
+### 5.11 Resource Request/Approval Workflow
+- Formal resource request creation with role, group, hours, dates, skills, priority, and justification
+- Status lifecycle: draft → pending → approved/rejected → fulfilled/cancelled
+- Submit for approval, approve/reject with comments, fulfill with an assigned resource
+- Email + in-app notifications on approve/reject (fire-and-forget, respects user preference)
+- Requests tab on Resource Management page with status filters
+- Pending Approvals panel for managers
+- Migration T023: `resource_requests` table
+- **Benchmark:** Smartsheet Resource Management, Planview resource request workflows
 
 ---
 
@@ -721,3 +742,7 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Scrum Ceremonies — Standup Logging (daily standup entries per user/sprint/day with yesterday/today/blockers; date navigation; team view; blockers auto-create RAID issues source:'standup'; PM notification on submission; CRUD API on /sprints/:id/standups) | Done | Enhancement |
 | Scrum Ceremonies — Retrospective Board (3-column board: Went Well/To Improve/Action Items; inline add/delete own items; one-vote-per-user system; AI Seed from sprint data via Claude with "AI" badge; convert action items to backlog tasks; API with vote/unvote/seed/convert endpoints) | Done | Enhancement |
 | Scrum Ceremonies — Definition of Ready/Done (project-level DoR/DoD template editor for managers; ordered criteria with add/remove/reorder; suggested defaults; per-task checklist initialization; checkbox UI; DoR badge in Backlog green/amber; DoD progress fraction on Sprint Board cards; bulk readiness API; migration T021_scrum_ceremonies.sql with 5 tables) | Done | Enhancement |
+| CR Email Notifications (email to requester on approve/reject/return with CR title, action, step name, reviewer comment, CTA link; fire-and-forget; respects user email preference) | Done | Enhancement |
+| CR Dashboard Widget (status summary with pending/approved/rejected counts and colored badges; top 5 pending CRs with project name and days waiting; drill-down link; opt-in via Customize) | Done | Enhancement |
+| Project Grouping / Folders (flat groups with name, color, display order; collapsible group headers on Projects page; group filter dropdown; Manage Groups modal CRUD; migration T022 project_groups table + group_id on projects) | Done | P5 |
+| Resource Request/Approval Workflow (role/group/hours/dates/skills/priority/justification; draft→pending→approved/rejected→fulfilled/cancelled lifecycle; approve/reject with comments; fulfill with resource; email+in-app notifications; Requests tab + Pending Approvals panel on /resources; migration T023 resource_requests table) | Done | P5 |

@@ -137,4 +137,58 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
 
     return { milestones: rows };
   });
+
+  // GET /cr-summary — change request summary across user's projects
+  fastify.get('/cr-summary', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user!;
+    if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
+
+    const { scope } = request.query as { scope?: string };
+    const global = isGlobalScope(user.role, scope);
+
+    const scopeFilter = global ? '' : 'AND p.created_by = ?';
+    const params = global ? [] : [user.userId];
+
+    const [byStatus, byCategory, recentPending] = await Promise.all([
+      databaseService.query<any>(
+        `SELECT cr.status, COUNT(*) AS cnt
+         FROM change_requests cr
+         JOIN projects p ON cr.project_id = p.id
+         WHERE 1=1 ${scopeFilter}
+         GROUP BY cr.status`,
+        params,
+      ),
+      databaseService.query<any>(
+        `SELECT cr.category, COUNT(*) AS cnt
+         FROM change_requests cr
+         JOIN projects p ON cr.project_id = p.id
+         WHERE 1=1 ${scopeFilter}
+         GROUP BY cr.category`,
+        params,
+      ),
+      databaseService.query<any>(
+        `SELECT cr.id, cr.title, cr.priority, cr.created_at AS createdAt,
+                p.name AS projectName, p.id AS projectId
+         FROM change_requests cr
+         JOIN projects p ON cr.project_id = p.id
+         WHERE cr.status IN ('pending','in_review') ${scopeFilter}
+         ORDER BY cr.created_at ASC
+         LIMIT 5`,
+        params,
+      ),
+    ]);
+
+    const statusMap: Record<string, number> = {};
+    for (const r of byStatus) statusMap[r.status] = Number(r.cnt);
+
+    const categoryMap: Record<string, number> = {};
+    for (const r of byCategory) categoryMap[r.category] = Number(r.cnt);
+
+    const pending = recentPending.map((r: any) => ({
+      ...r,
+      daysWaiting: Math.max(0, Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 86400000)),
+    }));
+
+    return { byStatus: statusMap, byCategory: categoryMap, recentPending: pending };
+  });
 }

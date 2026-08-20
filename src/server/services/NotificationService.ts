@@ -37,6 +37,9 @@ const NOTIFICATION_TYPE_TO_CATEGORY: Record<string, string> = {
   mention: 'collaboration',
   ai_report_ready: 'system_alerts',
   ai_report_failed: 'system_alerts',
+  resource_request_submitted: 'tasks',
+  resource_request_approved: 'tasks',
+  resource_request_rejected: 'tasks',
 };
 
 const DEFAULT_CATEGORY_PREF: NotificationCategoryPref = { inApp: true, email: true, slack: true };

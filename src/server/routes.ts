@@ -15,6 +15,7 @@ import { feedbackRoutes } from './routes/core/feedback';
 import { inviteRoutes } from './routes/core/invites';
 import { seatRoutes } from './routes/core/seats';
 import { pricingRoutes } from './routes/core/pricing';
+import { projectGroupRoutes } from './routes/core/projectGroups';
 
 // Scheduling
 import { scheduleRoutes } from './routes/scheduling/schedules';
@@ -50,6 +51,7 @@ import { expenseRoutes } from './routes/resources/expenses';
 import { customFieldRoutes } from './routes/resources/customFields';
 import { availabilityRoutes } from './routes/resources/availability';
 import { calendarTemplateRoutes } from './routes/resources/calendarTemplates';
+import { resourceRequestRoutes } from './routes/resources/resourceRequests';
 
 // Collaboration
 import { approvalWorkflowRoutes } from './routes/collaboration/approvalWorkflows';
@@ -130,6 +132,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(inviteRoutes, { prefix: '/api/v1/invites' });
   await fastify.register(seatRoutes, { prefix: '/api/v1/seats' });
   await fastify.register(pricingRoutes, { prefix: '/api/v1/pricing' });
+  await fastify.register(projectGroupRoutes, { prefix: '/api/v1/project-groups' });
 
   // Scheduling
   await fastify.register(scheduleRoutes, { prefix: '/api/v1/schedules' });
@@ -165,6 +168,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(expenseRoutes, { prefix: '/api/v1/expenses' });
   await fastify.register(customFieldRoutes, { prefix: '/api/v1/custom-fields' });
   await fastify.register(calendarTemplateRoutes, { prefix: '/api/v1/resources/calendar-templates' });
+  await fastify.register(resourceRequestRoutes, { prefix: '/api/v1/resource-requests' });
 
   // Collaboration
   await fastify.register(approvalWorkflowRoutes, { prefix: '/api/v1/approvals' });

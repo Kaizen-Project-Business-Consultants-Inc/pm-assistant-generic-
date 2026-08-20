@@ -2,6 +2,9 @@ import { approvalWorkflowRepository } from '../database/ApprovalWorkflowReposito
 import { auditLedgerService } from './AuditLedgerService';
 import { deadLetterService } from './DeadLetterService';
 import { notificationService } from './NotificationService';
+import { emailService } from './EmailService';
+import { userService } from './UserService';
+import { config } from '../config';
 import logger from '../utils/logger';
 
 export interface ApprovalWorkflow {
@@ -263,6 +266,16 @@ export class ApprovalWorkflowService {
         linkType: 'change_request',
         linkId: crId,
       }).catch((err: any) => logger.warn('Failed to notify CR requester', { error: err.message }));
+
+      // Fire-and-forget email to requester
+      userService.findById(result.requestedBy).then(requester => {
+        if (requester?.email && requester.emailNotificationsEnabled) {
+          const ctaUrl = `${config.APP_URL}/project/${result.projectId}/change-requests`;
+          emailService.sendApprovalActionEmail(
+            requester.email, result.title, actionLabel, stepName, comment, ctaUrl,
+          ).catch((err: any) => logger.warn('Failed to email CR requester', { error: err.message }));
+        }
+      }).catch((err: any) => logger.warn('Failed to look up CR requester for email', { error: err.message }));
     }
 
     return result;

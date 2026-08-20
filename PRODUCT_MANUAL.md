@@ -527,6 +527,8 @@ Each step in a change request records: who acted (with resolved user name), what
 
 **Notification**: When an approval action is taken, the CR requester receives an in-app notification with the action, step name, and any comment. Severity is `high` for rejections, `medium` for approvals/returns.
 
+**Email notification**: In addition to the in-app notification, the CR requester receives an email when a change request is approved, rejected, or returned. The email includes the CR title, action taken, workflow step name, reviewer comment (if any), and a call-to-action link to view the CR. Email notifications are fire-and-forget (non-blocking) and only sent if the user has email notifications enabled in their settings.
+
 **Withdrawal**: Withdrawing a CR validates that it is in `pending` or `in_review` status, logs an audit entry, and dispatches a `change_request.withdrawn` webhook event.
 
 ### Authorization
@@ -1707,6 +1709,7 @@ When a user's own projects are a subset of the full portfolio (e.g., a `team_mem
 | **Sprint Snapshot** | Active sprints across projects with day progress, task completion bar, and velocity trend (default: off) |
 | **Goals** | Objectives sorted by urgency with progress bars, status badges, and due dates. "View All" links to the Goals page (default: off) |
 | **Team Workload** | Summary stats row (active resource count, overallocated count), per-resource task counts with horizontal bars, overload indicator (15+ tasks), multi-project overallocation warning (3+ projects, red octagon icon), capacity hours display, and color-coded avatar rings for flagged resources (default: off) |
+| **Change Requests** | Status summary showing pending, approved, and rejected counts with colored badges. Top 5 pending CRs with project name and days waiting. Link to drill down into the full change request view. (default: off, enable via Customize dropdown) |
 
 ### Backend Endpoints
 
@@ -3182,3 +3185,86 @@ Migration `T021_scrum_ceremonies.sql` creates five tables:
 | `task_checklists` | Per-task checklist items initialized from DoR/DoD templates (type, label, checked status) |
 
 The migration also expands the RAID `source` enum to include `'standup'`.
+
+---
+
+## 55. Project Grouping (Folders/Spaces)
+
+Projects can be organized into flat groups (no nesting) for visual organization and filtering on the Projects page.
+
+### Groups
+
+- **Create, edit, delete, and reorder** groups via the "Manage Groups" modal accessible from the Projects page header
+- Each group has a **name** and a **color** (displayed as a colored dot next to the group header)
+- Groups are flat — there is no nesting or hierarchy
+- Reorder groups to control display order on the Projects page
+
+### Project Assignment
+
+- Projects can be assigned to a group via the project form or inline on the Projects page
+- A project belongs to zero or one group
+- Unassigned projects appear outside of any group header
+
+### Projects Page Integration
+
+- When groups exist, the Projects page renders **collapsible group headers** with color dots
+- Projects are listed under their assigned group; ungrouped projects appear in a default section
+- A **Group filter dropdown** in the header allows filtering the project list to a single group
+- Collapsing/expanding group sections is per-session
+
+### Database
+
+Migration `T022` adds:
+- `project_groups` table — id, name, color, display_order, organization-scoped
+- `group_id` column on the `projects` table (nullable FK to `project_groups`)
+
+---
+
+## 56. Resource Request/Approval Workflow
+
+A formal workflow for requesting, approving, and fulfilling resource needs across projects.
+
+### Creating a Resource Request
+
+Resource requests capture:
+- **Role** — the role being requested (e.g., Developer, QA Engineer)
+- **Group** — optional resource group/department
+- **Hours** — estimated hours needed
+- **Dates** — requested start and end dates
+- **Skills** — required skills for the resource
+- **Priority** — low, medium, high, or urgent
+- **Justification** — free text explaining why the resource is needed
+
+### Status Lifecycle
+
+`draft` → `pending` → `approved` | `rejected` → `fulfilled` | `cancelled`
+
+- **Draft** — initial state, editable by the requester
+- **Pending** — submitted for approval, awaiting manager review
+- **Approved** — approved by a manager, ready to be fulfilled
+- **Rejected** — rejected with a comment explaining the reason
+- **Fulfilled** — an actual resource has been assigned to satisfy the request
+- **Cancelled** — withdrawn by the requester or cancelled by a manager
+
+### Approval Flow
+
+- **Submit for approval** — moves the request from `draft` to `pending`
+- **Approve** — manager approves with an optional comment
+- **Reject** — manager rejects with a required comment
+- **Fulfill** — assign a specific resource to satisfy an approved request
+
+### Notifications
+
+- **Email + in-app** notifications are sent to the requester when their request is approved or rejected
+- Email includes the request details, action taken, and reviewer comment
+- Notifications follow the fire-and-forget pattern and respect the user's email notification preferences
+
+### UI
+
+- **Requests tab** on the Resource Management page (`/resources`) — list of resource requests with status filters
+- **Pending Approvals panel** for managers — shows requests awaiting their review with approve/reject actions
+- Request form with fields for role, group, hours, dates, skills, priority, and justification
+
+### Database
+
+Migration `T023` adds the `resource_requests` table with columns for all request fields, status, requester, reviewer, fulfillment resource link, and timestamps.

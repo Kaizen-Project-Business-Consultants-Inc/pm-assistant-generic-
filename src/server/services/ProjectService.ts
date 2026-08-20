@@ -35,6 +35,7 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   archivedAt?: string;
+  groupId?: string;
 }
 
 export interface CreateProjectData {

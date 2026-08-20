@@ -48,6 +48,22 @@ vi.mock('../../utils/logger', () => ({
   },
 }));
 
+vi.mock('../../services/EmailService', () => ({
+  emailService: {
+    sendApprovalActionEmail: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock('../../services/UserService', () => ({
+  userService: {
+    findById: vi.fn().mockResolvedValue(null),
+  },
+}));
+
+vi.mock('../../config', () => ({
+  config: { APP_URL: 'http://localhost:3001' },
+}));
+
 import { ApprovalWorkflowService } from '../../services/ApprovalWorkflowService';
 import { approvalWorkflowRepository } from '../../database/ApprovalWorkflowRepository';
 import { auditLedgerService } from '../../services/AuditLedgerService';

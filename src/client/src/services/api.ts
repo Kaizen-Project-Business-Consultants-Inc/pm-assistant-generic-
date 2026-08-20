@@ -2914,6 +2914,118 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   }
 
   // -------------------------------------------------------------------------
+  // Dashboard — CR Summary
+  // -------------------------------------------------------------------------
+
+  async getDashboardCRSummary() {
+    const response = await this.api.get('/dashboard/cr-summary');
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
+  // Project Groups
+  // -------------------------------------------------------------------------
+
+  async getProjectGroups() {
+    const response = await this.api.get('/project-groups');
+    return response.data;
+  }
+
+  async createProjectGroup(data: { name: string; color?: string; icon?: string }) {
+    const response = await this.api.post('/project-groups', data);
+    return response.data;
+  }
+
+  async updateProjectGroup(id: string, data: { name?: string; color?: string; icon?: string }) {
+    const response = await this.api.put(`/project-groups/${id}`, data);
+    return response.data;
+  }
+
+  async deleteProjectGroup(id: string) {
+    const response = await this.api.delete(`/project-groups/${id}`);
+    return response.data;
+  }
+
+  async reorderProjectGroups(orderedIds: string[]) {
+    const response = await this.api.put('/project-groups/reorder', { orderedIds });
+    return response.data;
+  }
+
+  async assignProjectToGroup(groupId: string, projectId: string) {
+    const response = await this.api.put(`/project-groups/${groupId}/assign`, { projectId });
+    return response.data;
+  }
+
+  async unassignProjectFromGroup(projectId: string) {
+    const response = await this.api.put('/project-groups/unassign', { projectId });
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
+  // Resource Requests
+  // -------------------------------------------------------------------------
+
+  async getResourceRequests(params?: { projectId?: string; status?: string; priority?: string }) {
+    const qp = new URLSearchParams();
+    if (params?.projectId) qp.set('projectId', params.projectId);
+    if (params?.status) qp.set('status', params.status);
+    if (params?.priority) qp.set('priority', params.priority);
+    const qs = qp.toString();
+    const response = await this.api.get(`/resource-requests${qs ? `?${qs}` : ''}`);
+    return response.data;
+  }
+
+  async getResourceRequest(id: string) {
+    const response = await this.api.get(`/resource-requests/${id}`);
+    return response.data;
+  }
+
+  async getPendingResourceRequests() {
+    const response = await this.api.get('/resource-requests/pending');
+    return response.data;
+  }
+
+  async getResourceRequestSummary() {
+    const response = await this.api.get('/resource-requests/summary');
+    return response.data;
+  }
+
+  async createResourceRequest(data: Record<string, unknown>) {
+    const response = await this.api.post('/resource-requests', data);
+    return response.data;
+  }
+
+  async updateResourceRequest(id: string, data: Record<string, unknown>) {
+    const response = await this.api.put(`/resource-requests/${id}`, data);
+    return response.data;
+  }
+
+  async submitResourceRequest(id: string) {
+    const response = await this.api.post(`/resource-requests/${id}/submit`);
+    return response.data;
+  }
+
+  async approveResourceRequest(id: string, comment?: string) {
+    const response = await this.api.post(`/resource-requests/${id}/approve`, { comment });
+    return response.data;
+  }
+
+  async rejectResourceRequest(id: string, comment: string) {
+    const response = await this.api.post(`/resource-requests/${id}/reject`, { comment });
+    return response.data;
+  }
+
+  async fulfillResourceRequest(id: string, resourceId: string) {
+    const response = await this.api.post(`/resource-requests/${id}/fulfill`, { resourceId });
+    return response.data;
+  }
+
+  async cancelResourceRequest(id: string) {
+    const response = await this.api.post(`/resource-requests/${id}/cancel`);
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
   // View Preferences (cross-device UI state)
   // -------------------------------------------------------------------------
 

@@ -556,6 +556,55 @@ export class EmailService {
     });
   }
 
+  async sendApprovalActionEmail(to: string, crTitle: string, action: string, stepName: string, comment?: string, ctaUrl?: string): Promise<void> {
+    if (!this.isConfigured) {
+      logger.info(`[EmailService] Approval action email would be sent to ${maskPii(to)}: ${action}`);
+      return;
+    }
+
+    const actionColors: Record<string, string> = {
+      approved: '#059669',
+      rejected: '#dc2626',
+      returned: '#f59e0b',
+    };
+    const color = actionColors[action] || '#4b5563';
+    const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
+
+    let bodyHtml = `
+      <p style="color: #4b5563; line-height: 1.6;">
+        Your change request <strong>${escapeHtml(crTitle)}</strong> has been
+        <span style="color: ${color}; font-weight: 600;">${escapeHtml(actionLabel)}</span>
+        at step <strong>${escapeHtml(stepName)}</strong>.
+      </p>
+    `;
+
+    if (comment) {
+      bodyHtml += `
+        <div style="margin: 16px 0; padding: 12px 16px; background: #f9fafb; border-left: 4px solid ${color}; border-radius: 4px;">
+          <p style="color: #6b7280; font-size: 13px; margin: 0 0 4px 0;">Reviewer comment:</p>
+          <p style="color: #374151; margin: 0;">${escapeHtml(comment)}</p>
+        </div>
+      `;
+    }
+
+    if (ctaUrl) {
+      bodyHtml += `
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${escapeHtml(ctaUrl)}" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+            View Change Request
+          </a>
+        </div>
+      `;
+    }
+
+    await this.sendEmail({
+      from: config.RESEND_FROM_EMAIL,
+      to,
+      subject: `Change Request ${actionLabel}: ${crTitle}`,
+      html: this.wrapHtml(`Change Request ${actionLabel}`, bodyHtml),
+    });
+  }
+
   async sendOrgInviteEmail(to: string, orgName: string, inviterName: string): Promise<void> {
     if (!this.isConfigured) {
       logger.info(`[EmailService] Org invite email would be sent to ${maskPii(to)} for org "${orgName}"`);
