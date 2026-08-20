@@ -864,6 +864,93 @@ When a workflow reaches an **Approval** node:
 
 ---
 
+## Change Requests & Approval Workflows
+
+Change requests capture proposed modifications to project scope, schedule, budget, or resources, and route them through a configurable multi-step approval process.
+
+### Creating a Change Request
+
+1. Navigate to a project's **Change Requests** tab.
+2. Click **New Change Request**.
+3. Fill in the form:
+   - **Title** — Brief summary of the proposed change
+   - **Description** — Detailed explanation
+   - **Category** — Scope, Schedule, Budget, Resource, or Other
+   - **Priority** — Low, Medium, High, or Urgent
+   - **Impact Summary** — Expected impact on the project
+4. Click **Save**. The change request is created in **Draft** status.
+
+### Editing and Deleting
+
+- **Draft** and **Rejected** change requests can be edited. Click the pencil icon on the detail view.
+- Only **Draft** change requests can be deleted. Click the trash icon.
+
+### Setting Up Approval Workflows
+
+Before submitting change requests, project editors/managers can define approval workflows:
+
+1. In the Change Requests tab, open the **Workflows** section.
+2. Click **Create Workflow** and define:
+   - **Name** and **Description**
+   - **Entity Type** (e.g., "release", "scope change")
+   - **Steps** — Ordered list of approval stages, each specifying a step name and required approver role (e.g., "Manager Review" → `project_manager`, "Director Sign-off" → `admin`)
+3. Workflows cannot be deleted while active change requests reference them.
+
+### Submitting for Approval
+
+1. Open a **Draft** or **Rejected** change request.
+2. Click **Submit for Approval**.
+3. Select the approval workflow to use from the dropdown.
+4. The change request moves to **Pending** status at Step 1.
+
+### Reviewing and Acting on Change Requests
+
+When a change request is pending or in review, authorized reviewers can:
+
+- **Approve** — Advances to the next step. If it was the final step, the CR status becomes **Approved**.
+- **Reject** — CR status becomes **Rejected**. The requester is notified and can edit and re-submit.
+- **Return** — Sends the CR back to **Draft** status for revisions. The step counter resets.
+
+Each action can include an optional comment. The requester receives an in-app notification when their CR is approved, rejected, or returned.
+
+Role enforcement: Each workflow step specifies a required approver role. Users without the matching role (unless they are admins) cannot act on that step.
+
+### Withdrawing
+
+The requester can **Withdraw** a pending or in-review change request. This sets the status to **Withdrawn** and creates an audit trail entry.
+
+### Approval Timeline
+
+The detail view shows a visual timeline of all approval actions:
+- Who acted (displayed by name, not ID)
+- What action they took
+- Which workflow step and approver role
+- Any comment provided
+- Timestamp
+
+### Current Step Indicator
+
+For pending/in-review CRs, the detail view displays the current approval step with its name and required approver role.
+
+### Filtering and Sorting
+
+The change request list supports:
+- **Status filter** — All, Draft, Pending, In Review, Approved, Rejected, Withdrawn
+- **Priority filter** — All, Low, Medium, High, Urgent
+- **Sort direction** — Toggle between newest-first and oldest-first
+
+### Status Report Integration
+
+Active change requests (non-withdrawn, last 90 days) automatically appear in the **Change Control** section of generated status reports, showing title, status, priority, and impact.
+
+### Security
+
+- All change request endpoints enforce project membership. Users must be members of the project to view, create, or act on change requests.
+- Detail, action, submit, and withdraw endpoints verify project access.
+- Global roles (admin, PMO) bypass project membership checks.
+
+---
+
 ## 10. Sprints
 
 For teams using agile methodology, PM Assistant supports sprint-based work management.

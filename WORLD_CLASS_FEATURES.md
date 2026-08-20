@@ -392,10 +392,20 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Benchmark:** Wrike, Smartsheet
 
 ### 5.3 Approval Workflows & Change Requests
-- Formal change request submission
-- Multi-level approval chains
-- Impact analysis before approval
-- Audit trail of all approvals/rejections
+- Formal change request submission with validated category (scope/schedule/budget/resource/other) and priority (low/medium/high/urgent) enums
+- Multi-level approval chains with role-based step authorization (step-level approverRole enforcement, admin bypass)
+- Impact analysis before approval (impact summary field, category classification)
+- Audit trail of all approvals/rejections/returns with user names, step metadata, and comments
+- Status lifecycle: draft → pending → in_review → approved | rejected | withdrawn
+- Rejected CRs can be edited and re-submitted without creating a new request
+- In-app notifications to CR requester on approve/reject/return actions
+- Webhook events for all CR lifecycle events (created, approved, rejected, returned, withdrawn)
+- Project-scoped authorization on all endpoints (detail, action, submit, withdraw)
+- Orphan protection: workflows cannot be deleted while active CRs reference them
+- Filtering by status and priority, sortable list (created_at, priority, status, title)
+- Status report integration: active CRs (last 90 days, non-withdrawn) auto-populate the Change Control section
+- User name enrichment via JOIN queries (requestedByName, actedByName)
+- Action normalization: accepts both present-tense (approve) and past-tense (approved) values
 - **Benchmark:** Primavera P6, enterprise tools
 
 ### 5.4 Resource Leveling

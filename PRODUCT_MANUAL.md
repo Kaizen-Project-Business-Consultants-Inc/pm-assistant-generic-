@@ -502,21 +502,43 @@ The system prompt enumerates all available trigger types, action types, conditio
 
 ### Approval Workflows
 
-The `ApprovalWorkflowService` defines multi-step approval chains scoped to a project and entity type. Each step specifies an approver role and execution order.
+The `ApprovalWorkflowService` defines multi-step approval chains scoped to a project and entity type. Each step specifies an approver role and execution order. Workflows cannot be deleted while active (pending/in-review) change requests reference them — the delete endpoint returns HTTP 409.
 
 ### Change Requests
 
 Change requests capture proposed modifications with:
 
-- Title, description, category, and priority
-- Impact summary
-- Status progression through workflow steps
-- Link to an approval workflow (optional)
-- Full action history with comments per step
+- Title, description, category (enum: scope/schedule/budget/resource/other), and priority (enum: low/medium/high/urgent)
+- Impact summary (free text, max 2000 chars)
+- Status lifecycle: `draft` → `pending` → `in_review` → `approved` | `rejected` | `withdrawn`
+- Link to an approval workflow (required at submission)
+- Full action history with comments per step, enriched with user names and workflow step metadata
+- Rejected CRs can be edited and re-submitted (status returns to `pending` on re-submission)
+
+**User name enrichment**: All CR queries JOIN the users table to return `requestedByName` and `actedByName` alongside raw UUIDs.
+
+**Filtering**: The list endpoint accepts `status`, `priority`, `sortBy` (created_at/priority/status/title), and `sortDir` (asc/desc) query parameters.
 
 ### Approval Actions
 
-Each step in a change request records: who acted, what action they took (approve/reject), optional comment, and timestamp. All actions are written to the audit ledger.
+Each step in a change request records: who acted (with resolved user name), what action they took (approve/reject/return), optional comment, and timestamp. All actions are written to the audit ledger.
+
+**Action normalization**: The API accepts both present-tense (`approve`, `reject`, `return`) and past-tense (`approved`, `rejected`, `returned`) action values — they are normalized to past tense before processing.
+
+**Notification**: When an approval action is taken, the CR requester receives an in-app notification with the action, step name, and any comment. Severity is `high` for rejections, `medium` for approvals/returns.
+
+**Withdrawal**: Withdrawing a CR validates that it is in `pending` or `in_review` status, logs an audit entry, and dispatches a `change_request.withdrawn` webhook event.
+
+### Authorization
+
+- CR creation and listing require project access (`editor` for write, `viewer` for read)
+- Detail, submit, action, and withdraw endpoints verify project membership by resolving the CR's `projectId` and checking via `projectMemberService`
+- Role enforcement on approval steps: each step's `approverRole` is validated against the acting user's role (admins bypass)
+- Global roles (admin, PMO) have full access; executives have read-only access
+
+### Status Report Integration
+
+Change requests appear in the **Change Control** section of status reports. The query filters to active/recent CRs: excludes `withdrawn` status and limits to the last 90 days to prevent report bloat.
 
 ---
 
