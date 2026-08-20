@@ -34,6 +34,9 @@ const NOTIFICATION_TYPE_TO_CATEGORY: Record<string, string> = {
   timesheet_rejected: 'tasks',
   member_added: 'collaboration',
   standup_submitted: 'tasks',
+  mention: 'collaboration',
+  ai_report_ready: 'system_alerts',
+  ai_report_failed: 'system_alerts',
 };
 
 const DEFAULT_CATEGORY_PREF: NotificationCategoryPref = { inApp: true, email: true, slack: true };
