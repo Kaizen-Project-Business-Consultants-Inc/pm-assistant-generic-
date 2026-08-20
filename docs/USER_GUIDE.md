@@ -664,6 +664,7 @@ The EVM Forecast Dashboard shows:
 - **Cost at completion forecasts** based on current CPI.
 - **Forecast comparison charts** showing optimistic, most likely, and pessimistic scenarios.
 - **AI-generated alerts** when metrics indicate critical or warning thresholds.
+- **Management Reserve (MR) tracking** -- Enter a Management Reserve amount in the Forecast Comparison section header. A purple "BAC+MR" dashed reference line appears on the forecast bar chart, showing the total authorized budget ceiling. A summary row in the forecast table shows the MR amount and whether the worst-case forecast stays within the reserve. The value is remembered per project in your browser.
 
 ### EVM Trend Chart
 
@@ -672,6 +673,9 @@ Track how SPI and CPI change over time to identify whether performance is improv
 - **Dark mode support** -- SVG grid lines and axis labels adapt to dark mode using class-based fills.
 - **Interactive tooltips** -- Hover data points to see CPI, SPI values and date.
 - **AI prediction line** -- Dashed purple extension showing predicted future CPI trend.
+- **Crossover annotations** -- Small triangle markers appear wherever CPI or SPI crosses the 1.0 baseline. A green triangle means the metric crossed above 1.0 (performance improving); a red triangle means it crossed below 1.0 (performance deteriorating). Hover a marker to see the metric name and date.
+- **Period | Cumulative toggle** -- A toggle in the chart header switches between "Period" (weekly CPI/SPI values) and "Cumulative" (running CPI = EV/AC and SPI = EV/PV computed from S-curve data). Use Cumulative to see the overall project-to-date trend without weekly noise.
+- **Configurable threshold lines** -- Click the ⚙ gear icon in the chart header to open a threshold config panel. Set your own CPI and SPI amber and red warning levels (defaults: 0.95 amber, 0.85 red). The thresholds appear as dashed horizontal reference lines on the chart and are remembered in your browser across sessions.
 
 ### Budget Tab
 

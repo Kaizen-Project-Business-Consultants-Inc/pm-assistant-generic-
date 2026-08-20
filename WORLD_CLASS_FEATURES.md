@@ -337,6 +337,10 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Variance Breakdown (Pareto)**: per-task CV/SV via `GET /evm-forecast/:projectId/task-variances`; horizontal bar chart of top 10 tasks by absolute cost variance (green under budget, red over budget); compact detail table with budget, actual, CV, SV, progress %
 - **Earned Schedule (ES) Metrics**: client-side ES, AT, SV(t), SPI(t) computed from S-curve data; time-based schedule variance that remains meaningful near project end (unlike SV($)); plain-English interpretation
 - **TCPI Dual Target Analysis**: side-by-side TCPI for BAC vs EAC targets; color-coded green (<1.05) / amber (1.05–1.2) / red (>1.2); rebaseline callout when BAC-based TCPI is unrealistic but EAC-based is achievable
+- **Trend crossover annotations**: small triangle markers on the CPI/SPI trend chart at every point where a metric crosses the 1.0 baseline; green = crossed above, red = crossed below; browser tooltip shows metric and date
+- **Period | Cumulative trend toggle**: header toggle switches the trend chart between weekly period CPI/SPI values and running cumulative CPI (EV/AC) / SPI (EV/PV) derived from S-curve data; separates short-term volatility from project-to-date trajectory
+- **Configurable threshold lines**: ⚙ gear icon in trend chart header exposes four editable thresholds (CPI Amber/Red, SPI Amber/Red; defaults 0.95/0.85); rendered as dashed reference lines on the chart; persisted in localStorage
+- **Management Reserve (MR) tracking**: MR input in the Forecast Comparison header adds a purple "BAC+MR" reference line to the forecast bar chart; summary row in the forecast table shows MR amount and worst-case headroom; persisted in localStorage per project
 - **Budget Tab**: donut chart (SVG category breakdown), semi-circle health gauge, sortable expense table, search + category filter, cumulative spend line, CSV export, mobile card layout
 
 ### 3.8 Agent Activity Log
