@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, Activity, Target, BarChart3, Lock, Download, SlidersHorizontal, Clock, ListOrdered, ChevronRight } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, Activity, Target, BarChart3, Lock, Download, SlidersHorizontal, Clock, ListOrdered, ChevronRight, Settings2, ShieldAlert } from 'lucide-react';
 import { apiService } from '../services/api';
 import { EVMMetricTooltip } from '../components/evm/EVMMetricTooltip';
 import type { MetricValues } from '../components/evm/EVMMetricTooltip';
@@ -169,8 +169,9 @@ function SemiGauge({ value, size = 80 }: { value: number; size?: number }) {
 // Forecast Bar Chart Component
 // ---------------------------------------------------------------------------
 
-function ForecastBarChart({ comparisons, bac }: { comparisons: ForecastComparison[]; bac: number }) {
-  const maxVal = Math.max(bac, ...comparisons.map(c => c.eacValue)) * 1.1;
+function ForecastBarChart({ comparisons, bac, managementReserve = 0 }: { comparisons: ForecastComparison[]; bac: number; managementReserve?: number }) {
+  const bacPlusMR = bac + managementReserve;
+  const maxVal = Math.max(bacPlusMR, ...comparisons.map(c => c.eacValue)) * 1.1;
   const barH = 24;
   const gap = 8;
   const labelW = 180;
@@ -186,6 +187,17 @@ function ForecastBarChart({ comparisons, bac }: { comparisons: ForecastCompariso
       {/* BAC reference line */}
       <line x1={bacX} y1={0} x2={bacX} y2={svgH - 16} stroke="#6b7280" strokeWidth={1.5} strokeDasharray="4 3" />
       <text x={bacX} y={svgH - 4} fontSize={9} fill="#6b7280" textAnchor="middle">BAC {formatCurrency(bac)}</text>
+
+      {/* Management Reserve line (BAC + MR) */}
+      {managementReserve > 0 && (() => {
+        const mrX = labelW + (bacPlusMR / maxVal) * chartW;
+        return (
+          <>
+            <line x1={mrX} y1={0} x2={mrX} y2={svgH - 16} stroke="#8b5cf6" strokeWidth={1.5} strokeDasharray="2 3" />
+            <text x={mrX} y={svgH - 4} fontSize={8} fill="#8b5cf6" textAnchor="middle">BAC+MR {formatCurrency(bacPlusMR)}</text>
+          </>
+        );
+      })()}
 
       {comparisons.map((c, i) => {
         const y = gap + i * (barH + gap);
@@ -325,6 +337,41 @@ export function EVMDashboardPage() {
   const [whatIfCPI, setWhatIfCPI] = useState<number | null>(null);
   const [whatIfBudgetAdd, setWhatIfBudgetAdd] = useState(0);
 
+  // Trend chart: cumulative vs period toggle
+  const [trendMode, setTrendMode] = useState<'period' | 'cumulative'>('period');
+
+  // Threshold config for trend chart reference lines
+  const [thresholdOpen, setThresholdOpen] = useState(false);
+  const [thresholds, setThresholds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('evm_thresholds');
+      if (saved) return JSON.parse(saved) as { cpiAmber: number; cpiRed: number; spiAmber: number; spiRed: number };
+    } catch { /* ignore */ }
+    return { cpiAmber: 0.95, cpiRed: 0.85, spiAmber: 0.95, spiRed: 0.85 };
+  });
+  const updateThreshold = (key: keyof typeof thresholds, val: number) => {
+    const next = { ...thresholds, [key]: val };
+    setThresholds(next);
+    localStorage.setItem('evm_thresholds', JSON.stringify(next));
+  };
+
+  // Management Reserve (per project, localStorage)
+  const mrKey = `evm_mr_${selectedProjectId}`;
+  const [managementReserve, setManagementReserve] = useState(0);
+  // Sync MR from localStorage when project changes
+  const prevProjectRef = useRef(selectedProjectId);
+  if (selectedProjectId !== prevProjectRef.current) {
+    prevProjectRef.current = selectedProjectId;
+    try {
+      const saved = localStorage.getItem(`evm_mr_${selectedProjectId}`);
+      setManagementReserve(saved ? parseFloat(saved) : 0);
+    } catch { setManagementReserve(0); }
+  }
+  const updateMR = (val: number) => {
+    setManagementReserve(val);
+    localStorage.setItem(mrKey, String(val));
+  };
+
   const m = result?.currentMetrics;
 
   // SPI/CPI trend chart dimensions
@@ -350,6 +397,29 @@ export function EVMDashboardPage() {
 
     return { cpiPath, spiPath, baselineY, toX, toY, minY, maxY, rangeY };
   }, [trendData, plotW, plotH]);
+
+  // Cumulative CPI/SPI computed from S-curve data
+  const cumulativeTrend = useMemo(() => {
+    const sc = result?.sCurveData;
+    if (!sc || sc.length < 2) return null;
+    const data = sc.map(p => ({
+      date: p.date,
+      cpi: p.ac > 0 ? p.ev / p.ac : 1,
+      spi: p.pv > 0 ? p.ev / p.pv : 1,
+    }));
+    const maxY = Math.max(1.5, ...data.map(d => Math.max(d.cpi, d.spi)));
+    const minY = Math.min(0.5, ...data.map(d => Math.min(d.cpi, d.spi)));
+    const rangeY = maxY - minY || 1;
+
+    const toX = (i: number) => PAD.left + (i / (data.length - 1)) * plotW;
+    const toY = (v: number) => PAD.top + (1 - (v - minY) / rangeY) * plotH;
+
+    const cpiPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'}${toX(i)},${toY(d.cpi)}`).join(' ');
+    const spiPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'}${toX(i)},${toY(d.spi)}`).join(' ');
+    const baselineY = toY(1.0);
+
+    return { data, cpiPath, spiPath, baselineY, toX, toY, minY, maxY, rangeY };
+  }, [result?.sCurveData, plotW, plotH]);
 
   // PDF export handler
   const handleExportPDF = useCallback(async () => {
@@ -627,53 +697,168 @@ export function EVMDashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Trend chart */}
             <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">CPI / SPI Trend</h3>
-              {trendData.length < 2 ? (
-                <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">Not enough historical data for trend chart.</div>
-              ) : trendLines && (
-                <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-                  {/* Grid lines */}
-                  {[0.5, 0.75, 1.0, 1.25, 1.5].filter(v => v >= trendLines.minY && v <= trendLines.maxY).map(v => (
-                    <g key={v}>
-                      <line x1={PAD.left} y1={trendLines.toY(v)} x2={CHART_W - PAD.right} y2={trendLines.toY(v)} className="stroke-gray-200 dark:stroke-gray-600" strokeWidth={v === 1.0 ? 1.5 : 0.5} strokeDasharray={v === 1.0 ? undefined : '4 2'} />
-                      <text x={PAD.left - 5} y={trendLines.toY(v) + 3} fontSize={9} className="fill-gray-400 dark:fill-gray-500" textAnchor="end">{v.toFixed(1)}</text>
-                    </g>
-                  ))}
-                  {/* CPI line */}
-                  <path d={trendLines.cpiPath} fill="none" stroke="#3b82f6" strokeWidth={2} />
-                  {/* SPI line */}
-                  <path d={trendLines.spiPath} fill="none" stroke="#22c55e" strokeWidth={2} />
-                  {/* 1.0 baseline label */}
-                  <text x={CHART_W - PAD.right + 3} y={trendLines.baselineY + 3} fontSize={8} className="fill-gray-400 dark:fill-gray-500">1.0</text>
-                  {/* X axis labels */}
-                  {trendData.map((d, i) => {
-                    if (i % Math.max(1, Math.floor(trendData.length / 6)) !== 0) return null;
-                    return (
-                      <text key={i} x={trendLines.toX(i)} y={CHART_H - 5} fontSize={8} className="fill-gray-400 dark:fill-gray-500" textAnchor="middle">
-                        {new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </text>
-                    );
-                  })}
-                  {/* Dots on latest */}
-                  {trendData.length > 0 && (() => {
-                    const last = trendData[trendData.length - 1];
-                    const x = trendLines.toX(trendData.length - 1);
-                    return (
-                      <>
-                        <circle cx={x} cy={trendLines.toY(last.cpi)} r={4} fill="#3b82f6" />
-                        <circle cx={x} cy={trendLines.toY(last.spi)} r={4} fill="#22c55e" />
-                      </>
-                    );
-                  })()}
-                </svg>
-              )}
-              {trendData.length >= 2 && (
-                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-500 inline-block" /> CPI</span>
-                  <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-green-500 inline-block" /> SPI</span>
-                  <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-gray-300 dark:bg-gray-500 inline-block" /> Baseline (1.0)</span>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">CPI / SPI Trend</h3>
+                <div className="flex items-center gap-2">
+                  {/* Period / Cumulative toggle */}
+                  {cumulativeTrend && (
+                    <div className="flex rounded-md border border-gray-200 dark:border-gray-600 text-[10px] font-medium overflow-hidden">
+                      <button
+                        onClick={() => setTrendMode('period')}
+                        className={`px-2 py-0.5 ${trendMode === 'period' ? 'bg-primary-500 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                      >Period</button>
+                      <button
+                        onClick={() => setTrendMode('cumulative')}
+                        className={`px-2 py-0.5 ${trendMode === 'cumulative' ? 'bg-primary-500 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                      >Cumulative</button>
+                    </div>
+                  )}
+                  {/* Threshold config gear */}
+                  <button
+                    onClick={() => setThresholdOpen(!thresholdOpen)}
+                    className={`p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${thresholdOpen ? 'text-primary-500' : 'text-gray-400'}`}
+                    title="Configure threshold lines"
+                  >
+                    <Settings2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Threshold config popover */}
+              {thresholdOpen && (
+                <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <div className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Threshold Reference Lines</div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    {([
+                      { key: 'cpiAmber' as const, label: 'CPI Amber', color: '#f59e0b' },
+                      { key: 'cpiRed' as const, label: 'CPI Red', color: '#ef4444' },
+                      { key: 'spiAmber' as const, label: 'SPI Amber', color: '#f59e0b' },
+                      { key: 'spiRed' as const, label: 'SPI Red', color: '#ef4444' },
+                    ]).map(t => (
+                      <label key={t.key} className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
+                        <span className="w-16">{t.label}</span>
+                        <input
+                          type="number"
+                          step="0.05"
+                          min="0"
+                          max="2"
+                          value={thresholds[t.key]}
+                          onChange={(e) => updateThreshold(t.key, parseFloat(e.target.value) || 0)}
+                          className="w-16 px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-center"
+                        />
+                      </label>
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {(() => {
+                // Use cumulative or period data based on toggle
+                const useCumulative = trendMode === 'cumulative' && cumulativeTrend;
+                const activeLines = useCumulative ? cumulativeTrend : trendLines;
+                const activeData = useCumulative ? cumulativeTrend!.data : trendData;
+                const hasData = activeData.length >= 2 && activeLines;
+
+                if (!hasData) {
+                  return <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">Not enough historical data for trend chart.</div>;
+                }
+
+                // Compute annotations: crossover points where CPI or SPI crosses 1.0
+                const annotations: Array<{ x: number; y: number; metric: string; direction: 'up' | 'down'; date: string }> = [];
+                for (let i = 1; i < activeData.length; i++) {
+                  const prev = activeData[i - 1];
+                  const curr = activeData[i];
+                  // CPI crossover
+                  if ((prev.cpi < 1 && curr.cpi >= 1) || (prev.cpi >= 1 && curr.cpi < 1)) {
+                    annotations.push({ x: activeLines.toX(i), y: activeLines.toY(curr.cpi), metric: 'CPI', direction: curr.cpi >= 1 ? 'up' : 'down', date: curr.date });
+                  }
+                  // SPI crossover
+                  if ((prev.spi < 1 && curr.spi >= 1) || (prev.spi >= 1 && curr.spi < 1)) {
+                    annotations.push({ x: activeLines.toX(i), y: activeLines.toY(curr.spi), metric: 'SPI', direction: curr.spi >= 1 ? 'up' : 'down', date: curr.date });
+                  }
+                }
+
+                return (
+                  <>
+                    <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
+                      {/* Grid lines */}
+                      {[0.5, 0.75, 1.0, 1.25, 1.5].filter(v => v >= activeLines.minY && v <= activeLines.maxY).map(v => (
+                        <g key={v}>
+                          <line x1={PAD.left} y1={activeLines.toY(v)} x2={CHART_W - PAD.right} y2={activeLines.toY(v)} className="stroke-gray-200 dark:stroke-gray-600" strokeWidth={v === 1.0 ? 1.5 : 0.5} strokeDasharray={v === 1.0 ? undefined : '4 2'} />
+                          <text x={PAD.left - 5} y={activeLines.toY(v) + 3} fontSize={9} className="fill-gray-400 dark:fill-gray-500" textAnchor="end">{v.toFixed(1)}</text>
+                        </g>
+                      ))}
+
+                      {/* Threshold reference lines */}
+                      {[
+                        { val: thresholds.cpiAmber, color: '#f59e0b', label: 'CPI ⚠' },
+                        { val: thresholds.cpiRed, color: '#ef4444', label: 'CPI ✕' },
+                        { val: thresholds.spiAmber, color: '#f59e0b', label: 'SPI ⚠' },
+                        { val: thresholds.spiRed, color: '#ef4444', label: 'SPI ✕' },
+                      ].filter(t => t.val > activeLines.minY && t.val < activeLines.maxY && t.val !== 1.0).map((t, i) => (
+                        <g key={`th-${i}`}>
+                          <line x1={PAD.left} y1={activeLines.toY(t.val)} x2={CHART_W - PAD.right} y2={activeLines.toY(t.val)} stroke={t.color} strokeWidth={0.8} strokeDasharray="6 3" opacity={0.5} />
+                          <text x={CHART_W - PAD.right + 3} y={activeLines.toY(t.val) + 3} fontSize={7} fill={t.color} opacity={0.7}>{t.val}</text>
+                        </g>
+                      ))}
+
+                      {/* CPI line */}
+                      <path d={activeLines.cpiPath} fill="none" stroke="#3b82f6" strokeWidth={2} />
+                      {/* SPI line */}
+                      <path d={activeLines.spiPath} fill="none" stroke="#22c55e" strokeWidth={2} />
+                      {/* 1.0 baseline label */}
+                      <text x={CHART_W - PAD.right + 3} y={activeLines.baselineY + 3} fontSize={8} className="fill-gray-400 dark:fill-gray-500">1.0</text>
+
+                      {/* Trend annotations: crossover markers */}
+                      {annotations.map((a, i) => (
+                        <g key={`ann-${i}`}>
+                          <polygon
+                            points={a.direction === 'up'
+                              ? `${a.x},${a.y - 8} ${a.x - 4},${a.y - 2} ${a.x + 4},${a.y - 2}`
+                              : `${a.x},${a.y + 8} ${a.x - 4},${a.y + 2} ${a.x + 4},${a.y + 2}`}
+                            fill={a.direction === 'up' ? '#22c55e' : '#ef4444'}
+                            opacity={0.8}
+                          />
+                          <title>{`${a.metric} crossed ${a.direction === 'up' ? 'above' : 'below'} 1.0 on ${new Date(a.date).toLocaleDateString()}`}</title>
+                        </g>
+                      ))}
+
+                      {/* X axis labels */}
+                      {activeData.map((d, i) => {
+                        if (i % Math.max(1, Math.floor(activeData.length / 6)) !== 0) return null;
+                        return (
+                          <text key={i} x={activeLines.toX(i)} y={CHART_H - 5} fontSize={8} className="fill-gray-400 dark:fill-gray-500" textAnchor="middle">
+                            {new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </text>
+                        );
+                      })}
+                      {/* Dots on latest */}
+                      {activeData.length > 0 && (() => {
+                        const last = activeData[activeData.length - 1];
+                        const x = activeLines.toX(activeData.length - 1);
+                        return (
+                          <>
+                            <circle cx={x} cy={activeLines.toY(last.cpi)} r={4} fill="#3b82f6" />
+                            <circle cx={x} cy={activeLines.toY(last.spi)} r={4} fill="#22c55e" />
+                          </>
+                        );
+                      })()}
+                    </svg>
+
+                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-500 inline-block" /> CPI</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-green-500 inline-block" /> SPI</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-gray-300 dark:bg-gray-500 inline-block" /> Baseline (1.0)</span>
+                      {annotations.length > 0 && (
+                        <span className="flex items-center gap-1 ml-2">
+                          <span className="text-[10px]">▲▼</span> Crossover points
+                        </span>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Early warnings */}
@@ -700,14 +885,32 @@ export function EVMDashboardPage() {
           {/* Forecast Comparison — table + bar chart */}
           {result.forecastComparison.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                <Target className="w-4 h-4 text-primary-500" />
-                Forecast Comparison
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <Target className="w-4 h-4 text-primary-500" />
+                  Forecast Comparison
+                </h3>
+                <label className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>MR:</span>
+                  <div className="relative">
+                    <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      value={managementReserve || ''}
+                      placeholder="0"
+                      onChange={(e) => updateMR(parseFloat(e.target.value) || 0)}
+                      className="w-24 pl-4 pr-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-right"
+                    />
+                  </div>
+                </label>
+              </div>
 
               {/* Bar chart */}
               <div className="mb-4">
-                <ForecastBarChart comparisons={result.forecastComparison} bac={m.BAC} />
+                <ForecastBarChart comparisons={result.forecastComparison} bac={m.BAC} managementReserve={managementReserve} />
               </div>
 
               {/* Table */}
@@ -730,6 +933,21 @@ export function EVMDashboardPage() {
                         </td>
                       </tr>
                     ))}
+                    {managementReserve > 0 && (
+                      <tr className="border-t-2 border-purple-200 dark:border-purple-700 bg-purple-50/50 dark:bg-purple-900/10">
+                        <td className="px-4 py-2 font-medium text-purple-700 dark:text-purple-300">Management Reserve</td>
+                        <td className="px-4 py-2 text-right text-purple-700 dark:text-purple-300">{formatCurrency(managementReserve)}</td>
+                        <td className="px-4 py-2 text-right text-xs text-gray-500">
+                          {(() => {
+                            const worstEAC = Math.max(...result.forecastComparison.map(f => f.eacValue));
+                            const remaining = (m.BAC + managementReserve) - worstEAC;
+                            return remaining >= 0
+                              ? <span className="text-green-600 font-medium">{formatCurrency(remaining)} reserve remaining</span>
+                              : <span className="text-red-600 font-medium">{formatCurrency(Math.abs(remaining))} beyond reserve</span>;
+                          })()}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
