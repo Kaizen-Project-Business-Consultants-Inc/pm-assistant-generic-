@@ -10,6 +10,26 @@ interface RecentChange {
   count: number;
 }
 
+export interface DigestActionItem {
+  title: string;
+  dueDate: string;
+  meetingTitle: string;
+}
+
+export interface DigestMeeting {
+  title: string;
+  scheduledDate: string;
+  meetingType: string;
+}
+
+export interface DigestSprint {
+  name: string;
+  pending: number;
+  inProgress: number;
+  completed: number;
+  total: number;
+}
+
 const ENTITY_CATEGORY_MAP: Record<string, string> = {
   task: 'Tasks', schedule_task: 'Tasks',
   risk: 'Risks', raid_item: 'Risks',
@@ -17,6 +37,8 @@ const ENTITY_CATEGORY_MAP: Record<string, string> = {
   approval: 'Approvals', change_request: 'Approvals',
   project: 'Projects',
 };
+
+const ALL_SECTIONS = ['overdue', 'deadlines', 'action_items', 'meetings', 'sprint', 'changes', 'notifications'] as const;
 
 export class DigestService {
   async sendPendingDigests(): Promise<number> {
@@ -33,8 +55,7 @@ export class DigestService {
 
       try {
         const digest = await this.buildDigest(user);
-        if (digest.overdueTasks.length === 0 && digest.upcomingDeadlines.length === 0
-            && digest.unreadCount === 0 && digest.recentChanges.length === 0) {
+        if (this.isDigestEmpty(digest)) {
           // Nothing to report — skip but update timestamp
           await this.updateLastSent(user.id, now);
           continue;
@@ -61,6 +82,11 @@ export class DigestService {
       ? (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60)
       : Infinity;
 
+    // Check if current hour matches preferred hour
+    const currentHour = now.getUTCHours();
+    const preferredHour = user.digest_preferred_hour ?? 7;
+    if (currentHour !== preferredHour && isFinite(hoursSinceLastSent)) return false;
+
     if (user.digest_frequency === 'daily') {
       return hoursSinceLastSent >= 23; // ~24h with some tolerance
     }
@@ -72,6 +98,16 @@ export class DigestService {
     return false;
   }
 
+  private isDigestEmpty(digest: ReturnType<DigestService['buildDigest']> extends Promise<infer T> ? T : never): boolean {
+    return digest.overdueTasks.length === 0
+      && digest.upcomingDeadlines.length === 0
+      && digest.unreadCount === 0
+      && digest.recentChanges.length === 0
+      && digest.actionItems.length === 0
+      && digest.upcomingMeetings.length === 0
+      && digest.activeSprints.length === 0;
+  }
+
   private async buildDigest(user: DigestUserRow) {
     const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
     const threeDaysFromNow = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
@@ -81,23 +117,56 @@ export class DigestService {
     const sinceDate = user.digest_last_sent_at
       || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').substring(0, 19);
 
-    // Overdue tasks assigned to user
-    const overdueTasks = await digestRepository.findOverdueTasks(user.username, nowStr);
+    // Determine which sections are enabled
+    const enabledSections = new Set<string>(user.digest_sections || ALL_SECTIONS);
 
-    // Upcoming deadlines (next 3 days)
-    const upcomingDeadlines = await digestRepository.findUpcomingDeadlines(user.username, nowStr, threeDaysFromNow);
+    // Get user's project IDs (shared across queries)
+    const projectRows = await databaseService.query<{ project_id: string }>(
+      `SELECT DISTINCT project_id FROM project_members WHERE user_id = ?`,
+      [user.id],
+    ).catch(() => [] as { project_id: string }[]);
+    const projectIds = projectRows.map(r => r.project_id);
 
-    // Unread notification count
-    const unreadCount = await digestRepository.countUnreadNotifications(user.id);
-
-    // Recent changes from audit ledger
-    const recentChanges = await this.getRecentChangesForUser(user.id, sinceDate);
+    // Run enabled queries in parallel
+    const [overdueTasks, upcomingDeadlines, unreadCount, recentChanges, actionItems, upcomingMeetings, activeSprints] =
+      await Promise.all([
+        enabledSections.has('overdue')
+          ? digestRepository.findOverdueTasks(user.username, nowStr)
+          : Promise.resolve([]),
+        enabledSections.has('deadlines')
+          ? digestRepository.findUpcomingDeadlines(user.username, nowStr, threeDaysFromNow)
+          : Promise.resolve([]),
+        enabledSections.has('notifications')
+          ? digestRepository.countUnreadNotifications(user.id)
+          : Promise.resolve(0),
+        enabledSections.has('changes')
+          ? this.getRecentChangesForUser(user.id, sinceDate)
+          : Promise.resolve([]),
+        enabledSections.has('action_items')
+          ? digestRepository.findOverdueActionItems(user.id, nowStr)
+          : Promise.resolve([]),
+        enabledSections.has('meetings')
+          ? digestRepository.findUpcomingMeetings(projectIds, nowStr, threeDaysFromNow)
+          : Promise.resolve([]),
+        enabledSections.has('sprint')
+          ? digestRepository.findActiveSprintSummary(projectIds)
+          : Promise.resolve([]),
+      ]);
 
     return {
       overdueTasks: overdueTasks.map(t => ({ name: t.name, dueDate: t.end_date?.substring(0, 10) || '' })),
       upcomingDeadlines: upcomingDeadlines.map(t => ({ name: t.name, dueDate: t.end_date?.substring(0, 10) || '' })),
       unreadCount,
       recentChanges,
+      actionItems: actionItems.map(a => ({ title: a.title, dueDate: a.due_date?.substring(0, 10) || '', meetingTitle: a.meeting_title || '' })),
+      upcomingMeetings: upcomingMeetings.map(m => ({ title: m.title, scheduledDate: m.scheduled_date?.substring(0, 10) || '', meetingType: m.meeting_type || '' })),
+      activeSprints: activeSprints.map(s => ({
+        name: s.name,
+        pending: Number(s.pending) || 0,
+        inProgress: Number(s.in_progress) || 0,
+        completed: Number(s.completed) || 0,
+        total: Number(s.total) || 0,
+      })),
     };
   }
 

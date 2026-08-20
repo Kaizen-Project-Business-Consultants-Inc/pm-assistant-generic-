@@ -172,6 +172,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - **On Track percentage** uses actual schedule variance (SPI) and budget variance instead of a progress-threshold heuristic, accurately reflecting project health
 - Widget drag-to-reorder: drag handle (grip icon) on hover, blue ring drop indicator, order persisted in localStorage (separate from visibility toggles)
 - Auto-refresh via WebSocket cache invalidation
+- **Widget sizes** — each widget independently resizable to Full (12-col), Half (6-col), or Third (4-col) width; hover resize handle cycles sizes; F/H/T buttons in Customize dropdown; persisted in dashboard-preferences API; Reset Layout restores defaults including sizes
 - **Benchmark:** Monday.com, Smartsheet
 
 **Dashboard & Projects**
@@ -286,6 +287,16 @@ An agentic AI project management platform that combines the scheduling power of 
 - Assignment and completion notifications
 - Cross-meeting action item view for the entire project
 
+### 3.4.3 Email Digest Enhancement
+- **3 new digest sections** added to the daily/weekly digest email:
+  - **Meeting Action Items** — overdue action items assigned to the recipient
+  - **Upcoming Meetings** — meetings within the next 3 days
+  - **Active Sprint Summary** — current sprint name, task completion count and %, with a progress bar in the email
+- **User-configurable send hour** (0–23 UTC) stored per user; the DigestService cron respects each user's preferred hour instead of sending all digests at a fixed 7 AM
+- **7 section toggles** in Settings > Notifications: Overdue Tasks, Upcoming Deadlines, Meeting Action Items, Upcoming Meetings, Sprint Status, Recent Changes, Unread Notifications
+- **Color-coded email template**: red (overdue), amber (deadlines), purple (action items), blue (meetings), green (sprints), cyan (activity)
+- **Benchmark:** Asana, Monday.com (digest customization), Wrike (color-coded summaries)
+
 ### 3.5 AI Lessons Learned Engine
 - Learns from every completed project
 - Pattern recognition across project types
@@ -359,6 +370,8 @@ An agentic AI project management platform that combines the scheduling power of 
 - Template library with categories
 - One-click project creation from template
 - Include tasks, dependencies, roles, and milestones
+- **14 built-in templates** across IT, Marketing, and Operations categories (4 new: Agile/Scrum Sprint 90d, Marketing Campaign 60d, Product Launch 120d, Office Relocation 90d)
+- **Template Marketplace** — Marketplace tab in New Project wizard; browse community-shared templates with download counts; Import clones a template into your org; Publish shares your template with the community; 3 new API endpoints (`GET /templates/marketplace`, `POST /templates/:id/publish`, `POST /templates/marketplace/:id/import`)
 - **Benchmark:** Monday.com, Asana, Smartsheet
 
 ### 4.5 Custom Fields
@@ -652,7 +665,7 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Kanban WIP Limits | Done | Enhancement |
 | Comment @Mentions | Done | Enhancement |
 | Bulk CSV/Excel Task Import (with guardrails + Windows-1252 mojibake normalization) | Done | Enhancement |
-| Gantt PDF Export | Done | Enhancement |
+| Gantt PDF/Image Export (Export dropdown with 4 options: PDF via html2pdf.js A3 landscape auto-scaled; PNG via html-to-image 2x pixel ratio; Print window.print(); CSV task export; all modes expand Gantt to full content before capture) | Done | Enhancement |
 | Goals / OKR Tracking | Done | Enhancement |
 | Time Zone Support | Done | Enhancement |
 | Multi-Language / i18n (EN/FR/ES) | Done | Enhancement |
@@ -767,3 +780,8 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Resource Request/Approval Workflow (role/group/hours/dates/skills/priority/justification; draft→pending→approved/rejected→fulfilled/cancelled lifecycle; approve/reject with comments; fulfill with resource; email+in-app notifications; Requests tab + Pending Approvals panel on /resources; migration T023 resource_requests table) | Done | P5 |
 | Meeting Agenda & Minutes (full meeting CRUD with 7 types: standup/sprint_review/sprint_retro/planning/steering/kickoff/ad_hoc; scheduled→in_progress→completed/cancelled lifecycle; agenda items, attendees, notes, location, duration; link AI transcript analyses; import AI-extracted action items; 3-tab Meetings page: Meetings/Transcript Analysis/Action Items; migration T024 meetings table + meeting_id on meeting_analyses) | Done | Enhancement |
 | Meeting Action Item Tracker (first-class action items linked to meetings; open→in_progress→completed/cancelled status flow; low/medium/high/critical priority; assignee tracking with user ID linkage; due date with overdue highlighting; manual + ai_extracted source tracking; inline checkbox complete/reopen; expand-to-edit inline; filter by status/assignee/overdue; assignment + completion notifications; summary endpoint with status counts; migration T024 meeting_action_items table) | Done | Enhancement |
+| Email Digest Enhancement (3 new digest sections: Meeting Action Items overdue, Upcoming Meetings 3-day lookahead, Active Sprint Summary with progress bars; user-configurable send hour 0–23 UTC replacing hardcoded 7 AM; 7-section toggle checkboxes in Settings > Notifications; color-coded email template: red/amber/purple/blue/green/cyan per section) | Done | Enhancement |
+| Dashboard Widget Sizes (3 sizes per widget: Full/Half/Third width; hover resize handle cycles Full→Half→Third; F/H/T size buttons in Customize dropdown; size persisted in dashboard-preferences API alongside enabled/order; Reset Layout resets sizes to defaults) | Done | Enhancement |
+| Project Template Marketplace (Marketplace tab in New Project wizard; community-shared templates with download counts; Import clones template into org; Publish endpoint shares org templates; 3 new API endpoints: GET /templates/marketplace, POST /templates/:id/publish, POST /templates/marketplace/:id/import) | Done | Enhancement |
+| Built-In Template Expansion (4 new templates: Agile/Scrum Sprint 90d IT, Marketing Campaign 60d, Product Launch 120d, Office Relocation 90d; 2 new categories: Marketing, Operations; total built-in templates now 14) | Done | Enhancement |
+| Gantt PDF/Image Export (Export dropdown replaces Print/CSV buttons; PDF via html2pdf.js A3 landscape auto-scaled; PNG via html-to-image 2x pixel ratio; Print and CSV retained; all modes temporarily expand Gantt to capture full content) | Done | Enhancement |

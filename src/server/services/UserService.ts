@@ -28,6 +28,8 @@ export interface User {
   trialStartedAt: Date | null;
   emailNotificationsEnabled: boolean;
   digestFrequency: 'none' | 'daily' | 'weekly';
+  digestPreferredHour: number;
+  digestSections: string[] | null;
   digestLastSentAt: Date | null;
   lastLoginAt: Date | null;
   timezone: string;

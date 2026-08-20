@@ -12,6 +12,10 @@ import {
   AlertCircle,
   Upload,
   CheckCircle2,
+  Megaphone,
+  Briefcase,
+  Store,
+  Download,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { apiService } from '../../services/api';
@@ -33,7 +37,10 @@ const categories = [
   { key: 'construction', label: 'Construction', icon: Building2, color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800' },
   { key: 'infrastructure', label: 'Infrastructure', icon: Landmark, color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800' },
   { key: 'roads', label: 'Roads & Bridges', icon: Route, color: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800' },
+  { key: 'marketing', label: 'Marketing', icon: Megaphone, color: 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 border-pink-200 dark:border-pink-800' },
+  { key: 'operations', label: 'Operations', icon: Briefcase, color: 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800' },
   { key: 'other', label: 'General', icon: Layout, color: 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600' },
+  { key: 'marketplace', label: 'Marketplace', icon: Store, color: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800' },
 ];
 
 export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose }) => {
@@ -91,10 +98,24 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
+  const isMarketplace = selectedCategory === 'marketplace';
+
   const { data: templatesData, isError: isTemplatesError } = useQuery({
     queryKey: ['templates', selectedCategory],
-    queryFn: () => apiService.getTemplates(selectedCategory || undefined),
-    enabled: !!selectedCategory,
+    queryFn: () => {
+      // For marketing/operations, query 'other' project type with category filter
+      if (selectedCategory === 'marketing' || selectedCategory === 'operations') {
+        return apiService.getTemplates('other', selectedCategory);
+      }
+      return apiService.getTemplates(selectedCategory || undefined);
+    },
+    enabled: !!selectedCategory && !isMarketplace,
+  });
+
+  const { data: marketplaceData, isError: isMarketplaceError } = useQuery({
+    queryKey: ['templates-marketplace'],
+    queryFn: () => apiService.getMarketplaceTemplates(),
+    enabled: isMarketplace,
   });
 
   const { data: templateDetail, isError: isTemplateDetailError } = useQuery({
@@ -126,6 +147,19 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
 
   const templates = templatesData?.data || templatesData?.templates || [];
   const template = templateDetail?.template;
+  const marketplaceTemplates = marketplaceData?.data || [];
+
+  const importMutation = useMutation({
+    mutationFn: (marketplaceId: string) => apiService.importMarketplaceTemplate(marketplaceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      setStep('category');
+      setSelectedCategory(null);
+    },
+    onError: () => {
+      setErrorMessage('Failed to import template. Please try again.');
+    },
+  });
 
   const resetState = () => {
     setStep('category');
@@ -328,7 +362,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
           )}
 
           {/* Step 2: Template Grid */}
-          {step === 'template' && (
+          {step === 'template' && !isMarketplace && (
             <div>
               <button
                 onClick={() => { setStep('category'); setSelectedCategory(null); }}
@@ -353,6 +387,54 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                       onSelect={handleTemplateSelect}
                       onPreview={handlePreview}
                     />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Marketplace Grid */}
+          {step === 'template' && isMarketplace && (
+            <div>
+              <button
+                onClick={() => { setStep('category'); setSelectedCategory(null); }}
+                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-3 flex items-center gap-1"
+              >
+                &larr; Back to categories
+              </button>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Templates shared by other organizations. Import one to use it in your projects.
+              </p>
+              {isMarketplaceError ? (
+                <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-400">
+                  Failed to load marketplace templates.
+                </div>
+              ) : marketplaceTemplates.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No marketplace templates yet. Publish your custom templates to share them!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {marketplaceTemplates.map((t: any) => (
+                    <div key={t.id} className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.name}</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{t.description}</p>
+                      <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-400">
+                        <span>{t.taskCount} tasks</span>
+                        <span>{t.estimatedDays} days</span>
+                        <span className="flex items-center gap-0.5"><Download className="w-3 h-3" />{t.downloadCount}</span>
+                      </div>
+                      <div className="flex items-center justify-between mt-3">
+                        <span className="text-[10px] text-gray-400 truncate max-w-[140px]">by {t.publishedByOrgName}</span>
+                        <button
+                          onClick={() => importMutation.mutate(t.id)}
+                          disabled={importMutation.isPending}
+                          className="text-xs font-medium text-primary-600 hover:text-primary-700 disabled:opacity-50"
+                        >
+                          {importMutation.isPending ? 'Importing...' : 'Import'}
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}

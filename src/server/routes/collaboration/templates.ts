@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { templateService } from '../../services/TemplateService';
 import { createFromTemplateSchema, saveAsTemplateSchema } from '../../schemas/templateSchemas';
+import { templateMarketplaceRepository } from '../../database/TemplateMarketplaceRepository';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { paginate } from '../../dto/responses';
@@ -171,6 +172,108 @@ export async function templateRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Project not found' });
       }
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to save as template' });
+    }
+  });
+
+  // ─── Marketplace Endpoints ──────────────────────────────────────────────────
+
+  // GET /marketplace — List public marketplace templates
+  fastify.get('/marketplace', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const query = request.query as Record<string, any>;
+      const { limit, offset } = parsePagination(query);
+      const { rows, total } = await templateMarketplaceRepository.findAll(limit, offset, query.category);
+      const page = Math.floor(offset / limit) + 1;
+      const summaries = rows.map(t => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        category: t.category,
+        tags: t.tags,
+        taskCount: t.taskCount,
+        estimatedDays: t.estimatedDays,
+        publishedByOrgName: t.publishedByOrgName,
+        downloadCount: t.downloadCount,
+        createdAt: t.createdAt,
+      }));
+      return paginate(summaries, total, page, limit);
+    } catch (error) {
+      logger.error('List marketplace templates error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch marketplace templates' });
+    }
+  });
+
+  // POST /:id/publish — Publish a custom template to marketplace
+  fastify.post('/:id/publish', {
+    preHandler: [requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const userId = request.user!.userId;
+
+      const template = await templateService.findById(id);
+      if (!template) {
+        return reply.status(404).send({ error: 'Template not found' });
+      }
+
+      // Get org info from request context
+      const orgId = (request as any).organizationId || 'unknown';
+      const orgName = (request as any).organizationName || 'Unknown Organization';
+
+      const published = await templateMarketplaceRepository.create({
+        name: template.name,
+        description: template.description,
+        category: template.category,
+        tags: template.tags || null,
+        taskCount: template.tasks.length,
+        estimatedDays: template.estimatedDurationDays,
+        templateData: template,
+        publishedByOrgId: orgId,
+        publishedByOrgName: orgName,
+        publishedByUserId: userId,
+      });
+
+      return reply.status(201).send({ marketplaceTemplate: published });
+    } catch (error) {
+      logger.error('Publish template error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to publish template' });
+    }
+  });
+
+  // POST /marketplace/:id/import — Import a marketplace template into user's org
+  fastify.post('/marketplace/:id/import', {
+    preHandler: [requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const userId = request.user!.userId;
+
+      const mpTemplate = await templateMarketplaceRepository.findById(id);
+      if (!mpTemplate || !mpTemplate.templateData) {
+        return reply.status(404).send({ error: 'Marketplace template not found' });
+      }
+
+      // Create a local copy of the template
+      const templateData = mpTemplate.templateData;
+      const imported = await templateService.create({
+        name: templateData.name || mpTemplate.name,
+        description: templateData.description || mpTemplate.description || '',
+        projectType: templateData.projectType || 'other',
+        category: templateData.category || mpTemplate.category || 'custom',
+        isBuiltIn: false,
+        createdBy: userId,
+        estimatedDurationDays: templateData.estimatedDurationDays || mpTemplate.estimatedDays,
+        tasks: templateData.tasks || [],
+        tags: templateData.tags || mpTemplate.tags || [],
+      });
+
+      // Increment download count
+      await templateMarketplaceRepository.incrementDownloadCount(id);
+
+      return reply.status(201).send({ template: imported });
+    } catch (error) {
+      logger.error('Import marketplace template error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to import template' });
     }
   });
 }

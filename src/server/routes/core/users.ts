@@ -26,6 +26,8 @@ const categoryPrefSchema = z.object({
 const notificationPrefsSchema = z.object({
   emailNotificationsEnabled: z.boolean().optional(),
   digestFrequency: z.enum(['none', 'daily', 'weekly']).optional(),
+  digestPreferredHour: z.number().int().min(0).max(23).optional(),
+  digestSections: z.array(z.enum(['overdue', 'deadlines', 'action_items', 'meetings', 'sprint', 'changes', 'notifications'])).optional(),
   typePreferences: z.record(
     z.enum(['agent_proposals', 'risks_issues', 'budget_finance', 'meetings', 'system_alerts', 'deadlines', 'tasks', 'collaboration']),
     categoryPrefSchema,
@@ -65,6 +67,8 @@ export async function userRoutes(fastify: FastifyInstance) {
           fullName: dbUser?.fullName,
           emailNotificationsEnabled: dbUser?.emailNotificationsEnabled ?? true,
           digestFrequency: dbUser?.digestFrequency ?? 'none',
+          digestPreferredHour: dbUser?.digestPreferredHour ?? 7,
+          digestSections: dbUser?.digestSections ?? null,
           notificationTypePreferences: dbUser?.notificationTypePreferences ?? null,
           timezone: dbUser?.timezone ?? 'UTC',
           locale: dbUser?.locale ?? 'en',
@@ -155,6 +159,12 @@ export async function userRoutes(fastify: FastifyInstance) {
       if (parsed.digestFrequency !== undefined) {
         updateData.digestFrequency = parsed.digestFrequency;
       }
+      if (parsed.digestPreferredHour !== undefined) {
+        updateData.digestPreferredHour = parsed.digestPreferredHour;
+      }
+      if (parsed.digestSections !== undefined) {
+        updateData.digestSections = parsed.digestSections;
+      }
       if (parsed.typePreferences !== undefined) {
         updateData.notificationTypePreferences = parsed.typePreferences;
       }
@@ -163,6 +173,8 @@ export async function userRoutes(fastify: FastifyInstance) {
       return {
         emailNotificationsEnabled: updated?.emailNotificationsEnabled ?? true,
         digestFrequency: updated?.digestFrequency ?? 'none',
+        digestPreferredHour: updated?.digestPreferredHour ?? 7,
+        digestSections: updated?.digestSections ?? null,
         notificationTypePreferences: updated?.notificationTypePreferences ?? null,
       };
     } catch (error) {

@@ -3,9 +3,12 @@ import { apiService } from '../services/api';
 import type { WidgetDef } from '../components/dashboard/WidgetRegistry';
 import { getDefaultWidgetIds } from '../components/dashboard/WidgetRegistry';
 
+type WidgetSize = 'full' | 'half' | 'third';
+
 interface DashboardPrefs {
   enabledWidgets: string[];
   widgetOrder: string[];
+  widgetSizes?: Record<string, WidgetSize>;
 }
 
 const STORAGE_KEY = 'dashboard-pm-prefs';
@@ -56,6 +59,11 @@ export function useDashboardPreferences(widgets: WidgetDef[]) {
     return local?.widgetOrder ?? defaultOrder;
   });
 
+  const [widgetSizes, setWidgetSizes] = useState<Record<string, WidgetSize>>(() => {
+    const raw = loadLocal();
+    return raw?.widgetSizes ?? {};
+  });
+
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced save to server
@@ -76,6 +84,7 @@ export function useDashboardPreferences(widgets: WidgetDef[]) {
           const prefs = mergeNewWidgets(raw, widgets);
           setEnabledIds(new Set(prefs.enabledWidgets));
           setWidgetOrder(prefs.widgetOrder);
+          if (prefs.widgetSizes) setWidgetSizes(prefs.widgetSizes);
           saveLocal(prefs);
         }
       })
@@ -88,33 +97,46 @@ export function useDashboardPreferences(widgets: WidgetDef[]) {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      const prefs: DashboardPrefs = { enabledWidgets: [...next], widgetOrder };
+      const prefs: DashboardPrefs = { enabledWidgets: [...next], widgetOrder, widgetSizes };
       scheduleSave(prefs);
       return next;
     });
-  }, [widgetOrder, scheduleSave]);
+  }, [widgetOrder, widgetSizes, scheduleSave]);
 
   const reorder = useCallback((newOrder: string[]) => {
     setWidgetOrder(newOrder);
-    const prefs: DashboardPrefs = { enabledWidgets: [...enabledIds], widgetOrder: newOrder };
+    const prefs: DashboardPrefs = { enabledWidgets: [...enabledIds], widgetOrder: newOrder, widgetSizes };
     scheduleSave(prefs);
-  }, [enabledIds, scheduleSave]);
+  }, [enabledIds, widgetSizes, scheduleSave]);
+
+  const resizeWidget = useCallback((id: string, size: WidgetSize) => {
+    setWidgetSizes(prev => {
+      const next = { ...prev, [id]: size };
+      const prefs: DashboardPrefs = { enabledWidgets: [...enabledIds], widgetOrder, widgetSizes: next };
+      scheduleSave(prefs);
+      return next;
+    });
+  }, [enabledIds, widgetOrder, scheduleSave]);
 
   const resetLayout = useCallback(() => {
     const defaults: DashboardPrefs = {
       enabledWidgets: defaultIds,
       widgetOrder: defaultOrder,
+      widgetSizes: {},
     };
     setEnabledIds(new Set(defaultIds));
     setWidgetOrder(defaultOrder);
+    setWidgetSizes({});
     scheduleSave(defaults);
   }, [defaultIds, defaultOrder, scheduleSave]);
 
   return {
     enabledIds,
     widgetOrder,
+    widgetSizes,
     toggleWidget,
     reorder,
+    resizeWidget,
     resetLayout,
   };
 }

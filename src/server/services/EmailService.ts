@@ -189,34 +189,76 @@ export class EmailService {
     upcomingDeadlines: Array<{ name: string; dueDate: string }>;
     unreadCount: number;
     recentChanges: Array<{ category: string; action: string; count: number }> | number;
+    actionItems?: Array<{ title: string; dueDate: string; meetingTitle: string }>;
+    upcomingMeetings?: Array<{ title: string; scheduledDate: string; meetingType: string }>;
+    activeSprints?: Array<{ name: string; pending: number; inProgress: number; completed: number; total: number }>;
   }): Promise<void> {
     if (!this.isConfigured) {
       logger.info(`[EmailService] Digest email would be sent to ${maskPii(to)}`);
       return;
     }
 
+    const sectionStyle = 'margin-top: 24px; padding: 16px; border-radius: 8px;';
+
     let bodyHtml = `<p style="color: #4b5563; line-height: 1.6;">Hi ${escapeHtml(name)}, here's your project digest:</p>`;
 
+    // Overdue Tasks
     if (digest.overdueTasks.length > 0) {
-      bodyHtml += `<h3 style="color: #dc2626; margin-top: 24px;">Overdue Tasks (${digest.overdueTasks.length})</h3><ul style="color: #4b5563;">`;
+      bodyHtml += `<div style="${sectionStyle} background: #fef2f2; border-left: 4px solid #dc2626;">`;
+      bodyHtml += `<h3 style="color: #dc2626; margin: 0 0 8px 0;">Overdue Tasks (${digest.overdueTasks.length})</h3><ul style="color: #4b5563; margin: 0;">`;
       for (const t of digest.overdueTasks.slice(0, 10)) {
-        bodyHtml += `<li>${escapeHtml(t.name)} (due ${escapeHtml(t.dueDate)})</li>`;
+        bodyHtml += `<li>${escapeHtml(t.name)} <span style="color: #9ca3af;">(due ${escapeHtml(t.dueDate)})</span></li>`;
       }
-      bodyHtml += '</ul>';
+      bodyHtml += '</ul></div>';
     }
 
+    // Upcoming Deadlines
     if (digest.upcomingDeadlines.length > 0) {
-      bodyHtml += `<h3 style="color: #f59e0b; margin-top: 24px;">Upcoming Deadlines (${digest.upcomingDeadlines.length})</h3><ul style="color: #4b5563;">`;
+      bodyHtml += `<div style="${sectionStyle} background: #fffbeb; border-left: 4px solid #f59e0b;">`;
+      bodyHtml += `<h3 style="color: #d97706; margin: 0 0 8px 0;">Upcoming Deadlines (${digest.upcomingDeadlines.length})</h3><ul style="color: #4b5563; margin: 0;">`;
       for (const t of digest.upcomingDeadlines.slice(0, 10)) {
-        bodyHtml += `<li>${escapeHtml(t.name)} (due ${escapeHtml(t.dueDate)})</li>`;
+        bodyHtml += `<li>${escapeHtml(t.name)} <span style="color: #9ca3af;">(due ${escapeHtml(t.dueDate)})</span></li>`;
       }
-      bodyHtml += '</ul>';
+      bodyHtml += '</ul></div>';
+    }
+
+    // Meeting Action Items
+    if (digest.actionItems && digest.actionItems.length > 0) {
+      bodyHtml += `<div style="${sectionStyle} background: #faf5ff; border-left: 4px solid #7c3aed;">`;
+      bodyHtml += `<h3 style="color: #7c3aed; margin: 0 0 8px 0;">Overdue Action Items (${digest.actionItems.length})</h3><ul style="color: #4b5563; margin: 0;">`;
+      for (const a of digest.actionItems.slice(0, 10)) {
+        bodyHtml += `<li>${escapeHtml(a.title)} <span style="color: #9ca3af;">(due ${escapeHtml(a.dueDate)}${a.meetingTitle ? ` — ${escapeHtml(a.meetingTitle)}` : ''})</span></li>`;
+      }
+      bodyHtml += '</ul></div>';
+    }
+
+    // Upcoming Meetings
+    if (digest.upcomingMeetings && digest.upcomingMeetings.length > 0) {
+      bodyHtml += `<div style="${sectionStyle} background: #eff6ff; border-left: 4px solid #3b82f6;">`;
+      bodyHtml += `<h3 style="color: #2563eb; margin: 0 0 8px 0;">Upcoming Meetings (${digest.upcomingMeetings.length})</h3><ul style="color: #4b5563; margin: 0;">`;
+      for (const m of digest.upcomingMeetings.slice(0, 10)) {
+        const typeLabel = m.meetingType.replace(/_/g, ' ');
+        bodyHtml += `<li>${escapeHtml(m.title)} <span style="color: #9ca3af;">(${escapeHtml(m.scheduledDate)} — ${escapeHtml(typeLabel)})</span></li>`;
+      }
+      bodyHtml += '</ul></div>';
+    }
+
+    // Active Sprint Summary
+    if (digest.activeSprints && digest.activeSprints.length > 0) {
+      bodyHtml += `<div style="${sectionStyle} background: #ecfdf5; border-left: 4px solid #059669;">`;
+      bodyHtml += `<h3 style="color: #059669; margin: 0 0 8px 0;">Active Sprints</h3>`;
+      for (const s of digest.activeSprints) {
+        const pct = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0;
+        bodyHtml += `<p style="color: #4b5563; margin: 4px 0;"><strong>${escapeHtml(s.name)}</strong> — ${pct}% complete (${s.completed}/${s.total} tasks)</p>`;
+        bodyHtml += `<div style="background: #d1d5db; border-radius: 4px; height: 8px; margin: 4px 0 8px 0;">`;
+        bodyHtml += `<div style="background: #059669; border-radius: 4px; height: 8px; width: ${pct}%;"></div></div>`;
+      }
+      bodyHtml += '</div>';
     }
 
     // Recent changes section
     const changes = Array.isArray(digest.recentChanges) ? digest.recentChanges : [];
     if (changes.length > 0) {
-      // Group by category
       const grouped = new Map<string, Array<{ action: string; count: number }>>();
       for (const c of changes) {
         const cat = c.category;
@@ -224,7 +266,8 @@ export class EmailService {
         grouped.get(cat)!.push({ action: c.action, count: c.count });
       }
 
-      bodyHtml += `<h3 style="color: #2563eb; margin-top: 24px;">Recent Activity</h3>`;
+      bodyHtml += `<div style="${sectionStyle} background: #f0f9ff; border-left: 4px solid #0ea5e9;">`;
+      bodyHtml += `<h3 style="color: #0284c7; margin: 0 0 8px 0;">Recent Activity</h3>`;
       for (const [category, items] of grouped) {
         const total = items.reduce((s, i) => s + i.count, 0);
         bodyHtml += `<p style="color: #4b5563; margin: 8px 0 4px 0;"><strong>${escapeHtml(category)}</strong> (${total} change${total > 1 ? 's' : ''})</p>`;
@@ -234,6 +277,7 @@ export class EmailService {
         }
         bodyHtml += '</ul>';
       }
+      bodyHtml += '</div>';
     }
 
     if (digest.unreadCount > 0) {

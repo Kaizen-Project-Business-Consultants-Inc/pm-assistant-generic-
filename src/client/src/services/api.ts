@@ -1504,6 +1504,23 @@ class ApiService {
     return response.data;
   }
 
+  async getMarketplaceTemplates(category?: string) {
+    const params: Record<string, string> = {};
+    if (category) params.category = category;
+    const response = await this.api.get('/templates/marketplace', { params });
+    return response.data;
+  }
+
+  async publishTemplate(id: string) {
+    const response = await this.api.post(`/templates/${id}/publish`);
+    return response.data;
+  }
+
+  async importMarketplaceTemplate(marketplaceId: string) {
+    const response = await this.api.post(`/templates/marketplace/${marketplaceId}/import`);
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Export (continued)
   // -------------------------------------------------------------------------
@@ -2786,6 +2803,8 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   async updateNotificationPreferences(prefs: {
     emailNotificationsEnabled?: boolean;
     digestFrequency?: 'none' | 'daily' | 'weekly';
+    digestPreferredHour?: number;
+    digestSections?: string[];
     typePreferences?: Record<string, { inApp: boolean; email: boolean }>;
   }) {
     const response = await this.api.put('/users/me/notification-preferences', prefs);

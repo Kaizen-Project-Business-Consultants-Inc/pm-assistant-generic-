@@ -3,7 +3,7 @@ export interface WidgetDef {
   label: string;
   group: string;
   defaultOn: boolean;
-  size: 'full' | 'third';
+  size: 'full' | 'half' | 'third';
 }
 
 // Unified dashboard widgets — fixed layout order, togglable visibility

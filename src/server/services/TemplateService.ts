@@ -317,6 +317,149 @@ const genericTemplate: ProjectTemplate = {
   ],
 };
 
+// ─── Agile/Scrum Sprint Template ────────────────────────────────────────────
+
+const agileScrumTemplate: ProjectTemplate = {
+  id: 'tpl-it-agile',
+  name: 'Agile/Scrum Sprint Project',
+  description: 'Agile project with 4 sprints, ceremonies, product backlog grooming, and retrospectives.',
+  projectType: 'it',
+  category: 'agile',
+  isBuiltIn: true,
+  createdBy: null,
+  estimatedDurationDays: 90,
+  tags: ['agile', 'scrum', 'sprint', 'software'],
+  usageCount: 0,
+  defaultMethodology: 'agile',
+  tasks: [
+    { refId: 'setup', name: 'Project Setup', description: 'Initial project setup and team onboarding', estimatedDays: 5, priority: 'high', parentRefId: null, dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: true, mandatory: true },
+    { refId: 'setup-vision', name: 'Product Vision & Roadmap', description: 'Define product vision, goals, and release roadmap', estimatedDays: 2, priority: 'high', parentRefId: 'setup', dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: ['product-management'], isSummary: false, mandatory: true },
+    { refId: 'setup-backlog', name: 'Initial Backlog Creation', description: 'Create and prioritize initial product backlog', estimatedDays: 3, priority: 'high', parentRefId: 'setup', dependencyRefId: 'setup-vision', dependencyType: 'FS', offsetDays: 0, skills: ['business-analysis'], isSummary: false },
+    { refId: 's1', name: 'Sprint 1', description: 'First sprint — foundation and core features', estimatedDays: 14, priority: 'high', parentRefId: null, dependencyRefId: 'setup', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true },
+    { refId: 's1-plan', name: 'Sprint 1 Planning', description: 'Sprint planning ceremony', estimatedDays: 1, priority: 'high', parentRefId: 's1', dependencyRefId: 'setup', dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: false },
+    { refId: 's1-dev', name: 'Sprint 1 Development', description: 'Execute sprint backlog items', estimatedDays: 10, priority: 'high', parentRefId: 's1', dependencyRefId: 's1-plan', dependencyType: 'FS', offsetDays: 0, skills: ['fullstack'], isSummary: false },
+    { refId: 's1-review', name: 'Sprint 1 Review & Retro', description: 'Demo and retrospective', estimatedDays: 1, priority: 'medium', parentRefId: 's1', dependencyRefId: 's1-dev', dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: false },
+    { refId: 's2', name: 'Sprint 2', description: 'Second sprint — feature expansion', estimatedDays: 14, priority: 'high', parentRefId: null, dependencyRefId: 's1', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true },
+    { refId: 's2-plan', name: 'Sprint 2 Planning', description: 'Sprint planning ceremony', estimatedDays: 1, priority: 'high', parentRefId: 's2', dependencyRefId: 's1', dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: false },
+    { refId: 's2-dev', name: 'Sprint 2 Development', description: 'Execute sprint backlog items', estimatedDays: 10, priority: 'high', parentRefId: 's2', dependencyRefId: 's2-plan', dependencyType: 'FS', offsetDays: 0, skills: ['fullstack'], isSummary: false },
+    { refId: 's2-review', name: 'Sprint 2 Review & Retro', description: 'Demo and retrospective', estimatedDays: 1, priority: 'medium', parentRefId: 's2', dependencyRefId: 's2-dev', dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: false },
+    { refId: 's3', name: 'Sprint 3', description: 'Third sprint — refinement and integration', estimatedDays: 14, priority: 'high', parentRefId: null, dependencyRefId: 's2', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true },
+    { refId: 's3-plan', name: 'Sprint 3 Planning', description: 'Sprint planning ceremony', estimatedDays: 1, priority: 'high', parentRefId: 's3', dependencyRefId: 's2', dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: false },
+    { refId: 's3-dev', name: 'Sprint 3 Development', description: 'Execute sprint backlog items', estimatedDays: 10, priority: 'high', parentRefId: 's3', dependencyRefId: 's3-plan', dependencyType: 'FS', offsetDays: 0, skills: ['fullstack'], isSummary: false },
+    { refId: 's3-review', name: 'Sprint 3 Review & Retro', description: 'Demo and retrospective', estimatedDays: 1, priority: 'medium', parentRefId: 's3', dependencyRefId: 's3-dev', dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: false },
+    { refId: 's4', name: 'Sprint 4', description: 'Fourth sprint — polish and release prep', estimatedDays: 14, priority: 'urgent', parentRefId: null, dependencyRefId: 's3', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true },
+    { refId: 's4-plan', name: 'Sprint 4 Planning', description: 'Sprint planning ceremony', estimatedDays: 1, priority: 'high', parentRefId: 's4', dependencyRefId: 's3', dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: false },
+    { refId: 's4-dev', name: 'Sprint 4 Development', description: 'Final features and bug fixes', estimatedDays: 10, priority: 'high', parentRefId: 's4', dependencyRefId: 's4-plan', dependencyType: 'FS', offsetDays: 0, skills: ['fullstack'], isSummary: false },
+    { refId: 's4-review', name: 'Sprint 4 Review & Retro', description: 'Final demo and retrospective', estimatedDays: 1, priority: 'medium', parentRefId: 's4', dependencyRefId: 's4-dev', dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: false },
+    { refId: 'release', name: 'Release', description: 'Production release and handover', estimatedDays: 5, priority: 'urgent', parentRefId: null, dependencyRefId: 's4', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true, mandatory: true },
+    { refId: 'release-prep', name: 'Release Preparation', description: 'Final testing and deployment prep', estimatedDays: 3, priority: 'urgent', parentRefId: 'release', dependencyRefId: 's4', dependencyType: 'FS', offsetDays: 0, skills: ['devops'], isSummary: false, mandatory: true },
+    { refId: 'release-deploy', name: 'Go-Live', description: 'Deploy to production', estimatedDays: 2, priority: 'urgent', parentRefId: 'release', dependencyRefId: 'release-prep', dependencyType: 'FS', offsetDays: 0, skills: ['devops'], isSummary: false },
+  ],
+};
+
+// ─── Marketing Campaign Template ────────────────────────────────────────────
+
+const marketingCampaignTemplate: ProjectTemplate = {
+  id: 'tpl-mktg-campaign',
+  name: 'Marketing Campaign',
+  description: 'End-to-end marketing campaign with planning, creative development, launch execution, and performance measurement.',
+  projectType: 'other',
+  category: 'marketing',
+  isBuiltIn: true,
+  createdBy: null,
+  estimatedDurationDays: 60,
+  tags: ['marketing', 'campaign', 'digital', 'launch'],
+  usageCount: 0,
+  defaultMethodology: 'hybrid',
+  tasks: [
+    { refId: 'plan', name: 'Campaign Planning', description: 'Strategy, audience, and channel planning', estimatedDays: 10, priority: 'high', parentRefId: null, dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: ['marketing-strategy'], isSummary: true, mandatory: true },
+    { refId: 'plan-brief', name: 'Campaign Brief', description: 'Define objectives, KPIs, target audience, and messaging', estimatedDays: 3, priority: 'high', parentRefId: 'plan', dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: ['marketing-strategy'], isSummary: false, mandatory: true },
+    { refId: 'plan-channels', name: 'Channel Strategy', description: 'Select channels, allocate budget, define timeline', estimatedDays: 3, priority: 'high', parentRefId: 'plan', dependencyRefId: 'plan-brief', dependencyType: 'FS', offsetDays: 0, skills: ['media-planning'], isSummary: false },
+    { refId: 'plan-budget', name: 'Budget & Resource Plan', description: 'Finalize budget allocation and resource assignments', estimatedDays: 2, priority: 'medium', parentRefId: 'plan', dependencyRefId: 'plan-channels', dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: false },
+    { refId: 'creative', name: 'Creative Development', description: 'Design and produce campaign assets', estimatedDays: 15, priority: 'high', parentRefId: null, dependencyRefId: 'plan', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true },
+    { refId: 'creative-copy', name: 'Copywriting', description: 'Write ad copy, email content, landing page text', estimatedDays: 7, priority: 'high', parentRefId: 'creative', dependencyRefId: 'plan', dependencyType: 'FS', offsetDays: 0, skills: ['copywriting'], isSummary: false },
+    { refId: 'creative-design', name: 'Visual Design', description: 'Design graphics, banners, video assets', estimatedDays: 10, priority: 'high', parentRefId: 'creative', dependencyRefId: 'plan', dependencyType: 'SS', offsetDays: 3, skills: ['graphic-design'], isSummary: false },
+    { refId: 'creative-review', name: 'Creative Review & Approval', description: 'Stakeholder review and approval of assets', estimatedDays: 3, priority: 'medium', parentRefId: 'creative', dependencyRefId: 'creative-design', dependencyType: 'FS', offsetDays: 0, skills: ['marketing-strategy'], isSummary: false },
+    { refId: 'launch', name: 'Campaign Launch', description: 'Set up and launch campaign across channels', estimatedDays: 10, priority: 'urgent', parentRefId: null, dependencyRefId: 'creative', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true },
+    { refId: 'launch-setup', name: 'Platform Setup', description: 'Configure ad platforms, email tools, landing pages', estimatedDays: 5, priority: 'high', parentRefId: 'launch', dependencyRefId: 'creative', dependencyType: 'FS', offsetDays: 0, skills: ['digital-marketing'], isSummary: false },
+    { refId: 'launch-go', name: 'Go Live', description: 'Launch all campaign channels', estimatedDays: 2, priority: 'urgent', parentRefId: 'launch', dependencyRefId: 'launch-setup', dependencyType: 'FS', offsetDays: 0, skills: ['digital-marketing'], isSummary: false },
+    { refId: 'launch-monitor', name: 'Initial Monitoring', description: 'Monitor performance and make quick adjustments', estimatedDays: 5, priority: 'high', parentRefId: 'launch', dependencyRefId: 'launch-go', dependencyType: 'FS', offsetDays: 0, skills: ['analytics'], isSummary: false },
+    { refId: 'measure', name: 'Measurement & Reporting', description: 'Analyze results and create reports', estimatedDays: 10, priority: 'high', parentRefId: null, dependencyRefId: 'launch', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true, mandatory: true },
+    { refId: 'measure-data', name: 'Data Collection & Analysis', description: 'Gather campaign data and analyze performance vs KPIs', estimatedDays: 5, priority: 'high', parentRefId: 'measure', dependencyRefId: 'launch', dependencyType: 'FS', offsetDays: 0, skills: ['analytics'], isSummary: false },
+    { refId: 'measure-report', name: 'Final Report & Learnings', description: 'Create campaign report with ROI analysis and learnings', estimatedDays: 5, priority: 'high', parentRefId: 'measure', dependencyRefId: 'measure-data', dependencyType: 'FS', offsetDays: 0, skills: ['analytics'], isSummary: false, mandatory: true },
+  ],
+};
+
+// ─── Product Launch Template ────────────────────────────────────────────────
+
+const productLaunchTemplate: ProjectTemplate = {
+  id: 'tpl-mktg-product',
+  name: 'Product Launch',
+  description: 'Full product launch from market research through development coordination, go-to-market strategy, and launch execution.',
+  projectType: 'other',
+  category: 'marketing',
+  isBuiltIn: true,
+  createdBy: null,
+  estimatedDurationDays: 120,
+  tags: ['product', 'launch', 'gtm', 'go-to-market'],
+  usageCount: 0,
+  defaultMethodology: 'hybrid',
+  tasks: [
+    { refId: 'research', name: 'Market Research', description: 'Market analysis and competitive research', estimatedDays: 20, priority: 'high', parentRefId: null, dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: ['market-research'], isSummary: true, mandatory: true },
+    { refId: 'research-market', name: 'Market Analysis', description: 'Analyze market size, trends, and opportunity', estimatedDays: 10, priority: 'high', parentRefId: 'research', dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: ['market-research'], isSummary: false, mandatory: true },
+    { refId: 'research-compete', name: 'Competitive Analysis', description: 'Analyze competitors, pricing, positioning', estimatedDays: 7, priority: 'high', parentRefId: 'research', dependencyRefId: 'research-market', dependencyType: 'SS', offsetDays: 5, skills: ['market-research'], isSummary: false },
+    { refId: 'research-persona', name: 'Buyer Personas', description: 'Create detailed buyer personas', estimatedDays: 5, priority: 'medium', parentRefId: 'research', dependencyRefId: 'research-market', dependencyType: 'FS', offsetDays: 0, skills: ['marketing-strategy'], isSummary: false },
+    { refId: 'dev', name: 'Product Development Coordination', description: 'Coordinate with product/engineering teams', estimatedDays: 40, priority: 'high', parentRefId: null, dependencyRefId: 'research', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true },
+    { refId: 'dev-reqs', name: 'Product Requirements', description: 'Finalize product requirements and features', estimatedDays: 10, priority: 'high', parentRefId: 'dev', dependencyRefId: 'research', dependencyType: 'FS', offsetDays: 0, skills: ['product-management'], isSummary: false },
+    { refId: 'dev-beta', name: 'Beta Program', description: 'Run beta testing with early adopters', estimatedDays: 20, priority: 'high', parentRefId: 'dev', dependencyRefId: 'dev-reqs', dependencyType: 'FS', offsetDays: 0, skills: ['product-management'], isSummary: false },
+    { refId: 'dev-feedback', name: 'Feedback Integration', description: 'Incorporate beta feedback into final product', estimatedDays: 10, priority: 'medium', parentRefId: 'dev', dependencyRefId: 'dev-beta', dependencyType: 'FS', offsetDays: 0, skills: ['product-management'], isSummary: false },
+    { refId: 'gtm', name: 'Go-to-Market Strategy', description: 'GTM planning and execution', estimatedDays: 30, priority: 'high', parentRefId: null, dependencyRefId: 'research', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true },
+    { refId: 'gtm-position', name: 'Positioning & Messaging', description: 'Define product positioning, value props, and key messages', estimatedDays: 7, priority: 'high', parentRefId: 'gtm', dependencyRefId: 'research', dependencyType: 'FS', offsetDays: 0, skills: ['marketing-strategy'], isSummary: false },
+    { refId: 'gtm-pricing', name: 'Pricing Strategy', description: 'Set pricing tiers and packaging', estimatedDays: 5, priority: 'high', parentRefId: 'gtm', dependencyRefId: 'gtm-position', dependencyType: 'FS', offsetDays: 0, skills: ['product-management'], isSummary: false },
+    { refId: 'gtm-content', name: 'Launch Content Creation', description: 'Website, collateral, press releases, demo videos', estimatedDays: 15, priority: 'high', parentRefId: 'gtm', dependencyRefId: 'gtm-position', dependencyType: 'SS', offsetDays: 3, skills: ['content-marketing'], isSummary: false },
+    { refId: 'gtm-sales', name: 'Sales Enablement', description: 'Sales training, battle cards, demo scripts', estimatedDays: 10, priority: 'medium', parentRefId: 'gtm', dependencyRefId: 'gtm-position', dependencyType: 'SS', offsetDays: 5, skills: ['sales-enablement'], isSummary: false },
+    { refId: 'launch', name: 'Launch Execution', description: 'Execute product launch', estimatedDays: 20, priority: 'urgent', parentRefId: null, dependencyRefId: 'dev', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true, mandatory: true },
+    { refId: 'launch-prep', name: 'Launch Preparation', description: 'Final checks, comms alignment, press outreach', estimatedDays: 5, priority: 'urgent', parentRefId: 'launch', dependencyRefId: 'gtm', dependencyType: 'FS', offsetDays: 0, skills: ['marketing-strategy'], isSummary: false },
+    { refId: 'launch-day', name: 'Launch Day', description: 'Execute launch plan across all channels', estimatedDays: 1, priority: 'urgent', parentRefId: 'launch', dependencyRefId: 'launch-prep', dependencyType: 'FS', offsetDays: 0, skills: ['marketing-strategy'], isSummary: false, mandatory: true },
+    { refId: 'launch-post', name: 'Post-Launch Monitoring', description: 'Monitor adoption, press coverage, and customer feedback', estimatedDays: 14, priority: 'high', parentRefId: 'launch', dependencyRefId: 'launch-day', dependencyType: 'FS', offsetDays: 0, skills: ['analytics'], isSummary: false },
+  ],
+};
+
+// ─── Office Relocation Template ─────────────────────────────────────────────
+
+const officeRelocationTemplate: ProjectTemplate = {
+  id: 'tpl-ops-relocation',
+  name: 'Office Relocation',
+  description: 'Complete office relocation project covering planning, logistics, physical move, and post-move settling.',
+  projectType: 'other',
+  category: 'operations',
+  isBuiltIn: true,
+  createdBy: null,
+  estimatedDurationDays: 90,
+  tags: ['office', 'relocation', 'move', 'facilities'],
+  usageCount: 0,
+  defaultMethodology: 'waterfall',
+  tasks: [
+    { refId: 'plan', name: 'Planning & Assessment', description: 'Assess needs and plan the relocation', estimatedDays: 20, priority: 'high', parentRefId: null, dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: true, mandatory: true },
+    { refId: 'plan-needs', name: 'Needs Assessment', description: 'Survey departments, determine space requirements', estimatedDays: 5, priority: 'high', parentRefId: 'plan', dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: ['facilities'], isSummary: false, mandatory: true },
+    { refId: 'plan-site', name: 'Site Selection & Lease', description: 'Evaluate locations, negotiate lease, sign contract', estimatedDays: 10, priority: 'high', parentRefId: 'plan', dependencyRefId: 'plan-needs', dependencyType: 'FS', offsetDays: 0, skills: ['real-estate'], isSummary: false },
+    { refId: 'plan-budget', name: 'Budget & Timeline', description: 'Create detailed budget and move timeline', estimatedDays: 3, priority: 'high', parentRefId: 'plan', dependencyRefId: 'plan-site', dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: false },
+    { refId: 'logistics', name: 'Logistics & Preparation', description: 'Prepare new space and coordinate vendors', estimatedDays: 30, priority: 'high', parentRefId: null, dependencyRefId: 'plan', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true },
+    { refId: 'logistics-design', name: 'Space Design & Fit-Out', description: 'Design office layout, furniture, and infrastructure', estimatedDays: 15, priority: 'high', parentRefId: 'logistics', dependencyRefId: 'plan', dependencyType: 'FS', offsetDays: 0, skills: ['interior-design'], isSummary: false },
+    { refId: 'logistics-it', name: 'IT Infrastructure Setup', description: 'Network, phones, servers, AV in new space', estimatedDays: 10, priority: 'high', parentRefId: 'logistics', dependencyRefId: 'logistics-design', dependencyType: 'SS', offsetDays: 5, skills: ['it-infrastructure'], isSummary: false },
+    { refId: 'logistics-vendor', name: 'Moving Company & Vendors', description: 'Select and contract moving company and vendors', estimatedDays: 5, priority: 'medium', parentRefId: 'logistics', dependencyRefId: 'plan', dependencyType: 'FS', offsetDays: 0, skills: ['procurement'], isSummary: false },
+    { refId: 'logistics-comms', name: 'Employee Communications', description: 'Communicate move details, packing guidelines', estimatedDays: 5, priority: 'medium', parentRefId: 'logistics', dependencyRefId: 'logistics-design', dependencyType: 'FS', offsetDays: 0, skills: ['communications'], isSummary: false },
+    { refId: 'move', name: 'Physical Move', description: 'Execute the physical relocation', estimatedDays: 10, priority: 'urgent', parentRefId: null, dependencyRefId: 'logistics', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true },
+    { refId: 'move-pack', name: 'Packing & Labeling', description: 'Pack departments, label boxes, disconnect equipment', estimatedDays: 3, priority: 'high', parentRefId: 'move', dependencyRefId: 'logistics', dependencyType: 'FS', offsetDays: 0, skills: ['logistics'], isSummary: false },
+    { refId: 'move-transport', name: 'Transportation', description: 'Transport furniture, equipment, and boxes', estimatedDays: 2, priority: 'urgent', parentRefId: 'move', dependencyRefId: 'move-pack', dependencyType: 'FS', offsetDays: 0, skills: ['logistics'], isSummary: false },
+    { refId: 'move-setup', name: 'Unpacking & Setup', description: 'Unpack, set up workstations, connect IT', estimatedDays: 5, priority: 'high', parentRefId: 'move', dependencyRefId: 'move-transport', dependencyType: 'FS', offsetDays: 0, skills: ['facilities'], isSummary: false },
+    { refId: 'settle', name: 'Post-Move Settling', description: 'Settle in and resolve issues', estimatedDays: 15, priority: 'medium', parentRefId: null, dependencyRefId: 'move', dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true, mandatory: true },
+    { refId: 'settle-verify', name: 'Systems Verification', description: 'Verify all IT systems, phones, and services work', estimatedDays: 3, priority: 'high', parentRefId: 'settle', dependencyRefId: 'move', dependencyType: 'FS', offsetDays: 0, skills: ['it-infrastructure'], isSummary: false, mandatory: true },
+    { refId: 'settle-issues', name: 'Issue Resolution', description: 'Address any problems from the move', estimatedDays: 7, priority: 'medium', parentRefId: 'settle', dependencyRefId: 'settle-verify', dependencyType: 'FS', offsetDays: 0, skills: ['facilities'], isSummary: false },
+    { refId: 'settle-decommission', name: 'Old Office Decommission', description: 'Clean, return keys, end old lease', estimatedDays: 5, priority: 'medium', parentRefId: 'settle', dependencyRefId: 'move', dependencyType: 'SS', offsetDays: 3, skills: ['facilities'], isSummary: false },
+  ],
+};
+
 // ─── Service ─────────────────────────────────────────────────────────────────
 
 export class TemplateService {
@@ -331,6 +474,10 @@ export class TemplateService {
     highwayTemplate,
     bridgeTemplate,
     genericTemplate,
+    agileScrumTemplate,
+    marketingCampaignTemplate,
+    productLaunchTemplate,
+    officeRelocationTemplate,
   ];
 
   private get templates() { return TemplateService.templates; }

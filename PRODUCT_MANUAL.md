@@ -1245,11 +1245,30 @@ When multiple users view the same project, avatar circles appear in the project 
 
 ### Email Notifications & Digests
 
-Critical and high-severity notifications are automatically sent via email (Resend) to users with `emailNotificationsEnabled = true` and a verified email. Users can configure a **digest frequency** (none, daily, weekly) in Settings > Notifications. The `DigestService` runs daily at 7 AM via cron and sends a summary containing:
+Critical and high-severity notifications are automatically sent via email (Resend) to users with `emailNotificationsEnabled = true` and a verified email. Users can configure a **digest frequency** (none, daily, weekly) in Settings > Notifications. The `DigestService` runs via cron at a user-configured hour and sends a summary containing:
 
 - **Overdue tasks** assigned to the user
 - **Upcoming deadlines** (next 3 days)
 - **Unread notification count**
+- **Meeting Action Items** — overdue action items assigned to the user across all meetings
+- **Upcoming Meetings** — meetings scheduled within the next 3 days
+- **Active Sprint Summary** — current sprint name, task completion count and percentage (rendered as a progress bar in the email)
+
+#### Digest Customization
+
+Users control digest content and delivery time in **Settings > Notifications**:
+
+- **Preferred send hour** — choose any hour 0–23 UTC (replaces the previous hardcoded 7 AM delivery). The `DigestService` cron checks each user's configured hour and sends at the right time.
+- **Section toggles** — checkboxes to include or exclude each section independently:
+  - Overdue Tasks
+  - Upcoming Deadlines
+  - Meeting Action Items
+  - Upcoming Meetings
+  - Sprint Status
+  - Recent Changes
+  - Unread Notifications
+
+The digest email template uses **color-coded sections** for quick scanning: red (overdue tasks), amber (upcoming deadlines), purple (meeting action items), blue (upcoming meetings), green (sprint status), cyan (recent activity).
 
 Preferences are stored in the database (`users.email_notifications_enabled`, `users.digest_frequency`, `users.digest_last_sent_at`, `users.notification_type_preferences`) and managed via `PUT /api/v1/users/me/notification-preferences`.
 
@@ -1398,6 +1417,35 @@ The `TemplateService` allows saving a project's structure as a reusable template
 - Serialized project configuration (tasks, phases, dependencies, custom fields)
 - Shared or private visibility
 - Apply a template to create a new project with pre-populated structure
+
+#### Built-In Templates
+
+The system ships with **14 built-in templates** (up from 10). The 4 new additions are:
+
+| Template | Category | Duration | Description |
+|----------|----------|----------|-------------|
+| **Agile/Scrum Sprint Project** | IT | 90 days | 4 sprints with standard Scrum ceremonies (planning, daily standup, review, retro) |
+| **Marketing Campaign** | Marketing | 60 days | Campaign planning, creative production, launch, and post-campaign analysis phases |
+| **Product Launch** | Marketing | 120 days | Market research through GA launch with go-to-market and enablement phases |
+| **Office Relocation** | Operations | 90 days | Site selection, fit-out, move logistics, and post-move stabilization |
+
+Two new template categories have been added to the picker: **Marketing** and **Operations**.
+
+#### Template Marketplace
+
+The New Project wizard includes a **Marketplace** tab alongside the standard template library. The marketplace allows organizations to discover and share templates:
+
+- **Browse community templates** — templates published by other organizations, shown with download count
+- **Import a marketplace template** — clones the template into your organization's library; creates an independent copy that you can customize without affecting the original
+- **Publish your own template** — share a custom template with the community via `POST /api/v1/templates/:id/publish`
+
+**Marketplace API endpoints:**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/templates/marketplace` | List all community-shared templates with download counts |
+| `POST` | `/api/v1/templates/:id/publish` | Publish one of your org's templates to the marketplace |
+| `POST` | `/api/v1/templates/marketplace/:id/import` | Import a marketplace template into your org |
 
 ---
 
@@ -1802,6 +1850,18 @@ When a user's own projects are a subset of the full portfolio (e.g., a `team_mem
 | **Team Workload** | Summary stats row (active resource count, overallocated count), per-resource task counts with horizontal bars, overload indicator (15+ tasks), multi-project overallocation warning (3+ projects, red octagon icon), capacity hours display, and color-coded avatar rings for flagged resources (default: off) |
 | **Change Requests** | Status summary showing pending, approved, and rejected counts with colored badges. Top 5 pending CRs with project name and days waiting. Link to drill down into the full change request view. (default: off, enable via Customize dropdown) |
 
+#### Widget Sizes
+
+Each widget supports three layout sizes, selectable per-widget:
+
+| Size | Grid columns | How to set |
+|------|-------------|-----------|
+| **Full width** | 12 (spans the full row) | Default for most widgets |
+| **Half width** | 6 (2-column layout) | Click the resize handle on the widget, or use the **F/H/T** size buttons in the Customize dropdown next to the widget checkbox |
+| **Third width** | 4 (3-column layout) | Same resize handle or size buttons |
+
+A **resize handle** appears on each widget when hovered — clicking it cycles through Full → Half → Third → Full. Size preferences are persisted alongside enabled/order preferences via `GET/PUT /api/v1/users/me/dashboard-preferences`. **Reset Layout** in the Customize dropdown resets all widget sizes to their defaults in addition to restoring default order.
+
 ### Backend Endpoints
 
 Three new endpoints under `GET /api/v1/dashboard/`:
@@ -2064,9 +2124,16 @@ Tasks can be imported in bulk from a CSV or Excel file via `POST /api/v1/schedul
 
 ---
 
-## 31. Gantt PDF Export
+## 31. Gantt PDF/Image Export
 
-A **Print / Export PDF** button in the schedule toolbar calls `window.print()` with a print-optimised CSS stylesheet applied. The Gantt chart expands to show all tasks, hides navigation chrome, and formats page breaks appropriately. The result is a print-ready PDF when saved from the browser's print dialog.
+The schedule toolbar provides an **Export** dropdown (replaces the previous Print/CSV buttons) with four export options. All export modes temporarily expand the Gantt to capture full content before reverting.
+
+| Option | Mechanism | Output |
+|--------|-----------|--------|
+| **PDF** | `html2pdf.js` client-side rendering | A3 landscape, auto-scaled to fit Gantt content |
+| **PNG** | `html-to-image` library, 2x pixel ratio | High-quality PNG image of the full Gantt |
+| **Print** | `window.print()` with print-optimised CSS | Browser print dialog (same as before) |
+| **CSV** | Task data serialization | CSV file of current task list (same as before) |
 
 ---
 

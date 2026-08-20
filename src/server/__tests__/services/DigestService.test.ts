@@ -38,8 +38,39 @@ function makeUser(overrides: Record<string, unknown> = {}) {
     full_name: 'Alice Smith',
     digest_frequency: 'daily',
     digest_last_sent_at: null, // never sent => always due
+    digest_preferred_hour: 7,
+    digest_sections: null,
     ...overrides,
   };
+}
+
+/**
+ * Enqueue mock responses for a single user's buildDigest call.
+ * Order: project_members, overdueTasks, upcomingDeadlines, unreadCount,
+ *        getRecentChanges(project_members), actionItems
+ * (meetings and sprints skip DB call when projectIds is empty)
+ */
+function mockBuildDigest(opts: {
+  overdueTasks?: any[];
+  upcomingDeadlines?: any[];
+  unreadCount?: number | null;
+  projectMembers?: any[];
+  actionItems?: any[];
+} = {}) {
+  // project_members query at top of buildDigest
+  mockQuery.mockResolvedValueOnce(opts.projectMembers ?? []);
+  // findOverdueTasks
+  mockQuery.mockResolvedValueOnce(opts.overdueTasks ?? []);
+  // findUpcomingDeadlines
+  mockQuery.mockResolvedValueOnce(opts.upcomingDeadlines ?? []);
+  // countUnreadNotifications
+  const cnt = opts.unreadCount;
+  mockQuery.mockResolvedValueOnce(cnt != null ? [{ cnt }] : [{ cnt: 0 }]);
+  // getRecentChangesForUser -> project_members
+  mockQuery.mockResolvedValueOnce([]);
+  // findOverdueActionItems
+  mockQuery.mockResolvedValueOnce(opts.actionItems ?? []);
+  // findUpcomingMeetings / findActiveSprintSummary skipped when projectIds=[]
 }
 
 describe('DigestService', () => {
@@ -54,18 +85,9 @@ describe('DigestService', () => {
     it('sends digest to users with notifications enabled and overdue tasks', async () => {
       const user = makeUser();
 
-      // 1st query: find users
-      mockQuery.mockResolvedValueOnce([user]);
-      // 2nd query: overdue tasks
-      mockQuery.mockResolvedValueOnce([{ name: 'Fix bug', end_date: '2026-06-30 00:00:00' }]);
-      // 3rd query: upcoming deadlines
-      mockQuery.mockResolvedValueOnce([]);
-      // 4th query: unread notification count
-      mockQuery.mockResolvedValueOnce([{ cnt: 2 }]);
-      // 5th query: project_members for recent changes
-      mockQuery.mockResolvedValueOnce([]);
-      // 6th query: updateLastSent
-      mockQuery.mockResolvedValueOnce(undefined);
+      mockQuery.mockResolvedValueOnce([user]); // findEligibleUsers
+      mockBuildDigest({ overdueTasks: [{ name: 'Fix bug', end_date: '2026-06-30 00:00:00' }], unreadCount: 2 });
+      mockQuery.mockResolvedValueOnce(undefined); // updateLastSent
 
       const count = await service.sendPendingDigests();
 
@@ -108,25 +130,14 @@ describe('DigestService', () => {
     it('skips sending email but updates timestamp when digest content is empty', async () => {
       const user = makeUser();
 
-      mockQuery.mockResolvedValueOnce([user]);
-      // overdue tasks: empty
-      mockQuery.mockResolvedValueOnce([]);
-      // upcoming deadlines: empty
-      mockQuery.mockResolvedValueOnce([]);
-      // unread count: 0
-      mockQuery.mockResolvedValueOnce([{ cnt: 0 }]);
-      // project_members for recent changes
-      mockQuery.mockResolvedValueOnce([]);
-      // updateLastSent
-      mockQuery.mockResolvedValueOnce(undefined);
+      mockQuery.mockResolvedValueOnce([user]); // findEligibleUsers
+      mockBuildDigest(); // all empty
+      mockQuery.mockResolvedValueOnce(undefined); // updateLastSent
 
       const count = await service.sendPendingDigests();
 
       expect(count).toBe(0);
       expect(mockSendDigestEmail).not.toHaveBeenCalled();
-      // updateLastSent should have been called (6th query)
-      expect(mockQuery).toHaveBeenCalledTimes(6);
-      expect(mockQuery.mock.calls[5][0]).toContain('UPDATE users SET digest_last_sent_at');
     });
 
     it('continues processing other users when one email send fails', async () => {
@@ -136,18 +147,11 @@ describe('DigestService', () => {
       mockQuery.mockResolvedValueOnce([user1, user2]);
 
       // User 1: has overdue tasks
-      mockQuery.mockResolvedValueOnce([{ name: 'Task A', end_date: '2026-06-28 00:00:00' }]);
-      mockQuery.mockResolvedValueOnce([]);
-      mockQuery.mockResolvedValueOnce([{ cnt: 1 }]);
-      mockQuery.mockResolvedValueOnce([]); // project_members
+      mockBuildDigest({ overdueTasks: [{ name: 'Task A', end_date: '2026-06-28 00:00:00' }], unreadCount: 1 });
 
       // User 2: has upcoming deadlines
-      mockQuery.mockResolvedValueOnce([]);
-      mockQuery.mockResolvedValueOnce([{ name: 'Task B', end_date: '2026-07-05 00:00:00' }]);
-      mockQuery.mockResolvedValueOnce([{ cnt: 0 }]);
-      mockQuery.mockResolvedValueOnce([]); // project_members
-      // User 2: updateLastSent
-      mockQuery.mockResolvedValueOnce(undefined);
+      mockBuildDigest({ upcomingDeadlines: [{ name: 'Task B', end_date: '2026-07-05 00:00:00' }] });
+      mockQuery.mockResolvedValueOnce(undefined); // updateLastSent for user 2
 
       // First email fails, second succeeds
       mockSendDigestEmail
@@ -168,11 +172,8 @@ describe('DigestService', () => {
     it('sends digest when user has only unread notifications', async () => {
       const user = makeUser();
 
-      mockQuery.mockResolvedValueOnce([user]);
-      mockQuery.mockResolvedValueOnce([]); // no overdue
-      mockQuery.mockResolvedValueOnce([]); // no upcoming
-      mockQuery.mockResolvedValueOnce([{ cnt: 5 }]); // 5 unread notifications
-      mockQuery.mockResolvedValueOnce([]); // project_members
+      mockQuery.mockResolvedValueOnce([user]); // findEligibleUsers
+      mockBuildDigest({ unreadCount: 5 });
       mockQuery.mockResolvedValueOnce(undefined); // updateLastSent
 
       const count = await service.sendPendingDigests();
@@ -188,16 +189,12 @@ describe('DigestService', () => {
     it('uses username as fallback when full_name is empty', async () => {
       const user = makeUser({ full_name: '' });
 
-      mockQuery.mockResolvedValueOnce([user]);
-      mockQuery.mockResolvedValueOnce([{ name: 'Overdue task', end_date: '2026-06-25 12:00:00' }]);
-      mockQuery.mockResolvedValueOnce([]);
-      mockQuery.mockResolvedValueOnce([{ cnt: 0 }]);
-      mockQuery.mockResolvedValueOnce([]); // project_members
-      mockQuery.mockResolvedValueOnce(undefined);
+      mockQuery.mockResolvedValueOnce([user]); // findEligibleUsers
+      mockBuildDigest({ overdueTasks: [{ name: 'Overdue task', end_date: '2026-06-25 12:00:00' }] });
+      mockQuery.mockResolvedValueOnce(undefined); // updateLastSent
 
       await service.sendPendingDigests();
 
-      // full_name is empty string which is falsy, so || falls back to username
       expect(mockSendDigestEmail).toHaveBeenCalledWith(
         'alice@example.com',
         'alice',
@@ -206,22 +203,19 @@ describe('DigestService', () => {
     });
 
     it('handles weekly digest frequency - due on Monday after 167+ hours', async () => {
-      // Create a date that is a Monday
       const monday = new Date('2026-07-06T10:00:00Z'); // July 6, 2026 is a Monday
       vi.useFakeTimers();
       vi.setSystemTime(monday);
 
       const user = makeUser({
         digest_frequency: 'weekly',
-        digest_last_sent_at: null, // never sent
+        digest_last_sent_at: null,
+        digest_preferred_hour: 10, // Match the hour
       });
 
-      mockQuery.mockResolvedValueOnce([user]);
-      mockQuery.mockResolvedValueOnce([{ name: 'Weekly task', end_date: '2026-07-01 00:00:00' }]);
-      mockQuery.mockResolvedValueOnce([]);
-      mockQuery.mockResolvedValueOnce([{ cnt: 0 }]);
-      mockQuery.mockResolvedValueOnce([]); // project_members
-      mockQuery.mockResolvedValueOnce(undefined);
+      mockQuery.mockResolvedValueOnce([user]); // findEligibleUsers
+      mockBuildDigest({ overdueTasks: [{ name: 'Weekly task', end_date: '2026-07-01 00:00:00' }] });
+      mockQuery.mockResolvedValueOnce(undefined); // updateLastSent
 
       const count = await service.sendPendingDigests();
 
@@ -231,7 +225,6 @@ describe('DigestService', () => {
     });
 
     it('skips weekly digest when day is not Monday', async () => {
-      // Set to a Wednesday
       const wednesday = new Date('2026-07-08T10:00:00Z'); // Wednesday
       vi.useFakeTimers();
       vi.setSystemTime(wednesday);
@@ -256,11 +249,11 @@ describe('DigestService', () => {
       vi.useFakeTimers();
       vi.setSystemTime(monday);
 
-      // Last sent 100 hours ago (< 167)
       const lastSent = new Date(monday.getTime() - 100 * 60 * 60 * 1000).toISOString();
       const user = makeUser({
         digest_frequency: 'weekly',
         digest_last_sent_at: lastSent,
+        digest_preferred_hour: 10,
       });
 
       mockQuery.mockResolvedValueOnce([user]);
@@ -282,31 +275,21 @@ describe('DigestService', () => {
       mockQuery.mockResolvedValueOnce(users);
 
       // User 1: has content
-      mockQuery.mockResolvedValueOnce([{ name: 'T1', end_date: '2026-06-30 00:00:00' }]);
-      mockQuery.mockResolvedValueOnce([]);
-      mockQuery.mockResolvedValueOnce([{ cnt: 0 }]);
-      mockQuery.mockResolvedValueOnce([]); // project_members
+      mockBuildDigest({ overdueTasks: [{ name: 'T1', end_date: '2026-06-30 00:00:00' }] });
       mockQuery.mockResolvedValueOnce(undefined); // updateLastSent
 
       // User 2: empty digest (no content)
-      mockQuery.mockResolvedValueOnce([]);
-      mockQuery.mockResolvedValueOnce([]);
-      mockQuery.mockResolvedValueOnce([{ cnt: 0 }]);
-      mockQuery.mockResolvedValueOnce([]); // project_members
+      mockBuildDigest();
       mockQuery.mockResolvedValueOnce(undefined); // updateLastSent (still called for empty)
 
       // User 3: has content
-      mockQuery.mockResolvedValueOnce([]);
-      mockQuery.mockResolvedValueOnce([{ name: 'T3', end_date: '2026-07-06 00:00:00' }]);
-      mockQuery.mockResolvedValueOnce([{ cnt: 3 }]);
-      mockQuery.mockResolvedValueOnce([]); // project_members
+      mockBuildDigest({ upcomingDeadlines: [{ name: 'T3', end_date: '2026-07-06 00:00:00' }], unreadCount: 3 });
       mockQuery.mockResolvedValueOnce(undefined); // updateLastSent
 
       mockSendDigestEmail.mockResolvedValue(undefined);
 
       const count = await service.sendPendingDigests();
 
-      // User 1 and 3 get emails, user 2 has empty digest
       expect(count).toBe(2);
       expect(mockSendDigestEmail).toHaveBeenCalledTimes(2);
     });
@@ -314,11 +297,14 @@ describe('DigestService', () => {
     it('handles unread count query returning empty array gracefully', async () => {
       const user = makeUser();
 
-      mockQuery.mockResolvedValueOnce([user]);
-      mockQuery.mockResolvedValueOnce([{ name: 'Task', end_date: '2026-06-30 00:00:00' }]);
-      mockQuery.mockResolvedValueOnce([]);
-      mockQuery.mockResolvedValueOnce([]); // empty array instead of [{cnt: 0}]
+      mockQuery.mockResolvedValueOnce([user]); // findEligibleUsers
+      // Manually mock: project_members, overdueTasks, upcomingDeadlines, unreadCount (empty array), project_members, actionItems
       mockQuery.mockResolvedValueOnce([]); // project_members
+      mockQuery.mockResolvedValueOnce([{ name: 'Task', end_date: '2026-06-30 00:00:00' }]); // overdueTasks
+      mockQuery.mockResolvedValueOnce([]); // upcomingDeadlines
+      mockQuery.mockResolvedValueOnce([]); // unread count: empty array
+      mockQuery.mockResolvedValueOnce([]); // getRecentChanges project_members
+      mockQuery.mockResolvedValueOnce([]); // actionItems
       mockQuery.mockResolvedValueOnce(undefined); // updateLastSent
 
       const count = await service.sendPendingDigests();

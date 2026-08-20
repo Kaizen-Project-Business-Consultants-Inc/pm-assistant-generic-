@@ -104,6 +104,8 @@ All users see a single **Unified Dashboard** with customizable widgets:
 
 Click **Customize** next to the dashboard title to toggle widget sections on/off. Your selections are saved automatically and persist across sessions. The opt-in widgets (Sprint Snapshot, Goals, Team Workload, Change Requests) are off by default — enable them via Customize.
 
+**Widget sizes**: Each widget can be resized independently. Hover over a widget to reveal the resize handle and click it to cycle through **Full width** (default), **Half width** (2-column), and **Third width** (3-column). You can also use the **F / H / T** buttons shown next to each widget checkbox in the Customize dropdown. Click **Reset Layout** in the Customize dropdown to restore all widgets to their default sizes and order.
+
 ### Sidebar Navigation
 
 The left sidebar provides access to all areas of the application:
@@ -421,7 +423,7 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - **Interactive dependency drawing**: Hover over a task bar to see connector dots at the left (start) and right (finish) edges. Drag from a dot to another task bar to create a dependency link. The dependency type (FS/SS/FF/SF) is determined by which edges you drag from and to. A dashed blue preview line and target row highlight guide you during the drag.
 - **Recurring task indicator**: Template tasks display a repeat icon on their bar.
 - **Milestones**: Tasks marked as milestones appear as diamonds instead of bars.
-- **PDF Export**: Click the **Print / Export PDF** button in the toolbar to open a print-optimised Gantt ready for saving as PDF.
+- **Export**: Click the **Export** dropdown in the toolbar to access four options: **PDF** (A3 landscape, auto-scaled via html2pdf.js), **PNG** (high-quality 2x image via html-to-image), **Print** (browser print dialog), and **CSV** (task data download). All export modes temporarily expand the Gantt to capture the full schedule before reverting to the normal view.
 - Hover over a bar to see task details including all predecessors (row number, task name, dependency type, lag, and health status per predecessor). Click to edit.
 - **Column header sort**: Click any column header in the left panel to sort rows ascending, then descending, then back to default (none). A ▲ or ▼ indicator appears in the header to show the active sort direction. Sort preserves task hierarchy — children are sorted within their own sibling group, not mixed across levels. Row drag reorder is disabled while a sort is active.
 - **Copy/Paste cells**: Press **Ctrl+C** to copy the focused cell's value to the clipboard. Press **Ctrl+V** to paste the clipboard value into the focused cell (paste only applies when the field types match). A green flash confirms the paste.
@@ -1569,6 +1571,25 @@ After selecting a template, the **Template Customize Form** lets you:
 - Remove tasks you do not need.
 - Set a project start date (all task dates shift accordingly).
 
+### Built-In Templates
+
+PM Assistant ships with **14 built-in templates** across three categories. Four templates were added in August 2026:
+
+| Template | Category | Duration |
+|----------|----------|----------|
+| Agile/Scrum Sprint Project | IT | 90 days (4 sprints) |
+| Marketing Campaign | Marketing | 60 days |
+| Product Launch | Marketing | 120 days |
+| Office Relocation | Operations | 90 days |
+
+### Template Marketplace
+
+The **New Project** wizard includes a **Marketplace** tab where you can discover templates shared by other organizations.
+
+- **Browse** community templates — each card shows the template name, description, category, and download count.
+- **Import** a marketplace template — creates an independent copy in your organization's library that you can customize freely.
+- **Publish** your own templates — once you have saved a custom template, use the Publish action to share it with the community.
+
 ---
 
 ## 16. Integrations
@@ -1871,7 +1892,10 @@ Navigate to **Settings** to configure:
 - **API keys** -- Generate and manage API keys for programmatic access. Revoking a key shows a styled confirmation modal before the key is deleted.
 - **Webhooks** -- Configure outbound webhook endpoints. Deleting a webhook shows a styled confirmation modal.
 - **Custom fields** -- Define organization-wide custom fields that appear on tasks and projects.
-- **Notifications** -- Configure notification preferences per category (Agent & Proposals, Risks & Issues, Budget & Finance, Meetings, System Alerts, Deadlines) with independent in-app and email toggles. Includes email master toggle and digest frequency. System alerts are always delivered to admin users.
+- **Notifications** -- Configure notification preferences per category (Agent & Proposals, Risks & Issues, Budget & Finance, Meetings, System Alerts, Deadlines) with independent in-app and email toggles. Includes email master toggle, digest frequency, and the following digest customization options:
+  - **Preferred send hour** -- Choose any hour from 0 to 23 (UTC) for your digest email delivery. The default is 7 AM UTC.
+  - **Digest section toggles** -- Enable or disable each section of the digest independently: Overdue Tasks, Upcoming Deadlines, Meeting Action Items, Upcoming Meetings, Sprint Status, Recent Changes, Unread Notifications.
+  The digest email uses color-coded sections (red for overdue, amber for deadlines, purple for meeting action items, blue for upcoming meetings, green for sprint status, cyan for recent activity). System alerts are always delivered to admin users.
 - **Language** -- Select your preferred display language (English, French, or Spanish). The change applies instantly without a page reload.
 - **Time Zone** -- Set your IANA timezone (e.g., `America/Toronto`). All dates in the application are displayed in this timezone.
 

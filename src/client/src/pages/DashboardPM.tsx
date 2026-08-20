@@ -80,8 +80,10 @@ export function DashboardPM() {
   const {
     enabledIds,
     widgetOrder,
+    widgetSizes,
     toggleWidget,
     reorder,
+    resizeWidget,
     resetLayout,
   } = useDashboardPreferences(PM_WIDGETS);
 
@@ -262,6 +264,8 @@ export function DashboardPM() {
             enabledIds={enabledIds}
             onToggle={toggleWidget}
             onReset={resetLayout}
+            widgetSizes={widgetSizes}
+            onResize={resizeWidget}
           />
         </div>
       </div>
@@ -273,6 +277,8 @@ export function DashboardPM() {
         widgetOrder={widgetOrder}
         onReorder={reorder}
         renderWidget={renderWidget}
+        widgetSizes={widgetSizes}
+        onResize={resizeWidget}
       />
 
       {/* ── Footer ── */}
