@@ -311,6 +311,7 @@ A dedicated analytics page for earned value management, accessible from the side
 - **Project selector** dropdown to choose which project to analyze.
 - **Six KPI cards**: CPI, SPI, EV, PV, AC, BAC with color-coded values (green when healthy, red when critical).
 - **Four forecast cards**: EAC, ETC, VAC, TCPI with red warning borders when thresholds are exceeded.
+- **Metric hover tooltips**: hovering any KPI or forecast card opens a rich tooltip with four sections — what the metric measures (plain English), the formula with calculated values from live project data, color-coded health bands (green/amber/red thresholds), and dynamic guidance that adapts based on whether the metric is healthy, warning, or critical. Implemented in `EVMMetricTooltip.tsx`; also applied to the CPI, SPI, and TCPI cards on the Project Detail EVM panel.
 - **CPI/SPI Trend chart**: SVG line chart with blue CPI line, green SPI line, 1.0 baseline reference, and labeled axes. Dark mode uses class-based SVG fills for proper contrast.
 - **Early Warnings panel**: color-coded alert cards (critical = red, warning = amber, info = blue) with dark mode variants.
 - **Forecast Comparison table**: multiple forecasting methods with EAC values and BAC variance.

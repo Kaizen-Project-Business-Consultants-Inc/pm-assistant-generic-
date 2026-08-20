@@ -1,5 +1,7 @@
 import { Bot, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import { MetaPill } from '../ui/MetaPill';
+import { EVMMetricTooltip } from './EVMMetricTooltip';
+import type { MetricValues } from './EVMMetricTooltip';
 
 function formatDollar(value: number): string {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
@@ -11,17 +13,19 @@ function MetricCard({
   label,
   value,
   color,
-  tooltip,
+  metricKey,
+  metricValues,
   badge,
 }: {
   label: string;
   value: string;
   color: string;
-  tooltip?: string;
+  metricKey?: string;
+  metricValues?: MetricValues;
   badge?: string;
 }) {
-  return (
-    <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-center" title={tooltip}>
+  const card = (
+    <div className={`rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-center ${metricKey ? 'cursor-help' : ''}`}>
       <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">
         {label}
         {badge && (
@@ -34,6 +38,11 @@ function MetricCard({
       <div className={`mt-1 text-lg font-bold ${color}`}>{value}</div>
     </div>
   );
+
+  if (metricKey && metricValues) {
+    return <EVMMetricTooltip metricKey={metricKey} values={metricValues}>{card}</EVMMetricTooltip>;
+  }
+  return card;
 }
 
 const severityStyles: Record<string, { bg: string; border: string; text: string; icon: typeof AlertTriangle }> = {
@@ -74,12 +83,22 @@ export function EVMForecastDashboard({ data }: { data: any }) {
   return (
     <div className="space-y-4">
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <MetricCard label="CPI" value={(currentMetrics?.cpi ?? '-').toString()} color={cpiColor} tooltip="Cost Performance Index: EV / AC" />
-        <MetricCard label="SPI" value={(currentMetrics?.spi ?? '-').toString()} color={spiColor} tooltip="Schedule Performance Index: EV / PV" />
-        <MetricCard label="TCPI" value={(currentMetrics?.tcpi ?? '-').toString()} color={tcpiColor} tooltip="To-Complete Performance Index" />
-        <MetricCard label="AI Predicted EAC" value={aiEAC != null ? formatDollar(aiEAC) : '-'} color="text-primary-600 dark:text-primary-400" tooltip="AI / ML predicted Estimate at Completion" badge="AI" />
-      </div>
+      {(() => {
+        const mv: MetricValues | undefined = currentMetrics ? {
+          BAC: currentMetrics.bac ?? 0, EV: currentMetrics.ev ?? 0, AC: currentMetrics.ac ?? 0,
+          PV: currentMetrics.pv ?? 0, CPI: currentMetrics.cpi ?? 1, SPI: currentMetrics.spi ?? 1,
+          EAC: currentMetrics.eac ?? 0, ETC: currentMetrics.etc ?? 0, VAC: currentMetrics.vac ?? 0,
+          TCPI: currentMetrics.tcpi ?? 1,
+        } : undefined;
+        return (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MetricCard label="CPI" value={(currentMetrics?.cpi ?? '-').toString()} color={cpiColor} metricKey="CPI" metricValues={mv} />
+            <MetricCard label="SPI" value={(currentMetrics?.spi ?? '-').toString()} color={spiColor} metricKey="SPI" metricValues={mv} />
+            <MetricCard label="TCPI" value={(currentMetrics?.tcpi ?? '-').toString()} color={tcpiColor} metricKey="TCPI" metricValues={mv} />
+            <MetricCard label="AI Predicted EAC" value={aiEAC != null ? formatDollar(aiEAC) : '-'} color="text-primary-600 dark:text-primary-400" badge="AI" />
+          </div>
+        );
+      })()}
 
       {/* Early Warning Alerts */}
       {earlyWarnings && earlyWarnings.length > 0 && (

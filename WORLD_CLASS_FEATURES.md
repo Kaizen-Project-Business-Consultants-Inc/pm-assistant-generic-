@@ -323,6 +323,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - AI suggests corrective actions with estimated impact
 - Compare AI forecast vs traditional EAC formulas
 - Dedicated EVM Dashboard page (`/evm`) with 6 KPI cards, 4 forecast cards (with warning borders), CPI/SPI trend line chart, early warnings panel, forecast comparison table, and AI predictions section (confidence range, overrun probability, corrective actions with priority badges)
+- **Contextual metric tooltips**: hover any of the 10 EVM metric cards (CPI, SPI, EV, PV, AC, BAC, EAC, ETC, VAC, TCPI) to see a four-part tooltip — plain-English definition, formula with live calculated values, green/amber/red health bands, and dynamic guidance that changes based on current metric health. Also applied to the CPI, SPI, and TCPI cards on the Project Detail EVM panel.
 - Full dark mode across EVM trend chart (class-based SVG), forecast dashboard, and severity badges
 - **Trial sample dashboard**: trial users see a realistic sample EVM dashboard (CPI: 0.93, SPI: 1.07, 7-week trend, 3 early warnings, 3 forecast methods) with an amber upgrade banner instead of a 403 error; AI predictions remain paid-only; no tokens or DB queries consumed
 - **Budget Tab**: donut chart (SVG category breakdown), semi-circle health gauge, sortable expense table, search + category filter, cumulative spend line, CSV export, mobile card layout

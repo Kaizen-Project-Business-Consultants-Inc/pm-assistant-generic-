@@ -645,6 +645,17 @@ A visual plot of PV, EV, and AC over time. The S-curve shows:
 - Whether the project is over or under budget (EV vs. AC gap).
 - Trend lines for forecasting completion.
 
+### Metric Hover Tooltips
+
+Hover over any EVM metric card — on both the standalone EVM Dashboard (`/evm`) and the EVM panel within a project — to see a rich tooltip explaining the metric in context:
+
+- **What it measures** -- A plain-English description of the indicator.
+- **Formula** -- The formula used, with the actual calculated values from your project filled in.
+- **Health bands** -- Color-coded thresholds showing what constitutes a green (healthy), amber (warning), or red (critical) value.
+- **What to look at** -- Dynamic guidance that changes depending on whether the metric is currently healthy, at risk, or critical.
+
+This is available for all 10 metrics on the EVM Dashboard (CPI, SPI, EV, PV, AC, BAC, EAC, ETC, VAC, TCPI) and for the CPI, SPI, and TCPI cards on the Project Detail EVM panel.
+
 ### EVM Forecast
 
 The EVM Forecast Dashboard shows:

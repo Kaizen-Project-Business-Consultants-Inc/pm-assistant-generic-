@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, Activity, Target, BarChart3, Lock } from 'lucide-react';
 import { apiService } from '../services/api';
+import { EVMMetricTooltip } from '../components/evm/EVMMetricTooltip';
+import type { MetricValues } from '../components/evm/EVMMetricTooltip';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -197,41 +199,52 @@ export function EVMDashboardPage() {
           )}
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[
-              { label: 'CPI', value: m.CPI.toFixed(2), sub: 'Cost Performance', color: indexColor(m.CPI) },
-              { label: 'SPI', value: m.SPI.toFixed(2), sub: 'Schedule Performance', color: indexColor(m.SPI) },
-              { label: 'EV', value: formatCurrency(m.EV), sub: 'Earned Value', color: '#3b82f6' },
-              { label: 'PV', value: formatCurrency(m.PV), sub: 'Planned Value', color: '#8b5cf6' },
-              { label: 'AC', value: formatCurrency(m.AC), sub: 'Actual Cost', color: '#6b7280' },
-              { label: 'BAC', value: formatCurrency(m.BAC), sub: 'Budget at Completion', color: '#6b7280' },
-            ].map(kpi => (
-              <div key={kpi.label} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-                <div className="text-xs text-gray-500 uppercase font-semibold">{kpi.label}</div>
-                <div className="text-2xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</div>
-                <div className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Forecasts row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { label: 'EAC', value: formatCurrency(m.EAC), sub: 'Estimate at Completion', warn: m.EAC > m.BAC },
-              { label: 'ETC', value: formatCurrency(m.ETC), sub: 'Estimate to Complete', warn: false },
-              { label: 'VAC', value: formatCurrency(m.VAC), sub: 'Variance at Completion', warn: m.VAC < 0 },
-              { label: 'TCPI', value: m.TCPI.toFixed(2), sub: 'To-Complete Performance Index', warn: m.TCPI > 1.1 },
-            ].map(kpi => (
-              <div key={kpi.label} className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-4 ${kpi.warn ? 'border-red-200 dark:border-red-800' : 'border-gray-200 dark:border-gray-700'}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 uppercase font-semibold">{kpi.label}</span>
-                  {kpi.warn && <AlertTriangle className="w-3.5 h-3.5 text-red-500" />}
+          {(() => {
+            const mv: MetricValues = { BAC: m.BAC, EV: m.EV, AC: m.AC, PV: m.PV, CPI: m.CPI, SPI: m.SPI, EAC: m.EAC, ETC: m.ETC, VAC: m.VAC, TCPI: m.TCPI };
+            return (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {[
+                    { label: 'CPI', value: m.CPI.toFixed(2), sub: 'Cost Performance', color: indexColor(m.CPI) },
+                    { label: 'SPI', value: m.SPI.toFixed(2), sub: 'Schedule Performance', color: indexColor(m.SPI) },
+                    { label: 'EV', value: formatCurrency(m.EV), sub: 'Earned Value', color: '#3b82f6' },
+                    { label: 'PV', value: formatCurrency(m.PV), sub: 'Planned Value', color: '#8b5cf6' },
+                    { label: 'AC', value: formatCurrency(m.AC), sub: 'Actual Cost', color: '#6b7280' },
+                    { label: 'BAC', value: formatCurrency(m.BAC), sub: 'Budget at Completion', color: '#6b7280' },
+                  ].map(kpi => (
+                    <EVMMetricTooltip key={kpi.label} metricKey={kpi.label} values={mv}>
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
+                        <div className="text-xs text-gray-500 uppercase font-semibold">{kpi.label}</div>
+                        <div className="text-2xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</div>
+                      </div>
+                    </EVMMetricTooltip>
+                  ))}
                 </div>
-                <div className={`text-xl font-bold mt-1 ${kpi.warn ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{kpi.value}</div>
-                <div className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</div>
-              </div>
-            ))}
-          </div>
+
+                {/* Forecasts row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[
+                    { label: 'EAC', value: formatCurrency(m.EAC), sub: 'Estimate at Completion', warn: m.EAC > m.BAC },
+                    { label: 'ETC', value: formatCurrency(m.ETC), sub: 'Estimate to Complete', warn: false },
+                    { label: 'VAC', value: formatCurrency(m.VAC), sub: 'Variance at Completion', warn: m.VAC < 0 },
+                    { label: 'TCPI', value: m.TCPI.toFixed(2), sub: 'To-Complete Performance Index', warn: m.TCPI > 1.1 },
+                  ].map(kpi => (
+                    <EVMMetricTooltip key={kpi.label} metricKey={kpi.label} values={mv}>
+                      <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-4 cursor-help ${kpi.warn ? 'border-red-200 dark:border-red-800' : 'border-gray-200 dark:border-gray-700'}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500 uppercase font-semibold">{kpi.label}</span>
+                          {kpi.warn && <AlertTriangle className="w-3.5 h-3.5 text-red-500" />}
+                        </div>
+                        <div className={`text-xl font-bold mt-1 ${kpi.warn ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{kpi.value}</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</div>
+                      </div>
+                    </EVMMetricTooltip>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
 
           {/* SPI/CPI Trend Chart + Early Warnings side by side */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
