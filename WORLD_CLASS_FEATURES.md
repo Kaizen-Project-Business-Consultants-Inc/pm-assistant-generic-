@@ -329,6 +329,10 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Contextual metric tooltips**: hover any of the 12 EVM metric cards (CPI, SPI, CV, SV, EV, PV, AC, BAC, EAC, ETC, VAC, TCPI) to see a four-part tooltip — plain-English definition, formula with live calculated values, green/amber/red health bands, and dynamic guidance that changes based on current metric health. Also applied to the CPI, SPI, and TCPI cards on the Project Detail EVM panel.
 - Full dark mode across EVM trend chart (class-based SVG), forecast dashboard, and severity badges
 - **Trial sample dashboard**: trial users see a realistic sample EVM dashboard (CPI: 0.93, SPI: 1.07, 7-week trend, 3 early warnings, 3 forecast methods) with an amber upgrade banner instead of a 403 error; AI predictions remain paid-only; no tokens or DB queries consumed
+- **CPI/SPI gauge dials**: semicircular gauge visualization on CPI and SPI cards with needle and red/amber/green bands (0–0.9 red, 0.9–1.0 amber, 1.0+ green, scale 0–2.0)
+- **Forecast comparison bar chart**: horizontal bars for each EAC method with a dashed BAC reference line; bars exceeding BAC are red, under BAC are green — displayed above the forecast comparison table
+- **S-Curve on EVM Dashboard**: cumulative PV/EV/AC S-Curve chart (reuses existing `SCurveChart` component) now shown on the `/evm` dashboard alongside trend chart; `sCurveData` included in the EVM forecast API response
+- **EVM PDF export**: "Export PDF" button captures the full dashboard (narrative, KPIs with gauges, S-curve, trend chart, warnings, forecast comparison, AI predictions) as A3 landscape PDF via `html2pdf.js`
 - **Budget Tab**: donut chart (SVG category breakdown), semi-circle health gauge, sortable expense table, search + category filter, cumulative spend line, CSV export, mobile card layout
 
 ### 3.8 Agent Activity Log

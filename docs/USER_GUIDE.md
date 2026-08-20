@@ -2219,6 +2219,11 @@ The EVM Dashboard (`/evm`) provides a comprehensive earned value management view
 
    > **Note:** AI Predictions are available on paid plans only and are not included in the trial sample dashboard.
 
+10. The **CPI and SPI cards** include **semicircular gauge dials** with a needle indicating the current value on a 0–2.0 scale. The gauge bands are color-coded: red (0–0.9), amber (0.9–1.0), and green (1.0+), giving you an instant visual read on cost and schedule health.
+11. Above the Forecast Comparison table, a **Forecast Comparison Bar Chart** displays each EAC forecasting method as a horizontal bar. A dashed vertical line marks the BAC reference. Bars that extend past BAC appear in red; bars under BAC appear in green.
+12. The **S-Curve Chart** (cumulative PV, EV, and AC over time) is now displayed on the EVM Dashboard in addition to the Project Detail page, so you can review the full earned value curve without leaving the dashboard.
+13. Click the **Export PDF** button in the dashboard header to download the entire EVM dashboard — including narrative, KPIs with gauges, S-curve, trend chart, warnings, forecast comparison, and AI predictions — as an A3 landscape PDF.
+
 ---
 
 ## 28. Notifications Center Page
