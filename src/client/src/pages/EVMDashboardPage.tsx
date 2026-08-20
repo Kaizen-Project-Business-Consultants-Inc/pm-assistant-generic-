@@ -198,15 +198,124 @@ export function EVMDashboardPage() {
             </div>
           )}
 
+          {/* Narrative Summary */}
+          {(() => {
+            const pctComplete = m.BAC > 0 ? (m.EV / m.BAC) * 100 : 0;
+            const pctSpent = m.BAC > 0 ? (m.AC / m.BAC) * 100 : 0;
+            const CV = m.EV - m.AC;
+            const SV = m.EV - m.PV;
+
+            const scheduleStatus = m.SPI >= 1.0 ? 'on schedule' : m.SPI >= 0.9 ? 'slightly behind schedule' : 'significantly behind schedule';
+            const costStatus = m.CPI >= 1.0 ? 'under budget' : m.CPI >= 0.9 ? 'slightly over budget' : 'significantly over budget';
+
+            const overBudgetAmount = m.EAC > m.BAC ? m.EAC - m.BAC : 0;
+            const forecast = overBudgetAmount > 0
+              ? `At the current rate, the project will cost ${formatCurrency(overBudgetAmount)} more than the ${formatCurrency(m.BAC)} budget.`
+              : `At the current rate, the project is forecast to finish within its ${formatCurrency(m.BAC)} budget.`;
+
+            const overall = m.CPI >= 1.0 && m.SPI >= 1.0 ? 'healthy' : m.CPI >= 0.9 && m.SPI >= 0.9 ? 'needs-attention' : 'at-risk';
+            const badgeColor = overall === 'healthy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              : overall === 'needs-attention' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+            const badgeLabel = overall === 'healthy' ? 'On Track' : overall === 'needs-attention' ? 'Needs Attention' : 'At Risk';
+
+            return (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2 flex-1">
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                      The project is <strong>{Math.round(pctComplete)}% complete</strong> with <strong>{Math.round(pctSpent)}% of budget spent</strong>.
+                      {' '}It is {scheduleStatus} and {costStatus}. {forecast}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold ${badgeColor}`}>{badgeLabel}</span>
+                </div>
+
+                {/* % Complete vs % Spent bar */}
+                <div className="mt-4 space-y-1.5">
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="w-20 text-gray-500 dark:text-gray-400 text-right shrink-0">Complete</span>
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden relative">
+                      <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${Math.min(pctComplete, 100)}%` }} />
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700 dark:text-gray-200">{Math.round(pctComplete)}%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="w-20 text-gray-500 dark:text-gray-400 text-right shrink-0">Spent</span>
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden relative">
+                      <div className={`h-full rounded-full transition-all ${pctSpent > pctComplete ? 'bg-red-400' : 'bg-green-400'}`} style={{ width: `${Math.min(pctSpent, 100)}%` }} />
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700 dark:text-gray-200">{Math.round(pctSpent)}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* KPI Cards */}
           {(() => {
-            const mv: MetricValues = { BAC: m.BAC, EV: m.EV, AC: m.AC, PV: m.PV, CPI: m.CPI, SPI: m.SPI, EAC: m.EAC, ETC: m.ETC, VAC: m.VAC, TCPI: m.TCPI };
+            const CV = m.EV - m.AC;
+            const SV = m.EV - m.PV;
+            const mv: MetricValues = { BAC: m.BAC, EV: m.EV, AC: m.AC, PV: m.PV, CPI: m.CPI, SPI: m.SPI, EAC: m.EAC, ETC: m.ETC, VAC: m.VAC, TCPI: m.TCPI, CV, SV };
+
+            // Period-over-period deltas for CPI/SPI
+            const prevWeek = trendData.length >= 2 ? trendData[trendData.length - 2] : null;
+            const cpiDelta = prevWeek ? m.CPI - prevWeek.cpi : null;
+            const spiDelta = prevWeek ? m.SPI - prevWeek.spi : null;
+
+            function deltaLabel(d: number | null): string {
+              if (d === null) return '';
+              const sign = d >= 0 ? '+' : '';
+              return `${sign}${d.toFixed(2)}`;
+            }
+            function deltaColor(d: number | null): string {
+              if (d === null || Math.abs(d) < 0.005) return 'text-gray-400';
+              return d > 0 ? 'text-green-500' : 'text-red-500';
+            }
+
             return (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                  {/* CPI with delta */}
+                  <EVMMetricTooltip metricKey="CPI" values={mv}>
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
+                      <div className="text-xs text-gray-500 uppercase font-semibold">CPI</div>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-2xl font-bold" style={{ color: indexColor(m.CPI) }}>{m.CPI.toFixed(2)}</span>
+                        {cpiDelta !== null && <span className={`text-xs font-semibold ${deltaColor(cpiDelta)}`}>{deltaLabel(cpiDelta)}</span>}
+                      </div>
+                      <div className="text-[10px] text-gray-400 mt-0.5">Cost Performance</div>
+                    </div>
+                  </EVMMetricTooltip>
+                  {/* SPI with delta */}
+                  <EVMMetricTooltip metricKey="SPI" values={mv}>
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
+                      <div className="text-xs text-gray-500 uppercase font-semibold">SPI</div>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-2xl font-bold" style={{ color: indexColor(m.SPI) }}>{m.SPI.toFixed(2)}</span>
+                        {spiDelta !== null && <span className={`text-xs font-semibold ${deltaColor(spiDelta)}`}>{deltaLabel(spiDelta)}</span>}
+                      </div>
+                      <div className="text-[10px] text-gray-400 mt-0.5">Schedule Performance</div>
+                    </div>
+                  </EVMMetricTooltip>
+                  {/* CV */}
+                  <EVMMetricTooltip metricKey="CV" values={mv}>
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
+                      <div className="text-xs text-gray-500 uppercase font-semibold">CV</div>
+                      <div className="text-2xl font-bold" style={{ color: CV >= 0 ? '#22c55e' : '#ef4444' }}>{formatCurrency(CV)}</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5">Cost Variance</div>
+                    </div>
+                  </EVMMetricTooltip>
+                  {/* SV */}
+                  <EVMMetricTooltip metricKey="SV" values={mv}>
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
+                      <div className="text-xs text-gray-500 uppercase font-semibold">SV</div>
+                      <div className="text-2xl font-bold" style={{ color: SV >= 0 ? '#22c55e' : '#ef4444' }}>{formatCurrency(SV)}</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5">Schedule Variance</div>
+                    </div>
+                  </EVMMetricTooltip>
+                  {/* EV, PV, AC, BAC */}
                   {[
-                    { label: 'CPI', value: m.CPI.toFixed(2), sub: 'Cost Performance', color: indexColor(m.CPI) },
-                    { label: 'SPI', value: m.SPI.toFixed(2), sub: 'Schedule Performance', color: indexColor(m.SPI) },
                     { label: 'EV', value: formatCurrency(m.EV), sub: 'Earned Value', color: '#3b82f6' },
                     { label: 'PV', value: formatCurrency(m.PV), sub: 'Planned Value', color: '#8b5cf6' },
                     { label: 'AC', value: formatCurrency(m.AC), sub: 'Actual Cost', color: '#6b7280' },

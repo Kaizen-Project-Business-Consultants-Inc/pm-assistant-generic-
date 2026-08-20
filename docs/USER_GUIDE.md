@@ -2197,15 +2197,20 @@ The EVM Dashboard (`/evm`) provides a comprehensive earned value management view
 > **Trial plan:** If you are on a trial plan, the EVM Dashboard displays a sample dashboard with demo data rather than your actual project metrics. An amber banner at the top of the page indicates this. Upgrade to a paid plan to unlock EVM metrics calculated from your real project budgets, costs, and schedule performance.
 
 1. Select a project from the **project selector** dropdown.
-2. Review the **KPI cards**: CPI, SPI, EV, PV, AC, and BAC. Values are color-coded (green when healthy, red when critical).
-3. Review the **forecast cards**: EAC, ETC, VAC, and TCPI. Cards show red warning borders when thresholds are exceeded.
-4. The **CPI/SPI Trend chart** plots CPI (blue line) and SPI (green line) over time with a 1.0 baseline reference and labeled axes.
-5. The **Early Warnings** panel displays color-coded alerts:
+2. Read the **Narrative Summary** at the top of the page — a plain-English paragraph describing overall health: "The project is X% complete with Y% of budget spent. It is [schedule status] and [cost status]. [Forecast sentence]." An **On Track / Needs Attention / At Risk** badge appears alongside it, and a **% Complete vs % Spent comparison bar** gives a quick visual: the blue segment shows how much work is done, and the green (or red, if spend exceeds completion) segment shows how much budget has been used.
+3. Review the **KPI cards** (8-card grid): CPI, SPI, CV, SV, EV, PV, AC, and BAC. Values are color-coded green when healthy and red when critical.
+   - **CV (Cost Variance)** shows EV − AC. Positive means under budget; negative means over budget.
+   - **SV (Schedule Variance)** shows EV − PV. Positive means ahead of schedule; negative means behind.
+   - **CPI and SPI cards** each display a **week-over-week delta** next to the main value (e.g., "+0.03" in green or "−0.05" in red) so you can see at a glance whether performance is trending better or worse than last week.
+4. Hover over any KPI card to see a **tooltip** with the metric's plain-English meaning, the formula with your project's actual values filled in, health-band thresholds, and actionable guidance.
+5. Review the **forecast cards**: EAC, ETC, VAC, and TCPI. Cards show red warning borders when thresholds are exceeded.
+6. The **CPI/SPI Trend chart** plots CPI (blue line) and SPI (green line) over time with a 1.0 baseline reference and labeled axes.
+7. The **Early Warnings** panel displays color-coded alerts:
    - **Red** — Critical issues requiring immediate attention.
    - **Amber** — Warnings to watch.
    - **Blue** — Informational notices.
-6. The **Forecast Comparison** table shows multiple forecasting methods with their EAC values and variance from BAC.
-7. When AI is enabled, the **AI Predictions** section displays:
+8. The **Forecast Comparison** table shows multiple forecasting methods with their EAC values and variance from BAC.
+9. When AI is enabled, the **AI Predictions** section displays:
    - AI-adjusted EAC with confidence range (low/high).
    - Overrun probability percentage.
    - Trend direction (improving, stable, or deteriorating).

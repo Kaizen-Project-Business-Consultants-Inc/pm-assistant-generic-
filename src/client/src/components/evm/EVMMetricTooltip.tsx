@@ -18,6 +18,7 @@ interface MetricInfo {
 export interface MetricValues {
   BAC: number; EV: number; AC: number; PV: number;
   CPI: number; SPI: number; EAC: number; ETC: number; VAC: number; TCPI: number;
+  CV?: number; SV?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -179,6 +180,40 @@ const METRIC_INFO: Record<string, MetricInfo> = {
       : v.TCPI <= 1.1
         ? 'You need to be slightly more efficient on remaining work. Look for small savings: reduce overtime, negotiate vendor rates, defer non-critical scope.'
         : 'Hitting the original budget is very unlikely. Consider re-baselining, requesting additional funding, or reducing scope. A TCPI above 1.1 is rarely sustained.',
+  },
+  CV: {
+    name: 'Cost Variance',
+    whatItMeasures: 'The dollar difference between the value of work completed and what you actually spent. Positive means under budget.',
+    formula: 'CV = EV − AC',
+    formulaWithValues: (v) => `CV = ${fmt(v.EV)} − ${fmt(v.AC)} = ${fmt(v.CV ?? (v.EV - v.AC))}`,
+    bands: [
+      { label: 'Under budget (surplus)', range: 'CV > 0', color: '#22c55e' },
+      { label: 'On budget', range: 'CV = 0', color: '#6b7280' },
+      { label: 'Over budget (deficit)', range: 'CV < 0', color: '#ef4444' },
+    ],
+    guidance: (v) => {
+      const cv = v.CV ?? (v.EV - v.AC);
+      return cv >= 0
+        ? `You've spent ${fmt(Math.abs(cv))} less than the value of work completed — cost-efficient so far.`
+        : `You've spent ${fmt(Math.abs(cv))} more than the value of work completed. Review resource rates, overtime, vendor costs, and any unplanned expenses.`;
+    },
+  },
+  SV: {
+    name: 'Schedule Variance',
+    whatItMeasures: 'The dollar difference between work completed and work planned. Positive means ahead of schedule.',
+    formula: 'SV = EV − PV',
+    formulaWithValues: (v) => `SV = ${fmt(v.EV)} − ${fmt(v.PV)} = ${fmt(v.SV ?? (v.EV - v.PV))}`,
+    bands: [
+      { label: 'Ahead of schedule', range: 'SV > 0', color: '#22c55e' },
+      { label: 'On schedule', range: 'SV = 0', color: '#6b7280' },
+      { label: 'Behind schedule', range: 'SV < 0', color: '#ef4444' },
+    ],
+    guidance: (v) => {
+      const sv = v.SV ?? (v.EV - v.PV);
+      return sv >= 0
+        ? `You've completed ${fmt(Math.abs(sv))} more work than planned for this point in time.`
+        : `You're ${fmt(Math.abs(sv))} behind in planned work. Check: critical path tasks, blocked dependencies, resource availability, and whether the baseline is realistic.`;
+    },
   },
 };
 

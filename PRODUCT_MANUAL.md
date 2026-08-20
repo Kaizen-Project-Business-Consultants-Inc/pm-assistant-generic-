@@ -309,7 +309,11 @@ The Budget tab within a project provides expense tracking and budget overview:
 A dedicated analytics page for earned value management, accessible from the sidebar under the **Analyze** section. Full dark mode support. Features:
 
 - **Project selector** dropdown to choose which project to analyze.
-- **Six KPI cards**: CPI, SPI, EV, PV, AC, BAC with color-coded values (green when healthy, red when critical).
+- **Eight KPI cards** (top row, 8-card grid): CPI, SPI, CV, SV, EV, PV, AC, BAC with color-coded values (green when healthy, red when critical).
+  - **CV (Cost Variance)** card: EV − AC, colored green when positive (under budget) and red when negative (over budget). Hover tooltip includes plain-English definition, formula with live values, health bands, and guidance.
+  - **SV (Schedule Variance)** card: EV − PV, colored green when positive (ahead of schedule) and red when negative (behind schedule). Same four-section tooltip format.
+  - **CPI and SPI cards** also display a **period-over-period delta** — the change from the previous week's value shown inline next to the main figure (e.g., "+0.03" in green or "−0.05" in red), so teams can immediately see whether performance is improving or declining week over week.
+- **Narrative summary panel**: a plain-English paragraph at the top of the dashboard summarizing project health — "The project is X% complete with Y% of budget spent. It is [schedule status] and [cost status]. [Forecast sentence]." Accompanied by an **On Track / Needs Attention / At Risk** status badge and a **% Complete vs % Spent comparison bar** (blue bar for % complete; green or red bar for % spent, turning red when spend exceeds completion).
 - **Four forecast cards**: EAC, ETC, VAC, TCPI with red warning borders when thresholds are exceeded.
 - **Metric hover tooltips**: hovering any KPI or forecast card opens a rich tooltip with four sections — what the metric measures (plain English), the formula with calculated values from live project data, color-coded health bands (green/amber/red thresholds), and dynamic guidance that adapts based on whether the metric is healthy, warning, or critical. Implemented in `EVMMetricTooltip.tsx`; also applied to the CPI, SPI, and TCPI cards on the Project Detail EVM panel.
 - **CPI/SPI Trend chart**: SVG line chart with blue CPI line, green SPI line, 1.0 baseline reference, and labeled axes. Dark mode uses class-based SVG fills for proper contrast.
