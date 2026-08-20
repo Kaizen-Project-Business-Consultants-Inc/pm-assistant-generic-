@@ -72,6 +72,13 @@ export const EVMForecastComparisonSchema = z.object({
   varianceFromBAC: z.number(),
 });
 
+export const SCurveDataPointSchema = z.object({
+  date: z.string(),
+  pv: z.number(),
+  ev: z.number(),
+  ac: z.number(),
+});
+
 export const EVMForecastResultSchema = z.object({
   currentMetrics: EVMCurrentMetricsSchema,
   historicalTrends: z.object({
@@ -85,6 +92,7 @@ export const EVMForecastResultSchema = z.object({
   }),
   aiPredictions: EVMForecastAIResponseSchema.optional(),
   forecastComparison: z.array(EVMForecastComparisonSchema),
+  sCurveData: z.array(SCurveDataPointSchema).optional(),
 });
 
 export type EVMForecastResult = z.infer<typeof EVMForecastResultSchema>;

@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, Activity, Target, BarChart3, Lock } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, Activity, Target, BarChart3, Lock, Download } from 'lucide-react';
 import { apiService } from '../services/api';
 import { EVMMetricTooltip } from '../components/evm/EVMMetricTooltip';
 import type { MetricValues } from '../components/evm/EVMMetricTooltip';
+import { SCurveChart } from '../components/evm/SCurveChart';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,6 +50,13 @@ interface AIPrediction {
   narrativeSummary: string;
 }
 
+interface SCurveDataPoint {
+  date: string;
+  pv: number;
+  ev: number;
+  ac: number;
+}
+
 interface EVMResult {
   currentMetrics: EVMMetrics;
   historicalTrends: { weeklyData: WeeklyTrend[] };
@@ -56,6 +64,7 @@ interface EVMResult {
   traditionalForecasts: { eacCumulative: number; eacComposite: number; eacManagement: number };
   forecastComparison: ForecastComparison[];
   aiPredictions?: AIPrediction;
+  sCurveData?: SCurveDataPoint[];
 }
 
 // ---------------------------------------------------------------------------
@@ -87,11 +96,111 @@ function trendIcon(direction?: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Gauge Component (semicircular)
+// ---------------------------------------------------------------------------
+
+function SemiGauge({ value, size = 80 }: { value: number; size?: number }) {
+  const r = (size - 8) / 2;
+  const cx = size / 2;
+  const cy = size / 2 + 4;
+  const startAngle = Math.PI;
+  const endAngle = 0;
+
+  // Arc helper: angles go from PI (left) to 0 (right) for a top semicircle
+  function arcPoint(angle: number) {
+    return { x: cx + r * Math.cos(angle), y: cy - r * Math.sin(angle) };
+  }
+
+  // Three bands: red (0–0.9), amber (0.9–1.0), green (1.0–2.0)
+  // Map value range 0–2 across PI to 0
+  function valueToAngle(v: number) {
+    const clamped = Math.max(0, Math.min(2, v));
+    return Math.PI * (1 - clamped / 2);
+  }
+
+  const redEnd = valueToAngle(0.9);
+  const amberEnd = valueToAngle(1.0);
+
+  function arcPath(fromAngle: number, toAngle: number) {
+    const start = arcPoint(fromAngle);
+    const end = arcPoint(toAngle);
+    const sweep = fromAngle - toAngle > Math.PI ? 1 : 0;
+    return `M ${start.x} ${start.y} A ${r} ${r} 0 ${sweep} 1 ${end.x} ${end.y}`;
+  }
+
+  // Needle
+  const needleAngle = valueToAngle(value);
+  const needleLen = r - 6;
+  const tip = { x: cx + needleLen * Math.cos(needleAngle), y: cy - needleLen * Math.sin(needleAngle) };
+
+  return (
+    <svg width={size} height={size / 2 + 12} viewBox={`0 0 ${size} ${size / 2 + 12}`} className="mx-auto">
+      {/* Red band (0 to 0.9) */}
+      <path d={arcPath(startAngle, redEnd)} fill="none" stroke="#fca5a5" strokeWidth={6} strokeLinecap="round" />
+      {/* Amber band (0.9 to 1.0) */}
+      <path d={arcPath(redEnd, amberEnd)} fill="none" stroke="#fcd34d" strokeWidth={6} strokeLinecap="round" />
+      {/* Green band (1.0 to 2.0) */}
+      <path d={arcPath(amberEnd, endAngle)} fill="none" stroke="#86efac" strokeWidth={6} strokeLinecap="round" />
+      {/* Needle */}
+      <line x1={cx} y1={cy} x2={tip.x} y2={tip.y} stroke={value >= 1.0 ? '#16a34a' : value >= 0.9 ? '#d97706' : '#dc2626'} strokeWidth={2} strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r={3} fill={value >= 1.0 ? '#16a34a' : value >= 0.9 ? '#d97706' : '#dc2626'} />
+      {/* Scale labels */}
+      <text x={cx - r + 2} y={cy + 10} fontSize={7} fill="#9ca3af" textAnchor="middle">0</text>
+      <text x={cx} y={cy - r + 2} fontSize={7} fill="#9ca3af" textAnchor="middle">1.0</text>
+      <text x={cx + r - 2} y={cy + 10} fontSize={7} fill="#9ca3af" textAnchor="middle">2.0</text>
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Forecast Bar Chart Component
+// ---------------------------------------------------------------------------
+
+function ForecastBarChart({ comparisons, bac }: { comparisons: ForecastComparison[]; bac: number }) {
+  const maxVal = Math.max(bac, ...comparisons.map(c => c.eacValue)) * 1.1;
+  const barH = 24;
+  const gap = 8;
+  const labelW = 180;
+  const valueW = 70;
+  const chartW = 500;
+  const svgW = labelW + chartW + valueW;
+  const svgH = comparisons.length * (barH + gap) + gap + 20; // extra for BAC label
+
+  const bacX = labelW + (bac / maxVal) * chartW;
+
+  return (
+    <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" style={{ maxHeight: 200 }}>
+      {/* BAC reference line */}
+      <line x1={bacX} y1={0} x2={bacX} y2={svgH - 16} stroke="#6b7280" strokeWidth={1.5} strokeDasharray="4 3" />
+      <text x={bacX} y={svgH - 4} fontSize={9} fill="#6b7280" textAnchor="middle">BAC {formatCurrency(bac)}</text>
+
+      {comparisons.map((c, i) => {
+        const y = gap + i * (barH + gap);
+        const w = (c.eacValue / maxVal) * chartW;
+        const overBudget = c.eacValue > bac;
+        const barColor = overBudget ? '#f87171' : '#4ade80';
+        const shortLabel = c.method.replace(/^EAC\s*\(/, '').replace(/\)$/, '');
+
+        return (
+          <g key={i}>
+            <text x={labelW - 6} y={y + barH / 2 + 4} fontSize={10} fill="#6b7280" textAnchor="end">{shortLabel}</text>
+            <rect x={labelW} y={y} width={w} height={barH} rx={4} fill={barColor} opacity={0.85} />
+            <text x={labelW + w + 6} y={y + barH / 2 + 4} fontSize={10} fill={overBudget ? '#ef4444' : '#22c55e'} fontWeight="600">{formatCurrency(c.eacValue)}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export function EVMDashboardPage() {
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const dashboardRef = useRef<HTMLDivElement>(null);
 
   const { data: projectsData } = useQuery({
     queryKey: ['projects'],
@@ -134,6 +243,28 @@ export function EVMDashboardPage() {
     return { cpiPath, spiPath, baselineY, toX, toY, minY, maxY, rangeY };
   }, [trendData, plotW, plotH]);
 
+  // PDF export handler
+  const handleExportPDF = useCallback(async () => {
+    if (!dashboardRef.current || exporting) return;
+    setExporting(true);
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const projectName = projects.find(p => p.id === selectedProjectId)?.name || 'EVM Report';
+      const opt = {
+        margin: [10, 10, 10, 10] as [number, number, number, number],
+        filename: `EVM_Report_${projectName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm' as const, format: 'a3' as const, orientation: 'landscape' as const },
+      };
+      await html2pdf().set(opt).from(dashboardRef.current).save();
+    } catch (err) {
+      console.error('PDF export failed:', err);
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting, selectedProjectId, projects]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
@@ -147,9 +278,26 @@ export function EVMDashboardPage() {
             <p className="text-sm text-gray-500">SPI/CPI performance tracking, forecasts, and early warnings</p>
           </div>
         </div>
-        {aiPowered && (
-          <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">AI-Powered</span>
-        )}
+        <div className="flex items-center gap-2">
+          {aiPowered && (
+            <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">AI-Powered</span>
+          )}
+          {result && m && (
+            <button
+              onClick={handleExportPDF}
+              disabled={exporting}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+              title="Export EVM report as PDF"
+            >
+              {exporting ? (
+                <div className="w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              Export PDF
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Project selector */}
@@ -183,9 +331,9 @@ export function EVMDashboardPage() {
       )}
 
       {result && m && (
-        <>
+        <div ref={dashboardRef}>
           {isSample && (
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 mb-6">
               <div className="flex items-start gap-2">
                 <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                 <div>
@@ -198,12 +346,11 @@ export function EVMDashboardPage() {
             </div>
           )}
 
+          <div className="space-y-6">
           {/* Narrative Summary */}
           {(() => {
             const pctComplete = m.BAC > 0 ? (m.EV / m.BAC) * 100 : 0;
             const pctSpent = m.BAC > 0 ? (m.AC / m.BAC) * 100 : 0;
-            const CV = m.EV - m.AC;
-            const SV = m.EV - m.PV;
 
             const scheduleStatus = m.SPI >= 1.0 ? 'on schedule' : m.SPI >= 0.9 ? 'slightly behind schedule' : 'significantly behind schedule';
             const costStatus = m.CPI >= 1.0 ? 'under budget' : m.CPI >= 0.9 ? 'slightly over budget' : 'significantly over budget';
@@ -252,7 +399,7 @@ export function EVMDashboardPage() {
             );
           })()}
 
-          {/* KPI Cards */}
+          {/* KPI Cards with Gauges */}
           {(() => {
             const CV = m.EV - m.AC;
             const SV = m.EV - m.PV;
@@ -276,26 +423,28 @@ export function EVMDashboardPage() {
             return (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-                  {/* CPI with delta */}
+                  {/* CPI with gauge */}
                   <EVMMetricTooltip metricKey="CPI" values={mv}>
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
-                      <div className="text-xs text-gray-500 uppercase font-semibold">CPI</div>
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-2xl font-bold" style={{ color: indexColor(m.CPI) }}>{m.CPI.toFixed(2)}</span>
+                      <div className="text-xs text-gray-500 uppercase font-semibold text-center">CPI</div>
+                      <SemiGauge value={m.CPI} size={72} />
+                      <div className="flex items-baseline justify-center gap-1.5">
+                        <span className="text-xl font-bold" style={{ color: indexColor(m.CPI) }}>{m.CPI.toFixed(2)}</span>
                         {cpiDelta !== null && <span className={`text-xs font-semibold ${deltaColor(cpiDelta)}`}>{deltaLabel(cpiDelta)}</span>}
                       </div>
-                      <div className="text-[10px] text-gray-400 mt-0.5">Cost Performance</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 text-center">Cost Performance</div>
                     </div>
                   </EVMMetricTooltip>
-                  {/* SPI with delta */}
+                  {/* SPI with gauge */}
                   <EVMMetricTooltip metricKey="SPI" values={mv}>
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
-                      <div className="text-xs text-gray-500 uppercase font-semibold">SPI</div>
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-2xl font-bold" style={{ color: indexColor(m.SPI) }}>{m.SPI.toFixed(2)}</span>
+                      <div className="text-xs text-gray-500 uppercase font-semibold text-center">SPI</div>
+                      <SemiGauge value={m.SPI} size={72} />
+                      <div className="flex items-baseline justify-center gap-1.5">
+                        <span className="text-xl font-bold" style={{ color: indexColor(m.SPI) }}>{m.SPI.toFixed(2)}</span>
                         {spiDelta !== null && <span className={`text-xs font-semibold ${deltaColor(spiDelta)}`}>{deltaLabel(spiDelta)}</span>}
                       </div>
-                      <div className="text-[10px] text-gray-400 mt-0.5">Schedule Performance</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 text-center">Schedule Performance</div>
                     </div>
                   </EVMMetricTooltip>
                   {/* CV */}
@@ -354,6 +503,17 @@ export function EVMDashboardPage() {
               </>
             );
           })()}
+
+          {/* S-Curve Chart */}
+          {result.sCurveData && result.sCurveData.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary-500" />
+                Cumulative Value Analysis (S-Curve)
+              </h3>
+              <SCurveChart data={result.sCurveData} height={280} />
+            </div>
+          )}
 
           {/* SPI/CPI Trend Chart + Early Warnings side by side */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -429,13 +589,20 @@ export function EVMDashboardPage() {
             </div>
           </div>
 
-          {/* Forecast comparison table */}
+          {/* Forecast Comparison — table + bar chart */}
           {result.forecastComparison.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                 <Target className="w-4 h-4 text-primary-500" />
                 Forecast Comparison
               </h3>
+
+              {/* Bar chart */}
+              <div className="mb-4">
+                <ForecastBarChart comparisons={result.forecastComparison} bac={m.BAC} />
+              </div>
+
+              {/* Table */}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -516,7 +683,8 @@ export function EVMDashboardPage() {
               )}
             </div>
           )}
-        </>
+          </div>
+        </div>
       )}
     </div>
   );

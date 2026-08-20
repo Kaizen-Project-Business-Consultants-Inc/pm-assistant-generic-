@@ -147,6 +147,7 @@ export class EVMForecastService {
       traditionalForecasts,
       aiPredictions,
       forecastComparison,
+      sCurveData,
     };
   }
 
@@ -195,6 +196,7 @@ export class EVMForecastService {
       traditionalForecasts,
       aiPredictions,
       forecastComparison,
+      sCurveData,
     };
   }
 
@@ -273,7 +275,18 @@ export class EVMForecastService {
       { method: 'EAC (Management Estimate)', eacValue: 525000, varianceFromBAC: 25000 },
     ];
 
-    return { currentMetrics, historicalTrends: { weeklyData }, earlyWarnings, traditionalForecasts, forecastComparison };
+    const sCurveData = [
+      { date: '2026-05-25', pv: 40000, ev: 38000, ac: 37000 },
+      { date: '2026-06-01', pv: 85000, ev: 80000, ac: 78000 },
+      { date: '2026-06-08', pv: 130000, ev: 122000, ac: 123000 },
+      { date: '2026-06-15', pv: 175000, ev: 165000, ac: 170000 },
+      { date: '2026-06-22', pv: 215000, ev: 210000, ac: 220000 },
+      { date: '2026-06-29', pv: 250000, ev: 248000, ac: 263000 },
+      { date: '2026-07-06', pv: 280000, ev: 290000, ac: 310000 },
+      { date: '2026-07-13', pv: 300000, ev: 320000, ac: 345000 },
+    ];
+
+    return { currentMetrics, historicalTrends: { weeklyData }, earlyWarnings, traditionalForecasts, forecastComparison, sCurveData };
   }
 
   // -------------------------------------------------------------------------
