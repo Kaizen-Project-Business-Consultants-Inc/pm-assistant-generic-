@@ -49,6 +49,20 @@ class MeetingAnalysisRepository {
       [appliedItems, id],
     );
   }
+
+  async findByMeeting(meetingId: string): Promise<MeetingAnalysisRow[]> {
+    return databaseService.query<MeetingAnalysisRow>(
+      'SELECT * FROM meeting_analyses WHERE meeting_id = ? ORDER BY created_at DESC',
+      [meetingId],
+    );
+  }
+
+  updateMeetingId(id: string, meetingId: string | null): Promise<any> {
+    return databaseService.query(
+      'UPDATE meeting_analyses SET meeting_id = ? WHERE id = ?',
+      [meetingId, id],
+    );
+  }
 }
 
 export const meetingAnalysisRepository = new MeetingAnalysisRepository();

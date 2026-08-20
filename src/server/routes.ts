@@ -61,6 +61,8 @@ import { sprintRoutes } from './routes/collaboration/sprints';
 import { templateRoutes } from './routes/collaboration/templates';
 import { fileAttachmentRoutes } from './routes/collaboration/fileAttachments';
 import { meetingIntelligenceRoutes } from './routes/collaboration/meetingIntelligence';
+import { meetingRoutes } from './routes/collaboration/meetings';
+import { meetingActionItemRoutes } from './routes/collaboration/meetingActionItems';
 import { lessonsLearnedRoutes } from './routes/collaboration/lessonsLearned';
 import { intakeFormRoutes } from './routes/collaboration/intakeForms';
 import { riskRoutes } from './routes/collaboration/risks';
@@ -178,6 +180,8 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(templateRoutes, { prefix: '/api/v1/templates' });
   await fastify.register(fileAttachmentRoutes, { prefix: '/api/v1/attachments' });
   await fastify.register(meetingIntelligenceRoutes, { prefix: '/api/v1/meeting-intelligence' });
+  await fastify.register(meetingRoutes, { prefix: '/api/v1/meetings' });
+  await fastify.register(meetingActionItemRoutes, { prefix: '/api/v1/meeting-action-items' });
   await fastify.register(lessonsLearnedRoutes, { prefix: '/api/v1/lessons-learned' });
   await fastify.register(intakeFormRoutes, { prefix: '/api/v1/intake' });
   await fastify.register(riskRoutes, { prefix: '/api/v1/projects' });

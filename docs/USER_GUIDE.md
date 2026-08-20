@@ -121,7 +121,7 @@ The left sidebar provides access to all areas of the application:
 | Resources      | Resource workload heatmap, histogram, and capacity forecast |
 | EVM            | Earned value KPIs, trend charts, forecasts, and AI predictions |
 | Simulation     | Monte Carlo schedule simulation             |
-| Meetings       | AI meeting intelligence                     |
+| Meetings       | Meeting management, transcript analysis, and action items |
 | Lessons        | Lessons learned knowledge base              |
 | Timesheets     | Time tracking and actual vs. estimated      |
 | Integrations   | Jira, GitHub, Slack, Trello connections     |
@@ -1374,7 +1374,35 @@ The Task Prioritization Panel analyzes your backlog and suggests an optimal task
 
 ### Meeting Intelligence
 
-1. Navigate to **Meetings** in the sidebar.
+The Meetings page has three tabs: **Meetings** (default), **Transcript Analysis**, and **Action Items**.
+
+#### Meetings Tab -- Creating and Managing Meetings
+
+1. Navigate to **Meetings** in the sidebar. The **Meetings** tab is selected by default.
+2. Click **New Meeting** to create a meeting.
+3. Fill in the meeting details:
+   - **Title** -- Name of the meeting.
+   - **Type** -- Choose from: Standup, Sprint Review, Sprint Retro, Planning, Steering, Kickoff, or Ad Hoc.
+   - **Date & Time** -- When the meeting is scheduled.
+   - **Duration** -- Meeting length in minutes.
+   - **Location** -- Physical room or virtual link.
+   - **Attendees** -- Add meeting participants.
+   - **Agenda Items** -- Add ordered agenda items to structure the discussion.
+4. Click **Save** to create the meeting in `scheduled` status.
+5. During or after the meeting, open it to add **Notes** (freeform text).
+6. Use the lifecycle actions:
+   - **Complete** -- Mark the meeting as finished.
+   - **Cancel** -- Cancel a scheduled meeting.
+
+#### Linking AI Analysis to a Meeting
+
+1. After running a transcript analysis (in the Transcript Analysis tab), open a meeting.
+2. Click **Link Analysis** and select the analysis to attach.
+3. Click **Import Action Items** to pull AI-extracted action items into the meeting's tracked action items.
+
+#### Transcript Analysis Tab
+
+1. Switch to the **Transcript Analysis** tab.
 2. Paste or type a meeting transcript.
 3. Select the associated project and schedule.
 4. Click **Process**. The AI extracts:
@@ -1383,6 +1411,17 @@ The Task Prioritization Panel analyzes your backlog and suggests an optimal task
    - **Decisions** -- Key decisions recorded.
    - **Risks** -- Potential issues mentioned.
 5. Action items can be converted directly into schedule tasks.
+
+#### Action Items Tab -- Cross-Meeting Tracker
+
+1. Switch to the **Action Items** tab to see all action items across meetings for the project.
+2. Click **New Action Item** to create one manually, or import from an AI analysis.
+3. Each action item shows: title, assignee, due date, priority, status, and source (manual or AI-extracted).
+4. **Quick complete/reopen** -- Click the checkbox next to any item to toggle it between open and completed.
+5. **Expand to edit** -- Click an item to expand inline editing for description, due date, assignee, priority, status, and notes.
+6. **Filters** -- Filter the list by status (open, in progress, completed, cancelled), assignee, or overdue items.
+7. Overdue items are visually highlighted so nothing slips through the cracks.
+8. Notifications are sent when you are assigned an action item or when one of your items is completed.
 
 > **Trial accounts:** If you are on a trial plan, clicking Process returns a **sample meeting analysis** with demo data — a brief summary, 3 sample action items (with assignees and due dates), 2 sample decisions, 1 sample risk, and 1 task update suggestion. An amber banner at the top of the page identifies it as a sample. The **Apply Changes** button (to convert action items into tasks) and the meeting **History** list are hidden or disabled for trial users. No AI tokens are consumed. Upgrade to a paid plan to process your real meeting transcripts.
 

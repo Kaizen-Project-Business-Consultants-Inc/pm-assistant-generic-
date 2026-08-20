@@ -38,6 +38,7 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
         parsed.projectId,
         parsed.scheduleId,
         userId,
+        parsed.meetingId,
       );
 
       return reply.send({ data: analysis });

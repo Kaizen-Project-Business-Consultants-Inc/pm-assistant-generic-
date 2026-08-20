@@ -8,9 +8,15 @@ import {
   FileText,
   Send,
   Lock,
+  Calendar,
+  CheckSquare,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { MeetingResultPanel } from '../components/meeting/MeetingResultPanel';
+import { MeetingList } from '../components/meeting/MeetingList';
+import { MeetingDetailPanel } from '../components/meeting/MeetingDetailPanel';
+import { MeetingForm } from '../components/meeting/MeetingForm';
+import { MeetingActionItemList } from '../components/meeting/MeetingActionItemList';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,10 +58,9 @@ function formatDate(dateStr: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Speech Recognition types
 // ---------------------------------------------------------------------------
 
-// Speech Recognition types
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
 }
@@ -101,7 +106,6 @@ function useContinuousVoice(onTranscript: (text: string) => void) {
     };
 
     rec.onend = () => {
-      // Auto-restart if user hasn't toggled off (browser stops after silence)
       if (wantListening.current) {
         try { rec.start(); } catch { setIsListening(false); wantListening.current = false; }
       } else {
@@ -110,7 +114,6 @@ function useContinuousVoice(onTranscript: (text: string) => void) {
     };
 
     rec.onerror = (e: Event & { error?: string }) => {
-      // 'no-speech' is normal — browser fires it after silence, onend will restart
       if ((e as any).error === 'no-speech') return;
       setIsListening(false);
       wantListening.current = false;
@@ -136,23 +139,44 @@ function useContinuousVoice(onTranscript: (text: string) => void) {
   return { isSupported, isListening, toggle };
 }
 
+// ---------------------------------------------------------------------------
+// Tabs
+// ---------------------------------------------------------------------------
+
+type Tab = 'meetings' | 'transcript' | 'action-items';
+
+const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
+  { key: 'meetings', label: 'Meetings', icon: Calendar },
+  { key: 'transcript', label: 'Transcript Analysis', icon: Mic },
+  { key: 'action-items', label: 'Action Items', icon: CheckSquare },
+];
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export const MeetingMinutesPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<Tab>('meetings');
 
-  // Form state
-  const [transcript, setTranscript] = useState('');
+  // Shared project selector
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>('');
 
-  // Continuous voice transcription — appends each phrase to the textarea
+  // Transcript analysis state
+  const [transcript, setTranscript] = useState('');
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [isSample, setIsSample] = useState(false);
+
+  // Meetings tab state
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+  const [showMeetingForm, setShowMeetingForm] = useState(false);
+  const [editingMeeting, setEditingMeeting] = useState<any>(null);
+
   const handleVoiceResult = useCallback((text: string) => {
     setTranscript(prev => prev ? prev + ' ' + text : text);
   }, []);
   const { isSupported: micSupported, isListening, toggle: toggleMic } = useContinuousVoice(handleVoiceResult);
-
-  // Analysis result
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
-  const [isSample, setIsSample] = useState(false);
 
   // ---- Queries ----
 
@@ -170,12 +194,25 @@ export const MeetingMinutesPage: React.FC = () => {
   const { data: historyData } = useQuery({
     queryKey: ['meetingHistory', selectedProjectId],
     queryFn: () => apiService.getMeetingHistory(selectedProjectId),
-    enabled: !!selectedProjectId,
+    enabled: !!selectedProjectId && activeTab === 'transcript',
+  });
+
+  const { data: meetingsData, isLoading: meetingsLoading } = useQuery({
+    queryKey: ['meetings', selectedProjectId],
+    queryFn: () => apiService.getMeetings(selectedProjectId),
+    enabled: !!selectedProjectId && activeTab === 'meetings',
+  });
+
+  const { data: meetingDetailData } = useQuery({
+    queryKey: ['meeting', selectedMeetingId],
+    queryFn: () => apiService.getMeetingDetail(selectedMeetingId!),
+    enabled: !!selectedMeetingId,
   });
 
   const projects: Project[] = projectsData?.data || projectsData?.projects || [];
   const schedules: Schedule[] = schedulesData?.schedules || [];
   const history: HistoryEntry[] = historyData?.history || historyData?.analyses || [];
+  const meetings = meetingsData?.meetings || [];
 
   // ---- Mutations ----
 
@@ -204,9 +241,52 @@ export const MeetingMinutesPage: React.FC = () => {
     },
   });
 
+  const createMeetingMutation = useMutation({
+    mutationFn: (data: any) => apiService.createMeeting(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings', selectedProjectId] });
+      setShowMeetingForm(false);
+    },
+  });
+
+  const updateMeetingMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => apiService.updateMeeting(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings', selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['meeting', selectedMeetingId] });
+      setShowMeetingForm(false);
+      setEditingMeeting(null);
+    },
+  });
+
+  const completeMeetingMutation = useMutation({
+    mutationFn: (id: string) => apiService.completeMeeting(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings', selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['meeting', selectedMeetingId] });
+    },
+  });
+
+  const cancelMeetingMutation = useMutation({
+    mutationFn: (id: string) => apiService.cancelMeeting(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings', selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['meeting', selectedMeetingId] });
+    },
+  });
+
+  const deleteMeetingMutation = useMutation({
+    mutationFn: (id: string) => apiService.deleteMeeting(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings', selectedProjectId] });
+      setSelectedMeetingId(null);
+    },
+  });
+
   const handleProjectChange = (pid: string) => {
     setSelectedProjectId(pid);
     setSelectedScheduleId('');
+    setSelectedMeetingId(null);
   };
 
   const handleAnalyze = () => {
@@ -219,237 +299,307 @@ export const MeetingMinutesPage: React.FC = () => {
   };
 
   const handleHistoryClick = (entry: HistoryEntry) => {
-    // Load the analysis from history into the result panel
     setAnalysisResult(entry);
   };
 
   return (
-    <div className="flex gap-6">
-      {/* Main content */}
-      <div className="flex-1 space-y-6 min-w-0">
-        {/* Header */}
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Mic className="w-6 h-6 text-primary-500" />
-            Meeting Minutes
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Paste a meeting transcript and let AI extract action items, decisions, risks, and task updates.
-          </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <Calendar className="w-6 h-6 text-primary-500" />
+          Meeting Minutes
+        </h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Manage meetings, analyze transcripts, and track action items.
+        </p>
+      </div>
+
+      {/* Project selector */}
+      <div className="max-w-xs">
+        <label htmlFor="meeting-project" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+          Project
+        </label>
+        <div className="relative">
+          <select
+            id="meeting-project"
+            value={selectedProjectId}
+            onChange={(e) => handleProjectChange(e.target.value)}
+            className="input w-full appearance-none pr-8"
+            disabled={projectsLoading}
+          >
+            <option value="">Select a project...</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
         </div>
+      </div>
 
-        {/* Input card */}
-        <div className="card space-y-4">
-          {/* Transcript textarea */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label
-                htmlFor="transcript"
-                className="block text-xs font-medium text-gray-600 dark:text-gray-300"
-              >
-                Meeting Transcript
-              </label>
-              {micSupported && (
-                <button
-                  type="button"
-                  onClick={toggleMic}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                    isListening
-                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 animate-pulse'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                  title={isListening ? 'Stop recording' : 'Start voice recording'}
-                >
-                  {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                  {isListening ? 'Stop Recording' : 'Record'}
-                </button>
-              )}
-            </div>
-            {isListening && (
-              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-400">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                Listening — speak into your microphone. Text will appear below.
-              </div>
-            )}
-            <textarea
-              id="transcript"
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              placeholder={isListening ? 'Listening… speak now' : 'Paste your meeting notes or transcript here, or click Record to use your microphone...'}
-              className="input w-full resize-y"
-              style={{ minHeight: '200px' }}
-              rows={8}
+      {/* Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="flex gap-6" aria-label="Meeting tabs">
+          {TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-1.5 pb-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.key
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'meetings' && (
+        <div>
+          {!selectedProjectId ? (
+            <p className="text-sm text-gray-400 italic py-8 text-center">Select a project to manage meetings.</p>
+          ) : selectedMeetingId && meetingDetailData ? (
+            <MeetingDetailPanel
+              meetingId={selectedMeetingId}
+              meeting={meetingDetailData.meeting}
+              analyses={meetingDetailData.analyses || []}
+              onBack={() => setSelectedMeetingId(null)}
+              onEdit={() => { setEditingMeeting(meetingDetailData.meeting); setShowMeetingForm(true); }}
+              projectId={selectedProjectId}
             />
-          </div>
-
-          {/* Selectors row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Project selector */}
-            <div>
-              <label
-                htmlFor="meeting-project"
-                className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1"
-              >
-                Project
-              </label>
-              <div className="relative">
-                <select
-                  id="meeting-project"
-                  value={selectedProjectId}
-                  onChange={(e) => handleProjectChange(e.target.value)}
-                  className="input w-full appearance-none pr-8"
-                  disabled={projectsLoading}
-                >
-                  <option value="">Select a project...</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-              </div>
-            </div>
-
-            {/* Schedule selector */}
-            <div>
-              <label
-                htmlFor="meeting-schedule"
-                className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1"
-              >
-                Schedule
-              </label>
-              <div className="relative">
-                <select
-                  id="meeting-schedule"
-                  value={selectedScheduleId}
-                  onChange={(e) => setSelectedScheduleId(e.target.value)}
-                  className="input w-full appearance-none pr-8"
-                  disabled={!selectedProjectId || schedulesLoading}
-                >
-                  <option value="">
-                    {!selectedProjectId
-                      ? 'Select a project first'
-                      : schedulesLoading
-                        ? 'Loading…'
-                        : 'Select a schedule...'}
-                  </option>
-                  {schedules.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-              </div>
-            </div>
-
-            {/* Analyze button */}
-            <div className="flex items-end">
-              <button
-                onClick={handleAnalyze}
-                disabled={!transcript.trim() || analyzeMutation.isPending}
-                className="btn btn-primary flex items-center gap-2 w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {analyzeMutation.isPending ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Analyzing…
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    Analyze
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Error */}
-          {analyzeMutation.isError && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-              Failed to analyze transcript. Please try again.
-            </div>
+          ) : (
+            <MeetingList
+              meetings={meetings}
+              isLoading={meetingsLoading}
+              onSelect={(m) => setSelectedMeetingId(m.id)}
+              onNewMeeting={() => { setEditingMeeting(null); setShowMeetingForm(true); }}
+              onComplete={(id) => completeMeetingMutation.mutate(id)}
+              onCancel={(id) => cancelMeetingMutation.mutate(id)}
+              onDelete={(id) => { if (confirm('Delete this meeting and its action items?')) deleteMeetingMutation.mutate(id); }}
+            />
           )}
         </div>
+      )}
 
-        {/* Results */}
-        {analysisResult && (
-          <div>
-            {isSample && (
-              <div className="mb-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-                <div className="flex items-start gap-2">
-                  <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Meeting Analysis</p>
-                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                      This is a sample analysis with demo data. Upgrade to a paid plan to analyze your actual meeting transcripts and extract action items, decisions, and risks.
-                    </p>
+      {activeTab === 'transcript' && (
+        <div className="flex gap-6">
+          {/* Main content */}
+          <div className="flex-1 space-y-6 min-w-0">
+            {/* Input card */}
+            <div className="card space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="transcript" className="block text-xs font-medium text-gray-600 dark:text-gray-300">
+                    Meeting Transcript
+                  </label>
+                  {micSupported && (
+                    <button
+                      type="button"
+                      onClick={toggleMic}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                        isListening
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 animate-pulse'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                      title={isListening ? 'Stop recording' : 'Start voice recording'}
+                    >
+                      {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                      {isListening ? 'Stop Recording' : 'Record'}
+                    </button>
+                  )}
+                </div>
+                {isListening && (
+                  <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-400">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    Listening — speak into your microphone. Text will appear below.
+                  </div>
+                )}
+                <textarea
+                  id="transcript"
+                  value={transcript}
+                  onChange={(e) => setTranscript(e.target.value)}
+                  placeholder={isListening ? 'Listening... speak now' : 'Paste your meeting notes or transcript here, or click Record to use your microphone...'}
+                  className="input w-full resize-y"
+                  style={{ minHeight: '200px' }}
+                  rows={8}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="meeting-schedule" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                    Schedule
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="meeting-schedule"
+                      value={selectedScheduleId}
+                      onChange={(e) => setSelectedScheduleId(e.target.value)}
+                      className="input w-full appearance-none pr-8"
+                      disabled={!selectedProjectId || schedulesLoading}
+                    >
+                      <option value="">
+                        {!selectedProjectId ? 'Select a project first' : schedulesLoading ? 'Loading...' : 'Select a schedule...'}
+                      </option>
+                      {schedules.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
                   </div>
                 </div>
-              </div>
-            )}
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary-500" />
-              Analysis Results
-            </h2>
-            <MeetingResultPanel
-              analysis={analysisResult}
-              onApply={isSample ? () => {} : handleApply}
-              isApplying={applyMutation.isPending}
-            />
 
-            {/* Apply success/error feedback */}
-            {applyMutation.isSuccess && (
-              <div className="mt-3 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
-                Changes applied successfully.
+                <div className="sm:col-span-2 flex items-end">
+                  <button
+                    onClick={handleAnalyze}
+                    disabled={!transcript.trim() || analyzeMutation.isPending}
+                    className="btn btn-primary flex items-center gap-2 w-full sm:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {analyzeMutation.isPending ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        Analyze
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
-            )}
-            {applyMutation.isError && (
-              <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                Failed to apply changes. Please try again.
+
+              {analyzeMutation.isError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                  Failed to analyze transcript. Please try again.
+                </div>
+              )}
+            </div>
+
+            {/* Results */}
+            {analysisResult && (
+              <div>
+                {isSample && (
+                  <div className="mb-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+                    <div className="flex items-start gap-2">
+                      <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Meeting Analysis</p>
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                          This is a sample analysis with demo data. Upgrade to a paid plan to analyze your actual meeting transcripts.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary-500" />
+                  Analysis Results
+                </h2>
+                <MeetingResultPanel
+                  analysis={analysisResult}
+                  onApply={isSample ? () => {} : handleApply}
+                  isApplying={applyMutation.isPending}
+                />
+
+                {applyMutation.isSuccess && (
+                  <div className="mt-3 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+                    Changes applied successfully.
+                  </div>
+                )}
+                {applyMutation.isError && (
+                  <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                    Failed to apply changes. Please try again.
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-      </div>
 
-      {/* History sidebar */}
-      <div className="w-72 flex-shrink-0 hidden lg:block">
-        <div className="card sticky top-4">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            Analysis History
-          </h2>
+          {/* History sidebar */}
+          <div className="w-72 flex-shrink-0 hidden lg:block">
+            <div className="card sticky top-4">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                Analysis History
+              </h2>
 
+              {!selectedProjectId ? (
+                <p className="text-xs text-gray-400 dark:text-gray-500 italic">Select a project to see history.</p>
+              ) : history.length === 0 ? (
+                <p className="text-xs text-gray-400 dark:text-gray-500 italic">No previous analyses.</p>
+              ) : (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                  {history.map((entry) => (
+                    <button
+                      key={entry.id}
+                      onClick={() => handleHistoryClick(entry)}
+                      className="w-full text-left rounded-lg border border-gray-200 dark:border-gray-700 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-sm dark:shadow-gray-900/30 transition-all"
+                    >
+                      <p className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">
+                        {entry.summary || 'Meeting analysis'}
+                      </p>
+                      {entry.createdAt && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatDate(entry.createdAt)}
+                        </p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'action-items' && (
+        <div>
           {!selectedProjectId ? (
-            <p className="text-xs text-gray-400 dark:text-gray-500 italic">Select a project to see history.</p>
-          ) : history.length === 0 ? (
-            <p className="text-xs text-gray-400 dark:text-gray-500 italic">No previous analyses.</p>
+            <p className="text-sm text-gray-400 italic py-8 text-center">Select a project to view action items.</p>
           ) : (
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-              {history.map((entry) => (
-                <button
-                  key={entry.id}
-                  onClick={() => handleHistoryClick(entry)}
-                  className="w-full text-left rounded-lg border border-gray-200 dark:border-gray-700 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-sm dark:shadow-gray-900/30 transition-all"
-                >
-                  <p className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">
-                    {entry.summary || 'Meeting analysis'}
-                  </p>
-                  {entry.createdAt && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {formatDate(entry.createdAt)}
-                    </p>
-                  )}
-                </button>
-              ))}
+            <div className="card p-4">
+              <MeetingActionItemList
+                projectId={selectedProjectId}
+                showMeetingColumn
+              />
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {/* Meeting Form Modal */}
+      {showMeetingForm && selectedProjectId && (
+        <MeetingForm
+          projectId={selectedProjectId}
+          initialData={editingMeeting ? {
+            title: editingMeeting.title,
+            meetingType: editingMeeting.meetingType,
+            scheduledDate: editingMeeting.scheduledDate ? editingMeeting.scheduledDate.slice(0, 16) : '',
+            durationMinutes: editingMeeting.durationMinutes,
+            location: editingMeeting.location || '',
+            attendees: editingMeeting.attendees || [],
+            agendaItems: editingMeeting.agendaItems || [],
+            notes: editingMeeting.notes || '',
+          } : undefined}
+          onSubmit={(data) => {
+            if (editingMeeting) {
+              const { projectId: _pid, ...updateData } = data;
+              updateMeetingMutation.mutate({ id: editingMeeting.id, data: updateData });
+            } else {
+              createMeetingMutation.mutate(data);
+            }
+          }}
+          onClose={() => { setShowMeetingForm(false); setEditingMeeting(null); }}
+          isSubmitting={createMeetingMutation.isPending || updateMeetingMutation.isPending}
+        />
+      )}
     </div>
   );
 };

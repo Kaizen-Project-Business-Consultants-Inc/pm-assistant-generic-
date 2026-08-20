@@ -40,6 +40,9 @@ const NOTIFICATION_TYPE_TO_CATEGORY: Record<string, string> = {
   resource_request_submitted: 'tasks',
   resource_request_approved: 'tasks',
   resource_request_rejected: 'tasks',
+  meeting_action_assigned: 'meetings',
+  meeting_action_completed: 'meetings',
+  meeting_action_overdue: 'meetings',
 };
 
 const DEFAULT_CATEGORY_PREF: NotificationCategoryPref = { inApp: true, email: true, slack: true };

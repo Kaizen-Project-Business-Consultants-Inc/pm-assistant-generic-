@@ -267,6 +267,25 @@ An agentic AI project management platform that combines the scheduling power of 
 - Auto-creates/updates tasks in the schedule
 - Identifies and categorizes risks from transcript
 
+### 3.4.1 Meeting Agenda & Minutes Management
+- Full meeting lifecycle: create, schedule, run, complete, cancel
+- 7 meeting types: standup, sprint review, sprint retro, planning, steering, kickoff, ad hoc
+- Structured agenda items, attendees, location, duration, and freeform notes
+- Link AI transcript analyses to meetings for unified context
+- Import AI-extracted action items directly into tracked action items
+- 3-tab Meetings page: Meetings (default), Transcript Analysis, Action Items
+
+### 3.4.2 Meeting Action Item Tracker
+- First-class action items linked to meetings with assignee and due date tracking
+- Status flow: open -> in_progress -> completed / cancelled
+- Priority levels: low, medium, high, critical
+- Inline checkbox to complete/reopen items instantly
+- Expand-to-edit for description, due date, assignee, priority, status, notes
+- Filter by status, assignee, or overdue items
+- Source tracking: manual vs AI-extracted
+- Assignment and completion notifications
+- Cross-meeting action item view for the entire project
+
 ### 3.5 AI Lessons Learned Engine
 - Learns from every completed project
 - Pattern recognition across project types
@@ -746,3 +765,5 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | CR Dashboard Widget (status summary with pending/approved/rejected counts and colored badges; top 5 pending CRs with project name and days waiting; drill-down link; opt-in via Customize) | Done | Enhancement |
 | Project Grouping / Folders (flat groups with name, color, display order; collapsible group headers on Projects page; group filter dropdown; Manage Groups modal CRUD; migration T022 project_groups table + group_id on projects) | Done | P5 |
 | Resource Request/Approval Workflow (role/group/hours/dates/skills/priority/justification; draft→pending→approved/rejected→fulfilled/cancelled lifecycle; approve/reject with comments; fulfill with resource; email+in-app notifications; Requests tab + Pending Approvals panel on /resources; migration T023 resource_requests table) | Done | P5 |
+| Meeting Agenda & Minutes (full meeting CRUD with 7 types: standup/sprint_review/sprint_retro/planning/steering/kickoff/ad_hoc; scheduled→in_progress→completed/cancelled lifecycle; agenda items, attendees, notes, location, duration; link AI transcript analyses; import AI-extracted action items; 3-tab Meetings page: Meetings/Transcript Analysis/Action Items; migration T024 meetings table + meeting_id on meeting_analyses) | Done | Enhancement |
+| Meeting Action Item Tracker (first-class action items linked to meetings; open→in_progress→completed/cancelled status flow; low/medium/high/critical priority; assignee tracking with user ID linkage; due date with overdue highlighting; manual + ai_extracted source tracking; inline checkbox complete/reopen; expand-to-edit inline; filter by status/assignee/overdue; assignment + completion notifications; summary endpoint with status counts; migration T024 meeting_action_items table) | Done | Enhancement |

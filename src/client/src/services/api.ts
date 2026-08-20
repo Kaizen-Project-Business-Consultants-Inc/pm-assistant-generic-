@@ -1275,6 +1275,119 @@ class ApiService {
   }
 
   // -------------------------------------------------------------------------
+  // Meetings
+  // -------------------------------------------------------------------------
+
+  async getMeetings(projectId: string, filters?: { status?: string; type?: string; from?: string; to?: string }) {
+    const params = new URLSearchParams({ projectId });
+    if (filters?.status) params.set('status', filters.status);
+    if (filters?.type) params.set('type', filters.type);
+    if (filters?.from) params.set('from', filters.from);
+    if (filters?.to) params.set('to', filters.to);
+    const response = await this.api.get(`/meetings?${params}`);
+    return response.data;
+  }
+
+  async getMeetingDetail(id: string) {
+    const response = await this.api.get(`/meetings/${id}`);
+    return response.data;
+  }
+
+  async createMeeting(data: Record<string, any>) {
+    const response = await this.api.post('/meetings', data);
+    return response.data;
+  }
+
+  async updateMeeting(id: string, data: Record<string, any>) {
+    const response = await this.api.put(`/meetings/${id}`, data);
+    return response.data;
+  }
+
+  async deleteMeeting(id: string) {
+    const response = await this.api.delete(`/meetings/${id}`);
+    return response.data;
+  }
+
+  async completeMeeting(id: string) {
+    const response = await this.api.post(`/meetings/${id}/complete`);
+    return response.data;
+  }
+
+  async cancelMeeting(id: string) {
+    const response = await this.api.post(`/meetings/${id}/cancel`);
+    return response.data;
+  }
+
+  async getUpcomingMeetings(projectId: string) {
+    const response = await this.api.get(`/meetings/upcoming?projectId=${projectId}`);
+    return response.data;
+  }
+
+  async linkAnalysisToMeeting(meetingId: string, analysisId: string) {
+    const response = await this.api.post(`/meetings/${meetingId}/link-analysis`, { analysisId });
+    return response.data;
+  }
+
+  async importMeetingActions(meetingId: string, analysisId: string) {
+    const response = await this.api.post(`/meetings/${meetingId}/import-actions`, { analysisId });
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
+  // Meeting Action Items
+  // -------------------------------------------------------------------------
+
+  async getMeetingActionItems(filters: { projectId?: string; meetingId?: string; status?: string; assigneeUserId?: string; overdue?: boolean }) {
+    const params = new URLSearchParams();
+    if (filters.projectId) params.set('projectId', filters.projectId);
+    if (filters.meetingId) params.set('meetingId', filters.meetingId);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.assigneeUserId) params.set('assigneeUserId', filters.assigneeUserId);
+    if (filters.overdue) params.set('overdue', 'true');
+    const response = await this.api.get(`/meeting-action-items?${params}`);
+    return response.data;
+  }
+
+  async getMyActionItems(filters?: { status?: string; overdue?: boolean }) {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set('status', filters.status);
+    if (filters?.overdue) params.set('overdue', 'true');
+    const response = await this.api.get(`/meeting-action-items/my?${params}`);
+    return response.data;
+  }
+
+  async getActionItemSummary(projectId?: string) {
+    const params = projectId ? `?projectId=${projectId}` : '';
+    const response = await this.api.get(`/meeting-action-items/summary${params}`);
+    return response.data;
+  }
+
+  async createActionItem(data: Record<string, any>) {
+    const response = await this.api.post('/meeting-action-items', data);
+    return response.data;
+  }
+
+  async updateActionItem(id: string, data: Record<string, any>) {
+    const response = await this.api.put(`/meeting-action-items/${id}`, data);
+    return response.data;
+  }
+
+  async completeActionItem(id: string) {
+    const response = await this.api.post(`/meeting-action-items/${id}/complete`);
+    return response.data;
+  }
+
+  async reopenActionItem(id: string) {
+    const response = await this.api.post(`/meeting-action-items/${id}/reopen`);
+    return response.data;
+  }
+
+  async cancelActionItem(id: string) {
+    const response = await this.api.post(`/meeting-action-items/${id}/cancel`);
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
   // Lessons Learned
   // -------------------------------------------------------------------------
 

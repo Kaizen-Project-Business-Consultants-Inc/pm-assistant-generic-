@@ -77,6 +77,7 @@ export class MeetingIntelligenceService {
     projectId: string,
     scheduleId: string,
     userId?: string,
+    meetingId?: string,
   ): Promise<MeetingAnalysis> {
     // 1. Gather context: existing tasks
     const existingTasks = await scheduleService.findTasksByScheduleId(scheduleId);
@@ -177,6 +178,14 @@ Analyze this meeting transcript and extract all actionable information.`;
     };
 
     await this.persistAnalysis(analysis);
+
+    // Link to meeting if provided
+    if (meetingId) {
+      await meetingAnalysisRepository.updateMeetingId(analysis.id, meetingId).catch(err => {
+        logger.error(`Failed to link analysis ${analysis.id} to meeting ${meetingId}:`, (err as Error).message);
+      });
+    }
+
     return analysis;
   }
 

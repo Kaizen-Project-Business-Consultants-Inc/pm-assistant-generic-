@@ -755,6 +755,97 @@ The `MeetingIntelligenceService` processes meeting transcripts or notes to extra
 
 **Trial User Experience:** Trial users who submit a transcript on the Meeting Minutes page are not blocked with a 403. Instead, `POST /api/v1/meeting-intelligence/analyze` returns a **sample meeting analysis** populated with realistic demo data: a brief executive summary, 3 sample action items (with assignees and due dates), 2 sample decisions, 1 sample risk, and 1 task update suggestion. An amber upgrade banner reads: "Sample Meeting Analysis — This is a sample analysis with demo data. Upgrade to a paid plan to process your real meeting transcripts." The **Apply Changes** button (to convert action items into tasks) and the meeting **History** list remain gated — they are hidden or disabled for trial users. No AI tokens are consumed for the sample. This follows the same pattern as Status Reports, EVM, and Monte Carlo.
 
+### Meeting Agenda & Minutes Management
+
+Full meeting lifecycle management integrated into the Meetings page. The page now has three tabs: **Meetings** (default), **Transcript Analysis** (original AI analysis flow), and **Action Items** (cross-meeting tracker).
+
+#### Creating a Meeting
+
+Meetings capture:
+- **Title** — meeting name
+- **Type** — one of 7 types: `standup`, `sprint_review`, `sprint_retro`, `planning`, `steering`, `kickoff`, `ad_hoc`
+- **Date/Time** — scheduled date and time
+- **Duration** — meeting length in minutes
+- **Location** — physical or virtual meeting location
+- **Attendees** — list of meeting participants
+- **Agenda Items** — structured agenda with ordered items
+
+#### Meeting Lifecycle
+
+`scheduled` → `in_progress` → `completed` | `cancelled`
+
+- **Scheduled** — future meeting with agenda prepared
+- **In Progress** — meeting currently underway
+- **Completed** — meeting finished, notes and action items captured
+- **Cancelled** — meeting cancelled
+
+#### Notes & AI Integration
+
+- Freeform **notes** section for capturing discussion points during or after the meeting
+- **Link AI transcript analysis** — connect an existing transcript analysis to a meeting via `POST /meetings/:id/link-analysis`
+- **Import AI action items** — extract action items from a linked analysis and create tracked action items via `POST /meetings/:id/import-actions`
+
+#### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/meetings` | List meetings for a project |
+| POST | `/api/v1/meetings` | Create a new meeting |
+| GET | `/api/v1/meetings/upcoming` | List upcoming meetings |
+| GET | `/api/v1/meetings/:id` | Get meeting details |
+| PUT | `/api/v1/meetings/:id` | Update a meeting |
+| DELETE | `/api/v1/meetings/:id` | Delete a meeting |
+| POST | `/api/v1/meetings/:id/complete` | Mark meeting as completed |
+| POST | `/api/v1/meetings/:id/cancel` | Cancel a meeting |
+| POST | `/api/v1/meetings/:id/link-analysis` | Link a transcript analysis |
+| POST | `/api/v1/meetings/:id/import-actions` | Import action items from analysis |
+
+### Meeting Action Item Tracker
+
+First-class action items linked to meetings with full lifecycle tracking. Action items appear in the **Action Items** tab on the Meetings page, providing a cross-meeting view of all tracked items for the project.
+
+#### Action Item Fields
+
+- **Title** — action item description
+- **Meeting** — linked meeting (source context)
+- **Assignee** — responsible person (name + optional user ID linkage)
+- **Due Date** — target completion date (overdue items highlighted)
+- **Priority** — `low`, `medium`, `high`, `critical`
+- **Status** — `open`, `in_progress`, `completed`, `cancelled`
+- **Source** — `manual` (created by user) or `ai_extracted` (imported from AI analysis)
+- **Notes** — additional context or follow-up details
+
+#### Status Flow
+
+`open` → `in_progress` → `completed` | `cancelled`
+
+- **Inline status toggle** — checkbox to quickly complete or reopen an item
+- **Expand-to-edit** — click an item to expand inline editing for description, due date, assignee, priority, status, and notes
+- **Filters** — filter by status, assignee, or overdue items
+
+#### Notifications
+
+- **Assignment notification** — sent when a user is assigned to an action item
+- **Completion notification** — sent when an action item is marked complete
+
+#### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/meeting-action-items` | List action items (filterable) |
+| POST | `/api/v1/meeting-action-items` | Create an action item |
+| GET | `/api/v1/meeting-action-items/my` | My assigned action items |
+| GET | `/api/v1/meeting-action-items/summary` | Status counts summary |
+| GET | `/api/v1/meeting-action-items/:id` | Get action item details |
+| PUT | `/api/v1/meeting-action-items/:id` | Update an action item |
+| POST | `/api/v1/meeting-action-items/:id/complete` | Complete an action item |
+| POST | `/api/v1/meeting-action-items/:id/reopen` | Reopen an action item |
+| POST | `/api/v1/meeting-action-items/:id/cancel` | Cancel an action item |
+
+#### Database
+
+Migration `T024` creates the `meetings` table, `meeting_action_items` table, and adds a `meeting_id` column to `meeting_analyses` for linking analyses to meetings.
+
 ### Lessons Learned
 
 The `LessonsLearnedService` captures and retrieves project retrospective insights, categorized and searchable, to improve future project execution. Lessons can be edited and deleted directly from the Lessons Learned page: the edit action opens the same lesson modal pre-filled with existing values; the delete action presents a styled `ConfirmModal` before removing the record. The page supports **"Load More" pagination** so large lesson databases load incrementally rather than all at once.
@@ -2590,6 +2681,8 @@ All API routes are prefixed with `/api/v1/` and organized by domain:
 /api/v1/ai-chat           Mjuzi conversational AI (persistent)
 /api/v1/task-prioritization  AI task ranking
 /api/v1/meeting-intelligence Meeting transcript analysis
+/api/v1/meetings             Meeting agenda & minutes management
+/api/v1/meeting-action-items Meeting action item tracking
 /api/v1/lessons-learned   Retrospective knowledge base
 /api/v1/learning          AI learning feedback
 /api/v1/exports           Data export

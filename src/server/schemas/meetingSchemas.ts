@@ -97,6 +97,7 @@ export const AnalyzeRequestSchema = z.object({
   transcript: z.string().min(10, 'Transcript must be at least 10 characters'),
   projectId: z.string(),
   scheduleId: z.string(),
+  meetingId: z.string().optional(),
 });
 
 export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
