@@ -53,7 +53,7 @@ const filterSchema = z.object({
   type: z.enum(RAID_TYPES).optional(),
   status: z.enum(ALL_STATUSES).optional(),
   severity: z.enum(SEVERITIES).optional(),
-  source: z.enum(['manual', 'ai_detected', 'agent']).optional(),
+  source: z.enum(['manual', 'ai_detected', 'agent', 'imported', 'standup', 'meeting']).optional(),
   category: z.enum(CATEGORIES).optional(),
   ownerId: z.string().optional(),
   search: z.string().optional(),

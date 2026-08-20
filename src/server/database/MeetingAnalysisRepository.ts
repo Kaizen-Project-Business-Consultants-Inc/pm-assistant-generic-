@@ -9,6 +9,8 @@ export interface MeetingAnalysisRow {
   action_items: string;
   decisions: string;
   risks: string;
+  issues: string;
+  dependencies: string;
   task_updates: string;
   applied_items: string;
   created_at: string;
@@ -18,13 +20,14 @@ class MeetingAnalysisRepository {
   upsert(
     id: string, projectId: string, scheduleId: string, transcript: string,
     summary: string, actionItems: string, decisions: string, risks: string,
+    issues: string, dependencies: string,
     taskUpdates: string, appliedItems: string, createdAt: string,
   ): Promise<any> {
     return databaseService.query(
-      `INSERT INTO meeting_analyses (id, project_id, schedule_id, transcript, summary, action_items, decisions, risks, task_updates, applied_items, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE summary = VALUES(summary), action_items = VALUES(action_items), decisions = VALUES(decisions), risks = VALUES(risks), task_updates = VALUES(task_updates), applied_items = VALUES(applied_items)`,
-      [id, projectId, scheduleId, transcript, summary, actionItems, decisions, risks, taskUpdates, appliedItems, createdAt],
+      `INSERT INTO meeting_analyses (id, project_id, schedule_id, transcript, summary, action_items, decisions, risks, issues, dependencies, task_updates, applied_items, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE summary = VALUES(summary), action_items = VALUES(action_items), decisions = VALUES(decisions), risks = VALUES(risks), issues = VALUES(issues), dependencies = VALUES(dependencies), task_updates = VALUES(task_updates), applied_items = VALUES(applied_items)`,
+      [id, projectId, scheduleId, transcript, summary, actionItems, decisions, risks, issues, dependencies, taskUpdates, appliedItems, createdAt],
     );
   }
 

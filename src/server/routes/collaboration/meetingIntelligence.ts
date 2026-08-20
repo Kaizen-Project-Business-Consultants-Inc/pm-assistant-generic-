@@ -1,5 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { z } from 'zod';
 import { meetingIntelligenceService } from '../../services/MeetingIntelligenceService';
+import { riskService } from '../../services/RiskService';
 import {
   AnalyzeRequestSchema,
   ApplyRequestSchema,
@@ -172,6 +174,117 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
     } catch (err) {
       fastify.log.error({ err }, 'Failed to fetch meeting analysis history');
       return reply.status(500).send({ error: 'Failed to fetch meeting analysis history' });
+    }
+  });
+  // ---------------------------------------------------------------------------
+  // POST /:analysisId/check-raid-duplicates — Check for duplicate RAID items
+  // ---------------------------------------------------------------------------
+
+  const checkDuplicatesSchema = z.object({
+    projectId: z.string(),
+    titles: z.array(z.string()),
+  });
+
+  fastify.post('/:analysisId/check-raid-duplicates', {
+    preHandler: [requireScope('read'), requireFeature('meeting_intelligence')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { analysisId } = request.params as { analysisId: string };
+      const parsed = checkDuplicatesSchema.parse(request.body);
+
+      const analysis = await meetingIntelligenceService.getAnalysis(analysisId);
+      if (!analysis) {
+        return reply.status(404).send({ error: 'Analysis not found' });
+      }
+
+      const candidates = parsed.titles.map(t => ({ title: t }));
+      const duplicates = await riskService.checkDuplicates(parsed.projectId, candidates);
+
+      // Convert Map to plain object for JSON
+      const result: Record<string, { existingId: string; currentSeverity: string; currentStatus: string }> = {};
+      for (const [key, val] of duplicates) {
+        result[key] = val;
+      }
+
+      return reply.send({ data: result });
+    } catch (err) {
+      if (err instanceof Error && err.name === 'ZodError') {
+        return reply.status(400).send({ error: 'Invalid request data', details: err });
+      }
+      fastify.log.error({ err }, 'Failed to check RAID duplicates');
+      return reply.status(500).send({ error: 'Failed to check RAID duplicates' });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // POST /:analysisId/send-to-raid — Import meeting analysis items into RAID log
+  // ---------------------------------------------------------------------------
+
+  const sendToRaidItemSchema = z.object({
+    type: z.enum(['risk', 'issue', 'action', 'decision']),
+    title: z.string().min(1).max(255),
+    description: z.string().max(5000).optional(),
+    category: z.string().optional(),
+    severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+    probability: z.number().int().min(1).max(5).optional(),
+    impact: z.number().int().min(1).max(5).optional(),
+    mitigationPlan: z.string().max(5000).optional(),
+    dueDate: z.string().optional(),
+    rationale: z.string().max(5000).optional(),
+    decidedBy: z.string().optional(),
+    actionType: z.enum(['preventive', 'corrective', 'improvement']).optional(),
+    impactAssessment: z.string().max(5000).optional(),
+  });
+
+  const sendToRaidSchema = z.object({
+    projectId: z.string(),
+    items: z.array(sendToRaidItemSchema).min(1).max(100),
+  });
+
+  fastify.post('/:analysisId/send-to-raid', {
+    preHandler: [requireScope('write'), requireFeature('meeting_intelligence')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { analysisId } = request.params as { analysisId: string };
+      const parsed = sendToRaidSchema.parse(request.body);
+      const userId = request.user!.userId;
+
+      const analysis = await meetingIntelligenceService.getAnalysis(analysisId);
+      if (!analysis) {
+        return reply.status(404).send({ error: 'Analysis not found' });
+      }
+
+      const imported: any[] = [];
+
+      for (const item of parsed.items) {
+        const risk = await riskService.create({
+          projectId: parsed.projectId,
+          type: item.type,
+          title: item.title,
+          description: item.description,
+          category: item.category,
+          severity: item.severity,
+          probability: item.probability,
+          impact: item.impact,
+          mitigationPlan: item.mitigationPlan,
+          dueDate: item.dueDate,
+          rationale: item.rationale,
+          decidedBy: item.decidedBy,
+          actionType: item.actionType,
+          impactAssessment: item.impactAssessment,
+          source: 'meeting',
+          createdBy: userId,
+        });
+        imported.push(risk);
+      }
+
+      return reply.send({ data: { imported: imported.length, items: imported } });
+    } catch (err) {
+      if (err instanceof Error && err.name === 'ZodError') {
+        return reply.status(400).send({ error: 'Invalid request data', details: err });
+      }
+      fastify.log.error({ err }, 'Failed to send meeting items to RAID');
+      return reply.status(500).send({ error: 'Failed to import meeting items to RAID log' });
     }
   });
 }

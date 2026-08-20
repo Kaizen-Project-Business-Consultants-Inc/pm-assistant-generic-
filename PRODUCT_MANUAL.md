@@ -803,6 +803,34 @@ Meetings capture:
 - **Link AI transcript analysis** — connect an existing transcript analysis to a meeting via `POST /meetings/:id/link-analysis`
 - **Import AI action items** — extract action items from a linked analysis and create tracked action items via `POST /meetings/:id/import-actions`
 - **Send meeting minutes via email** — email formatted HTML minutes (summary, action items table, decisions list) to any recipients. Pre-populated attendee list. Supported via `POST /api/v1/meetings/:id/send-minutes`.
+- **Send to RAID** — bridge meeting analysis findings into the project RAID log (see below).
+
+#### Send to RAID
+
+Meeting Intelligence now extracts five categories of items from transcripts: Risks, Issues, Action Items, Decisions, and Dependencies. Any linked analysis can be pushed directly into the RAID log via the **Send to RAID** workflow.
+
+**Extraction:** The AI analysis pipeline writes Issues and Dependencies to two new columns on `meeting_analyses` (added by migration `101_meeting_analysis_raid.sql`) alongside the existing risks, action items, and decisions columns.
+
+**Workflow:**
+
+1. Open a meeting that has a linked analysis.
+2. Click **Send to RAID** on any linked analysis in the meeting detail panel.
+3. A review modal (`MeetingToRaidModal`) opens, grouping extracted items by RAID type (Risks, Issues, Actions, Decisions, Dependencies).
+4. For each item:
+   - Check or uncheck the checkbox to include or exclude it.
+   - Edit the title inline.
+   - Choose severity (critical / high / medium / low) and category from dropdowns.
+   - Items flagged as likely duplicates of existing open RAID records are highlighted with a warning — the duplicate check runs via `POST /api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` before the modal opens.
+5. Click **Import Selected** to create the checked items in the RAID log. All imported records are tagged with `source: 'meeting'` (added to the RAID source enum by migration `T025_raid_meeting_source.sql`).
+
+**Mapping logic:** The `meetingToRaidMapper.ts` utility translates Meeting Intelligence item shapes into RAID record shapes (type, severity defaults, category defaults) before submission.
+
+**API Endpoints:**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` | Check analysis items against existing RAID records |
+| POST | `/api/v1/meeting-intelligence/:analysisId/send-to-raid` | Import selected items into the RAID log |
 
 #### API Endpoints
 
@@ -820,6 +848,8 @@ Meetings capture:
 | POST | `/api/v1/meetings/:id/import-actions` | Import action items from analysis |
 | POST | `/api/v1/meetings/:id/send-minutes` | Email formatted minutes to recipients |
 | POST | `/api/v1/meeting-intelligence/upload-transcript` | Upload transcript file for AI analysis |
+| POST | `/api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` | Duplicate check before RAID import |
+| POST | `/api/v1/meeting-intelligence/:analysisId/send-to-raid` | Import meeting items into RAID log |
 
 ### Meeting Action Item Tracker
 

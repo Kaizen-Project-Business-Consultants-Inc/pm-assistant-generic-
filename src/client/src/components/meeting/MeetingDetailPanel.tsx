@@ -11,11 +11,14 @@ import {
   Link,
   Upload,
   Mail,
+  Shield,
   Loader2,
   X,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { MeetingActionItemList } from './MeetingActionItemList';
+import { MeetingToRaidModal } from './MeetingToRaidModal';
+import { mapAnalysisToRaidCandidates, RaidCandidate } from '../../utils/meetingToRaidMapper';
 
 interface MeetingDetailPanelProps {
   meetingId: string;
@@ -78,6 +81,9 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [sendMinutesAnalysisId, setSendMinutesAnalysisId] = useState<string | null>(null);
   const [minutesEmails, setMinutesEmails] = useState('');
+  const [raidModalOpen, setRaidModalOpen] = useState(false);
+  const [raidCandidates, setRaidCandidates] = useState<RaidCandidate[]>([]);
+  const [raidAnalysisId, setRaidAnalysisId] = useState<string | null>(null);
 
   const saveNotesMutation = useMutation({
     mutationFn: () => apiService.updateMeeting(meetingId, { notes }),
@@ -115,6 +121,61 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
       setMinutesEmails('');
     },
   });
+
+  const sendToRaidMutation = useMutation({
+    mutationFn: ({ analysisId, items }: { analysisId: string; items: RaidCandidate[] }) =>
+      apiService.sendToRaid(analysisId, projectId, items.map(c => ({
+        type: c.type,
+        title: c.title,
+        description: c.description,
+        category: c.category,
+        severity: c.severity,
+        probability: c.probability,
+        impact: c.impact,
+        mitigationPlan: c.mitigationPlan,
+        dueDate: c.dueDate,
+        rationale: c.rationale,
+        decidedBy: c.decidedBy,
+        actionType: c.actionType,
+        impactAssessment: c.impactAssessment,
+      }))),
+    onSuccess: () => {
+      setRaidModalOpen(false);
+      setRaidCandidates([]);
+      setRaidAnalysisId(null);
+      queryClient.invalidateQueries({ queryKey: ['risks', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['riskStats', projectId] });
+    },
+  });
+
+  const handleSendToRaid = async (analysis: any) => {
+    const candidates = mapAnalysisToRaidCandidates(analysis);
+    if (candidates.length === 0) return;
+
+    // Check for duplicates
+    try {
+      const titles = candidates.map(c => c.title);
+      const res = await apiService.checkRaidDuplicates(analysis.id, projectId, titles);
+      const dupes = res.data || {};
+      for (const c of candidates) {
+        const key = c.title.toLowerCase().trim();
+        if (dupes[key]) {
+          c.duplicate = dupes[key];
+        }
+      }
+    } catch {
+      // If duplicate check fails, proceed without duplicate info
+    }
+
+    setRaidAnalysisId(analysis.id);
+    setRaidCandidates(candidates);
+    setRaidModalOpen(true);
+  };
+
+  const handleRaidImport = (items: RaidCandidate[]) => {
+    if (!raidAnalysisId) return;
+    sendToRaidMutation.mutate({ analysisId: raidAnalysisId, items });
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -318,6 +379,12 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
                     {importActionsMutation.isPending ? 'Importing...' : 'Import Actions'}
                   </button>
                   <button
+                    onClick={() => handleSendToRaid(a)}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 whitespace-nowrap flex items-center gap-1"
+                  >
+                    <Shield className="w-3 h-3" /> Send to RAID
+                  </button>
+                  <button
                     onClick={() => { setSendMinutesAnalysisId(a.id); setMinutesEmails(''); }}
                     className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap flex items-center gap-1"
                   >
@@ -346,6 +413,29 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
           showCreateButton
         />
       </div>
+
+      {/* Send to RAID Modal */}
+      <MeetingToRaidModal
+        isOpen={raidModalOpen}
+        onClose={() => { setRaidModalOpen(false); setRaidCandidates([]); setRaidAnalysisId(null); }}
+        onImport={handleRaidImport}
+        candidates={raidCandidates}
+        importing={sendToRaidMutation.isPending}
+      />
+
+      {/* Send to RAID success toast */}
+      {sendToRaidMutation.isSuccess && (
+        <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-xs text-green-700 dark:text-green-300 shadow-lg">
+          {(sendToRaidMutation.data as any)?.data?.imported || 0} items imported to RAID log
+        </div>
+      )}
+
+      {/* Send to RAID error toast */}
+      {sendToRaidMutation.isError && (
+        <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-300 shadow-lg">
+          Failed to import items to RAID log
+        </div>
+      )}
 
       {/* Send Minutes Modal */}
       {sendMinutesAnalysisId && (

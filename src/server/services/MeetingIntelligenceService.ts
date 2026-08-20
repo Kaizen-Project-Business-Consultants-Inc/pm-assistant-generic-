@@ -11,6 +11,8 @@ import {
   MeetingAIResponse,
   MeetingAIResponseSchema,
   MeetingTaskUpdate,
+  MeetingIssue,
+  MeetingDependency,
 } from '../schemas/meetingSchemas';
 
 // ---------------------------------------------------------------------------
@@ -32,6 +34,8 @@ function rowToMeetingAnalysis(row: any): MeetingAnalysis {
     actionItems: parseJson(row.action_items),
     decisions: parseJson(row.decisions),
     risks: parseJson(row.risks),
+    issues: parseJson(row.issues),
+    dependencies: parseJson(row.dependencies),
     taskUpdates: parseJson(row.task_updates),
     appliedItems: parseJson(row.applied_items),
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
@@ -57,6 +61,8 @@ export class MeetingIntelligenceService {
       JSON.stringify(analysis.actionItems),
       JSON.stringify(analysis.decisions),
       JSON.stringify(analysis.risks),
+      JSON.stringify(analysis.issues),
+      JSON.stringify(analysis.dependencies),
       JSON.stringify(analysis.taskUpdates),
       JSON.stringify(analysis.appliedItems),
       analysis.createdAt,
@@ -108,8 +114,10 @@ You must identify:
 1. A concise summary of the meeting (2-4 sentences).
 2. Action items with assignees, due dates, and priorities.
 3. Key decisions made during the meeting.
-4. Risks or concerns raised.
-5. Task updates that should be applied to the project schedule — these can be:
+4. Risks — potential future problems or concerns raised (things that COULD happen).
+5. Issues — current blockers, problems, or impediments that ARE happening now. Include severity and impact description.
+6. Dependencies — external or cross-team dependencies mentioned (what the project depends on, or what depends on the project). Include what depends on what, and what is blocked.
+7. Task updates that should be applied to the project schedule — these can be:
    - "create": A brand new task that should be added to the schedule.
    - "update_status": An existing task whose status changed (e.g., marked complete, started, etc.).
    - "reschedule": An existing task that needs new dates.
@@ -172,6 +180,8 @@ Analyze this meeting transcript and extract all actionable information.`;
       actionItems: aiResponse.actionItems,
       decisions: aiResponse.decisions,
       risks: aiResponse.risks,
+      issues: aiResponse.issues || [],
+      dependencies: aiResponse.dependencies || [],
       taskUpdates: aiResponse.taskUpdates,
       appliedItems: [],
       createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -401,6 +411,8 @@ Analyze this meeting transcript and extract all actionable information.`;
       actionItems: [],
       decisions: [],
       risks: [],
+      issues: [],
+      dependencies: [],
       taskUpdates: [],
     };
   }

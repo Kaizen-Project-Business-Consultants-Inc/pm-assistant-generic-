@@ -84,6 +84,8 @@ async function backfill() {
       actionItems: parseJson(row.action_items),
       decisions: parseJson(row.decisions),
       risks: parseJson(row.risks),
+      issues: parseJson(row.issues),
+      dependencies: parseJson(row.dependencies),
       taskUpdates: parseJson(row.task_updates),
       appliedItems: parseJson(row.applied_items),
       createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),

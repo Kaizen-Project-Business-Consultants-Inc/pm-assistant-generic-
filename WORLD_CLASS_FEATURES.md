@@ -270,6 +270,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Auto-creates/updates tasks in the schedule
 - Identifies and categorizes risks from transcript
 - **Send meeting minutes via email** — formatted HTML with summary, action items table, decisions list
+- **Send to RAID** — bridge extracted findings (Risks, Issues, Actions, Decisions, Dependencies) into the RAID log with a curated review modal, duplicate detection, inline editing, and `source: 'meeting'` tagging
 
 ### 3.4.1 Meeting Agenda & Minutes Management
 - Full meeting lifecycle: create, schedule, run, complete, cancel

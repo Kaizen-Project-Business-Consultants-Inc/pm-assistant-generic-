@@ -38,6 +38,30 @@ export const MeetingRiskSchema = z.object({
 export type MeetingRisk = z.infer<typeof MeetingRiskSchema>;
 
 // ---------------------------------------------------------------------------
+// Meeting Issue (the I in RAID)
+// ---------------------------------------------------------------------------
+
+export const MeetingIssueSchema = z.object({
+  description: z.string(),
+  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  impact: z.string().optional(),
+});
+
+export type MeetingIssue = z.infer<typeof MeetingIssueSchema>;
+
+// ---------------------------------------------------------------------------
+// Meeting Dependency (the D in RAID)
+// ---------------------------------------------------------------------------
+
+export const MeetingDependencySchema = z.object({
+  description: z.string(),
+  dependsOn: z.string().optional(),
+  blockedItem: z.string().optional(),
+});
+
+export type MeetingDependency = z.infer<typeof MeetingDependencySchema>;
+
+// ---------------------------------------------------------------------------
 // Meeting Task Update
 // ---------------------------------------------------------------------------
 
@@ -64,6 +88,8 @@ export const MeetingAIResponseSchema = z.object({
   actionItems: z.array(MeetingActionItemSchema),
   decisions: z.array(MeetingDecisionSchema),
   risks: z.array(MeetingRiskSchema),
+  issues: z.array(MeetingIssueSchema).default([]),
+  dependencies: z.array(MeetingDependencySchema).default([]),
   taskUpdates: z.array(MeetingTaskUpdateSchema),
 });
 
@@ -82,6 +108,8 @@ export const MeetingAnalysisSchema = z.object({
   actionItems: z.array(MeetingActionItemSchema),
   decisions: z.array(MeetingDecisionSchema),
   risks: z.array(MeetingRiskSchema),
+  issues: z.array(MeetingIssueSchema).default([]),
+  dependencies: z.array(MeetingDependencySchema).default([]),
   taskUpdates: z.array(MeetingTaskUpdateSchema),
   appliedItems: z.array(z.number()),
   createdAt: z.string(),

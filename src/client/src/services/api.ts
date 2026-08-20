@@ -1279,6 +1279,16 @@ class ApiService {
     return response.data;
   }
 
+  async sendToRaid(analysisId: string, projectId: string, items: Record<string, any>[]) {
+    const response = await this.api.post(`/meeting-intelligence/${analysisId}/send-to-raid`, { projectId, items });
+    return response.data;
+  }
+
+  async checkRaidDuplicates(analysisId: string, projectId: string, titles: string[]) {
+    const response = await this.api.post(`/meeting-intelligence/${analysisId}/check-raid-duplicates`, { projectId, titles });
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Meetings
   // -------------------------------------------------------------------------

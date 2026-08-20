@@ -44,7 +44,7 @@ class RiskService {
     mitigationPlan?: string;
     responsePlan?: string;
     ownerId?: string;
-    source?: 'manual' | 'ai_detected' | 'agent' | 'imported' | 'standup';
+    source?: 'manual' | 'ai_detected' | 'agent' | 'imported' | 'standup' | 'meeting';
     sourceAgentId?: string;
     aiConfidence?: number;
     linkedTaskIds?: string[];
@@ -58,6 +58,9 @@ class RiskService {
     alternativesConsidered?: string;
     stakeholdersConsulted?: string[];
     linkedRaidIds?: string[];
+    rootCause?: string;
+    impactAssessment?: string;
+    workaround?: string;
   }, userRole?: string): Promise<ProjectRisk> {
     // Auto-set triage status for non-PM roles (unless caller explicitly set status)
     if (!data.status && userRole && !TRIAGE_BYPASS_ROLES.has(userRole)) {
@@ -424,8 +427,10 @@ class RiskService {
   async checkDuplicates(
     projectId: string,
     candidates: Array<{ title: string }>,
+    sourceFilter?: string,
   ): Promise<Map<string, { existingId: string; currentSeverity: string; currentStatus: string }>> {
-    const existing = await riskRepository.findByProject(projectId, { source: 'ai_detected' });
+    const filters: RiskFilters = sourceFilter ? { source: sourceFilter } : {};
+    const existing = await riskRepository.findByProject(projectId, filters);
     const result = new Map<string, { existingId: string; currentSeverity: string; currentStatus: string }>();
 
     const existingByTitle = new Map(existing.map(r => [r.title.toLowerCase().trim(), r]));
