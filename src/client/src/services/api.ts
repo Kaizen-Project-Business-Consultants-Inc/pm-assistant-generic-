@@ -1338,6 +1338,23 @@ class ApiService {
     return response.data;
   }
 
+  async uploadTranscriptFile(file: File, projectId: string, scheduleId: string, meetingId?: string) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('projectId', projectId);
+    formData.append('scheduleId', scheduleId);
+    if (meetingId) formData.append('meetingId', meetingId);
+    const response = await this.api.post('/meeting-intelligence/upload-transcript', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async sendMeetingMinutes(meetingId: string, analysisId: string, recipientEmails: string[]) {
+    const response = await this.api.post(`/meetings/${meetingId}/send-minutes`, { analysisId, recipientEmails });
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Meeting Action Items
   // -------------------------------------------------------------------------

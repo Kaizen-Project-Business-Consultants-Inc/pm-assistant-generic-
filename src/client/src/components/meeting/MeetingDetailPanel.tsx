@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -9,6 +9,10 @@ import {
   FileText,
   Edit2,
   Link,
+  Upload,
+  Mail,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { MeetingActionItemList } from './MeetingActionItemList';
@@ -21,6 +25,7 @@ interface MeetingDetailPanelProps {
   onEdit: () => void;
   onViewAnalysis?: (analysis: any) => void;
   projectId: string;
+  scheduleId?: string;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -64,10 +69,15 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
   onEdit,
   onViewAnalysis,
   projectId,
+  scheduleId,
 }) => {
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState(meeting.notes || '');
   const [notesEditing, setNotesEditing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [sendMinutesAnalysisId, setSendMinutesAnalysisId] = useState<string | null>(null);
+  const [minutesEmails, setMinutesEmails] = useState('');
 
   const saveNotesMutation = useMutation({
     mutationFn: () => apiService.updateMeeting(meetingId, { notes }),
@@ -84,6 +94,45 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
       queryClient.invalidateQueries({ queryKey: ['meetingActionItems'] });
     },
   });
+
+  const uploadTranscriptMutation = useMutation({
+    mutationFn: (file: File) => apiService.uploadTranscriptFile(file, projectId, scheduleId || '', meetingId),
+    onSuccess: () => {
+      setUploadError(null);
+      queryClient.invalidateQueries({ queryKey: ['meeting', meetingId] });
+      queryClient.invalidateQueries({ queryKey: ['meetingHistory', projectId] });
+    },
+    onError: (err: any) => {
+      setUploadError(err?.response?.data?.error || 'Failed to process transcript');
+    },
+  });
+
+  const sendMinutesMutation = useMutation({
+    mutationFn: ({ analysisId, emails }: { analysisId: string; emails: string[] }) =>
+      apiService.sendMeetingMinutes(meetingId, analysisId, emails),
+    onSuccess: () => {
+      setSendMinutesAnalysisId(null);
+      setMinutesEmails('');
+    },
+  });
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadTranscriptMutation.mutate(file);
+    }
+    e.target.value = '';
+  };
+
+  const handleSendMinutes = () => {
+    if (!sendMinutesAnalysisId) return;
+    const emails = minutesEmails
+      .split(/[,;\n]/)
+      .map(e => e.trim())
+      .filter(e => e.length > 0);
+    if (emails.length === 0) return;
+    sendMinutesMutation.mutate({ analysisId: sendMinutesAnalysisId, emails });
+  };
 
   const agendaItems = meeting.agendaItems || [];
   const attendees = meeting.attendees || [];
@@ -122,10 +171,45 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
             </div>
           </div>
         </div>
-        <button onClick={onEdit} className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1">
-          <Edit2 className="w-3.5 h-3.5" /> Edit
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.vtt,.srt"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadTranscriptMutation.isPending || !scheduleId}
+            title={!scheduleId ? 'Select a schedule first' : 'Upload transcript (.txt, .vtt, .srt)'}
+            className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
+          >
+            {uploadTranscriptMutation.isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Upload className="w-3.5 h-3.5" />
+            )}
+            {uploadTranscriptMutation.isPending ? 'Analyzing...' : 'Upload Transcript'}
+          </button>
+          <button onClick={onEdit} className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1">
+            <Edit2 className="w-3.5 h-3.5" /> Edit
+          </button>
+        </div>
       </div>
+
+      {/* Upload feedback */}
+      {uploadTranscriptMutation.isSuccess && (
+        <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-xs text-green-700 dark:text-green-300">
+          Transcript analyzed successfully. Check Linked Analyses below.
+        </div>
+      )}
+      {uploadError && (
+        <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-300 flex items-center justify-between">
+          <span>{uploadError}</span>
+          <button onClick={() => setUploadError(null)} className="ml-2"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
 
       {/* Attendees */}
       {attendees.length > 0 && (
@@ -233,6 +317,12 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
                   >
                     {importActionsMutation.isPending ? 'Importing...' : 'Import Actions'}
                   </button>
+                  <button
+                    onClick={() => { setSendMinutesAnalysisId(a.id); setMinutesEmails(''); }}
+                    className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap flex items-center gap-1"
+                  >
+                    <Mail className="w-3 h-3" /> Send Minutes
+                  </button>
                   {onViewAnalysis && (
                     <button
                       onClick={() => onViewAnalysis(a)}
@@ -256,6 +346,51 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
           showCreateButton
         />
       </div>
+
+      {/* Send Minutes Modal */}
+      {sendMinutesAnalysisId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSendMinutesAnalysisId(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-5 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Mail className="w-4 h-4" /> Send Meeting Minutes
+              </h3>
+              <button onClick={() => setSendMinutesAnalysisId(null)}><X className="w-4 h-4 text-gray-400" /></button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Enter recipient email addresses (comma or newline separated):
+            </p>
+            <textarea
+              value={minutesEmails}
+              onChange={e => setMinutesEmails(e.target.value)}
+              className="input w-full resize-y text-sm mb-3"
+              rows={3}
+              placeholder="john@example.com, jane@example.com"
+            />
+            {sendMinutesMutation.isError && (
+              <p className="text-xs text-red-600 mb-2">
+                {(sendMinutesMutation.error as any)?.response?.data?.error || 'Failed to send minutes'}
+              </p>
+            )}
+            {sendMinutesMutation.isSuccess && (
+              <p className="text-xs text-green-600 mb-2">Minutes sent successfully!</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setSendMinutesAnalysisId(null)} className="btn btn-secondary text-xs px-3 py-1.5">
+                Cancel
+              </button>
+              <button
+                onClick={handleSendMinutes}
+                disabled={sendMinutesMutation.isPending || !minutesEmails.trim()}
+                className="btn btn-primary text-xs px-3 py-1.5 flex items-center gap-1"
+              >
+                {sendMinutesMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                {sendMinutesMutation.isPending ? 'Sending...' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

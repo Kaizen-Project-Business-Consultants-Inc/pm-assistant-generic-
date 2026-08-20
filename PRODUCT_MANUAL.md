@@ -799,8 +799,10 @@ Meetings capture:
 #### Notes & AI Integration
 
 - Freeform **notes** section for capturing discussion points during or after the meeting
+- **Upload transcript file** — upload `.txt` (Otter.ai), `.vtt` (Teams/Zoom), or `.srt` files directly from the meeting detail panel. The server auto-detects the format, parses speaker attribution and timestamps, and feeds the cleaned transcript into the AI analysis pipeline. Supported via `POST /api/v1/meeting-intelligence/upload-transcript` (multipart form).
 - **Link AI transcript analysis** — connect an existing transcript analysis to a meeting via `POST /meetings/:id/link-analysis`
 - **Import AI action items** — extract action items from a linked analysis and create tracked action items via `POST /meetings/:id/import-actions`
+- **Send meeting minutes via email** — email formatted HTML minutes (summary, action items table, decisions list) to any recipients. Pre-populated attendee list. Supported via `POST /api/v1/meetings/:id/send-minutes`.
 
 #### API Endpoints
 
@@ -816,6 +818,8 @@ Meetings capture:
 | POST | `/api/v1/meetings/:id/cancel` | Cancel a meeting |
 | POST | `/api/v1/meetings/:id/link-analysis` | Link a transcript analysis |
 | POST | `/api/v1/meetings/:id/import-actions` | Import action items from analysis |
+| POST | `/api/v1/meetings/:id/send-minutes` | Email formatted minutes to recipients |
+| POST | `/api/v1/meeting-intelligence/upload-transcript` | Upload transcript file for AI analysis |
 
 ### Meeting Action Item Tracker
 

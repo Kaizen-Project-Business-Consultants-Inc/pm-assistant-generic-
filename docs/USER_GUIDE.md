@@ -1411,6 +1411,24 @@ The Meetings page has three tabs: **Meetings** (default), **Transcript Analysis*
    - **Complete** -- Mark the meeting as finished.
    - **Cancel** -- Cancel a scheduled meeting.
 
+#### Uploading a Transcript File
+
+1. Open a meeting from the **Meetings** tab.
+2. Click **Upload Transcript** in the meeting header.
+3. Select a transcript file (`.txt` from Otter.ai, `.vtt` from Teams/Zoom, or `.srt`).
+4. The system auto-detects the format, extracts speaker names and timestamps, and runs AI analysis.
+5. The analysis appears under **Linked Analyses** in the meeting detail.
+6. Click **Import Actions** to convert AI-extracted action items into tracked meeting action items.
+
+> **Note:** A schedule must be selected in the project/schedule dropdowns for the Upload Transcript button to be enabled.
+
+#### Sending Meeting Minutes via Email
+
+1. Open a meeting that has a linked analysis.
+2. In the **Linked Analyses** section, click **Send Minutes** on any analysis.
+3. Enter recipient email addresses (comma or newline separated).
+4. Click **Send**. Recipients receive a formatted HTML email with the meeting summary, action items table (with assignees, due dates, and priority), and decisions list.
+
 #### Linking AI Analysis to a Meeting
 
 1. After running a transcript analysis (in the Transcript Analysis tab), open a meeting.
@@ -1420,7 +1438,7 @@ The Meetings page has three tabs: **Meetings** (default), **Transcript Analysis*
 #### Transcript Analysis Tab
 
 1. Switch to the **Transcript Analysis** tab.
-2. Paste or type a meeting transcript.
+2. Paste or type a meeting transcript (or use the **Upload Transcript** button on a meeting for file-based input).
 3. Select the associated project and schedule.
 4. Click **Process**. The AI extracts:
    - **Summary** -- Concise meeting recap.

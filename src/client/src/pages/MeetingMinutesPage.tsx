@@ -370,6 +370,7 @@ export const MeetingMinutesPage: React.FC = () => {
               onBack={() => setSelectedMeetingId(null)}
               onEdit={() => { setEditingMeeting(meetingDetailData.meeting); setShowMeetingForm(true); }}
               projectId={selectedProjectId}
+              scheduleId={selectedScheduleId}
             />
           ) : (
             <MeetingList

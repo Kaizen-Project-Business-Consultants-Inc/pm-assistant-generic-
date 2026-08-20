@@ -649,6 +649,83 @@ export class EmailService {
     });
   }
 
+  async sendMeetingMinutes(
+    recipients: string[],
+    meetingTitle: string,
+    meetingDate: string,
+    summary: string,
+    actionItems: Array<{ description: string; assignee: string; dueDate?: string; priority: string }>,
+    decisions: Array<{ decision: string; madeBy?: string }>,
+    attendees: string[],
+  ): Promise<void> {
+    if (!this.isConfigured) {
+      logger.info(`[EmailService] Meeting minutes email would be sent to ${recipients.map(r => maskPii(r)).join(', ')}: ${meetingTitle}`);
+      return;
+    }
+
+    let bodyHtml = '';
+
+    // Meeting header
+    bodyHtml += `
+      <div style="margin-bottom: 20px; padding: 16px; background: #f9fafb; border-radius: 8px;">
+        <p style="color: #6b7280; margin: 0 0 4px 0; font-size: 13px;">Date: <strong style="color: #374151;">${escapeHtml(meetingDate)}</strong></p>
+        <p style="color: #6b7280; margin: 0; font-size: 13px;">Attendees: ${attendees.map(a => escapeHtml(a)).join(', ')}</p>
+      </div>
+    `;
+
+    // Summary
+    bodyHtml += `
+      <h3 style="color: #1f2937; margin: 24px 0 8px 0;">Summary</h3>
+      <p style="color: #4b5563; line-height: 1.6;">${escapeHtml(summary)}</p>
+    `;
+
+    // Action items
+    if (actionItems.length > 0) {
+      const priorityColors: Record<string, string> = {
+        critical: '#dc2626', high: '#f59e0b', medium: '#3b82f6', low: '#6b7280',
+      };
+      bodyHtml += `<h3 style="color: #1f2937; margin: 24px 0 8px 0;">Action Items (${actionItems.length})</h3>`;
+      bodyHtml += `<table style="width: 100%; border-collapse: collapse; font-size: 14px;">`;
+      bodyHtml += `<tr style="background: #f3f4f6;"><th style="text-align: left; padding: 8px; border: 1px solid #e5e7eb;">Action</th><th style="text-align: left; padding: 8px; border: 1px solid #e5e7eb;">Assignee</th><th style="text-align: left; padding: 8px; border: 1px solid #e5e7eb;">Due</th><th style="text-align: left; padding: 8px; border: 1px solid #e5e7eb;">Priority</th></tr>`;
+      for (const item of actionItems) {
+        const pColor = priorityColors[item.priority] || '#6b7280';
+        bodyHtml += `<tr>`;
+        bodyHtml += `<td style="padding: 8px; border: 1px solid #e5e7eb; color: #374151;">${escapeHtml(item.description)}</td>`;
+        bodyHtml += `<td style="padding: 8px; border: 1px solid #e5e7eb; color: #374151;">${escapeHtml(item.assignee)}</td>`;
+        bodyHtml += `<td style="padding: 8px; border: 1px solid #e5e7eb; color: #6b7280;">${item.dueDate ? escapeHtml(item.dueDate) : '-'}</td>`;
+        bodyHtml += `<td style="padding: 8px; border: 1px solid #e5e7eb;"><span style="color: ${pColor}; font-weight: 600;">${escapeHtml(item.priority)}</span></td>`;
+        bodyHtml += `</tr>`;
+      }
+      bodyHtml += `</table>`;
+    }
+
+    // Decisions
+    if (decisions.length > 0) {
+      bodyHtml += `<h3 style="color: #1f2937; margin: 24px 0 8px 0;">Decisions (${decisions.length})</h3>`;
+      bodyHtml += `<ul style="color: #4b5563; line-height: 1.8;">`;
+      for (const d of decisions) {
+        bodyHtml += `<li>${escapeHtml(d.decision)}${d.madeBy ? ` <span style="color: #9ca3af;">— ${escapeHtml(d.madeBy)}</span>` : ''}</li>`;
+      }
+      bodyHtml += `</ul>`;
+    }
+
+    // CTA
+    bodyHtml += `
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${config.APP_URL}/meetings" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+          View in PM Assistant
+        </a>
+      </div>
+    `;
+
+    await this.sendEmail({
+      from: config.RESEND_FROM_EMAIL,
+      to: recipients,
+      subject: `Meeting Minutes: ${meetingTitle} — ${meetingDate}`,
+      html: this.wrapHtml(`Meeting Minutes: ${meetingTitle}`, bodyHtml),
+    });
+  }
+
   async sendOrgInviteEmail(to: string, orgName: string, inviterName: string): Promise<void> {
     if (!this.isConfigured) {
       logger.info(`[EmailService] Org invite email would be sent to ${maskPii(to)} for org "${orgName}"`);

@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { meetingService } from '../../services/MeetingService';
+import { meetingIntelligenceService } from '../../services/MeetingIntelligenceService';
+import { emailService } from '../../services/EmailService';
 
 const agendaItemSchema = z.object({
   title: z.string().min(1).max(255),
@@ -119,5 +121,55 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     if (!analysisId) throw new Error('analysisId is required');
     const imported = await meetingService.importActionItemsFromAnalysis(id, analysisId, user.userId);
     return { imported };
+  });
+
+  // POST /:id/send-minutes — email formatted meeting minutes to recipients
+  fastify.post('/:id/send-minutes', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const body = request.body as { analysisId?: string; recipientEmails?: string[] };
+
+      if (!body.analysisId) return reply.status(400).send({ error: 'analysisId is required' });
+      if (!body.recipientEmails || body.recipientEmails.length === 0) {
+        return reply.status(400).send({ error: 'At least one recipient email is required' });
+      }
+      if (body.recipientEmails.length > 50) {
+        return reply.status(400).send({ error: 'Maximum 50 recipients allowed' });
+      }
+
+      // Validate emails
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      for (const email of body.recipientEmails) {
+        if (!emailRegex.test(email)) {
+          return reply.status(400).send({ error: `Invalid email address: ${email}` });
+        }
+      }
+
+      const meetingData = await meetingService.getMeeting(id);
+      if (!meetingData) return reply.status(404).send({ error: 'Meeting not found' });
+
+      const analysis = await meetingIntelligenceService.getAnalysis(body.analysisId);
+      if (!analysis) return reply.status(404).send({ error: 'Analysis not found' });
+
+      const meeting = meetingData.meeting;
+      const meetingDate = new Date(meeting.scheduledDate).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric',
+      });
+
+      await emailService.sendMeetingMinutes(
+        body.recipientEmails,
+        meeting.title,
+        meetingDate,
+        analysis.summary,
+        analysis.actionItems || [],
+        analysis.decisions || [],
+        meeting.attendees || [],
+      );
+
+      return { success: true, recipientCount: body.recipientEmails.length };
+    } catch (err) {
+      fastify.log.error({ err }, 'Failed to send meeting minutes');
+      return reply.status(500).send({ error: 'Failed to send meeting minutes' });
+    }
   });
 }

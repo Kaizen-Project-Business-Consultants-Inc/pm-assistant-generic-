@@ -264,16 +264,21 @@ An agentic AI project management platform that combines the scheduling power of 
 
 ### 3.4 AI Meeting Minutes -> Auto-Update Project
 - Paste meeting transcript for analysis
+- **Upload transcript files** — drag-and-drop `.txt` (Otter.ai), `.vtt` (Teams/Zoom), `.srt` files
+- Auto-detects format, extracts speaker attribution and timestamps
 - AI extracts action items, decisions, risks
 - Auto-creates/updates tasks in the schedule
 - Identifies and categorizes risks from transcript
+- **Send meeting minutes via email** — formatted HTML with summary, action items table, decisions list
 
 ### 3.4.1 Meeting Agenda & Minutes Management
 - Full meeting lifecycle: create, schedule, run, complete, cancel
 - 7 meeting types: standup, sprint review, sprint retro, planning, steering, kickoff, ad hoc
 - Structured agenda items, attendees, location, duration, and freeform notes
+- **Upload Transcript** button on meeting detail — upload file, auto-parse, auto-analyze
 - Link AI transcript analyses to meetings for unified context
 - Import AI-extracted action items directly into tracked action items
+- **Send Minutes** button per linked analysis — email formatted minutes to attendees
 - 3-tab Meetings page: Meetings (default), Transcript Analysis, Action Items
 
 ### 3.4.2 Meeting Action Item Tracker

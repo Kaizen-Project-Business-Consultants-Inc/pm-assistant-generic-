@@ -8,6 +8,8 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
+import { fileAttachmentService } from '../../services/FileAttachmentService';
+import { parseTranscriptFile } from '../../utils/transcriptParser';
 
 export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -76,6 +78,83 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
       }
       fastify.log.error({ err }, 'Failed to apply meeting changes');
       return reply.status(500).send({ error: 'Failed to apply meeting changes' });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // POST /upload-transcript — Upload a transcript file for AI analysis
+  // ---------------------------------------------------------------------------
+
+  fastify.post('/upload-transcript', {
+    preHandler: [requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userId = request.user!.userId;
+
+      // Trial users get sample analysis data
+      if (request.user!.role !== 'admin') {
+        const user = await userService.findById(userId);
+        if (user && user.subscriptionTier === 'trial') {
+          return reply.send({ data: generateSampleMeetingAnalysis(), sample: true, segments: 0, format: 'sample' });
+        }
+      }
+
+      const file = await request.file();
+      if (!file) return reply.status(400).send({ error: 'No file uploaded' });
+
+      // Validate extension
+      const ext = file.filename.toLowerCase().split('.').pop();
+      if (!ext || !['txt', 'vtt', 'srt'].includes(ext)) {
+        return reply.status(400).send({ error: 'Unsupported file type. Accepted: .txt, .vtt, .srt' });
+      }
+
+      const buffer = await file.toBuffer();
+
+      // 2MB limit for transcript files
+      if (buffer.length > 2 * 1024 * 1024) {
+        return reply.status(400).send({ error: 'File too large. Maximum size is 2MB.' });
+      }
+
+      const content = buffer.toString('utf-8');
+
+      // Extract fields from multipart
+      const fields = file.fields as Record<string, any>;
+      const projectId = fields.projectId?.value as string;
+      const scheduleId = fields.scheduleId?.value as string;
+      const meetingId = fields.meetingId?.value as string | undefined;
+
+      if (!projectId || !scheduleId) {
+        return reply.status(400).send({ error: 'projectId and scheduleId are required' });
+      }
+
+      // Parse transcript
+      const { format, segments, transcript } = parseTranscriptFile(file.filename, content);
+
+      // Store original file if linked to a meeting
+      if (meetingId) {
+        fileAttachmentService.upload(
+          'meeting', meetingId, userId,
+          file.filename, file.mimetype || 'text/plain', buffer,
+        ).catch(() => {}); // fire-and-forget
+      }
+
+      // Feed into existing AI pipeline
+      const analysis = await meetingIntelligenceService.analyzeTranscript(
+        transcript,
+        projectId,
+        scheduleId,
+        userId,
+        meetingId,
+      );
+
+      return reply.send({
+        data: analysis,
+        segments: segments.length,
+        format,
+      });
+    } catch (err) {
+      fastify.log.error({ err }, 'Transcript upload and analysis failed');
+      return reply.status(500).send({ error: 'Failed to process transcript file' });
     }
   });
 

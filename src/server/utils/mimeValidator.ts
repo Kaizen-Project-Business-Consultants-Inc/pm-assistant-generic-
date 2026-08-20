@@ -19,6 +19,8 @@ const ALLOWED_MIME_TYPES = new Set([
   'text/plain',
   'text/csv',
   'text/markdown',
+  'text/vtt',
+  'application/x-subrip',
   'application/rtf',
 
   // Images
@@ -70,7 +72,8 @@ const MAGIC_SIGNATURES: Array<{ bytes: number[]; offset?: number; mimes: string[
 
 /** Text-based MIME types that won't have magic bytes */
 const TEXT_MIME_TYPES = new Set([
-  'text/plain', 'text/csv', 'text/markdown', 'text/xml',
+  'text/plain', 'text/csv', 'text/markdown', 'text/vtt', 'text/xml',
+  'application/x-subrip',
   'application/json', 'application/xml', 'application/rtf',
 ]);
 
