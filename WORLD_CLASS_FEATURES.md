@@ -320,7 +320,7 @@ An agentic AI project management platform that combines the scheduling power of 
 ### 3.7 AI-Powered Earned Value Forecasting
 - Predict future CPI/SPI trends
 - Early warning for projects trending toward overrun
-- AI suggests corrective actions with estimated impact
+- AI suggests corrective actions with estimated impact; actions are schedule-aware — referencing specific task names, budget figures, and blockers (e.g., "Task 'Foundation Pour' is $12K over budget — negotiate fixed-price change order") via `buildScheduleAnalysis()` in `EVMForecastService`
 - Compare AI forecast vs traditional EAC formulas
 - Dedicated EVM Dashboard page (`/evm`) with 8 KPI cards, 4 forecast cards (with warning borders), CPI/SPI trend line chart, early warnings panel, forecast comparison table, and AI predictions section (confidence range, overrun probability, corrective actions with priority badges)
 - **CV & SV variance cards**: Cost Variance (EV−AC) and Schedule Variance (EV−PV) added to the KPI row, color-coded green (favorable) or red (unfavorable), each with the same four-section hover tooltip (definition, formula with live values, health bands, dynamic guidance)

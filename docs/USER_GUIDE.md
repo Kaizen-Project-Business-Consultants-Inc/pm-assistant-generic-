@@ -2219,7 +2219,7 @@ The EVM Dashboard (`/evm`) provides a comprehensive earned value management view
    - Overrun probability percentage.
    - Trend direction (improving, stable, or deteriorating).
    - Narrative summary in plain language.
-   - Corrective actions with priority badges.
+   - Corrective actions with priority badges. The AI analyzes your actual tasks — identifying the worst cost overruns, behind-schedule work, high burn-rate tasks, and blocked tasks — and produces specific actions that name the tasks and figures involved, rather than generic advice.
 
    > **Note:** AI Predictions are available on paid plans only and are not included in the trial sample dashboard.
 
