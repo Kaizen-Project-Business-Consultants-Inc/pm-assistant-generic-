@@ -293,7 +293,17 @@ An agentic AI project management platform that combines the scheduling power of 
 - Assignment and completion notifications
 - Cross-meeting action item view for the entire project
 
-### 3.4.3 Email Digest Enhancement
+### 3.4.3 Send to RAID (Meeting-to-RAID Bridge)
+- AI analysis now extracts **5 categories**: Risks, Issues, Action Items, Decisions, and Dependencies (Issues and Dependencies are new — stored in two new columns on `meeting_analyses` via migration `101_meeting_analysis_raid.sql`)
+- **Send to RAID** button on each linked analysis in the Meeting Detail Panel
+- `MeetingToRaidModal` groups items by RAID type with checkboxes for selective import
+- Inline title editing, severity dropdown (critical/high/medium/low), category dropdown per item
+- **Duplicate detection** — `POST /api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` runs before the modal opens and highlights probable matches against existing open RAID records
+- All imported records tagged `source: 'meeting'` (new enum value added to RAID source via migration `T025_raid_meeting_source.sql`)
+- `meetingToRaidMapper.ts` utility handles type/severity/category defaults for each meeting item shape
+- **Benchmark:** Jira (meeting-to-issue bridge), Confluence AI (action tracking) — exceeds both with per-item curation, duplicate awareness, and full RAID type coverage including Dependencies
+
+### 3.4.4 Email Digest Enhancement
 - **3 new digest sections** added to the daily/weekly digest email:
   - **Meeting Action Items** — overdue action items assigned to the recipient
   - **Upcoming Meetings** — meetings within the next 3 days
@@ -807,3 +817,4 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Project Template Marketplace (Marketplace tab in New Project wizard; community-shared templates with download counts; Import clones template into org; Publish endpoint shares org templates; 3 new API endpoints: GET /templates/marketplace, POST /templates/:id/publish, POST /templates/marketplace/:id/import) | Done | Enhancement |
 | Built-In Template Expansion (4 new templates: Agile/Scrum Sprint 90d IT, Marketing Campaign 60d, Product Launch 120d, Office Relocation 90d; 2 new categories: Marketing, Operations; total built-in templates now 14) | Done | Enhancement |
 | Gantt PDF/Image Export (Export dropdown replaces Print/CSV buttons; PDF via html2pdf.js A3 landscape auto-scaled; PNG via html-to-image 2x pixel ratio; Print and CSV retained; all modes temporarily expand Gantt to capture full content) | Done | Enhancement |
+| Meeting-to-RAID Bridge (Send to RAID button on linked analyses; MeetingToRaidModal groups Risks/Issues/Actions/Decisions/Dependencies with checkboxes + inline title editing + severity/category dropdowns; duplicate detection pre-check via check-raid-duplicates endpoint; imported records tagged source:'meeting'; meetingToRaidMapper.ts utility; migrations 101_meeting_analysis_raid.sql + T025_raid_meeting_source.sql) | Done | Enhancement |

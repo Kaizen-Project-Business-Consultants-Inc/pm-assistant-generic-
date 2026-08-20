@@ -1429,6 +1429,24 @@ The Meetings page has three tabs: **Meetings** (default), **Transcript Analysis*
 3. Enter recipient email addresses (comma or newline separated).
 4. Click **Send**. Recipients receive a formatted HTML email with the meeting summary, action items table (with assignees, due dates, and priority), and decisions list.
 
+#### Sending Extracted Items to the RAID Log
+
+After a transcript analysis is linked to a meeting, the AI extracts five categories of items: Risks, Issues, Action Items, Decisions, and Dependencies. You can import any of these directly into the project RAID log.
+
+1. Open a meeting that has a linked analysis.
+2. In the **Linked Analyses** section, click **Send to RAID** on any analysis.
+3. A review modal opens, grouping items by RAID type (Risks, Issues, Actions, Decisions, Dependencies).
+4. For each item:
+   - **Check** the checkbox to include it, or uncheck to skip it.
+   - **Edit the title** inline if the AI's phrasing needs adjustment.
+   - **Set Severity** using the dropdown (Critical, High, Medium, Low).
+   - **Set Category** using the category dropdown.
+   - Items flagged with a duplicate warning match an existing open RAID record — review them carefully before importing.
+5. Click **Import Selected** to create the checked items in the RAID log.
+6. Imported records appear in the **RAID** tab tagged as **source: Meeting**.
+
+> **Tip:** Use the duplicate warning indicators to avoid creating redundant RAID entries. You can still import a flagged item if it represents a distinct concern from the existing record.
+
 #### Linking AI Analysis to a Meeting
 
 1. After running a transcript analysis (in the Transcript Analysis tab), open a meeting.
@@ -1445,7 +1463,10 @@ The Meetings page has three tabs: **Meetings** (default), **Transcript Analysis*
    - **Action items** -- Tasks identified from discussion, with suggested assignees and due dates.
    - **Decisions** -- Key decisions recorded.
    - **Risks** -- Potential issues mentioned.
+   - **Issues** -- Live problems or blockers raised in the meeting.
+   - **Dependencies** -- Inter-task or inter-team dependencies identified.
 5. Action items can be converted directly into schedule tasks.
+6. All five item types (Risks, Issues, Actions, Decisions, Dependencies) can be sent to the RAID log via **Send to RAID** on any linked analysis.
 
 #### Action Items Tab -- Cross-Meeting Tracker
 
