@@ -1,6 +1,8 @@
 import { approvalWorkflowRepository } from '../database/ApprovalWorkflowRepository';
 import { auditLedgerService } from './AuditLedgerService';
 import { deadLetterService } from './DeadLetterService';
+import { notificationService } from './NotificationService';
+import logger from '../utils/logger';
 
 export interface ApprovalWorkflow {
   id: string;
@@ -203,10 +205,26 @@ export class ApprovalWorkflowService {
       source: 'web',
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
+    // Notify the requester of the action (fire-and-forget)
+    if (result.requestedBy && result.requestedBy !== userId) {
+      const actionLabel = action === 'approved' ? 'approved' : action === 'rejected' ? 'rejected' : 'returned';
+      const stepName = steps[currentStep]?.name || `Step ${currentStep + 1}`;
+      notificationService.create({
+        userId: result.requestedBy,
+        type: 'workflow_action',
+        severity: action === 'rejected' ? 'high' : 'medium',
+        title: `Change Request ${actionLabel}`,
+        message: `"${result.title}" was ${actionLabel} at ${stepName}${comment ? ': ' + comment : ''}`,
+        projectId: result.projectId,
+        linkType: 'change_request',
+        linkId: crId,
+      }).catch((err: any) => logger.warn('Failed to notify CR requester', { error: err.message }));
+    }
+
     return result;
   }
 
-  async withdrawChangeRequest(crId: string): Promise<ChangeRequest> {
+  async withdrawChangeRequest(crId: string, userId?: string): Promise<ChangeRequest> {
     return approvalWorkflowRepository.updateChangeRequestStatus(crId, 'withdrawn');
   }
 

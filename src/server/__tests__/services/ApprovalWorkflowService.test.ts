@@ -30,6 +30,21 @@ vi.mock('../../services/DeadLetterService', () => ({
   },
 }));
 
+vi.mock('../../services/NotificationService', () => ({
+  notificationService: {
+    create: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock('../../utils/logger', () => ({
+  default: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
 import { ApprovalWorkflowService } from '../../services/ApprovalWorkflowService';
 import { approvalWorkflowRepository } from '../../database/ApprovalWorkflowRepository';
 import { auditLedgerService } from '../../services/AuditLedgerService';

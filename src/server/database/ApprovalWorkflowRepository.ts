@@ -238,7 +238,7 @@ export class ApprovalWorkflowRepository extends BaseRepository<ApprovalWorkflow>
 
       if (action === 'approved') {
         if (currentStep < totalSteps - 1) {
-          await q(`UPDATE change_requests SET current_step = ? WHERE id = ?`, [currentStep + 1, crId]);
+          await q(`UPDATE change_requests SET status = 'in_review', current_step = ? WHERE id = ?`, [currentStep + 1, crId]);
         } else {
           await q(`UPDATE change_requests SET status = 'approved', current_step = ? WHERE id = ?`, [currentStep, crId]);
         }
