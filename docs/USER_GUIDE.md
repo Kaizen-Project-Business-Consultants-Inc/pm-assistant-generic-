@@ -874,7 +874,7 @@ The Sprint tab header provides at-a-glance status:
 
 - **Active sprint progress bar** -- Colored bar showing task completion percentage for the active sprint (amber < 50%, blue 50-99%, green at 100%).
 - **Day progress** -- "Day X of Y" label with a mini bar showing elapsed time in the sprint timebox.
-- **View switcher** -- When a sprint is selected, toggle between List, Planning, Board, Burndown, Flow, and Capacity views.
+- **View switcher** -- When a sprint is selected, toggle between List, Planning, Board, Burndown, Burnup, Flow, Metrics, Capacity, Standup, Retro, and Definitions views.
 
 ### Sprint List
 
@@ -2349,7 +2349,7 @@ Click any section header to collapse or expand it. This is useful if one bucket 
 
 ## 33. Scrum Enhancements
 
-PM Assistant includes a suite of scrum/agile enhancements that add task typing, acceptance criteria, epic grouping, expanded workflow statuses, burnup charting, and flow metrics.
+PM Assistant includes a suite of scrum/agile enhancements that add task typing, acceptance criteria, epic grouping, expanded workflow statuses, burnup charting, flow metrics, standup logging, retrospective boards, and definitions of ready/done.
 
 ### Task Types
 
@@ -2443,6 +2443,105 @@ Flow metrics help you understand team throughput and delivery predictability.
    - **Distribution histogram** -- visual breakdown of how lead/cycle times are distributed.
 
 Shorter and more consistent cycle times indicate a healthier, more predictable delivery flow. Use these metrics during retrospectives to identify bottlenecks.
+
+### Standup Logging
+
+Daily standups help the team stay aligned. PM Assistant provides a structured standup log within each sprint.
+
+**Submitting your standup:**
+
+1. Navigate to the Sprints tab and select a sprint.
+2. Click the **"standup"** tab in the view switcher.
+3. The form shows three fields:
+   - **Yesterday** -- What you accomplished since the last standup.
+   - **Today** -- What you plan to work on.
+   - **Blockers** -- Any impediments preventing progress.
+4. Click **Submit**. Your entry is saved for the current date.
+
+**Navigating dates:**
+
+Use the date picker or the previous/next arrows to view standups from other days. You can update or delete your own entry for any date.
+
+**Blockers and RAID integration:**
+
+When you report a blocker in your standup, PM Assistant automatically creates a RAID issue tagged with `source: standup`. This ensures blockers are tracked alongside other project risks and issues without manual re-entry.
+
+**Team view:**
+
+Below the submit form, the team view displays all standup entries for the selected day. Scrum masters and project managers can use this to get a consolidated view of the team's daily status.
+
+**Notifications:**
+
+Project managers are notified when a team member submits a standup entry.
+
+### Retrospective Board
+
+The retrospective board provides a structured way to reflect on a completed sprint.
+
+**Accessing the retro board:**
+
+1. Navigate to the Sprints tab and select a sprint.
+2. Click the **"retro"** tab in the view switcher.
+
+**Three columns:**
+
+- **Went Well** (green) -- Things that worked during the sprint.
+- **To Improve** (amber) -- Areas that need attention.
+- **Action Items** (red) -- Concrete steps to take in the next sprint.
+
+**Adding items:**
+
+Click the **+** button in any column to add a new item. Type your observation and press Enter or click Save.
+
+**Voting:**
+
+Click the vote button on any item to upvote it. Each user gets one vote per item. Click again to remove your vote. Vote counts help the team prioritize discussion topics.
+
+**AI Seed:**
+
+Click the **AI Seed** button to have Claude analyze the sprint data (completed tasks, velocity, blockers) and generate suggested retrospective items. AI-generated items are marked with an "AI" badge so the team can distinguish them from human observations.
+
+**Converting action items to tasks:**
+
+Click the **Convert** button on any action item to create a backlog task from it. This ensures improvement actions are tracked and not forgotten.
+
+**Deleting items:**
+
+You can delete items you created by clicking the delete button. Items created by other team members are read-only.
+
+### Definition of Ready / Done (DoR/DoD)
+
+Definitions of Ready and Done establish quality gates for your team -- criteria that must be met before a task enters a sprint (DoR) and before it can be considered complete (DoD).
+
+**Setting up templates (managers only):**
+
+1. Navigate to the Sprints tab.
+2. Click the **"definitions"** tab in the view switcher.
+3. You will see two sections: **Definition of Ready** and **Definition of Done**.
+4. Click **Add Criterion** to add a new item to either list.
+5. Drag items to reorder them. Click the X to remove a criterion.
+6. Use the **Suggested Defaults** button to populate common criteria (e.g., "Acceptance criteria defined" for DoR, "Code reviewed and merged" for DoD).
+7. Click **Save** to apply the templates to the project.
+
+**Per-task checklists:**
+
+Once templates are defined, each task automatically receives a checklist based on the project templates. Open any task to see the DoR and DoD checklists with checkboxes. Check items off as they are completed.
+
+**Readiness badges in Backlog:**
+
+In the Backlog view, each task shows a readiness badge:
+- **Green checkmark** -- All Definition of Ready criteria are met. The task is ready for sprint planning.
+- **Amber warning** -- One or more DoR criteria remain unchecked. The task may need more preparation before it enters a sprint.
+
+**Progress badges on Sprint Board:**
+
+On Sprint Board cards, a progress fraction (e.g., "3/5") shows how many Definition of Done criteria have been completed. This gives the team at-a-glance visibility into how close a task is to being truly done.
+
+**Tips for effective DoR/DoD:**
+
+- Keep criteria concise and actionable (e.g., "Unit tests written" rather than "Quality is good").
+- Review and refine your definitions periodically -- retrospectives are a good time.
+- Start with a small number of criteria (3-5 each) and add more as the team matures.
 
 ---
 

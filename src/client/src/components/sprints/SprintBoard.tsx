@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Kanban, Settings, Users } from 'lucide-react';
+import { Kanban, Settings, Users, ShieldCheck } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface BoardTask {
@@ -108,6 +108,14 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
   const tasks: BoardTask[] = rawTasks.map((t) =>
     localTaskOverrides[t.id] ? { ...t, status: localTaskOverrides[t.id] } : t,
   );
+
+  const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
+  const { data: dodData } = useQuery({
+    queryKey: ['dodReadiness', taskIds.join(',')],
+    queryFn: () => apiService.getBulkReadiness('dod', taskIds),
+    enabled: taskIds.length > 0,
+  });
+  const dodReadiness: Record<string, { ready: boolean; checked: number; total: number }> = dodData?.readiness || {};
 
   const assignees = useMemo(() => {
     const set = new Set<string>();
@@ -350,6 +358,19 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                                 </span>
                               );
                             })()}
+                            {dodReadiness[task.id] && (
+                              <span
+                                title={`DoD: ${dodReadiness[task.id].checked}/${dodReadiness[task.id].total}`}
+                                className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                                  dodReadiness[task.id].ready
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                                }`}
+                              >
+                                <ShieldCheck className="w-3 h-3" />
+                                {dodReadiness[task.id].checked}/{dodReadiness[task.id].total}
+                              </span>
+                            )}
                           </div>
                           {task.assignedTo && avatarColor && (
                             <div className="mt-2 flex items-center gap-1.5">

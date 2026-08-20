@@ -10,6 +10,9 @@ import { SprintBurnupChart } from '../../components/sprints/SprintBurnupChart';
 import { CumulativeFlowChart } from '../../components/sprints/CumulativeFlowChart';
 import { FlowMetricsWidget } from '../../components/sprints/FlowMetricsWidget';
 import { CapacityCard } from '../../components/sprints/CapacityCard';
+import { StandupLogPanel } from '../../components/sprints/StandupLogPanel';
+import { RetrospectiveBoard } from '../../components/sprints/RetrospectiveBoard';
+import { DefinitionsPanel } from '../../components/sprints/DefinitionsPanel';
 
 interface SprintSummary {
   id: string;
@@ -48,7 +51,7 @@ export function SprintsTab({ projectId }: { projectId: string }) {
   const schedules: any[] = schedulesData?.schedules || [];
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [selectedSprintId, setSelectedSprintId] = useState<string | undefined>();
-  const [sprintView, setSprintView] = useState<'list' | 'planning' | 'board' | 'burndown' | 'burnup' | 'flow' | 'metrics' | 'capacity'>('list');
+  const [sprintView, setSprintView] = useState<'list' | 'planning' | 'board' | 'burndown' | 'burnup' | 'flow' | 'metrics' | 'capacity' | 'standup' | 'retro' | 'definitions'>('list');
   const [retroData, setRetroData] = useState<{ markdown: string; sprintName: string } | null>(null);
   const [retroLoading, setRetroLoading] = useState(false);
 
@@ -123,7 +126,7 @@ export function SprintsTab({ projectId }: { projectId: string }) {
           )}
           {selectedSprintId && (
             <div className="flex gap-1 flex-wrap">
-              {(['list', 'planning', 'board', 'burndown', 'burnup', 'flow', 'metrics', 'capacity'] as const).map((v) => (
+              {(['list', 'planning', 'board', 'burndown', 'burnup', 'flow', 'metrics', 'capacity', 'standup', 'retro', 'definitions'] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setSprintView(v)}
@@ -168,6 +171,15 @@ export function SprintsTab({ projectId }: { projectId: string }) {
       )}
       {sprintView === 'capacity' && selectedSprintId && (
         <CapacityCard sprintId={selectedSprintId} />
+      )}
+      {sprintView === 'standup' && selectedSprintId && (
+        <StandupLogPanel sprintId={selectedSprintId} projectId={projectId} />
+      )}
+      {sprintView === 'retro' && selectedSprintId && selectedScheduleId && (
+        <RetrospectiveBoard sprintId={selectedSprintId} projectId={projectId} scheduleId={selectedScheduleId} />
+      )}
+      {sprintView === 'definitions' && (
+        <DefinitionsPanel projectId={projectId} isManager={true} />
       )}
 
       {/* AI Retrospective Loading */}

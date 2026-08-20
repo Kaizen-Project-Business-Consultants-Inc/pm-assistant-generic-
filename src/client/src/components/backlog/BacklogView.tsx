@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Inbox, Plus, ArrowRight } from 'lucide-react';
+import { Inbox, Plus, ArrowRight, Shield } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface BacklogTask {
@@ -92,6 +92,15 @@ export function BacklogView({ projectId }: BacklogViewProps) {
 
   const sprints: Sprint[] = (sprintsData?.data ?? sprintsData?.sprints ?? [])
     .filter((s: Sprint) => s.status === 'planning' || s.status === 'active');
+
+  // Fetch DoR readiness for all tasks
+  const taskIds = tasks.map((t) => t.id);
+  const { data: dorData } = useQuery({
+    queryKey: ['dorReadiness', taskIds.join(',')],
+    queryFn: () => apiService.getBulkReadiness('dor', taskIds),
+    enabled: taskIds.length > 0,
+  });
+  const dorReadiness: Record<string, { ready: boolean; checked: number; total: number }> = dorData?.readiness || {};
 
   // Assign to sprint mutation
   const assignMutation = useMutation({
@@ -255,6 +264,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-24">Priority</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-24">Status</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-32 hidden md:table-cell">Assignee</th>
+                <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-16 hidden lg:table-cell">DoR</th>
                 <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-16 hidden lg:table-cell">Est.</th>
               </tr>
             </thead>
@@ -346,6 +356,15 @@ export function BacklogView({ projectId }: BacklogViewProps) {
                     </td>
                     <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 hidden md:table-cell">
                       {task.assignedTo || '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-center hidden lg:table-cell">
+                      {dorReadiness[task.id] ? (
+                        <span title={`DoR: ${dorReadiness[task.id].checked}/${dorReadiness[task.id].total}`}>
+                          <Shield className={`w-4 h-4 mx-auto ${dorReadiness[task.id].ready ? 'text-green-500' : 'text-amber-500'}`} />
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 dark:text-gray-600">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-right text-gray-500 dark:text-gray-400 hidden lg:table-cell">
                       {task.estimatedDays != null ? `${task.estimatedDays}d` : '—'}

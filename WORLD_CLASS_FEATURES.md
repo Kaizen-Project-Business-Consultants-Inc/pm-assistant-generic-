@@ -414,7 +414,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Sprint tab header: active sprint progress bar, "Day X of Y" indicator with mini progress bar
 - Deterministic assignee avatars (8-color hash palette) on board cards
 - Interactive burndown chart with today marker, hover tooltips, and summary stat tiles
-- Full dark mode across all sprint views (list, planning, board, burndown, flow, capacity)
+- Full dark mode across all sprint views (list, planning, board, burndown, burnup, flow, metrics, capacity, standup, retro, definitions)
 - Mobile-responsive layouts with flex-wrap, condensed labels, and touch-friendly card sizing
 - Sprint retrospective summaries (AI-generated)
 - **Task Types** — Story/Bug/Task/Epic type selector per task; color-coded badges (blue/red/grey/purple) across Gantt, Sprint Board, Kanban Board, and Backlog
@@ -423,6 +423,9 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Custom Workflow Statuses** — 7 statuses (pending/in_progress/in_review/testing/completed/blocked/cancelled); Sprint Board 5 columns + badge overlay for blocked/cancelled; Kanban Board 7 columns; color-coded across all views
 - **Burnup Chart** — scope (blue) and completed (green) lines with remaining work area; "burnup" tab in Sprint view switcher; summary stat tiles
 - **Flow Metrics** — Lead Time (created→done) and Cycle Time (started→done) with avg/median stats and distribution histogram; "metrics" tab; `GET /:scheduleId/flow-metrics` endpoint
+- **Standup Logging** — Daily standup entries per user per sprint (yesterday/today/blockers); date picker with prev/next navigation; team view of all entries for the day; blockers auto-create RAID issues (source: 'standup'); PM notification on submission; full CRUD API on `/sprints/:id/standups`
+- **Retrospective Board** — 3-column board (Went Well/To Improve/Action Items) with color coding; inline add/delete; one-vote-per-user voting system; AI Seed generates items from sprint data via Claude (marked with "AI" badge); convert action items to backlog tasks; full API on `/sprints/:id/retro` with vote/unvote/seed/convert endpoints
+- **Definition of Ready/Done (DoR/DoD)** — Project-level ordered criteria templates (managers only); suggested defaults; per-task checklist initialization from templates; checkbox UI for tracking; DoR badge in Backlog (green check/amber warning); DoD progress fraction on Sprint Board cards; bulk readiness API for efficient rendering; API on `/sprints/definitions/:projectId`
 - **Benchmark:** Jira, Azure DevOps, Monday.com
 
 ### 5.6 Reports & Report Builder
@@ -705,3 +708,6 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Scrum Enhancements — Custom Workflow Statuses (7 statuses: pending/in_progress/in_review/testing/completed/blocked/cancelled; Sprint Board 5 columns + badge overlay; Kanban Board 7 columns; color-coded across all views) | Done | Enhancement |
 | Scrum Enhancements — Burnup Chart (scope + completed lines with remaining work area; "burnup" tab in Sprint view switcher; summary stat tiles) | Done | Enhancement |
 | Scrum Enhancements — Flow Metrics (Lead Time created→done, Cycle Time started→done; avg/median stats; distribution histogram; "metrics" tab; flow-metrics API endpoint) | Done | Enhancement |
+| Scrum Ceremonies — Standup Logging (daily standup entries per user/sprint/day with yesterday/today/blockers; date navigation; team view; blockers auto-create RAID issues source:'standup'; PM notification on submission; CRUD API on /sprints/:id/standups) | Done | Enhancement |
+| Scrum Ceremonies — Retrospective Board (3-column board: Went Well/To Improve/Action Items; inline add/delete own items; one-vote-per-user system; AI Seed from sprint data via Claude with "AI" badge; convert action items to backlog tasks; API with vote/unvote/seed/convert endpoints) | Done | Enhancement |
+| Scrum Ceremonies — Definition of Ready/Done (project-level DoR/DoD template editor for managers; ordered criteria with add/remove/reorder; suggested defaults; per-task checklist initialization; checkbox UI; DoR badge in Backlog green/amber; DoD progress fraction on Sprint Board cards; bulk readiness API; migration T021_scrum_ceremonies.sql with 5 tables) | Done | Enhancement |

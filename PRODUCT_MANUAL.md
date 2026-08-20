@@ -528,7 +528,7 @@ The Sprint tab header shows at-a-glance status for the active sprint:
 
 - **Progress bar** — Colored bar showing task completion percentage (amber < 50%, blue 50-99%, green 100%).
 - **Day progress indicator** — "Day X of Y" label with a mini progress bar showing elapsed time within the sprint timebox.
-- **View switcher** — Toggle between List, Planning, Board, Burndown, Flow, and Capacity views when a sprint is selected.
+- **View switcher** — Toggle between List, Planning, Board, Burndown, Burnup, Flow, Metrics, Capacity, Standup, Retro, and Definitions views when a sprint is selected.
 
 ### Sprint List
 
@@ -1308,7 +1308,7 @@ The Slack integration provides four capabilities:
    - `budget_alert` — spent vs. budget, burn rate, variance
    - `meeting_followup` — summary, action items, decisions
    - `member_added` — new member name and role
-   - `risk_created`, `sprint_started`, `sprint_completed`, `project_status_changed`, `agent_proposal_created` — generic notification fallback (title + body + link button)
+   - `risk_created`, `sprint_started`, `sprint_completed`, `standup_submitted`, `project_status_changed`, `agent_proposal_created` — generic notification fallback (title + body + link button)
 
 2. **Slash Command** (`/kovarti status <project name>`) — Returns an ephemeral Block Kit message with the project's status, priority, methodology, and dates.
 
@@ -3091,7 +3091,7 @@ The Sprint Burnup Chart visualizes sprint progress as two lines plotted over the
 - **Completed line** (green) — cumulative completed story points over time
 - The area between the two lines represents **remaining work**
 
-Accessible via the **"burnup"** tab in the Sprint view switcher (alongside List, Planning, Board, Burndown, Flow, and Capacity). Summary stats tiles show Total Scope, Completed, Remaining, and Days Left.
+Accessible via the **"burnup"** tab in the Sprint view switcher. Summary stats tiles show Total Scope, Completed, Remaining, and Days Left.
 
 ### Flow Metrics
 
@@ -3103,3 +3103,60 @@ Flow metrics provide insight into team throughput and delivery predictability:
 - **Distribution histogram** — visual distribution of lead/cycle times across configurable buckets
 
 Accessible via the **"metrics"** tab in the Sprint view switcher. The API endpoint `GET /api/v1/projects/:projectId/schedules/:scheduleId/flow-metrics` returns lead time and cycle time arrays with avg/median summaries for the specified sprint or schedule.
+
+### Standup Logging
+
+Daily standup entries capture what each team member did yesterday, what they plan to do today, and any blockers — all scoped to a sprint.
+
+- **Per-user, per-sprint, per-day** — Each user submits one standup entry per day per sprint. Entries include three fields: Yesterday (what was accomplished), Today (what is planned), and Blockers (impediments).
+- **Date navigation** — A date picker with previous/next day buttons lets users review past standups or submit for the current day.
+- **Blocker management** — Blockers entered during standup are automatically created as RAID issues with `source: 'standup'`. This ensures impediments surface in the project's risk/issue tracking without manual re-entry.
+- **Team view** — Below the submit form, a read-only team view shows all standup entries for the selected day across all team members, giving scrum masters and PMs a consolidated daily view.
+- **Notifications** — When a team member submits a standup, project managers receive a `standup_submitted` notification.
+- **API** — `POST /api/v1/sprints/:sprintId/standups` (create), `GET /api/v1/sprints/:sprintId/standups?date=YYYY-MM-DD` (list for date), `PUT /api/v1/sprints/:sprintId/standups/:id` (update), `DELETE /api/v1/sprints/:sprintId/standups/:id` (delete own entry).
+
+Accessible via the **"standup"** tab in the Sprint view switcher.
+
+### Retrospective Board
+
+A structured retrospective board for sprint reflection with three categories, voting, and AI seeding.
+
+- **Three-column layout** — Items are organized into Went Well (green), To Improve (amber), and Action Items (red). Each column is color-coded for quick visual scanning.
+- **Add items inline** — Click the add button in any column to create a new retrospective item. Items are attributed to the creating user.
+- **Delete own items** — Users can delete items they created. Items created by other users are read-only.
+- **Voting** — Each user can cast one vote per item. Vote counts are displayed on each card. Click to vote; click again to unvote. This surfaces the team's priorities without lengthy discussion.
+- **AI Seed** — The "AI Seed" button generates retrospective items from sprint data (completed tasks, velocity, blockers) using Claude. AI-generated items are marked with an "AI" badge so the team can distinguish them from human-authored items.
+- **Convert to task** — Action items can be converted directly into backlog tasks, ensuring follow-through on improvement actions. The converted task is linked back to the sprint.
+- **API** — `GET /api/v1/sprints/:sprintId/retro` (list items), `POST /api/v1/sprints/:sprintId/retro` (create item), `DELETE /api/v1/sprints/:sprintId/retro/:id` (delete own item), `POST /api/v1/sprints/:sprintId/retro/:id/vote` (vote), `DELETE /api/v1/sprints/:sprintId/retro/:id/vote` (unvote), `POST /api/v1/sprints/:sprintId/retro/seed` (AI seed), `POST /api/v1/sprints/:sprintId/retro/:id/convert` (convert to task).
+
+Accessible via the **"retro"** tab in the Sprint view switcher.
+
+### Definition of Ready / Done (DoR/DoD)
+
+Project-level quality gate templates that define when a task is ready to start (DoR) and when it is truly done (DoD).
+
+- **Project-level templates** — Managers define ordered lists of criteria for both Definition of Ready and Definition of Done at the project level. These templates apply to all tasks within the project.
+- **Template editor** — The Definitions tab provides an editor with add, remove, and reorder controls for each criterion. Suggested default criteria are available as a starting point (e.g., "Acceptance criteria defined" for DoR, "Code reviewed" for DoD).
+- **Per-task checklists** — When a task is created or when templates are first applied, checklist items are initialized from the project templates. Each task gets its own independent copy that can be checked off as work progresses.
+- **Checkbox UI** — Task checklists appear in the Task Form with checkboxes for tracking completion of each criterion.
+- **DoR badge (Backlog)** — In the Backlog view, each task displays a readiness badge: a green checkmark if all DoR criteria are met, or an amber warning icon if any remain unchecked. This helps scrum masters quickly identify which stories are truly ready for sprint planning.
+- **DoD badge (Sprint Board)** — On Sprint Board cards, a progress fraction badge (e.g., "3/5") shows how many DoD criteria have been completed, giving the team visibility into remaining work before a task can be considered done.
+- **Bulk readiness API** — `GET /api/v1/sprints/definitions/:projectId/readiness?taskIds=...` returns readiness status for multiple tasks in a single call, enabling efficient badge rendering in list views.
+- **Role restriction** — Only project managers and above can edit DoR/DoD templates. All team members can view and check off items on their tasks.
+- **API** — `GET /api/v1/sprints/definitions/:projectId` (get templates), `PUT /api/v1/sprints/definitions/:projectId` (update templates), plus checklist CRUD endpoints for per-task checklists.
+
+Accessible via the **"definitions"** tab in the Sprint view switcher.
+
+### Database — Scrum Ceremonies
+
+Migration `T021_scrum_ceremonies.sql` creates five tables:
+
+| Table | Purpose |
+|-------|---------|
+| `standup_entries` | Daily standup submissions (yesterday, today, blockers, per user per sprint per date) |
+| `retrospective_items` | Retro board items with category (went_well, to_improve, action_item), text, author, AI flag |
+| `retrospective_votes` | One vote per user per retro item (unique constraint) |
+| `scrum_definitions` | Project-level DoR/DoD templates (JSON arrays of ordered criteria) |
+| `task_checklists` | Per-task checklist items initialized from DoR/DoD templates (type, label, checked status) |
+
+The migration also expands the RAID `source` enum to include `'standup'`.
