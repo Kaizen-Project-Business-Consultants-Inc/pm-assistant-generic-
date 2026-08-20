@@ -11,7 +11,7 @@ interface ChangeRequestFormProps {
 }
 
 const CATEGORIES = ['scope', 'schedule', 'budget', 'resource', 'other'] as const;
-const PRIORITIES = ['low', 'medium', 'high', 'critical'] as const;
+const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 
 export function ChangeRequestForm({ projectId, crId, onClose, onSaved }: ChangeRequestFormProps) {
   const queryClient = useQueryClient();

@@ -1916,9 +1916,12 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
-  async getChangeRequests(projectId: string, status?: string) {
+  async getChangeRequests(projectId: string, filters?: { status?: string; priority?: string; sortBy?: string; sortDir?: string }) {
     const params: Record<string, string> = {};
-    if (status) params.status = status;
+    if (filters?.status) params.status = filters.status;
+    if (filters?.priority) params.priority = filters.priority;
+    if (filters?.sortBy) params.sortBy = filters.sortBy;
+    if (filters?.sortDir) params.sortDir = filters.sortDir;
     const response = await this.api.get(`/approvals/change-requests/${projectId}`, { params });
     return response.data;
   }

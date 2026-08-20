@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
+import { projectMemberService } from '../../services/ProjectMemberService';
 import logger from '../../utils/logger';
 
 const workflowStepSchema = z.object({
@@ -23,10 +24,12 @@ const createWorkflowSchema = z.object({
 
 const updateWorkflowSchema = createWorkflowSchema.partial();
 
+const VALID_CATEGORIES = ['scope', 'schedule', 'budget', 'resource', 'other'] as const;
+
 const createChangeRequestSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(5000).optional(),
-  category: z.string().min(1),
+  category: z.enum(VALID_CATEGORIES),
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
   impactSummary: z.string().max(2000).optional(),
 });
@@ -38,9 +41,29 @@ const submitForApprovalSchema = z.object({
 });
 
 const actOnStepSchema = z.object({
-  action: z.string().min(1),
+  action: z.enum(['approve', 'reject', 'return', 'approved', 'rejected', 'returned']),
   comment: z.string().max(2000).optional(),
 });
+
+/** Verify the user has project access for a CR-scoped endpoint (where :id is a CR id, not a projectId). */
+async function requireCRProjectAccess(request: FastifyRequest, reply: FastifyReply, minRole: 'viewer' | 'editor' = 'viewer') {
+  const user = request.user!;
+  const { id } = request.params as { id: string };
+  const detail = await approvalWorkflowService.getChangeRequestDetail(id).catch(() => null);
+  if (!detail) return reply.status(404).send({ error: 'Change request not found' });
+
+  // Global roles bypass
+  if (['admin', 'pmo'].includes(user.role)) return;
+  if (user.role === 'executive' && minRole === 'viewer') return;
+
+  const membership = await projectMemberService.findMembership(detail.changeRequest.projectId, user.userId);
+  if (!membership) return reply.status(404).send({ error: 'Not found' });
+
+  const hierarchy: Record<string, number> = { owner: 4, manager: 3, editor: 2, viewer: 1 };
+  if ((hierarchy[membership.role] || 0) < (hierarchy[minRole] || 0)) {
+    return reply.status(403).send({ error: 'Insufficient project role' });
+  }
+}
 
 export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -93,6 +116,8 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
       await approvalWorkflowService.deleteWorkflow(id);
       return { message: 'Workflow deleted' };
     } catch (error) {
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('Cannot delete')) return reply.status(409).send({ error: msg });
       logger.error('Delete workflow error', { error });
       return reply.status(500).send({ error: 'Failed to delete workflow' });
     }
@@ -118,8 +143,8 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   fastify.get('/change-requests/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
-      const { status } = request.query as { status?: string };
-      const changeRequests = await approvalWorkflowService.getChangeRequests(projectId, status);
+      const { status, priority, sortBy, sortDir } = request.query as { status?: string; priority?: string; sortBy?: string; sortDir?: string };
+      const changeRequests = await approvalWorkflowService.getChangeRequests(projectId, { status, priority, sortBy, sortDir });
       return { changeRequests };
     } catch (error) {
       logger.error('Get change requests error', { error });
@@ -130,10 +155,14 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   // GET /change-requests/:id/detail — get change request detail
   fastify.get('/change-requests/:id/detail', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      await requireCRProjectAccess(request, reply, 'viewer');
+      if (reply.sent) return;
       const { id } = request.params as { id: string };
       const detail = await approvalWorkflowService.getChangeRequestDetail(id);
-      return { detail };
+      return detail;
     } catch (error) {
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('not found')) return reply.status(404).send({ error: msg });
       logger.error('Get change request detail error', { error });
       return reply.status(500).send({ error: 'Failed to fetch change request detail' });
     }
@@ -176,12 +205,17 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   // POST /change-requests/:id/submit — submit for approval
   fastify.post('/change-requests/:id/submit', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      await requireCRProjectAccess(request, reply, 'editor');
+      if (reply.sent) return;
+      const user = request.user!;
       const { id } = request.params as { id: string };
       const { workflowId } = submitForApprovalSchema.parse(request.body);
-      const result = await approvalWorkflowService.submitForApproval(id, workflowId);
+      const result = await approvalWorkflowService.submitForApproval(id, workflowId, user.userId);
       return { result };
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('Only draft')) return reply.status(409).send({ error: msg });
       logger.error('Submit for approval error', { error });
       return reply.status(500).send({ error: 'Failed to submit for approval' });
     }
@@ -190,15 +224,24 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   // POST /change-requests/:id/action — act on step
   fastify.post('/change-requests/:id/action', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      await requireCRProjectAccess(request, reply, 'editor');
+      if (reply.sent) return;
       const user = request.user!;
       const { id } = request.params as { id: string };
       const { action, comment } = actOnStepSchema.parse(request.body);
-      const result = await approvalWorkflowService.actOnStep(id, user.userId, action, comment);
-      const eventName = action === 'approve' ? 'change_request.approved' : 'change_request.rejected';
+      const result = await approvalWorkflowService.actOnStep(id, user.userId, action, comment, user.role);
+      const eventMap: Record<string, string> = {
+        approve: 'change_request.approved', approved: 'change_request.approved',
+        reject: 'change_request.rejected', rejected: 'change_request.rejected',
+        return: 'change_request.returned', returned: 'change_request.returned',
+      };
+      const eventName = eventMap[action] || 'change_request.updated';
       webhookService.dispatch(eventName, { changeRequestId: id, action, comment }, user.userId);
       return { result };
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('not awaiting') || msg.includes('requires role')) return reply.status(409).send({ error: msg });
       logger.error('Act on step error', { error });
       return reply.status(500).send({ error: 'Failed to process action' });
     }
@@ -207,10 +250,17 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   // POST /change-requests/:id/withdraw — withdraw change request
   fastify.post('/change-requests/:id/withdraw', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      await requireCRProjectAccess(request, reply, 'editor');
+      if (reply.sent) return;
+      const user = request.user!;
       const { id } = request.params as { id: string };
-      const result = await approvalWorkflowService.withdrawChangeRequest(id);
+      const result = await approvalWorkflowService.withdrawChangeRequest(id, user.userId);
+      webhookService.dispatch('change_request.withdrawn', { changeRequestId: id }, user.userId);
       return { result };
     } catch (error) {
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('not found')) return reply.status(404).send({ error: msg });
+      if (msg.includes('Only pending')) return reply.status(409).send({ error: msg });
       logger.error('Withdraw change request error', { error });
       return reply.status(500).send({ error: 'Failed to withdraw change request' });
     }

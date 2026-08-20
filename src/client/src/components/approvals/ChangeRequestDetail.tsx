@@ -40,7 +40,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   low: 'text-gray-500 dark:text-gray-400',
   medium: 'text-yellow-600 dark:text-yellow-400',
   high: 'text-orange-600 dark:text-orange-400',
-  critical: 'text-red-600 dark:text-red-400',
+  urgent: 'text-red-600 dark:text-red-400',
 };
 
 const ACTION_ICONS: Record<string, React.ReactNode> = {
@@ -161,8 +161,8 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
     );
   }
 
-  const canSubmit = cr.status === 'draft';
-  const canEdit = cr.status === 'draft';
+  const canSubmit = cr.status === 'draft' || cr.status === 'rejected';
+  const canEdit = cr.status === 'draft' || cr.status === 'rejected';
   const canDelete = cr.status === 'draft';
   const canReview = cr.status === 'pending' || cr.status === 'in_review';
   const canWithdraw = cr.status === 'pending' || cr.status === 'in_review';
@@ -249,7 +249,10 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
         <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl p-4">
           <h3 className="text-xs font-semibold text-primary-700 dark:text-primary-400 uppercase tracking-wider mb-1">Current Approval Step</h3>
           <p className="text-sm text-primary-900 dark:text-primary-300 font-medium">
-            Step {currentStep.stepOrder}: {currentStep.role} - {currentStep.action}
+            Step {currentStep.stepOrder + 1}: {currentStep.name}
+            <span className="ml-2 text-xs font-normal text-primary-600 dark:text-primary-400">
+              (requires: {currentStep.role})
+            </span>
           </p>
         </div>
       )}
@@ -267,11 +270,16 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
                     {ACTION_ICONS[entry.action] || <Clock className="w-4 h-4 text-gray-400" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {entry.actorName || entry.actor || 'System'}
+                        {entry.actedByName || entry.actedBy || 'System'}
                       </span>
                       <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{entry.action}</span>
+                      {entry.stepName && (
+                        <span className="text-xs bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 px-1.5 py-0.5 rounded">
+                          {entry.stepName}
+                        </span>
+                      )}
                       {entry.stepRole && (
                         <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
                           {entry.stepRole}
@@ -282,7 +290,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
                       <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5">{entry.comment}</p>
                     )}
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      {new Date(entry.createdAt).toLocaleString()}
+                      {new Date(entry.actedAt).toLocaleString()}
                     </p>
                   </div>
                 </div>

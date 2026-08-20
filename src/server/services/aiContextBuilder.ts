@@ -254,7 +254,12 @@ export class AIContextBuilder {
     const [ctx, raidResult, changeRequests] = await Promise.all([
       this.buildProjectContext(projectId),
       riskRepository.findByProject(projectId).catch(() => [] as ProjectRisk[]),
-      approvalWorkflowRepository.findChangeRequests(projectId).catch(() => [] as ChangeRequest[]),
+      approvalWorkflowRepository.findChangeRequests(projectId, { status: undefined }).then(crs => {
+        // Filter to active/recent CRs only (not withdrawn, and within last 90 days)
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        return crs.filter(cr => cr.status !== 'withdrawn' && new Date(cr.createdAt) >= ninetyDaysAgo);
+      }).catch(() => [] as ChangeRequest[]),
     ]);
 
     // buildProjectContext already fetches all tasks — reuse them via schedule IDs

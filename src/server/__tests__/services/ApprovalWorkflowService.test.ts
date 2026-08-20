@@ -11,9 +11,12 @@ vi.mock('../../database/ApprovalWorkflowRepository', () => {
     findChangeRequests: vi.fn().mockResolvedValue([]),
     findChangeRequestById: vi.fn().mockResolvedValue(null),
     findChangeRequestRaw: vi.fn().mockResolvedValue(null),
+    updateChangeRequest: vi.fn(),
     updateChangeRequestStatus: vi.fn(),
     actOnStepTransaction: vi.fn(),
     findApprovalHistory: vi.fn().mockResolvedValue([]),
+    countActiveChangeRequestsByWorkflow: vi.fn().mockResolvedValue(0),
+    deleteChangeRequest: vi.fn(),
   };
   return { approvalWorkflowRepository: mockRepo };
 });
@@ -81,6 +84,7 @@ const sampleChangeRequest = {
   status: 'draft',
   currentStep: null,
   requestedBy: 'u1',
+  requestedByName: 'User One',
   createdAt: '2026-01-01',
   updatedAt: '2026-01-01',
 };
@@ -92,6 +96,7 @@ const sampleApprovalAction = {
   action: 'approved',
   comment: 'Looks good',
   actedBy: 'u2',
+  actedByName: 'User Two',
   actedAt: '2026-01-02',
 };
 
@@ -146,10 +151,17 @@ describe('ApprovalWorkflowService', () => {
   });
 
   describe('deleteWorkflow', () => {
-    it('delegates delete to repository', async () => {
+    it('delegates delete to repository when no active CRs', async () => {
+      mockRepo.countActiveChangeRequestsByWorkflow.mockResolvedValueOnce(0);
       mockRepo.deleteWorkflow.mockResolvedValueOnce(undefined);
       await service.deleteWorkflow('wf1');
       expect(mockRepo.deleteWorkflow).toHaveBeenCalledWith('wf1');
+    });
+
+    it('throws when active CRs reference the workflow', async () => {
+      mockRepo.countActiveChangeRequestsByWorkflow.mockResolvedValueOnce(3);
+      await expect(service.deleteWorkflow('wf1'))
+        .rejects.toThrow('Cannot delete workflow: 3 active change request(s) still reference it');
     });
   });
 
@@ -178,23 +190,35 @@ describe('ApprovalWorkflowService', () => {
       expect(result).toEqual([sampleChangeRequest]);
     });
 
-    it('passes status filter to repository', async () => {
+    it('passes filters to repository', async () => {
       mockRepo.findChangeRequests.mockResolvedValueOnce([]);
-      await service.getChangeRequests('p1', 'pending');
-      expect(mockRepo.findChangeRequests).toHaveBeenCalledWith('p1', 'pending');
+      await service.getChangeRequests('p1', { status: 'pending' });
+      expect(mockRepo.findChangeRequests).toHaveBeenCalledWith('p1', { status: 'pending' });
     });
   });
 
   // --- Change Request Detail ---
 
   describe('getChangeRequestDetail', () => {
-    it('returns change request with approval history', async () => {
-      mockRepo.findChangeRequestById.mockResolvedValueOnce(sampleChangeRequest);
+    it('returns change request with approval history and current step', async () => {
+      const pendingCR = { ...sampleChangeRequest, status: 'pending', currentStep: 0, workflowId: 'wf1' };
+      mockRepo.findChangeRequestById.mockResolvedValueOnce(pendingCR);
       mockRepo.findApprovalHistory.mockResolvedValueOnce([sampleApprovalAction]);
+      mockRepo.findById.mockResolvedValueOnce(sampleWorkflow);
 
       const result = await service.getChangeRequestDetail('cr1');
-      expect(result.changeRequest).toEqual(sampleChangeRequest);
-      expect(result.approvalHistory).toEqual([sampleApprovalAction]);
+      expect(result.changeRequest).toEqual(pendingCR);
+      expect(result.approvalHistory).toHaveLength(1);
+      expect(result.approvalHistory[0].stepName).toBe('Manager Review');
+      expect(result.currentStep).toEqual({ stepOrder: 0, name: 'Manager Review', role: 'project_manager' });
+    });
+
+    it('returns null currentStep for draft CRs', async () => {
+      mockRepo.findChangeRequestById.mockResolvedValueOnce(sampleChangeRequest);
+      mockRepo.findApprovalHistory.mockResolvedValueOnce([]);
+
+      const result = await service.getChangeRequestDetail('cr1');
+      expect(result.currentStep).toBeNull();
     });
 
     it('throws when change request not found', async () => {
@@ -301,6 +325,22 @@ describe('ApprovalWorkflowService', () => {
       const result = await service.actOnStep('cr1', 'u2', 'approved', 'Looks good', 'project_manager');
       expect(mockRepo.actOnStepTransaction).toHaveBeenCalledWith('cr1', 0, 'approved', 'Looks good', 'u2', 2);
       expect(result.currentStep).toBe(1);
+    });
+
+    it('normalizes present-tense actions to past tense', async () => {
+      mockRepo.findChangeRequestRaw.mockResolvedValueOnce(rawCR);
+      mockRepo.findById.mockResolvedValueOnce(workflowWithSteps);
+      mockRepo.actOnStepTransaction.mockResolvedValueOnce(undefined);
+      mockRepo.findChangeRequestById.mockResolvedValueOnce({ ...sampleChangeRequest, status: 'in_review', currentStep: 1 });
+
+      await service.actOnStep('cr1', 'u2', 'approve', 'LGTM');
+      expect(mockRepo.actOnStepTransaction).toHaveBeenCalledWith('cr1', 0, 'approved', 'LGTM', 'u2', 2);
+    });
+
+    it('rejects when CR is not awaiting review', async () => {
+      mockRepo.findChangeRequestRaw.mockResolvedValueOnce({ ...rawCR, status: 'draft' });
+      await expect(service.actOnStep('cr1', 'u2', 'approve'))
+        .rejects.toThrow('Change request is not awaiting review');
     });
 
     it('rejects a change request', async () => {
@@ -434,13 +474,27 @@ describe('ApprovalWorkflowService', () => {
   // --- Withdraw ---
 
   describe('withdrawChangeRequest', () => {
-    it('updates status to withdrawn', async () => {
+    it('updates status to withdrawn for pending CR', async () => {
+      const pendingCR = { ...sampleChangeRequest, status: 'pending' };
+      mockRepo.findChangeRequestById.mockResolvedValueOnce(pendingCR);
       const withdrawnCR = { ...sampleChangeRequest, status: 'withdrawn' };
       mockRepo.updateChangeRequestStatus.mockResolvedValueOnce(withdrawnCR);
 
-      const result = await service.withdrawChangeRequest('cr1');
+      const result = await service.withdrawChangeRequest('cr1', 'u1');
       expect(mockRepo.updateChangeRequestStatus).toHaveBeenCalledWith('cr1', 'withdrawn');
       expect(result.status).toBe('withdrawn');
+    });
+
+    it('throws when trying to withdraw a draft CR', async () => {
+      mockRepo.findChangeRequestById.mockResolvedValueOnce(sampleChangeRequest); // status = draft
+      await expect(service.withdrawChangeRequest('cr1'))
+        .rejects.toThrow('Only pending or in-review');
+    });
+
+    it('throws when CR not found', async () => {
+      mockRepo.findChangeRequestById.mockResolvedValueOnce(null);
+      await expect(service.withdrawChangeRequest('nonexistent'))
+        .rejects.toThrow('Change request not found');
     });
   });
 

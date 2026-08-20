@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, GitPullRequest, Clock } from 'lucide-react';
+import { Plus, GitPullRequest, Clock, ArrowUpDown } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface ChangeRequestListProps {
@@ -10,6 +10,7 @@ interface ChangeRequestListProps {
 }
 
 const STATUS_OPTIONS = ['all', 'draft', 'pending', 'in_review', 'approved', 'rejected', 'withdrawn'] as const;
+const PRIORITY_OPTIONS = ['all', 'low', 'medium', 'high', 'urgent'] as const;
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200',
@@ -34,10 +35,18 @@ function statusLabel(status: string): string {
 
 export function ChangeRequestList({ projectId, onSelect, onNew }: ChangeRequestListProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [sortBy] = useState<string>('created_at');
+  const [sortDir, setSortDir] = useState<string>('desc');
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['change-requests', projectId, statusFilter],
-    queryFn: () => apiService.getChangeRequests(projectId, statusFilter === 'all' ? undefined : statusFilter),
+    queryKey: ['change-requests', projectId, statusFilter, priorityFilter, sortBy, sortDir],
+    queryFn: () => apiService.getChangeRequests(projectId, {
+      status: statusFilter === 'all' ? undefined : statusFilter,
+      priority: priorityFilter === 'all' ? undefined : priorityFilter,
+      sortBy,
+      sortDir,
+    }),
     enabled: !!projectId,
   });
 
@@ -60,20 +69,44 @@ export function ChangeRequestList({ projectId, onSelect, onNew }: ChangeRequestL
         </button>
       </div>
 
-      {/* Status Filter */}
-      <div className="flex items-center gap-2">
-        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status:</label>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+      {/* Filters */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status:</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s === 'all' ? 'All' : statusLabel(s)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority:</label>
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            {PRIORITY_OPTIONS.map((p) => (
+              <option key={p} value={p}>
+                {p === 'all' ? 'All' : p.charAt(0).toUpperCase() + p.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+          className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 transition-colors"
+          title={`Sort ${sortDir === 'desc' ? 'oldest first' : 'newest first'}`}
         >
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              {s === 'all' ? 'All' : statusLabel(s)}
-            </option>
-          ))}
-        </select>
+          <ArrowUpDown className="w-3.5 h-3.5" />
+          {sortDir === 'desc' ? 'Newest' : 'Oldest'}
+        </button>
       </div>
 
       {/* Table */}

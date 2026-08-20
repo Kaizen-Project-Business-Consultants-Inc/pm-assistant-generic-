@@ -35,6 +35,7 @@ export interface ChangeRequest {
   status: string;
   currentStep: number | null;
   requestedBy: string;
+  requestedByName: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,7 +47,14 @@ export interface ApprovalAction {
   action: string;
   comment: string | null;
   actedBy: string;
+  actedByName: string | null;
   actedAt: string;
+}
+
+/** Normalize action verbs: accept both present and past tense */
+function normalizeAction(action: string): string {
+  const map: Record<string, string> = { approve: 'approved', reject: 'rejected', return: 'returned' };
+  return map[action] || action;
 }
 
 export class ApprovalWorkflowService {
@@ -76,6 +84,10 @@ export class ApprovalWorkflowService {
   }
 
   async deleteWorkflow(id: string): Promise<void> {
+    const activeCRs = await approvalWorkflowRepository.countActiveChangeRequestsByWorkflow(id);
+    if (activeCRs > 0) {
+      throw new Error(`Cannot delete workflow: ${activeCRs} active change request(s) still reference it`);
+    }
     return approvalWorkflowRepository.deleteWorkflow(id);
   }
 
@@ -99,7 +111,7 @@ export class ApprovalWorkflowService {
   }, userId?: string): Promise<ChangeRequest> {
     const existing = await approvalWorkflowRepository.findChangeRequestById(crId);
     if (!existing) throw new Error('Change request not found');
-    if (existing.status !== 'draft') throw new Error('Only draft change requests can be edited');
+    if (existing.status !== 'draft' && existing.status !== 'rejected') throw new Error('Only draft or rejected change requests can be edited');
     const updated = await approvalWorkflowRepository.updateChangeRequest(crId, data);
 
     auditLedgerService.append({
@@ -134,19 +146,46 @@ export class ApprovalWorkflowService {
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
   }
 
-  async getChangeRequests(projectId: string, status?: string): Promise<ChangeRequest[]> {
-    return approvalWorkflowRepository.findChangeRequests(projectId, status);
+  async getChangeRequests(projectId: string, filters?: { status?: string; priority?: string; sortBy?: string; sortDir?: string }): Promise<ChangeRequest[]> {
+    return approvalWorkflowRepository.findChangeRequests(projectId, filters);
   }
 
-  async getChangeRequestDetail(id: string): Promise<{ changeRequest: ChangeRequest; approvalHistory: ApprovalAction[] }> {
+  async getChangeRequestDetail(id: string): Promise<{
+    changeRequest: ChangeRequest;
+    approvalHistory: (ApprovalAction & { stepName?: string; stepRole?: string })[];
+    currentStep: { stepOrder: number; name: string; role: string } | null;
+  }> {
     const changeRequest = await approvalWorkflowRepository.findChangeRequestById(id);
     if (!changeRequest) throw new Error('Change request not found');
     const approvalHistory = await this.getApprovalHistory(id);
-    return { changeRequest, approvalHistory };
+
+    // Enrich with workflow step metadata
+    let currentStep: { stepOrder: number; name: string; role: string } | null = null;
+    let workflow: ApprovalWorkflow | null = null;
+    if (changeRequest.workflowId) {
+      workflow = await approvalWorkflowRepository.findById(changeRequest.workflowId);
+    }
+    if (workflow && changeRequest.currentStep != null && (changeRequest.status === 'pending' || changeRequest.status === 'in_review')) {
+      const step = workflow.steps[changeRequest.currentStep];
+      if (step) {
+        currentStep = { stepOrder: changeRequest.currentStep, name: step.name, role: step.approverRole };
+      }
+    }
+
+    // Enrich approval history with step names
+    const enrichedHistory = approvalHistory.map(entry => {
+      const step = workflow?.steps?.[entry.stepOrder];
+      return { ...entry, stepName: step?.name, stepRole: step?.approverRole };
+    });
+
+    return { changeRequest, approvalHistory: enrichedHistory, currentStep };
   }
 
   async submitForApproval(crId: string, workflowId: string, userId?: string): Promise<ChangeRequest> {
     const before = await this.getChangeRequestDetail(crId).catch(() => null);
+    if (before?.changeRequest && !['draft', 'rejected'].includes(before.changeRequest.status)) {
+      throw new Error('Only draft or rejected change requests can be submitted for approval');
+    }
     const cr = await approvalWorkflowRepository.updateChangeRequestStatus(crId, 'pending', { currentStep: 0, workflowId });
 
     auditLedgerService.append({
@@ -163,9 +202,14 @@ export class ApprovalWorkflowService {
     return cr;
   }
 
-  async actOnStep(crId: string, userId: string, action: string, comment?: string, userRole?: string): Promise<ChangeRequest> {
+  async actOnStep(crId: string, userId: string, rawAction: string, comment?: string, userRole?: string): Promise<ChangeRequest> {
+    const action = normalizeAction(rawAction);
+
     const crRow = await approvalWorkflowRepository.findChangeRequestRaw(crId);
     if (!crRow) throw new Error('Change request not found');
+    if (crRow.status !== 'pending' && crRow.status !== 'in_review') {
+      throw new Error('Change request is not awaiting review');
+    }
 
     if (!crRow.workflow_id) throw new Error('Change request has no associated workflow');
 
@@ -225,7 +269,26 @@ export class ApprovalWorkflowService {
   }
 
   async withdrawChangeRequest(crId: string, userId?: string): Promise<ChangeRequest> {
-    return approvalWorkflowRepository.updateChangeRequestStatus(crId, 'withdrawn');
+    const existing = await approvalWorkflowRepository.findChangeRequestById(crId);
+    if (!existing) throw new Error('Change request not found');
+    if (!['pending', 'in_review'].includes(existing.status)) {
+      throw new Error('Only pending or in-review change requests can be withdrawn');
+    }
+
+    const result = await approvalWorkflowRepository.updateChangeRequestStatus(crId, 'withdrawn');
+
+    auditLedgerService.append({
+      actorId: userId || existing.requestedBy,
+      actorType: 'user',
+      action: 'approval.withdraw',
+      entityType: 'change_request',
+      entityId: crId,
+      projectId: existing.projectId,
+      payload: { before: existing, after: result },
+      source: 'web',
+    }).catch(err => deadLetterService.capture('audit.append', {}, err));
+
+    return result;
   }
 
   async getApprovalHistory(crId: string): Promise<ApprovalAction[]> {
