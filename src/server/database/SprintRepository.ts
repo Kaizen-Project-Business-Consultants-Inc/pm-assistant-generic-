@@ -288,6 +288,34 @@ export class SprintRepository extends BaseRepository<Sprint> {
       commitment: Number(row.velocity_commitment) || 0,
     }));
   }
+
+  async getCompletedPointsByProject(projectId: string): Promise<number> {
+    const rows = await this.queryRaw(
+      `SELECT COALESCE(SUM(CASE WHEN t.status = 'completed' THEN st.story_points ELSE 0 END), 0) as completed
+       FROM sprints s
+       JOIN sprint_tasks st ON st.sprint_id = s.id
+       JOIN tasks t ON t.id = st.task_id
+       WHERE s.project_id = ?`,
+      [projectId],
+    );
+    return Number(rows[0].completed);
+  }
+
+  async getSprintTaskPoints(sprintId: string): Promise<{ committed: number; completed: number }> {
+    const rows = await this.queryRaw(
+      `SELECT
+         COALESCE(SUM(st.story_points), 0) as committed,
+         COALESCE(SUM(CASE WHEN t.status = 'completed' THEN st.story_points ELSE 0 END), 0) as completed
+       FROM sprint_tasks st
+       JOIN tasks t ON t.id = st.task_id
+       WHERE st.sprint_id = ?`,
+      [sprintId],
+    );
+    return {
+      committed: Number(rows[0].committed),
+      completed: Number(rows[0].completed),
+    };
+  }
 }
 
 export const sprintRepository = new SprintRepository();

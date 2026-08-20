@@ -79,6 +79,14 @@ export const SCurveDataPointSchema = z.object({
   ac: z.number(),
 });
 
+export const SprintContextSchema = z.object({
+  activeSprintId: z.string().optional(),
+  avgVelocity: z.number(),
+  totalBacklogPoints: z.number(),
+  completedPoints: z.number(),
+  sprintCount: z.number(),
+});
+
 export const EVMForecastResultSchema = z.object({
   currentMetrics: EVMCurrentMetricsSchema,
   historicalTrends: z.object({
@@ -93,6 +101,8 @@ export const EVMForecastResultSchema = z.object({
   aiPredictions: EVMForecastAIResponseSchema.optional(),
   forecastComparison: z.array(EVMForecastComparisonSchema),
   sCurveData: z.array(SCurveDataPointSchema).optional(),
+  methodology: z.enum(['waterfall', 'agile', 'hybrid']).optional(),
+  sprintContext: SprintContextSchema.optional(),
 });
 
 export type EVMForecastResult = z.infer<typeof EVMForecastResultSchema>;

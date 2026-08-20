@@ -2,6 +2,7 @@ import { claudeService, PromptTemplate } from './claudeService';
 import { sCurveService, SCurveDataPoint } from './SCurveService';
 import { projectService, Project } from './ProjectService';
 import { scheduleService } from './ScheduleService';
+import { sprintRepository } from '../database/SprintRepository';
 import { redisService } from './RedisService';
 import { config } from '../config';
 import logger from '../utils/logger';
@@ -143,6 +144,11 @@ export class EVMForecastService {
       }
     }
 
+    // Build sprint context for Agile projects
+    const sprintContext = project.methodology === 'agile'
+      ? await this.buildSprintContext(projectId)
+      : undefined;
+
     return {
       currentMetrics,
       historicalTrends: { weeklyData },
@@ -151,6 +157,8 @@ export class EVMForecastService {
       aiPredictions,
       forecastComparison,
       sCurveData,
+      methodology: project.methodology,
+      sprintContext,
     };
   }
 
@@ -192,6 +200,10 @@ export class EVMForecastService {
       }
     } catch { /* ignore cache errors */ }
 
+    const sprintContext = project.methodology === 'agile'
+      ? await this.buildSprintContext(projectId)
+      : undefined;
+
     return {
       currentMetrics,
       historicalTrends: { weeklyData },
@@ -200,6 +212,8 @@ export class EVMForecastService {
       aiPredictions,
       forecastComparison,
       sCurveData,
+      methodology: project.methodology,
+      sprintContext,
     };
   }
 
@@ -508,16 +522,23 @@ export class EVMForecastService {
     earlyWarnings: EVMEarlyWarning[],
     traditionalForecasts: { eacCumulative: number; eacComposite: number; eacManagement: number },
   ): Promise<EVMForecastAIResponse> {
-    const projectContext = [
+    const contextLines = [
       `Project: ${project.name}`,
       `Type: ${project.projectType}`,
+      `Methodology: ${project.methodology}`,
       `Status: ${project.status}`,
       `Budget Allocated (BAC): $${(project.budgetAllocated || 0).toLocaleString()}`,
       `Budget Spent: $${project.budgetSpent.toLocaleString()}`,
       `Start Date: ${project.startDate ? new Date(project.startDate).toISOString().slice(0, 10) : 'N/A'}`,
       `End Date: ${project.endDate ? new Date(project.endDate).toISOString().slice(0, 10) : 'N/A'}`,
       `Priority: ${project.priority}`,
-    ].join('\n');
+    ];
+
+    if (project.methodology === 'agile') {
+      contextLines.push('Note: This is an Agile project — EVM metrics are computed from sprint velocity and story points, not task duration.');
+    }
+
+    const projectContext = contextLines.join('\n');
 
     const evmMetricsStr = Object.entries(currentMetrics)
       .map(([key, value]) => `${key}: ${typeof value === 'number' ? value.toLocaleString() : value}`)
@@ -680,10 +701,74 @@ export class EVMForecastService {
         }
       }
 
+      // --- Sprint velocity data for Agile projects ---
+      const project = await projectService.findById(projectId);
+      if (project?.methodology === 'agile') {
+        try {
+          const velocityHistory = await sprintRepository.getVelocityHistory(projectId);
+          if (velocityHistory.length > 0) {
+            const totalVelocity = velocityHistory.reduce((sum, v) => sum + v.velocity, 0);
+            const avgVelocity = Math.round(totalVelocity / velocityHistory.length);
+            sections.push(`\nAgile sprint velocity (${velocityHistory.length} completed sprints):`);
+            sections.push(`  Average velocity: ${avgVelocity} story points/sprint`);
+            for (const v of velocityHistory.slice(-5)) {
+              sections.push(`  - ${v.name}: ${v.velocity} pts delivered (committed: ${v.commitment})`);
+            }
+          }
+        } catch { /* sprint data is supplementary */ }
+      }
+
       return sections.join('\n');
     } catch (err) {
       logger.warn('[EVMForecastService] Failed to build schedule analysis:', err);
       return 'Schedule analysis:\nUnable to retrieve schedule data.';
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Build sprint context for Agile EVM response
+  // -------------------------------------------------------------------------
+
+  private async buildSprintContext(projectId: string): Promise<{
+    activeSprintId?: string;
+    avgVelocity: number;
+    totalBacklogPoints: number;
+    completedPoints: number;
+    sprintCount: number;
+  } | undefined> {
+    try {
+      const sprints = await sprintRepository.findByProject(projectId);
+      if (sprints.length === 0) return undefined;
+
+      const velocityHistory = await sprintRepository.getVelocityHistory(projectId);
+      const totalVelocity = velocityHistory.reduce((sum, v) => sum + v.velocity, 0);
+      const avgVelocity = velocityHistory.length > 0
+        ? Math.round(totalVelocity / velocityHistory.length)
+        : 0;
+
+      // Get total and completed points across all sprints
+      const sprintIds = sprints.map(s => s.id);
+      const stats = await sprintRepository.getTaskStatsBySprintIds(sprintIds);
+      let totalBacklogPoints = 0;
+      let completedPoints = 0;
+      for (const s of Object.values(stats)) {
+        totalBacklogPoints += s.totalPoints;
+        completedPoints += s.completedPoints;
+      }
+
+      // Find active sprint
+      const activeSprint = sprints.find(s => s.status === 'active' || s.status === 'in_progress');
+
+      return {
+        activeSprintId: activeSprint?.id,
+        avgVelocity,
+        totalBacklogPoints,
+        completedPoints,
+        sprintCount: sprints.length,
+      };
+    } catch (err) {
+      logger.warn('[EVMForecastService] Failed to build sprint context:', err);
+      return undefined;
     }
   }
 

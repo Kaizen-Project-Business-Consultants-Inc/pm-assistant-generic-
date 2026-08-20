@@ -5,12 +5,13 @@ import { apiService } from '../services/api';
 import { EVMMetricTooltip } from '../components/evm/EVMMetricTooltip';
 import type { MetricValues } from '../components/evm/EVMMetricTooltip';
 import { SCurveChart } from '../components/evm/SCurveChart';
+import { AgileEVMSection } from '../components/evm/AgileEVMSection';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-interface Project { id: string; name: string; }
+interface Project { id: string; name: string; methodology?: 'waterfall' | 'agile' | 'hybrid'; }
 
 interface EVMMetrics {
   BAC: number;
@@ -57,6 +58,14 @@ interface SCurveDataPoint {
   ac: number;
 }
 
+interface SprintContext {
+  activeSprintId?: string;
+  avgVelocity: number;
+  totalBacklogPoints: number;
+  completedPoints: number;
+  sprintCount: number;
+}
+
 interface EVMResult {
   currentMetrics: EVMMetrics;
   historicalTrends: { weeklyData: WeeklyTrend[] };
@@ -65,6 +74,8 @@ interface EVMResult {
   forecastComparison: ForecastComparison[];
   aiPredictions?: AIPrediction;
   sCurveData?: SCurveDataPoint[];
+  methodology?: 'waterfall' | 'agile' | 'hybrid';
+  sprintContext?: SprintContext;
 }
 
 interface TaskVariance {
@@ -1179,6 +1190,11 @@ export function EVMDashboardPage() {
                 </table>
               </div>
             </div>
+          )}
+
+          {/* Agile EVM Section */}
+          {result.methodology === 'agile' && result.sprintContext && (
+            <AgileEVMSection projectId={selectedProjectId} sprintContext={result.sprintContext} />
           )}
 
           {/* AI Predictions */}

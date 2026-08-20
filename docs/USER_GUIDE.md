@@ -645,6 +645,21 @@ A visual plot of PV, EV, and AC over time. The S-curve shows:
 - Whether the project is over or under budget (EV vs. AC gap).
 - Trend lines for forecasting completion.
 
+### Agile EVM
+
+For projects using the **Agile** methodology, EVM automatically switches to a story-point-based calculation:
+
+- **PV** is computed from cumulative committed story points per sprint, converted to dollars.
+- **EV** is computed from cumulative completed story points, also converted to dollars.
+- **BAC** remains the project budget in dollars. The conversion rate is `budgetPerPoint = BAC / totalBacklogPoints`.
+- All downstream metrics (CPI, SPI, EAC, warnings, AI forecasts) work identically.
+- If a project has no sprints or story points, it falls back to the standard duration-based calculation.
+
+The EVM Dashboard shows an additional **Agile EVM** section for Agile projects with:
+- **Sprint context stats**: average velocity, total backlog points, completed points, sprint count.
+- **Velocity Trend chart**: story points completed per sprint with average velocity line.
+- **Sprint Burndown chart**: remaining points vs. ideal line for the active sprint.
+
 ### Metric Hover Tooltips
 
 Hover over any EVM metric card — on both the standalone EVM Dashboard (`/evm`) and the EVM panel within a project — to see a rich tooltip explaining the metric in context:

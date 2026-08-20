@@ -1,5 +1,6 @@
 import { scheduleService, Task, Schedule } from './ScheduleService';
-import { projectService } from './ProjectService';
+import { projectService, Project } from './ProjectService';
+import { sprintRepository } from '../database/SprintRepository';
 
 export interface SCurveDataPoint {
   date: string;
@@ -16,6 +17,13 @@ export class SCurveService {
     const budgetAllocated = project.budgetAllocated || 0;
     const budgetSpent = project.budgetSpent || 0;
     if (budgetAllocated <= 0) return [];
+
+    // Agile projects use sprint/story-point-based EVM
+    if (project.methodology === 'agile') {
+      const agileData = await this.computeAgileScurve(project);
+      if (agileData.length > 0) return agileData;
+      // Fall through to duration-based if no sprint data
+    }
 
     const schedules = await scheduleService.findByProjectId(projectId);
     if (schedules.length === 0) return [];
@@ -102,6 +110,120 @@ export class SCurveService {
           ac: Math.round(ac),
         });
       }
+    }
+
+    return dataPoints;
+  }
+
+  // -------------------------------------------------------------------------
+  // Agile S-Curve: PV/EV computed from sprint story points
+  // -------------------------------------------------------------------------
+
+  private async computeAgileScurve(project: Project): Promise<SCurveDataPoint[]> {
+    const BAC = project.budgetAllocated || 0;
+    const budgetSpent = project.budgetSpent || 0;
+
+    const sprints = await sprintRepository.findByProject(project.id);
+    if (sprints.length === 0) return [];
+
+    // Sort sprints chronologically (findByProject returns DESC)
+    const sorted = [...sprints].sort(
+      (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+    );
+
+    // Gather points per sprint
+    const sprintPoints: Array<{
+      sprint: typeof sorted[0];
+      committed: number;
+      completed: number;
+    }> = [];
+
+    let totalBacklogPoints = 0;
+    for (const s of sorted) {
+      const pts = await sprintRepository.getSprintTaskPoints(s.id);
+      totalBacklogPoints += pts.committed;
+      sprintPoints.push({ sprint: s, committed: pts.committed, completed: pts.completed });
+    }
+
+    if (totalBacklogPoints <= 0) return [];
+
+    const budgetPerPoint = BAC / totalBacklogPoints;
+
+    // Generate weekly data points across the sprint timeline
+    const DAY_MS = 86_400_000;
+    const weekMs = 7 * DAY_MS;
+    const now = Date.now();
+
+    const projectStart = new Date(sorted[0].startDate).getTime();
+    const projectEnd = new Date(sorted[sorted.length - 1].endDate).getTime();
+
+    let cumulativePVPoints = 0;
+    let cumulativeEVPoints = 0;
+    const dataPoints: SCurveDataPoint[] = [];
+
+    // Pre-compute cumulative PV/EV at sprint boundaries
+    const sprintBoundaries: Array<{
+      endTime: number;
+      cumulativePV: number;
+      cumulativeEV: number;
+    }> = [];
+
+    for (const sp of sprintPoints) {
+      cumulativePVPoints += sp.committed;
+      cumulativeEVPoints += sp.completed;
+      sprintBoundaries.push({
+        endTime: new Date(sp.sprint.endDate).getTime(),
+        cumulativePV: cumulativePVPoints * budgetPerPoint,
+        cumulativeEV: cumulativeEVPoints * budgetPerPoint,
+      });
+    }
+
+    for (let time = projectStart; time <= projectEnd + weekMs; time += weekMs) {
+      const weekEnd = Math.min(time, projectEnd);
+
+      // PV: cumulative committed points for sprints ended by this date
+      let pv = 0;
+      for (const sb of sprintBoundaries) {
+        if (weekEnd >= sb.endTime) {
+          pv = sb.cumulativePV;
+        } else {
+          // Partial sprint: interpolate linearly within the sprint
+          const prevEnd = sprintBoundaries.indexOf(sb) > 0
+            ? sprintBoundaries[sprintBoundaries.indexOf(sb) - 1].endTime
+            : projectStart;
+          const sprintStart = prevEnd;
+          const sprintDuration = sb.endTime - sprintStart;
+          if (sprintDuration > 0 && weekEnd > sprintStart) {
+            const fraction = (weekEnd - sprintStart) / sprintDuration;
+            const prevPV = sprintBoundaries.indexOf(sb) > 0
+              ? sprintBoundaries[sprintBoundaries.indexOf(sb) - 1].cumulativePV
+              : 0;
+            pv = prevPV + (sb.cumulativePV - prevPV) * fraction;
+          }
+          break;
+        }
+      }
+
+      // EV: cumulative completed points for sprints ended by this date
+      let ev = 0;
+      for (const sb of sprintBoundaries) {
+        if (weekEnd >= sb.endTime) {
+          ev = sb.cumulativeEV;
+        }
+      }
+
+      // AC: distribute actual spend proportionally up to current date (same as waterfall)
+      const projectElapsed = (Math.min(weekEnd, now) - projectStart) / (projectEnd - projectStart);
+      const ac = weekEnd <= now
+        ? budgetSpent * Math.max(0, Math.min(1, projectElapsed))
+        : budgetSpent;
+
+      dataPoints.push({
+        date: new Date(weekEnd).toISOString().slice(0, 10),
+        pv: Math.round(pv),
+        ev: Math.round(ev),
+        ac: Math.round(ac),
+      });
     }
 
     return dataPoints;

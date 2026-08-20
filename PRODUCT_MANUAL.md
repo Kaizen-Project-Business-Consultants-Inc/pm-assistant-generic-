@@ -257,7 +257,7 @@ Comparing a baseline against current schedule state produces per-task variance m
 
 ### S-Curve Data
 
-The `SCurveService` computes cumulative Planned Value (PV), Earned Value (EV), and Actual Cost (AC) data points over time, derived from task durations, progress percentages, and project budgets. These data points render as the classic S-curve chart.
+The `SCurveService` computes cumulative Planned Value (PV), Earned Value (EV), and Actual Cost (AC) data points over time. For **Waterfall/Hybrid** projects, values are derived from task durations, progress percentages, and project budgets. For **Agile** projects, the service uses sprint story points instead — PV is based on cumulative committed points per sprint, and EV on cumulative completed points, both converted to dollars via `budgetPerPoint = BAC / totalBacklogPoints`. If an Agile project has no sprint data, it falls back to the duration-based calculation. These data points render as the classic S-curve chart regardless of methodology.
 
 ### EVM Metrics
 
@@ -332,6 +332,11 @@ A dedicated analytics page for earned value management, accessible from the side
 - **Variance Breakdown (Pareto)**: new `GET /evm-forecast/:projectId/task-variances` endpoint returns per-task CV (EV−AC) and SV (EV−PV). Dashboard shows a horizontal bar chart of the top 10 tasks by absolute cost variance (green = under budget, red = over budget, centered on zero). Below the chart, a compact table lists task name, budget, actual, CV, SV, and progress %. Uses task-level `budgetAllocated` and `actualCost` fields.
 - **Earned Schedule (ES) Metrics**: computed client-side from S-curve data. Displays four values — ES (earned schedule in weeks), AT (actual time elapsed), SV(t) = ES − AT (schedule variance in time), SPI(t) = ES / AT (schedule performance index in time). Includes plain-English interpretation. Unlike SV($) which converges to zero near project end, SV(t) remains meaningful throughout.
 - **TCPI Dual Target Analysis**: side-by-side comparison of TCPI targeting BAC (original budget) vs TCPI targeting EAC (current forecast). Color-coded: green (<1.05), amber (1.05–1.2), red (>1.2). When BAC-based TCPI is unrealistic but EAC-based is achievable, an amber callout suggests rebaselining.
+- **Agile EVM Section**: displayed only for projects with `methodology = 'agile'`. Shows sprint-based EVM context including:
+  - **Sprint context stats**: average velocity (pts/sprint), total backlog points, completed points with percentage, and sprint count.
+  - **Velocity Trend chart**: reuses existing `VelocityChart` component showing completed story points per sprint with average velocity reference line.
+  - **Sprint Burndown chart**: reuses existing `SprintBurndownChart` component for the active sprint (shows "No active sprint" message when none is in progress).
+  - All EVM metrics (CPI, SPI, EAC, etc.) still work identically — the Agile branch only changes how PV/EV are computed (from story points instead of task duration). The AI prompt includes methodology context and sprint velocity data for Agile-specific corrective actions.
 
 **Trial user behavior:** Trial users who navigate to `/evm` see a sample EVM dashboard populated with realistic demo data (CPI: 0.93, SPI: 1.07, 7-week trend, 3 early warnings, 3 forecast comparison methods) instead of a 403 error. An amber banner at the top of the page reads: "Sample EVM Dashboard — This is a sample dashboard with demo data. Upgrade to a paid plan to see EVM metrics calculated from your actual project budgets, costs, and schedule performance." The AI Predictions section (`/:projectId/ai`) remains gated to paid tiers. No tokens or database queries are consumed for the sample. This follows the same pattern as the sample status report feature.
 
