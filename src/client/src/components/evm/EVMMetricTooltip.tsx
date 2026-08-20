@@ -230,6 +230,7 @@ interface EVMMetricTooltipProps {
 export function EVMMetricTooltip({ metricKey, values, children }: EVMMetricTooltipProps) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<'bottom' | 'top'>('bottom');
+  const [hAlign, setHAlign] = useState<'center' | 'left' | 'right'>('center');
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -240,11 +241,21 @@ export function EVMMetricTooltip({ metricKey, values, children }: EVMMetricToolt
   const handleEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
-      // Decide if tooltip should open above or below
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         const spaceBelow = window.innerHeight - rect.bottom;
         setPosition(spaceBelow < 320 ? 'top' : 'bottom');
+
+        // Horizontal alignment: prevent left/right overflow
+        const tooltipW = 320; // w-80 = 20rem = 320px
+        const centerX = rect.left + rect.width / 2;
+        if (centerX - tooltipW / 2 < 8) {
+          setHAlign('left');
+        } else if (centerX + tooltipW / 2 > window.innerWidth - 8) {
+          setHAlign('right');
+        } else {
+          setHAlign('center');
+        }
       }
       setOpen(true);
     }, 200);
@@ -274,10 +285,12 @@ export function EVMMetricTooltip({ metricKey, values, children }: EVMMetricToolt
           onMouseLeave={handleLeave}
           className={`absolute z-50 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 p-4 space-y-3 text-left ${
             position === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
-          } left-1/2 -translate-x-1/2`}
+          } ${hAlign === 'left' ? 'left-0' : hAlign === 'right' ? 'right-0' : 'left-1/2 -translate-x-1/2'}`}
         >
           {/* Arrow */}
-          <div className={`absolute left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 ${
+          <div className={`absolute w-3 h-3 rotate-45 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 ${
+            hAlign === 'left' ? 'left-6' : hAlign === 'right' ? 'right-6' : 'left-1/2 -translate-x-1/2'
+          } ${
             position === 'top'
               ? 'bottom-[-7px] border-b border-r'
               : 'top-[-7px] border-t border-l'
