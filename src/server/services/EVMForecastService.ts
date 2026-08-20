@@ -21,7 +21,7 @@ const AI_CACHE_TTL_SECONDS = 30 * 60; // 30 minutes
 // ---------------------------------------------------------------------------
 
 const evmForecastPrompt = new PromptTemplate(
-  `You are an expert Earned Value Management (EVM) analyst and project cost engineer. Analyze the EVM data below and produce predictive forecasts.
+  `You are an expert Earned Value Management (EVM) analyst and project cost engineer. Analyze the EVM data below and produce predictive forecasts with specific, actionable corrective actions.
 
 Project context:
 {{projectContext}}
@@ -38,17 +38,19 @@ Early warnings detected:
 Traditional forecast methods:
 {{traditionalForecasts}}
 
+{{scheduleAnalysis}}
+
 Based on this data:
 1. Predict CPI and SPI for the next 4 weeks (week 1 through week 4), considering the historical trend direction.
 2. Provide an AI-adjusted EAC that accounts for trend momentum and project-specific risks.
 3. Give a confidence range (low/high) for the EAC.
 4. Assess the trend direction: improving, stable, or deteriorating.
 5. Estimate the probability of a cost overrun (0-100%).
-6. Recommend corrective actions with effort level, priority, and estimated impact.
+6. Recommend corrective actions with effort level, priority, and estimated impact. IMPORTANT: When schedule analysis data is provided, your corrective actions MUST reference specific task names, resource assignments, and concrete numbers. For example: "Task 'Foundation Pour' is $12K over budget at 40% progress — negotiate fixed-price change order" or "3 critical path tasks are behind — fast-track 'Steel Erection' by adding a crew". Do NOT give generic advice like "review spending" — be specific.
 7. Write a narrative summary explaining the forecast in plain language.
 
 Return a JSON object matching the schema.`,
-  '1.0.0',
+  '1.1.0',
 );
 
 // ---------------------------------------------------------------------------
@@ -540,23 +542,149 @@ export class EVMForecastService {
       `EAC (Management Estimate): $${traditionalForecasts.eacManagement.toLocaleString()}`,
     ].join('\n');
 
+    // Build schedule analysis context from actual task data
+    const scheduleAnalysisStr = await this.buildScheduleAnalysis(project.id);
+
     const systemPrompt = evmForecastPrompt.render({
       projectContext,
       evmMetrics: evmMetricsStr,
       historicalTrends: trendsStr,
       earlyWarnings: warningsStr,
       traditionalForecasts: forecastsStr,
+      scheduleAnalysis: scheduleAnalysisStr,
     });
 
     const result = await claudeService.completeWithJsonSchema({
       systemPrompt,
-      userMessage: 'Analyze the EVM data and return the forecast predictions JSON.',
+      userMessage: 'Analyze the EVM data and schedule details, then return the forecast predictions JSON with specific corrective actions referencing actual task names and data.',
       schema: EVMForecastAIResponseSchema,
       temperature: 0.3,
       maxTokens: 2048,
     });
 
     return result.data;
+  }
+
+  // -------------------------------------------------------------------------
+  // Build schedule analysis context for AI prompt
+  // -------------------------------------------------------------------------
+
+  private async buildScheduleAnalysis(projectId: string): Promise<string> {
+    try {
+      const schedules = await scheduleService.findByProjectId(projectId);
+      if (schedules.length === 0) return 'Schedule analysis:\nNo schedule data available.';
+
+      const allTasks = await scheduleService.findTasksByScheduleIds(schedules.map(s => s.id));
+      if (allTasks.length === 0) return 'Schedule analysis:\nNo tasks found.';
+
+      const now = Date.now();
+      const DAY_MS = 86400000;
+
+      // --- Per-task variance (reuse getTaskVariances logic inline) ---
+      const taskMetrics = allTasks
+        .filter(t => !t.isSummary)
+        .map(t => {
+          const budget = t.budgetAllocated ?? 0;
+          const actual = t.actualCost ?? 0;
+          const progress = (t.progressPercentage ?? 0) / 100;
+          const ev = budget * progress;
+          const cv = ev - actual;
+          let pv = 0;
+          if (t.startDate && t.endDate) {
+            const start = new Date(t.startDate).getTime();
+            const end = new Date(t.endDate).getTime();
+            const duration = Math.max(1, (end - start) / DAY_MS);
+            const elapsed = Math.max(0, (now - start) / DAY_MS);
+            pv = budget * Math.min(1, elapsed / duration);
+          }
+          const sv = ev - pv;
+          return { ...t, budget, actual, ev, pv, cv, sv, progress };
+        });
+
+      // --- Worst-performing tasks by cost variance ---
+      const worstCost = [...taskMetrics]
+        .filter(t => t.cv < 0)
+        .sort((a, b) => a.cv - b.cv)
+        .slice(0, 8);
+
+      // --- Behind-schedule tasks (negative SV and in-progress or pending) ---
+      const behindSchedule = [...taskMetrics]
+        .filter(t => t.sv < -100 && t.status !== 'completed' && t.status !== 'cancelled')
+        .sort((a, b) => a.sv - b.sv)
+        .slice(0, 8);
+
+      // --- Tasks with low progress but high spend (burn rate concern) ---
+      const highBurnLowProgress = taskMetrics
+        .filter(t => t.budget > 0 && t.progress < 0.4 && t.actual > t.budget * 0.5 && t.status !== 'completed')
+        .sort((a, b) => (b.actual / b.budget) - (a.actual / a.budget))
+        .slice(0, 5);
+
+      // --- Blocked tasks ---
+      const blocked = allTasks.filter(t => t.status === 'blocked' && !t.isSummary);
+
+      // --- Overdue tasks (past end date, not complete) ---
+      const overdue = allTasks.filter(t =>
+        t.endDate && new Date(t.endDate).getTime() < now &&
+        t.status !== 'completed' && t.status !== 'cancelled' && !t.isSummary
+      );
+
+      // --- Task summary stats ---
+      const totalTasks = allTasks.filter(t => !t.isSummary).length;
+      const completedTasks = allTasks.filter(t => t.status === 'completed' && !t.isSummary).length;
+      const inProgressTasks = allTasks.filter(t => t.status === 'in_progress' && !t.isSummary).length;
+
+      // --- Build the text ---
+      const sections: string[] = ['Schedule analysis (from actual project tasks):'];
+
+      sections.push(`\nTask summary: ${totalTasks} total, ${completedTasks} completed, ${inProgressTasks} in progress, ${blocked.length} blocked, ${overdue.length} overdue`);
+
+      if (worstCost.length > 0) {
+        sections.push('\nTasks with worst cost variance (over budget):');
+        for (const t of worstCost) {
+          const assignee = t.assignedTo || 'unassigned';
+          const resources = t.assignments?.map(a => a.resourceId).join(', ') || '';
+          sections.push(`  - "${t.name}" | Budget: $${t.budget.toLocaleString()}, Actual: $${t.actual.toLocaleString()}, CV: $${t.cv.toFixed(0)} | Progress: ${Math.round(t.progress * 100)}% | Status: ${t.status} | Assigned: ${assignee}${resources ? ` | Resources: ${resources}` : ''}`);
+        }
+      }
+
+      if (behindSchedule.length > 0) {
+        sections.push('\nTasks behind schedule (negative schedule variance):');
+        for (const t of behindSchedule) {
+          const daysLate = t.endDate ? Math.max(0, Math.round((now - new Date(t.endDate).getTime()) / DAY_MS)) : 0;
+          sections.push(`  - "${t.name}" | SV: $${t.sv.toFixed(0)} | Progress: ${Math.round(t.progress * 100)}% | Status: ${t.status}${daysLate > 0 ? ` | ${daysLate} days overdue` : ''} | Priority: ${t.priority}`);
+        }
+      }
+
+      if (highBurnLowProgress.length > 0) {
+        sections.push('\nTasks with high burn rate but low progress (spending faster than delivering):');
+        for (const t of highBurnLowProgress) {
+          const burnRate = ((t.actual / t.budget) * 100).toFixed(0);
+          sections.push(`  - "${t.name}" | ${Math.round(t.progress * 100)}% complete but ${burnRate}% of budget spent | Budget: $${t.budget.toLocaleString()}, Actual: $${t.actual.toLocaleString()}`);
+        }
+      }
+
+      if (blocked.length > 0) {
+        const taskNameMap = new Map(allTasks.map(t => [t.id, t.name]));
+        sections.push('\nBlocked tasks:');
+        for (const t of blocked.slice(0, 5)) {
+          const depNames = t.dependencies?.map(d => taskNameMap.get(d.dependencyId) || d.dependencyId).join(', ') || 'unknown';
+          sections.push(`  - "${t.name}" | Blocked by: "${depNames}" | Priority: ${t.priority}`);
+        }
+      }
+
+      if (overdue.length > 0) {
+        sections.push(`\nOverdue tasks (${overdue.length} total):`);
+        for (const t of overdue.slice(0, 5)) {
+          const daysLate = Math.round((now - new Date(t.endDate!).getTime()) / DAY_MS);
+          sections.push(`  - "${t.name}" | ${daysLate} days overdue | Progress: ${t.progressPercentage ?? 0}% | Status: ${t.status}`);
+        }
+      }
+
+      return sections.join('\n');
+    } catch (err) {
+      logger.warn('[EVMForecastService] Failed to build schedule analysis:', err);
+      return 'Schedule analysis:\nUnable to retrieve schedule data.';
+    }
   }
 
   // -------------------------------------------------------------------------
