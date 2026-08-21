@@ -337,8 +337,6 @@ interface GanttColDef {
   defaultWidth: number;
   minWidth: number;
   resizable: boolean;
-  /** If true, column uses flex-1 instead of fixed width */
-  flex?: boolean;
   /** Fixed columns cannot be resized and ignore width state */
   fixed?: boolean;
   /** If true, column cannot be hidden via column picker */
@@ -347,7 +345,7 @@ interface GanttColDef {
 
 const GANTT_COLUMNS: GanttColDef[] = [
   { key: 'rowNum',    label: '#',        defaultWidth: 40,  minWidth: 30,  resizable: false, fixed: true, alwaysVisible: true },
-  { key: 'name',      label: 'Task Name',defaultWidth: 0,   minWidth: 120, resizable: false, flex: true, alwaysVisible: true },
+  { key: 'name',      label: 'Task Name',defaultWidth: 250, minWidth: 120, resizable: true, alwaysVisible: true },
   { key: 'pred',      label: 'Pred',     defaultWidth: 56,  minWidth: 40,  resizable: true },
   { key: 'start',     label: 'Start',    defaultWidth: 80,  minWidth: 60,  resizable: true },
   { key: 'end',       label: 'End',      defaultWidth: 80,  minWidth: 60,  resizable: true },
@@ -708,7 +706,7 @@ export function GanttChart({
 
   /** Get the effective width for a gantt column */
   const getColWidth = useCallback((col: GanttColDef): number => {
-    if (col.flex || col.fixed) return col.defaultWidth;
+    if (col.fixed) return col.defaultWidth;
     return ganttColWidths[col.key] ?? col.defaultWidth;
   }, [ganttColWidths]);
 
@@ -856,16 +854,14 @@ export function GanttChart({
     isFixed: (key) => key === 'rowNum' || key === 'editIcon',
   });
 
-  // Minimum row width: sum of all visible fixed-width columns + 120px for the name column
-  // This ensures the name column is never squeezed to 0 even with many columns visible
+  // Minimum row width: sum of all visible columns using their effective widths
   const minRowWidth = useMemo(() => {
     let total = 0;
     for (const col of orderedColumns) {
-      if (col.flex) continue; // skip the name column
       if (!isColVisible(col)) continue;
       total += getColWidth(col);
     }
-    return total + 120; // 120px minimum for name column
+    return total;
   }, [orderedColumns, isColVisible, getColWidth]);
 
   // -----------------------------------------------------------------------
@@ -1521,7 +1517,7 @@ export function GanttChart({
     ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
 
     const colDef = GANTT_COLUMNS.find(c => c.key === colKey);
-    if (!colDef || colDef.flex || colDef.fixed) return;
+    if (!colDef || colDef.fixed) return;
 
     let maxW = ctx.measureText(colDef.label).width;
     for (const { task } of rows) {
@@ -3131,8 +3127,8 @@ export function GanttChart({
                   onDragOver={(e) => ganttColDrag.handleDragOver(e, col.key)}
                   onDrop={(e) => ganttColDrag.handleDrop(e, col.key)}
                   onDragEnd={ganttColDrag.handleDragEnd}
-                  className={`shrink-0 px-1 text-center relative select-none group/gh ${col.flex ? 'flex-1 min-w-0 px-2' : ''} ${isSortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : ''} ${colIsDraggable ? 'cursor-grab active:cursor-grabbing' : ''} ${ganttColDrag.dragColKey === col.key ? 'opacity-40' : ''} ${ganttColDrag.overColKey === col.key && ganttColDrag.dragColKey !== col.key ? 'ring-2 ring-inset ring-primary-400' : ''}`}
-                  style={col.flex ? undefined : { width: w }}
+                  className={`shrink-0 px-1 text-center relative select-none group/gh ${col.key === 'name' ? 'px-2 text-left' : ''} ${isSortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : ''} ${colIsDraggable ? 'cursor-grab active:cursor-grabbing' : ''} ${ganttColDrag.dragColKey === col.key ? 'opacity-40' : ''} ${ganttColDrag.overColKey === col.key && ganttColDrag.dragColKey !== col.key ? 'ring-2 ring-inset ring-primary-400' : ''}`}
+                  style={{ width: w }}
                 >
                   {col.key === 'rowNum' && onBulkUpdate ? (
                     <input
@@ -3200,10 +3196,12 @@ export function GanttChart({
                   {col.resizable && (
                     <div
                       draggable={false}
-                      className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-10 hover:bg-primary-400/40 transition-colors"
+                      className="absolute top-0 right-0 w-3 h-full cursor-col-resize z-10 flex items-center justify-center group/resize"
                       onMouseDown={(e) => { e.stopPropagation(); handleColResizeStart(e, col.key, w); }}
                       onDoubleClick={(e) => { e.stopPropagation(); autoFitGanttColumn(col.key); }}
-                    />
+                    >
+                      <div className="w-0.5 h-4 bg-gray-200 dark:bg-gray-600 group-hover/resize:bg-primary-400 rounded-full transition-colors" />
+                    </div>
                   )}
                 </div>
               );
@@ -3282,8 +3280,8 @@ export function GanttChart({
 
                 {/* Task name with indent */}
                 <div
-                  className={`flex-1 min-w-0 ${editableCellClass(task.id, 'name')}`}
-                  style={{ paddingLeft: `${8 + level * 20}px` }}
+                  className={`shrink-0 min-w-0 overflow-hidden ${editableCellClass(task.id, 'name')}`}
+                  style={{ width: getColWidth(GANTT_COLUMNS[1]), paddingLeft: `${8 + level * 20}px` }}
                   onClick={(e) => handleCellClick(e, task.id, 'name', task)}
                 >
                   {isEditing(task.id, 'name') ? (
@@ -3745,7 +3743,7 @@ export function GanttChart({
                 {rows.length + i + 1}
               </div>
               {/* Task name input */}
-              <div className="flex-1 min-w-0 px-2">
+              <div className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]) }}>
                 <input
                   type="text"
                   placeholder={i === 0 ? 'Type a task name…' : ''}
