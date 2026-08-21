@@ -1,10 +1,34 @@
 #!/usr/bin/env bash
-# Deploy PM Assistant to Oracle Cloud (pm.kpbc.ca)
-# Usage: bash deploy.sh [--skip-tests] [--server-only] [--client-only] [--mcp]
+# Deploy PM Assistant to Oracle Cloud
+# Usage:
+#   bash deploy.sh staging                # full deploy to pm.kpbc.ca
+#   bash deploy.sh prod                   # full deploy to kovarti.com
+#   bash deploy.sh prod --client-only     # client only to prod
+#   bash deploy.sh staging --server-only  # server only to staging
+#   bash deploy.sh staging --mcp          # MCP server to staging
+#   bash deploy.sh prod --skip-tests      # skip tests
 set -euo pipefail
 
 SSH_KEY="$HOME/.ssh/ssh-key-2026-07-08 (1).key"
-SSH_HOST="ubuntu@147.5.127.99"
+
+# ── Environment selection ──
+ENV="${1:-}"
+shift || true
+
+case "$ENV" in
+  staging)
+    SSH_HOST="ubuntu@147.5.127.99"
+    DOMAIN="pm.kpbc.ca"
+    ;;
+  prod)
+    SSH_HOST="ubuntu@147.5.127.251"
+    DOMAIN="kovarti.com"
+    ;;
+  *)
+    echo "Usage: bash deploy.sh <staging|prod> [--skip-tests] [--server-only] [--client-only] [--mcp]"
+    exit 1
+    ;;
+esac
 
 do_ssh()  { ssh  -i "$SSH_KEY" "$SSH_HOST" "$@"; }
 do_scp()  { scp  -i "$SSH_KEY" "$@"; }
@@ -24,7 +48,9 @@ for arg in "$@"; do
   esac
 done
 
-echo "=== PM Assistant Deploy ==="
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Deploying to $ENV ($DOMAIN)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
 # --- MCP-only deploy shortcut ---
@@ -46,22 +72,22 @@ if [ "$MCP_ONLY" = true ]; then
 
   MCP_STATUS=$(do_ssh "sudo systemctl is-active pm-mcp")
   if [ "$MCP_STATUS" = "active" ]; then
-    echo "  MCP Service: RUNNING"
+    echo "  ✓ MCP Service: RUNNING"
   else
-    echo "  MCP Service: $MCP_STATUS (PROBLEM!)"
+    echo "  ✗ MCP Service: $MCP_STATUS"
     do_ssh "sudo journalctl -u pm-mcp --no-pager -n 20"
     exit 1
   fi
 
   echo ""
-  echo "=== MCP Deploy complete ==="
+  echo "━━━ MCP Deploy complete ━━━"
   exit 0
 fi
 
 # --- Step 1: Type check ---
 echo "[1/7] Type checking..."
 npx tsc --noEmit
-echo "  OK"
+echo "  ✓ OK"
 
 # --- Step 2: Tests ---
 if [ "$SKIP_TESTS" = true ]; then
@@ -69,7 +95,7 @@ if [ "$SKIP_TESTS" = true ]; then
 else
   echo "[2/7] Running tests..."
   npx vitest run --reporter=dot
-  echo "  OK"
+  echo "  ✓ OK"
 fi
 
 # --- Step 3: Build ---
@@ -83,35 +109,35 @@ else
   echo "[3/7] Building server + client..."
   npm run build
 fi
-echo "  OK"
+echo "  ✓ OK"
 
 # --- Step 4: Copy non-tsc files into dist (SQL migrations, tenant migrations) ---
 echo "[4/7] Copying migration SQL files to dist..."
 cp src/server/database/migrations/*.sql dist/server/database/migrations/ 2>/dev/null || true
 mkdir -p dist/server/database/tenant-migrations
 cp src/server/database/tenant-migrations/*.sql dist/server/database/tenant-migrations/ 2>/dev/null || true
-echo "  OK"
+echo "  ✓ OK"
 
-# --- Step 5: Upload server (tar + sudo to handle www-data ownership) ---
+# --- Step 5: Upload server ---
 if [ "$CLIENT_ONLY" = false ]; then
   echo "[5/7] Uploading server dist..."
   tar czf /tmp/server-dist.tar.gz -C dist/server .
   do_scp /tmp/server-dist.tar.gz "$SSH_HOST":/tmp/
-  do_ssh "sudo tar xzf /tmp/server-dist.tar.gz -C /opt/pm-app/dist/server/ && sudo chown -R www-data:www-data /opt/pm-app/dist/server/ && rm /tmp/server-dist.tar.gz"
+  do_ssh "sudo rm -rf /opt/pm-app/dist/server && sudo mkdir -p /opt/pm-app/dist/server && sudo tar xzf /tmp/server-dist.tar.gz -C /opt/pm-app/dist/server/ && sudo ln -sf /opt/pm-app/migrations /opt/pm-app/dist/server/database/migrations && sudo chown -R ubuntu:ubuntu /opt/pm-app/dist && rm /tmp/server-dist.tar.gz"
   rm -f /tmp/server-dist.tar.gz
-  echo "  OK"
+  echo "  ✓ OK"
 else
   echo "[5/7] Server upload skipped (--client-only)"
 fi
 
-# --- Step 6: Upload client (tar + sudo to handle www-data ownership) ---
+# --- Step 6: Upload client ---
 if [ "$SERVER_ONLY" = false ]; then
   echo "[6/7] Uploading client dist..."
   tar czf /tmp/client-dist.tar.gz -C src/client/dist .
   do_scp /tmp/client-dist.tar.gz "$SSH_HOST":/tmp/
   do_ssh "sudo rm -rf /opt/pm-app/client-dist/assets && sudo tar xzf /tmp/client-dist.tar.gz -C /opt/pm-app/client-dist && sudo chown -R www-data:www-data /opt/pm-app/client-dist/ && rm /tmp/client-dist.tar.gz"
   rm -f /tmp/client-dist.tar.gz
-  echo "  OK"
+  echo "  ✓ OK"
 else
   echo "[6/7] Client upload skipped (--server-only)"
 fi
@@ -122,22 +148,24 @@ do_ssh "sudo systemctl restart pm-app"
 sleep 5
 
 echo ""
-echo "=== Verifying ==="
+echo "━━━ Verifying ━━━"
 STATUS=$(do_ssh "sudo systemctl is-active pm-app")
 if [ "$STATUS" = "active" ]; then
-  echo "  Service: RUNNING"
+  echo "  ✓ Service: RUNNING"
 else
-  echo "  Service: $STATUS (PROBLEM!)"
+  echo "  ✗ Service: $STATUS"
   do_ssh "sudo journalctl -u pm-app --no-pager -n 20"
   exit 1
 fi
 
-HEALTH=$(do_ssh "curl -sf http://127.0.0.1:3001/health" 2>/dev/null) || true
+HEALTH=$(curl -sf --max-time 5 "https://$DOMAIN/api/v1/health" 2>/dev/null) || true
 if [ -n "$HEALTH" ]; then
-  echo "  Health:  ${HEALTH:0:200}"
+  echo "  ✓ Health: $HEALTH"
 else
-  echo "  Health:  (no /health endpoint — service verified via systemctl)"
+  echo "  Health: (verified via systemctl)"
 fi
 
 echo ""
-echo "=== Deploy complete ==="
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  ✓ Deploy to $ENV complete!"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
