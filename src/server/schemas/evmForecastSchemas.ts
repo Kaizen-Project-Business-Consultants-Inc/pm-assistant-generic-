@@ -22,8 +22,8 @@ const WeeklyPredictionOrNumber = z.union([
 ]);
 
 export const EVMForecastAIResponseSchema = z.object({
-  predictedCPI: z.array(WeeklyPredictionOrNumber),
-  predictedSPI: z.array(WeeklyPredictionOrNumber),
+  predictedCPI: z.array(WeeklyPredictionOrNumber).default([]),
+  predictedSPI: z.array(WeeklyPredictionOrNumber).default([]),
   aiAdjustedEAC: z.number(),
   eacConfidenceRange: z.object({
     low: z.number(),
@@ -31,7 +31,7 @@ export const EVMForecastAIResponseSchema = z.object({
   }),
   trendDirection: z.enum(['improving', 'stable', 'deteriorating']),
   overrunProbability: z.number().min(0).max(100),
-  correctiveActions: z.array(EVMCorrectiveActionSchema),
+  correctiveActions: z.array(EVMCorrectiveActionSchema).default([]),
   narrativeSummary: z.string(),
 });
 

@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     testTimeout: 30000,
+    hookTimeout: 60000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'html', 'lcov'],

@@ -580,7 +580,7 @@ export class EVMForecastService {
       userMessage: 'Analyze the EVM data and schedule details, then return the forecast predictions JSON with specific corrective actions referencing actual task names and data.',
       schema: EVMForecastAIResponseSchema,
       temperature: 0.3,
-      maxTokens: 2048,
+      maxTokens: 3000,
     });
 
     return result.data;
