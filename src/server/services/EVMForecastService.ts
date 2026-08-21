@@ -51,7 +51,7 @@ Based on this data:
 7. Write a narrative summary explaining the forecast in plain language. The summary MUST cover BOTH cost and schedule performance in a balanced way. Include: (a) percent complete vs planned progress (ahead/behind/on schedule), (b) budget performance (under/over/on budget), (c) what this means for the project outcome — will it finish on time? within budget? Example: "The project is 60% complete, which is 15% behind the planned schedule. However, cost efficiency is strong at only 25% of budget spent. While the project may be delivered late, it is forecast to finish well within its $120K budget. The team should focus on accelerating schedule recovery while maintaining cost discipline."
 
 Return a JSON object matching the schema.`,
-  '1.2.0',
+  '1.3.0',
 );
 
 // ---------------------------------------------------------------------------
@@ -566,6 +566,30 @@ export class EVMForecastService {
     // Build schedule analysis context from actual task data
     const scheduleAnalysisStr = await this.buildScheduleAnalysis(project.id);
 
+    // Pre-compute verified facts so the AI uses exact numbers, not its own calculations
+    const BAC = currentMetrics.BAC;
+    const percentComplete = BAC > 0 ? parseFloat(((currentMetrics.EV / BAC) * 100).toFixed(1)) : 0;
+    const percentPlanned = BAC > 0 ? parseFloat(((currentMetrics.PV / BAC) * 100).toFixed(1)) : 0;
+    const percentBudgetSpent = BAC > 0 ? parseFloat(((currentMetrics.AC / BAC) * 100).toFixed(1)) : 0;
+    const scheduleDelta = parseFloat((percentComplete - percentPlanned).toFixed(1));
+    const scheduleStatus = scheduleDelta >= 1 ? 'ahead of schedule' : scheduleDelta <= -1 ? 'behind schedule' : 'on schedule';
+    const budgetStatus = currentMetrics.CPI > 1.05 ? 'under budget' : currentMetrics.CPI < 0.95 ? 'over budget' : 'on budget';
+    const willFinishOnTime = currentMetrics.SPI >= 0.95 ? 'likely to finish on time' : currentMetrics.SPI >= 0.8 ? 'at risk of finishing late' : 'likely to finish late';
+    const willFinishInBudget = currentMetrics.EAC <= BAC * 1.05 ? 'within budget' : 'over budget';
+
+    const verifiedFactsStr = [
+      '=== VERIFIED FACTS — use these exact numbers in the narrative, do NOT recalculate ===',
+      `Percent complete: ${percentComplete}% (EV $${currentMetrics.EV.toLocaleString()} of $${BAC.toLocaleString()} BAC)`,
+      `Planned progress: ${percentPlanned}% (should be ${percentPlanned}% complete by now)`,
+      `Schedule status: ${Math.abs(scheduleDelta)}% ${scheduleStatus}`,
+      `Budget spent: ${percentBudgetSpent}% of total budget ($${currentMetrics.AC.toLocaleString()} of $${BAC.toLocaleString()})`,
+      `Budget status: ${budgetStatus} (CPI = ${currentMetrics.CPI})`,
+      `Schedule efficiency: SPI = ${currentMetrics.SPI}`,
+      `Forecast total cost (EAC): $${currentMetrics.EAC.toLocaleString()} — project is forecast to finish ${willFinishInBudget}`,
+      `Schedule outlook: ${willFinishOnTime} (SPI = ${currentMetrics.SPI})`,
+      `Variance at completion (VAC): $${currentMetrics.VAC.toLocaleString()} ${currentMetrics.VAC >= 0 ? 'savings' : 'overrun'}`,
+    ].join('\n');
+
     const systemPrompt = evmForecastPrompt.render({
       projectContext,
       evmMetrics: evmMetricsStr,
@@ -577,7 +601,7 @@ export class EVMForecastService {
 
     const result = await claudeService.completeWithJsonSchema({
       systemPrompt,
-      userMessage: 'Analyze the EVM data and schedule details, then return the forecast predictions JSON with specific corrective actions referencing actual task names and data.',
+      userMessage: `${verifiedFactsStr}\n\nAnalyze the EVM data and schedule details, then return the forecast predictions JSON with specific corrective actions referencing actual task names and data. Your narrativeSummary MUST use the VERIFIED FACTS above — do not recalculate percentages or derive numbers yourself.`,
       schema: EVMForecastAIResponseSchema,
       temperature: 0.3,
       maxTokens: 3000,

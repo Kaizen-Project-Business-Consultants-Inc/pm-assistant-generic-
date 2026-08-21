@@ -59,6 +59,10 @@ export class SCurveService {
 
     if (totalDuration === 0) return [];
 
+    // Check if any tasks have per-task actualCost data
+    const totalTaskActualCost = taskDurations.reduce((sum, { task }) => sum + ((task as any).actualCost ?? 0), 0);
+    const hasPerTaskCosts = totalTaskActualCost > 0;
+
     // Generate weekly data points
     const weekMs = 7 * DAY_MS;
     const dataPoints: SCurveDataPoint[] = [];
@@ -69,6 +73,7 @@ export class SCurveService {
 
       let pv = 0; // Planned Value: cumulative planned spend by this date
       let ev = 0; // Earned Value: cumulative progress-weighted planned spend
+      let ac = 0; // Actual Cost: sum of per-task actual costs
 
       for (const { task, duration, start, end } of taskDurations) {
         const taskBudget = (duration / totalDuration) * budgetAllocated;
@@ -86,30 +91,36 @@ export class SCurveService {
         if (weekEnd >= start) {
           ev += taskBudget * progress;
         }
+
+        // AC: use per-task actualCost, distributed proportionally to task progress
+        if (hasPerTaskCosts) {
+          const taskActualCost = (task as any).actualCost ?? 0;
+          if (taskActualCost > 0 && weekEnd >= start) {
+            // Distribute the task's actual cost proportionally to elapsed time
+            if (weekEnd >= end) {
+              ac += taskActualCost;
+            } else {
+              const elapsed = (weekEnd - start) / (end - start);
+              ac += taskActualCost * elapsed;
+            }
+          }
+        }
       }
 
-      // AC: distribute actual spend proportionally up to current date
-      const projectElapsed = (Math.min(weekEnd, now) - projectStart) / (projectEnd - projectStart);
-      const ac = weekEnd <= now
-        ? budgetSpent * Math.max(0, Math.min(1, projectElapsed))
-        : budgetSpent; // flatten after now
-
-      if (weekEnd > now) {
-        // Don't project AC beyond today
-        dataPoints.push({
-          date: new Date(weekEnd).toISOString().slice(0, 10),
-          pv: Math.round(pv),
-          ev: Math.round(ev),
-          ac: Math.round(budgetSpent),
-        });
-      } else {
-        dataPoints.push({
-          date: new Date(weekEnd).toISOString().slice(0, 10),
-          pv: Math.round(pv),
-          ev: Math.round(ev),
-          ac: Math.round(ac),
-        });
+      // Fallback: if no per-task costs, distribute project budgetSpent proportionally
+      if (!hasPerTaskCosts) {
+        const projectElapsed = (Math.min(weekEnd, now) - projectStart) / (projectEnd - projectStart);
+        ac = weekEnd <= now
+          ? budgetSpent * Math.max(0, Math.min(1, projectElapsed))
+          : budgetSpent;
       }
+
+      dataPoints.push({
+        date: new Date(weekEnd).toISOString().slice(0, 10),
+        pv: Math.round(pv),
+        ev: Math.round(ev),
+        ac: Math.round(weekEnd > now && !hasPerTaskCosts ? budgetSpent : ac),
+      });
     }
 
     return dataPoints;
