@@ -2299,6 +2299,11 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  async getEpicChildren(scheduleId: string, epicId: string) {
+    const response = await this.api.get(`/schedules/${scheduleId}/epics/${epicId}/children`);
+    return response.data;
+  }
+
   async getFlowMetrics(scheduleId: string) {
     const response = await this.api.get(`/schedules/${scheduleId}/flow-metrics`);
     return response.data;

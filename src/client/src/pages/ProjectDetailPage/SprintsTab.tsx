@@ -13,6 +13,8 @@ import { CapacityCard } from '../../components/sprints/CapacityCard';
 import { StandupLogPanel } from '../../components/sprints/StandupLogPanel';
 import { RetrospectiveBoard } from '../../components/sprints/RetrospectiveBoard';
 import { DefinitionsPanel } from '../../components/sprints/DefinitionsPanel';
+import { EpicBoard } from '../../components/sprints/EpicBoard';
+import { EpicList } from '../../components/sprints/EpicList';
 
 interface SprintSummary {
   id: string;
@@ -51,7 +53,7 @@ export function SprintsTab({ projectId }: { projectId: string }) {
   const schedules: any[] = schedulesData?.schedules || [];
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [selectedSprintId, setSelectedSprintId] = useState<string | undefined>();
-  const [sprintView, setSprintView] = useState<'list' | 'planning' | 'board' | 'burndown' | 'burnup' | 'flow' | 'metrics' | 'capacity' | 'standup' | 'retro' | 'definitions'>('list');
+  const [sprintView, setSprintView] = useState<'list' | 'planning' | 'board' | 'burndown' | 'burnup' | 'flow' | 'metrics' | 'capacity' | 'standup' | 'retro' | 'definitions' | 'epics' | 'epic-list'>('list');
   const [retroData, setRetroData] = useState<{ markdown: string; sprintName: string } | null>(null);
   const [retroLoading, setRetroLoading] = useState(false);
 
@@ -124,19 +126,28 @@ export function SprintsTab({ projectId }: { projectId: string }) {
               ))}
             </select>
           )}
-          {selectedSprintId && (
-            <div className="flex gap-1 flex-wrap">
-              {(['list', 'planning', 'board', 'burndown', 'burnup', 'flow', 'metrics', 'capacity', 'standup', 'retro', 'definitions'] as const).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setSprintView(v)}
-                  className={`px-3 py-1 text-xs rounded-md capitalize ${sprintView === v ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex gap-1 flex-wrap">
+            {/* Epic views — always visible when a schedule is selected */}
+            {selectedScheduleId && (['epics', 'epic-list'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setSprintView(v)}
+                className={`px-3 py-1 text-xs rounded-md ${sprintView === v ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                {v === 'epics' ? 'Epics' : 'Epic List'}
+              </button>
+            ))}
+            {/* Sprint views — visible when a sprint is selected */}
+            {selectedSprintId && (['list', 'planning', 'board', 'burndown', 'burnup', 'flow', 'metrics', 'capacity', 'standup', 'retro', 'definitions'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setSprintView(v)}
+                className={`px-3 py-1 text-xs rounded-md capitalize ${sprintView === v ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       {sprintView === 'list' && (
@@ -180,6 +191,12 @@ export function SprintsTab({ projectId }: { projectId: string }) {
       )}
       {sprintView === 'definitions' && (
         <DefinitionsPanel projectId={projectId} isManager={true} />
+      )}
+      {sprintView === 'epics' && selectedScheduleId && (
+        <EpicBoard scheduleId={selectedScheduleId} />
+      )}
+      {sprintView === 'epic-list' && selectedScheduleId && (
+        <EpicList scheduleId={selectedScheduleId} />
       )}
 
       {/* AI Retrospective Loading */}

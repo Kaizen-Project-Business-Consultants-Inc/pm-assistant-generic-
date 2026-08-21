@@ -613,6 +613,21 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Get children of an epic
+  fastify.get('/:scheduleId/epics/:epicId/children', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    schema: { description: 'Get child tasks of an epic', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { epicId } = request.params as { scheduleId: string; epicId: string };
+      const children = await scheduleService.getEpicChildren(epicId);
+      return { children };
+    } catch (error) {
+      logger.error('Get epic children error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch epic children' });
+    }
+  });
+
   // Get flow metrics (lead time / cycle time) for a schedule
   fastify.get('/:scheduleId/flow-metrics', {
     preHandler: [requireScope('read'), requireProjectAccess('viewer')],

@@ -225,15 +225,26 @@ export class ScheduleService {
   // Epics
   // -------------------------------------------------------------------------
 
-  async getEpics(scheduleId: string): Promise<Array<{ id: string; name: string; status: string; childCount: number; progress: number }>> {
+  async getEpics(scheduleId: string): Promise<Array<{
+    id: string; name: string; status: string; childCount: number; progress: number;
+    totalPoints: number; completedPoints: number; completedChildCount: number;
+    startDate: string | null; endDate: string | null;
+  }>> {
     const rows = await databaseService.query(
-      `SELECT e.id, e.name, e.status,
+      `SELECT e.id, e.name, e.status, e.start_date, e.end_date,
               COUNT(c.id) AS child_count,
-              ROUND(COALESCE(AVG(c.progress_percentage), 0)) AS avg_progress
+              SUM(CASE WHEN c.status = 'completed' THEN 1 ELSE 0 END) AS completed_child_count,
+              ROUND(COALESCE(AVG(c.progress_percentage), 0)) AS avg_progress,
+              COALESCE(SUM(sp.story_points), 0) AS total_points,
+              COALESCE(SUM(CASE WHEN c.status = 'completed' THEN sp.story_points ELSE 0 END), 0) AS completed_points
        FROM tasks e
        LEFT JOIN tasks c ON c.epic_id = e.id
+       LEFT JOIN (
+         SELECT task_id, MAX(story_points) AS story_points
+         FROM sprint_tasks GROUP BY task_id
+       ) sp ON sp.task_id = c.id
        WHERE e.schedule_id = ? AND e.task_type = 'epic'
-       GROUP BY e.id, e.name, e.status
+       GROUP BY e.id, e.name, e.status, e.start_date, e.end_date, e.sort_order
        ORDER BY e.sort_order, e.name`,
       [scheduleId],
     );
@@ -242,7 +253,42 @@ export class ScheduleService {
       name: r.name,
       status: r.status,
       childCount: Number(r.child_count),
+      completedChildCount: Number(r.completed_child_count),
       progress: Number(r.avg_progress),
+      totalPoints: Number(r.total_points),
+      completedPoints: Number(r.completed_points),
+      startDate: r.start_date || null,
+      endDate: r.end_date || null,
+    }));
+  }
+
+  async getEpicChildren(epicId: string): Promise<Array<{
+    id: string; name: string; status: string; priority: string; taskType: string;
+    assignedTo: string | null; storyPoints: number; startDate: string | null; endDate: string | null;
+  }>> {
+    const rows = await databaseService.query(
+      `SELECT t.id, t.name, t.status, t.priority, t.task_type, t.assigned_to,
+              t.start_date, t.end_date,
+              COALESCE(sp.story_points, 0) AS story_points
+       FROM tasks t
+       LEFT JOIN (
+         SELECT task_id, MAX(story_points) AS story_points
+         FROM sprint_tasks GROUP BY task_id
+       ) sp ON sp.task_id = t.id
+       WHERE t.epic_id = ?
+       ORDER BY t.sort_order, t.name`,
+      [epicId],
+    );
+    return rows.map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      status: r.status,
+      priority: r.priority,
+      taskType: r.task_type,
+      assignedTo: r.assigned_to || null,
+      storyPoints: Number(r.story_points),
+      startDate: r.start_date || null,
+      endDate: r.end_date || null,
     }));
   }
 

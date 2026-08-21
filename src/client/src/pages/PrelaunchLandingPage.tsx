@@ -1,25 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 
-const LAUNCH_DATE = new Date('2026-06-01T00:00:00Z');
-
-function useCountdown(target: Date) {
-  const calc = () => {
-    const diff = Math.max(0, target.getTime() - Date.now());
-    return {
-      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-      hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-      minutes: Math.floor((diff / (1000 * 60)) % 60),
-      seconds: Math.floor((diff / 1000) % 60),
-    };
-  };
-  const [time, setTime] = useState(calc);
-  useEffect(() => {
-    const id = setInterval(() => setTime(calc()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return time;
-}
 
 const features = [
   {
@@ -84,10 +65,30 @@ const features = [
   },
 ];
 
+const LAUNCH_DATE = new Date('2026-09-01T00:00:00Z');
+
+function useCountdown(target: Date) {
+  const calc = () => {
+    const diff = Math.max(0, target.getTime() - Date.now());
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((diff / (1000 * 60)) % 60),
+      seconds: Math.floor((diff / 1000) % 60),
+    };
+  };
+  const [time, setTime] = useState(calc);
+  useEffect(() => {
+    const id = setInterval(() => setTime(calc()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return time;
+}
+
 function CountdownUnit({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col items-center">
-      <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white dark:bg-gray-800/5 border border-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+      <div className="w-20 h-20 sm:w-24 sm:h-24 bg-slate-800/80 border border-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm">
         <span className="text-3xl sm:text-4xl font-bold text-white tabular-nums">
           {String(value).padStart(2, '0')}
         </span>
@@ -96,6 +97,181 @@ function CountdownUnit({ value, label }: { value: number; label: string }) {
     </div>
   );
 }
+
+function HeroMockup() {
+  const [health, setHealth] = useState(0);
+  const [bars, setBars] = useState<number[]>([42, 58, 70, 84, 95, 88, 72, 54, 60, 46, 34, 24]);
+
+  useEffect(() => {
+    const target = 82;
+    let v = 0;
+    const ct = setInterval(() => {
+      v = Math.min(target, v + 3);
+      setHealth(v);
+      if (v >= target) clearInterval(ct);
+    }, 28);
+    return () => clearInterval(ct);
+  }, []);
+
+  useEffect(() => {
+    const bt = setInterval(() => {
+      setBars(
+        Array.from({ length: 12 }, (_, i) => {
+          const base = 95 * Math.exp(-Math.pow((i - 5.2) / 3.4, 2));
+          const jitter = Math.random() * 20 - 10;
+          return Math.max(22, Math.min(98, Math.round(base + jitter)));
+        })
+      );
+    }, 3500);
+    return () => clearInterval(bt);
+  }, []);
+
+  return (
+    <div className="relative" style={{ animation: 'hfloat 6s ease-in-out infinite' }}>
+      <div className="absolute -inset-8 blur-xl" style={{ background: 'radial-gradient(circle at 60% 40%, rgba(34,211,238,0.18), transparent 60%)' }} />
+      <div className="relative rounded-2xl overflow-hidden shadow-2xl" style={{ background: 'linear-gradient(160deg, #111a2e, #0f1626)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 30px 70px rgba(0,0,0,0.5)', padding: 18 }}>
+        <div className="flex items-center gap-1.5 pb-3.5 px-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+          <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+          <span className="ml-2.5 text-xs text-slate-500" style={{ fontFamily: "'JetBrains Mono', monospace" }}>portfolio · health</span>
+          <span className="ml-auto inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-green-400 px-2 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.12)' }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400" style={{ animation: 'hpulse 1.6s ease-in-out infinite' }} />
+            Live
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-2.5">
+          {[
+            { label: 'Health', value: `${health}%`, color: '#4ade80' },
+            { label: 'On track', value: '7/10', color: '#f8fafc' },
+            { label: 'CPI', value: '0.94', color: '#fbbf24' },
+          ].map((kpi) => (
+            <div key={kpi.label} className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-[11px] text-slate-500 m-0">{kpi.label}</p>
+              <p className="text-[22px] font-extrabold mt-1 m-0 tabular-nums" style={{ color: kpi.color }}>{kpi.value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2.5 rounded-xl p-3.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-slate-300 m-0">Delivery confidence</p>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-cyan-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+              Monte Carlo
+              <span className="w-1 h-1 rounded-full bg-cyan-400" style={{ animation: 'hpulse 1.6s ease-in-out infinite' }} />
+            </span>
+          </div>
+          <div className="flex items-end gap-1.5 h-[88px]">
+            {bars.map((h, i) => (
+              <span
+                key={i}
+                className="flex-1 rounded-t"
+                style={{
+                  background: 'linear-gradient(180deg, #3b82f6, #22d3ee)',
+                  height: `${h}%`,
+                  opacity: 0.4 + 0.6 * (h / 100),
+                  transition: 'height 1s cubic-bezier(0.34,1.2,0.64,1), opacity 1s ease',
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-2.5 mt-2.5 rounded-xl p-3" style={{ background: 'rgba(59,130,246,0.14)', border: '1px solid rgba(59,130,246,0.25)' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+            <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1h6c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" />
+            <path d="M9 18h6M10 22h4" />
+          </svg>
+          <p className="text-[12.5px] text-blue-100 m-0 leading-snug">
+            <strong className="text-white">AI insight:</strong> City Fiber Rollout is trending 6 days late — reforecast recommended.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SchedulingMockup() {
+  return (
+    <svg viewBox="0 0 360 200" className="w-full h-full">
+      <rect width="360" height="200" fill="#1e293b" />
+      <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Project Timeline</text>
+      <text x="16" y="54" fill="#cbd5e1" fontSize="11" fontFamily="system-ui">Design</text>
+      <text x="16" y="82" fill="#cbd5e1" fontSize="11" fontFamily="system-ui">Backend</text>
+      <text x="16" y="110" fill="#cbd5e1" fontSize="11" fontFamily="system-ui">Frontend</text>
+      <text x="16" y="138" fill="#cbd5e1" fontSize="11" fontFamily="system-ui">Testing</text>
+      <text x="16" y="166" fill="#cbd5e1" fontSize="11" fontFamily="system-ui">Deploy</text>
+      <rect x="90" y="42" width="0" height="16" rx="3" fill="#3b82f6" opacity="0.9"><animate attributeName="width" from="0" to="90" dur="0.6s" begin="0.2s" fill="freeze" /></rect>
+      <rect x="130" y="70" width="0" height="16" rx="3" fill="#60a5fa" opacity="0.9"><animate attributeName="width" from="0" to="130" dur="0.7s" begin="0.5s" fill="freeze" /></rect>
+      <rect x="175" y="98" width="0" height="16" rx="3" fill="#06b6d4" opacity="0.9"><animate attributeName="width" from="0" to="110" dur="0.6s" begin="0.9s" fill="freeze" /></rect>
+      <rect x="240" y="126" width="0" height="16" rx="3" fill="#22d3ee" opacity="0.9"><animate attributeName="width" from="0" to="70" dur="0.5s" begin="1.3s" fill="freeze" /></rect>
+      <rect x="295" y="154" width="0" height="16" rx="3" fill="#67e8f9" opacity="0.9"><animate attributeName="width" from="0" to="40" dur="0.4s" begin="1.6s" fill="freeze" /></rect>
+      <path d="M180 58 L180 70" stroke="#64748b" strokeWidth="1" fill="none" strokeDasharray="3,2" opacity="0"><animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="0.8s" fill="freeze" /></path>
+      <path d="M260 86 L260 98" stroke="#64748b" strokeWidth="1" fill="none" strokeDasharray="3,2" opacity="0"><animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.2s" fill="freeze" /></path>
+      <text x="310" y="26" fill="#22d3ee" fontSize="12" opacity="0">✦ AI<animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="0.1s" fill="freeze" /></text>
+    </svg>
+  );
+}
+
+function RiskDetectionMockup() {
+  return (
+    <svg viewBox="0 0 360 200" className="w-full h-full">
+      <rect width="360" height="200" fill="#1e293b" />
+      <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Risk Scanner</text>
+      <rect x="0" y="34" width="360" height="2" fill="#3b82f6" opacity="0">
+        <animate attributeName="opacity" values="0;0.6;0" dur="1.5s" begin="0.2s" />
+        <animate attributeName="y" from="34" to="190" dur="1.5s" begin="0.2s" fill="freeze" />
+      </rect>
+      {[
+        { y: 46, text1: 'Budget overrun — Phase 2 at 23% over', severity: '#ef4444', tag: 'HIGH' },
+        { y: 86, text1: 'Resource conflict — 3 devs double-booked', severity: '#f97316', tag: 'MED' },
+        { y: 126, text1: 'Dependency delay — API blocked by vendor', severity: '#ef4444', tag: 'HIGH' },
+        { y: 166, text1: 'Scope creep — 12 unplanned tasks added', severity: '#eab308', tag: 'LOW' },
+      ].map((risk, i) => (
+        <g key={i} opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.6 + i * 0.5}s`} fill="freeze" />
+          <rect x="14" y={risk.y} width="6" height="24" rx="2" fill={risk.severity} />
+          <text x="28" y={risk.y + 15} fill="#e2e8f0" fontSize="10" fontFamily="system-ui">{risk.text1}</text>
+          <rect x="300" y={risk.y + 3} width="40" height="18" rx="9" fill={risk.severity} opacity="0.2" />
+          <text x="310" y={risk.y + 15} fill={risk.severity} fontSize="9" fontWeight="bold" fontFamily="system-ui">{risk.tag}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function PortfolioMockup() {
+  const projects = [
+    { name: 'Website Redesign', health: 92, color: '#10b981', w: 250 },
+    { name: 'Mobile App v2', health: 67, color: '#f97316', w: 182 },
+    { name: 'Data Migration', health: 85, color: '#10b981', w: 232 },
+    { name: 'API Platform', health: 45, color: '#ef4444', w: 122 },
+  ];
+  return (
+    <svg viewBox="0 0 360 200" className="w-full h-full">
+      <rect width="360" height="200" fill="#1e293b" />
+      <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Portfolio Health</text>
+      {projects.map((p, i) => (
+        <g key={i} opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.2 + i * 0.3}s`} fill="freeze" />
+          <text x="16" y={56 + i * 42} fill="#e2e8f0" fontSize="11" fontFamily="system-ui">{p.name}</text>
+          <rect x="16" y={62 + i * 42} width="280" height="10" rx="5" fill="#334155" />
+          <rect x="16" y={62 + i * 42} width="0" height="10" rx="5" fill={p.color}>
+            <animate attributeName="width" from="0" to={String(p.w)} dur="0.8s" begin={`${0.4 + i * 0.3}s`} fill="freeze" />
+          </rect>
+          <text x="304" y={72 + i * 42} fill={p.color} fontSize="11" fontWeight="bold" fontFamily="system-ui" opacity="0">
+            {p.health}%
+            <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.8 + i * 0.3}s`} fill="freeze" />
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+const featureMockups: Record<string, React.FC> = {
+  'AI-Powered Scheduling': SchedulingMockup,
+  'Smart Risk Detection': RiskDetectionMockup,
+  'Portfolio Dashboard': PortfolioMockup,
+};
 
 export const PrelaunchLandingPage: React.FC = () => {
   const countdown = useCountdown(LAUNCH_DATE);
@@ -108,20 +284,17 @@ export const PrelaunchLandingPage: React.FC = () => {
     if (!email) return;
     setStatus('loading');
     try {
-      const res = await fetch('/api/v1/waitlist', {
+      // Also submit to API waitlist for tracking
+      fetch('/api/v1/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setStatus('success');
-        setMessage(data.message);
-        setEmail('');
-      } else {
-        setStatus('error');
-        setMessage(data.error || 'Something went wrong.');
-      }
+      }).catch(() => {});
+      // Send email to sales
+      window.location.href = `mailto:sales@kovarti.com?subject=${encodeURIComponent('Early Bird')}&body=${encodeURIComponent(`Hi,\n\nI'd like to join the Kovarti PM early bird waitlist.\n\nEmail: ${email}\n\nThanks!`)}`;
+      setStatus('success');
+      setMessage('Opening your email client...');
+      setEmail('');
     } catch {
       setStatus('error');
       setMessage('Could not connect. Please try again.');
@@ -130,6 +303,10 @@ export const PrelaunchLandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
+      <style>{`
+        @keyframes hfloat { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-7px) } }
+        @keyframes hpulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(74,222,128,0.6) } 50% { opacity: .5; box-shadow: 0 0 0 5px rgba(74,222,128,0) } }
+      `}</style>
       {/* Ambient background */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[700px] bg-primary-600/20 rounded-full blur-[120px]" />
@@ -141,7 +318,7 @@ export const PrelaunchLandingPage: React.FC = () => {
       {/* Announcement bar */}
       <div className="bg-gradient-to-r from-primary-600 via-violet-600 to-purple-600 py-2.5 px-4 text-center text-sm font-medium text-white">
         <span className="mr-2">🎉</span>
-        Join the waitlist now and get <span className="font-bold underline underline-offset-2">25% off</span> when we launch — limited spots available.
+        Join the waitlist now and get <span className="font-bold underline underline-offset-2">20% off</span> when we launch — limited spots available.
         <span className="ml-2">🚀</span>
       </div>
 
@@ -160,40 +337,54 @@ export const PrelaunchLandingPage: React.FC = () => {
       </nav>
 
       {/* Hero */}
-      <section className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-green-500/15 border border-green-500/40">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-lg font-bold text-green-300 tracking-wide uppercase">Now Live</span>
+      <section className="pt-16 sm:pt-20 pb-20 px-4 sm:px-6 lg:px-8" style={{ background: 'radial-gradient(1200px 600px at 50% -8%, rgba(59,130,246,0.12), transparent 60%)' }}>
+        <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-14 items-center">
+          {/* Left: Copy */}
+          <div className="text-center lg:text-left">
+            <div className="mb-8 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary-500/15 border border-primary-500/40">
+              <span className="w-2.5 h-2.5 rounded-full bg-primary-400 animate-pulse" />
+              <span className="text-lg font-bold text-primary-300 tracking-wide uppercase">Coming Soon</span>
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl lg:text-[60px] font-extrabold tracking-tight leading-tight">
+              <span className="text-white">Project Management</span>
+              <br />
+              <span className="bg-gradient-to-r from-primary-400 via-violet-400 to-purple-400 bg-clip-text text-transparent">
+                Finally Gets AI
+              </span>
+            </h1>
+
+            <p className="mt-6 text-lg text-slate-400 max-w-[520px] mx-auto lg:mx-0 leading-relaxed">
+              Intelligent scheduling. Risk prediction. Monte Carlo simulations. Meeting intelligence.
+              <br className="hidden sm:block" />
+              <span className="text-slate-300 font-medium">The PM tool that thinks before you ask.</span>
+            </p>
+
+            <div className="flex items-center gap-3.5 mt-8 justify-center lg:justify-start">
+              <a
+                href="#waitlist"
+                className="text-[15px] font-bold text-white bg-gradient-to-br from-primary-500 to-purple-600 hover:from-primary-600 hover:to-purple-700 px-7 py-3.5 rounded-xl transition-all shadow-lg shadow-primary-900 hover:shadow-xl hover:-translate-y-0.5"
+              >
+                Join the Waitlist
+              </a>
+            </div>
+
+            {/* Countdown */}
+            <div className="mt-10">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">Launching in</p>
+              <div className="flex justify-center lg:justify-start gap-3 sm:gap-4">
+                <CountdownUnit value={countdown.days} label="Days" />
+                <CountdownUnit value={countdown.hours} label="Hours" />
+                <CountdownUnit value={countdown.minutes} label="Minutes" />
+                <CountdownUnit value={countdown.seconds} label="Seconds" />
+              </div>
             </div>
           </div>
 
-          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight leading-none">
-            <span className="text-white">Project Management</span>
-            <br />
-            <span className="bg-gradient-to-r from-primary-400 via-violet-400 to-purple-400 bg-clip-text text-transparent">
-              Finally Gets AI.
-            </span>
-          </h1>
-
-          <p className="mt-8 text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            Intelligent scheduling. Risk prediction. Monte Carlo simulations. Meeting intelligence.
-            <br className="hidden sm:block" />
-            <span className="text-slate-300 font-medium">The PM tool that thinks before you ask.</span>
-          </p>
-
-          {/* Countdown */}
-          <div className="mt-14">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-6">Launching in</p>
-            <div className="flex justify-center gap-4 sm:gap-6">
-              <CountdownUnit value={countdown.days} label="Days" />
-              <CountdownUnit value={countdown.hours} label="Hours" />
-              <CountdownUnit value={countdown.minutes} label="Minutes" />
-              <CountdownUnit value={countdown.seconds} label="Seconds" />
-            </div>
+          {/* Right: Product Mockup */}
+          <div className="w-full max-w-md mx-auto lg:max-w-none">
+            <HeroMockup />
           </div>
-
         </div>
       </section>
 
@@ -218,31 +409,39 @@ export const PrelaunchLandingPage: React.FC = () => {
       <section className="py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white">What's coming</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">What's inside</h2>
             <p className="mt-4 text-lg text-slate-300">Every feature you've wished your PM tool had.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map(feature => (
-              <div
-                key={feature.title}
-                className="group relative bg-slate-900 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 rounded-2xl p-6 transition-all duration-300"
-              >
-                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${feature.color} p-0.5 mb-4`}>
-                  <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-white">
-                    {feature.icon}
+            {features.map(feature => {
+              const Mockup = featureMockups[feature.title];
+              return (
+                <div
+                  key={feature.title}
+                  className="group relative bg-slate-900 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1"
+                >
+                  <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${feature.color} p-0.5 mb-4`}>
+                    <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-white">
+                      {feature.icon}
+                    </div>
                   </div>
+                  <h3 className="text-base font-semibold text-white mb-2">{feature.title}</h3>
+                  <p className="text-sm text-slate-300 leading-relaxed">{feature.description}</p>
+                  {Mockup && (
+                    <div className="mt-4 rounded-xl overflow-hidden ring-1 ring-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                      <Mockup />
+                    </div>
+                  )}
+                  <div className={`absolute bottom-0 left-6 right-6 h-0.5 rounded-t-full bg-gradient-to-r ${feature.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                 </div>
-                <h3 className="text-base font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">{feature.description}</p>
-                <div className={`absolute bottom-0 left-6 right-6 h-0.5 rounded-t-full bg-gradient-to-r ${feature.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* Bottom CTA */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <section id="waitlist" className="py-20 px-4 sm:px-6 lg:px-8 scroll-mt-16">
         <div className="max-w-2xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6">
             <span className="text-sm font-medium text-purple-300">Limited early access spots</span>
@@ -251,7 +450,7 @@ export const PrelaunchLandingPage: React.FC = () => {
             Don't manage projects the old way.
           </h2>
           <p className="text-slate-400 mb-8 text-lg">
-            Join the waitlist and get 25% off your first year — exclusively for early supporters.
+            Join the waitlist and get 20% off your first year — exclusively for early supporters.
           </p>
           {status === 'success' ? (
             <div className="max-w-md mx-auto bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-8 text-center">
@@ -261,7 +460,7 @@ export const PrelaunchLandingPage: React.FC = () => {
                 </svg>
               </div>
               <p className="text-emerald-400 font-bold text-xl mb-2">You're on the list!</p>
-              <p className="text-slate-400 text-sm">We'll email you the moment we go live with your exclusive 25% discount. See you at launch.</p>
+              <p className="text-slate-400 text-sm">We'll email you the moment we go live with your exclusive 20% discount. See you at launch.</p>
             </div>
           ) : (
             <>
@@ -301,6 +500,7 @@ export const PrelaunchLandingPage: React.FC = () => {
             <span className="text-sm font-semibold text-white">Kovarti</span>
           </div>
           <div className="flex gap-6 text-sm text-slate-500">
+            <a href="mailto:sales@kovarti.com" className="hover:text-white transition-colors">sales@kovarti.com</a>
             <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
           </div>
