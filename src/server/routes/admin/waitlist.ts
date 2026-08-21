@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { timingSafeEqual } from 'crypto';
 import { databaseService } from '../../database/connection';
 import { rateLimiter } from '../../middleware/rateLimiter';
+import { emailService } from '../../services/EmailService';
+import { config } from '../../config';
 
 const joinSchema = z.object({
   email: z.string().email(),
@@ -26,10 +28,17 @@ export async function waitlistRoutes(fastify: FastifyInstance) {
     const { email } = result.data;
 
     try {
+      const cleanEmail = email.toLowerCase().trim();
       await databaseService.query(
         'INSERT INTO waitlist (id, email) VALUES (?, ?)',
-        [uuidv4(), email.toLowerCase().trim()]
+        [uuidv4(), cleanEmail]
       );
+
+      // Fire-and-forget notification to sales
+      emailService.sendWaitlistNotification(cleanEmail).catch((err) => {
+        fastify.log.error(err, 'Failed to send waitlist notification email');
+      });
+
       return reply.status(201).send({ message: 'You\'re on the list!' });
     } catch (err: any) {
       if (err?.code === 'ER_DUP_ENTRY') {

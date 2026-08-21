@@ -761,6 +761,32 @@ export class EmailService {
       `,
     });
   }
+  async sendWaitlistNotification(subscriberEmail: string): Promise<void> {
+    if (!this.isConfigured) {
+      logger.info(`[EmailService] Waitlist notification would be sent for ${maskPii(subscriberEmail)}`);
+      return;
+    }
+
+    await this.sendEmail({
+      from: config.RESEND_FROM_EMAIL,
+      to: 'sales@kovarti.com',
+      subject: `Early Bird Waitlist: ${subscriberEmail}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+          <h2 style="color: #4f46e5;">New Early Bird Signup</h2>
+          <p style="color: #4b5563; line-height: 1.6;">
+            A new visitor has joined the Kovarti PM waitlist:
+          </p>
+          <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <strong style="color: #1f2937;">${escapeHtml(subscriberEmail)}</strong>
+          </div>
+          <p style="color: #9ca3af; font-size: 12px;">
+            Signed up at ${new Date().toISOString()}
+          </p>
+        </div>
+      `,
+    });
+  }
 }
 
 export const emailService = new EmailService();

@@ -284,16 +284,14 @@ export const PrelaunchLandingPage: React.FC = () => {
     if (!email) return;
     setStatus('loading');
     try {
-      // Also submit to API waitlist for tracking
-      fetch('/api/v1/waitlist', {
+      const res = await fetch('/api/v1/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
-      }).catch(() => {});
-      // Send email to sales
-      window.location.href = `mailto:sales@kovarti.com?subject=${encodeURIComponent('Early Bird')}&body=${encodeURIComponent(`Hi,\n\nI'd like to join the Kovarti PM early bird waitlist.\n\nEmail: ${email}\n\nThanks!`)}`;
+      });
+      const data = await res.json();
       setStatus('success');
-      setMessage('Opening your email client...');
+      setMessage(data.message || "You're on the list!");
       setEmail('');
     } catch {
       setStatus('error');
