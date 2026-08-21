@@ -48,10 +48,10 @@ Based on this data:
 4. Assess the trend direction: improving, stable, or deteriorating.
 5. Estimate the probability of a cost overrun (0-100%).
 6. Recommend corrective actions with effort level, priority, and estimated impact. IMPORTANT: When schedule analysis data is provided, your corrective actions MUST reference specific task names, resource assignments, and concrete numbers. For example: "Task 'Foundation Pour' is $12K over budget at 40% progress — negotiate fixed-price change order" or "3 critical path tasks are behind — fast-track 'Steel Erection' by adding a crew". Do NOT give generic advice like "review spending" — be specific.
-7. Write a narrative summary explaining the forecast in plain language.
+7. Write a narrative summary explaining the forecast in plain language. The summary MUST cover BOTH cost and schedule performance in a balanced way. Include: (a) percent complete vs planned progress (ahead/behind/on schedule), (b) budget performance (under/over/on budget), (c) what this means for the project outcome — will it finish on time? within budget? Example: "The project is 60% complete, which is 15% behind the planned schedule. However, cost efficiency is strong at only 25% of budget spent. While the project may be delivered late, it is forecast to finish well within its $120K budget. The team should focus on accelerating schedule recovery while maintaining cost discipline."
 
 Return a JSON object matching the schema.`,
-  '1.1.0',
+  '1.2.0',
 );
 
 // ---------------------------------------------------------------------------
