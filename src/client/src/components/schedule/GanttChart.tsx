@@ -363,8 +363,8 @@ const GANTT_COLUMNS: GanttColDef[] = [
   { key: 'editIcon',  label: '',         defaultWidth: 72,  minWidth: 72,  resizable: false, fixed: true, alwaysVisible: true },
 ];
 
-/** Default visible columns (all toggleable columns visible by default) */
-const DEFAULT_VISIBLE_COLS = new Set(GANTT_COLUMNS.filter(c => !c.alwaysVisible).map(c => c.key));
+/** Default visible columns — show only essential columns so the name column isn't squeezed */
+const DEFAULT_VISIBLE_COLS = new Set(['pred', 'start', 'end', 'dur', 'pct', 'status']);
 
 /** Default column order */
 const DEFAULT_COL_ORDER = GANTT_COLUMNS.map(c => c.key);
@@ -855,6 +855,18 @@ export function GanttChart({
     },
     isFixed: (key) => key === 'rowNum' || key === 'editIcon',
   });
+
+  // Minimum row width: sum of all visible fixed-width columns + 120px for the name column
+  // This ensures the name column is never squeezed to 0 even with many columns visible
+  const minRowWidth = useMemo(() => {
+    let total = 0;
+    for (const col of orderedColumns) {
+      if (col.flex) continue; // skip the name column
+      if (!isColVisible(col)) continue;
+      total += getColWidth(col);
+    }
+    return total + 120; // 120px minimum for name column
+  }, [orderedColumns, isColVisible, getColWidth]);
 
   // -----------------------------------------------------------------------
   // Row expand/collapse state — persisted per schedule in localStorage
@@ -3084,13 +3096,13 @@ export function GanttChart({
         {panelMode !== 'gantt' && (
         <div
           ref={leftPanelRef}
-          className="flex-shrink-0 overflow-y-auto overflow-x-hidden scrollbar-hide"
+          className="flex-shrink-0 overflow-y-auto overflow-x-auto scrollbar-hide"
           style={{ width: panelMode === 'table' ? '100%' : tableWidth }}
         >
           {/* Table header */}
           <div
             className="sticky top-0 z-10 flex items-center bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-            style={{ height: HEADER_H }}
+            style={{ height: HEADER_H, minWidth: minRowWidth }}
           >
             {orderedColumns.map((col) => {
               // Skip editIcon column if no onTaskClick
@@ -3211,7 +3223,7 @@ export function GanttChart({
               <div
                 key={task.id}
                 className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer ${rowIdx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} ${activeTaskId === task.id ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-inset ring-primary-200 dark:ring-primary-700' : ''} ${rowDrag?.targetIdx === rowIdx && rowDrag?.taskId !== task.id ? 'border-t-2 border-t-blue-500' : ''} ${rowDrag?.taskId === task.id ? 'opacity-40' : ''}`}
-                style={shouldVirtualize ? { height: ROW_H, position: 'absolute', top: rowIdx * ROW_H, left: 0, right: 0 } : { height: ROW_H }}
+                style={shouldVirtualize ? { height: ROW_H, position: 'absolute', top: rowIdx * ROW_H, left: 0, right: 0, minWidth: minRowWidth } : { height: ROW_H, minWidth: minRowWidth }}
                 onClick={(e) => {
                   if (editingCell) return;
                   // Ctrl+click or Cmd+click to multi-select (like MS Project / Excel)
@@ -3723,7 +3735,7 @@ export function GanttChart({
             <div
               key={`empty-${i}`}
               className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors`}
-              style={{ height: ROW_H }}
+              style={{ height: ROW_H, minWidth: minRowWidth }}
             >
               {/* Row number */}
               <div
