@@ -517,6 +517,20 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     return map;
   }, [visibleSorted]);
 
+  // Successor map: taskId → array of { successorId, type, lag }
+  const successorMap = useMemo(() => {
+    const map = new Map<string, Array<{ successorId: string; type: string; lag: number }>>();
+    for (const t of tasks) {
+      if (!t.dependencies) continue;
+      for (const dep of t.dependencies) {
+        const existing = map.get(dep.dependencyId) || [];
+        existing.push({ successorId: t.id, type: dep.dependencyType || 'FS', lag: dep.lagDays || 0 });
+        map.set(dep.dependencyId, existing);
+      }
+    }
+    return map;
+  }, [tasks]);
+
   const [depError, setDepError] = useState<{ taskId: string; message: string } | null>(null);
 
   // Parse predecessor input — comma-separated MS Project format: "3FS+2d,5SS,7"
@@ -633,6 +647,14 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return task.estimatedDays != null ? `${task.estimatedDays}d` : '-';
       }
       case 'dependency': return getTaskFieldValue(task, 'dependency');
+      case 'successor': {
+        const succs = successorMap.get(task.id);
+        if (!succs || succs.length === 0) return '-';
+        return succs.map(s => {
+          const succRowNum = rowNumMap.get(s.successorId);
+          return succRowNum ? String(succRowNum) : '';
+        }).filter(Boolean).join(',') || '-';
+      }
       case 'notes': return task.description || '-';
       case 'budgetAllocated': return (task as any).budgetAllocated != null ? `$${Number((task as any).budgetAllocated).toLocaleString()}` : '-';
       case 'actualCost': return (task as any).actualCost != null ? `$${Number((task as any).actualCost).toLocaleString()}` : '-';
@@ -1508,6 +1530,27 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             )}
             {renderSaveIndicator(task.id, 'dependency')}
             {!hasDepError && renderHoverPencil(task.id, 'dependency')}
+          </td>
+        );
+      }
+
+      case 'successor': {
+        const succs = successorMap.get(task.id);
+        if (!succs || succs.length === 0) {
+          return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center">-</td>;
+        }
+        const succLabels = succs.map(s => {
+          const succRowNum = rowNumMap.get(s.successorId);
+          let label = succRowNum != null ? String(succRowNum) : '?';
+          const type = s.type.toUpperCase();
+          if (type !== 'FS') label += type;
+          if (s.lag !== 0) label += (s.lag > 0 ? `+${s.lag}d` : `${s.lag}d`);
+          return label;
+        });
+        const succNames = succs.map(s => tasks.find(t => t.id === s.successorId)?.name || '').filter(Boolean);
+        return (
+          <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 font-mono text-center" title={succNames.join(', ')}>
+            {succLabels.join(',')}
           </td>
         );
       }

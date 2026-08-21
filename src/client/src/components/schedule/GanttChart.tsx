@@ -347,6 +347,7 @@ const GANTT_COLUMNS: GanttColDef[] = [
   { key: 'rowNum',    label: '#',        defaultWidth: 40,  minWidth: 30,  resizable: false, fixed: true, alwaysVisible: true },
   { key: 'name',      label: 'Task Name',defaultWidth: 250, minWidth: 120, resizable: true, alwaysVisible: true },
   { key: 'pred',      label: 'Pred',     defaultWidth: 56,  minWidth: 40,  resizable: true },
+  { key: 'succ',      label: 'Succ',     defaultWidth: 56,  minWidth: 40,  resizable: true },
   { key: 'start',     label: 'Start',    defaultWidth: 80,  minWidth: 60,  resizable: true },
   { key: 'end',       label: 'End',      defaultWidth: 80,  minWidth: 60,  resizable: true },
   { key: 'dur',       label: 'Dur',      defaultWidth: 48,  minWidth: 36,  resizable: true },
@@ -741,7 +742,7 @@ export function GanttChart({
 
   // Reverse mapping: Gantt key → Table key (for checking external visibility)
   const ganttKeyToTableKey: Record<string, string> = {
-    pred: 'dependency', start: 'startDate', end: 'endDate',
+    pred: 'dependency', succ: 'successor', start: 'startDate', end: 'endDate',
     dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
     assigned: 'assignedTo', priority: 'priority', status: 'status', notes: 'notes',
   };
@@ -810,7 +811,7 @@ export function GanttChart({
 
   // Map external columnState keys to Gantt column keys
   const tableKeyToGanttKey: Record<string, string> = {
-    dependency: 'pred', startDate: 'start', endDate: 'end',
+    dependency: 'pred', successor: 'succ', startDate: 'start', endDate: 'end',
     duration: 'dur', estimatedDays: 'est', estimatedDurationHours: 'work', progressPercentage: 'pct',
     assignedTo: 'assigned', priority: 'priority', status: 'status', name: 'name',
   };
@@ -1270,6 +1271,20 @@ export function GanttChart({
   const taskMap = useMemo(() => {
     const map = new Map<string, GanttTask>();
     for (const t of tasks) map.set(t.id, t);
+    return map;
+  }, [tasks]);
+
+  // Successor map: taskId → array of { successorId, type, lag }
+  const successorMap = useMemo(() => {
+    const map = new Map<string, Array<{ successorId: string; type: string; lag: number }>>();
+    for (const t of tasks) {
+      if (!t.dependencies) continue;
+      for (const dep of t.dependencies) {
+        const existing = map.get(dep.dependencyId) || [];
+        existing.push({ successorId: t.id, type: dep.dependencyType || 'FS', lag: dep.lagDays || 0 });
+        map.set(dep.dependencyId, existing);
+      }
+    }
     return map;
   }, [tasks]);
 
@@ -3404,6 +3419,29 @@ export function GanttChart({
                           );
                         })() : '—'
                       )}
+                    </div>
+                  );
+
+                  if (col.key === 'succ') return (
+                    <div
+                      key="succ"
+                      className="shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 font-mono"
+                      style={{ width: w }}
+                      title={(successorMap.get(task.id) || []).map(s => tasks.find(t => t.id === s.successorId)?.name || '').filter(Boolean).join(', ') || undefined}
+                    >
+                      {(() => {
+                        const succs = successorMap.get(task.id);
+                        if (!succs || succs.length === 0) return '—';
+                        const labels = succs.map(s => {
+                          const succRowNum = rowNumMap.get(s.successorId);
+                          let label = succRowNum != null ? String(succRowNum) : '?';
+                          const type = s.type.toUpperCase();
+                          if (type !== 'FS') label += type;
+                          if (s.lag !== 0) label += (s.lag > 0 ? `+${s.lag}d` : `${s.lag}d`);
+                          return label;
+                        });
+                        return labels.join(',');
+                      })()}
                     </div>
                   );
 

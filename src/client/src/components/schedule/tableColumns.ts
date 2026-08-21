@@ -3,7 +3,7 @@ export type ColumnKey =
   | 'progressPercentage' | 'assignedTo' | 'duration' | 'earlyStart' | 'earlyFinish'
   | 'lateStart' | 'lateFinish' | 'totalFloat' | 'freeFloat' | 'critical'
   | 'baselineStart' | 'baselineEnd' | 'startVariance' | 'endVariance'
-  | 'notes' | 'dependency' | 'wbs' | 'resource'
+  | 'notes' | 'dependency' | 'successor' | 'wbs' | 'resource'
   | 'budgetAllocated' | 'actualCost' | 'budgetVariance'
   | 'constraintType' | 'constraintDate';
 
@@ -57,6 +57,7 @@ export const COLUMN_DEFS: ColumnDef[] = [
   // Other
   { key: 'notes', label: 'Notes', group: 'standard', defaultVisible: false, editable: true, sortable: true },
   { key: 'dependency', label: 'Predecessor', group: 'standard', defaultVisible: false, editable: true, sortable: false },
+  { key: 'successor', label: 'Successor', group: 'standard', defaultVisible: false, editable: false, sortable: false },
   { key: 'wbs', label: 'WBS', group: 'other', defaultVisible: false, editable: false, sortable: false },
   { key: 'resource', label: 'Resource', group: 'standard', defaultVisible: false, editable: false, sortable: false },
 ];
