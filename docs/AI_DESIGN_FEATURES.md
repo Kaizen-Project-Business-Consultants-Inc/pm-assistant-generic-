@@ -360,6 +360,10 @@ AI-enhanced Earned Value Management predictions.
   - Narrative summary in plain language
 - Output validated against `EVMForecastAIResponseSchema`
 
+**Per-task Actual Cost (AC):** The S-curve AC series now uses per-task `actualCost` data when available. The service sums each task's recorded actual cost and distributes it proportionally to the task's elapsed time within each period. This makes CPI and all cost-derived metrics more accurate than the previous method (linear distribution of project-level `budgetSpent`). The fallback to linear distribution is retained when no tasks have per-task costs recorded.
+
+**Verified Facts in AI Narrative (prompt v1.3.0):** The EVM narrative prompt uses pre-computed verified facts instead of asking the AI to derive numbers from raw metrics. Before calling Claude, `EVMForecastService` computes: `percentComplete` (EV/BAC), `percentPlanned` (PV/BAC), `scheduleStatus` (ahead/behind/on schedule), `budgetStatus` (under/over/on budget), `percentBudgetSpent` (AC/BAC), `scheduleOutlook`, and `forecastOutcome`. These are injected into the prompt as "VERIFIED FACTS — use these exact numbers." Claude writes the narrative prose around the pre-computed values without recalculating them, guaranteeing that the percentages and status labels in the AI narrative exactly match the EVM KPI cards displayed on the dashboard.
+
 ---
 
 ## 17. Monte Carlo Simulation

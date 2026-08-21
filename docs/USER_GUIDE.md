@@ -648,6 +648,8 @@ A visual plot of PV, EV, and AC over time. The S-curve shows:
 - Whether the project is over or under budget (EV vs. AC gap).
 - Trend lines for forecasting completion.
 
+> **Accuracy note:** When your tasks have per-task **Actual Cost** values recorded (via the Budget Allocated / Actual Cost fields on each task), the AC series is calculated from those real figures rather than approximated from the overall project spend. This makes CPI and all cost-derived metrics more accurate. If no per-task costs exist, the system falls back to distributing the project-level budget-spent figure linearly over the project timeline.
+
 ### Agile EVM
 
 For projects using the **Agile** methodology, EVM automatically switches to a story-point-based calculation:
@@ -2258,7 +2260,7 @@ The EVM Dashboard (`/evm`) provides a comprehensive earned value management view
 > **Trial plan:** If you are on a trial plan, the EVM Dashboard displays a sample dashboard with demo data rather than your actual project metrics. An amber banner at the top of the page indicates this. Upgrade to a paid plan to unlock EVM metrics calculated from your real project budgets, costs, and schedule performance.
 
 1. Select a project from the **project selector** dropdown.
-2. Read the **Narrative Summary** at the top of the page — a plain-English paragraph describing overall health: "The project is X% complete with Y% of budget spent. It is [schedule status] and [cost status]. [Forecast sentence]." An **On Track / Needs Attention / At Risk** badge appears alongside it, and a **% Complete vs % Spent comparison bar** gives a quick visual: the blue segment shows how much work is done, and the green (or red, if spend exceeds completion) segment shows how much budget has been used.
+2. Read the **Narrative Summary** at the top of the page — a plain-English paragraph describing overall health: "The project is X% complete with Y% of budget spent. It is [schedule status] and [cost status]. [Forecast sentence]." An **On Track / Needs Attention / At Risk** badge appears alongside it, and a **% Complete vs % Spent comparison bar** gives a quick visual: the blue segment shows how much work is done, and the green (or red, if spend exceeds completion) segment shows how much budget has been used. The percentages and status labels in this narrative are guaranteed to match the KPI cards because they are pre-computed server-side from the same EVM data and passed to the AI as verified facts — the AI writes prose around those numbers rather than deriving them independently.
 3. Review the **KPI cards** (8-card grid): CPI, SPI, CV, SV, EV, PV, AC, and BAC. Values are color-coded green when healthy and red when critical.
    - **CV (Cost Variance)** shows EV − AC. Positive means under budget; negative means over budget.
    - **SV (Schedule Variance)** shows EV − PV. Positive means ahead of schedule; negative means behind.
