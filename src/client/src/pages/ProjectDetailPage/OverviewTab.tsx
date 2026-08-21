@@ -116,7 +116,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     enabled: !!project.id,
     staleTime: 60_000,
   });
-  const activeSprint = (sprintData?.sprints || []).find((s: any) => s.status === 'active');
+  const activeSprint = (sprintData?.data || sprintData?.sprints || []).find((s: any) => s.status === 'active');
 
   const { data: auditData } = useQuery({
     queryKey: ['auditTrail', project.id, 'overview'],

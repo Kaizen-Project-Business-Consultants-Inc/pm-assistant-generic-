@@ -23,7 +23,7 @@ export function AgileEVMSection({ projectId, sprintContext }: AgileEVMSectionPro
     queryFn: () => apiService.getVelocityHistory(projectId),
   });
 
-  const velocityHistory = velocityData?.history ?? velocityData ?? [];
+  const velocityHistory = velocityData?.velocity?.sprints ?? velocityData?.history ?? (Array.isArray(velocityData) ? velocityData : []);
 
   // Transform velocity history to VelocityChart format
   const weeks = Array.isArray(velocityHistory)
