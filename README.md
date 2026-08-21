@@ -83,7 +83,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - Multiple views: Gantt chart, Kanban board, Calendar, Table (with MS Project-style column picker and saved views)
 - Gantt drag-and-drop rescheduling (move and resize task bars)
 - Gantt interactive dependency drawing: drag from connector dots on task bar edges to another task to create FS/SS/FF/SF links visually (MS Project-style)
-- Gantt inline grid editing: click any cell in the left panel to edit directly (name, dates, duration, %, priority, assignee, status, predecessors) with Tab navigation across cells and rows
+- Gantt inline grid editing: click any cell in the left panel to edit directly (name, dates, duration, %, priority, assignee, status, predecessors) with Tab navigation across cells and rows; default visible columns reduced to 6 essentials so Task Name is always legible; Task Name column is resizable (250px default); left panel scrolls horizontally when extra columns are enabled
 - Gantt column header sort (asc/desc/none, hierarchy-preserving), copy/paste cells (Ctrl+C/V), indent/outdent (Tab/Shift+Tab), bar progress drag
 - Gantt quick search (Ctrl+F) with type-ahead filtering, filter panel (status, priority, assignee, date range, progress), and saved views (columns, sort, zoom via localStorage)
 - Gantt multi-select bars: click/Ctrl+click/Shift+click bars to select, blue highlight + box-shadow, bulk drag-move all selected bars together
@@ -96,7 +96,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - Gantt minimap: 200×80px overview panel in bottom-right showing colored task rectangles with draggable viewport indicator
 - Task hierarchy with summary task auto-calculation
 - Multi-dependency support: up to 20 predecessors per task (FS/SS/FF/SF + lag), stored in a `task_dependencies` junction table
-- MS Project-style predecessor notation (e.g. "3FS+2d,5SS,7") with health badges and inline editing in both Gantt and Table views
+- MS Project-style predecessor notation (e.g. "3FS+2d,5SS,7") with health badges and inline editing in both Gantt and Table views; **Successor column** (Succ) shows dependent tasks in the same format — read-only, hidden by default, available in both Gantt and Table column pickers
 - Recurring tasks (daily, weekly, biweekly, monthly) with auto-generation
 - Unified customizable dashboard with scope toggle (My Projects / All Projects), KPI tiles with enriched drill-in pages (summary cards, trend badges, distribution bars, sparklines), issues trend chart, milestones, budget watch, and widget visibility persistence
 - Real-time presence indicators showing who is viewing a project
