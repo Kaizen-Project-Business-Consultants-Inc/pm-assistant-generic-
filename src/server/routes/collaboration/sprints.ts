@@ -115,6 +115,19 @@ export async function sprintRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // PATCH /:id/tasks/:taskId/points — update story points for a sprint task
+  fastify.patch('/:id/tasks/:taskId/points', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id, taskId } = request.params as { id: string; taskId: string };
+      const { storyPoints } = request.body as { storyPoints: number };
+      await sprintService.updateTaskStoryPoints(id, taskId, storyPoints);
+      return { message: 'Story points updated' };
+    } catch (error) {
+      logger.error('Update story points error', { error });
+      return reply.status(500).send({ error: 'Failed to update story points' });
+    }
+  });
+
   // DELETE /:id/tasks/:taskId — remove task from sprint
   fastify.delete('/:id/tasks/:taskId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

@@ -118,6 +118,10 @@ export class SprintService {
     return sprintTask;
   }
 
+  async updateTaskStoryPoints(sprintId: string, taskId: string, storyPoints: number): Promise<void> {
+    return sprintRepository.updateTaskStoryPoints(sprintId, taskId, storyPoints);
+  }
+
   async removeTask(sprintId: string, taskId: string): Promise<void> {
     return sprintRepository.removeTask(sprintId, taskId);
   }

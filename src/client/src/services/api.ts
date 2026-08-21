@@ -2244,6 +2244,11 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  async updateSprintTaskPoints(sprintId: string, taskId: string, storyPoints: number) {
+    const response = await this.api.patch(`/sprints/${sprintId}/tasks/${taskId}/points`, { storyPoints });
+    return response.data;
+  }
+
   async removeSprintTask(sprintId: string, taskId: string) {
     const response = await this.api.delete(`/sprints/${sprintId}/tasks/${taskId}`);
     return response.data;

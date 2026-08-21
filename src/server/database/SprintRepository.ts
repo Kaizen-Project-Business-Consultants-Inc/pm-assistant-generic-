@@ -137,6 +137,13 @@ export class SprintRepository extends BaseRepository<Sprint> {
     return taskRowToDTO(rows[0]);
   }
 
+  async updateTaskStoryPoints(sprintId: string, taskId: string, storyPoints: number): Promise<void> {
+    await this.queryRaw(
+      'UPDATE sprint_tasks SET story_points = ? WHERE sprint_id = ? AND task_id = ?',
+      [storyPoints, sprintId, taskId],
+    );
+  }
+
   async removeTask(sprintId: string, taskId: string): Promise<void> {
     await this.queryRaw(
       'DELETE FROM sprint_tasks WHERE sprint_id = ? AND task_id = ?',

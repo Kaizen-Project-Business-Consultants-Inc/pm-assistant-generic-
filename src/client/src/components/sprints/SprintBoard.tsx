@@ -95,6 +95,8 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
   const [localTaskOverrides, setLocalTaskOverrides] = useState<Record<string, string>>({});
   const [wipLimits, setWipLimits] = useState<Record<string, number>>(() => loadWipLimits(sprintId));
   const [swimlane, setSwimlane] = useState<'none' | 'assignee'>('none');
+  const [editingPointsTaskId, setEditingPointsTaskId] = useState<string | null>(null);
+  const [editingPointsValue, setEditingPointsValue] = useState('');
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
@@ -133,6 +135,35 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
     if (unassigned.length > 0) groups.push({ key: '__unassigned', label: 'Unassigned', tasks: unassigned });
     return groups;
   }, [swimlane, tasks, assignees]);
+
+  const updatePointsMutation = useMutation({
+    mutationFn: ({ taskId, storyPoints }: { taskId: string; storyPoints: number }) =>
+      apiService.updateSprintTaskPoints(sprintId, taskId, storyPoints),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sprintBoard', sprintId] });
+    },
+  });
+
+  const handlePointsClick = useCallback((taskId: string, currentPoints: number) => {
+    setEditingPointsTaskId(taskId);
+    setEditingPointsValue(currentPoints > 0 ? String(currentPoints) : '');
+  }, []);
+
+  const handlePointsSave = useCallback((taskId: string) => {
+    const val = parseInt(editingPointsValue, 10);
+    if (!isNaN(val) && val >= 0) {
+      updatePointsMutation.mutate({ taskId, storyPoints: val });
+    }
+    setEditingPointsTaskId(null);
+  }, [editingPointsValue, updatePointsMutation]);
+
+  const handlePointsKeyDown = useCallback((e: React.KeyboardEvent, taskId: string) => {
+    if (e.key === 'Enter') {
+      handlePointsSave(taskId);
+    } else if (e.key === 'Escape') {
+      setEditingPointsTaskId(null);
+    }
+  }, [handlePointsSave]);
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: string }) => {
@@ -344,9 +375,25 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                             >
                               {task.priority || 'medium'}
                             </span>
-                            {points > 0 && (
-                              <span className="text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full">
-                                {points} pts
+                            {editingPointsTaskId === task.id ? (
+                              <input
+                                type="number"
+                                min="0"
+                                className="w-12 text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full border border-primary-300 dark:border-primary-600 outline-none text-center"
+                                value={editingPointsValue}
+                                onChange={(e) => setEditingPointsValue(e.target.value)}
+                                onBlur={() => handlePointsSave(task.id)}
+                                onKeyDown={(e) => handlePointsKeyDown(e, task.id)}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            ) : (
+                              <span
+                                className="text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
+                                onClick={(e) => { e.stopPropagation(); handlePointsClick(task.id, points); }}
+                                title="Click to edit story points"
+                              >
+                                {points > 0 ? `${points} pts` : '+ pts'}
                               </span>
                             )}
                             {(() => {
