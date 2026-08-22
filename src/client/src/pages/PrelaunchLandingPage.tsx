@@ -487,7 +487,7 @@ export const PrelaunchLandingPage: React.FC = () => {
                 </button>
               </form>
               {status === 'error' && <p className="mt-3 text-rose-400 text-xs">{message}</p>}
-              <p className="mt-5 text-xs text-slate-600">No spam. Unsubscribe anytime. Your discount is held for 7 days after launch.</p>
+              <p className="mt-5 text-xs text-slate-400">No spam. Unsubscribe anytime. Your discount is held for 7 days after launch.</p>
             </>
           )}
         </div>
