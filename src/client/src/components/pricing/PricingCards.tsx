@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { apiService } from '../../services/api';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
+import { isPaidTier, SUPPORT_EMAIL } from '../../constants/branding';
 
 export interface PlanDef {
   tier: string;
@@ -181,7 +182,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
     : FALLBACK_PLANS;
 
   const currentTier = isAuthenticated ? (user?.subscriptionTier || 'trial') : null;
-  const isSubscribed = currentTier === 'consultant_basic' || currentTier === 'consultant_pro' || currentTier === 'sme';
+  const isSubscribed = isPaidTier(currentTier);
 
   const handleSubscribe = async (tier: string) => {
     if (!isAuthenticated) {
@@ -512,7 +513,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode }) => {
           <p>Monthly subscriptions are non-refundable. Cancel anytime.</p>
           <p>Annual subscriptions: pro-rated refund within 30 days, non-refundable after.</p>
           <p>Token top-ups are non-refundable and do not expire.</p>
-          <p>Questions? <a href="mailto:support@kpbc.ca" className="text-primary-400 hover:underline">support@kpbc.ca</a></p>
+          <p>Questions? <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary-400 hover:underline">{SUPPORT_EMAIL}</a></p>
         </div>
       </details>
     </>

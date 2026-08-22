@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Home, ArrowLeft } from 'lucide-react';
 import { apiService } from '../services/api';
+import { SUPPORT_EMAIL } from '../constants/branding';
 
 export function NotFoundPage() {
   const navigate = useNavigate();
@@ -42,7 +43,7 @@ export function NotFoundPage() {
         <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
           Need help?{' '}
           <a
-            href={`mailto:support@kpbc.ca?subject=${encodeURIComponent('Help - Page Not Found')}&body=${encodeURIComponent(`I couldn't find the page I was looking for.\n\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}
+            href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Help - Page Not Found')}&body=${encodeURIComponent(`I couldn't find the page I was looking for.\n\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}
             className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
           >
             Contact support

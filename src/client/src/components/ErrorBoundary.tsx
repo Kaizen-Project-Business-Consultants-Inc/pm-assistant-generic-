@@ -1,4 +1,5 @@
 import React from 'react';
+import { SUPPORT_EMAIL } from '../constants/branding';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -56,7 +57,7 @@ export class ErrorBoundary extends React.Component<
                   Reload Page
                 </button>
                 <a
-                  href={`mailto:support@kpbc.ca?subject=${encodeURIComponent('Bug Report: ' + (this.state.error?.message || 'Unknown error'))}&body=${encodeURIComponent(`An error occurred in the application.\n\nError: ${this.state.error?.message || 'Unknown'}\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}
+                  href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Bug Report: ' + (this.state.error?.message || 'Unknown error'))}&body=${encodeURIComponent(`An error occurred in the application.\n\nError: ${this.state.error?.message || 'Unknown'}\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}
                   className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
                   Report this issue
@@ -129,7 +130,7 @@ export class RouteErrorBoundary extends React.Component<
               </div>
               <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
                 <a
-                  href={`mailto:support@kpbc.ca?subject=${encodeURIComponent('Bug Report: ' + (this.state.error?.message || 'Unknown error'))}&body=${encodeURIComponent(`An error occurred.\n\nError: ${this.state.error?.message || 'Unknown'}\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}
+                  href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Bug Report: ' + (this.state.error?.message || 'Unknown error'))}&body=${encodeURIComponent(`An error occurred.\n\nError: ${this.state.error?.message || 'Unknown'}\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}
                   className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
                 >
                   Report this issue

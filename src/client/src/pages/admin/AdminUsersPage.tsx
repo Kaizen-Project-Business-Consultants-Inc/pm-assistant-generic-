@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
+import { tierBadgeClass } from '../../constants/branding';
 import { AdminPageWrapper } from './AdminPageWrapper';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import {
@@ -86,13 +87,6 @@ const ROLE_COLORS: Record<string, string> = {
   project_manager: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
   executive: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300',
   pmo: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300',
-};
-
-const TIER_COLORS: Record<string, string> = {
-  trial: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
-  consultant: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-  sme: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
-  enterprise: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
 };
 
 const SUB_STATUS_COLORS: Record<string, string> = {
@@ -462,7 +456,7 @@ export function AdminUsersPage() {
                   const loginExpired = hasPendingLogin && u.login_verification_expires && new Date(u.login_verification_expires) < new Date();
                   const emailVerified = Boolean(u.email_verified);
                   const roleColor = ROLE_COLORS[u.role] || 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200';
-                  const tierColor = TIER_COLORS[u.subscription_tier || 'trial'] || TIER_COLORS.trial;
+                  const tierColor = tierBadgeClass(u.subscription_tier || 'trial');
                   const effectiveBudget = u.ai_monthly_token_budget ?? u.ai_tier_budget;
                   const usagePct = effectiveBudget > 0 ? Math.round((Number(u.ai_tokens_used) / effectiveBudget) * 100) : 0;
                   const usageBarColor = usagePct >= 90 ? 'bg-red-500' : usagePct >= 70 ? 'bg-amber-500' : 'bg-emerald-500';

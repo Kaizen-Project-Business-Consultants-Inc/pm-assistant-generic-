@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { LOGO_SVG_PATH, SALES_EMAIL } from '../constants/branding';
 
 
 const features = [
@@ -331,7 +332,7 @@ export const PrelaunchLandingPage: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-900">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={LOGO_SVG_PATH} />
               </svg>
             </div>
             <span className="text-lg font-bold">Kovarti</span>
@@ -560,13 +561,13 @@ export const PrelaunchLandingPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-purple-600 rounded flex items-center justify-center">
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={LOGO_SVG_PATH} />
               </svg>
             </div>
             <span className="text-sm font-semibold text-white">Kovarti</span>
           </div>
           <div className="flex gap-6 text-sm text-slate-500">
-            <a href="mailto:sales@kovarti.com" className="hover:text-white transition-colors">sales@kovarti.com</a>
+            <a href={`mailto:${SALES_EMAIL}`} className="hover:text-white transition-colors">{SALES_EMAIL}</a>
             <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
           </div>

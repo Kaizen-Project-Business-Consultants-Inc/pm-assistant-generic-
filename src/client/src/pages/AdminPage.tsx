@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
+import { tierBadgeClass } from '../constants/branding';
 import {
   Users,
   Activity,
@@ -414,17 +415,7 @@ function TenantsTab() {
                   {Number(t.user_count)} / {t.max_users}
                 </td>
                 <td className="py-3 pr-4">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                    t.subscription_tier === 'enterprise'
-                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'
-                      : t.subscription_tier === 'sme'
-                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'
-                      : t.subscription_tier === 'consultant_pro'
-                      ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
-                      : t.subscription_tier === 'consultant_basic'
-                      ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200'
-                  }`}>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tierBadgeClass(t.subscription_tier)}`}>
                     {t.subscription_tier}
                   </span>
                 </td>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
+import { TIER_LABELS, isPaidTier } from '../constants/branding';
 import {
   CreditCard,
   Crown,
@@ -57,13 +58,6 @@ function getStatusBadge(status: string, cancelAtPeriodEnd: boolean) {
       return { label: status || 'Free', color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300', icon: CreditCard };
   }
 }
-
-const TIER_LABELS: Record<string, string> = {
-  trial: 'Trial',
-  consultant_basic: 'Consultant Basic',
-  consultant_pro: 'Consultant Pro',
-  sme: 'SME Plan',
-};
 
 const TIER_FEATURES: Record<string, string[]> = {
   trial: [
@@ -191,7 +185,7 @@ export const AccountBillingPage: React.FC = () => {
     );
   }
 
-  const isPaid = data.tier === 'consultant_basic' || data.tier === 'consultant_pro' || data.tier === 'sme';
+  const isPaid = isPaidTier(data.tier);
   const trialDays = daysUntil(data.trialEndsAt);
   const badge = getStatusBadge(data.status, data.cancelAtPeriodEnd);
   const BadgeIcon = badge.icon;

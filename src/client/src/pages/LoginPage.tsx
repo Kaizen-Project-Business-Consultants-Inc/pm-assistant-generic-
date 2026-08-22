@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Mail } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
+import { LOGO_SVG_PATH, SUPPORT_EMAIL } from '../constants/branding';
 
 export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -109,7 +110,7 @@ export const LoginPage: React.FC = () => {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                  d={LOGO_SVG_PATH}
                 />
               </svg>
             </div>
@@ -213,7 +214,7 @@ export const LoginPage: React.FC = () => {
               <p className="text-xs text-gray-400 dark:text-gray-500">
                 Need help?{' '}
                 <a
-                  href={`mailto:support@kpbc.ca?subject=${encodeURIComponent('Login Help')}&body=${encodeURIComponent(`I need help logging in.\n\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}
+                  href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Login Help')}&body=${encodeURIComponent(`I need help logging in.\n\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}
                   className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
                 >
                   Contact support

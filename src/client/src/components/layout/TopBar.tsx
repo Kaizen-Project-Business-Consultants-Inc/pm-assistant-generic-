@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { apiService } from '../../services/api';
 import { NotificationBell } from '../notifications/NotificationBell';
+import { SUPPORT_EMAIL } from '../../constants/branding';
 import { ConnectionStatus } from './ConnectionStatus';
 import CommandPalette from './CommandPalette';
 
@@ -340,7 +341,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
 
               <div className="py-1">
                 <a
-                  href="mailto:support@kpbc.ca"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150"
                   role="menuitem"
                   onClick={() => setDropdownOpen(false)}

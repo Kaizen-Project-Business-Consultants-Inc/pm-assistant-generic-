@@ -1,23 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { PublicNavbar } from '../components/layout/PublicNavbar';
+import { PublicFooter } from '../components/layout/PublicFooter';
+import { SUPPORT_EMAIL } from '../constants/branding';
 
 export const TermsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-800">
-      <nav className="border-b border-gray-100 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to="/" className="flex items-center">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-              <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">Kovarti PM</span>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PublicNavbar />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Terms of Service</h1>
@@ -39,7 +29,7 @@ export const TermsPage: React.FC = () => {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">5. Subscription and Billing</h2>
           <p>Paid subscriptions are available on monthly and annual billing cycles. Payments are processed by Stripe. All prices are in USD.</p>
           <p><strong>Cancellation:</strong> You may cancel at any time from your account settings. Access continues until the end of your current billing period. No further charges will be made after cancellation.</p>
-          <p><strong>Refunds:</strong> Monthly subscriptions are non-refundable. Annual subscriptions may be refunded on a pro-rated basis if requested within 30 days of the billing date. After 30 days, annual subscriptions are non-refundable. To request a refund, contact support@kpbc.ca.</p>
+          <p><strong>Refunds:</strong> Monthly subscriptions are non-refundable. Annual subscriptions may be refunded on a pro-rated basis if requested within 30 days of the billing date. After 30 days, annual subscriptions are non-refundable. To request a refund, contact {SUPPORT_EMAIL}.</p>
           <p><strong>Price changes:</strong> We may adjust pricing with at least 30 days' written notice. Price changes take effect at the start of your next billing period.</p>
 
           <div className="mt-8 rounded-lg border-2 border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/20 p-5">
@@ -79,24 +69,17 @@ export const TermsPage: React.FC = () => {
           <p>These Terms are governed by and construed in accordance with the laws of the Province of British Columbia, Canada. Any disputes arising from these Terms or your use of the Service shall be subject to the exclusive jurisdiction of the courts of British Columbia.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">13. Dispute Resolution</h2>
-          <p>Before pursuing formal legal action, you agree to first contact us at support@kpbc.ca to attempt to resolve the dispute informally. If the dispute cannot be resolved within 30 days, either party may pursue resolution through the courts of British Columbia.</p>
+          <p>Before pursuing formal legal action, you agree to first contact us at {SUPPORT_EMAIL} to attempt to resolve the dispute informally. If the dispute cannot be resolved within 30 days, either party may pursue resolution through the courts of British Columbia.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">14. Changes to Terms</h2>
           <p>We may update these Terms from time to time. Material changes will be communicated via email or in-app notification at least 14 days before taking effect. Continued use of the Service after changes constitutes acceptance of the new Terms.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">15. Contact</h2>
-          <p>For questions about these Terms, contact us at support@kpbc.ca.</p>
+          <p>For questions about these Terms, contact us at {SUPPORT_EMAIL}.</p>
         </div>
       </div>
 
-      <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex justify-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
-            <Link to="/terms" className="hover:text-gray-900 dark:text-white">Terms of Service</Link>
-            <Link to="/privacy" className="hover:text-gray-900 dark:text-white">Privacy Policy</Link>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 };

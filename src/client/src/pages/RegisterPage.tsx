@@ -3,13 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Users, CreditCard } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
-
-const TIER_LABELS: Record<string, string> = {
-  consultant_basic: 'Consultant Basic',
-  consultant_pro: 'Consultant Pro',
-  sme: 'SME',
-  enterprise: 'Enterprise',
-};
+import { TIER_LABELS } from '../constants/branding';
 
 export const RegisterPage: React.FC = () => {
   const [searchParams] = useSearchParams();

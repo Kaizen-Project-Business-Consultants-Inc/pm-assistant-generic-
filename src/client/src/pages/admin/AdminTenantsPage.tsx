@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
+import { tierBadgeClass } from '../../constants/branding';
 import { AdminPageWrapper } from './AdminPageWrapper';
 import {
   Building,
@@ -114,17 +115,7 @@ export function AdminTenantsPage() {
                         {Number(t.user_count)} / {t.max_users}
                       </td>
                       <td className="py-3 pr-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          t.subscription_tier === 'enterprise'
-                            ? 'bg-purple-100 text-purple-800'
-                            : t.subscription_tier === 'sme'
-                            ? 'bg-blue-100 text-blue-800'
-                            : t.subscription_tier === 'consultant_pro'
-                            ? 'bg-amber-100 text-amber-800'
-                            : t.subscription_tier === 'consultant_basic'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200'
-                        }`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tierBadgeClass(t.subscription_tier)}`}>
                           {t.subscription_tier}
                         </span>
                       </td>

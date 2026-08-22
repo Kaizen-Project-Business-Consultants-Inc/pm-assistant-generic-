@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Crown } from 'lucide-react';
+import { isPaidTier } from '../../constants/branding';
 
 export function TrialBanner() {
   const { user } = useAuthStore();
@@ -11,7 +12,7 @@ export function TrialBanner() {
   const status = user.subscriptionStatus || 'none';
 
   // Don't show for paid users, admins, or viewers
-  if (tier === 'consultant_basic' || tier === 'consultant_pro' || tier === 'sme' || tier === 'enterprise') return null;
+  if (isPaidTier(tier)) return null;
   if (user.role === 'admin') return null;
   if (user.role === 'viewer') return null;
 

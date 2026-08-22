@@ -1,23 +1,12 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { PublicNavbar } from '../components/layout/PublicNavbar';
+import { PublicFooter } from '../components/layout/PublicFooter';
+import { PRIVACY_EMAIL } from '../constants/branding';
 
 export const PrivacyPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-800">
-      <nav className="border-b border-gray-100 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to="/" className="flex items-center">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-              <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">Kovarti PM</span>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PublicNavbar />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Privacy Policy</h1>
@@ -69,7 +58,7 @@ export const PrivacyPage: React.FC = () => {
             <li>Opt out of non-essential communications</li>
             <li>Opt out of analytics tracking (see Section 8)</li>
           </ul>
-          <p>To exercise these rights, contact us at privacy@kpbc.ca or use the self-service options in your account settings.</p>
+          <p>To exercise these rights, contact us at {PRIVACY_EMAIL} or use the self-service options in your account settings.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">8. Cookies and Analytics</h2>
           <p><strong>Essential cookies:</strong> We use secure, HTTP-only cookies for authentication and session management. These are strictly necessary for the Service to function.</p>
@@ -86,24 +75,17 @@ export const PrivacyPage: React.FC = () => {
           <p>The Service is hosted in Canada (Oracle Cloud, Toronto region). Your data may be transferred to the United States for processing by our third-party providers (Stripe, Resend, Anthropic, Google). We rely on the service providers' standard contractual clauses and privacy frameworks to protect your data during transfer.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">10. Canadian Privacy Law (PIPEDA)</h2>
-          <p>We comply with the Personal Information Protection and Electronic Documents Act (PIPEDA). We collect, use, and disclose personal information only for the purposes identified in this policy. You may withdraw consent at any time by deleting your account. For privacy inquiries or complaints, contact our Privacy Officer at privacy@kpbc.ca.</p>
+          <p>We comply with the Personal Information Protection and Electronic Documents Act (PIPEDA). We collect, use, and disclose personal information only for the purposes identified in this policy. You may withdraw consent at any time by deleting your account. For privacy inquiries or complaints, contact our Privacy Officer at {PRIVACY_EMAIL}.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">11. Changes to This Policy</h2>
           <p>We may update this Privacy Policy from time to time. Material changes will be communicated via email or in-app notification at least 14 days before taking effect.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">12. Contact</h2>
-          <p>For privacy-related questions, contact our Privacy Officer at privacy@kpbc.ca.</p>
+          <p>For privacy-related questions, contact our Privacy Officer at {PRIVACY_EMAIL}.</p>
         </div>
       </div>
 
-      <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex justify-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
-            <Link to="/terms" className="hover:text-gray-900 dark:text-white">Terms of Service</Link>
-            <Link to="/privacy" className="hover:text-gray-900 dark:text-white">Privacy Policy</Link>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 };
