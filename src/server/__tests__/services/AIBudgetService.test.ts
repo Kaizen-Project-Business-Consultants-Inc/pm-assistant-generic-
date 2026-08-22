@@ -51,7 +51,7 @@ describe('AIBudgetService', () => {
 
   // Helper: set up mocks for a getMonthlyUsage call (non-org user)
   // Call order: 1) usage query, 2) user budget query, 3) tier query
-  function mockUsageFlow(usage: Record<string, number>, budget: number | null = null, tier = 'consultant') {
+  function mockUsageFlow(usage: Record<string, number>, budget: number | null = null, tier = 'consultant_pro') {
     mockQueryCP
       .mockResolvedValueOnce([usage])                           // ai_usage_log
       .mockResolvedValueOnce([{ ai_monthly_token_budget: budget }]) // user budget

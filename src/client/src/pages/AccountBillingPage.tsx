@@ -60,7 +60,8 @@ function getStatusBadge(status: string, cancelAtPeriodEnd: boolean) {
 
 const TIER_LABELS: Record<string, string> = {
   trial: 'Trial',
-  consultant: 'Consultant Plan',
+  consultant_basic: 'Consultant Basic',
+  consultant_pro: 'Consultant Pro',
   sme: 'SME Plan',
 };
 
@@ -70,7 +71,15 @@ const TIER_FEATURES: Record<string, string[]> = {
     'Basic PM features',
     '25K AI tokens/month',
   ],
-  consultant: [
+  consultant_basic: [
+    'Unlimited projects',
+    'Core PM features',
+    'Exports (CSV, PDF, XML)',
+    'API access',
+    '1GB file storage',
+    '5 viewer invites',
+  ],
+  consultant_pro: [
     'Unlimited projects',
     'All features included',
     '500K AI tokens/month',
@@ -182,12 +191,12 @@ export const AccountBillingPage: React.FC = () => {
     );
   }
 
-  const isPaid = data.tier === 'consultant' || data.tier === 'sme';
+  const isPaid = data.tier === 'consultant_basic' || data.tier === 'consultant_pro' || data.tier === 'sme';
   const trialDays = daysUntil(data.trialEndsAt);
   const badge = getStatusBadge(data.status, data.cancelAtPeriodEnd);
   const BadgeIcon = badge.icon;
   const planLabel = TIER_LABELS[data.tier] || `${data.tier.charAt(0).toUpperCase() + data.tier.slice(1)} Plan`;
-  const planFeatures = TIER_FEATURES[data.tier] || TIER_FEATURES.consultant;
+  const planFeatures = TIER_FEATURES[data.tier] || TIER_FEATURES.consultant_pro;
 
   return (
     <div className="p-6 max-w-3xl mx-auto">

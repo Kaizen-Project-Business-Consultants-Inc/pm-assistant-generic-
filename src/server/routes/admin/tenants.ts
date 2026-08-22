@@ -20,7 +20,7 @@ const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   isActive: z.boolean().optional(),
   maxUsers: z.number().int().min(1).max(10000).optional(),
-  subscriptionTier: z.enum(['trial', 'consultant', 'sme', 'enterprise']).optional(),
+  subscriptionTier: z.enum(['trial', 'consultant_basic', 'consultant_pro', 'sme', 'enterprise']).optional(),
   subscriptionStatus: z.enum(['active', 'trialing', 'past_due', 'canceled', 'incomplete', 'none']).optional(),
   trialEndsAt: z.string().nullable().optional(),
 });

@@ -15,7 +15,7 @@ export const MOCK_USER = {
   email: 'admin@test.com',
   fullName: 'Test Admin',
   role: 'project_manager',
-  subscriptionTier: 'consultant',
+  subscriptionTier: 'consultant_pro',
   subscriptionStatus: 'active',
 };
 

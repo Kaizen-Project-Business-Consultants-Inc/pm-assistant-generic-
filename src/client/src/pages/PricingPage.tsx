@@ -103,20 +103,21 @@ export const PricingPage: React.FC = () => {
               Compare plans
             </h2>
             <div className="overflow-x-auto flex justify-center">
-              <table className="text-sm" style={{ maxWidth: '700px', width: '100%' }}>
+              <table className="text-sm" style={{ maxWidth: '900px', width: '100%' }}>
                 <thead>
                   <tr className="border-b-2 border-gray-200 dark:border-gray-700">
                     <th className="text-left py-3 pr-6 font-semibold text-gray-900 dark:text-white">Feature</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-500 dark:text-gray-400 w-24">Trial</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-900 dark:text-white w-28">Consultant</th>
-                    <th className="text-center py-3 px-4 font-semibold text-primary-600 dark:text-primary-400 w-24">SME</th>
+                    <th className="text-center py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 w-20">Trial</th>
+                    <th className="text-center py-3 px-3 font-semibold text-gray-900 dark:text-white w-20">Basic</th>
+                    <th className="text-center py-3 px-3 font-semibold text-primary-600 dark:text-primary-400 w-20">Pro</th>
+                    <th className="text-center py-3 px-3 font-semibold text-purple-600 dark:text-purple-400 w-20">SME</th>
                   </tr>
                 </thead>
                 <tbody>
                   {COMPARISON.map((row, i) => (
                     <tr key={row.feature} className={`border-b border-gray-100 dark:border-gray-700/50 ${i % 2 === 0 ? 'bg-gray-50/50 dark:bg-gray-800/50' : ''}`}>
                       <td className="py-2.5 pr-4 text-gray-700 dark:text-gray-300">{row.feature}</td>
-                      {(['trial', 'consultant', 'sme'] as const).map((tier) => {
+                      {(['trial', 'consultant_basic', 'consultant_pro', 'sme'] as const).map((tier) => {
                         const val = row[tier];
                         return (
                           <td key={tier} className="py-2.5 px-3 text-center">

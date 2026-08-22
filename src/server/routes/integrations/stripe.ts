@@ -12,16 +12,23 @@ import logger from '../../utils/logger';
 
 const checkoutSchema = z.object({
   plan: z.enum(['monthly', 'annual']).optional(),
-  tier: z.enum(['consultant', 'sme', 'enterprise']).optional(),
+  tier: z.enum(['consultant_basic', 'consultant_pro', 'sme', 'enterprise']).optional(),
   seats: z.number().int().min(3).max(100).optional(),
 });
 
 export function resolvePriceId(tier: string, billing: string): string | undefined {
-  // New tier price IDs
-  if (tier === 'consultant') {
+  // Consultant Basic
+  if (tier === 'consultant_basic') {
+    if (billing === 'annual' && config.STRIPE_CONSULTANT_BASIC_ANNUAL_PRICE_ID) return config.STRIPE_CONSULTANT_BASIC_ANNUAL_PRICE_ID;
+    if (config.STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID) return config.STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID;
+  }
+  // Consultant Pro
+  if (tier === 'consultant_pro') {
+    if (billing === 'annual' && config.STRIPE_CONSULTANT_PRO_ANNUAL_PRICE_ID) return config.STRIPE_CONSULTANT_PRO_ANNUAL_PRICE_ID;
+    if (config.STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID) return config.STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID;
+    // Legacy fallbacks for existing consultant subscribers
     if (billing === 'annual' && config.STRIPE_CONSULTANT_NEW_ANNUAL_PRICE_ID) return config.STRIPE_CONSULTANT_NEW_ANNUAL_PRICE_ID;
     if (config.STRIPE_CONSULTANT_NEW_MONTHLY_PRICE_ID) return config.STRIPE_CONSULTANT_NEW_MONTHLY_PRICE_ID;
-    // Legacy pro fallback
     if (billing === 'annual' && config.STRIPE_PRO_ANNUAL_PRICE_ID) return config.STRIPE_PRO_ANNUAL_PRICE_ID;
     if (config.STRIPE_PRO_MONTHLY_PRICE_ID) return config.STRIPE_PRO_MONTHLY_PRICE_ID;
   }
@@ -99,7 +106,7 @@ export async function stripeRoutes(fastify: FastifyInstance) {
       }
 
       const billing = plan || 'monthly';
-      const selectedTier = tier || 'consultant'; // default to consultant for legacy clients
+      const selectedTier = tier || 'consultant_pro'; // default to consultant_pro for legacy clients
       const priceId = resolvePriceId(selectedTier, billing);
 
       if (!priceId) {

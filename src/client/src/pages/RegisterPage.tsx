@@ -5,7 +5,8 @@ import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
 
 const TIER_LABELS: Record<string, string> = {
-  consultant: 'Consultant',
+  consultant_basic: 'Consultant Basic',
+  consultant_pro: 'Consultant Pro',
   sme: 'SME',
   enterprise: 'Enterprise',
 };
@@ -13,7 +14,7 @@ const TIER_LABELS: Record<string, string> = {
 export const RegisterPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get('invite') || undefined;
-  const tierParam = searchParams.get('tier') as 'consultant' | 'sme' | 'enterprise' | null;
+  const tierParam = searchParams.get('tier') as 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise' | null;
   const billingParam = (searchParams.get('billing') as 'monthly' | 'annual') || 'monthly';
 
   const isPlanSignup = !!tierParam && !inviteToken;

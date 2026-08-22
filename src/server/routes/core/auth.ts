@@ -29,7 +29,7 @@ const registerSchema = z.object({
   fullName: z.string().min(2).max(100).optional(),
   organizationName: z.string().min(2).max(255).optional(),
   inviteToken: z.string().optional(),
-  tier: z.enum(['consultant', 'sme', 'enterprise']).optional(),
+  tier: z.enum(['consultant_basic', 'consultant_pro', 'sme', 'enterprise']).optional(),
   plan: z.enum(['monthly', 'annual']).optional(),
 });
 

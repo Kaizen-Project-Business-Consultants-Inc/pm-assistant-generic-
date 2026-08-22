@@ -84,7 +84,7 @@ class ApiService {
     fullName?: string;
     organizationName?: string;
     inviteToken?: string;
-    tier?: 'consultant' | 'sme' | 'enterprise';
+    tier?: 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise';
     plan?: 'monthly' | 'annual';
   }) {
     const response = await this.api.post('/auth/register', userData);
@@ -135,7 +135,7 @@ class ApiService {
   // Stripe / Subscription endpoints
   // -------------------------------------------------------------------------
 
-  async createCheckoutSession(plan: 'monthly' | 'annual' = 'monthly', tier: string = 'consultant', seats?: number) {
+  async createCheckoutSession(plan: 'monthly' | 'annual' = 'monthly', tier: string = 'consultant_pro', seats?: number) {
     const response = await this.api.post('/stripe/create-checkout-session', { plan, tier, ...(seats != null && { seats }) });
     return response.data;
   }

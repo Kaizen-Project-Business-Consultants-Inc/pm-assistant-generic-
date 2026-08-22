@@ -52,7 +52,7 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 2. On the landing page, click **Get Started** — this scrolls to the **Pricing** section.
 3. Choose your plan:
    - Click **Start Free Trial** for a 14-day free trial (no credit card required).
-   - Click **Subscribe** on a paid plan (Consultant or SME) to go straight to checkout.
+   - Click **Subscribe** on a paid plan (Consultant Basic, Consultant Pro, or SME) to go straight to checkout.
 4. Fill in your email, password, and other details on the registration form.
 5. Verify your email address using the link sent to your inbox.
 
@@ -1951,7 +1951,7 @@ Each proposal has a risk level that determines its approval requirements:
 
 Navigate to **Account** in the sidebar to manage:
 
-- **Subscription plan**: The billing page displays your current plan name based on your actual subscription tier (e.g., "Trial", "Consultant Plan", "SME Plan", or "Enterprise Plan"). Paid plans: Consultant ($19/mo or $190/yr), SME ($39/mo or $390/yr), and Enterprise ($79/mo or $790/yr). Annual billing saves ~17%. Visit the **Pricing** page to see a full feature comparison matrix across all tiers, with practical usage equivalents explaining what each token budget means (e.g., "~100 AI chats, 50 risk scans").
+- **Subscription plan**: The billing page displays your current plan name based on your actual subscription tier (e.g., "Trial", "Consultant Basic Plan", "Consultant Pro Plan", "SME Plan", or "Enterprise Plan"). Paid plans: Consultant Basic ($19/mo or $190/yr, core PM features, no AI), Consultant Pro ($29/mo or $290/yr, core PM + all AI features), SME ($39/mo or $390/yr), and Enterprise ($79/mo or $790/yr). Annual billing saves ~17%. Visit the **Pricing** page to see a full feature comparison matrix across all tiers, with practical usage equivalents explaining what each token budget means (e.g., "~100 AI chats, 50 risk scans").
 - **Payment method**: Managed via Stripe's secure billing portal.
 - **AI usage meter**: A progress bar shows your current-month token consumption vs your effective budget (tier allowance plus any purchased top-up balance), color-coded green (<70%), amber (70–90%), or red (>90%).
 - **Top-up balance**: Your remaining purchased token balance is displayed below the usage meter. Click **Buy More** to purchase additional packs instantly.
@@ -1962,7 +1962,7 @@ Navigate to **Account** in the sidebar to manage:
 Navigate to **Settings** to configure:
 
 - **User management** -- Add, edit, or deactivate users. Assign roles (admin, executive, manager, member).
-- **Team & Viewers** -- Manage your team members and invite client stakeholders as viewer accounts (see [Viewer Invites](#viewer-invites) below). Available on Consultant, SME, and Enterprise plans.
+- **Team & Viewers** -- Manage your team members and invite client stakeholders as viewer accounts (see [Viewer Invites](#viewer-invites) below). Available on Consultant Basic, Consultant Pro, SME, and Enterprise plans.
 - **API keys** -- Generate and manage API keys for programmatic access. Revoking a key shows a styled confirmation modal before the key is deleted.
 - **Webhooks** -- Configure outbound webhook endpoints. Deleting a webhook shows a styled confirmation modal.
 - **Custom fields** -- Define organization-wide custom fields that appear on tasks and projects.
@@ -1979,12 +1979,13 @@ All eight Settings tabs (Profile, Team, Notifications, Display, Accessibility, A
 
 ### Viewer Invites
 
-Paid plan users (Consultant, SME, and Enterprise) can invite external client stakeholders as **viewer accounts** at no extra charge, up to their plan's limit:
+Paid plan users (Consultant Basic, Consultant Pro, SME, and Enterprise) can invite external client stakeholders as **viewer accounts** at no extra charge, up to their plan's limit:
 
 | Plan | Viewer Invite Limit |
 |------|---------------------|
 | Trial | 0 (not available) |
-| Consultant | 5 viewers |
+| Consultant Basic | 5 viewers |
+| Consultant Pro | 5 viewers |
 | SME | 20 viewers |
 | Enterprise | Unlimited |
 

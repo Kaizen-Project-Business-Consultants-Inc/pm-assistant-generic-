@@ -50,4 +50,4 @@ export function requireFeature(featureKey: string) {
   };
 }
 
-export const requirePaidTier = requireTier('consultant', 'sme', 'enterprise');
+export const requirePaidTier = requireTier('consultant_basic', 'consultant_pro', 'sme', 'enterprise');

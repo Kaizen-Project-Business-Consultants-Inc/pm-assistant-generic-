@@ -241,7 +241,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - MCP tool permission matrix: 83 tools filtered by user role at registration time (agents only see permitted tools)
 - Append-only chained audit ledger with API search, filter, and pagination
 - Data encryption at rest and in transit
-- Per-tier AI token budget enforcement (`AIBudgetService`) — tier-aware limits (Trial: 25K, Consultant: 500K, SME: 1.5M, Enterprise: 5M), per-user admin overrides, purchasable token top-ups (500K/$5, FIFO consumption, no expiry), graceful degradation on exhaustion (HTTP 429 with reset date, non-AI features unaffected), `GET /api/v1/ai/budget` usage endpoint, automatic enforcement before every AI call, proactive 80% threshold warning notification (daily-deduped)
+- Per-tier AI token budget enforcement (`AIBudgetService`) — tier-aware limits (Trial: 25K, Consultant Basic: none, Consultant Pro: 500K, SME: 1.5M, Enterprise: 5M), per-user admin overrides, purchasable token top-ups (500K/$5, FIFO consumption, no expiry), graceful degradation on exhaustion (HTTP 429 with reset date, non-AI features unaffected), `GET /api/v1/ai/budget` usage endpoint, automatic enforcement before every AI call, proactive 80% threshold warning notification (daily-deduped)
 - Zod validation on 24 route files covering all critical API inputs
 - **Benchmark:** Enterprise tools
 
@@ -548,7 +548,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Trial sample API keys**: `GET /api/v1/api-keys` returns 2 sample keys (CI/CD Pipeline, Dashboard Read-Only) with amber upgrade banner instead of a 403; Create Key button hidden on SettingsPage API Keys tab; no DB reads
 - **Sample data architecture**: POST-based sample endpoints (`/nl-query`, `/meeting-intelligence/analyze`) exempt from global `requireActiveSubscription` hook via `SUBSCRIPTION_EXEMPT_PREFIXES`; portal links trial check runs before `requireProjectAccess`; meeting intelligence trial check runs before Zod schema validation; all write endpoints remain hard-gated
 - **Trial abuse prevention**: `deleted_emails` table tracks emails of deleted accounts; re-registration with a previously-deleted email skips the 14-day trial (`subscriptionStatus: 'none'`), requiring a paid plan; case-insensitive lookup; migration `079_deleted_emails.sql`
-- **Pricing-first signup flow**: All entry points (landing page hero, nav, login page "Sign up") route through plan selection before registration; landing page "Get Started" anchor-scrolls to inline `#pricing` section; login page links to `/pricing`; Trial card links to `/register`, paid cards link to `/register?tier=<tier>&billing=<billing>` for direct Stripe checkout
+- **Pricing-first signup flow**: All entry points (landing page hero, nav, login page "Sign up") route through plan selection before registration; landing page "Get Started" anchor-scrolls to inline `#pricing` section; login page links to `/pricing`; Trial card links to `/register`, paid cards link to `/register?tier=<tier>&billing=<billing>` for direct Stripe checkout; tiers: Consultant Basic ($19/mo, core PM, no AI), Consultant Pro ($29/mo, core PM + all AI), SME ($39/mo), Enterprise ($79/mo)
 - Shareable report links
 - **Benchmark:** Smartsheet, Monday.com
 
@@ -731,7 +731,7 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Load More Pagination (Notifications Center, Lessons Learned, Agent Proposals pages) | Done | Enhancement |
 | Report Builder Data Shape Fixes (KPI/chart/table sections, groupBy SQL injection guard, user-owned template delete, designer section persistence) | Done | Bug Fix |
 | Shared Pagination Schema (paginationSchema.ts + PaginatedResponse on projects, schedule tasks, sprints, templates) | Done | Enhancement |
-| Per-Tier AI Token Budget (tier-aware budgets, token top-ups, graceful degradation, admin override, Stripe multi-tier checkout) | Done | Enhancement |
+| Per-Tier AI Token Budget (tier-aware budgets, Consultant Basic/Pro split, token top-ups, graceful degradation, admin override, Stripe multi-tier checkout) | Done | Enhancement |
 | Zod Validation Expansion (9 additional route files: users, bulk, sprints, timeEntries, aiChat, apiKeys, webhooks, intakeForms, goals) | Done | Enhancement |
 | Repository Layer (BaseRepository + ProjectRepository, UserRepository, ScheduleRepository — centralized SQL/row mapping, services keep business logic) | Done | Architecture |
 | Structured Metrics (MetricsService with request counts, latency p50/p95/p99, AI token usage, DB query counts; GET /api/v1/metrics admin endpoint) | Done | Observability |

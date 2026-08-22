@@ -11,7 +11,7 @@ export function TrialBanner() {
   const status = user.subscriptionStatus || 'none';
 
   // Don't show for paid users, admins, or viewers
-  if (tier === 'consultant' || tier === 'sme' || tier === 'enterprise') return null;
+  if (tier === 'consultant_basic' || tier === 'consultant_pro' || tier === 'sme' || tier === 'enterprise') return null;
   if (user.role === 'admin') return null;
   if (user.role === 'viewer') return null;
 

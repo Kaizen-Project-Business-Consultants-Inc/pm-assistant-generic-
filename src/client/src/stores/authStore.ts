@@ -7,7 +7,7 @@ export interface User {
   email: string;
   fullName: string;
   role: 'admin' | 'executive' | 'project_manager' | 'team_member' | 'scrum_master' | 'finance_officer' | 'risk_manager' | 'pmo' | 'ba' | 'qa' | 'tester' | 'devops' | 'claude_sme' | 'viewer';
-  subscriptionTier?: 'trial' | 'consultant' | 'sme' | 'enterprise';
+  subscriptionTier?: 'trial' | 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise';
   subscriptionStatus?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'none';
   trialEndsAt?: string | null;
 }

@@ -33,7 +33,7 @@ const FALLBACK_PLANS: PlanDef[] = [
     viewerInvites: '0',
     features: [
       'Up to 3 projects',
-      '14-day full access',
+      '14-day full access (Pro features)',
       'Mjuzi AI assistant (25K tokens)',
       'Gantt, Kanban, Sprint boards',
       'RAID management',
@@ -41,23 +41,43 @@ const FALLBACK_PLANS: PlanDef[] = [
     ],
   },
   {
-    tier: 'consultant',
-    name: 'Consultant',
+    tier: 'consultant_basic',
+    name: 'Consultant Basic',
     monthly: 19,
     annual: 190,
-    tokens: '500K',
-    tokensEquiv: '~100 AI chats, 50 risk scans, or 25 reports/mo',
+    tokens: '—',
+    tokensEquiv: 'Core PM features — no AI',
     storage: '1GB',
     viewerInvites: '5',
     features: [
       'Unlimited projects',
-      'All PM features included',
-      'Mjuzi AI assistant (500K tokens/mo)',
       'Gantt, Kanban, Sprint boards',
-      'RAID management & risk scans',
+      'RAID management',
       'All exports (CSV, PDF, XML)',
       'API access & integrations',
       '5 free viewer invites for clients',
+      'Stakeholder portal',
+    ],
+  },
+  {
+    tier: 'consultant_pro',
+    name: 'Consultant Pro',
+    monthly: 29,
+    annual: 290,
+    tokens: '500K',
+    tokensEquiv: '~100 AI chats, 50 risk scans, or 25 reports/mo',
+    storage: '1GB',
+    viewerInvites: '5',
+    highlight: true,
+    features: [
+      'Everything in Basic, plus:',
+      'Mjuzi AI assistant (500K tokens/mo)',
+      'AI risk scans & forecasting',
+      'EVM dashboard & Monte Carlo',
+      'Meeting intelligence & voice',
+      'NL query engine',
+      'AI auto-reschedule',
+      'Token top-up packs',
     ],
   },
   {
@@ -69,18 +89,17 @@ const FALLBACK_PLANS: PlanDef[] = [
     tokensEquiv: '500K AI tokens per seat, pooled across your team',
     storage: '5GB',
     viewerInvites: 'Unlimited',
-    highlight: true,
     perSeat: true,
     minSeats: 3,
     features: [
-      'Everything in Consultant, plus:',
+      'Everything in Pro, plus:',
       '500K AI tokens per seat (pooled)',
       '5GB file storage',
       'Unlimited viewer invites',
-      'EVM dashboard & Monte Carlo',
       'Resource management & heatmaps',
       'Custom report builder',
       'DAG workflow automation',
+      'Cross-project intelligence',
     ],
   },
 ];
@@ -107,35 +126,36 @@ export { FALLBACK_PLANS as PLANS };
 export interface FeatureRow {
   feature: string;
   trial: boolean | string;
-  consultant: boolean | string;
+  consultant_basic: boolean | string;
+  consultant_pro: boolean | string;
   sme: boolean | string;
 }
 
 export const COMPARISON: FeatureRow[] = [
-  { feature: 'Projects', trial: '3', consultant: 'Unlimited', sme: 'Unlimited' },
-  { feature: 'AI tokens/month', trial: '25K', consultant: '500K', sme: '500K/seat' },
-  { feature: 'File Storage', trial: '100MB', consultant: '1GB', sme: '5GB' },
-  { feature: 'Viewer Invites', trial: '0', consultant: '5', sme: 'Unlimited' },
-  { feature: 'Duration', trial: '14 days', consultant: 'Unlimited', sme: 'Unlimited' },
-  { feature: 'Mjuzi AI Assistant', trial: true, consultant: true, sme: true },
-  { feature: 'Gantt Charts & Critical Path', trial: true, consultant: true, sme: true },
-  { feature: 'Kanban Boards', trial: true, consultant: true, sme: true },
-  { feature: 'Sprint / Agile Management', trial: true, consultant: true, sme: true },
-  { feature: 'RAID Management', trial: true, consultant: true, sme: true },
-  { feature: 'Export (CSV, PDF, XML)', trial: false, consultant: true, sme: true },
-  { feature: 'API Access', trial: false, consultant: true, sme: true },
-  { feature: 'EVM Dashboard & AI Forecasting', trial: false, consultant: true, sme: true },
-  { feature: 'Monte Carlo Simulation', trial: false, consultant: true, sme: true },
-  { feature: 'Resource Management & Heatmaps', trial: false, consultant: true, sme: true },
-  { feature: 'Custom Report Builder', trial: false, consultant: true, sme: true },
-  { feature: 'DAG Workflow Automation', trial: false, consultant: true, sme: true },
-  { feature: 'Stakeholder Portal', trial: false, consultant: true, sme: true },
-  { feature: 'Cross-Project Intelligence', trial: false, consultant: true, sme: true },
-  { feature: 'AI Auto-Reschedule', trial: false, consultant: true, sme: true },
-  { feature: 'Meeting Intelligence & Voice', trial: false, consultant: true, sme: true },
-  { feature: 'NL Query Engine', trial: false, consultant: true, sme: true },
-  { feature: 'MCP Integration', trial: false, consultant: true, sme: true },
-  { feature: 'Token Top-Up Packs', trial: false, consultant: true, sme: true },
+  { feature: 'Projects', trial: '3', consultant_basic: 'Unlimited', consultant_pro: 'Unlimited', sme: 'Unlimited' },
+  { feature: 'AI tokens/month', trial: '25K', consultant_basic: '—', consultant_pro: '500K', sme: '500K/seat' },
+  { feature: 'File Storage', trial: '100MB', consultant_basic: '1GB', consultant_pro: '1GB', sme: '5GB' },
+  { feature: 'Viewer Invites', trial: '0', consultant_basic: '5', consultant_pro: '5', sme: 'Unlimited' },
+  { feature: 'Duration', trial: '14 days', consultant_basic: 'Unlimited', consultant_pro: 'Unlimited', sme: 'Unlimited' },
+  { feature: 'Gantt Charts & Critical Path', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Kanban Boards', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Sprint / Agile Management', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'RAID Management', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Export (CSV, PDF, XML)', trial: false, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Stakeholder Portal', trial: false, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'API Access', trial: false, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Mjuzi AI Assistant', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'EVM Dashboard & AI Forecasting', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Monte Carlo Simulation', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'AI Auto-Reschedule', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Meeting Intelligence & Voice', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'NL Query Engine', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Resource Management & Heatmaps', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Custom Report Builder', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'DAG Workflow Automation', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Cross-Project Intelligence', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'MCP Integration', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Token Top-Up Packs', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
 ];
 
 interface PricingCardsProps {
@@ -161,7 +181,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
     : FALLBACK_PLANS;
 
   const currentTier = isAuthenticated ? (user?.subscriptionTier || 'trial') : null;
-  const isSubscribed = currentTier === 'consultant' || currentTier === 'sme';
+  const isSubscribed = currentTier === 'consultant_basic' || currentTier === 'consultant_pro' || currentTier === 'sme';
 
   const handleSubscribe = async (tier: string) => {
     if (!isAuthenticated) {
@@ -228,7 +248,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
       )}
 
       {/* Plan cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {PLANS.map((plan) => {
           const isCurrent = mode === 'checkout' && currentTier === plan.tier;
           const seats = plan.perSeat ? smeSeats : 1;

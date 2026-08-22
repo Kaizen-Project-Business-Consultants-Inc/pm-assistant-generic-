@@ -22,7 +22,7 @@ export interface User {
   passwordResetToken: string | null;
   passwordResetExpires: Date | null;
   stripeCustomerId: string | null;
-  subscriptionTier: 'trial' | 'consultant' | 'sme' | 'enterprise';
+  subscriptionTier: 'trial' | 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise';
   subscriptionStatus: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'none';
   trialEndsAt: Date | null;
   trialStartedAt: Date | null;

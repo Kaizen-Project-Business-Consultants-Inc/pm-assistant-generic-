@@ -222,18 +222,27 @@ export class StripeService {
     ).catch(e => logger.error('[StripeService] Failed to log topup_purchased event', e));
   }
 
-  private resolveTierFromPriceId(priceId: string | undefined): 'trial' | 'consultant' | 'sme' | 'enterprise' {
+  private resolveTierFromPriceId(priceId: string | undefined): 'trial' | 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise' {
     if (!priceId) return 'trial';
 
-    // New tier price IDs
-    const consultantPriceIds = [
+    // Consultant Basic price IDs
+    const consultantBasicPriceIds = [
+      config.STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID,
+      config.STRIPE_CONSULTANT_BASIC_ANNUAL_PRICE_ID,
+    ].filter(Boolean);
+    if (consultantBasicPriceIds.includes(priceId)) return 'consultant_basic';
+
+    // Consultant Pro price IDs (includes legacy consultant/pro IDs)
+    const consultantProPriceIds = [
+      config.STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID,
+      config.STRIPE_CONSULTANT_PRO_ANNUAL_PRICE_ID,
+      // Legacy price IDs map to consultant_pro
       config.STRIPE_CONSULTANT_NEW_MONTHLY_PRICE_ID,
       config.STRIPE_CONSULTANT_NEW_ANNUAL_PRICE_ID,
-      // Legacy pro price IDs map to consultant
       config.STRIPE_PRO_MONTHLY_PRICE_ID,
       config.STRIPE_PRO_ANNUAL_PRICE_ID,
     ].filter(Boolean);
-    if (consultantPriceIds.includes(priceId)) return 'consultant';
+    if (consultantProPriceIds.includes(priceId)) return 'consultant_pro';
 
     const smePriceIds = [
       config.STRIPE_SME_MONTHLY_PRICE_ID,

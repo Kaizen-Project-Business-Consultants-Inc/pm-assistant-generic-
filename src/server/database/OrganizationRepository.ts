@@ -9,7 +9,7 @@ export interface Organization {
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   stripeSubscriptionItemId: string | null;
-  subscriptionTier: 'trial' | 'consultant' | 'sme' | 'enterprise';
+  subscriptionTier: 'trial' | 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise';
   subscriptionStatus: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'none';
   billingModel: 'flat' | 'per_seat';
   seatCount: number;

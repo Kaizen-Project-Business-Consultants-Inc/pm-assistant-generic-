@@ -81,12 +81,18 @@ const configSchema = z.object({
 
   // Per-tier AI budget defaults (tokens/month)
   AI_TIER_BUDGET_TRIAL: z.coerce.number().min(0).default(25000),
-  AI_TIER_BUDGET_CONSULTANT: z.coerce.number().min(0).default(500000),
+  AI_TIER_BUDGET_CONSULTANT_BASIC: z.coerce.number().min(0).default(25000),
+  AI_TIER_BUDGET_CONSULTANT_PRO: z.coerce.number().min(0).default(500000),
   AI_TIER_BUDGET_SME: z.coerce.number().min(0).default(1500000),
   AI_TIER_BUDGET_ENTERPRISE: z.coerce.number().min(0).default(5000000),
   AI_TIER_BUDGET_SME_PER_SEAT: z.coerce.number().min(0).default(500000),
 
   // New Stripe price IDs for restructured tiers
+  STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID: z.string().optional().default(''),
+  STRIPE_CONSULTANT_BASIC_ANNUAL_PRICE_ID: z.string().optional().default(''),
+  STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID: z.string().optional().default(''),
+  STRIPE_CONSULTANT_PRO_ANNUAL_PRICE_ID: z.string().optional().default(''),
+  // Legacy (kept for backward compat with existing subscribers)
   STRIPE_CONSULTANT_NEW_MONTHLY_PRICE_ID: z.string().optional().default(''),
   STRIPE_CONSULTANT_NEW_ANNUAL_PRICE_ID: z.string().optional().default(''),
   STRIPE_SME_MONTHLY_PRICE_ID: z.string().optional().default(''),
@@ -210,10 +216,15 @@ export function validateConfiguration() {
       RAG_SIMILARITY_THRESHOLD: process.env['RAG_SIMILARITY_THRESHOLD'],
       AI_MONTHLY_TOKEN_BUDGET: process.env['AI_MONTHLY_TOKEN_BUDGET'],
       AI_TIER_BUDGET_TRIAL: process.env['AI_TIER_BUDGET_TRIAL'],
-      AI_TIER_BUDGET_CONSULTANT: process.env['AI_TIER_BUDGET_CONSULTANT'],
+      AI_TIER_BUDGET_CONSULTANT_BASIC: process.env['AI_TIER_BUDGET_CONSULTANT_BASIC'],
+      AI_TIER_BUDGET_CONSULTANT_PRO: process.env['AI_TIER_BUDGET_CONSULTANT_PRO'],
       AI_TIER_BUDGET_SME: process.env['AI_TIER_BUDGET_SME'],
       AI_TIER_BUDGET_ENTERPRISE: process.env['AI_TIER_BUDGET_ENTERPRISE'],
       AI_TIER_BUDGET_SME_PER_SEAT: process.env['AI_TIER_BUDGET_SME_PER_SEAT'],
+      STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID: process.env['STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID'],
+      STRIPE_CONSULTANT_BASIC_ANNUAL_PRICE_ID: process.env['STRIPE_CONSULTANT_BASIC_ANNUAL_PRICE_ID'],
+      STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID: process.env['STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID'],
+      STRIPE_CONSULTANT_PRO_ANNUAL_PRICE_ID: process.env['STRIPE_CONSULTANT_PRO_ANNUAL_PRICE_ID'],
       STRIPE_CONSULTANT_NEW_MONTHLY_PRICE_ID: process.env['STRIPE_CONSULTANT_NEW_MONTHLY_PRICE_ID'],
       STRIPE_CONSULTANT_NEW_ANNUAL_PRICE_ID: process.env['STRIPE_CONSULTANT_NEW_ANNUAL_PRICE_ID'],
       STRIPE_SME_MONTHLY_PRICE_ID: process.env['STRIPE_SME_MONTHLY_PRICE_ID'],
@@ -270,7 +281,8 @@ export const config = validateConfiguration();
 
 const TIER_BUDGET_MAP: Record<string, keyof typeof config> = {
   trial: 'AI_TIER_BUDGET_TRIAL',
-  consultant: 'AI_TIER_BUDGET_CONSULTANT',
+  consultant_basic: 'AI_TIER_BUDGET_CONSULTANT_BASIC',
+  consultant_pro: 'AI_TIER_BUDGET_CONSULTANT_PRO',
   sme: 'AI_TIER_BUDGET_SME',
   enterprise: 'AI_TIER_BUDGET_ENTERPRISE',
 };
