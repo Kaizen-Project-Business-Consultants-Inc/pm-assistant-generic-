@@ -359,6 +359,15 @@ class ApiService {
     return response.data;
   }
 
+  async importDocument(scheduleId: string, file: File): Promise<{ tasks: Array<{ name: string; wbs: string; startDate: string | null; endDate: string | null; duration: number | null; isSummary: boolean; predecessors: string | null }>; documentName: string; textLength: number; tokensUsed: number }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post(`/schedules/${scheduleId}/import-document`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // What-If Scenarios
   // -------------------------------------------------------------------------

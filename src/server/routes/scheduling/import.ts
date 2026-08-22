@@ -5,6 +5,9 @@ import { scheduleService, type CreateTaskData } from '../../services/ScheduleSer
 import { resourceService } from '../../services/ResourceService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { requireFeature } from '../../middleware/requireTier';
+import { claudeService } from '../../services/claudeService';
+import { config } from '../../config';
 import logger from '../../utils/logger';
 
 const importCsvSchema = z.object({
@@ -424,6 +427,132 @@ export async function importRoutes(fastify: FastifyInstance) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
       logger.error('Structured import error', { error });
       return reply.status(500).send({ error: 'Failed to import tasks' });
+    }
+  });
+
+  // POST /:scheduleId/import-document — extract tasks from an unstructured document via AI
+  fastify.post('/:scheduleId/import-document', {
+    preHandler: [requireScope('write'), requireFeature('ai_assistant')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const schedule = await scheduleService.findById(scheduleId);
+      if (!schedule) return reply.status(404).send({ error: 'Schedule not found' });
+
+      if (!config.AI_ENABLED) {
+        return reply.status(400).send({ error: 'AI features are not enabled on this server.' });
+      }
+
+      const file = await request.file();
+      if (!file) return reply.status(400).send({ error: 'No file uploaded' });
+
+      const ext = file.filename.toLowerCase().split('.').pop();
+      const allowedExts = ['pdf', 'docx', 'doc', 'txt'];
+      if (!ext || !allowedExts.includes(ext)) {
+        return reply.status(400).send({ error: `Unsupported file type ".${ext}". Accepted: .pdf, .docx, .txt` });
+      }
+
+      const buffer = await file.toBuffer();
+      const MAX_DOC_SIZE = 5 * 1024 * 1024; // 5MB
+      if (buffer.length > MAX_DOC_SIZE) {
+        return reply.status(400).send({ error: 'File too large. Maximum size is 5MB.' });
+      }
+
+      // Extract text from document
+      let text = '';
+      try {
+        if (ext === 'pdf') {
+          // pdf-parse v1 exports the function directly
+          const pdfParse = require('pdf-parse');
+          const pdfData = await pdfParse(buffer);
+          text = pdfData.text;
+        } else if (ext === 'docx' || ext === 'doc') {
+          const mammoth = await import('mammoth');
+          const result = await mammoth.extractRawText({ buffer });
+          text = result.value;
+        } else {
+          text = buffer.toString('utf-8');
+        }
+      } catch (parseErr: any) {
+        logger.error('Document text extraction failed', { error: parseErr.message, filename: file.filename });
+        return reply.status(400).send({ error: `Failed to read document: ${parseErr.message}` });
+      }
+
+      if (!text || text.trim().length < 20) {
+        return reply.status(400).send({ error: 'Document appears empty or contains too little text to extract tasks.' });
+      }
+
+      // Truncate to ~30K chars to stay within AI token limits
+      const truncated = text.slice(0, 30000);
+
+      const systemPrompt = `You are a project management expert. Extract project tasks from the given document and return them as a JSON array.
+
+Each task object must have these fields:
+- "name": string (task name, concise)
+- "wbs": string (work breakdown structure code like "1", "1.1", "1.2", "2", "2.1")
+- "startDate": string or null (YYYY-MM-DD format if mentioned)
+- "endDate": string or null (YYYY-MM-DD format if mentioned)
+- "duration": number or null (estimated duration in working days)
+- "isSummary": boolean (true for phase/group headers that contain sub-tasks)
+- "predecessors": string or null (comma-separated predecessor WBS codes if dependencies are clear)
+
+Rules:
+1. Organize tasks hierarchically using WBS codes. Top-level phases get "1", "2", etc. Sub-tasks get "1.1", "1.2", etc.
+2. Mark phase/group headers as isSummary: true.
+3. If dates are not explicitly mentioned, set them to null. Do NOT invent dates.
+4. If duration is mentioned (e.g., "2 weeks", "3 days"), convert to working days (1 week = 5 days).
+5. Extract ALL tasks mentioned in the document. Do not skip any.
+6. Keep task names concise but descriptive.
+7. Return ONLY the JSON array, no other text. Do not wrap in markdown code blocks.`;
+
+      const userMessage = `Extract all project tasks from this document:\n\n${truncated}`;
+
+      const result = await claudeService.complete({
+        systemPrompt,
+        userMessage,
+        responseFormat: 'json',
+        maxTokens: 4096,
+        temperature: 0.1,
+        userId: request.user!.userId,
+      });
+
+      // Parse AI response
+      let tasks: any[];
+      try {
+        const cleaned = result.content.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+        tasks = JSON.parse(cleaned);
+        if (!Array.isArray(tasks)) throw new Error('Expected JSON array');
+      } catch (jsonErr: any) {
+        logger.error('AI returned invalid JSON for document import', { content: result.content.slice(0, 500) });
+        return reply.status(422).send({ error: 'AI could not extract structured tasks from this document. Try a document with clearer task listings.' });
+      }
+
+      // Validate and normalize each task
+      const normalized = tasks.map((t: any, i: number) => ({
+        name: String(t.name || `Task ${i + 1}`).slice(0, 200),
+        wbs: String(t.wbs || `${i + 1}`),
+        startDate: t.startDate || null,
+        endDate: t.endDate || null,
+        duration: typeof t.duration === 'number' ? t.duration : null,
+        isSummary: Boolean(t.isSummary),
+        predecessors: t.predecessors || null,
+      }));
+
+      return {
+        tasks: normalized,
+        documentName: file.filename,
+        textLength: text.length,
+        tokensUsed: result.usage.inputTokens + result.usage.outputTokens,
+      };
+    } catch (error: any) {
+      if (error.constructor?.name === 'AIBudgetExceededError') {
+        return reply.status(429).send({ error: 'AI token budget exceeded. Please try again next month or purchase a top-up.' });
+      }
+      if (error.constructor?.name === 'AICircuitBreakerError') {
+        return reply.status(503).send({ error: 'AI service temporarily unavailable. Please try again in a moment.' });
+      }
+      logger.error('Document import error', { error });
+      return reply.status(500).send({ error: 'Failed to extract tasks from document' });
     }
   });
 }

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { X, Upload, FileText } from 'lucide-react';
+import { X, Upload, FileText, Sparkles, Trash2, Pencil } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { apiService } from '../../services/api';
 import { cleanCsvForImport, sheetToCsv } from '../../utils/csvCleaner';
@@ -28,6 +28,19 @@ interface ImportResult {
   failed: { row: number; error: string }[];
   resourcesCreated?: number;
 }
+
+interface ExtractedTask {
+  name: string;
+  wbs: string;
+  startDate: string | null;
+  endDate: string | null;
+  duration: number | null;
+  isSummary: boolean;
+  predecessors: string | null;
+  _included: boolean; // UI toggle
+}
+
+const DOCUMENT_EXTS = ['pdf', 'docx', 'doc', 'txt'];
 
 const TARGET_COLUMNS = [
   { value: '', label: '-- skip --' },
@@ -121,6 +134,12 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
   const workbookRef = useRef<XLSX.WorkBook | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Document import state (AI extraction)
+  const [extractedTasks, setExtractedTasks] = useState<ExtractedTask[] | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [docFileName, setDocFileName] = useState('');
+  const [editingTaskIdx, setEditingTaskIdx] = useState<number | null>(null);
+
   const reset = () => {
     setCsvText('');
     setParsed(null);
@@ -130,6 +149,10 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
     setSheetNames([]);
     setSelectedSheet('');
     workbookRef.current = null;
+    setExtractedTasks(null);
+    setExtracting(false);
+    setDocFileName('');
+    setEditingTaskIdx(null);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -151,6 +174,53 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
       file.type === 'application/vnd.ms-excel';
   };
 
+  const handleDocumentFile = async (file: File) => {
+    setExtracting(true);
+    setError('');
+    setDocFileName(file.name);
+    try {
+      const res = await apiService.importDocument(scheduleId, file);
+      if (!res.tasks || res.tasks.length === 0) {
+        setError('No tasks could be extracted from this document.');
+        setExtracting(false);
+        return;
+      }
+      setExtractedTasks(res.tasks.map(t => ({ ...t, _included: true })));
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to extract tasks from document'));
+      setDocFileName('');
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const handleImportExtracted = async () => {
+    if (!extractedTasks) return;
+    const included = extractedTasks.filter(t => t._included);
+    if (included.length === 0) { setError('No tasks selected for import.'); return; }
+    setImporting(true);
+    setError('');
+    try {
+      // Convert to import-structured format using WBS for hierarchy
+      const tasks = included.map(t => ({
+        name: t.name,
+        wbs: t.wbs,
+        startDate: t.startDate || undefined,
+        endDate: t.endDate || undefined,
+        duration: t.duration || undefined,
+        predecessors: t.predecessors || undefined,
+        outlineLevel: (t.wbs.split('.').length - 1) + 1, // "1" → 1, "1.1" → 2, "1.1.1" → 3
+      }));
+      const res = await apiService.importStructured(scheduleId, tasks);
+      setResult({ succeeded: res.succeeded ?? 0, failed: res.failed ?? [] });
+      if ((res.succeeded ?? 0) > 0) onImported?.();
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Import failed'));
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleFile = (file: File) => {
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     if (file.size > MAX_FILE_SIZE) {
@@ -159,6 +229,12 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
     }
 
     const ext = file.name.toLowerCase().split('.').pop();
+
+    // Route document files to AI extraction
+    if (ext && DOCUMENT_EXTS.includes(ext)) {
+      handleDocumentFile(file);
+      return;
+    }
 
     // Handle MS Project XML (.xml)
     if (ext === 'xml') {
@@ -191,7 +267,6 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
           if (workbook.SheetNames.length === 0) { setError('Excel file has no sheets.'); return; }
 
           if (workbook.SheetNames.length > 1) {
-            // Store workbook and show sheet selector
             workbookRef.current = workbook;
             setSheetNames(workbook.SheetNames);
             setSelectedSheet(workbook.SheetNames[0]);
@@ -261,7 +336,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Import Tasks" onKeyDown={handleKeyDown} tabIndex={-1} className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Import Tasks from CSV / Excel / XML</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Import Tasks</h2>
           <button onClick={handleClose} aria-label="Close" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">
             <X size={20} />
           </button>
@@ -292,8 +367,139 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
           {/* Input area (hidden after results) */}
           {!result && (
             <>
+              {/* AI extracting spinner */}
+              {extracting && (
+                <div className="flex flex-col items-center justify-center gap-3 p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Analyzing <span className="font-medium">{docFileName}</span>...</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">AI is extracting tasks from your document</p>
+                </div>
+              )}
+
+              {/* AI-extracted tasks preview */}
+              {extractedTasks && !extracting && (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
+                    <Sparkles size={16} />
+                    <span className="font-medium">AI extracted {extractedTasks.length} tasks from {docFileName}</span>
+                  </div>
+
+                  <div className="overflow-x-auto border dark:border-gray-700 rounded-lg max-h-[45vh] overflow-y-auto">
+                    <table className="min-w-full text-xs">
+                      <thead className="sticky top-0">
+                        <tr className="bg-gray-50 dark:bg-gray-700">
+                          <th className="px-2 py-2 text-center w-8">
+                            <input
+                              type="checkbox"
+                              checked={extractedTasks.every(t => t._included)}
+                              onChange={(e) => setExtractedTasks(prev => prev!.map(t => ({ ...t, _included: e.target.checked })))}
+                              className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600"
+                            />
+                          </th>
+                          <th className="px-2 py-2 text-left font-medium text-gray-600 dark:text-gray-300 w-12">WBS</th>
+                          <th className="px-2 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Task</th>
+                          <th className="px-2 py-2 text-center font-medium text-gray-600 dark:text-gray-300 w-16">Days</th>
+                          <th className="px-2 py-2 text-left font-medium text-gray-600 dark:text-gray-300 w-24">Start</th>
+                          <th className="px-2 py-2 text-left font-medium text-gray-600 dark:text-gray-300 w-24">End</th>
+                          <th className="px-2 py-2 text-center font-medium text-gray-600 dark:text-gray-300 w-16" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {extractedTasks.map((task, idx) => {
+                          const indent = (task.wbs.split('.').length - 1) * 16;
+                          const isEditing = editingTaskIdx === idx;
+                          return (
+                            <tr
+                              key={idx}
+                              className={`border-t dark:border-gray-700 ${!task._included ? 'opacity-40' : ''} ${task.isSummary ? 'bg-gray-50 dark:bg-gray-700/50 font-medium' : 'even:bg-gray-50/50 dark:even:bg-gray-700/30'}`}
+                            >
+                              <td className="px-2 py-1.5 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={task._included}
+                                  onChange={() => setExtractedTasks(prev => prev!.map((t, i) => i === idx ? { ...t, _included: !t._included } : t))}
+                                  className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600"
+                                />
+                              </td>
+                              <td className="px-2 py-1.5 text-gray-500 dark:text-gray-400 font-mono">{task.wbs}</td>
+                              <td className="px-2 py-1.5 text-gray-800 dark:text-gray-200">
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={task.name}
+                                    onChange={(e) => setExtractedTasks(prev => prev!.map((t, i) => i === idx ? { ...t, name: e.target.value } : t))}
+                                    onBlur={() => setEditingTaskIdx(null)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') setEditingTaskIdx(null); }}
+                                    autoFocus
+                                    className="w-full text-xs bg-white dark:bg-gray-900 border dark:border-gray-600 rounded px-1 py-0.5"
+                                  />
+                                ) : (
+                                  <span style={{ paddingLeft: indent }} className={task.isSummary ? 'font-semibold' : ''}>
+                                    {task.name}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-2 py-1.5 text-center text-gray-600 dark:text-gray-400">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    value={task.duration ?? ''}
+                                    onChange={(e) => setExtractedTasks(prev => prev!.map((t, i) => i === idx ? { ...t, duration: e.target.value ? Number(e.target.value) : null } : t))}
+                                    className="w-12 text-xs text-center bg-white dark:bg-gray-900 border dark:border-gray-600 rounded px-1 py-0.5"
+                                  />
+                                ) : (
+                                  task.duration ?? '—'
+                                )}
+                              </td>
+                              <td className="px-2 py-1.5 text-gray-600 dark:text-gray-400">{task.startDate ?? '—'}</td>
+                              <td className="px-2 py-1.5 text-gray-600 dark:text-gray-400">{task.endDate ?? '—'}</td>
+                              <td className="px-2 py-1.5 text-center">
+                                <div className="flex items-center gap-1 justify-center">
+                                  <button
+                                    onClick={() => setEditingTaskIdx(isEditing ? null : idx)}
+                                    className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    title="Edit task"
+                                  >
+                                    <Pencil size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => setExtractedTasks(prev => prev!.filter((_, i) => i !== idx))}
+                                    className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500"
+                                    title="Remove task"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+                  <div className="flex items-center justify-between">
+                    <button onClick={reset} className="text-sm text-gray-500 dark:text-gray-400 hover:underline">Back</button>
+                    <button
+                      disabled={importing || extractedTasks.filter(t => t._included).length === 0}
+                      onClick={handleImportExtracted}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {importing ? 'Importing…' : (
+                        <>
+                          <Sparkles size={16} />
+                          Import {extractedTasks.filter(t => t._included).length} tasks
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
+
               {/* File drop zone */}
-              {!parsed && (
+              {!parsed && !extractedTasks && !extracting && (
                 <>
                   <div
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -307,9 +513,10 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
                     }`}
                   >
                     <Upload size={32} className="text-gray-400 dark:text-gray-500" />
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop a CSV, Excel, or MS Project XML file here, or click to browse</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">.csv, .xlsx, .xls, .xml supported (max 5MB)</p>
-                    <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.xml,text/csv,text/xml,application/xml,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop a file here, or click to browse</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">.csv, .xlsx, .xml, .pdf, .docx, .txt supported (max 5MB)</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF, Word, and text files are analyzed by AI to extract tasks automatically</p>
+                    <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.xml,.pdf,.docx,.doc,.txt,text/csv,text/xml,application/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/plain" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">

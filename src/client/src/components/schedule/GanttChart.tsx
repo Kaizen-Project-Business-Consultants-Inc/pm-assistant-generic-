@@ -3155,10 +3155,10 @@ export function GanttChart({
                       title="Select all"
                     />
                   ) : (
-                    <div className="flex items-center gap-0.5 justify-center whitespace-nowrap">
-                      {/* Move arrows — visible on hover, same as TableView */}
+                    <div className="flex items-center gap-0.5 justify-center whitespace-nowrap overflow-visible">
+                      {/* Move arrows — visible on hover, positioned as overlay */}
                       {canReorder && (
-                        <span className="flex items-center gap-0 opacity-0 group-hover/gh:opacity-100 transition-opacity">
+                        <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 flex items-center gap-0 opacity-0 group-hover/gh:opacity-100 transition-opacity z-20 bg-gray-100 dark:bg-gray-600 rounded shadow-sm px-0.5 py-0.5">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -3167,10 +3167,10 @@ export function GanttChart({
                               else moveColumn(col.key, 'left');
                             }}
                             disabled={reorderIdx <= 0}
-                            className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-20"
+                            className="p-0.5 rounded hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-20"
                             title="Move left"
                           >
-                            <ArrowLeft className="w-2.5 h-2.5" />
+                            <ArrowLeft className="w-3 h-3" />
                           </button>
                           <button
                             onClick={(e) => {
@@ -3180,10 +3180,10 @@ export function GanttChart({
                               else moveColumn(col.key, 'right');
                             }}
                             disabled={reorderIdx >= visibleCols.length - 1}
-                            className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-20"
+                            className="p-0.5 rounded hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-20"
                             title="Move right"
                           >
-                            <ArrowRight className="w-2.5 h-2.5" />
+                            <ArrowRight className="w-3 h-3" />
                           </button>
                         </span>
                       )}
