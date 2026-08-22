@@ -273,8 +273,8 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
               className={`relative rounded-2xl border-2 p-6 shadow-sm transition-all ${
                 plan.highlight
                   ? 'border-primary-500 shadow-xl shadow-primary-500/10'
-                  : 'border-gray-200 dark:border-gray-700'
-              } bg-white dark:bg-gray-800`}
+                  : 'border-gray-200 dark:border-slate-600 dark:shadow-lg dark:shadow-black/30'
+              } bg-white dark:bg-slate-800`}
             >
               {plan.highlight && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
