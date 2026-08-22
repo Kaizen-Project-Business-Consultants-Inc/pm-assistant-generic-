@@ -44,7 +44,7 @@ export const PricingPage: React.FC = () => {
           <div className="text-center mb-14">
             <h1 className="text-4xl font-bold text-white">Simple, transparent pricing</h1>
             <p className="mt-4 text-lg text-slate-300">
-              Start free, upgrade when you need more power
+              Try free for 14 days. Upgrade anytime.
             </p>
           </div>
 

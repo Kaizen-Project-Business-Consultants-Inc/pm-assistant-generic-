@@ -637,7 +637,7 @@ export const LandingPage: React.FC = () => {
           <div className="text-center mb-14">
             <h2 className="text-2xl sm:text-3xl font-bold text-white">Simple, transparent pricing</h2>
             <p className="mt-3 text-base text-slate-300">
-              Start free, upgrade when you need more power
+              Try free for 14 days. Upgrade anytime.
             </p>
           </div>
           <PricingSection mode="link" forceDark />
