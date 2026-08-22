@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LOGO_SVG_PATH, SALES_EMAIL } from '../constants/branding';
+import { PricingSection } from '../components/pricing/PricingCards';
 
 
 const features = [
@@ -492,66 +493,14 @@ export const PrelaunchLandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Pricing Preview */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto">
+      {/* Pricing */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 dark">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-white">Simple, transparent pricing</h2>
             <p className="mt-4 text-lg text-slate-400">Start free. Upgrade when you're ready.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            {[
-              {
-                name: 'Consultant Basic',
-                price: '$19',
-                period: '/mo',
-                desc: 'Core PM — no AI',
-                features: ['Unlimited projects', 'Gantt, Kanban, Sprints', 'RAID management', 'Exports (CSV, PDF, XML)', 'API access', '5 viewer invites'],
-              },
-              {
-                name: 'Consultant Pro',
-                price: '$29',
-                period: '/mo',
-                desc: 'Everything + AI',
-                highlight: true,
-                features: ['Everything in Basic', 'Mjuzi AI assistant (500K/mo)', 'AI risk scans & forecasting', 'EVM & Monte Carlo', 'Meeting intelligence', 'NL query engine'],
-              },
-            ].map((plan) => (
-              <div
-                key={plan.name}
-                className={`relative rounded-2xl p-6 transition-all ${
-                  plan.highlight
-                    ? 'bg-slate-800 border-2 border-primary-500 shadow-xl shadow-primary-500/10'
-                    : 'bg-slate-900 border border-slate-700/50'
-                }`}
-              >
-                {plan.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-primary-600 text-white text-xs font-bold px-3 py-1 rounded-full">Recommended</span>
-                  </div>
-                )}
-                <h3 className="text-lg font-bold text-white">{plan.name}</h3>
-                <p className="text-xs text-slate-500 mt-1">{plan.desc}</p>
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold text-white">{plan.price}</span>
-                  <span className="text-sm text-slate-400">{plan.period}</span>
-                </div>
-                <ul className="mt-5 space-y-2">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
-                      <svg className="w-4 h-4 text-primary-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                      </svg>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-xs text-slate-600 mt-8">
-            14-day free trial with Pro features. No credit card required.
-          </p>
+          <PricingSection mode="link" />
         </div>
       </section>
 
