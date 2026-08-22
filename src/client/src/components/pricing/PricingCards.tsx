@@ -136,27 +136,26 @@ export const COMPARISON: FeatureRow[] = [
   { feature: 'Projects', trial: '3', consultant_basic: 'Unlimited', consultant_pro: 'Unlimited', sme: 'Unlimited' },
   { feature: 'AI tokens/month', trial: '25K', consultant_basic: '—', consultant_pro: '500K', sme: '500K/seat' },
   { feature: 'File Storage', trial: '100MB', consultant_basic: '1GB', consultant_pro: '1GB', sme: '5GB' },
-  { feature: 'Viewer Invites', trial: '0', consultant_basic: '5', consultant_pro: '5', sme: 'Unlimited' },
-  { feature: 'Duration', trial: '14 days', consultant_basic: 'Unlimited', consultant_pro: 'Unlimited', sme: 'Unlimited' },
+  { feature: 'Viewer Invites', trial: '5', consultant_basic: '5', consultant_pro: '5', sme: 'Unlimited' },
   { feature: 'Gantt Charts & Critical Path', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
   { feature: 'Kanban Boards', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
   { feature: 'Sprint / Agile Management', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
   { feature: 'RAID Management', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
-  { feature: 'Export (CSV, PDF, XML)', trial: false, consultant_basic: true, consultant_pro: true, sme: true },
-  { feature: 'Stakeholder Portal', trial: false, consultant_basic: true, consultant_pro: true, sme: true },
-  { feature: 'API Access', trial: false, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Export (CSV, PDF, XML)', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Stakeholder Portal', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'API Access', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
   { feature: 'Mjuzi AI Assistant', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'EVM Dashboard & AI Forecasting', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Monte Carlo Simulation', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'AI Auto-Reschedule', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Meeting Intelligence & Voice', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'NL Query Engine', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Resource Management & Heatmaps', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Custom Report Builder', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'DAG Workflow Automation', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Cross-Project Intelligence', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'MCP Integration', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Token Top-Up Packs', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'EVM Dashboard & AI Forecasting', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Monte Carlo Simulation', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'AI Auto-Reschedule', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Meeting Intelligence & Voice', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'NL Query Engine', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Resource Management & Heatmaps', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Custom Report Builder', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'DAG Workflow Automation', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Cross-Project Intelligence', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'MCP Integration', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Token Top-Up Packs', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
 ];
 
 interface PricingCardsProps {
@@ -476,7 +475,10 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode }) => {
             <thead>
               <tr className="border-b-2 border-gray-700">
                 <th className="text-left py-3 pr-6 font-semibold text-white">Feature</th>
-                <th className="text-center py-3 px-3 font-semibold text-gray-400 w-20">Trial</th>
+                <th className="text-center py-3 px-3 font-semibold text-gray-400 w-20">
+                  Trial
+                  <div className="text-[10px] font-normal text-gray-500">14 days</div>
+                </th>
                 <th className="text-center py-3 px-3 font-semibold text-white w-20">Basic</th>
                 <th className="text-center py-3 px-3 font-semibold text-primary-400 w-20">Pro</th>
               </tr>
