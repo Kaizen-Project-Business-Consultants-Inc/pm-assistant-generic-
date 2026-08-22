@@ -385,7 +385,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                 ) : plan.tier === 'trial' ? (
                   <Link
                     to="/register"
-                    className={`block w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-center transition-colors ${dk ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'}`}
+                    className={`block w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-center transition-colors ${dk ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'}`}
                   >
                     Start Free Trial
                   </Link>
@@ -395,7 +395,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                     className={`block w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-center transition-colors ${
                       plan.highlight
                         ? 'bg-primary-600 text-white hover:bg-primary-700'
-                        : dk ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
+                        : dk ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                     }`}
                   >
                     Subscribe
@@ -407,7 +407,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                     className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 ${
                       plan.highlight
                         ? 'bg-primary-600 text-white hover:bg-primary-700'
-                        : dk ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
+                        : dk ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                     }`}
                   >
                     {loading === plan.tier ? (
