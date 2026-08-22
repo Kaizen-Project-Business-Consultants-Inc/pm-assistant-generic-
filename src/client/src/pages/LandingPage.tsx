@@ -640,9 +640,7 @@ export const LandingPage: React.FC = () => {
               Start free, upgrade when you need more power
             </p>
           </div>
-          <div className="dark">
-            <PricingSection mode="link" />
-          </div>
+          <PricingSection mode="link" forceDark />
         </div>
       </section>
 

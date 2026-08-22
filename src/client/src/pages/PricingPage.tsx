@@ -48,7 +48,7 @@ export const PricingPage: React.FC = () => {
             </p>
           </div>
 
-          <PricingSection mode="checkout" />
+          <PricingSection mode="checkout" forceDark />
         </div>
       </section>
 

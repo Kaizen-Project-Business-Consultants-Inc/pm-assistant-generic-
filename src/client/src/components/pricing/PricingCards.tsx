@@ -188,7 +188,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
   const launchDiscount = stripeConfig?.launchOfferDiscount || 0;
 
   const PLANS: PlanDef[] = pricingData?.tiers
-    ? [FALLBACK_PLANS[0], ...pricingData.tiers.map(mapApiToPlan)]
+    ? [FALLBACK_PLANS[0], ...pricingData.tiers.filter((t: { tier: string }) => t.tier !== 'trial').map(mapApiToPlan)]
     : FALLBACK_PLANS;
 
   const currentTier = isAuthenticated ? (user?.subscriptionTier || 'trial') : null;
