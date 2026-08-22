@@ -305,7 +305,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                         ${unitPrice}
                       </span>
                       <span className={`text-sm ${textSecondary}`}>
-                        /seat/{billing === 'monthly' ? 'mo' : 'yr'}
+                        USD/seat/{billing === 'monthly' ? 'mo' : 'yr'}
                       </span>
                     </div>
                     <p className={`text-sm mt-1 ${textSecondary}`}>
@@ -348,7 +348,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                         ${price}
                       </span>
                       <span className={`text-sm ${textSecondary}`}>
-                        /{billing === 'monthly' ? 'mo' : 'yr'}
+                        USD/{billing === 'monthly' ? 'mo' : 'yr'}
                       </span>
                       {isLaunchDiscount && (
                         <span className="ml-2 text-xs font-bold bg-green-500 text-white px-2 py-0.5 rounded-full">
