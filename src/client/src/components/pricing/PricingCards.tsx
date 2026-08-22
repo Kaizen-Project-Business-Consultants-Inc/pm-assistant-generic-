@@ -169,6 +169,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [smeSeats, setSmeSeats] = useState(3);
+  const dk = forceDark; // shorthand
 
   const { data: pricingData } = useQuery({
     queryKey: ['pricing-config'],
@@ -220,16 +221,16 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
   };
 
   return (
-    <div className={forceDark ? 'dark' : ''}>
+    <div>
       {/* Billing toggle */}
       <div className="flex justify-center mb-10">
-        <div className="inline-flex items-center bg-gray-100 dark:bg-gray-700 rounded-full p-1">
+        <div className={`inline-flex items-center rounded-full p-1 ${dk ? 'bg-gray-700' : 'bg-gray-100 dark:bg-gray-700'}`}>
           <button
             onClick={() => setBilling('monthly')}
             className={`px-5 py-2 text-sm font-medium rounded-full transition-colors ${
               billing === 'monthly'
-                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                ? dk ? 'bg-gray-600 text-white shadow-sm' : 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                : dk ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
           >
             Monthly
@@ -238,18 +239,18 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
             onClick={() => setBilling('annual')}
             className={`px-5 py-2 text-sm font-medium rounded-full transition-colors ${
               billing === 'annual'
-                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                ? dk ? 'bg-gray-600 text-white shadow-sm' : 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                : dk ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
           >
             Annual
-            <span className="ml-1.5 text-xs text-green-600 dark:text-green-400 font-semibold">Save 17%</span>
+            <span className={`ml-1.5 text-xs font-semibold ${dk ? 'text-green-400' : 'text-green-600 dark:text-green-400'}`}>Save 17%</span>
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="max-w-xl mx-auto mb-6 flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+        <div className={`max-w-xl mx-auto mb-6 flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${dk ? 'bg-red-900/20 border border-red-800 text-red-300' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'}`}>
           <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -268,14 +269,19 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
           const price = isLaunchDiscount ? Math.round(originalPrice * (1 - launchDiscount / 100)) : originalPrice;
           const perMonth = billing === 'annual' ? ((price) / 12).toFixed(2) : null;
 
+          const cardBg = dk ? 'bg-slate-800' : 'bg-white dark:bg-gray-800';
+          const cardBorder = plan.highlight
+            ? 'border-primary-500 shadow-xl shadow-primary-500/10'
+            : dk ? 'border-slate-600 shadow-lg shadow-black/30' : 'border-gray-200 dark:border-gray-700';
+          const textPrimary = dk ? 'text-white' : 'text-gray-900 dark:text-white';
+          const textSecondary = dk ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400';
+          const textTertiary = dk ? 'text-gray-500' : 'text-gray-400 dark:text-gray-500';
+          const textFeature = dk ? 'text-gray-200' : 'text-gray-700 dark:text-gray-200';
+
           return (
             <div
               key={plan.tier}
-              className={`relative rounded-2xl border-2 p-6 shadow-sm transition-all ${
-                plan.highlight
-                  ? 'border-primary-500 shadow-xl shadow-primary-500/10'
-                  : 'border-gray-200 dark:border-slate-500 dark:shadow-lg dark:shadow-black/30'
-              } bg-white dark:bg-slate-800`}
+              className={`relative rounded-2xl border-2 p-6 shadow-sm transition-all ${cardBorder} ${cardBg}`}
             >
               {plan.highlight && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -286,50 +292,50 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
               )}
 
               <div className="mb-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{plan.name}</h2>
+                <h2 className={`text-xl font-bold ${textPrimary}`}>{plan.name}</h2>
                 {plan.monthly === 0 ? (
                   <div className="mt-3 flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-gray-900 dark:text-white">Free</span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">/14 days</span>
+                    <span className={`text-4xl font-bold ${textPrimary}`}>Free</span>
+                    <span className={`text-sm ${textSecondary}`}>/14 days</span>
                   </div>
                 ) : plan.perSeat ? (
                   <>
                     <div className="mt-3 flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                      <span className={`text-4xl font-bold ${textPrimary}`}>
                         ${unitPrice}
                       </span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className={`text-sm ${textSecondary}`}>
                         /seat/{billing === 'monthly' ? 'mo' : 'yr'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      {seats} seats = <span className="font-semibold text-gray-900 dark:text-white">${price}/{billing === 'monthly' ? 'mo' : 'yr'}</span>
+                    <p className={`text-sm mt-1 ${textSecondary}`}>
+                      {seats} seats = <span className={`font-semibold ${textPrimary}`}>${price}/{billing === 'monthly' ? 'mo' : 'yr'}</span>
                     </p>
                     {/* Seat selector */}
                     <div className="mt-3 flex items-center gap-3">
-                      <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Seats:</label>
-                      <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                      <label className={`text-xs font-medium ${textSecondary}`}>Seats:</label>
+                      <div className={`flex items-center border rounded-lg overflow-hidden ${dk ? 'border-gray-600' : 'border-gray-300 dark:border-gray-600'}`}>
                         <button
                           onClick={() => setSmeSeats((s) => Math.max(plan.minSeats || 3, s - 1))}
-                          className="px-2.5 py-1 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30"
+                          className={`px-2.5 py-1 text-sm font-medium transition-colors disabled:opacity-30 ${dk ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                           disabled={smeSeats <= (plan.minSeats || 3)}
                         >
                           &minus;
                         </button>
-                        <span className="px-3 py-1 text-sm font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 min-w-[2.5rem] text-center">
+                        <span className={`px-3 py-1 text-sm font-semibold min-w-[2.5rem] text-center ${dk ? 'text-white bg-gray-800' : 'text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800'}`}>
                           {smeSeats}
                         </span>
                         <button
                           onClick={() => setSmeSeats((s) => Math.min(50, s + 1))}
-                          className="px-2.5 py-1 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          className={`px-2.5 py-1 text-sm font-medium transition-colors ${dk ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                         >
                           +
                         </button>
                       </div>
-                      <span className="text-xs text-gray-400 dark:text-gray-500">{plan.minSeats}+ min</span>
+                      <span className={`text-xs ${textTertiary}`}>{plan.minSeats}+ min</span>
                     </div>
                     {perMonth && (
-                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">~${perMonth}/mo</p>
+                      <p className={`text-xs mt-1 ${dk ? 'text-green-400' : 'text-green-600 dark:text-green-400'}`}>~${perMonth}/mo</p>
                     )}
                   </>
                 ) : (
@@ -338,10 +344,10 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                       {isLaunchDiscount && (
                         <span className="text-lg font-medium text-gray-400 line-through mr-1">${originalPrice}</span>
                       )}
-                      <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                      <span className={`text-4xl font-bold ${textPrimary}`}>
                         ${price}
                       </span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className={`text-sm ${textSecondary}`}>
                         /{billing === 'monthly' ? 'mo' : 'yr'}
                       </span>
                       {isLaunchDiscount && (
@@ -356,14 +362,14 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                       </p>
                     )}
                     {perMonth && (
-                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">~${perMonth}/mo</p>
+                      <p className={`text-xs mt-1 ${dk ? 'text-green-400' : 'text-green-600 dark:text-green-400'}`}>~${perMonth}/mo</p>
                     )}
                   </>
                 )}
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                <p className={`text-sm mt-2 ${textSecondary}`}>
                   {plan.perSeat ? `${plan.tokens} AI tokens/seat/month` : `${plan.tokens} AI tokens/month`} | {plan.storage} storage
                 </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                <p className={`text-xs mt-0.5 ${textTertiary}`}>
                   {plan.tokensEquiv}
                 </p>
               </div>
@@ -372,14 +378,14 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                 {isCurrent ? (
                   <button
                     onClick={plan.tier !== 'trial' ? handleManageBilling : undefined}
-                    className="w-full py-2.5 px-4 text-sm font-semibold rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-colors ${dk ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
                   >
                     Current Plan
                   </button>
                 ) : plan.tier === 'trial' ? (
                   <Link
                     to="/register"
-                    className="block w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-center bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+                    className={`block w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-center transition-colors ${dk ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'}`}
                   >
                     Start Free Trial
                   </Link>
@@ -389,7 +395,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                     className={`block w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-center transition-colors ${
                       plan.highlight
                         ? 'bg-primary-600 text-white hover:bg-primary-700'
-                        : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
+                        : dk ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                     }`}
                   >
                     Subscribe
@@ -401,7 +407,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                     className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 ${
                       plan.highlight
                         ? 'bg-primary-600 text-white hover:bg-primary-700'
-                        : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
+                        : dk ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                     }`}
                   >
                     {loading === plan.tier ? (
@@ -419,7 +425,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
 
                 {/* Refund guarantee — visible under Pro CTA */}
                 {plan.tier === 'consultant_pro' && billing === 'annual' && (
-                  <p className="mt-2.5 flex items-center justify-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  <p className={`mt-2.5 flex items-center justify-center gap-1.5 text-xs ${textSecondary}`}>
                     <Shield className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
                     Cancel within 30 days for a prorated refund.
                   </p>
@@ -436,7 +442,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
 
               <ul className="space-y-2.5">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200">
+                  <li key={feature} className={`flex items-start gap-2 text-sm ${textFeature}`}>
                     <Check className="w-4 h-4 text-primary-500 flex-shrink-0 mt-0.5" />
                     <span>{feature}</span>
                   </li>
