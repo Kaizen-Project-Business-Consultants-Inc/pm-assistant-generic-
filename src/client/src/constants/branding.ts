@@ -2,7 +2,7 @@
 
 // ── Contact ──────────────────────────────────────────────────────────
 export const SUPPORT_EMAIL = 'support@kpbc.ca';
-export const SALES_EMAIL = 'sales@kovarti.com';
+export const SALES_EMAIL = 'kpbcma@gmail.com';
 export const PRIVACY_EMAIL = 'privacy@kpbc.ca';
 
 // ── Tier helpers ─────────────────────────────────────────────────────
