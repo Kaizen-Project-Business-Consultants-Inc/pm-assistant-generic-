@@ -125,6 +125,12 @@ if [ "$CLIENT_ONLY" = false ]; then
   do_scp /tmp/server-dist.tar.gz "$SSH_HOST":/tmp/
   do_ssh "sudo rm -rf /opt/pm-app/dist/server && sudo mkdir -p /opt/pm-app/dist/server && sudo tar xzf /tmp/server-dist.tar.gz -C /opt/pm-app/dist/server/ && sudo ln -sf /opt/pm-app/migrations /opt/pm-app/dist/server/database/migrations && sudo chown -R ubuntu:ubuntu /opt/pm-app/dist && rm /tmp/server-dist.tar.gz"
   rm -f /tmp/server-dist.tar.gz
+
+  # Sync dependencies — upload package files and install production deps
+  echo "  Syncing dependencies..."
+  do_scp package.json "$SSH_HOST":/tmp/pkg.json
+  do_scp package-lock.json "$SSH_HOST":/tmp/pkg-lock.json
+  do_ssh "sudo cp /tmp/pkg.json /opt/pm-app/package.json && sudo cp /tmp/pkg-lock.json /opt/pm-app/package-lock.json && sudo chown ubuntu:ubuntu /opt/pm-app/package.json /opt/pm-app/package-lock.json && cd /opt/pm-app && npm install --omit=dev --no-audit --no-fund 2>&1 | tail -1 && rm -f /tmp/pkg.json /tmp/pkg-lock.json"
   echo "  ✓ OK"
 else
   echo "[5/7] Server upload skipped (--client-only)"
