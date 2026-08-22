@@ -705,14 +705,13 @@ export const LandingPage: React.FC = () => {
                       <th className="text-center py-3 px-3 font-semibold text-gray-400 w-20">Trial</th>
                       <th className="text-center py-3 px-3 font-semibold text-white w-20">Basic</th>
                       <th className="text-center py-3 px-3 font-semibold text-primary-400 w-20">Pro</th>
-                      <th className="text-center py-3 px-3 font-semibold text-purple-400 w-20">SME</th>
                     </tr>
                   </thead>
                   <tbody>
                     {COMPARISON.map((row, i) => (
                       <tr key={row.feature} className={`border-b border-gray-700/50 ${i % 2 === 0 ? 'bg-gray-800/50' : ''}`}>
                         <td className="py-2.5 pr-4 text-gray-300">{row.feature}</td>
-                        {(['trial', 'consultant_basic', 'consultant_pro', 'sme'] as const).map((tier) => {
+                        {(['trial', 'consultant_basic', 'consultant_pro'] as const).map((tier) => {
                           const val = row[tier];
                           return (
                             <td key={tier} className="py-2.5 px-3 text-center">

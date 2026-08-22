@@ -14,7 +14,8 @@ import { serviceContainer } from './container';
 const fastify = Fastify({
   logger: {
     level: config.NODE_ENV === 'production' ? 'info' : 'debug'
-  }
+  },
+  trustProxy: true
 });
 
 async function start() {

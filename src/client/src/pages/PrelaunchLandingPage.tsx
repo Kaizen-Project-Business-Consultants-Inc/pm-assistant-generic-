@@ -498,7 +498,7 @@ export const PrelaunchLandingPage: React.FC = () => {
             <h2 className="text-3xl sm:text-4xl font-bold text-white">Simple, transparent pricing</h2>
             <p className="mt-4 text-lg text-slate-400">Start free. Upgrade when you're ready.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             {[
               {
                 name: 'Consultant Basic',
@@ -514,13 +514,6 @@ export const PrelaunchLandingPage: React.FC = () => {
                 desc: 'Everything + AI',
                 highlight: true,
                 features: ['Everything in Basic', 'Mjuzi AI assistant (500K/mo)', 'AI risk scans & forecasting', 'EVM & Monte Carlo', 'Meeting intelligence', 'NL query engine'],
-              },
-              {
-                name: 'SME',
-                price: '$33',
-                period: '/seat/mo',
-                desc: 'Teams of 3+',
-                features: ['Everything in Pro', '500K AI tokens/seat', '5GB storage', 'Unlimited viewers', 'Resource heatmaps', 'Cross-project intelligence'],
               },
             ].map((plan) => (
               <div
