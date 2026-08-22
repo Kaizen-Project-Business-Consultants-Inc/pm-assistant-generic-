@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
-import { TIER_LABELS, isPaidTier } from '../constants/branding';
+import { TIER_LABELS, isPaidTier, FOUNDER_BADGE_CLASS } from '../constants/branding';
 import {
   CreditCard,
   Crown,
@@ -24,6 +24,7 @@ interface SubscriptionStatus {
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  isFounder?: boolean;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -215,6 +216,11 @@ export const AccountBillingPage: React.FC = () => {
                     <BadgeIcon className="w-3 h-3" />
                     {badge.label}
                   </span>
+                  {data.isFounder && (
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${FOUNDER_BADGE_CLASS}`}>
+                      Founder
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-300">

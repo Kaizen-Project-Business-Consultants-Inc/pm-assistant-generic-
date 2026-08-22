@@ -51,6 +51,10 @@ const configSchema = z.object({
   STRIPE_CONSULTANT_MONTHLY_PRICE_ID: z.string().optional().default(''),
   STRIPE_CONSULTANT_ANNUAL_PRICE_ID: z.string().optional().default(''),
   STRIPE_TOPUP_PRICE_ID: z.string().optional().default(''),
+  STRIPE_LAUNCH_COUPON_ID: z.string().optional().default(''),
+
+  // Launch Offer
+  LAUNCH_OFFER_ENABLED: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(false)),
 
   // Weather Configuration
   WEATHER_API_PROVIDER: z.enum(['openweathermap', 'weatherapi', 'accuweather', 'mock']).default('mock'),
@@ -198,6 +202,8 @@ export function validateConfiguration() {
       STRIPE_CONSULTANT_MONTHLY_PRICE_ID: process.env['STRIPE_CONSULTANT_MONTHLY_PRICE_ID'],
       STRIPE_CONSULTANT_ANNUAL_PRICE_ID: process.env['STRIPE_CONSULTANT_ANNUAL_PRICE_ID'],
       STRIPE_TOPUP_PRICE_ID: process.env['STRIPE_TOPUP_PRICE_ID'],
+      STRIPE_LAUNCH_COUPON_ID: process.env['STRIPE_LAUNCH_COUPON_ID'],
+      LAUNCH_OFFER_ENABLED: process.env['LAUNCH_OFFER_ENABLED'],
       WEATHER_API_PROVIDER: process.env['WEATHER_API_PROVIDER'],
       WEATHER_API_KEY: process.env['WEATHER_API_KEY'],
       WEATHER_CACHE_MINUTES: process.env['WEATHER_CACHE_MINUTES'],

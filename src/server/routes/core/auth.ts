@@ -124,6 +124,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           subscriptionTier: user.role === 'admin' ? 'enterprise' : user.subscriptionTier,
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
+          isFounder: user.isFounder || false,
         },
       };
     } catch (error) {
@@ -449,6 +450,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           subscriptionTier: user.role === 'admin' ? 'enterprise' : user.subscriptionTier,
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
+          isFounder: user.isFounder || false,
           organization,
         },
       };

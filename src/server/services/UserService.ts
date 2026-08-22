@@ -39,6 +39,9 @@ export interface User {
   notificationTypePreferences: NotificationTypePreferences | null;
   tokenVersion: number;
   aiMonthlyTokenBudget: number | null;
+  isFounder: boolean;
+  founderAt: Date | null;
+  refundCount: number;
   createdAt: Date;
   updatedAt: Date;
 }

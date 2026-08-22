@@ -323,7 +323,7 @@ export const PrelaunchLandingPage: React.FC = () => {
       {/* Announcement bar */}
       <div className="bg-gradient-to-r from-primary-600 via-violet-600 to-purple-600 py-2.5 px-4 text-center text-sm font-medium text-white">
         <span className="mr-2">🎉</span>
-        Join the waitlist now and get <span className="font-bold underline underline-offset-2">20% off</span> when we launch — limited spots available.
+        Join the waitlist now and get <span className="font-bold underline underline-offset-2">20% off</span> your first year of Pro (annual plan) — limited spots available.
         <span className="ml-2">🚀</span>
       </div>
 
@@ -455,7 +455,7 @@ export const PrelaunchLandingPage: React.FC = () => {
             Don't manage projects the old way.
           </h2>
           <p className="text-slate-400 mb-8 text-lg">
-            Join the waitlist and get 20% off your first year — exclusively for early supporters.
+            Join the waitlist and get 20% off your first year of Pro (annual plan) — exclusively for early supporters.
           </p>
           {status === 'success' ? (
             <div className="max-w-md mx-auto bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-8 text-center">
@@ -465,7 +465,7 @@ export const PrelaunchLandingPage: React.FC = () => {
                 </svg>
               </div>
               <p className="text-emerald-400 font-bold text-xl mb-2">You're on the list!</p>
-              <p className="text-slate-400 text-sm">We'll email you the moment we go live with your exclusive 20% discount. See you at launch.</p>
+              <p className="text-slate-400 text-sm">We'll email you the moment we go live with your exclusive 20% discount + Founders badge. See you at launch.</p>
             </div>
           ) : (
             <>
@@ -499,6 +499,10 @@ export const PrelaunchLandingPage: React.FC = () => {
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-white">Simple, transparent pricing</h2>
             <p className="mt-4 text-lg text-slate-400">Start free. Upgrade when you're ready.</p>
+            <p className="mt-3 inline-flex items-center gap-2 text-sm text-green-400 font-medium">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+              30-day prorated refund guarantee on annual plans
+            </p>
           </div>
           <PricingSection mode="link" />
         </div>

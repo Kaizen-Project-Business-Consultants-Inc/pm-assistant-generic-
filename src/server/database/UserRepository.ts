@@ -38,6 +38,9 @@ function rowToUser(row: any): User {
       : null,
     tokenVersion: row.token_version ?? 0,
     aiMonthlyTokenBudget: row.ai_monthly_token_budget != null ? Number(row.ai_monthly_token_budget) : null,
+    isFounder: Boolean(row.is_founder),
+    founderAt: row.founder_at ?? null,
+    refundCount: Number(row.refund_count) || 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -74,6 +77,9 @@ const USER_COLUMN_MAP: Record<string, string> = {
   notificationTypePreferences: 'notification_type_preferences',
   tokenVersion: 'token_version',
   aiMonthlyTokenBudget: 'ai_monthly_token_budget',
+  isFounder: 'is_founder',
+  founderAt: 'founder_at',
+  refundCount: 'refund_count',
 };
 
 export class UserRepository extends BaseRepository<User> {

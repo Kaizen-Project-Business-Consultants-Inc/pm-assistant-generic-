@@ -42,8 +42,8 @@ export class StripeService {
     return customer.id;
   }
 
-  async createCheckoutSession(customerId: string, priceId: string, userId: string, successPath?: string): Promise<string> {
-    const session = await this.getClient().checkout.sessions.create({
+  async createCheckoutSession(customerId: string, priceId: string, userId: string, successPath?: string, couponId?: string): Promise<string> {
+    const params: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
@@ -54,7 +54,11 @@ export class StripeService {
       success_url: `${config.APP_URL}${successPath || '/dashboard'}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${config.APP_URL}/pricing`,
       metadata: { userId },
-    });
+    };
+    if (couponId) {
+      params.discounts = [{ coupon: couponId }];
+    }
+    const session = await this.getClient().checkout.sessions.create(params);
     return session.url!;
   }
 
@@ -171,9 +175,54 @@ export class StripeService {
         }
         break;
       }
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        await this.handleRefund(charge, stripeEventId);
+        break;
+      }
       default:
         logger.info(`[StripeService] Unhandled event type: ${event.type}`);
     }
+  }
+
+  private async handleRefund(charge: Stripe.Charge, stripeEventId: string): Promise<void> {
+    const customerId = charge.customer as string;
+    if (!customerId) return;
+
+    const user = await this.userService.findByStripeCustomerId(customerId);
+    if (!user) {
+      logger.warn(`[StripeService] No user found for refunded charge customer ${customerId}`);
+      return;
+    }
+
+    // Increment refund count and revoke founder badge
+    await databaseService.queryControlPlane(
+      'UPDATE users SET refund_count = refund_count + 1, is_founder = FALSE, founder_at = NULL WHERE id = ?',
+      [user.id],
+    );
+
+    // Log the refund event
+    subscriptionEventRepository.create(
+      user.id, 'refund_processed', user.subscriptionTier, null,
+      charge.amount_refunded ?? null, stripeEventId,
+      { chargeId: charge.id, refundCount: (user.refundCount || 0) + 1 },
+    ).catch(e => logger.error('[StripeService] Failed to log refund event', e));
+
+    // Flag abuse if multiple refunds
+    if ((user.refundCount || 0) + 1 > 1) {
+      logger.warn(`[StripeService] ABUSE FLAG: User ${user.id} has ${(user.refundCount || 0) + 1} refunds`);
+      auditLedgerService.append({
+        actorId: user.id,
+        actorType: 'system',
+        action: 'refund.abuse_flag',
+        entityType: 'user',
+        entityId: user.id,
+        payload: { refundCount: (user.refundCount || 0) + 1 },
+        source: 'system',
+      }).catch(() => {});
+    }
+
+    logger.info(`[StripeService] Refund processed for user ${user.id}, charge ${charge.id}`);
   }
 
   async getSubscriptionStatus(userId: string): Promise<{
@@ -182,6 +231,7 @@ export class StripeService {
     trialEndsAt: Date | null;
     currentPeriodEnd: Date | null;
     cancelAtPeriodEnd: boolean;
+    isFounder: boolean;
   }> {
     const user = await this.userService.findById(userId);
     if (!user) throw new Error('User not found');
@@ -194,6 +244,7 @@ export class StripeService {
       trialEndsAt: user.trialEndsAt,
       currentPeriodEnd: sub ? sub.current_period_end : null,
       cancelAtPeriodEnd: sub ? Boolean(sub.cancel_at_period_end) : false,
+      isFounder: user.isFounder,
     };
   }
 
@@ -361,6 +412,14 @@ export class StripeService {
       subscriptionEventRepository.create(
         user.id, 'subscription_created', previousTier, tier, amountCents, stripeEventId,
       ).catch(e => logger.error('[StripeService] Failed to log subscription_created event', e));
+
+      // Grant founder badge for launch-period Pro annual subscribers
+      if (config.LAUNCH_OFFER_ENABLED && tier === 'consultant_pro' && interval === 'year') {
+        this.userService.update(user.id, {
+          isFounder: true,
+          founderAt: new Date(),
+        }).catch(e => logger.error('[StripeService] Failed to set founder badge', e));
+      }
     }
 
     // Update revenue columns

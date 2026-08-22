@@ -10,6 +10,7 @@ export interface User {
   subscriptionTier?: 'trial' | 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise';
   subscriptionStatus?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'none';
   trialEndsAt?: string | null;
+  isFounder?: boolean;
 }
 
 interface AuthState {

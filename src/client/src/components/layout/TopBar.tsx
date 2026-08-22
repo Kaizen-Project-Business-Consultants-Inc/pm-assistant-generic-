@@ -289,8 +289,13 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
             aria-label="User menu"
           >
             {/* Avatar */}
-            <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center flex-shrink-0">
+            <div className="relative w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center flex-shrink-0">
               <span className="text-xs font-semibold text-white">{userInitials}</span>
+              {user?.isFounder && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-800" title="Founder">
+                  <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                </span>
+              )}
             </div>
 
             {/* Name + Role (hidden on small screens) */}

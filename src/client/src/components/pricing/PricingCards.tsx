@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, X, Zap } from 'lucide-react';
+import { Check, X, Zap, Shield, Star } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { apiService } from '../../services/api';
@@ -176,6 +176,15 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
     retry: 1,
   });
 
+  const { data: stripeConfig } = useQuery({
+    queryKey: ['stripe-config'],
+    queryFn: () => apiService.request('get', '/stripe/config'),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+  const launchOfferEnabled = stripeConfig?.launchOfferEnabled || false;
+  const launchDiscount = stripeConfig?.launchOfferDiscount || 0;
+
   const PLANS: PlanDef[] = pricingData?.tiers
     ? [FALLBACK_PLANS[0], ...pricingData.tiers.map(mapApiToPlan)]
     : FALLBACK_PLANS;
@@ -253,8 +262,10 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
           const isCurrent = mode === 'checkout' && currentTier === plan.tier;
           const seats = plan.perSeat ? smeSeats : 1;
           const unitPrice = billing === 'monthly' ? plan.monthly : plan.annual;
-          const price = plan.perSeat ? unitPrice * seats : unitPrice;
-          const perMonth = billing === 'annual' ? ((plan.annual * seats) / 12).toFixed(2) : null;
+          const isLaunchDiscount = launchOfferEnabled && plan.tier === 'consultant_pro' && billing === 'annual' && launchDiscount > 0;
+          const originalPrice = plan.perSeat ? unitPrice * seats : unitPrice;
+          const price = isLaunchDiscount ? Math.round(originalPrice * (1 - launchDiscount / 100)) : originalPrice;
+          const perMonth = billing === 'annual' ? ((price) / 12).toFixed(2) : null;
 
           return (
             <div
@@ -323,13 +334,26 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
                 ) : (
                   <>
                     <div className="mt-3 flex items-baseline gap-1">
+                      {isLaunchDiscount && (
+                        <span className="text-lg font-medium text-gray-400 line-through mr-1">${originalPrice}</span>
+                      )}
                       <span className="text-4xl font-bold text-gray-900 dark:text-white">
                         ${price}
                       </span>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         /{billing === 'monthly' ? 'mo' : 'yr'}
                       </span>
+                      {isLaunchDiscount && (
+                        <span className="ml-2 text-xs font-bold bg-green-500 text-white px-2 py-0.5 rounded-full">
+                          {launchDiscount}% OFF
+                        </span>
+                      )}
                     </div>
+                    {isLaunchDiscount && (
+                      <p className="text-xs text-green-500 font-semibold mt-1">
+                        Save ${originalPrice - price} in your first year
+                      </p>
+                    )}
                     {perMonth && (
                       <p className="text-xs text-green-600 dark:text-green-400 mt-1">~${perMonth}/mo</p>
                     )}
@@ -391,7 +415,23 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
                     )}
                   </button>
                 )}
+
+                {/* Refund guarantee — visible under Pro CTA */}
+                {plan.tier === 'consultant_pro' && billing === 'annual' && (
+                  <p className="mt-2.5 flex items-center justify-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    <Shield className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                    Cancel within 30 days for a prorated refund.
+                  </p>
+                )}
               </div>
+
+              {/* Founders badge callout during launch */}
+              {launchOfferEnabled && plan.tier === 'consultant_pro' && (
+                <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <Star className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <span className="text-xs font-medium text-amber-300">Founders badge included — early supporters only</span>
+                </div>
+              )}
 
               <ul className="space-y-2.5">
                 {plan.features.map((feature) => (

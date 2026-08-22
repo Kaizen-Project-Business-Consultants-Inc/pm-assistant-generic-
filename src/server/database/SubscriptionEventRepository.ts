@@ -10,7 +10,8 @@ export type SubscriptionEventType =
   | 'payment_succeeded'
   | 'trial_started'
   | 'trial_expired'
-  | 'topup_purchased';
+  | 'topup_purchased'
+  | 'refund_processed';
 
 export interface SubscriptionEvent {
   id: string;

@@ -147,10 +147,18 @@ export async function stripeRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'No Stripe customer', message: 'Please contact support' });
       }
 
+      // Apply launch coupon for Pro annual subscriptions
+      let couponId: string | undefined;
+      if (config.LAUNCH_OFFER_ENABLED && config.STRIPE_LAUNCH_COUPON_ID && selectedTier === 'consultant_pro' && billing === 'annual') {
+        couponId = config.STRIPE_LAUNCH_COUPON_ID;
+      }
+
       const url = await stripeService.createCheckoutSession(
         user.stripeCustomerId,
         priceId,
-        userId
+        userId,
+        undefined,
+        couponId,
       );
 
       return { url };
@@ -256,6 +264,10 @@ export async function stripeRoutes(fastify: FastifyInstance) {
   fastify.get('/config', {
     schema: { description: 'Get Stripe publishable key', tags: ['stripe'] },
   }, async () => {
-    return { publishableKey: config.STRIPE_PUBLISHABLE_KEY };
+    return {
+      publishableKey: config.STRIPE_PUBLISHABLE_KEY,
+      launchOfferEnabled: config.LAUNCH_OFFER_ENABLED,
+      launchOfferDiscount: config.LAUNCH_OFFER_ENABLED ? 20 : 0,
+    };
   });
 }
