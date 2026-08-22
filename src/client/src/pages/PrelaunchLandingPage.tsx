@@ -269,10 +269,127 @@ function PortfolioMockup() {
   );
 }
 
+function MonteCarloMockup() {
+  return (
+    <svg viewBox="0 0 360 200" className="w-full h-full">
+      <rect width="360" height="200" fill="#1e293b" />
+      <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Delivery Confidence</text>
+      {/* Bell curve */}
+      <path d="M40 170 Q80 168 120 150 Q160 110 180 60 Q200 110 220 150 Q260 168 300 170" fill="none" stroke="#10b981" strokeWidth="2" opacity="0">
+        <animate attributeName="opacity" from="0" to="1" dur="0.6s" begin="0.3s" fill="freeze" />
+      </path>
+      <path d="M40 170 Q80 168 120 150 Q160 110 180 60 Q200 110 220 150 Q260 168 300 170 L300 170 L40 170 Z" fill="#10b981" opacity="0">
+        <animate attributeName="opacity" from="0" to="0.15" dur="0.6s" begin="0.3s" fill="freeze" />
+      </path>
+      {/* P50 line */}
+      <line x1="180" y1="55" x2="180" y2="170" stroke="#22d3ee" strokeWidth="1" strokeDasharray="4,3" opacity="0">
+        <animate attributeName="opacity" from="0" to="0.8" dur="0.3s" begin="0.8s" fill="freeze" />
+      </line>
+      <text x="168" y="48" fill="#22d3ee" fontSize="10" fontFamily="system-ui" opacity="0">P50
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="0.8s" fill="freeze" />
+      </text>
+      {/* P85 line */}
+      <line x1="230" y1="140" x2="230" y2="170" stroke="#f97316" strokeWidth="1" strokeDasharray="4,3" opacity="0">
+        <animate attributeName="opacity" from="0" to="0.8" dur="0.3s" begin="1.1s" fill="freeze" />
+      </line>
+      <text x="218" y="135" fill="#f97316" fontSize="10" fontFamily="system-ui" opacity="0">P85
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.1s" fill="freeze" />
+      </text>
+      {/* Confidence label */}
+      <rect x="100" y="176" width="160" height="20" rx="4" fill="#334155" opacity="0">
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.4s" fill="freeze" />
+      </rect>
+      <text x="115" y="190" fill="#10b981" fontSize="10" fontWeight="bold" fontFamily="system-ui" opacity="0">85% confidence by Mar 15
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.4s" fill="freeze" />
+      </text>
+    </svg>
+  );
+}
+
+function MeetingMockup() {
+  return (
+    <svg viewBox="0 0 360 200" className="w-full h-full">
+      <rect width="360" height="200" fill="#1e293b" />
+      <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Meeting Intelligence</text>
+      {/* Transcript lines */}
+      {[
+        { y: 44, speaker: 'Sarah:', text: '"We need to push the deadline..."', color: '#60a5fa' },
+        { y: 68, speaker: 'Mike:', text: '"Budget is approved for Phase 2"', color: '#a78bfa' },
+        { y: 92, speaker: 'Lisa:', text: '"QA found 3 blockers yesterday"', color: '#f472b6' },
+      ].map((line, i) => (
+        <g key={i} opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.3 + i * 0.4}s`} fill="freeze" />
+          <text x="16" y={line.y} fill={line.color} fontSize="10" fontWeight="bold" fontFamily="system-ui">{line.speaker}</text>
+          <text x="60" y={line.y} fill="#cbd5e1" fontSize="10" fontFamily="system-ui">{line.text}</text>
+        </g>
+      ))}
+      {/* Divider */}
+      <line x1="16" y1="112" x2="344" y2="112" stroke="#475569" strokeWidth="1" opacity="0">
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.4s" fill="freeze" />
+      </line>
+      <text x="16" y="128" fill="#22d3ee" fontSize="10" fontFamily="system-ui" opacity="0">✦ Extracted Action Items
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.5s" fill="freeze" />
+      </text>
+      {/* Action items */}
+      {[
+        { y: 144, text: 'Revise project timeline — assigned to Sarah' },
+        { y: 162, text: 'Allocate Phase 2 budget — assigned to Mike' },
+        { y: 180, text: 'Triage QA blockers by Friday — assigned to Lisa' },
+      ].map((item, i) => (
+        <g key={i} opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${1.7 + i * 0.3}s`} fill="freeze" />
+          <rect x="16" y={item.y - 8} width="8" height="8" rx="2" fill="none" stroke="#10b981" strokeWidth="1.5" />
+          <text x="30" y={item.y} fill="#e2e8f0" fontSize="9" fontFamily="system-ui">{item.text}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function NLQueryMockup() {
+  return (
+    <svg viewBox="0 0 360 200" className="w-full h-full">
+      <rect width="360" height="200" fill="#1e293b" />
+      <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Mjuzi AI</text>
+      {/* Query bubble */}
+      <rect x="60" y="38" width="284" height="28" rx="14" fill="#334155" opacity="0">
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="0.2s" fill="freeze" />
+      </rect>
+      <text x="76" y="56" fill="#e2e8f0" fontSize="10" fontFamily="system-ui" opacity="0">"Which projects are at risk this quarter?"
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="0.2s" fill="freeze" />
+      </text>
+      {/* AI response */}
+      <rect x="16" y="78" width="284" height="108" rx="12" fill="#0f172a" stroke="#3b82f6" strokeWidth="1" opacity="0">
+        <animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="0.8s" fill="freeze" />
+      </rect>
+      <text x="28" y="96" fill="#22d3ee" fontSize="10" fontFamily="system-ui" opacity="0">✦ 2 projects flagged:
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.0s" fill="freeze" />
+      </text>
+      {[
+        { y: 116, name: 'Mobile App v2', reason: '— 23% over budget, 2 weeks behind', color: '#ef4444' },
+        { y: 140, name: 'API Platform', reason: '— 3 unresolved blockers', color: '#f97316' },
+      ].map((p, i) => (
+        <g key={i} opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${1.3 + i * 0.4}s`} fill="freeze" />
+          <circle cx="34" cy={p.y - 3} r="4" fill={p.color} />
+          <text x="44" y={p.y} fill="#e2e8f0" fontSize="10" fontWeight="bold" fontFamily="system-ui">{p.name}</text>
+          <text x="44" y={p.y + 14} fill="#94a3b8" fontSize="9" fontFamily="system-ui">{p.reason}</text>
+        </g>
+      ))}
+      <text x="28" y="174" fill="#94a3b8" fontSize="9" fontFamily="system-ui" opacity="0">Recommendation: Escalate Mobile App to steering committee.
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="2.0s" fill="freeze" />
+      </text>
+    </svg>
+  );
+}
+
 const featureMockups: Record<string, React.FC> = {
   'AI-Powered Scheduling': SchedulingMockup,
+  'Monte Carlo Simulations': MonteCarloMockup,
   'Smart Risk Detection': RiskDetectionMockup,
+  'Meeting Intelligence': MeetingMockup,
   'Portfolio Dashboard': PortfolioMockup,
+  'Natural Language Queries': NLQueryMockup,
 };
 
 export const PrelaunchLandingPage: React.FC = () => {
