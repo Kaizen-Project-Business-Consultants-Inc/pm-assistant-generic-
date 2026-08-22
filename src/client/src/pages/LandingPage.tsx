@@ -1,9 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, X, Zap } from 'lucide-react';
-import { PricingCards, COMPARISON } from '../components/pricing/PricingCards';
-import { useAuthStore } from '../stores/authStore';
-import { apiService } from '../services/api';
+import { PricingSection } from '../components/pricing/PricingCards';
 
 function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(() => {
@@ -475,22 +472,6 @@ function FeatureCard({ feature }: { feature: typeof features[number] }) {
 
 export const LandingPage: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [topUpLoading, setTopUpLoading] = useState(false);
-  const { isAuthenticated } = useAuthStore();
-
-  const handleBuyTokens = async () => {
-    if (!isAuthenticated) {
-      window.location.href = '/pricing';
-      return;
-    }
-    setTopUpLoading(true);
-    try {
-      const { url } = await apiService.createTopUpSession(1);
-      window.location.href = url;
-    } catch {
-      setTopUpLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#0a0f1a] overflow-x-hidden">
@@ -660,88 +641,7 @@ export const LandingPage: React.FC = () => {
             </p>
           </div>
           <div className="dark">
-            <PricingCards mode="link" />
-
-            {/* Token top-up */}
-            <div className="max-w-xl mx-auto mt-16">
-              <div className="bg-amber-900/20 border border-amber-700 rounded-2xl p-6 text-center">
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <Zap className="w-5 h-5 text-amber-400" />
-                  <h3 className="text-lg font-bold text-white">Need more AI tokens?</h3>
-                </div>
-                <p className="text-sm text-gray-300 mb-4">
-                  Top up anytime. <strong className="text-white">500K tokens for $5</strong> — added instantly to your balance.
-                </p>
-                <button
-                  onClick={handleBuyTokens}
-                  disabled={topUpLoading}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-50"
-                >
-                  {topUpLoading ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Loading…
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4" />
-                      Buy Token Pack — $5
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Feature Comparison Matrix */}
-            <div className="mt-20 mb-16">
-              <h2 className="text-2xl font-bold text-white text-center mb-8">
-                Compare plans
-              </h2>
-              <div className="overflow-x-auto flex justify-center">
-                <table className="text-sm" style={{ maxWidth: '900px', width: '100%' }}>
-                  <thead>
-                    <tr className="border-b-2 border-gray-700">
-                      <th className="text-left py-3 pr-6 font-semibold text-white">Feature</th>
-                      <th className="text-center py-3 px-3 font-semibold text-gray-400 w-20">Trial</th>
-                      <th className="text-center py-3 px-3 font-semibold text-white w-20">Basic</th>
-                      <th className="text-center py-3 px-3 font-semibold text-primary-400 w-20">Pro</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {COMPARISON.map((row, i) => (
-                      <tr key={row.feature} className={`border-b border-gray-700/50 ${i % 2 === 0 ? 'bg-gray-800/50' : ''}`}>
-                        <td className="py-2.5 pr-4 text-gray-300">{row.feature}</td>
-                        {(['trial', 'consultant_basic', 'consultant_pro'] as const).map((tier) => {
-                          const val = row[tier];
-                          return (
-                            <td key={tier} className="py-2.5 px-3 text-center">
-                              {val === true ? (
-                                <Check className="w-4 h-4 text-primary-500 mx-auto" />
-                              ) : val === false ? (
-                                <X className="w-4 h-4 text-gray-600 mx-auto" />
-                              ) : (
-                                <span className="text-gray-300 font-medium">{val}</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Refund policy */}
-            <details className="mt-12 text-center text-xs text-gray-500">
-              <summary className="cursor-pointer hover:text-gray-300 transition-colors">Refund &amp; cancellation policy</summary>
-              <div className="mt-2 space-y-1">
-                <p>Monthly subscriptions are non-refundable. Cancel anytime.</p>
-                <p>Annual subscriptions: pro-rated refund within 30 days, non-refundable after.</p>
-                <p>Token top-ups are non-refundable and do not expire.</p>
-                <p>Questions? <a href="mailto:support@kpbc.ca" className="text-primary-400 hover:underline">support@kpbc.ca</a></p>
-              </div>
-            </details>
+            <PricingSection mode="link" />
           </div>
         </div>
       </section>
