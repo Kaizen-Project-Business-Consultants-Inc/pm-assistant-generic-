@@ -67,7 +67,7 @@ const features = [
   },
 ];
 
-const LAUNCH_DATE = new Date('2026-09-01T00:00:00Z');
+const LAUNCH_DATE = new Date('2026-09-07T00:00:00Z');
 
 function useCountdown(target: Date) {
   const calc = () => {
