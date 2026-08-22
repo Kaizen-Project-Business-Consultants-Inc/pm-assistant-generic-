@@ -126,6 +126,7 @@ export { FALLBACK_PLANS as PLANS };
 
 export interface FeatureRow {
   feature: string;
+  desc?: string;
   trial: boolean | string;
   consultant_basic: boolean | string;
   consultant_pro: boolean | string;
@@ -133,29 +134,29 @@ export interface FeatureRow {
 }
 
 export const COMPARISON: FeatureRow[] = [
-  { feature: 'Projects', trial: '3', consultant_basic: 'Unlimited', consultant_pro: 'Unlimited', sme: 'Unlimited' },
-  { feature: 'AI tokens/month', trial: '25K', consultant_basic: '—', consultant_pro: '500K', sme: '500K/seat' },
-  { feature: 'File Storage', trial: '100MB', consultant_basic: '1GB', consultant_pro: '1GB', sme: '5GB' },
-  { feature: 'Viewer Invites', trial: '5', consultant_basic: '5', consultant_pro: '5', sme: 'Unlimited' },
-  { feature: 'Gantt Charts & Critical Path', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
-  { feature: 'Kanban Boards', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
-  { feature: 'Sprint / Agile Management', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
-  { feature: 'RAID Management', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
-  { feature: 'Export (CSV, PDF, XML)', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
-  { feature: 'Stakeholder Portal', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
-  { feature: 'API Access', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
-  { feature: 'Mjuzi AI Assistant', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'EVM Dashboard & AI Forecasting', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Monte Carlo Simulation', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'AI Auto-Reschedule', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Meeting Intelligence & Voice', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'NL Query Engine', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Resource Management & Heatmaps', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Custom Report Builder', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'DAG Workflow Automation', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Cross-Project Intelligence', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'MCP Integration', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Token Top-Up Packs', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Projects', desc: 'Active projects you can manage simultaneously', trial: '3', consultant_basic: 'Unlimited', consultant_pro: 'Unlimited', sme: 'Unlimited' },
+  { feature: 'AI tokens/month', desc: 'Monthly budget for AI-powered features', trial: '25K', consultant_basic: '—', consultant_pro: '500K', sme: '500K/seat' },
+  { feature: 'File Storage', desc: 'Space for documents, attachments, and exports', trial: '100MB', consultant_basic: '1GB', consultant_pro: '1GB', sme: '5GB' },
+  { feature: 'Viewer Invites', desc: 'Read-only access for clients and stakeholders', trial: '5', consultant_basic: '5', consultant_pro: '5', sme: 'Unlimited' },
+  { feature: 'Gantt Charts & Critical Path', desc: 'Visual timelines with dependency tracking and critical path analysis', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Kanban Boards', desc: 'Drag-and-drop task boards for agile workflows', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Sprint / Agile Management', desc: 'Sprint planning, backlog grooming, and velocity tracking', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'RAID Management', desc: 'Track risks, actions, issues, and decisions in one place', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Export (CSV, PDF, XML)', desc: 'Download reports and data in multiple formats', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Stakeholder Portal', desc: 'Branded read-only view for client project updates', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'API Access', desc: 'REST API for custom integrations and automation', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
+  { feature: 'Mjuzi AI Assistant', desc: 'Chat-based AI that knows your project data', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'EVM Dashboard & AI Forecasting', desc: 'Earned value metrics with AI-powered cost and schedule predictions', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Monte Carlo Simulation', desc: 'Probabilistic analysis for confident delivery date estimates', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'AI Auto-Reschedule', desc: 'One-click intelligent schedule optimization when plans change', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Meeting Intelligence & Voice', desc: 'Upload transcripts, extract action items and decisions automatically', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'NL Query Engine', desc: 'Ask questions about your project data in plain English', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Resource Management & Heatmaps', desc: 'Capacity planning with visual workload and allocation heatmaps', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Custom Report Builder', desc: 'Generate tailored status reports with AI assistance', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'DAG Workflow Automation', desc: 'Automated task pipelines triggered by project events', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Cross-Project Intelligence', desc: 'AI insights across your entire portfolio', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'MCP Integration', desc: 'Connect Kovarti PM to Claude and other AI tools', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Token Top-Up Packs', desc: 'Buy extra AI tokens anytime — $5 per 500K', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
 ];
 
 interface PricingCardsProps {
@@ -534,7 +535,10 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
             <tbody>
               {COMPARISON.map((row, i) => (
                 <tr key={row.feature} className={`border-b border-gray-700/50 ${i % 2 === 0 ? 'bg-gray-800/50' : ''}`}>
-                  <td className="py-2.5 pr-4 text-gray-300">{row.feature}</td>
+                  <td className="py-2.5 pr-4">
+                    <div className="text-gray-300">{row.feature}</div>
+                    {row.desc && <div className="text-gray-300 mt-0.5">{row.desc}</div>}
+                  </td>
                   {(['trial', 'consultant_basic', 'consultant_pro'] as const).map((tier) => {
                     const val = row[tier];
                     return (
