@@ -160,9 +160,10 @@ export const COMPARISON: FeatureRow[] = [
 
 interface PricingCardsProps {
   mode: 'checkout' | 'link';
+  forceDark?: boolean;
 }
 
-export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
+export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) => {
   const { isAuthenticated, user } = useAuthStore();
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState<string | null>(null);
@@ -219,7 +220,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
   };
 
   return (
-    <div>
+    <div className={forceDark ? 'dark' : ''}>
       {/* Billing toggle */}
       <div className="flex justify-center mb-10">
         <div className="inline-flex items-center bg-gray-100 dark:bg-gray-700 rounded-full p-1">
@@ -273,7 +274,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
               className={`relative rounded-2xl border-2 p-6 shadow-sm transition-all ${
                 plan.highlight
                   ? 'border-primary-500 shadow-xl shadow-primary-500/10'
-                  : 'border-gray-200 dark:border-slate-600 dark:shadow-lg dark:shadow-black/30'
+                  : 'border-gray-200 dark:border-slate-500 dark:shadow-lg dark:shadow-black/30'
               } bg-white dark:bg-slate-800`}
             >
               {plan.highlight && (
@@ -451,9 +452,10 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
 
 interface PricingSectionProps {
   mode: 'checkout' | 'link';
+  forceDark?: boolean;
 }
 
-export const PricingSection: React.FC<PricingSectionProps> = ({ mode }) => {
+export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark }) => {
   const { isAuthenticated } = useAuthStore();
   const [topUpLoading, setTopUpLoading] = useState(false);
 
@@ -473,7 +475,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode }) => {
 
   return (
     <>
-      <PricingCards mode={mode} />
+      <PricingCards mode={mode} forceDark={forceDark} />
 
       {/* Token top-up */}
       <div className="max-w-xl mx-auto mt-16">

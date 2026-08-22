@@ -494,7 +494,7 @@ export const PrelaunchLandingPage: React.FC = () => {
       </section>
 
       {/* Pricing */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 dark">
+      <section className="py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-white">Simple, transparent pricing</h2>
@@ -504,7 +504,7 @@ export const PrelaunchLandingPage: React.FC = () => {
               30-day prorated refund guarantee on annual plans
             </p>
           </div>
-          <PricingSection mode="link" />
+          <PricingSection mode="link" forceDark />
         </div>
       </section>
 
