@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import { AccessibleModal } from '../ui/AccessibleModal';
 
 interface ProjectData {
@@ -22,11 +22,16 @@ interface EditProjectModalProps {
   onSave: (data: Partial<ProjectData>) => void;
   onClose: () => void;
   saving?: boolean;
+  onDelete?: () => void;
+  deleting?: boolean;
+  canDelete?: boolean; // false for SME/Enterprise
 }
 
-export function EditProjectModal({ project, onSave, onClose, saving }: EditProjectModalProps) {
+export function EditProjectModal({ project, onSave, onClose, saving, onDelete, deleting, canDelete }: EditProjectModalProps) {
   const [name, setName] = useState(project.name || '');
   const [description, setDescription] = useState(project.description || '');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [category, setCategory] = useState(project.category || '');
   const [projectType, setProjectType] = useState(project.projectType || project.project_type || 'other');
   const [methodology, setMethodology] = useState(project.methodology || 'waterfall');
@@ -185,6 +190,57 @@ export function EditProjectModal({ project, onSave, onClose, saving }: EditProje
           </button>
         </div>
       </form>
+
+      {/* Delete Project — only for consultant tiers */}
+      {onDelete && canDelete && (
+        <div className="px-6 py-4 border-t border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
+          {!showDeleteConfirm ? (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Project
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-red-700 dark:text-red-400">
+                This will <span className="font-semibold">permanently delete</span> the project, all tasks, schedules, and associated data. This cannot be undone.
+              </p>
+              <div>
+                <label className="block text-xs font-medium text-red-700 dark:text-red-400 mb-1">
+                  Type <span className="font-mono font-bold">{project.name}</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={project.name}
+                  className="w-full rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  disabled={deleteConfirmName !== project.name || deleting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {deleting ? 'Deleting…' : 'Delete Permanently'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmName(''); }}
+                  className="text-sm text-gray-500 dark:text-gray-400 hover:underline"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </AccessibleModal>
   );
 }

@@ -254,6 +254,16 @@ export async function projectRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       const userId = request.user!.userId;
+
+      // SME/Enterprise tiers cannot delete projects — archive instead
+      const user = await userService.findById(userId);
+      if (user && (user.subscriptionTier === 'sme' || user.subscriptionTier === 'enterprise')) {
+        return reply.status(403).send({
+          error: 'Delete not allowed',
+          message: 'Team accounts cannot delete projects. Archive the project instead.',
+        });
+      }
+
       const deleted = await projectService.delete(id, userId);
       if (!deleted) {
         return reply.status(404).send({ error: 'Project not found', message: 'Project does not exist or you do not have access' });

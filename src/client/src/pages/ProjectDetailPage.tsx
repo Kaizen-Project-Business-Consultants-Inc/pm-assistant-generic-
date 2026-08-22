@@ -178,6 +178,14 @@ export function ProjectDetailPage() {
     },
   });
 
+  const deleteProjectMutation = useMutation({
+    mutationFn: () => apiService.deleteProject(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      navigate('/projects');
+    },
+  });
+
   // Prefetch EVM data on project open — so Performance tab loads instantly
   useEffect(() => {
     if (id) {
@@ -555,6 +563,9 @@ export function ProjectDetailPage() {
           onSave={(data) => updateProjectMutation.mutate(data)}
           onClose={() => setShowEditProject(false)}
           saving={updateProjectMutation.isPending}
+          onDelete={() => deleteProjectMutation.mutate()}
+          deleting={deleteProjectMutation.isPending}
+          canDelete={!user?.subscriptionTier || !['sme', 'enterprise'].includes(user.subscriptionTier)}
         />
       )}
 

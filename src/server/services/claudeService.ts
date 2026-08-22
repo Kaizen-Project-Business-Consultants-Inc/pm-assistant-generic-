@@ -903,6 +903,36 @@ export class ClaudeService {
     return textBlocks.map((block) => block.text).join('');
   }
 
+  /** Attempt to fix common JSON issues: truncation, trailing commas, unbalanced brackets. */
+  private repairJson(raw: string): string | null {
+    let s = raw;
+    // Remove trailing commas before } or ]
+    s = s.replace(/,\s*([}\]])/g, '$1');
+    // If truncated mid-string, close the string
+    // Count unbalanced braces/brackets
+    let braces = 0, brackets = 0, inString = false, escaped = false;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (escaped) { escaped = false; continue; }
+      if (ch === '\\') { escaped = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === '{') braces++;
+      else if (ch === '}') braces--;
+      else if (ch === '[') brackets++;
+      else if (ch === ']') brackets--;
+    }
+    // If we're still in a string, close it
+    if (inString) s += '"';
+    // Remove any trailing comma after closing the string
+    s = s.replace(/,\s*$/, '');
+    // Close unbalanced brackets/braces
+    while (brackets > 0) { s += ']'; brackets--; }
+    while (braces > 0) { s += '}'; braces--; }
+    // Only return if we actually changed something
+    return s !== raw ? s : null;
+  }
+
   private tryParseJson<T>(
     raw: string,
     schema: z.ZodType<T>,
@@ -922,10 +952,24 @@ export class ClaudeService {
     try {
       parsed = JSON.parse(cleaned);
     } catch (jsonError) {
-      return {
-        success: false,
-        error: `JSON parse error: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}. Raw content starts with: "${cleaned.slice(0, 200)}"`,
-      };
+      // Attempt basic JSON repair before giving up
+      const repaired = this.repairJson(cleaned);
+      if (repaired) {
+        try {
+          parsed = JSON.parse(repaired);
+          logger.info('[ClaudeService] JSON repair succeeded');
+        } catch {
+          return {
+            success: false,
+            error: `JSON parse error: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}. Raw content starts with: "${cleaned.slice(0, 200)}"`,
+          };
+        }
+      } else {
+        return {
+          success: false,
+          error: `JSON parse error: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}. Raw content starts with: "${cleaned.slice(0, 200)}"`,
+        };
+      }
     }
 
     const result = schema.safeParse(parsed);

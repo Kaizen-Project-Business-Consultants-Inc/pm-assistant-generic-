@@ -145,7 +145,7 @@ Analyze this meeting transcript and extract all actionable information.`;
         systemPrompt,
         userMessage,
         schema: MeetingAIResponseSchema,
-        maxTokens: 4096,
+        maxTokens: 8192,
       });
 
       aiResponse = result.data;
