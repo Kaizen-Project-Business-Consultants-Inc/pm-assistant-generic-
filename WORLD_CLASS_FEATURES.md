@@ -640,6 +640,34 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 
 ---
 
+## Launch Offer & Founders Program
+
+### Specs
+- **Discount mechanism:** Stripe Coupon (`duration: once`, percentage-based, optional `redeem_by` and `max_redemptions`)
+- **Discount amount:** 20% off annual Consultant Pro ($290 → $232 first year)
+- **Founders badge:** `is_founder` boolean + `founder_at` timestamp on users table
+- **Badge display:** Gold star overlay on TopBar avatar, amber badge on Account & Billing page
+- **Badge grant trigger:** New Pro annual subscription created while `LAUNCH_OFFER_ENABLED=true`
+- **Badge revoke trigger:** `charge.refunded` Stripe webhook
+- **Refund tracking:** `refund_count` column on users, incremented per refund event
+- **Abuse prevention:** Audit ledger flag when `refund_count > 1`
+- **Kill switch:** `LAUNCH_OFFER_ENABLED` env var (independent of Stripe coupon expiry)
+- **Pricing display:** Strikethrough original price, "20% OFF" badge, savings callout, shield icon guarantee
+- **Currency:** All prices displayed in USD with explicit "USD" label
+- **Guarantee text:** "30-day prorated refund guarantee on annual plans" on all pricing pages
+- **Trial clarification:** "Try free for 14 days. Upgrade anytime." replaces ambiguous "Start free" messaging
+
+### Files
+- `src/server/config.ts` — STRIPE_LAUNCH_COUPON_ID, LAUNCH_OFFER_ENABLED
+- `src/server/services/StripeService.ts` — coupon application, founder grant, refund handler
+- `src/server/database/migrations/103_launch_offer.sql` — schema changes
+- `src/client/src/components/pricing/PricingCards.tsx` — discount display, forceDark styling
+- `src/client/src/pages/PrelaunchLandingPage.tsx` — launch messaging
+- `src/client/src/constants/branding.ts` — FOUNDER_BADGE_CLASS
+- `src/client/src/components/layout/TopBar.tsx` — founder star icon
+
+---
+
 ## Implementation Status
 
 | Feature | Status | Priority |

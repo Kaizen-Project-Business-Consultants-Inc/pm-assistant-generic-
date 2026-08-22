@@ -1957,6 +1957,25 @@ Navigate to **Account** in the sidebar to manage:
 - **Top-up balance**: Your remaining purchased token balance is displayed below the usage meter. Click **Buy More** to purchase additional packs instantly.
 - **Token top-ups**: If you exhaust your monthly AI tokens, purchase additional packs (500K tokens for $5). Top-up tokens are added instantly and do not expire. When your monthly budget is exhausted, AI features are temporarily unavailable but all other features (scheduling, tasks, reports, collaboration) continue working normally. Your budget resets on the first of each month.
 
+### Launch Offer
+
+#### Early Bird Discount
+During the launch period, new subscribers to the annual Consultant Pro plan receive a **20% discount** on their first year — paying $232 USD instead of $290 USD. The discount is applied automatically at checkout.
+
+#### Founders Badge
+Early Pro annual subscribers receive a **Founders badge** — a gold star displayed next to your avatar throughout the app. This badge is a permanent mark of being an early supporter, visible to you on your profile and billing page.
+
+> **Note:** The Founders badge is revoked if you request a refund.
+
+#### Refund Guarantee
+Annual plan subscribers can request a **prorated refund within 30 days** of purchase. Contact support@kpbc.ca to request a refund. The refund amount is calculated based on the unused portion of your subscription.
+
+#### Pricing
+All prices are displayed in **USD (US Dollars)**:
+- **Free Trial:** $0 for 14 days (no credit card required)
+- **Consultant Basic:** $19 USD/mo or $190 USD/yr
+- **Consultant Pro:** $29 USD/mo or $290 USD/yr (20% off annual during launch)
+
 ### Settings (Admin/Manager)
 
 Navigate to **Settings** to configure:

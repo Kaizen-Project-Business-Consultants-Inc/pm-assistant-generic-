@@ -1881,6 +1881,55 @@ Client-side gating provides an early upgrade prompt but is not the security boun
 - For Meeting Intelligence, the trial check runs **before** Zod schema validation — this avoids a 400 when the trial user submits without required fields (projectId, scheduleId).
 - Write/mutate endpoints for all 13 features remain hard-gated with `requireFeature()` — sample data is read-only.
 
+### Launch Offer
+
+#### Overview
+
+Kovarti offers a limited-time launch promotion for early subscribers:
+
+- **20% discount** on the annual Consultant Pro plan (first year only)
+- **Founders badge** granted to early Pro annual subscribers — displayed on the user avatar and billing page
+- **30-day prorated refund guarantee** on annual plans
+
+#### How It Works
+
+- The launch offer is controlled by two environment variables: `LAUNCH_OFFER_ENABLED` (boolean) and `STRIPE_LAUNCH_COUPON_ID` (Stripe coupon ID)
+- When enabled, the 20% discount is automatically applied at Stripe checkout for Consultant Pro annual subscriptions
+- The discount uses a Stripe Coupon with `duration: once` (first invoice only) and an optional `redeem_by` expiry date
+- Founders badge is granted automatically when a Pro annual subscription is created during the launch period
+- Pricing pages show strikethrough original price, discounted price with "20% OFF" badge, and savings amount
+
+#### Founders Badge
+
+- Displayed as a gold star icon on the user's avatar in the TopBar
+- Shown as an amber "Founder" badge on the Account & Billing page
+- Revoked automatically if the user requests a refund (via Stripe `charge.refunded` webhook)
+- Stored as `is_founder` boolean and `founder_at` timestamp on the users table
+
+#### Refund Policy
+
+- Annual plan subscribers can request a prorated refund within 30 days
+- Refunds are processed manually via the Stripe dashboard
+- The `charge.refunded` webhook automatically:
+  - Increments the user's `refund_count`
+  - Revokes the Founders badge (`is_founder = false`)
+  - Logs a `refund_processed` subscription event
+  - Flags abuse if `refund_count > 1` via the audit ledger
+
+#### Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LAUNCH_OFFER_ENABLED` | Enable/disable the launch offer | `false` |
+| `STRIPE_LAUNCH_COUPON_ID` | Stripe coupon ID for the discount | (empty) |
+
+#### Pricing Display
+
+- All prices shown in USD
+- "Try free for 14 days. Upgrade anytime." subtitle on all pricing pages
+- "30-day prorated refund guarantee on annual plans" shown with shield icon
+- Pricing cards use dark styling on landing pages for visual consistency
+
 ---
 
 ## 23. Dashboard
