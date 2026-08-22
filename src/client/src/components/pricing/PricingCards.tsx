@@ -177,7 +177,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode }) => {
   });
 
   const PLANS: PlanDef[] = pricingData?.tiers
-    ? pricingData.tiers.map(mapApiToPlan)
+    ? [FALLBACK_PLANS[0], ...pricingData.tiers.map(mapApiToPlan)]
     : FALLBACK_PLANS;
 
   const currentTier = isAuthenticated ? (user?.subscriptionTier || 'trial') : null;
