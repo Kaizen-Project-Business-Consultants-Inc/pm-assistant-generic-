@@ -231,7 +231,7 @@ export const OnboardingPage: React.FC = () => {
                 {/* Role selector */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Your Role</label>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 min-[320px]:grid-cols-2">
                     {ROLE_OPTIONS.map((role) => {
                       const Icon = role.icon;
                       const selected = selectedRole === role.value;
@@ -257,7 +257,7 @@ export const OnboardingPage: React.FC = () => {
                 {/* Methodology */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Preferred Methodology</label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {METHODOLOGY_OPTIONS.map((m) => {
                       const selected = methodology === m.value;
                       return (

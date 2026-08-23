@@ -305,6 +305,7 @@ export const AccountBillingPage: React.FC = () => {
                     onClick={() => handleSeatChange('remove')}
                     disabled={seatLoading || seatData.paidSeats <= 3}
                     className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30"
+                    aria-label="Remove seat"
                   >
                     <Minus className="w-3.5 h-3.5" />
                   </button>
@@ -312,6 +313,7 @@ export const AccountBillingPage: React.FC = () => {
                     onClick={() => handleSeatChange('add')}
                     disabled={seatLoading}
                     className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-50"
+                    aria-label="Add seat"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Add Seat

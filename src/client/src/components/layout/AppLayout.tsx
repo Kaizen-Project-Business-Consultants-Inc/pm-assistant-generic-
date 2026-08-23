@@ -160,8 +160,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:bg-primary-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm focus:font-medium">
         Skip to main content
       </a>
-      <OfflineBanner />
-      <TrialBanner />
+      {/* Banners — inside a banner landmark for accessibility */}
+      <div role="banner">
+        <OfflineBanner />
+        <TrialBanner />
+      </div>
       {/* Sidebar */}
       <Sidebar
         collapsed={effectiveCollapsed}

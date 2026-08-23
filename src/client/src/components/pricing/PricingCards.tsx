@@ -228,6 +228,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
         <div className={`inline-flex items-center rounded-full p-1 ${dk ? 'bg-gray-700' : 'bg-gray-100 dark:bg-gray-700'}`}>
           <button
             onClick={() => setBilling('monthly')}
+            aria-pressed={billing === 'monthly'}
             className={`px-5 py-2 text-sm font-medium rounded-full transition-colors ${
               billing === 'monthly'
                 ? dk ? 'bg-gray-600 text-white shadow-sm' : 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
@@ -238,6 +239,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
           </button>
           <button
             onClick={() => setBilling('annual')}
+            aria-pressed={billing === 'annual'}
             className={`px-5 py-2 text-sm font-medium rounded-full transition-colors ${
               billing === 'annual'
                 ? dk ? 'bg-gray-600 text-white shadow-sm' : 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'

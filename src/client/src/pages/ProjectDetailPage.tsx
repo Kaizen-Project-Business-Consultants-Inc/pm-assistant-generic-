@@ -511,12 +511,14 @@ export function ProjectDetailPage() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex gap-3 sm:gap-4 md:gap-6">
+        <nav className="-mb-px flex gap-3 sm:gap-4 md:gap-6" role="tablist">
           {getPrimaryTabs(methodology).map((tab) => {
             const criticalCount = tab.id === 'raid' ? (riskStats?.critical ?? 0) : 0;
             return (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`border-b-2 pb-3 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 flex items-center gap-1.5 ${
                 activeTab === tab.id

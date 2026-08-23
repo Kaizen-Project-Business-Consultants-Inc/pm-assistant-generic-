@@ -294,6 +294,7 @@ export function DashboardPM() {
             }}
             className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title="Refresh data"
+            aria-label="Refresh data"
           >
             <RefreshCw className="w-3 h-3" />
           </button>

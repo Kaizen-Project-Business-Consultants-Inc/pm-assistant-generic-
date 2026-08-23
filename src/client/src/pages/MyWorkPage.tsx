@@ -133,7 +133,7 @@ function bucketTasks(tasks: MyWorkTask[]): Bucket[] {
 
 function TaskRow({ task }: { task: MyWorkTask }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
       {/* Priority dot */}
       <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${priorityColors[task.priority] || priorityColors.medium}`} title={task.priority} />
 
@@ -145,23 +145,23 @@ function TaskRow({ task }: { task: MyWorkTask }) {
         {task.name}
       </Link>
 
-      {/* Project name — separate link */}
-      <Link
-        to={routeTo.project(String(task.projectId))}
-        className="text-xs text-primary-600 dark:text-primary-400 hover:underline truncate max-w-[160px] flex-shrink-0"
-      >
-        {task.projectName}
-      </Link>
-
-      {/* Due date */}
-      <span className="text-xs text-gray-500 dark:text-gray-400 w-20 text-right flex-shrink-0">
-        {task.endDate || '--'}
-      </span>
-
       {/* Status chip */}
       <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${statusColors[task.status] || statusColors['not-started']}`}>
         {statusLabels[task.status] || task.status}
       </span>
+
+      {/* Second row on mobile: project + due date */}
+      <div className="w-full sm:w-auto sm:contents flex items-center gap-2 pl-5 sm:pl-0">
+        <Link
+          to={routeTo.project(String(task.projectId))}
+          className="text-xs text-primary-600 dark:text-primary-400 hover:underline truncate max-w-[160px] flex-shrink-0"
+        >
+          {task.projectName}
+        </Link>
+        <span className="text-xs text-gray-500 dark:text-gray-400 w-20 text-right flex-shrink-0 hidden sm:inline">
+          {task.endDate || '--'}
+        </span>
+      </div>
     </div>
   );
 }
