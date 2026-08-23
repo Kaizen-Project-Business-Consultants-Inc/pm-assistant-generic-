@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Kanban, Settings, Users, ShieldCheck } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -90,6 +90,106 @@ function saveWipLimits(sprintId: string, limits: Record<string, number>) {
   localStorage.setItem(`${WIP_STORAGE_KEY}-${sprintId}`, JSON.stringify(limits));
 }
 
+interface SprintCardProps {
+  task: BoardTask;
+  dodReady?: { checked: number; total: number; ready: boolean };
+  editingPointsTaskId: string | null;
+  editingPointsValue: string;
+  onDragStart: (e: React.DragEvent<Element>, taskId: string) => void;
+  onPointsClick: (taskId: string, points: number) => void;
+  onPointsSave: (taskId: string) => void;
+  onPointsKeyDown: (e: React.KeyboardEvent, taskId: string) => void;
+  onPointsValueChange: (value: string) => void;
+}
+
+const SprintCard = memo(function SprintCard({
+  task, dodReady, editingPointsTaskId, editingPointsValue,
+  onDragStart, onPointsClick, onPointsSave, onPointsKeyDown, onPointsValueChange,
+}: SprintCardProps) {
+  const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
+  const points = getPoints(task);
+  const avatarColor = task.assignedTo ? getAvatarColor(task.assignedTo) : null;
+  const ac = getAcCount(task.acceptanceCriteria);
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, task.id)}
+      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-3 shadow-sm hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20 transition-shadow cursor-grab active:cursor-grabbing"
+    >
+      <div className="flex items-center gap-1.5 mb-2">
+        {task.taskType && task.taskType !== 'task' && taskTypeBadge[task.taskType] && (
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${taskTypeBadge[task.taskType].bg} ${taskTypeBadge[task.taskType].text}`}>
+            {taskTypeBadge[task.taskType].label}
+          </span>
+        )}
+        {(task.status === 'blocked' || task.status === 'cancelled') && (
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${task.status === 'blocked' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
+            {task.status === 'blocked' ? 'Blocked' : 'Cancelled'}
+          </span>
+        )}
+        <span className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">
+          {task.name}
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span
+          className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${pBadge.bg} ${pBadge.text} ${pBadge.darkBg} ${pBadge.darkText} capitalize`}
+        >
+          {task.priority || 'medium'}
+        </span>
+        {editingPointsTaskId === task.id ? (
+          <input
+            type="number"
+            min="0"
+            className="w-12 text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full border border-primary-300 dark:border-primary-600 outline-none text-center"
+            value={editingPointsValue}
+            onChange={(e) => onPointsValueChange(e.target.value)}
+            onBlur={() => onPointsSave(task.id)}
+            onKeyDown={(e) => onPointsKeyDown(e, task.id)}
+            autoFocus
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span
+            className="text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
+            onClick={(e) => { e.stopPropagation(); onPointsClick(task.id, points); }}
+            title="Click to edit story points"
+          >
+            {points > 0 ? `${points} pts` : '+ pts'}
+          </span>
+        )}
+        {ac && (
+          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ac.checked === ac.total ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>
+            {ac.checked}/{ac.total} AC
+          </span>
+        )}
+        {dodReady && (
+          <span
+            title={`DoD: ${dodReady.checked}/${dodReady.total}`}
+            className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+              dodReady.ready
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+          >
+            <ShieldCheck className="w-3 h-3" />
+            {dodReady.checked}/{dodReady.total}
+          </span>
+        )}
+      </div>
+      {task.assignedTo && avatarColor && (
+        <div className="mt-2 flex items-center gap-1.5">
+          <div className={`w-5 h-5 rounded-full ${avatarColor.bg} ${avatarColor.text} flex items-center justify-center text-[8px] font-bold`}>
+            {getInitials(task.assignedTo)}
+          </div>
+          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{task.assignedTo}</span>
+        </div>
+      )}
+    </div>
+  );
+});
+
 export function SprintBoard({ sprintId }: SprintBoardProps) {
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [localTaskOverrides, setLocalTaskOverrides] = useState<Record<string, string>>({});
@@ -176,7 +276,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
   });
 
   const handleDragStart = useCallback(
-    (e: React.DragEvent<HTMLDivElement>, taskId: string) => {
+    (e: React.DragEvent<Element>, taskId: string) => {
       e.dataTransfer.setData('text/plain', taskId);
       e.dataTransfer.effectAllowed = 'move';
     },
@@ -342,94 +442,20 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                       </div>
                     )}
 
-                    {columnTasks.map((task) => {
-                      const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
-                      const points = getPoints(task);
-                      const avatarColor = task.assignedTo ? getAvatarColor(task.assignedTo) : null;
-
-                      return (
-                        <div
-                          key={task.id}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, task.id)}
-                          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-3 shadow-sm hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20 transition-shadow cursor-grab active:cursor-grabbing"
-                        >
-                          <div className="flex items-center gap-1.5 mb-2">
-                            {task.taskType && task.taskType !== 'task' && taskTypeBadge[task.taskType] && (
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${taskTypeBadge[task.taskType].bg} ${taskTypeBadge[task.taskType].text}`}>
-                                {taskTypeBadge[task.taskType].label}
-                              </span>
-                            )}
-                            {(task.status === 'blocked' || task.status === 'cancelled') && (
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${task.status === 'blocked' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
-                                {task.status === 'blocked' ? 'Blocked' : 'Cancelled'}
-                              </span>
-                            )}
-                            <span className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">
-                              {task.name}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span
-                              className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${pBadge.bg} ${pBadge.text} ${pBadge.darkBg} ${pBadge.darkText} capitalize`}
-                            >
-                              {task.priority || 'medium'}
-                            </span>
-                            {editingPointsTaskId === task.id ? (
-                              <input
-                                type="number"
-                                min="0"
-                                className="w-12 text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full border border-primary-300 dark:border-primary-600 outline-none text-center"
-                                value={editingPointsValue}
-                                onChange={(e) => setEditingPointsValue(e.target.value)}
-                                onBlur={() => handlePointsSave(task.id)}
-                                onKeyDown={(e) => handlePointsKeyDown(e, task.id)}
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            ) : (
-                              <span
-                                className="text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
-                                onClick={(e) => { e.stopPropagation(); handlePointsClick(task.id, points); }}
-                                title="Click to edit story points"
-                              >
-                                {points > 0 ? `${points} pts` : '+ pts'}
-                              </span>
-                            )}
-                            {(() => {
-                              const ac = getAcCount(task.acceptanceCriteria);
-                              if (!ac) return null;
-                              return (
-                                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ac.checked === ac.total ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>
-                                  {ac.checked}/{ac.total} AC
-                                </span>
-                              );
-                            })()}
-                            {dodReadiness[task.id] && (
-                              <span
-                                title={`DoD: ${dodReadiness[task.id].checked}/${dodReadiness[task.id].total}`}
-                                className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                                  dodReadiness[task.id].ready
-                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                                }`}
-                              >
-                                <ShieldCheck className="w-3 h-3" />
-                                {dodReadiness[task.id].checked}/{dodReadiness[task.id].total}
-                              </span>
-                            )}
-                          </div>
-                          {task.assignedTo && avatarColor && (
-                            <div className="mt-2 flex items-center gap-1.5">
-                              <div className={`w-5 h-5 rounded-full ${avatarColor.bg} ${avatarColor.text} flex items-center justify-center text-[8px] font-bold`}>
-                                {getInitials(task.assignedTo)}
-                              </div>
-                              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{task.assignedTo}</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {columnTasks.map((task) => (
+                      <SprintCard
+                        key={task.id}
+                        task={task}
+                        dodReady={dodReadiness[task.id]}
+                        editingPointsTaskId={editingPointsTaskId}
+                        editingPointsValue={editingPointsValue}
+                        onDragStart={handleDragStart}
+                        onPointsClick={handlePointsClick}
+                        onPointsSave={handlePointsSave}
+                        onPointsKeyDown={handlePointsKeyDown}
+                        onPointsValueChange={setEditingPointsValue}
+                      />
+                    ))}
                   </div>
                 </div>
               );

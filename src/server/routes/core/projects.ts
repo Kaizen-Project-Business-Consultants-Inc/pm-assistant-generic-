@@ -14,6 +14,7 @@ import { sprintService } from '../../services/SprintService';
 import { toProjectDTO, toScheduleDTO, toTaskDTO, paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import { favouriteProjectRepository } from '../../database/FavouriteProjectRepository';
+import { projectRepository } from '../../database/ProjectRepository';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
 
@@ -321,10 +322,8 @@ export async function projectRoutes(fastify: FastifyInstance) {
       const userId = request.user!.userId;
       const projectIds = await favouriteProjectRepository.getByUserId(userId);
       if (projectIds.length === 0) return { projects: [] };
-      const projects = await Promise.all(
-        projectIds.map((id) => projectService.findById(id)),
-      );
-      return { projects: projects.filter(Boolean).map((p) => ({ ...toProjectDTO(p!), isFavourite: true })) };
+      const projects = await projectRepository.findByIds(projectIds);
+      return { projects: projects.map((p) => ({ ...toProjectDTO(p), isFavourite: true })) };
     } catch (error) {
       logger.error('Get favourite projects error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch favourite projects' });

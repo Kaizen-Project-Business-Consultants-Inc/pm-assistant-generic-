@@ -1,4 +1,4 @@
-import { useEffect, useCallback, type ReactNode } from 'react';
+import { useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -115,9 +115,9 @@ export function DashboardPM() {
   // ─── Derived data ───────────────────────────────────────────────────────────
 
   const myProjects: ProjectRow[]  = myProjectsData?.data  || myProjectsData?.projects  || [];
-  const activeProjects  = myProjects.filter(
+  const activeProjects  = useMemo(() => myProjects.filter(
     p => p.status !== 'completed' && p.status !== 'cancelled'
-  );
+  ), [myProjects]);
 
   // ─── Unwrap prediction/analytics payloads ─────────────────────────────────
 
@@ -125,19 +125,22 @@ export function DashboardPM() {
   const analytics = analyticsData?.data || analyticsData;
 
   // Merge health scores
-  const healthMap = new Map<string, number>();
-  if (pred?.projectHealthScores) {
-    for (const h of pred.projectHealthScores) {
-      healthMap.set(h.projectId, h.healthScore);
+  const healthMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (pred?.projectHealthScores) {
+      for (const h of pred.projectHealthScores) {
+        map.set(h.projectId, h.healthScore);
+      }
     }
-  }
-  const projectsWithHealth: ProjectRow[] = activeProjects.map(p => ({
+    return map;
+  }, [pred?.projectHealthScores]);
+  const projectsWithHealth: ProjectRow[] = useMemo(() => activeProjects.map(p => ({
     ...p,
     healthScore: healthMap.get(p.id) ?? p.healthScore,
-  }));
+  })), [activeProjects, healthMap]);
 
   // Slim project list for ActionCenter
-  const projectSummaries = activeProjects.map(p => ({ id: p.id, name: p.name }));
+  const projectSummaries = useMemo(() => activeProjects.map(p => ({ id: p.id, name: p.name })), [activeProjects]);
 
   const healthScores: number[] = pred?.projectHealthScores?.map((s: any) => s.healthScore) || [];
   const avgHealth = healthScores.length > 0

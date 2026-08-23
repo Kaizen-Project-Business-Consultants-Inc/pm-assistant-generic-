@@ -187,6 +187,19 @@ export class TaskRepository {
     return tasks;
   }
 
+  /** Lightweight task list — only essential columns, no dependencies/assignments */
+  async findAllSummary(maxRows = 50000): Promise<Task[]> {
+    const rows = await databaseService.query(
+      `SELECT id, schedule_id, name, status, priority, task_type, assigned_to,
+              start_date, end_date, due_date, progress_percentage, parent_task_id,
+              is_milestone, is_summary, sort_order, story_points, epic_id,
+              created_by, created_at, updated_at
+       FROM tasks ORDER BY sort_order, created_at LIMIT ?`,
+      [maxRows],
+    );
+    return rows.map(rowToTask);
+  }
+
   async findDependentTasks(taskId: string): Promise<Task[]> {
     const rows = await databaseService.query(
       `SELECT t.* FROM tasks t

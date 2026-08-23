@@ -322,7 +322,8 @@ export class ScheduleService {
 
   async findAllTasks(): Promise<Task[]> {
     const MAX_TASKS = 50000;
-    const tasks = await taskRepository.findAll(MAX_TASKS);
+    // Use lightweight summary (no heavy text columns, no dependency attachment)
+    const tasks = await taskRepository.findAllSummary(MAX_TASKS);
     if (tasks.length === MAX_TASKS) {
       logger.warn(`findAllTasks() returned ${MAX_TASKS} rows — results may be truncated`);
     }

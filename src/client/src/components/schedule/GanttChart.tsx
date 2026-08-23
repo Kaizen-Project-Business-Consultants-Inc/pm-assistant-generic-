@@ -1045,15 +1045,22 @@ export function GanttChart({
     return map;
   }, [tasks]);
 
+  // O(1) task lookup for search/filter (declared before taskOrDescendantMatches)
+  const taskLookup = useMemo(() => {
+    const map = new Map<string, GanttTask>();
+    for (const t of tasks) map.set(t.id, t);
+    return map;
+  }, [tasks]);
+
   /** Check if a task or any of its descendants matches a predicate */
   const taskOrDescendantMatches = useCallback((taskId: string, predicate: (t: GanttTask) => boolean): boolean => {
-    const task = tasks.find(t => t.id === taskId);
+    const task = taskLookup.get(taskId);
     if (!task) return false;
     if (predicate(task)) return true;
     const children = taskChildrenMap.get(taskId);
     if (!children) return false;
     return children.some(childId => taskOrDescendantMatches(childId, predicate));
-  }, [tasks, taskChildrenMap]);
+  }, [taskLookup, taskChildrenMap]);
 
   // Step 1: Search filter
   const searchedRows = useMemo(() => {

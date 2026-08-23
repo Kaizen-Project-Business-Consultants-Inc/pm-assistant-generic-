@@ -59,6 +59,13 @@ export class ProjectRepository extends BaseRepository<Project> {
     super('projects', rowToProject);
   }
 
+  async findByIds(ids: string[]): Promise<Project[]> {
+    if (ids.length === 0) return [];
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = await this.queryRaw(`SELECT * FROM projects WHERE id IN (${placeholders})`, ids);
+    return this.mapRows(rows);
+  }
+
   async findByIdForUser(id: string, userId: string): Promise<Project | null> {
     const rows = await this.queryRaw(
       `SELECT DISTINCT p.* FROM projects p

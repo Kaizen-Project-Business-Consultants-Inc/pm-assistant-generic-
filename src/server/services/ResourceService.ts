@@ -213,10 +213,20 @@ export class ResourceService {
 
     const involvedResourceIds = [...new Set(projectAssignments.map((a) => a.resourceId))];
 
+    // Batch-load all resources in one query
+    const resources = await resourceRepository.findByIds(involvedResourceIds);
+    const resourceMap = new Map(resources.map(r => [r.id, r]));
+
+    // Batch-load all availability data in one query
+    const capacityMap = await resourceAvailabilityService.getEffectiveCapacityBatch(
+      resources.map(r => ({ id: r.id, capacityHoursPerWeek: r.capacityHoursPerWeek, calendarTemplateId: r.calendarTemplateId })),
+      weeks,
+    );
+
     const workloads: ResourceWorkload[] = [];
 
     for (const resId of involvedResourceIds) {
-      const resource = await resourceRepository.findById(resId);
+      const resource = resourceMap.get(resId);
       if (!resource) continue;
 
       const resAssignments = projectAssignments.filter((a) => a.resourceId === resId);
@@ -240,6 +250,7 @@ export class ResourceService {
       }
 
       const overtimeRate = resource.overtimeRateHourly ?? (rate ? rate * 1.5 : null);
+      const resCapacityMap = capacityMap.get(resId);
 
       const weeklyData: WeeklyUtilization[] = [];
       for (const weekStart of weeks) {
@@ -257,7 +268,7 @@ export class ResourceService {
         const weekKey = weekStart.toISOString().slice(0, 10);
         const actual = actualByWeek?.get(weekKey) ?? 0;
 
-        const capacity = await resourceAvailabilityService.getEffectiveCapacity(resId, weekStart, baseCapacity);
+        const capacity = resCapacityMap?.get(weekKey) ?? baseCapacity;
         const utilization = capacity > 0 ? Math.round((allocated / capacity) * 100) : 0;
         if (utilization > 100) isOverAllocated = true;
         totalUtilization += utilization;
@@ -334,10 +345,19 @@ export class ResourceService {
     }
 
     const involvedResourceIds = [...new Set(allAssignments.map((a) => a.resourceId))];
+
+    // Batch-load all resources and availability
+    const resources = await resourceRepository.findByIds(involvedResourceIds);
+    const resourceMap = new Map(resources.map(r => [r.id, r]));
+    const capacityMap = await resourceAvailabilityService.getEffectiveCapacityBatch(
+      resources.map(r => ({ id: r.id, capacityHoursPerWeek: r.capacityHoursPerWeek, calendarTemplateId: r.calendarTemplateId })),
+      weeks,
+    );
+
     const workloads: ResourceWorkload[] = [];
 
     for (const resId of involvedResourceIds) {
-      const resource = await resourceRepository.findById(resId);
+      const resource = resourceMap.get(resId);
       if (!resource) continue;
 
       const resAssignments = allAssignments.filter((a) => a.resourceId === resId);
@@ -355,6 +375,8 @@ export class ResourceService {
         actualByWeek = new Map(actuals.map(a => [a.weekStart, a.totalHours]));
       }
 
+      const resCapacityMap = capacityMap.get(resId);
+
       const weeklyData: WeeklyUtilization[] = [];
       for (const weekStart of weeks) {
         const weekEnd = new Date(weekStart.getTime() + WEEK_MS);
@@ -370,7 +392,7 @@ export class ResourceService {
 
         const weekKey = weekStart.toISOString().slice(0, 10);
         const actual = actualByWeek?.get(weekKey) ?? 0;
-        const capacity = await resourceAvailabilityService.getEffectiveCapacity(resId, weekStart, baseCapacity);
+        const capacity = resCapacityMap?.get(weekKey) ?? baseCapacity;
         const utilization = capacity > 0 ? Math.round((allocated / capacity) * 100) : 0;
         if (utilization > 100) isOverAllocated = true;
         totalUtilization += utilization;

@@ -52,6 +52,13 @@ export class ResourceRepository extends BaseRepository<Resource> {
     return this.mapRows(rows);
   }
 
+  async findByIds(ids: string[]): Promise<Resource[]> {
+    if (ids.length === 0) return [];
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = await this.queryRaw(`SELECT * FROM resources WHERE id IN (${placeholders})`, ids);
+    return this.mapRows(rows);
+  }
+
   async findAllOrdered(): Promise<Resource[]> {
     const rows = await this.queryRaw('SELECT * FROM resources ORDER BY name LIMIT 1000');
     return this.mapRows(rows);

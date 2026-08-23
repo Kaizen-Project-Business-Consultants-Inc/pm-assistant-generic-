@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
+import fsPromises from 'fs/promises';
 import path from 'path';
 import { fileAttachmentRepository, FileAttachmentRow } from '../database/FileAttachmentRepository';
 import { config } from '../config';
@@ -70,7 +71,7 @@ export class FileAttachmentService {
     const dir = this.getUploadDir(entityType, entityId);
     this.ensureDir(dir);
     const filePath = path.join(dir, storedName);
-    fs.writeFileSync(filePath, buffer);
+    await fsPromises.writeFile(filePath, buffer);
 
     await fileAttachmentRepository.insert(id, entityType, entityId, uploadedBy, storedName, originalName, mimeType, buffer.length, filePath, 1, null);
 
@@ -124,7 +125,7 @@ export class FileAttachmentService {
     const dir = this.getUploadDir(parent.entityType, parent.entityId);
     this.ensureDir(dir);
     const filePath = path.join(dir, storedName);
-    fs.writeFileSync(filePath, buffer);
+    await fsPromises.writeFile(filePath, buffer);
 
     await fileAttachmentRepository.insert(id, parent.entityType, parent.entityId, uploadedBy, storedName, originalName, mimeType, buffer.length, filePath, nextVersion, rootId);
 

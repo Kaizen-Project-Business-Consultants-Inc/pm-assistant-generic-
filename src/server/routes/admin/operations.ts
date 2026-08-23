@@ -116,10 +116,10 @@ function getDiskUsage(): { usedGB: number; totalGB: number; percentUsed: number 
   }
 }
 
-function getSwapUsage(): { usedMB: number; totalMB: number; percentUsed: number } | null {
+async function getSwapUsage(): Promise<{ usedMB: number; totalMB: number; percentUsed: number } | null> {
   try {
     // Read /proc/meminfo directly instead of shell commands
-    const meminfo = fs.readFileSync('/proc/meminfo', 'utf8');
+    const meminfo = await fs.promises.readFile('/proc/meminfo', 'utf8');
     const swapTotal = meminfo.match(/SwapTotal:\s+(\d+)\s+kB/);
     const swapFree = meminfo.match(/SwapFree:\s+(\d+)\s+kB/);
     if (!swapTotal || !swapFree) return null;
@@ -427,7 +427,7 @@ export async function operationsRoutes(fastify: FastifyInstance) {
       const osMemoryPercent = Math.round((osUsedMB / osTotalMB) * 100 * 10) / 10;
 
       // Swap
-      const swap = getSwapUsage();
+      const swap = await getSwapUsage();
 
       const cpuUsage = process.cpuUsage();
       const uptimeMs = process.uptime() * 1000000; // microseconds
