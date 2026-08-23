@@ -54,6 +54,9 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
    - Click **Start Free Trial** for a 14-day free trial (no credit card required).
    - Click **Subscribe** on a paid plan (Consultant Basic, Consultant Pro, or SME) to go straight to checkout.
 4. Fill in your email, password, and other details on the registration form.
+   - Both password fields must match before the form can be submitted.
+   - Check the **Terms of Service** checkbox — the **Create Account** button stays disabled until you accept.
+   - If you were invited to join an organization, the form shows **"Join [organization name]"** and pre-fills the organization context automatically.
 5. Verify your email address using the link sent to your inbox.
 
 > **Note:** Each email address is eligible for one free 14-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
@@ -70,18 +73,21 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 On your very first login, a **3-step onboarding wizard** appears to help you get set up:
 
 **Step 1 — Your Profile**
-- Enter your full name.
+- Enter your full name and choose a username.
 - Select your role from the dropdown (e.g., Project Manager, Team Member, Executive).
-- Choose your preferred methodology: Waterfall, Agile, or Hybrid. This sets the default view mode and tab ordering on new projects.
+- Choose your preferred methodology: Waterfall, Agile, or Hybrid. This sets the default view mode and tab ordering on new projects, and filters the template list in Step 2.
 
 **Step 2 — Create Your First Project (optional)**
-- Pick a project template from the library to pre-populate tasks, milestones, and dependencies.
-- Or skip this step if you prefer to create a project manually later.
+- Pick a project template from the library to pre-populate tasks, milestones, and dependencies. Templates are sorted to match your methodology choice, and up to 6 are shown.
+- You can skip this step — just click **Skip** to go straight to the confirmation screen. You can always create a project manually from the Projects page later.
 
-**Step 3 — You're ready**
-- Links to the Dashboard, Projects page, and Mjuzi AI Chat to get started.
+**Step 3 — You're all set**
+- A confirmation screen shows your trial details (start date, end date, and what's included).
+- If you created a project in Step 2, you are taken directly to that project's Overview page. Otherwise, you land on the My Work page.
 
 The wizard only appears once. After you complete or dismiss it, it will not show again.
+
+> **Abandoned checkout:** If you started a paid subscription checkout but did not complete the Stripe payment, you will see a notice on the onboarding page letting you know. Your free trial is still active — you can subscribe at any time from the **Pricing** page without losing any trial time.
 
 ### Dashboard Overview
 
@@ -2594,6 +2600,8 @@ The generated report contains four sections:
 
 The **My Work** page (`/my-work`) is the first page you see after logging in. It shows all tasks assigned to you across every project in one place, so you do not need to open each project individually to find your work.
 
+If you are new and have no assigned tasks yet, a welcome screen appears with shortcuts to create a project or explore templates — the task list appears as soon as you are assigned work.
+
 ### Task Buckets
 
 Tasks are grouped into six collapsible sections:
@@ -2603,11 +2611,11 @@ Tasks are grouped into six collapsible sections:
 | **Overdue** | Tasks past their due date that are not yet complete |
 | **Due Today** | Tasks due today |
 | **Due This Week** | Tasks due within the next 7 days |
-| **In Progress** | Tasks you have started with no imminent due date |
+| **In Progress** | Tasks you have started. Tasks with no due date always appear here rather than in Overdue or Upcoming. |
 | **Upcoming** | Not-started tasks with a future due date beyond this week |
 | **Recently Completed** | Tasks you completed in the last 14 days |
 
-Each section header shows a count of how many tasks it contains. Empty sections are hidden automatically. If you have no assigned tasks at all, a message is shown.
+Each section header shows a count of how many tasks it contains. Empty sections are hidden automatically.
 
 ### Reading the Task List
 

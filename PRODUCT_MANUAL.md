@@ -1476,6 +1476,10 @@ The `TemplateService` allows saving a project's structure as a reusable template
 - Shared or private visibility
 - Apply a template to create a new project with pre-populated structure
 
+#### Template Picker (Onboarding)
+
+The onboarding wizard's Step 2 presents a **methodology-aware template picker**. Templates are sorted by relevance to the user's chosen methodology (from Step 1) but are never filtered out — all templates (up to 6) remain visible so users always have choices. The **Hybrid** methodology matches all templates. Users can pick any template or skip this step entirely.
+
 #### Built-In Templates
 
 The system ships with **14 built-in templates** (up from 10). The 4 new additions are:
@@ -1755,7 +1759,7 @@ Paid subscribers (Consultant, SME, and Enterprise tiers) can invite external cli
 2. They enter the invitee's email address and select one or more projects to share.
 3. The system checks the inviting user's remaining invite quota. If the quota is exhausted, the invite is blocked with a clear upgrade prompt.
 4. An invitation email is sent to the invitee. If the email does not match an existing account, a viewer account is auto-provisioned on first acceptance.
-5. The invitee clicks the link, completes registration (password only — no billing), and lands on a read-only project view.
+5. The invitee clicks the link and sees the registration page with messaging that says **"You've been invited to join this organization"** (not "invited as a viewer"). They complete registration (password only — no billing) and land on a read-only project view.
 6. The inviting user can revoke access at any time from their invite management panel.
 
 **Role:** Invited viewers receive the `viewer` system role. This role has read scope only, plus the ability to update RAID items they own (see Section 45 for RAID role-based permissions).
@@ -1794,6 +1798,8 @@ From the pricing cards, users choose their plan:
 - **"Subscribe"** on paid plan cards links to `/register?tier=<tier>&billing=<billing>`, which creates the account and redirects to Stripe checkout
 
 The `/register` page remains directly accessible for invite links and direct URL access.
+
+**Registration form guards:** The submit button is disabled until both conditions are met: the user has accepted the Terms of Service checkbox, and the password and confirm-password fields match. This prevents accidental form submission with mismatched credentials.
 
 ### Pricing Page
 
@@ -2498,13 +2504,19 @@ New users see a **3-step onboarding wizard** on their first login after registra
 
 | Step | Content |
 |------|---------|
-| **Step 1 — Profile** | Full name, role selector (dropdown: project_manager, team_member, executive, etc.), and preferred methodology (waterfall/agile/hybrid). Role is persisted to the backend only during onboarding (when `fullName` is null), preventing accidental role changes later. |
-| **Step 2 — First Project** | Optional project creation from a template. Users can pick a template from the library or skip this step. |
+| **Step 1 — Profile** | Full name, role selector (dropdown: project_manager, team_member, executive, etc.), and preferred methodology (waterfall/agile/hybrid). Role is persisted to the backend only during onboarding (when `fullName` is null), preventing accidental role changes later. The "Other" role option displays "You can change this in Settings" to reassure users. |
+| **Step 2 — Template Picker** | Template selection step where the user picks a methodology-matched template or skips. Templates are sorted by relevance to the chosen methodology — all templates remain visible (up to 6) rather than filtered, so the user always sees options. Hybrid methodology matches all templates. |
 | **Step 3 — Done** | Completion screen with navigation links to Dashboard, Projects, and Mjuzi AI Chat. |
+
+All three steps are fully reachable. A previous redirect bug that sent users away from the wizard after Step 1 (before Steps 2 and 3 could be shown) has been fixed.
+
+After creating a project in Step 2, the user is taken to the project's **Overview** tab (not the Gantt chart), which is the appropriate starting point for a brand-new project.
 
 First-login detection uses `sessionStorage` (set once per browser session after registration). Completing or dismissing the wizard persists a flag in `localStorage` so it does not reappear on subsequent logins.
 
 The `apiService.updateProfile()` call in Step 1 accepts an optional `role` parameter, which is applied by the backend only when the user's `fullName` is currently null (i.e., this is their first profile save).
+
+**Abandoned checkout banner:** If a user selects a paid plan, gets redirected to Stripe, and abandons the checkout without completing payment, the onboarding page detects the incomplete checkout state and shows a dismissible banner explaining that the checkout was not completed, with a link to the Pricing page to try again. The banner is cleared automatically on a successful Stripe return or after the user completes Step 1 of onboarding.
 
 Component: `src/client/src/components/onboarding/WelcomeModal.tsx`
 
@@ -3310,20 +3322,27 @@ The API (`GET /api/v1/my-work`) queries two assignment paths:
 
 Results are deduplicated and span all projects the user belongs to. Completed tasks are included only if completed within the last 14 days (Recently Completed bucket).
 
+### Empty States
+
+- **No projects yet** — new users who have not created any projects see a welcome screen with two CTAs: **Create a Project** (links to `/projects`) and **Use a Template** (opens the New Project wizard on the template picker step). This replaces a blank page that previously showed for brand-new accounts.
+- **Projects exist but no tasks assigned** — users with projects but no personal task assignments see an "all caught up" message with a link to the Projects page.
+
 ### Buckets
 
 Tasks are grouped into six collapsible sections, evaluated in priority order:
 
 | Bucket | Criteria |
 |---|---|
-| **Overdue** | Due date is in the past and status is not complete |
-| **Due Today** | Due date is today |
+| **Overdue** | Due date is in the past (local time) and status is not complete |
+| **Due Today** | Due date is today (local time) |
 | **Due This Week** | Due date is within the next 7 days (excludes today) |
-| **In Progress** | Status = `in_progress` with no near due date |
+| **In Progress** | Status = `in_progress` regardless of due date; tasks with no due date fall here rather than Upcoming |
 | **Upcoming** | Status = `not_started` or `planning` with a future due date beyond this week |
-| **Recently Completed** | Completed within the last 14 days |
+| **Recently Completed** | Completed within the last 14 days; tasks completed with no end date recorded also appear here |
 
-Each section header shows a count badge. Sections with no tasks are hidden. If the user has no assigned tasks at all, an empty state is shown.
+Each section header shows a count badge. Sections with no tasks are hidden.
+
+**Date comparison:** All due-date comparisons use the user's **local time zone**, not UTC. This prevents tasks from incorrectly appearing as overdue in the evening hours when the UTC date has rolled over but the user's local date has not.
 
 ### Task Row Layout
 
@@ -3336,6 +3355,8 @@ Each row displays:
 - **Status chip** — matches the standard status color scheme used elsewhere in the app
 
 Clicking a task row navigates to the project's Schedule tab with that task pre-selected and scrolled into view.
+
+Task rows are rendered as proper `<Link>` elements for full keyboard and screen reader accessibility, rather than interactive `div`/`span` wrappers with ARIA role overrides.
 
 ### Sidebar Position
 
