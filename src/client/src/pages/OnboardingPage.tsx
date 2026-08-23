@@ -92,13 +92,25 @@ export const OnboardingPage: React.FC = () => {
     }
   };
 
-  const filteredTemplates = templates.filter((t) => {
-    if (!methodology) return true;
-    const cat = (t.category || t.projectType || '').toLowerCase();
-    if (methodology === 'waterfall') return cat.includes('waterfall') || cat.includes('construction') || cat.includes('infrastructure');
-    if (methodology === 'agile') return cat.includes('agile') || cat.includes('software') || cat.includes('sprint');
-    return true; // hybrid — show all
-  }).slice(0, 4);
+  // Sort templates: methodology-matching ones first, then the rest
+  const filteredTemplates = [...templates].sort((a, b) => {
+    if (!methodology) return 0;
+    const catA = (a.category || a.projectType || '').toLowerCase();
+    const catB = (b.category || b.projectType || '').toLowerCase();
+    const matchA = methodology === 'waterfall'
+      ? (catA.includes('waterfall') || catA.includes('construction') || catA.includes('infrastructure'))
+      : methodology === 'agile'
+        ? (catA.includes('agile') || catA.includes('software') || catA.includes('sprint'))
+        : false;
+    const matchB = methodology === 'waterfall'
+      ? (catB.includes('waterfall') || catB.includes('construction') || catB.includes('infrastructure'))
+      : methodology === 'agile'
+        ? (catB.includes('agile') || catB.includes('software') || catB.includes('sprint'))
+        : false;
+    if (matchA && !matchB) return -1;
+    if (!matchA && matchB) return 1;
+    return 0;
+  }).slice(0, 6);
 
   const handleCreateProject = async () => {
     if (!selectedTemplate || !projectName.trim()) return;
@@ -344,42 +356,58 @@ export const OnboardingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSkipProject}
-                className="w-full mt-3 flex justify-center items-center gap-1 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                className="w-full mt-3 flex justify-center items-center gap-1.5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
               >
-                <SkipForward className="w-3.5 h-3.5" /> Skip for now
+                <SkipForward className="w-4 h-4" /> I'll create a project later
               </button>
             </>
           )}
 
           {/* Step 3: Done */}
-          {step === 3 && (
-            <div className="text-center py-4">
-              <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+          {step === 3 && (() => {
+            const trialEnd = user?.trialEndsAt ? new Date(user.trialEndsAt) : null;
+            const daysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 14;
+            return (
+              <div className="text-center py-4">
+                <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">You're all set!</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  {createdProjectId
+                    ? 'Your project is ready. Dive in and start planning.'
+                    : 'Your profile is set up. Head to the dashboard to get started.'}
+                </p>
+
+                {user?.subscriptionTier === 'trial' && (
+                  <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-4 mb-6 text-left">
+                    <p className="text-sm font-medium text-primary-800 dark:text-primary-300">
+                      Your 14-day free trial is active
+                    </p>
+                    <p className="text-xs text-primary-600 dark:text-primary-400 mt-1">
+                      You have {daysLeft} days to explore all Pro features — AI analysis, Gantt charts, reports, and more. No credit card required.
+                    </p>
+                  </div>
+                )}
+
+                {createdProjectId ? (
+                  <button
+                    onClick={() => navigate(`/project/${createdProjectId}?tab=schedule`, { replace: true })}
+                    className="w-full flex justify-center items-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+                  >
+                    Go to your project <ArrowRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate('/dashboard', { replace: true })}
+                    className="w-full flex justify-center items-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+                  >
+                    Go to Dashboard <ArrowRight className="w-4 h-4" />
+                  </button>
+                )}
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">You're all set!</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                {createdProjectId
-                  ? 'Your project is ready. Dive in and start planning.'
-                  : 'Your profile is set up. Head to the dashboard to get started.'}
-              </p>
-              {createdProjectId ? (
-                <button
-                  onClick={() => navigate(`/project/${createdProjectId}?tab=schedule`, { replace: true })}
-                  className="w-full flex justify-center items-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 transition-colors"
-                >
-                  Go to your project <ArrowRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => navigate('/dashboard', { replace: true })}
-                  className="w-full flex justify-center items-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 transition-colors"
-                >
-                  Go to Dashboard <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </div>
