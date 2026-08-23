@@ -787,6 +787,60 @@ export class EmailService {
       `,
     });
   }
+
+  async sendLaunchAnnouncementEmail(to: string): Promise<void> {
+    if (!this.isConfigured) {
+      logger.info(`[EmailService] Launch announcement would be sent to ${maskPii(to)}`);
+      return;
+    }
+
+    const signupUrl = `${config.APP_URL}/register`;
+
+    await this.sendEmail({
+      from: config.RESEND_FROM_EMAIL,
+      to,
+      subject: 'Kovarti PM is Live — Your Early Access Awaits',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <h1 style="color: #4f46e5; font-size: 28px; margin: 0;">Kovarti PM is Live!</h1>
+            <p style="color: #6b7280; font-size: 16px; margin-top: 8px;">The wait is over.</p>
+          </div>
+
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+            You signed up for early access to Kovarti PM, and we're excited to let you know — <strong>we just launched!</strong>
+          </p>
+
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+            As a thank you for being an early supporter, here's what you get:
+          </p>
+
+          <ul style="color: #374151; font-size: 15px; line-height: 1.8; padding-left: 20px;">
+            <li><strong>14-day free trial</strong> — full access, no credit card required</li>
+            <li><strong>20% off</strong> your first year of Pro (annual plan)</li>
+            <li><strong>Founders badge</strong> — exclusive to launch-week subscribers</li>
+          </ul>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${signupUrl}" style="display: inline-block; background: #4f46e5; color: white; font-weight: 600; font-size: 16px; padding: 14px 32px; border-radius: 8px; text-decoration: none;">
+              Create Your Account
+            </a>
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+            The 20% launch discount expires one week after launch, so don't wait too long.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
+
+          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+            You received this email because you joined the Kovarti PM waitlist.
+            <br />If you no longer wish to receive emails, simply ignore this message.
+          </p>
+        </div>
+      `,
+    });
+  }
 }
 
 export const emailService = new EmailService();

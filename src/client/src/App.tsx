@@ -23,7 +23,6 @@ const TermsPage = lazy(() => import('./pages/TermsPage').then(m => ({ default: m
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
 const UserGuidePublicPage = lazy(() => import('./pages/UserGuidePublicPage').then(m => ({ default: m.UserGuidePublicPage })));
 const PrelaunchLandingPage = lazy(() => import('./pages/PrelaunchLandingPage').then(m => ({ default: m.PrelaunchLandingPage })));
-const WaitlistAdminPage = lazy(() => import('./pages/WaitlistAdminPage').then(m => ({ default: m.WaitlistAdminPage })));
 const PortalViewPage = lazy(() => import('./pages/PortalViewPage'));
 const MyWorkPage = lazy(() => import('./pages/MyWorkPage'));
 const DashboardPM = lazy(() => import('./pages/DashboardPM').then(m => ({ default: m.DashboardPM })));
@@ -54,6 +53,7 @@ const AdminFeedbackPage = lazy(() => import('./pages/admin/AdminFeedbackPage').t
 const AdminRevenuePage = lazy(() => import('./pages/admin/AdminRevenuePage').then(m => ({ default: m.AdminRevenuePage })));
 const AdminPricingPage = lazy(() => import('./pages/admin/AdminPricingPage').then(m => ({ default: m.AdminPricingPage })));
 const AdminSchedulesPage = lazy(() => import('./pages/admin/AdminSchedulesPage').then(m => ({ default: m.AdminSchedulesPage })));
+const AdminWaitlistPage = lazy(() => import('./pages/admin/AdminWaitlistPage').then(m => ({ default: m.AdminWaitlistPage })));
 const AgentProposalsPage = lazy(() => import('./pages/AgentProposalsPage').then(m => ({ default: m.AgentProposalsPage })));
 const ChangeRequestsPage = lazy(() => import('./pages/ChangeRequestsPage').then(m => ({ default: m.ChangeRequestsPage })));
 const GoalsPage = lazy(() => import('./pages/GoalsPage').then(m => ({ default: m.GoalsPage })));
@@ -129,7 +129,7 @@ function App() {
         <Route path={ROUTES.terms} element={<TermsPage />} />
         <Route path={ROUTES.privacy} element={<PrivacyPage />} />
         <Route path={ROUTES.guide} element={<UserGuidePublicPage />} />
-        <Route path={ROUTES.waitlistAdmin} element={<WaitlistAdminPage />} />
+        <Route path={ROUTES.waitlistAdmin} element={<Navigate to={ROUTES.adminWaitlist} replace />} />
         <Route path={ROUTE_PATTERNS.portal} element={<PortalViewPage />} />
         <Route path={ROUTES.onboarding} element={isAuthenticated ? <OnboardingPage /> : <Navigate to={ROUTES.login} replace />} />
 
@@ -171,6 +171,7 @@ function App() {
         <Route path={ROUTES.adminRevenue} element={<PrivateRoute requiredRole="admin"><AdminRevenuePage /></PrivateRoute>} />
         <Route path={ROUTES.adminPricing} element={<PrivateRoute requiredRole="admin"><AdminPricingPage /></PrivateRoute>} />
         <Route path={ROUTES.adminSchedules} element={<PrivateRoute requiredRole="admin"><AdminSchedulesPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminWaitlist} element={<PrivateRoute requiredRole="admin"><AdminWaitlistPage /></PrivateRoute>} />
         <Route path={ROUTES.admin} element={<Navigate to={ROUTES.adminUsers} replace />} />
 
         {/* Catch-all */}

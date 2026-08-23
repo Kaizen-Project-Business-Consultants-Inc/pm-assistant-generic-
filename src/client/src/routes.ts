@@ -52,6 +52,7 @@ export const ROUTES = {
   adminRevenue: '/admin/revenue',
   adminPricing: '/admin/pricing',
   adminSchedules: '/admin/schedules',
+  adminWaitlist: '/admin/waitlist',
   admin: '/admin',
 } as const;
 

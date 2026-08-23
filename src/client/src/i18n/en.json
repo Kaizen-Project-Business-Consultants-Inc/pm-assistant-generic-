@@ -32,6 +32,7 @@
     "adminSystem": "Configuration",
     "adminAudit": "Audit Trail",
     "adminSchedules": "Schedules",
+    "adminWaitlist": "Waitlist",
     "switchToAdmin": "Switch to Admin",
     "switchToPm": "Switch to PM View",
     "help": "Help",

@@ -40,6 +40,7 @@ import {
   Calendar,
   CalendarClock,
   CheckSquare,
+  Mail,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -135,6 +136,7 @@ const adminNavSections: NavSection[] = [
       { labelKey: 'nav.adminSystem', icon: Settings, path: '/admin/system' },
       { labelKey: 'nav.adminAudit', icon: ScrollText, path: '/admin/audit' },
       { labelKey: 'nav.adminSchedules', icon: CalendarClock, path: '/admin/schedules' },
+      { labelKey: 'nav.adminWaitlist', icon: Mail, path: '/admin/waitlist' },
     ],
   },
   {

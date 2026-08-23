@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
-import { timingSafeEqual } from 'crypto';
+import { authMiddleware } from '../../middleware/auth';
 import { databaseService } from '../../database/connection';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { emailService } from '../../services/EmailService';
@@ -11,7 +11,18 @@ const joinSchema = z.object({
   email: z.string().email(),
 });
 
+function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
+  const user = request.user!;
+  if (!user || user.role !== 'admin') {
+    reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
+    return false;
+  }
+  return true;
+}
+
 export async function waitlistRoutes(fastify: FastifyInstance) {
+  // --- Public endpoints (no auth) ---
+
   fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
     // Rate limit: 5 signups per IP per hour (shared IPs behind NAT)
     const ip = request.ip || 'unknown';
@@ -61,26 +72,18 @@ export async function waitlistRoutes(fastify: FastifyInstance) {
     return reply.send({ count: rows[0]?.count ?? 0 });
   });
 
-  fastify.get('/admin', async (request: FastifyRequest, reply: FastifyReply) => {
-    const adminKey = process.env.WAITLIST_ADMIN_KEY;
-    if (!adminKey) return reply.status(503).send({ error: 'Waitlist admin not configured' });
-    const key = request.headers['x-admin-key'] as string | undefined;
-    if (!key || key.length !== adminKey.length || !timingSafeEqual(Buffer.from(key), Buffer.from(adminKey))) {
-      return reply.status(401).send({ error: 'Unauthorized' });
-    }
+  // --- Admin endpoints (JWT auth) ---
+
+  fastify.get('/admin/list', { preHandler: authMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!requireAdmin(request, reply)) return;
     const rows = await databaseService.query<any>(
-      'SELECT email, created_at FROM waitlist ORDER BY created_at DESC'
+      'SELECT email, created_at, launch_email_sent, launch_email_sent_at FROM waitlist ORDER BY created_at DESC'
     );
     return reply.send({ count: rows.length, entries: rows });
   });
 
-  fastify.get('/admin/export', async (request: FastifyRequest, reply: FastifyReply) => {
-    const adminKey = process.env.WAITLIST_ADMIN_KEY;
-    if (!adminKey) return reply.status(503).send({ error: 'Waitlist admin not configured' });
-    const key = request.headers['x-admin-key'] as string | undefined;
-    if (!key || key.length !== adminKey.length || !timingSafeEqual(Buffer.from(key), Buffer.from(adminKey))) {
-      return reply.status(401).send({ error: 'Unauthorized' });
-    }
+  fastify.get('/admin/export', { preHandler: authMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!requireAdmin(request, reply)) return;
     const rows = await databaseService.query<any>(
       'SELECT email, created_at FROM waitlist ORDER BY created_at ASC'
     );
@@ -88,5 +91,37 @@ export async function waitlistRoutes(fastify: FastifyInstance) {
     reply.header('Content-Type', 'text/csv');
     reply.header('Content-Disposition', 'attachment; filename="waitlist.csv"');
     return reply.send(csv);
+  });
+
+  fastify.post('/admin/send-launch-email', { preHandler: authMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!requireAdmin(request, reply)) return;
+
+    const rows = await databaseService.query<any>(
+      'SELECT email FROM waitlist WHERE launch_email_sent = FALSE ORDER BY created_at ASC'
+    );
+
+    if (rows.length === 0) {
+      return reply.send({ sent: 0, message: 'All subscribers have already been emailed.' });
+    }
+
+    let sent = 0;
+    let failed = 0;
+
+    // Send individually to avoid Resend batch limits and for better tracking
+    for (const row of rows) {
+      try {
+        await emailService.sendLaunchAnnouncementEmail(row.email);
+        await databaseService.query(
+          'UPDATE waitlist SET launch_email_sent = TRUE, launch_email_sent_at = NOW() WHERE email = ?',
+          [row.email]
+        );
+        sent++;
+      } catch (err) {
+        fastify.log.error(err, `Failed to send launch email to ${row.email}`);
+        failed++;
+      }
+    }
+
+    return reply.send({ sent, failed, total: rows.length });
   });
 }

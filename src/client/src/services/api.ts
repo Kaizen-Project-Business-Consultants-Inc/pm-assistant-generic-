@@ -2814,6 +2814,25 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   }
 
   // -------------------------------------------------------------------------
+  // Waitlist Admin
+  // -------------------------------------------------------------------------
+
+  async getWaitlistEntries() {
+    const response = await this.api.get('/waitlist/admin/list');
+    return response.data;
+  }
+
+  async exportWaitlistCsv() {
+    const response = await this.api.get('/waitlist/admin/export', { responseType: 'blob' });
+    return response.data;
+  }
+
+  async sendWaitlistLaunchEmail() {
+    const response = await this.api.post('/waitlist/admin/send-launch-email', {});
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
   // Pricing Config
   // -------------------------------------------------------------------------
 
