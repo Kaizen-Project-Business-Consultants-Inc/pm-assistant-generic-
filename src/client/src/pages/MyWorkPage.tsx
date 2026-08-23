@@ -176,6 +176,7 @@ function BucketSection({ bucket }: { bucket: Bucket }) {
       <button
         className="flex items-center gap-2 w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
         onClick={() => setCollapsed(!collapsed)}
+        aria-expanded={!collapsed}
       >
         <Chevron className="w-4 h-4 text-gray-400" />
         <Icon className={`w-4 h-4 ${bucket.color}`} />

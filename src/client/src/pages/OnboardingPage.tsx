@@ -189,7 +189,7 @@ export const OnboardingPage: React.FC = () => {
 
               <form className="space-y-4" onSubmit={handleStep1Submit}>
                 {error && (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
                     <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
                   </div>
                 )}
@@ -305,7 +305,7 @@ export const OnboardingPage: React.FC = () => {
               </div>
 
               {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4" role="alert">
                   <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
                 </div>
               )}

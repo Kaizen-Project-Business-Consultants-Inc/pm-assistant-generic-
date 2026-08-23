@@ -156,14 +156,14 @@ export const RegisterPage: React.FC = () => {
           </div>
 
           {inviteToken && inviteValid === false && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4" role="alert">
               <p className="text-sm text-red-700 dark:text-red-400">This invitation link is invalid or has expired.</p>
             </div>
           )}
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
                 <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
               </div>
             )}
