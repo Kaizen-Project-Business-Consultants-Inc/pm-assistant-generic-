@@ -18,7 +18,10 @@ export const ProfileTab: React.FC = () => {
   const [pwSuccess, setPwSuccess] = useState('');
   const [pwError, setPwError] = useState('');
 
+  const nameInvalid = !fullName.trim();
+
   const handleSave = async () => {
+    if (nameInvalid) { setError('Full name is required.'); return; }
     setSaving(true);
     setError('');
     try {
@@ -51,8 +54,9 @@ export const ProfileTab: React.FC = () => {
           <input type="text" value="—" readOnly className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
-          <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name *</label>
+          <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required className={`w-full rounded-md border ${nameInvalid && error ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500`} />
+          {nameInvalid && error && <p className="text-xs text-red-500 mt-1">Full name cannot be empty.</p>}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
@@ -60,7 +64,7 @@ export const ProfileTab: React.FC = () => {
         </div>
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         <div className="flex items-center gap-3 pt-2">
-          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving || nameInvalid} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors disabled:opacity-50">
             <Save className="w-4 h-4" />
             {saving ? 'Saving…' : 'Save Changes'}
           </button>

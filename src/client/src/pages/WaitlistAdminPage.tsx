@@ -17,7 +17,10 @@ export const WaitlistAdminPage: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/v1/waitlist/admin?key=${encodeURIComponent(k)}`);
+      const res = await fetch('/api/v1/waitlist/admin', {
+        headers: { 'x-admin-key': k },
+      });
+      if (res.status === 503) { setError('Waitlist admin is not configured on the server.'); setLoading(false); return; }
       if (res.status === 401) { setError('Wrong password.'); setLoading(false); return; }
       const data = await res.json();
       setEntries(data.entries);
@@ -34,8 +37,24 @@ export const WaitlistAdminPage: React.FC = () => {
     load(key);
   };
 
-  const exportCsv = () => {
-    window.location.href = `/api/v1/waitlist/admin/export?key=${encodeURIComponent(key)}`;
+  const exportCsv = async () => {
+    try {
+      const res = await fetch('/api/v1/waitlist/admin/export', {
+        headers: { 'x-admin-key': key },
+      });
+      if (!res.ok) { setError('Export failed.'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'waitlist.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('Export failed.');
+    }
   };
 
   if (!authed) {

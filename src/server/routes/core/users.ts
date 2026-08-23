@@ -10,7 +10,7 @@ import logger from '../../utils/logger';
 const SELF_ASSIGNABLE_ROLES = ['project_manager', 'team_member', 'executive', 'scrum_master'] as const;
 
 const profileUpdateSchema = z.object({
-  fullName: z.string().min(1).max(200).optional(),
+  fullName: z.string().trim().min(1, 'Full name is required').max(200).optional(),
   email: z.string().email().max(255).optional(),
   username: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_]+$/, 'Username may only contain letters, numbers, and underscores').optional(),
   organizationName: z.string().min(2).max(255).optional(),

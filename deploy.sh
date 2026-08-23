@@ -99,6 +99,12 @@ else
 fi
 
 # --- Step 3: Build ---
+# Prod builds enable prelaunch mode (waitlist landing page instead of app)
+# Remove VITE_PRELAUNCH=true (or set to false) when ready to go live
+if [ "$ENV" = "prod" ]; then
+  export VITE_PRELAUNCH=true
+fi
+
 if [ "$CLIENT_ONLY" = true ]; then
   echo "[3/7] Building client only..."
   npm run build:client

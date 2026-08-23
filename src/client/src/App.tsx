@@ -11,7 +11,7 @@ import AppLayout from './components/layout/AppLayout';
 import { LoginPage } from './pages/LoginPage';
 import { LandingPage } from './pages/LandingPage';
 
-const isPrelaunch = window.location.hostname === 'kovarti.com' || window.location.hostname === 'www.kovarti.com';
+const isPrelaunch = import.meta.env.VITE_PRELAUNCH === 'true';
 
 // Lazy-loaded pages (split into separate chunks)
 const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
@@ -73,10 +73,11 @@ function PageLoader() {
   );
 }
 
-function PrivateRoute({ children, skipOnboardingCheck }: { children: React.ReactNode; skipOnboardingCheck?: boolean }) {
+function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { children: React.ReactNode; skipOnboardingCheck?: boolean; requiredRole?: string }) {
   const { isAuthenticated, user } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!skipOnboardingCheck && !user?.fullName) return <Navigate to="/onboarding" replace />;
+  if (requiredRole && user?.role !== requiredRole) return <Navigate to="/dashboard" replace />;
   return <AppLayout><RouteErrorBoundary>{children}</RouteErrorBoundary></AppLayout>;
 }
 
@@ -119,12 +120,12 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path={ROUTES.home} element={isAuthenticated ? <Navigate to={ROUTES.myWork} replace /> : (isPrelaunch ? <PrelaunchLandingPage /> : <LandingPage />)} />
-        <Route path={ROUTES.login} element={isAuthenticated ? <Navigate to={ROUTES.myWork} replace /> : <LoginPage />} />
-        <Route path={ROUTES.register} element={isAuthenticated ? <Navigate to={ROUTES.myWork} replace /> : <RegisterPage />} />
+        <Route path={ROUTES.login} element={isPrelaunch && !isAuthenticated ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated ? <Navigate to={ROUTES.myWork} replace /> : <LoginPage />)} />
+        <Route path={ROUTES.register} element={isPrelaunch && !isAuthenticated ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated ? <Navigate to={ROUTES.myWork} replace /> : <RegisterPage />)} />
         <Route path={ROUTES.verifyEmail} element={<VerifyEmailPage />} />
-        <Route path={ROUTES.forgotPassword} element={<ForgotPasswordPage />} />
-        <Route path={ROUTES.resetPassword} element={<ResetPasswordPage />} />
-        <Route path={ROUTES.pricing} element={<PricingPage />} />
+        <Route path={ROUTES.forgotPassword} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <ForgotPasswordPage />} />
+        <Route path={ROUTES.resetPassword} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <ResetPasswordPage />} />
+        <Route path={ROUTES.pricing} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <PricingPage />} />
         <Route path={ROUTES.terms} element={<TermsPage />} />
         <Route path={ROUTES.privacy} element={<PrivacyPage />} />
         <Route path={ROUTES.guide} element={<UserGuidePublicPage />} />
@@ -160,16 +161,16 @@ function App() {
         <Route path={ROUTES.evm} element={<PrivateRoute><EVMDashboardPage /></PrivateRoute>} />
         <Route path={ROUTE_PATTERNS.kpi} element={<PrivateRoute><KPIDrillInPage /></PrivateRoute>} />
         <Route path={ROUTES.agent} element={<PrivateRoute><AgentProposalsPage /></PrivateRoute>} />
-        <Route path={ROUTES.adminUsers} element={<PrivateRoute><AdminUsersPage /></PrivateRoute>} />
-        <Route path={ROUTES.adminTenants} element={<PrivateRoute><AdminTenantsPage /></PrivateRoute>} />
-        <Route path={ROUTES.adminSystem} element={<PrivateRoute><AdminSystemPage /></PrivateRoute>} />
-        <Route path={ROUTES.adminAiUsage} element={<PrivateRoute><AdminAiUsagePage /></PrivateRoute>} />
-        <Route path={ROUTES.adminAudit} element={<PrivateRoute><AdminAuditPage /></PrivateRoute>} />
-        <Route path={ROUTES.adminOperations} element={<PrivateRoute><AdminOperationsPage /></PrivateRoute>} />
-        <Route path={ROUTES.adminFeedback} element={<PrivateRoute><AdminFeedbackPage /></PrivateRoute>} />
-        <Route path={ROUTES.adminRevenue} element={<PrivateRoute><AdminRevenuePage /></PrivateRoute>} />
-        <Route path={ROUTES.adminPricing} element={<PrivateRoute><AdminPricingPage /></PrivateRoute>} />
-        <Route path={ROUTES.adminSchedules} element={<PrivateRoute><AdminSchedulesPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminUsers} element={<PrivateRoute requiredRole="admin"><AdminUsersPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminTenants} element={<PrivateRoute requiredRole="admin"><AdminTenantsPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminSystem} element={<PrivateRoute requiredRole="admin"><AdminSystemPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminAiUsage} element={<PrivateRoute requiredRole="admin"><AdminAiUsagePage /></PrivateRoute>} />
+        <Route path={ROUTES.adminAudit} element={<PrivateRoute requiredRole="admin"><AdminAuditPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminOperations} element={<PrivateRoute requiredRole="admin"><AdminOperationsPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminFeedback} element={<PrivateRoute requiredRole="admin"><AdminFeedbackPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminRevenue} element={<PrivateRoute requiredRole="admin"><AdminRevenuePage /></PrivateRoute>} />
+        <Route path={ROUTES.adminPricing} element={<PrivateRoute requiredRole="admin"><AdminPricingPage /></PrivateRoute>} />
+        <Route path={ROUTES.adminSchedules} element={<PrivateRoute requiredRole="admin"><AdminSchedulesPage /></PrivateRoute>} />
         <Route path={ROUTES.admin} element={<Navigate to={ROUTES.adminUsers} replace />} />
 
         {/* Catch-all */}

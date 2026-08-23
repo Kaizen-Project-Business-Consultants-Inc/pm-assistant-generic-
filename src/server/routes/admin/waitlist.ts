@@ -13,9 +13,9 @@ const joinSchema = z.object({
 
 export async function waitlistRoutes(fastify: FastifyInstance) {
   fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    // Rate limit: 1 signup per IP per 24 hours
+    // Rate limit: 5 signups per IP per hour (shared IPs behind NAT)
     const ip = request.ip || 'unknown';
-    const rl = rateLimiter.check(`waitlist:join:${ip}`, 1, 86_400_000);
+    const rl = await rateLimiter.checkAsync(`waitlist:join:${ip}`, 5, 3_600_000);
     if (!rl.allowed) {
       return reply.status(429).send({ error: 'A signup has already been submitted from this network. Please try again later.' });
     }
@@ -52,7 +52,7 @@ export async function waitlistRoutes(fastify: FastifyInstance) {
   fastify.get('/count', async (request: FastifyRequest, reply: FastifyReply) => {
     // Rate limit: 30 requests per minute per IP
     const ip = request.ip || 'unknown';
-    const rl = rateLimiter.check(`waitlist:count:${ip}`, 30, 60_000);
+    const rl = await rateLimiter.checkAsync(`waitlist:count:${ip}`, 30, 60_000);
     if (!rl.allowed) {
       return reply.status(429).send({ error: 'Too many requests. Please try again later.' });
     }
