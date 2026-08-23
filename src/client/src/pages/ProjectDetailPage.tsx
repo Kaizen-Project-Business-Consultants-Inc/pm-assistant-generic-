@@ -162,7 +162,25 @@ export function ProjectDetailPage() {
   const statusMutation = useMutation({
     mutationFn: ({ status, cancellationReason }: { status: string; cancellationReason?: string }) =>
       apiService.updateProjectStatus(id!, status, cancellationReason),
-    onSuccess: () => {
+    onMutate: async ({ status }) => {
+      // Optimistic update — immediately show the new status in the select
+      await queryClient.cancelQueries({ queryKey: ['project', id] });
+      const previous = queryClient.getQueryData(['project', id]);
+      queryClient.setQueryData(['project', id], (old: any) => {
+        if (!old) return old;
+        // Handle both { project: {...} } and direct project shapes
+        if (old.project) return { ...old, project: { ...old.project, status } };
+        return { ...old, status };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      // Rollback on failure
+      if (context?.previous) {
+        queryClient.setQueryData(['project', id], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
       setShowCancelModal(false);
       setCancelReason('');
