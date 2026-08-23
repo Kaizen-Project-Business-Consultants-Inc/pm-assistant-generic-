@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
+import { useMemo, useRef, useEffect, useState, useCallback, Fragment } from 'react';
 import type { ColumnState } from '../../hooks/useColumnState';
 import { useColumnDragReorder } from '../../hooks/useColumnDragReorder';
 import type { SavedView } from './SavedViewsDropdown';
@@ -84,6 +84,7 @@ export function GanttChart({
   onInsertBefore,
   nonWorkingDates,
   onDuplicateTasks,
+  onInlineInsert,
 }: {
   tasks: GanttTask[];
   scheduleName?: string;
@@ -136,6 +137,8 @@ export function GanttChart({
   nonWorkingDates?: Set<string>;
   /** Called to duplicate/paste tasks */
   onDuplicateTasks?: (tasks: GanttTask[]) => void;
+  /** Called when user creates a task via inline insert (name + position) */
+  onInlineInsert?: (name: string, afterTaskId: string, parentTaskId?: string) => void;
 }) {
   const criticalSet = useMemo(() => new Set(criticalPathTaskIds || []), [criticalPathTaskIds]);
   const baselineMap = useMemo(() => {
@@ -147,6 +150,10 @@ export function GanttChart({
     }
     return m;
   }, [baselineTasks]);
+
+  // Inline insert state — when set, a blank input row appears after the target task
+  const [inlineInsert, setInlineInsert] = useState<{ afterTaskId: string; parentTaskId?: string } | null>(null);
+
   // Zoom state — persisted per schedule in localStorage
   const [zoom, setZoom] = useState<ZoomLevel>(() => {
     if (!scheduleId) return 'month';
@@ -815,6 +822,23 @@ export function GanttChart({
     rows.forEach(({ task }, idx) => map.set(task.id, idx));
     return map;
   }, [rows]);
+
+  // Index of the row after which the inline insert row appears (-1 if none)
+  const inlineInsertIdx = useMemo(() => {
+    if (!inlineInsert) return -1;
+    return rows.findIndex(r => r.task.id === inlineInsert.afterTaskId);
+  }, [inlineInsert, rows]);
+
+  // Compute timeline row top position, accounting for the inline insert gap
+  const rowTop = useCallback((idx: number) => {
+    const extra = inlineInsertIdx >= 0 && idx > inlineInsertIdx ? ROW_H : 0;
+    return HEADER_H + idx * ROW_H + extra;
+  }, [inlineInsertIdx]);
+
+  // Total content height including inline insert row
+  const contentHeight = useMemo(() => {
+    return HEADER_H + rows.length * ROW_H + (inlineInsertIdx >= 0 ? ROW_H : 0);
+  }, [rows.length, inlineInsertIdx]);
 
   // taskId → task for O(1) lookups in render path
   const taskMap = useMemo(() => {
@@ -1572,7 +1596,7 @@ export function GanttChart({
       visEnd: Math.min(rows.length, last + OVERSCAN),
     };
   }, [shouldVirtualize, scrollPos.top, containerHeight, rows.length]);
-  const totalRowsHeight = rows.length * ROW_H;
+  const totalRowsHeight = rows.length * ROW_H + (inlineInsertIdx >= 0 ? ROW_H : 0);
 
   // Build two-tier timescale header bands
   const timescale = useMemo(() => buildTimescale(zoom, minDate, maxDate, dayPx), [zoom, minDate, maxDate, dayPx]);
@@ -1612,8 +1636,8 @@ export function GanttChart({
         if (!depStart || !depEnd) continue;
 
         const depType = (dep.dependencyType || 'FS').toUpperCase();
-        const y1 = HEADER_H + depIdx * ROW_H + ROW_H / 2;
-        const y2 = HEADER_H + idx * ROW_H + ROW_H / 2;
+        const y1 = rowTop(depIdx) + ROW_H / 2;
+        const y2 = rowTop(idx) + ROW_H / 2;
 
         let x1: number, x2: number;
         switch (depType) {
@@ -1652,12 +1676,12 @@ export function GanttChart({
       }
     }
     return result;
-  }, [rows, rowIdxMap, dayPx, minDate, shouldVirtualize, visStart, visEnd, getDepHealth]);
+  }, [rows, rowIdxMap, dayPx, minDate, shouldVirtualize, visStart, visEnd, getDepHealth, rowTop]);
 
   // Pre-compute minimap bar rectangles (expensive toDate/daysBetween for every row)
   const minimapBars = useMemo(() => {
     if (rows.length === 0) return [];
-    const contentH = HEADER_H + rows.length * ROW_H;
+    const contentH = contentHeight;
     const MINIMAP_W = 200;
     const MINIMAP_H = 80;
     const scaleX = MINIMAP_W / timelineWidth;
@@ -1670,12 +1694,12 @@ export function GanttChart({
         key: task.id,
         x: daysBetween(minDate, s) * dayPx * scaleX,
         w: Math.max(daysBetween(s, en) * dayPx * scaleX, 1),
-        y: (HEADER_H + idx * ROW_H + 4) * scaleY,
+        y: (rowTop(idx) + 4) * scaleY,
         h: Math.max((ROW_H - 8) * scaleY, 1),
         fill: barColors[task.status]?.fill || '#9ca3af',
       };
     }).filter(Boolean) as Array<{ key: string; x: number; w: number; y: number; h: number; fill: string }>;
-  }, [rows, minDate, dayPx, timelineWidth]);
+  }, [rows, minDate, dayPx, timelineWidth, contentHeight, rowTop]);
 
   const handleZoomToFit = useCallback(() => {
     const tl = timelineRef.current;
@@ -2151,6 +2175,24 @@ export function GanttChart({
     }
   }, [toggleSelect]);
 
+  // Inline insert: intercept insert-after to show inline input instead of modal
+  const handleInsertAfter = useCallback((afterTaskId: string, parentTaskId?: string) => {
+    if (onInlineInsert) {
+      setInlineInsert({ afterTaskId, parentTaskId });
+    } else {
+      onInsertAfter?.(afterTaskId, parentTaskId);
+    }
+  }, [onInlineInsert, onInsertAfter]);
+
+  // Clear inline insert when tasks change (creation succeeded)
+  const prevTasksLenRef = useRef(tasks.length);
+  useEffect(() => {
+    if (tasks.length !== prevTasksLenRef.current && inlineInsert) {
+      setInlineInsert(null);
+    }
+    prevTasksLenRef.current = tasks.length;
+  }, [tasks.length, inlineInsert]);
+
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
       {/* Schedule title bar */}
@@ -2275,9 +2317,10 @@ export function GanttChart({
           <div style={shouldVirtualize ? { height: totalRowsHeight, position: 'relative' } : undefined}>
           {rows.map(({ task, level }, rowIdx) => {
             if (shouldVirtualize && (rowIdx < visStart || rowIdx >= visEnd)) return null;
+            const showInlineInsert = inlineInsertIdx === rowIdx;
             return (
+              <Fragment key={task.id}>
               <GanttLeftPanelRow
-                key={task.id}
                 task={task}
                 level={level}
                 rowIdx={rowIdx}
@@ -2307,7 +2350,7 @@ export function GanttChart({
                 hasOnTaskReorder={!!onTaskReorder}
                 hasOnTaskClick={!!onTaskClick}
                 hasOnTaskUpdate={!!onTaskUpdate}
-                hasOnInsertAfter={!!onInsertAfter}
+                hasOnInsertAfter={!!(onInlineInsert || onInsertAfter)}
                 hasOnDeleteTask={!!onDeleteTask}
                 onRowClick={handleRowClick}
                 onRowDoubleClick={handleRowDoubleClick}
@@ -2326,13 +2369,77 @@ export function GanttChart({
                 onDateChange={handleDateChange}
                 onCancelEditing={cancelEditing}
                 onTaskClick={onTaskClick}
-                onInsertAfter={onInsertAfter}
+                onInsertAfter={handleInsertAfter}
                 onDeleteTask={onDeleteTask}
                 onTaskUpdate={onTaskUpdate}
                 setNotesPopup={setNotesPopup}
                 setPendingDeleteIds={setPendingDeleteIds}
                 getDepHealth={getDepHealth}
               />
+              {showInlineInsert && (
+                <div
+                  className="flex items-center border-b border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20"
+                  style={{ height: ROW_H, minWidth: minRowWidth }}
+                >
+                  {/* Row number */}
+                  <div
+                    className="shrink-0 px-1 text-center text-xs text-green-400 dark:text-green-600 font-mono"
+                    style={{ width: getColWidth(GANTT_COLUMNS[0]) }}
+                  >
+                    +
+                  </div>
+                  {/* Task name input */}
+                  <div className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]), paddingLeft: `${8 + level * 20}px` }}>
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Type task name and press Enter…"
+                      className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none"
+                      onKeyDown={(e) => {
+                        const input = e.currentTarget;
+                        if (e.key === 'Enter' && input.value.trim()) {
+                          e.preventDefault();
+                          const name = input.value.trim();
+                          const afterId = inlineInsert!.afterTaskId;
+                          const parentId = inlineInsert!.parentTaskId;
+                          onInlineInsert?.(name, afterId, parentId);
+                          // Keep inline insert active for continuous entry (Tab-like in MS Project)
+                          input.value = '';
+                        }
+                        if (e.key === 'Escape') {
+                          setInlineInsert(null);
+                        }
+                        if (e.key === 'Tab') {
+                          e.preventDefault();
+                          if (input.value.trim()) {
+                            const name = input.value.trim();
+                            const afterId = inlineInsert!.afterTaskId;
+                            const parentId = inlineInsert!.parentTaskId;
+                            onInlineInsert?.(name, afterId, parentId);
+                            input.value = '';
+                          } else {
+                            setInlineInsert(null);
+                          }
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // If empty on blur, cancel
+                        if (!e.currentTarget.value.trim()) {
+                          setInlineInsert(null);
+                        }
+                      }}
+                    />
+                  </div>
+                  {/* Empty cells for remaining columns */}
+                  {orderedColumns.map(col => {
+                    if (col.key === 'rowNum' || col.key === 'name' || col.key === 'editIcon') return null;
+                    if (!isColVisible(col)) return null;
+                    return <div key={col.key} className="shrink-0" style={{ width: getColWidth(col) }} />;
+                  })}
+                  <div className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
+                </div>
+              )}
+              </Fragment>
             );
           })}
 
@@ -2432,7 +2539,7 @@ export function GanttChart({
             {/* Grid lines (vertical from lower-tier boundaries) */}
             <div
               className="absolute top-0 left-0"
-              style={{ width: timelineWidth, height: HEADER_H + rows.length * ROW_H }}
+              style={{ width: timelineWidth, height: contentHeight }}
             >
               {timescale.lower.map((band, i) => (
                 <div
@@ -2446,7 +2553,7 @@ export function GanttChart({
             {/* Non-working day shading (only at day/week zoom where individual days are visible) */}
             {nonWorkingDates && nonWorkingDates.size > 0 && (zoom === 'day' || zoom === 'week') && (() => {
               const shades: React.ReactNode[] = [];
-              const h = HEADER_H + rows.length * ROW_H;
+              const h = contentHeight;
               // Iterate through each day in visible range
               const cursor = new Date(minDate);
               for (let d = 0; d < totalDays; d++) {
@@ -2473,7 +2580,7 @@ export function GanttChart({
                   key={`stripe-${idx}`}
                   className="absolute left-0 bg-gray-50/60 dark:bg-gray-800/30 pointer-events-none"
                   style={{
-                    top: HEADER_H + idx * ROW_H,
+                    top: rowTop(idx),
                     width: timelineWidth,
                     height: ROW_H,
                   }}
@@ -2487,7 +2594,7 @@ export function GanttChart({
                 className="absolute top-0 z-20"
                 style={{
                   left: todayOffset,
-                  height: HEADER_H + rows.length * ROW_H,
+                  height: contentHeight,
                   width: 2,
                   background: '#ef4444',
                 }}
@@ -2510,7 +2617,7 @@ export function GanttChart({
 
               const left = daysBetween(minDate, bStart) * dayPx;
               const width = Math.max(daysBetween(bStart, bEnd) * dayPx, 8);
-              const top = HEADER_H + idx * ROW_H + 2;
+              const top = rowTop(idx) + 2;
               const barH = ROW_H - 4;
 
               return (
@@ -2554,7 +2661,7 @@ export function GanttChart({
                   className="absolute pointer-events-none z-20"
                   style={{
                     left,
-                    top: HEADER_H + createDrag.rowIdx * ROW_H + 4,
+                    top: rowTop(createDrag.rowIdx) + 4,
                     width: w,
                     height: ROW_H - 8,
                     border: '2px dashed #3b82f6',
@@ -2587,7 +2694,7 @@ export function GanttChart({
                 ? { bg: '#fef2f2', fill: '#dc2626', text: '#991b1b' }
                 : barColors[task.status] || barColors.pending;
               const isParent = parentTaskIds.has(task.id);
-              const top = HEADER_H + idx * ROW_H + 6;
+              const top = rowTop(idx) + 6;
               const barH = ROW_H - 12;
 
               return (
@@ -2628,7 +2735,7 @@ export function GanttChart({
               className="absolute top-0 left-0 pointer-events-none"
               style={{
                 width: timelineWidth,
-                height: HEADER_H + rows.length * ROW_H,
+                height: contentHeight,
               }}
             >
               <defs>
@@ -2701,7 +2808,7 @@ export function GanttChart({
           selectedIds={selectedIds}
           someSelected={someSelected}
           onInsertBefore={onInsertBefore}
-          onInsertAfter={onInsertAfter}
+          onInsertAfter={handleInsertAfter}
           onTaskClick={onTaskClick}
           onDeleteTask={onDeleteTask}
           onBulkDelete={onBulkDelete}

@@ -1053,9 +1053,8 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             setShowAddForm(true);
           }}
           onDeleteTask={(taskId) => deleteMutation.mutate(taskId)}
-          onInsertAfter={(afterTaskId, parentTaskId) => {
-            setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, afterTaskId });
-            setShowAddForm(true);
+          onInlineInsert={(name, afterTaskId, parentTaskId) => {
+            createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', afterTaskId, parentTaskId: parentTaskId || undefined } as any);
           }}
           onInsertBefore={(beforeTaskId, parentTaskId) => {
             setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, beforeTaskId });
@@ -1115,9 +1114,8 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
           onBulkUpdate={handleBulkUpdate}
           onBulkDelete={handleBulkDelete}
           onDeleteTask={(taskId) => deleteMutation.mutate(taskId)}
-          onInsertAfter={(afterTaskId, parentTaskId) => {
-            setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, afterTaskId });
-            setShowAddForm(true);
+          onInlineInsert={(name, afterTaskId, parentTaskId) => {
+            createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', afterTaskId, parentTaskId: parentTaskId || undefined } as any);
           }}
           onInsertBefore={(beforeTaskId, parentTaskId) => {
             setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, beforeTaskId });

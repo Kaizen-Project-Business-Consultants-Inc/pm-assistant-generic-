@@ -64,6 +64,7 @@ interface TableViewProps {
   onDeleteTask?: (taskId: string) => void;
   onInsertAfter?: (afterTaskId: string, parentTaskId?: string) => void;
   onInsertBefore?: (beforeTaskId: string, parentTaskId?: string) => void;
+  onInlineInsert?: (name: string, afterTaskId: string, parentTaskId?: string) => void;
   canUndo?: boolean;
   canRedo?: boolean;
   undoDescription?: string;
@@ -86,7 +87,7 @@ function addDaysToDate(baseDate: string, days: number): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks }: TableViewProps) {
+export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
   const [sortField, setSortField] = useState<ColumnKey | null>(null);
@@ -110,7 +111,17 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   const [copiedValue, setCopiedValue] = useState<{ field: EditableField; value: string } | null>(null);
   const [pasteFlash, setPasteFlash] = useState<{ taskId: string; field: string } | null>(null);
   const [copiedTasks, setCopiedTasks] = useState<GanttTask[]>([]);
+  const [inlineInsert, setInlineInsert] = useState<{ afterTaskId: string; parentTaskId?: string } | null>(null);
   const measureCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Clear inline insert when tasks change (creation succeeded)
+  const prevTasksLenRef = useRef(tasks.length);
+  useEffect(() => {
+    if (tasks.length !== prevTasksLenRef.current && inlineInsert) {
+      setInlineInsert(null);
+    }
+    prevTasksLenRef.current = tasks.length;
+  }, [tasks.length, inlineInsert]);
 
   const colDragKeys = useMemo(() => visibleColumns.map(c => c.key), [visibleColumns]);
   const colDrag = useColumnDragReorder({
@@ -2003,6 +2014,23 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                         >
                           <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                         </button>
+                        {(onInlineInsert || onInsertAfter) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onInlineInsert) {
+                                setInlineInsert({ afterTaskId: task.id, parentTaskId: task.parentTaskId || undefined });
+                              } else {
+                                onInsertAfter!(task.id, task.parentTaskId || undefined);
+                              }
+                            }}
+                            className="p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/20"
+                            title="Insert task below"
+                            aria-label="Insert task below"
+                          >
+                            <PlusCircle className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 hover:text-green-600" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleRowDelete(task.id)}
                           className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20"
@@ -2015,6 +2043,56 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                     </td>
                   </tr>
                 );
+              };
+
+              const renderInlineInsertRow = (afterTaskId: string) => (
+                <tr key={`inline-insert-${afterTaskId}`} className="border-b border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20">
+                  <td className="px-2 py-2">
+                    <span className="w-5 text-center text-[10px] font-medium text-green-400 dark:text-green-600">+</span>
+                  </td>
+                  {visibleColumns.map((col, ci) => (
+                    <td key={col.key} className="px-3 py-2" style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}>
+                      {ci === 0 ? (
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Type task name and press Enter…"
+                          className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none"
+                          onKeyDown={(e) => {
+                            const input = e.currentTarget;
+                            if (e.key === 'Enter' && input.value.trim()) {
+                              e.preventDefault();
+                              onInlineInsert?.(input.value.trim(), inlineInsert!.afterTaskId, inlineInsert!.parentTaskId);
+                              input.value = '';
+                            }
+                            if (e.key === 'Escape') setInlineInsert(null);
+                            if (e.key === 'Tab') {
+                              e.preventDefault();
+                              if (input.value.trim()) {
+                                onInlineInsert?.(input.value.trim(), inlineInsert!.afterTaskId, inlineInsert!.parentTaskId);
+                                input.value = '';
+                              } else {
+                                setInlineInsert(null);
+                              }
+                            }
+                          }}
+                          onBlur={(e) => {
+                            if (!e.currentTarget.value.trim()) setInlineInsert(null);
+                          }}
+                        />
+                      ) : null}
+                    </td>
+                  ))}
+                  <td className="w-10" />
+                </tr>
+              );
+
+              const renderRowWithInsert = (task: GanttTask, rowIdx: number) => {
+                const row = renderTaskRow(task, rowIdx);
+                if (inlineInsert?.afterTaskId === task.id) {
+                  return <>{row}{renderInlineInsertRow(task.id)}</>;
+                }
+                return row;
               };
 
               if (groupedSorted) {
@@ -2048,7 +2126,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                   );
                   if (!isCollapsed) {
                     for (const task of groupTasks) {
-                      rows.push(renderTaskRow(task, globalIdx));
+                      rows.push(renderRowWithInsert(task, globalIdx));
                       globalIdx++;
                     }
                   } else {
@@ -2065,14 +2143,14 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                   rows.push(<tr key="spacer-top" style={{ height: startRow * ROW_H }} />);
                 }
                 for (let i = startRow; i < endRow; i++) {
-                  rows.push(renderTaskRow(visibleSorted[i], i));
+                  rows.push(renderRowWithInsert(visibleSorted[i], i));
                 }
                 if (endRow < visibleSorted.length) {
                   rows.push(<tr key="spacer-bottom" style={{ height: (visibleSorted.length - endRow) * ROW_H }} />);
                 }
                 return rows;
               }
-              return visibleSorted.map((task, rowIdx) => renderTaskRow(task, rowIdx));
+              return visibleSorted.map((task, rowIdx) => renderRowWithInsert(task, rowIdx));
             })()}
 
             {/* MPP-style empty input rows */}
@@ -2198,10 +2276,17 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               <PlusCircle className="w-3.5 h-3.5" /> Insert Before
             </button>
           )}
-          {onInsertAfter && (
+          {(onInlineInsert || onInsertAfter) && (
             <button
               className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-              onClick={() => { onInsertAfter(contextMenu.task.id, contextMenu.task.parentTaskId || undefined); setContextMenu(null); }}
+              onClick={() => {
+                if (onInlineInsert) {
+                  setInlineInsert({ afterTaskId: contextMenu.task.id, parentTaskId: contextMenu.task.parentTaskId || undefined });
+                } else {
+                  onInsertAfter!(contextMenu.task.id, contextMenu.task.parentTaskId || undefined);
+                }
+                setContextMenu(null);
+              }}
             >
               <PlusCircle className="w-3.5 h-3.5" /> Insert After
             </button>
