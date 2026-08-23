@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, AlertTriangle, Clock, CalendarCheck, Play, CalendarDays, CheckCircle2, FolderPlus, LayoutTemplate } from 'lucide-react';
 import { apiService } from '../services/api';
 import { routeTo, ROUTES } from '../routes';
@@ -132,34 +132,26 @@ function bucketTasks(tasks: MyWorkTask[]): Bucket[] {
 }
 
 function TaskRow({ task }: { task: MyWorkTask }) {
-  const navigate = useNavigate();
-
   return (
-    <div
-      className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800 last:border-b-0"
-      onClick={() => navigate(routeTo.project(String(task.projectId), 'schedule') + `&taskId=${task.id}`)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(routeTo.project(String(task.projectId), 'schedule') + `&taskId=${task.id}`); } }}
-    >
+    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
       {/* Priority dot */}
       <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${priorityColors[task.priority] || priorityColors.medium}`} title={task.priority} />
 
-      {/* Task name */}
-      <span className="flex-1 min-w-0 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+      {/* Task name — link to task */}
+      <Link
+        to={routeTo.project(String(task.projectId), 'schedule') + `&taskId=${task.id}`}
+        className="flex-1 min-w-0 truncate text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary-600 dark:hover:text-primary-400"
+      >
         {task.name}
-      </span>
+      </Link>
 
-      {/* Project name */}
-      <span
+      {/* Project name — separate link */}
+      <Link
+        to={routeTo.project(String(task.projectId))}
         className="text-xs text-primary-600 dark:text-primary-400 hover:underline truncate max-w-[160px] flex-shrink-0"
-        onClick={(e) => { e.stopPropagation(); navigate(routeTo.project(String(task.projectId))); }}
-        role="link"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); navigate(routeTo.project(String(task.projectId))); } }}
       >
         {task.projectName}
-      </span>
+      </Link>
 
       {/* Due date */}
       <span className="text-xs text-gray-500 dark:text-gray-400 w-20 text-right flex-shrink-0">

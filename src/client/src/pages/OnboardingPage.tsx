@@ -9,7 +9,7 @@ const ROLE_OPTIONS = [
   { value: 'team_member', label: 'Team Member', icon: User, description: 'Execute tasks and track progress' },
   { value: 'executive', label: 'Executive', icon: BarChart3, description: 'Monitor portfolio and KPIs' },
   { value: 'scrum_master', label: 'Scrum Master', icon: Users, description: 'Facilitate agile ceremonies' },
-  { value: 'other', label: 'Other', icon: Zap, description: 'I\'ll set my role later' },
+  { value: 'other', label: 'Other', icon: Zap, description: 'You can change this in Settings' },
 ] as const;
 
 const METHODOLOGY_OPTIONS = [
@@ -97,20 +97,16 @@ export const OnboardingPage: React.FC = () => {
   };
 
   // Sort templates: methodology-matching ones first, then the rest
+  const isMethodologyMatch = (cat: string): boolean => {
+    if (!methodology || methodology === 'hybrid') return true; // hybrid matches all
+    if (methodology === 'waterfall') return cat.includes('waterfall') || cat.includes('construction') || cat.includes('infrastructure');
+    if (methodology === 'agile') return cat.includes('agile') || cat.includes('software') || cat.includes('sprint');
+    return false;
+  };
   const filteredTemplates = [...templates].sort((a, b) => {
     if (!methodology) return 0;
-    const catA = (a.category || a.projectType || '').toLowerCase();
-    const catB = (b.category || b.projectType || '').toLowerCase();
-    const matchA = methodology === 'waterfall'
-      ? (catA.includes('waterfall') || catA.includes('construction') || catA.includes('infrastructure'))
-      : methodology === 'agile'
-        ? (catA.includes('agile') || catA.includes('software') || catA.includes('sprint'))
-        : false;
-    const matchB = methodology === 'waterfall'
-      ? (catB.includes('waterfall') || catB.includes('construction') || catB.includes('infrastructure'))
-      : methodology === 'agile'
-        ? (catB.includes('agile') || catB.includes('software') || catB.includes('sprint'))
-        : false;
+    const matchA = isMethodologyMatch((a.category || a.projectType || '').toLowerCase());
+    const matchB = isMethodologyMatch((b.category || b.projectType || '').toLowerCase());
     if (matchA && !matchB) return -1;
     if (!matchA && matchB) return 1;
     return 0;
