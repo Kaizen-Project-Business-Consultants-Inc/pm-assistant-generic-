@@ -21,7 +21,7 @@ import {
   ArrowLeftRight,
   HelpCircle,
   UserCog,
-  MessageSquare,
+
   BookOpen,
   GitPullRequest,
   TrendingUp,
@@ -41,6 +41,7 @@ import {
   CalendarClock,
   CheckSquare,
   Mail,
+  Brain,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -80,7 +81,7 @@ const pmNavSections: NavSection[] = [
     titleKey: 'section.manage',
     items: [
       { labelKey: 'nav.resources', icon: UserCog, path: '/resources' },
-      { labelKey: 'nav.meetings', icon: MessageSquare, path: '/meetings' },
+      { labelKey: 'nav.intelligence', icon: Brain, path: '/meetings' },
       { labelKey: 'nav.lessons', icon: BookOpen, path: '/lessons' },
       { labelKey: 'nav.changeRequests', icon: GitPullRequest, path: '/change-requests' },
       { labelKey: 'nav.workflows', icon: Workflow, path: '/workflows' },

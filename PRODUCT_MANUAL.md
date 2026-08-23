@@ -775,134 +775,73 @@ The `MeetingIntelligenceService` processes meeting transcripts or notes to extra
 - Action items with assignees and due dates
 - Key decisions made
 - Risk items identified
-- Follow-up topics
+- Issues and dependencies
 
-**Trial User Experience:** Trial users who submit a transcript on the Meeting Minutes page are not blocked with a 403. Instead, `POST /api/v1/meeting-intelligence/analyze` returns a **sample meeting analysis** populated with realistic demo data: a brief executive summary, 3 sample action items (with assignees and due dates), 2 sample decisions, 1 sample risk, and 1 task update suggestion. An amber upgrade banner reads: "Sample Meeting Analysis — This is a sample analysis with demo data. Upgrade to a paid plan to process your real meeting transcripts." The **Apply Changes** button (to convert action items into tasks) and the meeting **History** list remain gated — they are hidden or disabled for trial users. No AI tokens are consumed for the sample. This follows the same pattern as Status Reports, EVM, and Monte Carlo.
+The Meeting Intelligence page (sidebar label: **Intelligence**, Brain icon, URL: `/meetings`) is a single-page flow — no tabs. It replaces the former three-tab Meeting Minutes page.
 
-### Meeting Agenda & Minutes Management
+**Trial User Experience:** Trial users who submit a transcript are not blocked with a 403. Instead, `POST /api/v1/meeting-intelligence/analyze` returns a **sample meeting analysis** populated with realistic demo data: a brief executive summary, 3 sample action items (with assignees and due dates), 2 sample decisions, 1 sample risk, and 1 task update suggestion. An amber upgrade banner reads: "Sample Meeting Analysis — This is a sample analysis with demo data. Upgrade to a paid plan to process your real meeting transcripts." The **Apply Changes** button and the **History** table remain gated for trial users. No AI tokens are consumed for the sample.
 
-Full meeting lifecycle management integrated into the Meetings page. The page now has three tabs: **Meetings** (default), **Transcript Analysis** (original AI analysis flow), and **Action Items** (cross-meeting tracker).
+#### Input Modes
 
-#### Creating a Meeting
+The top of the page presents two input modes:
 
-Meetings capture:
-- **Title** — meeting name
-- **Type** — one of 7 types: `standup`, `sprint_review`, `sprint_retro`, `planning`, `steering`, `kickoff`, `ad_hoc`
-- **Date/Time** — scheduled date and time
-- **Duration** — meeting length in minutes
-- **Location** — physical or virtual meeting location
-- **Attendees** — list of meeting participants
-- **Agenda Items** — structured agenda with ordered items
+- **Paste** — text area for pasting or typing a transcript directly. Includes a voice recording toggle (browser Speech Recognition) so users can dictate into the text area.
+- **Upload** — drag-and-drop zone accepting `.txt` (Otter.ai), `.vtt` (Teams/Zoom), or `.srt` files. The server auto-detects format, parses speaker attribution and timestamps, and feeds the cleaned text into the AI analysis pipeline via `POST /api/v1/meeting-intelligence/upload-transcript` (multipart form).
 
-#### Meeting Lifecycle
+**Read.ai** and **Otter.ai** integration buttons are shown disabled with a "Coming Soon" label.
 
-`scheduled` → `in_progress` → `completed` | `cancelled`
+An optional **Meeting Title** field lets users label the analysis for easier retrieval in the History table.
 
-- **Scheduled** — future meeting with agenda prepared
-- **In Progress** — meeting currently underway
-- **Completed** — meeting finished, notes and action items captured
-- **Cancelled** — meeting cancelled
+#### Running an Analysis
 
-#### Notes & AI Integration
+After providing input, users select the associated project and schedule, then click **Process**. The AI extracts five categories:
 
-- Freeform **notes** section for capturing discussion points during or after the meeting
-- **Upload transcript file** — upload `.txt` (Otter.ai), `.vtt` (Teams/Zoom), or `.srt` files directly from the meeting detail panel. The server auto-detects the format, parses speaker attribution and timestamps, and feeds the cleaned transcript into the AI analysis pipeline. Supported via `POST /api/v1/meeting-intelligence/upload-transcript` (multipart form).
-- **Link AI transcript analysis** — connect an existing transcript analysis to a meeting via `POST /meetings/:id/link-analysis`
-- **Import AI action items** — extract action items from a linked analysis and create tracked action items via `POST /meetings/:id/import-actions`
-- **Send meeting minutes via email** — email formatted HTML minutes (summary, action items table, decisions list) to any recipients. Pre-populated attendee list. Supported via `POST /api/v1/meetings/:id/send-minutes`.
-- **Send to RAID** — bridge meeting analysis findings into the project RAID log (see below).
+- **Summary** — concise meeting recap
+- **Action Items** — tasks with suggested assignees and due dates
+- **Decisions** — key decisions recorded
+- **Risks** — potential issues mentioned
+- **Issues** — live problems or blockers raised
+- **Dependencies** — inter-task or inter-team dependencies
+
+Action items can be converted directly into schedule tasks via **Apply Changes**.
+
+#### Analysis Results (MeetingResultPanel)
+
+After processing, the `MeetingResultPanel` renders the full analysis and provides two actions:
+
+- **Send to RAID** — opens `MeetingToRaidModal` to import extracted findings into the RAID log (see below).
+- **Send Minutes** — emails formatted HTML minutes (summary, action items table, decisions list) to specified recipients. Supported via `POST /api/v1/meetings/:id/send-minutes`.
 
 #### Send to RAID
 
-Meeting Intelligence now extracts five categories of items from transcripts: Risks, Issues, Action Items, Decisions, and Dependencies. Any linked analysis can be pushed directly into the RAID log via the **Send to RAID** workflow.
-
-**Extraction:** The AI analysis pipeline writes Issues and Dependencies to two new columns on `meeting_analyses` (added by migration `101_meeting_analysis_raid.sql`) alongside the existing risks, action items, and decisions columns.
+The AI analysis extracts five categories of RAID-relevant items: Risks, Issues, Action Items, Decisions, and Dependencies. Issues and Dependencies are stored in dedicated columns on `meeting_analyses` (added by migration `101_meeting_analysis_raid.sql`).
 
 **Workflow:**
 
-1. Open a meeting that has a linked analysis.
-2. Click **Send to RAID** on any linked analysis in the meeting detail panel.
-3. A review modal (`MeetingToRaidModal`) opens, grouping extracted items by RAID type (Risks, Issues, Actions, Decisions, Dependencies).
-4. For each item:
+1. Click **Send to RAID** in the result panel.
+2. `MeetingToRaidModal` opens, grouping items by RAID type.
+3. For each item:
    - Check or uncheck the checkbox to include or exclude it.
    - Edit the title inline.
    - Choose severity (critical / high / medium / low) and category from dropdowns.
-   - Items flagged as likely duplicates of existing open RAID records are highlighted with a warning — the duplicate check runs via `POST /api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` before the modal opens.
-5. Click **Import Selected** to create the checked items in the RAID log. All imported records are tagged with `source: 'meeting'` (added to the RAID source enum by migration `T025_raid_meeting_source.sql`).
+   - Items flagged as likely duplicates of existing open RAID records are highlighted — the duplicate check runs via `POST /api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` before the modal opens.
+4. Click **Import Selected** to create the checked items in the RAID log. All imported records are tagged with `source: 'meeting'` (migration `T025_raid_meeting_source.sql`).
 
 **Mapping logic:** The `meetingToRaidMapper.ts` utility translates Meeting Intelligence item shapes into RAID record shapes (type, severity defaults, category defaults) before submission.
 
-**API Endpoints:**
+#### Analysis History
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` | Check analysis items against existing RAID records |
-| POST | `/api/v1/meeting-intelligence/:analysisId/send-to-raid` | Import selected items into the RAID log |
+A searchable, filterable table at the bottom of the page lists all past analyses for the project. Rows are expandable to show the full result. Each row includes a **Send to RAID** button to re-push any historical analysis into the RAID log.
 
 #### API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/meetings` | List meetings for a project |
-| POST | `/api/v1/meetings` | Create a new meeting |
-| GET | `/api/v1/meetings/upcoming` | List upcoming meetings |
-| GET | `/api/v1/meetings/:id` | Get meeting details |
-| PUT | `/api/v1/meetings/:id` | Update a meeting |
-| DELETE | `/api/v1/meetings/:id` | Delete a meeting |
-| POST | `/api/v1/meetings/:id/complete` | Mark meeting as completed |
-| POST | `/api/v1/meetings/:id/cancel` | Cancel a meeting |
-| POST | `/api/v1/meetings/:id/link-analysis` | Link a transcript analysis |
-| POST | `/api/v1/meetings/:id/import-actions` | Import action items from analysis |
-| POST | `/api/v1/meetings/:id/send-minutes` | Email formatted minutes to recipients |
+| POST | `/api/v1/meeting-intelligence/analyze` | Run AI analysis on pasted transcript |
 | POST | `/api/v1/meeting-intelligence/upload-transcript` | Upload transcript file for AI analysis |
 | POST | `/api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` | Duplicate check before RAID import |
 | POST | `/api/v1/meeting-intelligence/:analysisId/send-to-raid` | Import meeting items into RAID log |
-
-### Meeting Action Item Tracker
-
-First-class action items linked to meetings with full lifecycle tracking. Action items appear in the **Action Items** tab on the Meetings page, providing a cross-meeting view of all tracked items for the project.
-
-#### Action Item Fields
-
-- **Title** — action item description
-- **Meeting** — linked meeting (source context)
-- **Assignee** — responsible person (name + optional user ID linkage)
-- **Due Date** — target completion date (overdue items highlighted)
-- **Priority** — `low`, `medium`, `high`, `critical`
-- **Status** — `open`, `in_progress`, `completed`, `cancelled`
-- **Source** — `manual` (created by user) or `ai_extracted` (imported from AI analysis)
-- **Notes** — additional context or follow-up details
-
-#### Status Flow
-
-`open` → `in_progress` → `completed` | `cancelled`
-
-- **Inline status toggle** — checkbox to quickly complete or reopen an item
-- **Expand-to-edit** — click an item to expand inline editing for description, due date, assignee, priority, status, and notes
-- **Filters** — filter by status, assignee, or overdue items
-
-#### Notifications
-
-- **Assignment notification** — sent when a user is assigned to an action item
-- **Completion notification** — sent when an action item is marked complete
-
-#### API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/meeting-action-items` | List action items (filterable) |
-| POST | `/api/v1/meeting-action-items` | Create an action item |
-| GET | `/api/v1/meeting-action-items/my` | My assigned action items |
-| GET | `/api/v1/meeting-action-items/summary` | Status counts summary |
-| GET | `/api/v1/meeting-action-items/:id` | Get action item details |
-| PUT | `/api/v1/meeting-action-items/:id` | Update an action item |
-| POST | `/api/v1/meeting-action-items/:id/complete` | Complete an action item |
-| POST | `/api/v1/meeting-action-items/:id/reopen` | Reopen an action item |
-| POST | `/api/v1/meeting-action-items/:id/cancel` | Cancel an action item |
-
-#### Database
-
-Migration `T024` creates the `meetings` table, `meeting_action_items` table, and adds a `meeting_id` column to `meeting_analyses` for linking analyses to meetings.
+| POST | `/api/v1/meetings/:id/send-minutes` | Email formatted minutes to recipients |
 
 ### Lessons Learned
 

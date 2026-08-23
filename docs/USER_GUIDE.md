@@ -129,7 +129,7 @@ The left sidebar provides access to all areas of the application:
 | Resources      | Resource workload heatmap, histogram, and capacity forecast |
 | EVM            | Earned value KPIs, trend charts, forecasts, and AI predictions |
 | Simulation     | Monte Carlo schedule simulation             |
-| Meetings       | Meeting management, transcript analysis, and action items |
+| Intelligence   | Meeting transcript analysis, RAID import, and history     |
 | Lessons        | Lessons learned knowledge base              |
 | Timesheets     | Time tracking and actual vs. estimated      |
 | Integrations   | Jira, GitHub, Slack, Trello connections     |
@@ -1420,95 +1420,63 @@ The Task Prioritization Panel analyzes your backlog and suggests an optimal task
 
 ### Meeting Intelligence
 
-The Meetings page has three tabs: **Meetings** (default), **Transcript Analysis**, and **Action Items**.
+Navigate to **Intelligence** in the sidebar (Brain icon) to reach the Meeting Intelligence Hub at `/meetings`. This is a single-page flow — there are no tabs.
 
-#### Meetings Tab -- Creating and Managing Meetings
+#### Providing Transcript Input
 
-1. Navigate to **Meetings** in the sidebar. The **Meetings** tab is selected by default.
-2. Click **New Meeting** to create a meeting.
-3. Fill in the meeting details:
-   - **Title** -- Name of the meeting.
-   - **Type** -- Choose from: Standup, Sprint Review, Sprint Retro, Planning, Steering, Kickoff, or Ad Hoc.
-   - **Date & Time** -- When the meeting is scheduled.
-   - **Duration** -- Meeting length in minutes.
-   - **Location** -- Physical room or virtual link.
-   - **Attendees** -- Add meeting participants.
-   - **Agenda Items** -- Add ordered agenda items to structure the discussion.
-4. Click **Save** to create the meeting in `scheduled` status.
-5. During or after the meeting, open it to add **Notes** (freeform text).
-6. Use the lifecycle actions:
-   - **Complete** -- Mark the meeting as finished.
-   - **Cancel** -- Cancel a scheduled meeting.
+Choose one of two input modes at the top of the page:
 
-#### Uploading a Transcript File
+- **Paste** -- Type or paste a transcript directly into the text area. Click the microphone icon to use voice recording (browser Speech Recognition) and dictate into the field.
+- **Upload** -- Drag and drop a transcript file, or click to browse. Supported formats: `.txt` (Otter.ai), `.vtt` (Teams/Zoom), `.srt`. The system auto-detects the format, extracts speaker names and timestamps, and prepares the text for analysis.
 
-1. Open a meeting from the **Meetings** tab.
-2. Click **Upload Transcript** in the meeting header.
-3. Select a transcript file (`.txt` from Otter.ai, `.vtt` from Teams/Zoom, or `.srt`).
-4. The system auto-detects the format, extracts speaker names and timestamps, and runs AI analysis.
-5. The analysis appears under **Linked Analyses** in the meeting detail.
-6. Click **Import Actions** to convert AI-extracted action items into tracked meeting action items.
+**Read.ai** and **Otter.ai** integration buttons are visible but currently disabled (labeled "Coming Soon").
 
-> **Note:** A schedule must be selected in the project/schedule dropdowns for the Upload Transcript button to be enabled.
+Optionally enter a **Meeting Title** to label the analysis for easier retrieval later.
 
-#### Sending Meeting Minutes via Email
+#### Running an Analysis
 
-1. Open a meeting that has a linked analysis.
-2. In the **Linked Analyses** section, click **Send Minutes** on any analysis.
-3. Enter recipient email addresses (comma or newline separated).
-4. Click **Send**. Recipients receive a formatted HTML email with the meeting summary, action items table (with assignees, due dates, and priority), and decisions list.
+1. Select the associated **Project** and **Schedule** from the dropdowns.
+2. Click **Process**. The AI extracts:
+   - **Summary** -- Concise meeting recap.
+   - **Action Items** -- Tasks identified from discussion, with suggested assignees and due dates.
+   - **Decisions** -- Key decisions recorded.
+   - **Risks** -- Potential issues mentioned.
+   - **Issues** -- Live problems or blockers raised in the meeting.
+   - **Dependencies** -- Inter-task or inter-team dependencies identified.
+3. Click **Apply Changes** to convert action items directly into schedule tasks.
 
 #### Sending Extracted Items to the RAID Log
 
-After a transcript analysis is linked to a meeting, the AI extracts five categories of items: Risks, Issues, Action Items, Decisions, and Dependencies. You can import any of these directly into the project RAID log.
+After analysis, the result panel shows a **Send to RAID** button. Click it to open the review modal.
 
-1. Open a meeting that has a linked analysis.
-2. In the **Linked Analyses** section, click **Send to RAID** on any analysis.
-3. A review modal opens, grouping items by RAID type (Risks, Issues, Actions, Decisions, Dependencies).
-4. For each item:
+1. The modal groups all extracted items by RAID type (Risks, Issues, Actions, Decisions, Dependencies).
+2. For each item:
    - **Check** the checkbox to include it, or uncheck to skip it.
    - **Edit the title** inline if the AI's phrasing needs adjustment.
    - **Set Severity** using the dropdown (Critical, High, Medium, Low).
    - **Set Category** using the category dropdown.
    - Items flagged with a duplicate warning match an existing open RAID record — review them carefully before importing.
-5. Click **Import Selected** to create the checked items in the RAID log.
-6. Imported records appear in the **RAID** tab tagged as **source: Meeting**.
+3. Click **Import Selected** to create the checked items in the RAID log.
+4. Imported records appear in the **RAID** tab tagged as **source: Meeting**.
 
 > **Tip:** Use the duplicate warning indicators to avoid creating redundant RAID entries. You can still import a flagged item if it represents a distinct concern from the existing record.
 
-#### Linking AI Analysis to a Meeting
+#### Sending Meeting Minutes via Email
 
-1. After running a transcript analysis (in the Transcript Analysis tab), open a meeting.
-2. Click **Link Analysis** and select the analysis to attach.
-3. Click **Import Action Items** to pull AI-extracted action items into the meeting's tracked action items.
+In the result panel, click **Send Minutes**.
 
-#### Transcript Analysis Tab
+1. Enter recipient email addresses (comma or newline separated).
+2. Click **Send**. Recipients receive a formatted HTML email with the meeting summary, action items table (with assignees, due dates, and priority), and decisions list.
 
-1. Switch to the **Transcript Analysis** tab.
-2. Paste or type a meeting transcript (or use the **Upload Transcript** button on a meeting for file-based input).
-3. Select the associated project and schedule.
-4. Click **Process**. The AI extracts:
-   - **Summary** -- Concise meeting recap.
-   - **Action items** -- Tasks identified from discussion, with suggested assignees and due dates.
-   - **Decisions** -- Key decisions recorded.
-   - **Risks** -- Potential issues mentioned.
-   - **Issues** -- Live problems or blockers raised in the meeting.
-   - **Dependencies** -- Inter-task or inter-team dependencies identified.
-5. Action items can be converted directly into schedule tasks.
-6. All five item types (Risks, Issues, Actions, Decisions, Dependencies) can be sent to the RAID log via **Send to RAID** on any linked analysis.
+#### Analysis History
 
-#### Action Items Tab -- Cross-Meeting Tracker
+A searchable, filterable table at the bottom of the page lists all past analyses for the project.
 
-1. Switch to the **Action Items** tab to see all action items across meetings for the project.
-2. Click **New Action Item** to create one manually, or import from an AI analysis.
-3. Each action item shows: title, assignee, due date, priority, status, and source (manual or AI-extracted).
-4. **Quick complete/reopen** -- Click the checkbox next to any item to toggle it between open and completed.
-5. **Expand to edit** -- Click an item to expand inline editing for description, due date, assignee, priority, status, and notes.
-6. **Filters** -- Filter the list by status (open, in progress, completed, cancelled), assignee, or overdue items.
-7. Overdue items are visually highlighted so nothing slips through the cracks.
-8. Notifications are sent when you are assigned an action item or when one of your items is completed.
+- Click any row to expand it and view the full analysis results.
+- Each row has its own **Send to RAID** button to re-import findings from a historical analysis into the RAID log.
+- Use the search box to find analyses by title or keyword, and the filter controls to narrow by date or project.
 
-> **Trial accounts:** If you are on a trial plan, clicking Process returns a **sample meeting analysis** with demo data — a brief summary, 3 sample action items (with assignees and due dates), 2 sample decisions, 1 sample risk, and 1 task update suggestion. An amber banner at the top of the page identifies it as a sample. The **Apply Changes** button (to convert action items into tasks) and the meeting **History** list are hidden or disabled for trial users. No AI tokens are consumed. Upgrade to a paid plan to process your real meeting transcripts.
+> **Trial accounts:** If you are on a trial plan, clicking Process returns a **sample meeting analysis** with demo data — a brief summary, 3 sample action items (with assignees and due dates), 2 sample decisions, 1 sample risk, and 1 task update suggestion. An amber banner at the top of the page identifies it as a sample. The **Apply Changes** button and the **History** table are hidden or disabled for trial users. No AI tokens are consumed. Upgrade to a paid plan to process your real meeting transcripts.
 
 > **Trial accounts — Stakeholder Portal:** If you are on a trial plan, the Portal Links page shows 2 sample portal links (Stakeholder Review Portal, Executive Dashboard) with an amber banner instead of your real links. The **Create Link** button is hidden. Upgrade to a paid plan to create and share real stakeholder portals.
 

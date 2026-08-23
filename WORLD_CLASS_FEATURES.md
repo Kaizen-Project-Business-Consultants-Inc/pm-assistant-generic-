@@ -267,46 +267,27 @@ An agentic AI project management platform that combines the scheduling power of 
 - "Compare Project A vs Project B" -> side-by-side analysis
 - Deep integration with all project data
 
-### 3.4 AI Meeting Minutes -> Auto-Update Project
-- Paste meeting transcript for analysis
-- **Upload transcript files** — drag-and-drop `.txt` (Otter.ai), `.vtt` (Teams/Zoom), `.srt` files
-- Auto-detects format, extracts speaker attribution and timestamps
-- AI extracts action items, decisions, risks
-- Auto-creates/updates tasks in the schedule
-- Identifies and categorizes risks from transcript
-- **Send meeting minutes via email** — formatted HTML with summary, action items table, decisions list
-- **Send to RAID** — bridge extracted findings (Risks, Issues, Actions, Decisions, Dependencies) into the RAID log with a curated review modal, duplicate detection, inline editing, and `source: 'meeting'` tagging
-
-### 3.4.1 Meeting Agenda & Minutes Management
-- Full meeting lifecycle: create, schedule, run, complete, cancel
-- 7 meeting types: standup, sprint review, sprint retro, planning, steering, kickoff, ad hoc
-- Structured agenda items, attendees, location, duration, and freeform notes
-- **Upload Transcript** button on meeting detail — upload file, auto-parse, auto-analyze
-- Link AI transcript analyses to meetings for unified context
-- Import AI-extracted action items directly into tracked action items
-- **Send Minutes** button per linked analysis — email formatted minutes to attendees
-- 3-tab Meetings page: Meetings (default), Transcript Analysis, Action Items
-
-### 3.4.2 Meeting Action Item Tracker
-- First-class action items linked to meetings with assignee and due date tracking
-- Status flow: open -> in_progress -> completed / cancelled
-- Priority levels: low, medium, high, critical
-- Inline checkbox to complete/reopen items instantly
-- Expand-to-edit for description, due date, assignee, priority, status, notes
-- Filter by status, assignee, or overdue items
-- Source tracking: manual vs AI-extracted
-- Assignment and completion notifications
-- Cross-meeting action item view for the entire project
+### 3.4 Meeting Intelligence Hub
+- Single-page flow at `/meetings` (sidebar: **Intelligence**, Brain icon) — no tabs
+- **Two input modes:** Paste (with voice recording toggle) and Upload (drag-and-drop `.txt`/`.vtt`/`.srt`)
+- Auto-detects transcript format, extracts speaker attribution and timestamps
+- Optional meeting title field for labeling analyses
+- Read.ai and Otter.ai integration buttons shown disabled with "Coming Soon"
+- AI extracts **5 categories**: Action Items (with assignees and due dates), Decisions, Risks, Issues, Dependencies
+- Auto-creates/updates tasks in the schedule via **Apply Changes**
+- **Send to RAID** — `MeetingToRaidModal` with per-item checkboxes, inline title editing, severity/category dropdowns, duplicate detection pre-check (`check-raid-duplicates`), and `source: 'meeting'` tagging on import
+- **Send Minutes** — email formatted HTML minutes (summary, action items table, decisions list) to any recipients
+- **Analysis History table** — searchable/filterable list of past analyses; expandable rows; per-row Send to RAID for re-import
 
 ### 3.4.3 Send to RAID (Meeting-to-RAID Bridge)
-- AI analysis now extracts **5 categories**: Risks, Issues, Action Items, Decisions, and Dependencies (Issues and Dependencies are new — stored in two new columns on `meeting_analyses` via migration `101_meeting_analysis_raid.sql`)
-- **Send to RAID** button on each linked analysis in the Meeting Detail Panel
+- AI analysis extracts **5 categories**: Risks, Issues, Action Items, Decisions, and Dependencies (Issues and Dependencies stored in dedicated columns on `meeting_analyses` via migration `101_meeting_analysis_raid.sql`)
+- **Send to RAID** button in the result panel after any analysis
 - `MeetingToRaidModal` groups items by RAID type with checkboxes for selective import
 - Inline title editing, severity dropdown (critical/high/medium/low), category dropdown per item
 - **Duplicate detection** — `POST /api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` runs before the modal opens and highlights probable matches against existing open RAID records
 - All imported records tagged `source: 'meeting'` (new enum value added to RAID source via migration `T025_raid_meeting_source.sql`)
 - `meetingToRaidMapper.ts` utility handles type/severity/category defaults for each meeting item shape
-- **Benchmark:** Jira (meeting-to-issue bridge), Confluence AI (action tracking) — exceeds both with per-item curation, duplicate awareness, and full RAID type coverage including Dependencies
+- **Benchmark:** Jira (meeting-to-issue bridge), Confluence AI (action tracking) — exceeds both with per-item curation, duplicate awareness, full RAID type coverage including Dependencies, and history re-import
 
 ### 3.4.4 Email Digest Enhancement
 - **3 new digest sections** added to the daily/weekly digest email:
