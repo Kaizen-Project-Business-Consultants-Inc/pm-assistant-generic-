@@ -1,490 +1,54 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Download, ChevronDown } from 'lucide-react';
 import type { ColumnState } from '../../hooks/useColumnState';
 import { useColumnDragReorder } from '../../hooks/useColumnDragReorder';
-import { SavedViewsDropdown } from './SavedViewsDropdown';
 import type { SavedView } from './SavedViewsDropdown';
-import { exportTasksCSV } from '../../utils/exportUtils';
 import { ConfirmModal } from '../ui/ConfirmModal';
-import { ResourceQuickAssign } from './ResourceQuickAssign';
+// Extracted sub-modules
+import {
+  type GanttTask,
+  type FlatRow,
+  type GanttColDef,
+  type ZoomLevel,
+  type EditableField,
+  type GanttFilters,
+  DAY_MS,
+  toDate,
+  daysBetween,
+  formatShortDate,
+  buildFlatRows,
+  barColors,
+  ROW_H,
+  HEADER_H,
+  VIRTUALIZE_THRESHOLD,
+  OVERSCAN,
+  TABLE_DEFAULT_W,
+  TABLE_MIN_W,
+  TABLE_MAX_W,
+  GANTT_COLUMNS,
+  DEFAULT_VISIBLE_COLS,
+  DEFAULT_COL_ORDER,
+  AUTO_SCROLL_EDGE,
+  AUTO_SCROLL_SPEED,
+  ZOOM_CONFIGS,
+  ZOOM_LEVELS,
+  buildTimescale,
+  FIELD_ORDER,
+  healthColor,
+} from './gantt/types';
+import { GanttLegend } from './gantt/GanttLegend';
+import { GanttContextMenu } from './gantt/GanttContextMenu';
+import { GanttNotesPopup } from './gantt/GanttNotesPopup';
+import { GanttMinimap } from './gantt/GanttMinimap';
+import { GanttFilterPanel } from './gantt/GanttFilterPanel';
+import { GanttBulkActionBar } from './gantt/GanttBulkActionBar';
+import { GanttToolbar } from './gantt/GanttToolbar';
+import type { PanelMode } from './gantt/GanttToolbar';
+import { GanttLeftPanelHeader } from './gantt/GanttLeftPanelHeader';
+import { GanttLeftPanelRow } from './gantt/GanttLeftPanelRow';
+import { GanttTimelineBar } from './gantt/GanttTimelineBar';
 
-// ---------------------------------------------------------------------------
-// Gantt Export Dropdown
-// ---------------------------------------------------------------------------
-
-function GanttExportDropdown({ ganttContainerId, scheduleName, tasks }: { ganttContainerId: string; scheduleName: string; tasks: any[] }) {
-  const [open, setOpen] = useState(false);
-  const [exporting, setExporting] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const handlePrint = () => {
-    setOpen(false);
-    const el = document.getElementById(ganttContainerId);
-    if (el) { el.style.maxHeight = 'none'; el.style.overflow = 'visible'; }
-    window.print();
-    if (el) { el.style.maxHeight = '70vh'; el.style.overflow = 'hidden'; }
-  };
-
-  const handlePdfExport = async () => {
-    setExporting('pdf');
-    setOpen(false);
-    try {
-      const el = document.getElementById(ganttContainerId);
-      if (!el) return;
-
-      // Temporarily expand for capture
-      const origMaxHeight = el.style.maxHeight;
-      const origOverflow = el.style.overflow;
-      el.style.maxHeight = 'none';
-      el.style.overflow = 'visible';
-
-      const html2pdf = (await import('html2pdf.js')).default;
-      const opts: any = {
-        margin: [5, 5, 5, 5],
-        filename: `${scheduleName}-gantt.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 1.5, useCORS: true, scrollX: 0, scrollY: 0 },
-        jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' },
-        pagebreak: { mode: ['avoid-all'] },
-      };
-      await html2pdf().set(opts).from(el).save();
-
-      el.style.maxHeight = origMaxHeight;
-      el.style.overflow = origOverflow;
-    } catch (err) {
-      console.error('PDF export failed:', err);
-    } finally {
-      setExporting(null);
-    }
-  };
-
-  const handlePngExport = async () => {
-    setExporting('png');
-    setOpen(false);
-    try {
-      const el = document.getElementById(ganttContainerId);
-      if (!el) return;
-
-      const origMaxHeight = el.style.maxHeight;
-      const origOverflow = el.style.overflow;
-      el.style.maxHeight = 'none';
-      el.style.overflow = 'visible';
-
-      const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(el, {
-        quality: 1,
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-      });
-
-      el.style.maxHeight = origMaxHeight;
-      el.style.overflow = origOverflow;
-
-      // Trigger download
-      const link = document.createElement('a');
-      link.download = `${scheduleName}-gantt.png`;
-      link.href = dataUrl;
-      link.click();
-    } catch (err) {
-      console.error('PNG export failed:', err);
-    } finally {
-      setExporting(null);
-    }
-  };
-
-  const handleCsvExport = () => {
-    setOpen(false);
-    exportTasksCSV(tasks, scheduleName);
-  };
-
-  const btnClass = 'w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
-
-  return (
-    <div className="relative print:hidden" ref={dropdownRef}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-        title="Export Gantt chart"
-      >
-        <Download className="w-3.5 h-3.5" />
-        Export
-        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
-        {exporting && <span className="ml-1 w-3 h-3 border-2 border-gray-300 border-t-primary-600 rounded-full animate-spin" />}
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
-          <button onClick={handlePdfExport} className={btnClass} disabled={!!exporting}>
-            PDF (A3 Landscape)
-          </button>
-          <button onClick={handlePngExport} className={btnClass} disabled={!!exporting}>
-            PNG Image
-          </button>
-          <button onClick={handlePrint} className={btnClass}>
-            Print
-          </button>
-          <div className="border-t border-gray-100 dark:border-gray-700 my-0.5" />
-          <button onClick={handleCsvExport} className={btnClass}>
-            CSV (Task Data)
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export interface TaskDependencyRef {
-  dependencyId: string;
-  dependencyType: string;
-  lagDays: number;
-}
-
-export interface GanttTask {
-  id: string;
-  name: string;
-  description?: string;
-  status: string;
-  priority?: string;
-  startDate?: string;
-  endDate?: string;
-  progressPercentage?: number;
-  /** @deprecated Use dependencies[] */
-  dependency?: string;
-  /** @deprecated Use dependencies[] */
-  dependencyType?: string;
-  /** @deprecated Use dependencies[] */
-  dependencyLagDays?: number;
-  taskType?: string;
-  epicId?: string;
-  acceptanceCriteria?: string;
-  parentTaskId?: string;
-  assignedTo?: string;
-  estimatedDays?: number;
-  estimatedDurationHours?: number;
-  recurrenceRule?: string;
-  recurrenceParentId?: string;
-  isRecurrenceTemplate?: boolean;
-  isMilestone?: boolean;
-  sortOrder?: number;
-  dependencies?: TaskDependencyRef[];
-  budgetAllocated?: number;
-  actualCost?: number;
-  isSummary?: boolean;
-  constraintType?: string;
-  constraintDate?: string;
-  workHours?: number;
-  effortDriven?: boolean;
-  assignments?: Array<{ id: string; resourceId: string; allocationPct: number; roleOnTask?: string; hoursPlanned?: number }>;
-}
-
-interface FlatRow {
-  task: GanttTask;
-  level: number;
-  wbs: string;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const DAY_MS = 86_400_000;
-
-function toDate(s?: string): Date | null {
-  if (!s) return null;
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-function daysBetween(a: Date, b: Date): number {
-  return Math.max(1, Math.round((b.getTime() - a.getTime()) / DAY_MS));
-}
-
-function formatShortDate(d: Date, referenceYear?: number): string {
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-  if (referenceYear != null && d.getFullYear() !== referenceYear) {
-    opts.year = '2-digit';
-  }
-  return d.toLocaleDateString(undefined, opts);
-}
-
-/** Build a flat, sorted list of tasks with WBS numbers & hierarchy levels.
- *  Collapsed parents have their children omitted from the result. */
-function buildFlatRows(tasks: GanttTask[], collapsedIds?: Set<string>): FlatRow[] {
-  const rows: FlatRow[] = [];
-  const taskIds = new Set(tasks.map((t) => t.id));
-
-  // Pre-build childrenOf map to avoid O(n) filter per parent
-  const childrenOf = new Map<string | null, GanttTask[]>();
-  for (const t of tasks) {
-    const parent = (t.parentTaskId && taskIds.has(t.parentTaskId)) ? t.parentTaskId : null;
-    if (!childrenOf.has(parent)) childrenOf.set(parent, []);
-    childrenOf.get(parent)!.push(t);
-  }
-
-  const sortTasks = (list: GanttTask[]) => list.sort((a, b) => {
-    const sa = a.sortOrder ?? 0;
-    const sb = b.sortOrder ?? 0;
-    if (sa !== sb) return sa - sb;
-    const da = toDate(a.startDate)?.getTime() ?? 0;
-    const db = toDate(b.startDate)?.getTime() ?? 0;
-    return da - db;
-  });
-
-  const topLevel = sortTasks(childrenOf.get(null) || []);
-
-  function addChildren(parentId: string, level: number, parentWbs: string) {
-    if (collapsedIds?.has(parentId)) return;
-    const children = sortTasks(childrenOf.get(parentId) || []);
-    children.forEach((child, idx) => {
-      const wbs = `${parentWbs}.${idx + 1}`;
-      rows.push({ task: child, level, wbs });
-      addChildren(child.id, level + 1, wbs);
-    });
-  }
-
-  topLevel.forEach((task, idx) => {
-    const wbs = `${idx + 1}`;
-    rows.push({ task, level: 0, wbs });
-    addChildren(task.id, 1, wbs);
-  });
-
-  return rows;
-}
-
-// ---------------------------------------------------------------------------
-// Status / priority colors
-// ---------------------------------------------------------------------------
-
-const barColors: Record<string, { bg: string; fill: string; text: string }> = {
-  completed: { bg: '#dcfce7', fill: '#22c55e', text: '#166534' },
-  done: { bg: '#dcfce7', fill: '#22c55e', text: '#166534' },
-  in_progress: { bg: '#dbeafe', fill: '#3b82f6', text: '#1e40af' },
-  in_review: { bg: '#f3e8ff', fill: '#a855f7', text: '#6b21a8' },
-  testing: { bg: '#fef3c7', fill: '#f59e0b', text: '#92400e' },
-  pending: { bg: '#f3f4f6', fill: '#9ca3af', text: '#374151' },
-  not_started: { bg: '#f3f4f6', fill: '#9ca3af', text: '#374151' },
-  blocked: { bg: '#fee2e2', fill: '#ef4444', text: '#991b1b' },
-  cancelled: { bg: '#fce4ec', fill: '#78909c', text: '#37474f' },
-};
-
-const AVATAR_PALETTE = [
-  '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-];
-
-function avatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
-}
-
-function avatarInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
-
-const statusLabels: Record<string, string> = {
-  completed: 'Complete',
-  done: 'Complete',
-  in_progress: 'In Progress',
-  in_review: 'In Review',
-  testing: 'Testing',
-  pending: 'Not Started',
-  not_started: 'Not Started',
-  blocked: 'Blocked',
-  cancelled: 'Cancelled',
-};
-
-const priorityDot: Record<string, string> = {
-  urgent: 'bg-red-500',
-  high: 'bg-orange-400',
-  medium: 'bg-yellow-400',
-  low: 'bg-green-400',
-};
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const ROW_H = 36;
-const HEADER_H = 52;
-const VIRTUALIZE_THRESHOLD = 100;
-const OVERSCAN = 15;
-const TABLE_DEFAULT_W = 720;
-const TABLE_MIN_W = 200;
-const TABLE_MAX_W = 1100;
-
-// ---------------------------------------------------------------------------
-// Gantt left-panel column definitions (for resizable columns)
-// ---------------------------------------------------------------------------
-
-interface GanttColDef {
-  key: string;
-  label: string;
-  defaultWidth: number;
-  minWidth: number;
-  resizable: boolean;
-  /** Fixed columns cannot be resized and ignore width state */
-  fixed?: boolean;
-  /** If true, column cannot be hidden via column picker */
-  alwaysVisible?: boolean;
-}
-
-const GANTT_COLUMNS: GanttColDef[] = [
-  { key: 'rowNum',    label: '#',        defaultWidth: 40,  minWidth: 30,  resizable: false, fixed: true, alwaysVisible: true },
-  { key: 'name',      label: 'Task Name',defaultWidth: 250, minWidth: 120, resizable: true, alwaysVisible: true },
-  { key: 'pred',      label: 'Pred',     defaultWidth: 56,  minWidth: 40,  resizable: true },
-  { key: 'succ',      label: 'Succ',     defaultWidth: 56,  minWidth: 40,  resizable: true },
-  { key: 'start',     label: 'Start',    defaultWidth: 80,  minWidth: 60,  resizable: true },
-  { key: 'end',       label: 'End',      defaultWidth: 80,  minWidth: 60,  resizable: true },
-  { key: 'dur',       label: 'Dur',      defaultWidth: 48,  minWidth: 36,  resizable: true },
-  { key: 'est',       label: 'Est',      defaultWidth: 48,  minWidth: 36,  resizable: true },
-  { key: 'work',      label: 'Work',     defaultWidth: 56,  minWidth: 40,  resizable: true },
-  { key: 'pct',       label: '%',        defaultWidth: 48,  minWidth: 36,  resizable: true },
-  { key: 'priority',  label: 'Priority', defaultWidth: 64,  minWidth: 50,  resizable: true },
-  { key: 'assigned',  label: 'Assigned', defaultWidth: 96,  minWidth: 60,  resizable: true },
-  { key: 'resource',  label: 'Resource', defaultWidth: 110, minWidth: 70,  resizable: true },
-  { key: 'status',    label: 'Status',   defaultWidth: 64,  minWidth: 50,  resizable: true },
-  { key: 'notes',     label: 'Notes',    defaultWidth: 120, minWidth: 60,  resizable: true },
-  { key: 'editIcon',  label: '',         defaultWidth: 72,  minWidth: 72,  resizable: false, fixed: true, alwaysVisible: true },
-];
-
-/** Default visible columns — show only essential columns so the name column isn't squeezed */
-const DEFAULT_VISIBLE_COLS = new Set(['pred', 'start', 'end', 'dur', 'pct', 'status']);
-
-/** Default column order */
-const DEFAULT_COL_ORDER = GANTT_COLUMNS.map(c => c.key);
-
-/** Auto-scroll edge zone width (px) and speed */
-const AUTO_SCROLL_EDGE = 60;
-const AUTO_SCROLL_SPEED = 12;
-
-// ---------------------------------------------------------------------------
-// Zoom / Timescale
-// ---------------------------------------------------------------------------
-
-type ZoomLevel = 'day' | 'week' | 'month' | 'quarter' | 'year';
-type TierUnit = 'day' | 'week' | 'month' | 'quarter' | 'year';
-
-const ZOOM_CONFIGS: Record<ZoomLevel, { dayPx: number; lower: TierUnit; upper: TierUnit | null }> = {
-  day:     { dayPx: 32,   lower: 'day',     upper: 'month' },
-  week:    { dayPx: 10,   lower: 'week',    upper: 'month' },
-  month:   { dayPx: 3.2,  lower: 'month',   upper: 'year' },
-  quarter: { dayPx: 1.2,  lower: 'quarter', upper: 'year' },
-  year:    { dayPx: 0.27, lower: 'year',    upper: null },
-};
-
-const ZOOM_LEVELS: ZoomLevel[] = ['day', 'week', 'month', 'quarter', 'year'];
-const ZOOM_LABELS: Record<ZoomLevel, string> = { day: 'D', week: 'W', month: 'M', quarter: 'Q', year: 'Y' };
-
-interface TimescaleBand { label: string; left: number; width: number }
-interface Timescale { upper: TimescaleBand[]; lower: TimescaleBand[] }
-
-function daysBetweenRaw(a: Date, b: Date): number {
-  return (b.getTime() - a.getTime()) / DAY_MS;
-}
-
-function snapToUnitStart(d: Date, unit: TierUnit): Date {
-  const r = new Date(d);
-  r.setHours(0, 0, 0, 0);
-  switch (unit) {
-    case 'day':
-      break;
-    case 'week': {
-      // ISO week: Monday
-      const day = r.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      r.setDate(r.getDate() + diff);
-      break;
-    }
-    case 'month':
-      r.setDate(1);
-      break;
-    case 'quarter':
-      r.setDate(1);
-      r.setMonth(Math.floor(r.getMonth() / 3) * 3);
-      break;
-    case 'year':
-      r.setMonth(0, 1);
-      break;
-  }
-  return r;
-}
-
-function advanceByUnit(d: Date, unit: TierUnit): Date {
-  const r = new Date(d);
-  switch (unit) {
-    case 'day': r.setDate(r.getDate() + 1); break;
-    case 'week': r.setDate(r.getDate() + 7); break;
-    case 'month': r.setMonth(r.getMonth() + 1); break;
-    case 'quarter': r.setMonth(r.getMonth() + 3); break;
-    case 'year': r.setFullYear(r.getFullYear() + 1); break;
-  }
-  return r;
-}
-
-function getISOWeek(d: Date): number {
-  const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-  return Math.ceil(((tmp.getTime() - yearStart.getTime()) / DAY_MS + 1) / 7);
-}
-
-function formatTierLabel(d: Date, unit: TierUnit): string {
-  switch (unit) {
-    case 'day': return String(d.getDate());
-    case 'week': return `W${getISOWeek(d)}`;
-    case 'month': return d.toLocaleDateString('en-US', { month: 'short' });
-    case 'quarter': return `Q${Math.floor(d.getMonth() / 3) + 1}`;
-    case 'year': return String(d.getFullYear());
-  }
-}
-
-function formatUpperLabel(d: Date, unit: TierUnit): string {
-  switch (unit) {
-    case 'month': return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    case 'year': return String(d.getFullYear());
-    default: return formatTierLabel(d, unit);
-  }
-}
-
-function buildTier(unit: TierUnit, minDate: Date, maxDate: Date, dayPx: number, isUpper: boolean): TimescaleBand[] {
-  const bands: TimescaleBand[] = [];
-  let cursor = snapToUnitStart(new Date(minDate), unit);
-
-  while (cursor <= maxDate) {
-    const unitStart = new Date(Math.max(cursor.getTime(), minDate.getTime()));
-    const nextUnit = advanceByUnit(new Date(cursor), unit);
-    const unitEnd = new Date(Math.min(nextUnit.getTime(), maxDate.getTime()));
-
-    const left = daysBetweenRaw(minDate, unitStart) * dayPx;
-    const width = Math.max(daysBetweenRaw(unitStart, unitEnd) * dayPx, 1);
-
-    bands.push({ label: isUpper ? formatUpperLabel(cursor, unit) : formatTierLabel(cursor, unit), left, width });
-    cursor = nextUnit;
-  }
-  return bands;
-}
-
-function buildTimescale(zoom: ZoomLevel, minDate: Date, maxDate: Date, dayPx: number): Timescale {
-  const cfg = ZOOM_CONFIGS[zoom];
-  const lower = buildTier(cfg.lower, minDate, maxDate, dayPx, false);
-  const upper = cfg.upper ? buildTier(cfg.upper, minDate, maxDate, dayPx, true) : [];
-  return { upper, lower };
-}
+// Re-export types for external consumers
+export type { TaskDependencyRef, GanttTask } from './gantt/types';
 
 // ---------------------------------------------------------------------------
 // GanttChart component
@@ -631,7 +195,6 @@ export function GanttChart({
   }, [splitterDrag]);
 
   // Panel view mode: table-only, split (default), gantt-only
-  type PanelMode = 'table' | 'split' | 'gantt';
   const [panelMode, setPanelMode] = useState<PanelMode>('split');
 
   // Right-click context menu state
@@ -721,24 +284,12 @@ export function GanttChart({
       return stored ? new Set(JSON.parse(stored)) : new Set(DEFAULT_VISIBLE_COLS);
     } catch { return new Set(DEFAULT_VISIBLE_COLS); }
   });
-  const [showColPicker, setShowColPicker] = useState(false);
-  const colPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (scheduleId) {
       localStorage.setItem(`gantt-visible-cols:${scheduleId}`, JSON.stringify([...ganttVisibleCols]));
     }
   }, [ganttVisibleCols, scheduleId]);
-
-  // Close column picker on outside click
-  useEffect(() => {
-    if (!showColPicker) return;
-    const onClick = (e: MouseEvent) => {
-      if (colPickerRef.current && !colPickerRef.current.contains(e.target as Node)) setShowColPicker(false);
-    };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, [showColPicker]);
 
   // Reverse mapping: Gantt key → Table key (for checking external visibility)
   const ganttKeyToTableKey: Record<string, string> = {
@@ -979,15 +530,6 @@ export function GanttChart({
   // -----------------------------------------------------------------------
   // Filter panel state
   // -----------------------------------------------------------------------
-  interface GanttFilters {
-    statuses: Set<string>;
-    priorities: Set<string>;
-    assignee: string;
-    startAfter: string;
-    startBefore: string;
-    progressMin: number | null;
-    progressMax: number | null;
-  }
   const [filters, setFilters] = useState<GanttFilters>({ statuses: new Set(), priorities: new Set(), assignee: '', startAfter: '', startBefore: '', progressMin: null, progressMax: null });
   const [showFilters, setShowFilters] = useState(false);
 
@@ -1305,9 +847,6 @@ export function GanttChart({
     return 'in_progress';
   }, [taskMap]);
 
-  const healthColor = (health: 'satisfied' | 'in_progress' | 'at_risk') =>
-    health === 'satisfied' ? '#22c55e' : health === 'in_progress' ? '#eab308' : '#ef4444';
-
   // -----------------------------------------------------------------------
   // Drag-and-drop state (declared early so editing helpers can check it)
   // -----------------------------------------------------------------------
@@ -1414,11 +953,6 @@ export function GanttChart({
   // -----------------------------------------------------------------------
   // Inline editing state & helpers
   // -----------------------------------------------------------------------
-  type EditableField = 'name' | 'dependency' | 'startDate' | 'endDate' | 'duration' | 'estimatedDays' | 'estimatedDurationHours' | 'progressPercentage' | 'priority' | 'assignedTo' | 'status';
-  const FIELD_ORDER: EditableField[] = ['name', 'dependency', 'startDate', 'endDate', 'duration', 'estimatedDays', 'estimatedDurationHours', 'progressPercentage', 'priority', 'assignedTo', 'status'];
-  const statusOptions = ['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled'];
-  const priorityOptions = ['low', 'medium', 'high', 'urgent'];
-
   const [editingCell, setEditingCell] = useState<{ taskId: string; field: EditableField } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   // savingCell tracks the cell currently being saved (used for timing the green flash)
@@ -1426,12 +960,7 @@ export function GanttChart({
   void savingCell; // read to satisfy TS — value used internally for save timing
   const [savedCell, setSavedCell] = useState<{ taskId: string; field: string } | null>(null);
   const [depError, setDepError] = useState<{ taskId: string; message: string } | null>(null);
-  const inputRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (editingCell && inputRef.current) inputRef.current.focus();
-  }, [editingCell]);
 
   useEffect(() => {
     return () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); };
@@ -1685,17 +1214,11 @@ export function GanttChart({
     saveEdit(taskId, field, value);
   }, [saveEdit]);
 
-  const isEditing = (taskId: string, field: string) =>
-    editingCell?.taskId === taskId && editingCell.field === field;
-  const isSaved = (taskId: string, field: string) =>
-    savedCell?.taskId === taskId && savedCell.field === field;
 
   // -----------------------------------------------------------------------
   // Focused cell state (keyboard navigation without editing)
   // -----------------------------------------------------------------------
   const [focusedCell, setFocusedCell] = useState<{ taskId: string; field: EditableField } | null>(null);
-  const isFocused = (taskId: string, field: string) =>
-    focusedCell?.taskId === taskId && focusedCell.field === field && !editingCell;
 
   // -----------------------------------------------------------------------
   // Copy/paste cell state + row copy state
@@ -1913,18 +1436,6 @@ export function GanttChart({
     };
   }, [editingCell]);
 
-  const isPasteFlash = (taskId: string, field: string) =>
-    pasteFlash?.taskId === taskId && pasteFlash.field === field;
-
-  const editableCellClass = (taskId: string, field: string) => {
-    if (!onTaskUpdate) return '';
-    const base = 'relative cursor-pointer transition-all duration-150';
-    if (isEditing(taskId, field)) return `${base} ring-2 ring-blue-400 ring-inset rounded`;
-    if (isPasteFlash(taskId, field)) return `${base} ring-2 ring-green-400 ring-inset rounded bg-green-50 dark:bg-green-900/20`;
-    if (isFocused(taskId, field)) return `${base} ring-2 ring-primary-300 ring-inset rounded bg-primary-50/30 dark:bg-primary-900/20`;
-    if (isSaved(taskId, field)) return `${base} bg-green-50 dark:bg-green-900/20`;
-    return `${base} hover:bg-blue-50/50 dark:hover:bg-blue-900/20`;
-  };
 
   const timelineRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
@@ -2594,509 +2105,131 @@ export function GanttChart({
     );
   }
 
+  // -----------------------------------------------------------------------
+  // Stable callbacks for GanttLeftPanelRow
+  // -----------------------------------------------------------------------
+  const handleRowClick = useCallback((e: React.MouseEvent, task: GanttTask) => {
+    if (editingCell) return;
+    if ((e.ctrlKey || e.metaKey) && onBulkUpdate) {
+      if (!someSelected && activeTaskId && activeTaskId !== task.id) {
+        toggleSelect(activeTaskId, false);
+      }
+      toggleSelect(task.id, false);
+      return;
+    }
+    if (e.shiftKey && onBulkUpdate) {
+      if (!someSelected && activeTaskId) {
+        toggleSelect(activeTaskId, false);
+      }
+      toggleSelect(task.id, true);
+      return;
+    }
+    if (someSelected && onBulkUpdate) { toggleSelect(task.id, false); return; }
+    onTaskSelect?.(task);
+  }, [editingCell, onBulkUpdate, someSelected, activeTaskId, toggleSelect, onTaskSelect]);
+
+  const handleRowDoubleClick = useCallback((task: GanttTask) => {
+    if (!editingCell) onTaskClick?.(task);
+  }, [editingCell, onTaskClick]);
+
+  const handleRowContextMenu = useCallback((e: React.MouseEvent, task: GanttTask, rowIdx: number) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, task, rowIdx });
+  }, []);
+
+  // Stable callback for bar clicks (extracts handleBarClick logic from inline)
+  const handleBarClickCb = useCallback((e: React.MouseEvent, task: GanttTask) => {
+    if (dragDidCompleteRef.current) { dragDidCompleteRef.current = false; return; }
+    e.stopPropagation();
+    if (e.ctrlKey || e.metaKey) {
+      toggleSelect(task.id, false);
+    } else if (e.shiftKey) {
+      toggleSelect(task.id, true);
+    } else {
+      setSelectedIds(new Set([task.id]));
+      lastClickedIdRef.current = task.id;
+    }
+  }, [toggleSelect]);
+
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
       {/* Schedule title bar */}
-      {scheduleName && (
-        <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-4 rounded-full bg-primary-500" />
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-              {scheduleName}
-            </span>
-            <span className="text-xs text-gray-400 ml-2">
-              {rows.length !== baseRows.length ? `${rows.length} / ${baseRows.length}` : rows.length} tasks
-            </span>
-            {parentTaskIds.size > 0 && (
-              <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-500 ml-2">
-                <button
-                  onClick={expandAll}
-                  disabled={collapsedIds.size === 0}
-                  aria-label="Expand all"
-                  className={`px-1.5 py-0.5 text-xs rounded-l-md transition-colors ${collapsedIds.size > 0 ? 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'}`}
-                  title="Expand all"
-                >
-                  <svg className="w-3.5 h-3.5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                <button
-                  onClick={collapseAll}
-                  disabled={collapsedIds.size === parentTaskIds.size}
-                  aria-label="Collapse all"
-                  className={`px-1.5 py-0.5 text-xs rounded-r-md transition-colors ${collapsedIds.size < parentTaskIds.size ? 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'}`}
-                  title="Collapse all"
-                >
-                  <svg className="w-3.5 h-3.5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            )}
-          </div>
-          {/* Zoom controls */}
-          <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-500">
-            {ZOOM_LEVELS.map((level, i) => (
-              <button
-                key={level}
-                onClick={() => setZoom(level)}
-                className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                  zoom === level
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                } ${i === 0 ? 'rounded-l-md' : ''} ${i === ZOOM_LEVELS.length - 1 ? 'rounded-r-md' : ''}`}
-                title={level.charAt(0).toUpperCase() + level.slice(1)}
-              >
-                {ZOOM_LABELS[level]}
-              </button>
-            ))}
-          </div>
-          {/* Zoom-to-Fit button */}
-          <button
-            onClick={handleZoomToFit}
-            aria-label="Zoom to fit all tasks"
-            className="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md border border-gray-300 dark:border-gray-500 transition-colors"
-            title="Zoom to fit all tasks"
-          >
-            <svg className="w-3.5 h-3.5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
-            </svg>
-          </button>
-          {/* Undo/Redo buttons */}
-          {(onUndo || onRedo) && (
-            <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-500 ml-2">
-              <button
-                onClick={onUndo}
-                disabled={!canUndo}
-                aria-label={canUndo ? `Undo: ${undoDescription || ''}` : 'Nothing to undo'}
-                className={`px-2 py-1 text-xs rounded-l-md transition-colors ${canUndo ? 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'}`}
-                title={canUndo ? `Undo: ${undoDescription || ''}` : 'Nothing to undo'}
-              >
-                <svg className="w-3.5 h-3.5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                </svg>
-              </button>
-              <button
-                onClick={onRedo}
-                disabled={!canRedo}
-                aria-label={canRedo ? `Redo: ${redoDescription || ''}` : 'Nothing to redo'}
-                className={`px-2 py-1 text-xs rounded-r-md transition-colors ${canRedo ? 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'}`}
-                title={canRedo ? `Redo: ${redoDescription || ''}` : 'Nothing to redo'}
-              >
-                <svg className="w-3.5 h-3.5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" />
-                </svg>
-              </button>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            {/* Quick search */}
-            <div className="relative">
-              <svg className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-              <input
-                ref={searchInputRef}
-                type="text"
-                aria-label="Search tasks"
-                placeholder="Search tasks... (Ctrl+F)"
-                className="text-xs pl-7 pr-6 py-1.5 w-44 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400 focus:border-primary-400"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Escape') { setSearchQuery(''); searchInputRef.current?.blur(); } }}
-              />
-              {searchQuery && (
-                <button
-                  aria-label="Clear search"
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}
-                >
-                  <svg className="w-3 h-3" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            {/* Filter toggle */}
-            <button
-              onClick={() => setShowFilters(prev => !prev)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors border ${showFilters || activeFilterCount > 0 ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 border-primary-300 dark:border-primary-700' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-              title="Filter tasks"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
-              </svg>
-              Filter
-              {activeFilterCount > 0 && (
-                <span className="ml-0.5 px-1.5 py-0 text-[10px] font-bold bg-primary-600 text-white rounded-full">{activeFilterCount}</span>
-              )}
-            </button>
-            {onAddTask && (
-              <button
-                onClick={onAddTask}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                Add Task
-              </button>
-            )}
-            {onDeleteTask && (
-              <button
-                onClick={() => {
-                  if (activeTaskId) setPendingDeleteIds([activeTaskId]);
-                }}
-                disabled={!activeTaskId}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  activeTaskId
-                    ? 'text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30'
-                    : 'text-gray-300 dark:text-gray-600 bg-gray-50 dark:bg-gray-800 cursor-not-allowed'
-                }`}
-                title={activeTaskId ? 'Delete selected task' : 'Select a task first'}
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                </svg>
-              </button>
-            )}
-            {/* Column picker — only shown if no external columnState is provided */}
-            {!_columnState && (
-            <div className="relative" ref={colPickerRef}>
-              <button
-                onClick={() => setShowColPicker(prev => !prev)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${showColPicker ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 border-primary-300 dark:border-primary-700' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                title="Show/hide columns"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" />
-                </svg>
-                Columns
-              </button>
-              {showColPicker && (
-                <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-30 py-1 min-w-[200px]">
-                  {orderedColumns.filter(c => !c.alwaysVisible).map((col, idx, arr) => (
-                    <div key={col.key} className="flex items-center gap-1 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 text-xs text-gray-700 dark:text-gray-300">
-                      <input
-                        type="checkbox"
-                        checked={ganttVisibleCols.has(col.key)}
-                        onChange={() => toggleColVisibility(col.key)}
-                        className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
-                      />
-                      <span
-                        className="flex-1 cursor-pointer"
-                        onClick={() => toggleColVisibility(col.key)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleColVisibility(col.key); } }}
-                      >{col.label || col.key}</span>
-                      <button
-                        className="p-0.5 text-primary-500 hover:text-primary-700 dark:hover:text-primary-300 disabled:opacity-25 disabled:cursor-not-allowed"
-                        onClick={() => moveColumn(col.key, 'left')}
-                        disabled={idx === 0}
-                        title="Move left"
-                      >
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-                      </button>
-                      <button
-                        className="p-0.5 text-primary-500 hover:text-primary-700 dark:hover:text-primary-300 disabled:opacity-25 disabled:cursor-not-allowed"
-                        onClick={() => moveColumn(col.key, 'right')}
-                        disabled={idx === arr.length - 1}
-                        title="Move right"
-                      >
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                      </button>
-                    </div>
-                  ))}
-                  <div className="border-t border-gray-200 dark:border-gray-600 mt-1 pt-1 px-3 py-1 flex items-center gap-3">
-                    <button
-                      className="text-xs text-primary-600 hover:text-primary-700"
-                      onClick={() => setGanttVisibleCols(new Set(DEFAULT_VISIBLE_COLS))}
-                    >
-                      Reset visibility
-                    </button>
-                    <button
-                      className="text-xs text-primary-600 hover:text-primary-700"
-                      onClick={() => setGanttColOrder(DEFAULT_COL_ORDER)}
-                    >
-                      Reset order
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-            )}
-            <GanttExportDropdown
-              ganttContainerId="gantt-print-container"
-              scheduleName={scheduleName || 'schedule'}
-              tasks={tasks}
-            />
-            {/* Resource overallocation toggle */}
-            <button
-              onClick={() => setShowOverallocation(v => !v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors print:hidden ${showOverallocation ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/30' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-              title="Highlight resource scheduling conflicts"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-              </svg>
-              Conflicts
-              {showOverallocation && overallocatedTaskIds.size > 0 && (
-                <span className="ml-0.5 px-1.5 py-0.5 text-[10px] font-bold bg-amber-200 text-amber-800 rounded-full">{overallocatedTaskIds.size}</span>
-              )}
-            </button>
-            {/* Minimap toggle */}
-            <button
-              onClick={() => setShowMinimap(v => !v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors print:hidden ${showMinimap ? 'text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-900/30' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-              title="Toggle minimap"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-              Minimap
-            </button>
-            {/* Saved views */}
-            {scheduleId && (
-              <SavedViewsDropdown
-                scheduleId={`gantt:${scheduleId}`}
-                currentColumns={ganttVisibleCols as unknown as Set<import('./tableColumns').ColumnKey>}
-                currentSortField={(sortField || 'name') as import('./tableColumns').ColumnKey}
-                currentSortDir={(sortDirection || 'asc') as 'asc' | 'desc'}
-                onLoadView={handleLoadView}
-              />
-            )}
-            {/* Panel mode toggle */}
-            <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden print:hidden">
-              <button
-                onClick={() => setPanelMode('table')}
-                className={`px-2 py-1.5 text-xs font-medium transition-colors ${panelMode === 'table' ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                title="Table only"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M3 6h18M3 18h18" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setPanelMode('split')}
-                className={`px-2 py-1.5 text-xs font-medium border-x border-gray-300 dark:border-gray-600 transition-colors ${panelMode === 'split' ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                title="Split view"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v18M3 3h18v18H3z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setPanelMode('gantt')}
-                className={`px-2 py-1.5 text-xs font-medium transition-colors ${panelMode === 'gantt' ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                title="Gantt only"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h6M4 10h10M4 14h8M4 18h12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <GanttToolbar
+        scheduleName={scheduleName}
+        scheduleId={scheduleId}
+        rowCount={rows.length}
+        baseRowCount={baseRows.length}
+        parentTaskCount={parentTaskIds.size}
+        collapsedCount={collapsedIds.size}
+        expandAll={expandAll}
+        collapseAll={collapseAll}
+        zoom={zoom}
+        setZoom={setZoom}
+        handleZoomToFit={handleZoomToFit}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        undoDescription={undoDescription}
+        redoDescription={redoDescription}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        searchInputRef={searchInputRef}
+        showFilters={showFilters}
+        setShowFilters={setShowFilters}
+        activeFilterCount={activeFilterCount}
+        onAddTask={onAddTask}
+        onDeleteTask={onDeleteTask}
+        activeTaskId={activeTaskId}
+        setPendingDeleteIds={setPendingDeleteIds}
+        columnState={_columnState}
+        orderedColumns={orderedColumns}
+        ganttVisibleCols={ganttVisibleCols}
+        toggleColVisibility={toggleColVisibility}
+        moveColumn={moveColumn}
+        setGanttVisibleCols={setGanttVisibleCols}
+        setGanttColOrder={setGanttColOrder}
+        tasks={tasks}
+        showOverallocation={showOverallocation}
+        setShowOverallocation={setShowOverallocation}
+        overallocatedCount={overallocatedTaskIds.size}
+        showMinimap={showMinimap}
+        setShowMinimap={setShowMinimap}
+        handleLoadView={handleLoadView}
+        panelMode={panelMode}
+        setPanelMode={setPanelMode}
+        sortField={sortField}
+        sortDirection={sortDirection}
+      />
 
       {/* Filter panel */}
       {showFilters && (
-        <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex items-center gap-3 flex-wrap">
-          {/* Status multi-select */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">Status</span>
-            {['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled'].map(s => (
-              <label key={s} className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.statuses.has(s)}
-                  onChange={() => setFilters(prev => {
-                    const next = new Set(prev.statuses);
-                    if (next.has(s)) next.delete(s); else next.add(s);
-                    return { ...prev, statuses: next };
-                  })}
-                  className="w-3 h-3 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
-                />
-                {statusLabels[s] || s}
-              </label>
-            ))}
-          </div>
-          <div className="h-4 w-px bg-gray-300 dark:bg-gray-500" />
-          {/* Priority multi-select */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">Priority</span>
-            {['low', 'medium', 'high', 'urgent'].map(p => (
-              <label key={p} className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.priorities.has(p)}
-                  onChange={() => setFilters(prev => {
-                    const next = new Set(prev.priorities);
-                    if (next.has(p)) next.delete(p); else next.add(p);
-                    return { ...prev, priorities: next };
-                  })}
-                  className="w-3 h-3 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
-                />
-                <span className={`w-1.5 h-1.5 rounded-full ${priorityDot[p] || 'bg-gray-300'}`} />
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </label>
-            ))}
-          </div>
-          <div className="h-4 w-px bg-gray-300 dark:bg-gray-500" />
-          {/* Assignee text */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">Assignee</span>
-            <input
-              type="text"
-              aria-label="Filter by assignee"
-              placeholder="Name..."
-              className="text-xs px-2 py-1 w-24 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400"
-              value={filters.assignee}
-              onChange={e => setFilters(prev => ({ ...prev, assignee: e.target.value }))}
-            />
-          </div>
-          <div className="h-4 w-px bg-gray-300 dark:bg-gray-500" />
-          {/* Date range */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">Start</span>
-            <input
-              type="date"
-              aria-label="Start after"
-              className="text-xs px-1.5 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400"
-              value={filters.startAfter}
-              onChange={e => setFilters(prev => ({ ...prev, startAfter: e.target.value }))}
-              title="Start after"
-            />
-            <span className="text-xs text-gray-400">to</span>
-            <input
-              type="date"
-              aria-label="Start before"
-              className="text-xs px-1.5 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400"
-              value={filters.startBefore}
-              onChange={e => setFilters(prev => ({ ...prev, startBefore: e.target.value }))}
-              title="Start before"
-            />
-          </div>
-          <div className="h-4 w-px bg-gray-300 dark:bg-gray-500" />
-          {/* Progress range */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">Progress</span>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              aria-label="Minimum progress"
-              placeholder="Min%"
-              className="text-xs px-1.5 py-1 w-14 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400"
-              value={filters.progressMin ?? ''}
-              onChange={e => setFilters(prev => ({ ...prev, progressMin: e.target.value ? Number(e.target.value) : null }))}
-            />
-            <span className="text-xs text-gray-400">–</span>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              aria-label="Maximum progress"
-              placeholder="Max%"
-              className="text-xs px-1.5 py-1 w-14 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400"
-              value={filters.progressMax ?? ''}
-              onChange={e => setFilters(prev => ({ ...prev, progressMax: e.target.value ? Number(e.target.value) : null }))}
-            />
-          </div>
-          {activeFilterCount > 0 && (
-            <>
-              <div className="h-4 w-px bg-gray-300 dark:bg-gray-500" />
-              <button
-                className="text-xs px-2 py-1 rounded bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600"
-                onClick={clearFilters}
-              >
-                Clear all
-              </button>
-            </>
-          )}
-        </div>
+        <GanttFilterPanel
+          filters={filters}
+          activeFilterCount={activeFilterCount}
+          setFilters={setFilters}
+          clearFilters={clearFilters}
+        />
       )}
 
       {/* Bulk action toolbar */}
       {someSelected && onBulkUpdate && (
-        <div className="sticky top-0 z-10 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-200 dark:border-primary-800 px-4 py-2 flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-primary-700">{selectedIds.size} selected</span>
-          </div>
-          <div className="h-4 w-px bg-primary-200" />
-          <div className="flex items-center gap-1">
-            <select
-              aria-label="Bulk set status"
-              className="text-xs px-2 py-1 rounded border border-primary-200 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400"
-              value={bulkStatus}
-              onChange={e => setBulkStatus(e.target.value)}
-              disabled={bulkLoading}
-            >
-              <option value="">Status...</option>
-              {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-            </select>
-            {bulkStatus && (
-              <button className="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 disabled:opacity-50" onClick={() => applyBulkUpdate('status', bulkStatus)} disabled={bulkLoading}>Apply</button>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <select
-              aria-label="Bulk set priority"
-              className="text-xs px-2 py-1 rounded border border-primary-200 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400"
-              value={bulkPriority}
-              onChange={e => setBulkPriority(e.target.value)}
-              disabled={bulkLoading}
-            >
-              <option value="">Priority...</option>
-              {priorityOptions.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-            {bulkPriority && (
-              <button className="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 disabled:opacity-50" onClick={() => applyBulkUpdate('priority', bulkPriority)} disabled={bulkLoading}>Apply</button>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <input
-              type="text"
-              aria-label="Bulk assign to"
-              placeholder="Assign to..."
-              className="text-xs px-2 py-1 rounded border border-primary-200 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400 w-28"
-              value={bulkAssignee}
-              onChange={e => setBulkAssignee(e.target.value)}
-              disabled={bulkLoading}
-              onKeyDown={e => { if (e.key === 'Enter' && bulkAssignee) applyBulkUpdate('assignedTo', bulkAssignee); }}
-            />
-            {bulkAssignee && (
-              <button className="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 disabled:opacity-50" onClick={() => applyBulkUpdate('assignedTo', bulkAssignee)} disabled={bulkLoading}>Apply</button>
-            )}
-          </div>
-          {onBulkDelete && (
-            <>
-              <div className="h-4 w-px bg-primary-200" />
-              <button
-                className="text-xs px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 flex items-center gap-1"
-                onClick={handleBulkDelete}
-                disabled={bulkLoading}
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                </svg>
-                Delete
-              </button>
-            </>
-          )}
-          <button
-            className="text-xs px-2 py-1 rounded bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 ml-auto"
-            onClick={clearBulkState}
-          >
-            Clear
-          </button>
-          {bulkMessage && (
-            <span className={`text-xs font-medium ${bulkMessage.includes('fail') ? 'text-red-600' : 'text-green-600'}`}>
-              {bulkMessage}
-            </span>
-          )}
-        </div>
+        <GanttBulkActionBar
+          selectedCount={selectedIds.size}
+          bulkStatus={bulkStatus}
+          bulkPriority={bulkPriority}
+          bulkAssignee={bulkAssignee}
+          bulkMessage={bulkMessage}
+          bulkLoading={bulkLoading}
+          setBulkStatus={setBulkStatus}
+          setBulkPriority={setBulkPriority}
+          setBulkAssignee={setBulkAssignee}
+          applyBulkUpdate={applyBulkUpdate}
+          handleBulkDelete={handleBulkDelete}
+          clearBulkState={clearBulkState}
+          hasOnBulkUpdate={!!onBulkUpdate}
+          hasOnBulkDelete={!!onBulkDelete}
+        />
       )}
 
       {/* No matching tasks message */}
@@ -3118,658 +2251,88 @@ export function GanttChart({
           style={{ width: panelMode === 'table' ? '100%' : tableWidth }}
         >
           {/* Table header */}
-          <div
-            className="sticky top-0 z-10 flex items-center bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-            style={{ height: HEADER_H, minWidth: minRowWidth }}
-          >
-            {orderedColumns.map((col) => {
-              // Skip editIcon column if no onTaskClick
-              if (col.key === 'editIcon' && !onTaskClick) return null;
-              // Skip hidden columns
-              if (!isColVisible(col)) return null;
-              const w = getColWidth(col);
-              const sortableKeys = ['name', 'pred', 'start', 'end', 'dur', 'est', 'pct', 'priority', 'assigned', 'status'];
-              const isSortable = sortableKeys.includes(col.key);
-              const colKeyToSortField: Record<string, string> = {
-                name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate',
-                dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
-                priority: 'priority', assigned: 'assignedTo', status: 'status',
-              };
-              const sortFieldForCol = colKeyToSortField[col.key];
-              const isActiveSortCol = sortField === sortFieldForCol;
-              const canReorder = !col.alwaysVisible && !col.fixed;
-              const visibleCols = orderedColumns.filter(c => !c.alwaysVisible && !c.fixed && isColVisible(c));
-              const reorderIdx = visibleCols.findIndex(c => c.key === col.key);
-              const colIsDraggable = ganttColDrag.isDraggable(col.key);
-              return (
-                <div
-                  key={col.key}
-                  draggable={colIsDraggable}
-                  onDragStart={(e) => ganttColDrag.handleDragStart(e, col.key)}
-                  onDragOver={(e) => ganttColDrag.handleDragOver(e, col.key)}
-                  onDrop={(e) => ganttColDrag.handleDrop(e, col.key)}
-                  onDragEnd={ganttColDrag.handleDragEnd}
-                  className={`shrink-0 px-1 text-center relative select-none group/gh ${col.key === 'name' ? 'px-2 text-left' : ''} ${isSortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : ''} ${colIsDraggable ? 'cursor-grab active:cursor-grabbing' : ''} ${ganttColDrag.dragColKey === col.key ? 'opacity-40' : ''} ${ganttColDrag.overColKey === col.key && ganttColDrag.dragColKey !== col.key ? 'ring-2 ring-inset ring-primary-400' : ''}`}
-                  style={{ width: w }}
-                >
-                  {col.key === 'rowNum' && onBulkUpdate ? (
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={toggleSelectAll}
-                      aria-label="Select all tasks"
-                      className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
-                      title="Select all"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-0.5 justify-center whitespace-nowrap overflow-visible">
-                      {/* Move arrows — visible on hover, positioned as overlay */}
-                      {canReorder && (
-                        <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 flex items-center gap-0 opacity-0 group-hover/gh:opacity-100 transition-opacity z-20 bg-gray-100 dark:bg-gray-600 rounded shadow-sm px-0.5 py-0.5">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const tableKey = ganttKeyToTableKey[col.key];
-                              if (_columnState && tableKey) _columnState.moveColumn(tableKey as any, 'left');
-                              else moveColumn(col.key, 'left');
-                            }}
-                            disabled={reorderIdx <= 0}
-                            className="p-0.5 rounded hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-20"
-                            title="Move left"
-                          >
-                            <ArrowLeft className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const tableKey = ganttKeyToTableKey[col.key];
-                              if (_columnState && tableKey) _columnState.moveColumn(tableKey as any, 'right');
-                              else moveColumn(col.key, 'right');
-                            }}
-                            disabled={reorderIdx >= visibleCols.length - 1}
-                            className="p-0.5 rounded hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-20"
-                            title="Move right"
-                          >
-                            <ArrowRight className="w-3 h-3" />
-                          </button>
-                        </span>
-                      )}
-                      {/* Column label — clickable to sort */}
-                      <span
-                        className={`flex items-center gap-0.5 ${isSortable ? 'cursor-pointer' : ''}`}
-                        onClick={isSortable ? () => handleHeaderSort(col.key) : undefined}
-                        {...(isSortable ? {
-                          role: 'button',
-                          tabIndex: 0,
-                          onKeyDown: (e: React.KeyboardEvent<HTMLSpanElement>) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderSort(col.key); } },
-                        } : {})}
-                      >
-                        {col.label}
-                        {isSortable && (
-                          !isActiveSortCol
-                            ? <ArrowUpDown className="w-3 h-3 text-gray-400" />
-                            : sortDirection === 'asc'
-                              ? <ArrowUp className="w-3 h-3 text-primary-600" />
-                              : <ArrowDown className="w-3 h-3 text-primary-600" />
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  {col.resizable && (
-                    <div
-                      draggable={false}
-                      className="absolute top-0 right-0 w-3 h-full cursor-col-resize z-10 flex items-center justify-center group/resize"
-                      onMouseDown={(e) => { e.stopPropagation(); handleColResizeStart(e, col.key, w); }}
-                      onDoubleClick={(e) => { e.stopPropagation(); autoFitGanttColumn(col.key); }}
-                    >
-                      <div className="w-0.5 h-4 bg-gray-200 dark:bg-gray-600 group-hover/resize:bg-primary-400 rounded-full transition-colors" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <GanttLeftPanelHeader
+            orderedColumns={orderedColumns}
+            isColVisible={isColVisible}
+            getColWidth={getColWidth}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            allSelected={allSelected}
+            hasOnBulkUpdate={!!onBulkUpdate}
+            hasOnTaskClick={!!onTaskClick}
+            ganttColDrag={ganttColDrag}
+            handleHeaderSort={handleHeaderSort}
+            handleColResizeStart={handleColResizeStart}
+            autoFitGanttColumn={autoFitGanttColumn}
+            toggleSelectAll={toggleSelectAll}
+            minRowWidth={minRowWidth}
+            ganttKeyToTableKey={ganttKeyToTableKey}
+            moveColumn={moveColumn}
+            columnState={_columnState}
+          />
 
           {/* Task rows */}
           <div style={shouldVirtualize ? { height: totalRowsHeight, position: 'relative' } : undefined}>
           {rows.map(({ task, level }, rowIdx) => {
             if (shouldVirtualize && (rowIdx < visStart || rowIdx >= visEnd)) return null;
-            const start = toDate(task.startDate);
-            const end = toDate(task.endDate);
-            const pct = task.progressPercentage ?? 0;
-            const isParent = parentTaskIds.has(task.id);
-
             return (
-              <div
+              <GanttLeftPanelRow
                 key={task.id}
-                className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer ${rowIdx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} ${activeTaskId === task.id ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-inset ring-primary-200 dark:ring-primary-700' : ''} ${rowDrag?.targetIdx === rowIdx && rowDrag?.taskId !== task.id ? 'border-t-2 border-t-blue-500' : ''} ${rowDrag?.taskId === task.id ? 'opacity-40' : ''}`}
-                style={shouldVirtualize ? { height: ROW_H, position: 'absolute', top: rowIdx * ROW_H, left: 0, right: 0, minWidth: minRowWidth } : { height: ROW_H, minWidth: minRowWidth }}
-                onClick={(e) => {
-                  if (editingCell) return;
-                  // Ctrl+click or Cmd+click to multi-select (like MS Project / Excel)
-                  if ((e.ctrlKey || e.metaKey) && onBulkUpdate) {
-                    // If first Ctrl+click and a task was already selected, include it too
-                    if (!someSelected && activeTaskId && activeTaskId !== task.id) {
-                      toggleSelect(activeTaskId, false);
-                    }
-                    toggleSelect(task.id, false);
-                    return;
-                  }
-                  // Shift+click for range select
-                  if (e.shiftKey && onBulkUpdate) {
-                    if (!someSelected && activeTaskId) {
-                      toggleSelect(activeTaskId, false);
-                    }
-                    toggleSelect(task.id, true);
-                    return;
-                  }
-                  // If already in multi-select mode, toggle
-                  if (someSelected && onBulkUpdate) { toggleSelect(task.id, false); return; }
-                  onTaskSelect?.(task);
-                }}
-                onDoubleClick={() => { if (!editingCell) onTaskClick?.(task); }}
-                draggable={!!onTaskReorder && !editingCell && !someSelected && !sortField}
-                onDragStart={(e) => handleRowDragStart(e, task, rowIdx)}
-                onDragOver={(e) => handleRowDragOver(e, task, rowIdx)}
-                onDrop={handleRowDrop}
-                onDragEnd={handleRowDragEnd}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextMenu({ x: e.clientX, y: e.clientY, task, rowIdx });
-                }}
-              >
-                {/* Row # / Checkbox / Drag handle */}
-                <div
-                  className="shrink-0 px-1 text-center text-xs text-gray-400 font-mono flex items-center justify-center"
-                  style={{ width: getColWidth(GANTT_COLUMNS[0]) }}
-                >
-                  {someSelected && onBulkUpdate ? (
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(task.id)}
-                      onChange={() => {}}
-                      onClick={(e) => { e.stopPropagation(); toggleSelect(task.id, e.shiftKey); }}
-                      className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
-                    />
-                  ) : onTaskReorder && !editingCell && !sortField ? (
-                    <span className="hidden group-hover:inline cursor-grab text-gray-400" title="Drag to reorder">&#x2807;</span>
-                  ) : null}
-                  {!(someSelected && onBulkUpdate) && !(onTaskReorder && !editingCell && !sortField) && (rowIdx + 1)}
-                  {!(someSelected && onBulkUpdate) && onTaskReorder && !editingCell && !sortField && (
-                    <span className="group-hover:hidden">{rowIdx + 1}</span>
-                  )}
-                </div>
-
-                {/* Task name with indent */}
-                <div
-                  className={`shrink-0 min-w-0 overflow-hidden ${editableCellClass(task.id, 'name')}`}
-                  style={{ width: getColWidth(GANTT_COLUMNS[1]), paddingLeft: `${8 + level * 20}px` }}
-                  onClick={(e) => handleCellClick(e, task.id, 'name', task)}
-                >
-                  {isEditing(task.id, 'name') ? (
-                    <input
-                      ref={el => { inputRef.current = el; }}
-                      className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-1"
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => saveEdit(task.id, 'name', editValue)}
-                      onKeyDown={e => handleKeyDown(e, task.id, 'name')}
-                    />
-                  ) : (
-                    <div className="flex items-center gap-1 px-2">
-                      {/* Expand/collapse toggle for parent tasks */}
-                      {isParent ? (
-                        <button
-                          className="w-4 h-4 flex items-center justify-center flex-shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                          onClick={(e) => { e.stopPropagation(); toggleCollapse(task.id); }}
-                          title={collapsedIds.has(task.id) ? 'Expand children' : 'Collapse children'}
-                        >
-                          <svg className={`w-3 h-3 ${collapsedIds.has(task.id) ? '' : 'rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      ) : (
-                        <span className="w-4 flex-shrink-0" />
-                      )}
-                      {task.isMilestone && (
-                        <span className="w-3 h-3 flex-shrink-0 rotate-45 bg-primary-500 inline-block" title="Milestone" />
-                      )}
-                      {(task as any).isRecurrenceTemplate && (
-                        <span className="flex-shrink-0" title="Recurring template">
-                          <svg className="w-3 h-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                        </span>
-                      )}
-                      {(task as any).recurrenceParentId && (
-                        <span className="flex-shrink-0" title="Recurring instance">
-                          <svg className="w-2.5 h-2.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                        </span>
-                      )}
-                      {task.taskType && task.taskType !== 'task' && (
-                        <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex-shrink-0 leading-none ${
-                          task.taskType === 'story' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                          task.taskType === 'bug' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-                          task.taskType === 'epic' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : ''
-                        }`}>
-                          {task.taskType === 'story' ? 'S' : task.taskType === 'bug' ? 'B' : 'E'}
-                        </span>
-                      )}
-                      {task.priority && !task.isMilestone && !(task as any).isRecurrenceTemplate && !(task as any).recurrenceParentId && (
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${priorityDot[task.priority] || 'bg-gray-300'}`} />
-                      )}
-                      <span
-                        className={`text-xs truncate ${isParent ? 'font-semibold text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}
-                        title={task.name}
-                      >
-                        {task.name}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Dynamic columns rendered in user-specified order */}
-                {orderedColumns.map(col => {
-                  if (col.key === 'rowNum' || col.key === 'name') return null; // already rendered above
-                  if (col.key === 'editIcon') return null; // rendered below
-                  if (!isColVisible(col)) return null;
-                  const w = getColWidth(col);
-
-                  if (col.key === 'pred') return (
-                    <div
-                      key="pred"
-                      className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 font-mono ${editableCellClass(task.id, 'dependency')}`}
-                      style={{ width: w }}
-                      onClick={(e) => handleCellClick(e, task.id, 'dependency', task)}
-                      title={(task.dependencies || []).map(d => tasks.find(t => t.id === d.dependencyId)?.name || '').filter(Boolean).join(', ') || undefined}
-                    >
-                      {isEditing(task.id, 'dependency') ? (
-                        <div>
-                          <input
-                            ref={el => { inputRef.current = el; }}
-                            className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center font-mono"
-                            value={editValue}
-                            onChange={e => setEditValue(e.target.value)}
-                            onBlur={() => saveEdit(task.id, 'dependency', editValue)}
-                            onKeyDown={e => handleKeyDown(e, task.id, 'dependency')}
-                            placeholder="e.g. 3FS"
-                          />
-                          {depError?.taskId === task.id && (
-                            <div className="absolute z-30 top-full left-0 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 text-[10px] px-1.5 py-0.5 rounded shadow whitespace-nowrap">
-                              {depError.message}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        (task.dependencies && task.dependencies.length > 0) ? (() => {
-                          let worstHealth: 'satisfied' | 'in_progress' | 'at_risk' = 'satisfied';
-                          const labels: string[] = [];
-                          for (const dep of task.dependencies) {
-                            const depRowNum = rowNumMap.get(dep.dependencyId);
-                            const depType = (dep.dependencyType || 'FS').toUpperCase();
-                            const lag = dep.lagDays || 0;
-                            let label = depRowNum != null ? String(depRowNum) : '?';
-                            if (depType !== 'FS') label += depType;
-                            if (lag !== 0) label += (lag > 0 ? `+${lag}d` : `${lag}d`);
-                            labels.push(label);
-                            const h = getDepHealth(dep.dependencyId);
-                            if (h === 'at_risk') worstHealth = 'at_risk';
-                            else if (h === 'in_progress' && worstHealth !== 'at_risk') worstHealth = 'in_progress';
-                          }
-                          return (
-                            <span className="inline-flex items-center gap-1 justify-center">
-                              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: healthColor(worstHealth) }} />
-                              {labels.join(',')}
-                            </span>
-                          );
-                        })() : '—'
-                      )}
-                    </div>
-                  );
-
-                  if (col.key === 'succ') return (
-                    <div
-                      key="succ"
-                      className="shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 font-mono"
-                      style={{ width: w }}
-                      title={(successorMap.get(task.id) || []).map(s => tasks.find(t => t.id === s.successorId)?.name || '').filter(Boolean).join(', ') || undefined}
-                    >
-                      {(() => {
-                        const succs = successorMap.get(task.id);
-                        if (!succs || succs.length === 0) return '—';
-                        const labels = succs.map(s => {
-                          const succRowNum = rowNumMap.get(s.successorId);
-                          let label = succRowNum != null ? String(succRowNum) : '?';
-                          const type = s.type.toUpperCase();
-                          if (type !== 'FS') label += type;
-                          if (s.lag !== 0) label += (s.lag > 0 ? `+${s.lag}d` : `${s.lag}d`);
-                          return label;
-                        });
-                        return labels.join(',');
-                      })()}
-                    </div>
-                  );
-
-                  if (col.key === 'start') return (
-                    <div
-                      key="start"
-                      className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${editableCellClass(task.id, 'startDate')}`}
-                      style={{ width: w }}
-                      onClick={(e) => handleCellClick(e, task.id, 'startDate', task)}
-                    >
-                      {isEditing(task.id, 'startDate') ? (
-                        <input
-                          ref={el => { inputRef.current = el; }}
-                          type="date"
-                          className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5"
-                          value={editValue}
-                          onChange={e => handleDateChange(task.id, 'startDate', e.target.value)}
-                          onBlur={() => cancelEditing()}
-                          onKeyDown={e => handleKeyDown(e, task.id, 'startDate')}
-                        />
-                      ) : (
-                        start ? formatShortDate(start, new Date().getFullYear()) : '—'
-                      )}
-                    </div>
-                  );
-
-                  if (col.key === 'end') return (
-                    <div
-                      key="end"
-                      className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${editableCellClass(task.id, 'endDate')}`}
-                      style={{ width: w }}
-                      onClick={(e) => handleCellClick(e, task.id, 'endDate', task)}
-                    >
-                      {isEditing(task.id, 'endDate') ? (
-                        <input
-                          ref={el => { inputRef.current = el; }}
-                          type="date"
-                          className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5"
-                          value={editValue}
-                          onChange={e => handleDateChange(task.id, 'endDate', e.target.value)}
-                          onBlur={() => cancelEditing()}
-                          onKeyDown={e => handleKeyDown(e, task.id, 'endDate')}
-                        />
-                      ) : (
-                        end ? formatShortDate(end, new Date().getFullYear()) : '—'
-                      )}
-                    </div>
-                  );
-
-                  if (col.key === 'dur') return (
-                    <div
-                      key="dur"
-                      className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${editableCellClass(task.id, 'duration')}`}
-                      style={{ width: w }}
-                      onClick={(e) => handleCellClick(e, task.id, 'duration', task)}
-                    >
-                      {isEditing(task.id, 'duration') ? (
-                        <input
-                          ref={el => { inputRef.current = el; }}
-                          className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center"
-                          value={editValue}
-                          onChange={e => setEditValue(e.target.value)}
-                          onBlur={() => saveEdit(task.id, 'duration', editValue)}
-                          onKeyDown={e => handleKeyDown(e, task.id, 'duration')}
-                          placeholder="days"
-                        />
-                      ) : (
-                        start && end ? `${daysBetween(start, end)}d` : '—'
-                      )}
-                    </div>
-                  );
-
-                  if (col.key === 'est') return (
-                    <div
-                      key="est"
-                      className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${editableCellClass(task.id, 'estimatedDays')}`}
-                      style={{ width: w }}
-                      onClick={(e) => handleCellClick(e, task.id, 'estimatedDays', task)}
-                    >
-                      {isEditing(task.id, 'estimatedDays') ? (
-                        <input
-                          ref={el => { inputRef.current = el; }}
-                          type="number"
-                          min="0"
-                          className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center"
-                          value={editValue}
-                          onChange={e => setEditValue(e.target.value)}
-                          onBlur={() => saveEdit(task.id, 'estimatedDays', editValue)}
-                          onKeyDown={e => handleKeyDown(e, task.id, 'estimatedDays')}
-                        />
-                      ) : (
-                        task.estimatedDays != null ? `${task.estimatedDays}d` : '—'
-                      )}
-                    </div>
-                  );
-
-                  if (col.key === 'work') return (
-                    <div
-                      key="work"
-                      className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${editableCellClass(task.id, 'estimatedDurationHours')}`}
-                      style={{ width: w }}
-                      onClick={(e) => handleCellClick(e, task.id, 'estimatedDurationHours', task)}
-                    >
-                      {isEditing(task.id, 'estimatedDurationHours') ? (
-                        <input
-                          ref={el => { inputRef.current = el; }}
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center"
-                          value={editValue}
-                          onChange={e => setEditValue(e.target.value)}
-                          onBlur={() => saveEdit(task.id, 'estimatedDurationHours', editValue)}
-                          onKeyDown={e => handleKeyDown(e, task.id, 'estimatedDurationHours')}
-                        />
-                      ) : (
-                        task.estimatedDurationHours != null ? `${task.estimatedDurationHours}h` : '—'
-                      )}
-                    </div>
-                  );
-
-                  if (col.key === 'pct') return (
-                    <div
-                      key="pct"
-                      className={`shrink-0 px-1 text-center text-xs font-medium text-gray-600 dark:text-gray-300 ${editableCellClass(task.id, 'progressPercentage')}`}
-                      style={{ width: w }}
-                      onClick={(e) => handleCellClick(e, task.id, 'progressPercentage', task)}
-                    >
-                      {isEditing(task.id, 'progressPercentage') ? (
-                        <input
-                          ref={el => { inputRef.current = el; }}
-                          type="number"
-                          min="0"
-                          max="100"
-                          className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center"
-                          value={editValue}
-                          onChange={e => setEditValue(e.target.value)}
-                          onBlur={() => saveEdit(task.id, 'progressPercentage', editValue)}
-                          onKeyDown={e => handleKeyDown(e, task.id, 'progressPercentage')}
-                        />
-                      ) : (
-                        `${pct}%`
-                      )}
-                    </div>
-                  );
-
-                  if (col.key === 'priority') return (
-                    <div
-                      key="priority"
-                      className={`shrink-0 px-1 text-center ${editableCellClass(task.id, 'priority')}`}
-                      style={{ width: w }}
-                      onClick={(e) => handleCellClick(e, task.id, 'priority', task)}
-                    >
-                      {isEditing(task.id, 'priority') ? (
-                        <select
-                          ref={el => { inputRef.current = el; }}
-                          className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none"
-                          value={editValue}
-                          onChange={e => handleSelectChange(task.id, 'priority', e.target.value)}
-                          onBlur={() => cancelEditing()}
-                          onKeyDown={e => handleKeyDown(e, task.id, 'priority')}
-                        >
-                          {priorityOptions.map(o => (
-                            <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        task.priority ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium">
-                            <span className={`w-1.5 h-1.5 rounded-full ${priorityDot[task.priority] || 'bg-gray-300'}`} />
-                            {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                          </span>
-                        ) : '—'
-                      )}
-                    </div>
-                  );
-
-                  if (col.key === 'assigned') return (
-                    <div
-                      key="assigned"
-                      className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 truncate ${editableCellClass(task.id, 'assignedTo')}`}
-                      style={{ width: w }}
-                      onClick={(e) => handleCellClick(e, task.id, 'assignedTo', task)}
-                      title={task.assignedTo || undefined}
-                    >
-                      {isEditing(task.id, 'assignedTo') ? (
-                        <input
-                          ref={el => { inputRef.current = el; }}
-                          className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center"
-                          value={editValue}
-                          onChange={e => setEditValue(e.target.value)}
-                          onBlur={() => saveEdit(task.id, 'assignedTo', editValue)}
-                          onKeyDown={e => handleKeyDown(e, task.id, 'assignedTo')}
-                        />
-                      ) : (
-                        task.assignedTo || '—'
-                      )}
-                    </div>
-                  );
-
-                  if (col.key === 'resource') return (
-                    <div
-                      key="resource"
-                      className="shrink-0 px-1 text-xs overflow-visible"
-                      style={{ width: w }}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      {!task.isSummary && onTaskUpdate && (
-                        <ResourceQuickAssign
-                          taskId={task.id}
-                          assignments={task.assignments || []}
-                          onUpdate={onTaskUpdate}
-                        />
-                      )}
-                    </div>
-                  );
-
-                  if (col.key === 'notes') return (
-                    <div
-                      key="notes"
-                      className="shrink-0 px-1.5 text-[11px] text-gray-500 dark:text-gray-400 truncate cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
-                      style={{ width: getColWidth(col) }}
-                      title={task.description || 'Click to add notes'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setNotesPopup({ taskId: task.id, value: task.description || '', x: rect.left, y: rect.bottom + 4 });
-                      }}
-                    >
-                      {task.description ? task.description.slice(0, 40) + (task.description.length > 40 ? '…' : '') : '-'}
-                    </div>
-                  );
-
-                  if (col.key === 'status') return (
-                    <div
-                      key="status"
-                      className={`shrink-0 px-1 text-center ${editableCellClass(task.id, 'status')}`}
-                      style={{ width: w }}
-                      onClick={(e) => handleCellClick(e, task.id, 'status', task)}
-                    >
-                      {isEditing(task.id, 'status') ? (
-                        <select
-                          ref={el => { inputRef.current = el; }}
-                          className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none"
-                          value={editValue}
-                          onChange={e => handleSelectChange(task.id, 'status', e.target.value)}
-                          onBlur={() => cancelEditing()}
-                          onKeyDown={e => handleKeyDown(e, task.id, 'status')}
-                        >
-                          {statusOptions.map(o => (
-                            <option key={o} value={o}>
-                              {o === 'in_progress' ? 'Active' : o === 'completed' ? 'Done' : o === 'pending' ? 'Pending' : o}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span
-                          className="text-xs font-medium px-1.5 py-0.5 rounded-full"
-                          style={{
-                            backgroundColor: barColors[task.status]?.bg || '#f3f4f6',
-                            color: barColors[task.status]?.text || '#374151',
-                          }}
-                        >
-                          {task.status === 'in_progress'
-                            ? 'Active'
-                            : task.status === 'completed'
-                              ? 'Done'
-                              : task.status === 'pending'
-                                ? 'Pending'
-                                : task.status}
-                        </span>
-                      )}
-                    </div>
-                  );
-
-                  return null;
-                })}
-
-                {/* Row actions (visible on hover): edit, insert, delete */}
-                <div
-                  className="shrink-0 flex items-center justify-center gap-0.5"
-                  style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }}
-                >
-                  {onTaskClick && (
-                    <button
-                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-200 dark:hover:bg-gray-600"
-                      onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
-                      title="Edit task"
-                    >
-                      <svg className="w-3.5 h-3.5 text-gray-400 hover:text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                      </svg>
-                    </button>
-                  )}
-                  {onInsertAfter && (
-                    <button
-                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-green-100 dark:hover:bg-green-900/30"
-                      onClick={(e) => { e.stopPropagation(); onInsertAfter(task.id, task.parentTaskId); }}
-                      title="Insert task below"
-                    >
-                      <svg className="w-3.5 h-3.5 text-gray-400 hover:text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                      </svg>
-                    </button>
-                  )}
-                  {onDeleteTask && (
-                    <button
-                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/30"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPendingDeleteIds([task.id]);
-                      }}
-                      title="Delete task"
-                    >
-                      <svg className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              </div>
+                task={task}
+                level={level}
+                rowIdx={rowIdx}
+                isActive={activeTaskId === task.id}
+                isSelected={selectedIds.has(task.id)}
+                isParent={parentTaskIds.has(task.id)}
+                isCollapsed={collapsedIds.has(task.id)}
+                editingField={editingCell?.taskId === task.id ? editingCell.field : null}
+                focusedField={focusedCell?.taskId === task.id && !editingCell ? focusedCell.field : null}
+                editValue={editingCell?.taskId === task.id ? editValue : ''}
+                savedField={savedCell?.taskId === task.id ? savedCell.field : null}
+                pasteFlashField={pasteFlash?.taskId === task.id ? pasteFlash.field : null}
+                depErrorMsg={depError?.taskId === task.id ? depError.message : null}
+                rowDragTargetHere={rowDrag?.targetIdx === rowIdx && rowDrag?.taskId !== task.id}
+                isRowDragSource={rowDrag?.taskId === task.id}
+                someSelected={someSelected}
+                orderedColumns={orderedColumns}
+                isColVisible={isColVisible}
+                getColWidth={getColWidth}
+                minRowWidth={minRowWidth}
+                shouldVirtualize={shouldVirtualize}
+                rowNumMap={rowNumMap}
+                successorMap={successorMap}
+                tasks={tasks}
+                sortField={sortField}
+                hasOnBulkUpdate={!!onBulkUpdate}
+                hasOnTaskReorder={!!onTaskReorder}
+                hasOnTaskClick={!!onTaskClick}
+                hasOnTaskUpdate={!!onTaskUpdate}
+                hasOnInsertAfter={!!onInsertAfter}
+                hasOnDeleteTask={!!onDeleteTask}
+                onRowClick={handleRowClick}
+                onRowDoubleClick={handleRowDoubleClick}
+                onRowContextMenu={handleRowContextMenu}
+                onRowDragStart={handleRowDragStart}
+                onRowDragOver={handleRowDragOver}
+                onRowDrop={handleRowDrop}
+                onRowDragEnd={handleRowDragEnd}
+                toggleSelect={toggleSelect}
+                toggleCollapse={toggleCollapse}
+                onCellClick={handleCellClick}
+                onEditValueChange={setEditValue}
+                onSaveEdit={saveEdit}
+                onKeyDown={handleKeyDown}
+                onSelectChange={handleSelectChange}
+                onDateChange={handleDateChange}
+                onCancelEditing={cancelEditing}
+                onTaskClick={onTaskClick}
+                onInsertAfter={onInsertAfter}
+                onDeleteTask={onDeleteTask}
+                onTaskUpdate={onTaskUpdate}
+                setNotesPopup={setNotesPopup}
+                setPendingDeleteIds={setPendingDeleteIds}
+                getDepHealth={getDepHealth}
+              />
             );
           })}
 
@@ -4026,320 +2589,37 @@ export function GanttChart({
               const isParent = parentTaskIds.has(task.id);
               const top = HEADER_H + idx * ROW_H + 6;
               const barH = ROW_H - 12;
-              const isDragging = drag?.taskId === task.id;
-              const canDrag = !!onTaskDragEnd;
-
-              const handleBarClick = (e: React.MouseEvent) => {
-                // Skip if a drag just completed (ref survives across renders)
-                if (dragDidCompleteRef.current) { dragDidCompleteRef.current = false; return; }
-                e.stopPropagation();
-                if (e.ctrlKey || e.metaKey) {
-                  toggleSelect(task.id, false);
-                } else if (e.shiftKey) {
-                  toggleSelect(task.id, true);
-                } else {
-                  setSelectedIds(new Set([task.id]));
-                  lastClickedIdRef.current = task.id;
-                }
-              };
-
-              // Milestone: render as a diamond instead of a bar
-              if (task.isMilestone) {
-                const diamondSize = 14;
-                const cx = left;
-                const cy = HEADER_H + idx * ROW_H + ROW_H / 2;
-                return (
-                  <div
-                    key={task.id}
-                    className="absolute group/bar"
-                    style={{ left: cx - diamondSize / 2, top: cy - diamondSize / 2, width: diamondSize, height: diamondSize }}
-                    onClick={handleBarClick}
-                  >
-                    <div
-                      className="w-full h-full rotate-45"
-                      style={{
-                        backgroundColor: colors.fill,
-                        border: isSelected ? '2px solid #3b82f6' : isCritical ? '2px solid #dc2626' : `1px solid ${colors.fill}`,
-                        boxShadow: isSelected ? '0 0 0 2px rgba(59,130,246,0.3)' : undefined,
-                      }}
-                    />
-                    {/* Milestone tooltip */}
-                    <div className="invisible group-hover/bar:visible absolute z-30 left-1/2 -translate-x-1/2 -top-14 bg-gray-900 dark:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-lg pointer-events-none">
-                      <div className="font-semibold">
-                        {isCritical && <span className="text-red-400">[Critical] </span>}
-                        Milestone: {task.name}
-                      </div>
-                      <div className="text-gray-300 mt-0.5">{formatShortDate(start, new Date().getFullYear())}</div>
-                    </div>
-                  </div>
-                );
-              }
-
-              // Summary task: thin black bar with downward triangles at ends (MS Project style)
-              if (task.isSummary || isParent) {
-                const summaryH = 6;
-                const summaryTop = HEADER_H + idx * ROW_H + ROW_H / 2 - summaryH / 2;
-                const triSize = 5;
-                return (
-                  <div
-                    key={task.id}
-                    className="absolute group/bar"
-                    style={{ left, top: summaryTop, width, height: summaryH + triSize, cursor: 'pointer' }}
-                    onClick={handleBarClick}
-                  >
-                    {/* Thin bar */}
-                    <div
-                      className="absolute inset-x-0 top-0 rounded-sm"
-                      style={{
-                        height: summaryH,
-                        backgroundColor: isSelected ? '#3b82f6' : '#374151',
-                        boxShadow: isSelected ? '0 0 0 2px rgba(59,130,246,0.3)' : undefined,
-                      }}
-                    />
-                    {/* Progress fill on thin bar */}
-                    {(task.progressPercentage ?? 0) > 0 && (
-                      <div
-                        className="absolute top-0.5 left-0.5 rounded-sm"
-                        style={{
-                          height: summaryH - 2,
-                          width: `${Math.min(task.progressPercentage ?? 0, 100)}%`,
-                          backgroundColor: isSelected ? '#60a5fa' : '#111827',
-                        }}
-                      />
-                    )}
-                    {/* Left triangle */}
-                    <div
-                      className="absolute"
-                      style={{
-                        left: 0, top: summaryH,
-                        width: 0, height: 0,
-                        borderLeft: `${triSize}px solid transparent`,
-                        borderRight: `${triSize}px solid transparent`,
-                        borderTop: `${triSize}px solid ${isSelected ? '#3b82f6' : '#374151'}`,
-                      }}
-                    />
-                    {/* Right triangle */}
-                    <div
-                      className="absolute"
-                      style={{
-                        right: 0, top: summaryH,
-                        width: 0, height: 0,
-                        borderLeft: `${triSize}px solid transparent`,
-                        borderRight: `${triSize}px solid transparent`,
-                        borderTop: `${triSize}px solid ${isSelected ? '#3b82f6' : '#374151'}`,
-                      }}
-                    />
-                    {/* Tooltip */}
-                    <div className="invisible group-hover/bar:visible absolute z-30 left-1/2 -translate-x-1/2 -top-16 bg-gray-900 dark:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-lg pointer-events-none">
-                      <div className="font-semibold">{task.name}</div>
-                      <div className="text-gray-300 mt-0.5">{formatShortDate(start, new Date().getFullYear())} – {formatShortDate(end, new Date().getFullYear())} | {task.progressPercentage ?? 0}%</div>
-                    </div>
-                  </div>
-                );
-              }
 
               return (
-                <div
+                <GanttTimelineBar
                   key={task.id}
-                  className={`absolute group/bar ${isDragging ? 'opacity-80 z-20' : ''}`}
-                  style={{
-                    left, top, width, height: barH,
-                    cursor: canDrag ? (isDragging ? 'grabbing' : 'grab') : undefined,
-                    userSelect: isDragging ? 'none' : undefined,
-                  }}
-                  onMouseDown={canDrag ? (e) => handleBarMouseDown(e, task) : undefined}
-                  onTouchStart={canDrag ? (e) => handleBarTouchStart(e, task) : undefined}
-                  onClick={handleBarClick}
-                >
-                  {/* Background bar */}
-                  <div
-                    className="absolute inset-0 rounded-sm"
-                    style={{
-                      backgroundColor: colors.bg,
-                      border: isSelected ? '2px solid #3b82f6' : isCritical ? '2px solid #dc2626' : isOverallocated ? '2px solid #f59e0b' : `1px solid ${colors.fill}40`,
-                      boxShadow: isSelected ? '0 0 0 2px rgba(59,130,246,0.3)' : isOverallocated ? '0 0 0 2px rgba(245,158,11,0.3)' : undefined,
-                    }}
-                  />
-
-                  {/* Progress fill */}
-                  {pct > 0 && (
-                    <div
-                      className="absolute top-0 left-0 bottom-0 rounded-sm"
-                      style={{
-                        width: `${Math.min(pct, 100)}%`,
-                        backgroundColor: colors.fill,
-                        opacity: isParent ? 0.7 : 0.5,
-                      }}
-                    />
-                  )}
-
-                  {/* Progress drag handle */}
-                  {onTaskUpdate && !isParent && !task.isMilestone && (
-                    <div
-                      className="absolute top-0 bottom-0 w-2 cursor-col-resize z-10 opacity-0 group-hover/bar:opacity-100 transition-opacity"
-                      style={{ left: `calc(${Math.min(pct, 100)}% - 4px)` }}
-                      onMouseDown={(e) => {
-                        const barEl = (e.currentTarget as HTMLElement).parentElement;
-                        if (barEl) {
-                          const rect = barEl.getBoundingClientRect();
-                          handleProgressMouseDown(e, task, rect.width, rect.left);
-                        }
-                      }}
-                      title={`Progress: ${pct}% — drag to adjust`}
-                    >
-                      <div className="w-1 h-full mx-auto rounded-full" style={{ backgroundColor: colors.fill }} />
-                    </div>
-                  )}
-
-                  {/* Summary bar style — diamond markers for parent tasks */}
-                  {isParent && (
-                    <>
-                      <div
-                        className="absolute top-1/2 -translate-y-1/2 -left-[3px] w-[6px] h-[6px] rotate-45"
-                        style={{ backgroundColor: colors.fill }}
-                      />
-                      <div
-                        className="absolute top-1/2 -translate-y-1/2 -right-[3px] w-[6px] h-[6px] rotate-45"
-                        style={{ backgroundColor: colors.fill }}
-                      />
-                    </>
-                  )}
-
-                  {/* Bar label (shows on hover or if bar is wide enough) */}
-                  {width > 60 && (
-                    <div
-                      className="absolute inset-0 flex items-center px-1.5 z-10"
-                      style={task.assignedTo && !isParent && width > 60 ? { paddingRight: 22 } : undefined}
-                    >
-                      <span
-                        className="text-xs font-medium truncate"
-                        style={{ color: colors.text }}
-                      >
-                        {task.name}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Resource avatar */}
-                  {task.assignedTo && !isParent && width > 40 && (
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 rounded-full flex items-center justify-center pointer-events-none z-10"
-                      style={{
-                        right: 2,
-                        width: 18,
-                        height: 18,
-                        backgroundColor: avatarColor(task.assignedTo),
-                        fontSize: 9,
-                        fontWeight: 700,
-                        color: '#fff',
-                        lineHeight: 1,
-                      }}
-                      title={task.assignedTo}
-                    >
-                      {avatarInitials(task.assignedTo)}
-                    </div>
-                  )}
-
-                  {/* Overallocation warning dot */}
-                  {isOverallocated && (
-                    <div
-                      className="absolute -top-1 -left-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-white flex items-center justify-center z-10 pointer-events-none"
-                      style={{ fontSize: 9, fontWeight: 700, lineHeight: 1 }}
-                      title="Resource overallocated"
-                    >
-                      !
-                    </div>
-                  )}
-
-                  {/* Recurring task indicator */}
-                  {task.isRecurrenceTemplate && (
-                    <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary-500 text-white flex items-center justify-center z-10" title="Recurring task">
-                      <svg className="w-2 h-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 014-4h14" /><path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 01-4 4H3" />
-                      </svg>
-                    </div>
-                  )}
-
-                  {/* Resize handle on right edge */}
-                  {canDrag && (
-                    <div
-                      className="absolute top-0 right-0 w-2 h-full cursor-ew-resize opacity-0 group-hover/bar:opacity-100 transition-opacity z-10"
-                      style={{ borderRight: `2px solid ${colors.fill}` }}
-                    />
-                  )}
-
-                  {/* Float/slack extension */}
-                  {floatDays > 0 && !isCritical && !isParent && (
-                    <div
-                      className="absolute top-0 bottom-0 pointer-events-none"
-                      style={{
-                        left: width,
-                        width: floatDays * dayPx,
-                        background: 'repeating-linear-gradient(135deg, transparent, transparent 3px, rgba(234,179,8,0.25) 3px, rgba(234,179,8,0.25) 6px)',
-                        borderTop: '1px dashed #eab308',
-                        borderBottom: '1px dashed #eab308',
-                        borderRight: '1px dashed #eab308',
-                        borderRadius: '0 2px 2px 0',
-                        opacity: 0.7,
-                      }}
-                    />
-                  )}
-
-                  {/* Dependency connector dots */}
-                  {onTaskUpdate && !isParent && !task.isMilestone && (
-                    <>
-                      <div
-                        className={`absolute top-1/2 -translate-y-1/2 -left-[4px] w-[8px] h-[8px] rounded-full border-2 z-20 transition-opacity cursor-crosshair ${depDraw?.sourceTaskId === task.id ? 'opacity-100' : 'opacity-0 group-hover/bar:opacity-100'}`}
-                        style={{ backgroundColor: '#fff', borderColor: colors.fill }}
-                        onMouseDown={(e) => handleDepDrawMouseDown(e, task, 'start')}
-                        title="Drag to create dependency (Start)"
-                      />
-                      <div
-                        className={`absolute top-1/2 -translate-y-1/2 -right-[4px] w-[8px] h-[8px] rounded-full border-2 z-20 transition-opacity cursor-crosshair ${depDraw?.sourceTaskId === task.id ? 'opacity-100' : 'opacity-0 group-hover/bar:opacity-100'}`}
-                        style={{ backgroundColor: '#fff', borderColor: colors.fill }}
-                        onMouseDown={(e) => handleDepDrawMouseDown(e, task, 'finish')}
-                        title="Drag to create dependency (Finish)"
-                      />
-                    </>
-                  )}
-
-                  {/* Tooltip on hover */}
-                  <div className={`${isDragging ? 'invisible' : 'invisible group-hover/bar:visible'} absolute z-30 left-0 -top-16 bg-gray-900 dark:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-lg pointer-events-none`}>
-                    <div className="font-semibold">
-                      {isCritical && <span className="text-red-400">[Critical] </span>}
-                      {task.name}
-                    </div>
-                    <div className="text-gray-300 mt-0.5">
-                      {formatShortDate(start, new Date().getFullYear())} — {formatShortDate(end, new Date().getFullYear())} &middot;{' '}
-                      {daysBetween(start, end)}d &middot; {pct}% complete
-                      {floatDays > 0 && <span className="text-yellow-400"> &middot; Float: {floatDays}d</span>}
-                    </div>
-                    {task.assignedTo && (
-                      <div className="text-gray-300">
-                        Assigned: {task.assignedTo}
-                      </div>
-                    )}
-                    {task.dependencies && task.dependencies.length > 0 && (() => {
-                      return task.dependencies.map((dep, di) => {
-                        const depTask = tasks.find(t => t.id === dep.dependencyId);
-                        const depRowNum = rowNumMap.get(dep.dependencyId);
-                        const depType = (dep.dependencyType || 'FS').toUpperCase();
-                        const lag = dep.lagDays || 0;
-                        const health = getDepHealth(dep.dependencyId);
-                        let label = depRowNum != null ? String(depRowNum) : '?';
-                        if (depType !== 'FS') label += depType;
-                        if (lag !== 0) label += (lag > 0 ? `+${lag}d` : `${lag}d`);
-                        const healthLabel = health === 'satisfied' ? 'Done' : health === 'in_progress' ? 'Active' : 'At Risk';
-                        return (
-                          <div key={di} className="text-gray-300">
-                            Pred: <span className="font-mono">{label}</span> {depTask ? `(${depTask.name})` : ''}{' '}
-                            <span style={{ color: healthColor(health) }}>[{healthLabel}]</span>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                </div>
+                  task={task}
+                  idx={idx}
+                  left={left}
+                  width={width}
+                  top={top}
+                  barH={barH}
+                  pct={pct}
+                  isCritical={isCritical}
+                  isSelected={isSelected}
+                  isOverallocated={isOverallocated}
+                  isParent={isParent}
+                  isDragging={drag?.taskId === task.id}
+                  canDrag={!!onTaskDragEnd}
+                  isDepDrawSource={depDraw?.sourceTaskId === task.id}
+                  floatDays={floatDays}
+                  dayPx={dayPx}
+                  colors={colors}
+                  tasks={tasks}
+                  rowNumMap={rowNumMap}
+                  getDepHealth={getDepHealth}
+                  onBarMouseDown={onTaskDragEnd ? handleBarMouseDown : undefined}
+                  onBarTouchStart={onTaskDragEnd ? handleBarTouchStart : undefined}
+                  onBarClick={handleBarClickCb}
+                  onProgressMouseDown={onTaskUpdate ? handleProgressMouseDown : undefined}
+                  onDepDrawMouseDown={onTaskUpdate ? handleDepDrawMouseDown : undefined}
+                  hasOnTaskUpdate={!!onTaskUpdate}
+                />
               );
             })}
 
@@ -4401,202 +2681,43 @@ export function GanttChart({
           </div>
 
           {/* Minimap */}
-          {showMinimap && rows.length > 0 && (() => {
-            const MINIMAP_W = 200;
-            const MINIMAP_H = 80;
-            const contentH = HEADER_H + rows.length * ROW_H;
-            const scaleX = MINIMAP_W / timelineWidth;
-            const scaleY = MINIMAP_H / contentH;
-            const el = timelineRef.current;
-            const vpW = el ? el.clientWidth * scaleX : MINIMAP_W;
-            const vpH = el ? el.clientHeight * scaleY : MINIMAP_H;
-            const vpX = scrollPos.left * scaleX;
-            const vpY = scrollPos.top * scaleY;
-
-            const handleMinimapMouse = (e: React.MouseEvent) => {
-              e.stopPropagation();
-              e.preventDefault();
-              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-              const setScroll = (clientX: number, clientY: number) => {
-                const tl = timelineRef.current;
-                if (!tl) return;
-                const mx = clientX - rect.left;
-                const my = clientY - rect.top;
-                tl.scrollLeft = (mx / MINIMAP_W) * timelineWidth - tl.clientWidth / 2;
-                tl.scrollTop = (my / MINIMAP_H) * contentH - tl.clientHeight / 2;
-              };
-              setScroll(e.clientX, e.clientY);
-              const onMove = (ev: MouseEvent) => setScroll(ev.clientX, ev.clientY);
-              const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-              document.addEventListener('mousemove', onMove);
-              document.addEventListener('mouseup', onUp);
-            };
-
-            return (
-              <div
-                className="sticky bottom-2 float-right mr-2 z-30 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg cursor-pointer print:hidden"
-                style={{ width: MINIMAP_W, height: MINIMAP_H, marginTop: -MINIMAP_H - 12 }}
-                onMouseDown={handleMinimapMouse}
-              >
-                <svg width={MINIMAP_W} height={MINIMAP_H}>
-                  {minimapBars.map(b => (
-                    <rect key={b.key} x={b.x} y={b.y} width={b.w} height={b.h} fill={b.fill} opacity={0.7} rx={0.5} />
-                  ))}
-                  <rect
-                    x={Math.max(0, vpX)}
-                    y={Math.max(0, vpY)}
-                    width={Math.min(vpW, MINIMAP_W - Math.max(0, vpX))}
-                    height={Math.min(vpH, MINIMAP_H - Math.max(0, vpY))}
-                    fill="rgba(59,130,246,0.15)"
-                    stroke="#3b82f6"
-                    strokeWidth={1.5}
-                    rx={1}
-                  />
-                </svg>
-              </div>
-            );
-          })()}
+          {showMinimap && rows.length > 0 && (
+            <GanttMinimap
+              minimapBars={minimapBars}
+              timelineWidth={timelineWidth}
+              rowCount={rows.length}
+              scrollPos={scrollPos}
+              timelineRef={timelineRef}
+            />
+          )}
         </div>
         )}
       </div>
 
       {/* Context menu */}
       {contextMenu && (
-        <div
-          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl py-1 min-w-[160px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {onInsertBefore && (
-            <button
-              className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-              onClick={() => { onInsertBefore(contextMenu.task.id, contextMenu.task.parentTaskId); setContextMenu(null); }}
-            >
-              <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-              </svg>
-              Insert Task Above
-            </button>
-          )}
-          {onInsertAfter && (
-            <button
-              className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-              onClick={() => { onInsertAfter(contextMenu.task.id, contextMenu.task.parentTaskId); setContextMenu(null); }}
-            >
-              <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-              Insert Task Below
-            </button>
-          )}
-          {(onInsertBefore || onInsertAfter) && onDeleteTask && (
-            <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
-          )}
-          {onTaskClick && (
-            <button
-              className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-              onClick={() => { onTaskClick(contextMenu.task); setContextMenu(null); }}
-            >
-              <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-              </svg>
-              Edit Task
-            </button>
-          )}
-          {(onBulkDelete || onDeleteTask) && (
-            <button
-              className="w-full px-3 py-1.5 text-left text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
-              onClick={() => {
-                if (onBulkDelete) {
-                  // Use bulk flow for undo support; include all selected tasks + right-clicked task
-                  const ids = new Set(selectedIds);
-                  ids.add(contextMenu.task.id);
-                  setPendingDeleteIds(Array.from(ids));
-                } else if (onDeleteTask) {
-                  setPendingDeleteIds([contextMenu.task.id]);
-                }
-                setContextMenu(null);
-              }}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-              </svg>
-              {someSelected ? `Delete ${selectedIds.size + (selectedIds.has(contextMenu.task.id) ? 0 : 1)} Tasks` : 'Delete Task'}
-            </button>
-          )}
-        </div>
+        <GanttContextMenu
+          contextMenu={contextMenu}
+          selectedIds={selectedIds}
+          someSelected={someSelected}
+          onInsertBefore={onInsertBefore}
+          onInsertAfter={onInsertAfter}
+          onTaskClick={onTaskClick}
+          onDeleteTask={onDeleteTask}
+          onBulkDelete={onBulkDelete}
+          onClose={() => setContextMenu(null)}
+          setPendingDeleteIds={setPendingDeleteIds}
+        />
       )}
 
       {/* Legend */}
-      <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex items-center gap-4 flex-wrap print-legend">
-        {Object.entries(statusLabels).map(([key, label]) => (
-          <div key={key} className="flex items-center gap-1.5">
-            <div
-              className="w-3 h-2.5 rounded-sm"
-              style={{ backgroundColor: barColors[key]?.fill || '#9ca3af' }}
-            />
-            <span className="text-xs text-gray-500 dark:text-gray-400">{label}</span>
-          </div>
-        ))}
-        <div className="flex items-center gap-1.5 ml-2">
-          <div className="w-3 h-0.5 bg-red-500" />
-          <span className="text-xs text-gray-500 dark:text-gray-400">Today</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-400 dark:text-gray-500">
-            <svg width="16" height="8" className="inline-block">
-              <line
-                x1="0"
-                y1="4"
-                x2="14"
-                y2="4"
-                stroke="#9ca3af"
-                strokeWidth="1.5"
-                markerEnd="url(#arrowhead)"
-              />
-            </svg>
-          </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">Dependency</span>
-        </div>
-        {criticalPathTaskIds && criticalPathTaskIds.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-2.5 rounded-sm border-2 border-red-600 bg-red-50 dark:bg-red-900/20" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Critical Path</span>
-          </div>
-        )}
-        {baselineTasks && baselineTasks.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-2.5 rounded-sm bg-gray-300 dark:bg-gray-600 border border-dashed border-gray-400 dark:border-gray-500 opacity-50" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Baseline</span>
-          </div>
-        )}
-        {taskFloatMap && Object.values(taskFloatMap).some(v => v > 0) && (
-          <div className="flex items-center gap-1.5">
-            <div
-              className="w-5 h-2.5 rounded-sm"
-              style={{
-                background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(234,179,8,0.35) 2px, rgba(234,179,8,0.35) 4px)',
-                border: '1px dashed #eab308',
-              }}
-            />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Float/Slack</span>
-          </div>
-        )}
-        {showOverallocation && overallocatedTaskIds.size > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-2.5 rounded-sm border-2 border-amber-500 bg-amber-50 dark:bg-amber-900/20" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Resource Conflict</span>
-          </div>
-        )}
-        {/* Priority dots */}
-        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
-        {(['urgent', 'high', 'medium', 'low'] as const).map(p => (
-          <div key={p} className="flex items-center gap-1">
-            <div className={`w-2 h-2 rounded-full ${priorityDot[p]}`} />
-            <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{p}</span>
-          </div>
-        ))}
-      </div>
+      <GanttLegend
+        criticalPathTaskIds={criticalPathTaskIds}
+        baselineTasks={baselineTasks}
+        taskFloatMap={taskFloatMap}
+        showOverallocation={showOverallocation}
+        overallocatedTaskIds={overallocatedTaskIds}
+      />
 
       {/* Print CSS */}
       <style>{`
@@ -4613,57 +2734,12 @@ export function GanttChart({
 
       {/* Notes popup editor */}
       {notesPopup && (
-        <div
-          className="gantt-notes-popup fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 w-80"
-          style={{
-            left: Math.min(notesPopup.x, window.innerWidth - 340),
-            top: Math.min(notesPopup.y, window.innerHeight - 260),
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Notes</span>
-            <button
-              onClick={() => {
-                const task = tasks.find(t => t.id === notesPopup.taskId);
-                if (task && notesPopup.value !== (task.description || '') && onTaskUpdate) {
-                  onTaskUpdate(notesPopup.taskId, { description: notesPopup.value });
-                }
-                setNotesPopup(null);
-              }}
-              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
-          <textarea
-            ref={el => { if (el) el.focus(); }}
-            className="w-full text-xs p-2 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-400 resize-y"
-            value={notesPopup.value}
-            onChange={e => setNotesPopup(prev => prev ? { ...prev, value: e.target.value } : null)}
-            rows={6}
-          />
-          <div className="flex justify-end gap-2 mt-2">
-            <button
-              onClick={() => setNotesPopup(null)}
-              className="text-xs px-2.5 py-1 rounded border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                const task = tasks.find(t => t.id === notesPopup.taskId);
-                if (task && notesPopup.value !== (task.description || '') && onTaskUpdate) {
-                  onTaskUpdate(notesPopup.taskId, { description: notesPopup.value });
-                }
-                setNotesPopup(null);
-              }}
-              className="text-xs px-2.5 py-1 rounded bg-primary-600 text-white hover:bg-primary-700"
-            >
-              Save
-            </button>
-          </div>
-        </div>
+        <GanttNotesPopup
+          notesPopup={notesPopup}
+          tasks={tasks}
+          onTaskUpdate={onTaskUpdate}
+          setNotesPopup={setNotesPopup}
+        />
       )}
 
       {pendingDeleteIds.length > 0 && (
