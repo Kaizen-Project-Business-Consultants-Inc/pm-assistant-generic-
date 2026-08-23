@@ -76,7 +76,7 @@ export const WaitlistAdminPage: React.FC = () => {
               onChange={e => setKey(e.target.value)}
               placeholder="Admin password"
               required
-              className="w-full bg-white dark:bg-gray-800/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
             />
             {error && <p className="text-rose-400 text-xs">{error}</p>}
             <button
