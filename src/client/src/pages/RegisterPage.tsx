@@ -144,7 +144,7 @@ export const RegisterPage: React.FC = () => {
             ) : isInviteFlow ? (
               <>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Join {inviteOrgName}</h2>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">You've been invited as a viewer</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">You've been invited to join this organization</p>
               </>
             ) : (
               <>

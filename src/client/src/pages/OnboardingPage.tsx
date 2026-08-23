@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Briefcase, BarChart3, Users, Zap, CheckCircle, ArrowRight, ArrowLeft, SkipForward } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
@@ -45,14 +45,18 @@ export const OnboardingPage: React.FC = () => {
   const [projectName, setProjectName] = useState('');
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
 
+  // Track whether the user already had a name when they arrived
+  const hadNameOnMount = useRef(!!user?.fullName);
+
   useEffect(() => {
     if (user?.username && !username) {
       setUsername(user.username);
     }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Only redirect if they arrived already onboarded — not when they complete step 1
   useEffect(() => {
-    if (user?.fullName) {
+    if (hadNameOnMount.current && user?.fullName) {
       navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
@@ -392,7 +396,7 @@ export const OnboardingPage: React.FC = () => {
 
                 {createdProjectId ? (
                   <button
-                    onClick={() => navigate(`/project/${createdProjectId}?tab=schedule`, { replace: true })}
+                    onClick={() => navigate(`/project/${createdProjectId}`, { replace: true })}
                     className="w-full flex justify-center items-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 transition-colors"
                   >
                     Go to your project <ArrowRight className="w-4 h-4" />

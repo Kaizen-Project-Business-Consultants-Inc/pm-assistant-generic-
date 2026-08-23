@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronRight, AlertTriangle, Clock, CalendarCheck, Play, CalendarDays, CheckCircle2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ChevronDown, ChevronRight, AlertTriangle, Clock, CalendarCheck, Play, CalendarDays, CheckCircle2, FolderPlus, LayoutTemplate } from 'lucide-react';
 import { apiService } from '../services/api';
-import { routeTo } from '../routes';
+import { routeTo, ROUTES } from '../routes';
 
 interface MyWorkTask {
   id: number;
@@ -53,8 +53,12 @@ const statusColors: Record<string, string> = {
   'cancelled': 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
 };
 
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function getToday(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateStr(new Date());
 }
 
 function getEndOfWeek(): string {
@@ -62,13 +66,13 @@ function getEndOfWeek(): string {
   const day = d.getDay();
   const daysUntilSunday = day === 0 ? 0 : 7 - day;
   d.setDate(d.getDate() + daysUntilSunday);
-  return d.toISOString().slice(0, 10);
+  return toLocalDateStr(d);
 }
 
 function getSevenDaysAgo(): string {
   const d = new Date();
   d.setDate(d.getDate() - 7);
-  return d.toISOString().slice(0, 10);
+  return toLocalDateStr(d);
 }
 
 function bucketTasks(tasks: MyWorkTask[]): Bucket[] {
@@ -87,17 +91,28 @@ function bucketTasks(tasks: MyWorkTask[]): Bucket[] {
     const isComplete = task.status === 'completed' || task.status === 'done';
 
     if (isComplete) {
-      if (task.endDate && task.endDate >= sevenDaysAgo) {
+      // Show recently completed tasks (with or without endDate)
+      if (!task.endDate || task.endDate >= sevenDaysAgo) {
         recentlyCompleted.push(task);
       }
       continue;
     }
 
-    if (task.endDate && task.endDate < today) {
+    // Tasks with no due date: bucket by status
+    if (!task.endDate) {
+      if (task.status === 'in-progress') {
+        inProgress.push(task);
+      } else {
+        upcoming.push(task);
+      }
+      continue;
+    }
+
+    if (task.endDate < today) {
       overdue.push(task);
     } else if (task.endDate === today) {
       dueToday.push(task);
-    } else if (task.endDate && task.endDate <= endOfWeek) {
+    } else if (task.endDate <= endOfWeek) {
       dueThisWeek.push(task);
     } else if (task.status === 'in-progress') {
       inProgress.push(task);
@@ -196,6 +211,13 @@ export default function MyWorkPage() {
     refetchOnWindowFocus: true,
   });
 
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => apiService.getProjects(),
+    staleTime: 60000,
+  });
+  const hasProjects = (projectsData?.projects?.length ?? 0) > 0;
+
   const buckets = useMemo(() => {
     if (!data?.tasks) return [];
     return bucketTasks(data.tasks);
@@ -232,13 +254,44 @@ export default function MyWorkPage() {
 
       {/* Empty state */}
       {!isLoading && !error && data && buckets.length === 0 && (
-        <div className="text-center py-20">
-          <CheckCircle2 className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-          <h2 className="text-lg font-medium text-gray-600 dark:text-gray-400">You're all caught up!</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-            No tasks are assigned to you right now. Tasks will appear here when you're assigned to them in a project schedule.
-          </p>
-        </div>
+        hasProjects ? (
+          <div className="text-center py-20">
+            <CheckCircle2 className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+            <h2 className="text-lg font-medium text-gray-600 dark:text-gray-400">You're all caught up!</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-500 mt-1 mb-4">
+              No tasks are assigned to you right now. Tasks will appear here when you're assigned to them in a project schedule.
+            </p>
+            <Link to={ROUTES.projects} className="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">
+              Go to Projects →
+            </Link>
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <div className="mx-auto w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mb-4">
+              <FolderPlus className="w-8 h-8 text-primary-600 dark:text-primary-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Welcome! Let's get started.</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+              Create your first project to start planning, tracking tasks, and managing your work.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                to={ROUTES.projects}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                <FolderPlus className="w-4 h-4" />
+                Create a Project
+              </Link>
+              <Link
+                to={ROUTES.projects}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                <LayoutTemplate className="w-4 h-4" />
+                Use a Template
+              </Link>
+            </div>
+          </div>
+        )
       )}
 
       {/* Task count summary */}
