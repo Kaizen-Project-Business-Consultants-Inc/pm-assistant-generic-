@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Briefcase, BarChart3, Users, Zap, CheckCircle, ArrowRight, ArrowLeft, SkipForward } from 'lucide-react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { User, Briefcase, BarChart3, Users, Zap, CheckCircle, ArrowRight, ArrowLeft, SkipForward, CreditCard } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
 
@@ -48,6 +48,18 @@ export const OnboardingPage: React.FC = () => {
   // Track whether the user already had a name when they arrived
   const hadNameOnMount = useRef(!!user?.fullName);
 
+  // Detect abandoned Stripe checkout
+  const [searchParams] = useSearchParams();
+  const hasSessionId = searchParams.has('session_id');
+  const [pendingCheckout, setPendingCheckout] = useState(() => {
+    if (hasSessionId) {
+      // Successful return from Stripe — clear the flag
+      localStorage.removeItem('pendingCheckout');
+      return false;
+    }
+    return localStorage.getItem('pendingCheckout') === 'true';
+  });
+
   useEffect(() => {
     if (user?.username && !username) {
       setUsername(user.username);
@@ -86,6 +98,10 @@ export const OnboardingPage: React.FC = () => {
       } catch {
         setTemplates([]);
       }
+
+      // Clear pending checkout flag — user is proceeding with onboarding
+      localStorage.removeItem('pendingCheckout');
+      setPendingCheckout(false);
 
       setStep(2);
     } catch (err: unknown) {
@@ -175,6 +191,19 @@ export const OnboardingPage: React.FC = () => {
                 {error && (
                   <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
                     <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                  </div>
+                )}
+
+                {pendingCheckout && (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-start gap-2">
+                    <CreditCard className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm text-amber-700 dark:text-amber-300">Your subscription checkout wasn't completed.</p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                        Complete your setup below — you're on a free trial. You can{' '}
+                        <Link to="/pricing" className="underline font-medium">subscribe anytime</Link> from the Pricing page.
+                      </p>
+                    </div>
                   </div>
                 )}
 

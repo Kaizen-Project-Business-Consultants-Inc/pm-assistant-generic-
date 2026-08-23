@@ -82,6 +82,7 @@ export const RegisterPage: React.FC = () => {
         if (result.user) {
           setUser(result.user);
         }
+        localStorage.setItem('pendingCheckout', 'true');
         window.location.href = result.checkoutUrl;
         return;
       }
