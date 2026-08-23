@@ -74,11 +74,17 @@ export async function stripeRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'Missing raw body' });
       }
 
-      await stripeService.handleWebhookEvent(rawBody as Buffer, signature);
+      try {
+        await stripeService.handleWebhookEvent(rawBody as Buffer, signature);
+      } catch (processingError) {
+        // Log but return 200 so Stripe doesn't retry on business logic failures
+        logger.error('Stripe webhook processing error', { error: processingError });
+      }
       return { received: true };
     } catch (error) {
-      logger.error('Stripe webhook error', { error });
-      return reply.status(400).send({ error: 'Webhook processing failed' });
+      // Signature verification or missing header — return 400
+      logger.error('Stripe webhook signature error', { error });
+      return reply.status(400).send({ error: 'Webhook signature verification failed' });
     }
   });
 
