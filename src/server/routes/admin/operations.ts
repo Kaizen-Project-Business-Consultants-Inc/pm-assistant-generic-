@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { execSync } from 'child_process';
+import fs from 'fs';
 import os from 'os';
 import { authMiddleware } from '../../middleware/auth';
 import { databaseService } from '../../database/connection';
@@ -101,18 +101,15 @@ function computeWarnings(data: {
 
 function getDiskUsage(): { usedGB: number; totalGB: number; percentUsed: number } | null {
   try {
-    const output = execSync('df / --output=used,size 2>/dev/null || true', { encoding: 'utf8', timeout: 3000 });
-    const lines = output.trim().split('\n');
-    if (lines.length < 2) return null;
-    const parts = lines[1].trim().split(/\s+/);
-    if (parts.length < 2) return null;
-    const usedKB = parseInt(parts[0], 10);
-    const totalKB = parseInt(parts[1], 10);
-    if (isNaN(usedKB) || isNaN(totalKB) || totalKB === 0) return null;
+    const stats = fs.statfsSync('/');
+    const totalBytes = stats.bsize * stats.blocks;
+    const freeBytes = stats.bsize * stats.bavail;
+    const usedBytes = totalBytes - freeBytes;
+    if (totalBytes === 0) return null;
     return {
-      usedGB: Math.round((usedKB / 1048576) * 100) / 100,
-      totalGB: Math.round((totalKB / 1048576) * 100) / 100,
-      percentUsed: Math.round((usedKB / totalKB) * 100 * 10) / 10,
+      usedGB: Math.round((usedBytes / (1024 ** 3)) * 100) / 100,
+      totalGB: Math.round((totalBytes / (1024 ** 3)) * 100) / 100,
+      percentUsed: Math.round((usedBytes / totalBytes) * 100 * 10) / 10,
     };
   } catch {
     return null;
@@ -121,16 +118,19 @@ function getDiskUsage(): { usedGB: number; totalGB: number; percentUsed: number 
 
 function getSwapUsage(): { usedMB: number; totalMB: number; percentUsed: number } | null {
   try {
-    const output = execSync('free -b 2>/dev/null | grep -i swap || true', { encoding: 'utf8', timeout: 3000 });
-    const parts = output.trim().split(/\s+/);
-    if (parts.length < 3) return null;
-    const totalBytes = parseInt(parts[1], 10);
-    const usedBytes = parseInt(parts[2], 10);
-    if (isNaN(totalBytes) || isNaN(usedBytes) || totalBytes === 0) return null;
+    // Read /proc/meminfo directly instead of shell commands
+    const meminfo = fs.readFileSync('/proc/meminfo', 'utf8');
+    const swapTotal = meminfo.match(/SwapTotal:\s+(\d+)\s+kB/);
+    const swapFree = meminfo.match(/SwapFree:\s+(\d+)\s+kB/);
+    if (!swapTotal || !swapFree) return null;
+    const totalKB = parseInt(swapTotal[1], 10);
+    const freeKB = parseInt(swapFree[1], 10);
+    if (isNaN(totalKB) || isNaN(freeKB) || totalKB === 0) return null;
+    const usedKB = totalKB - freeKB;
     return {
-      usedMB: Math.round(usedBytes / 1048576),
-      totalMB: Math.round(totalBytes / 1048576),
-      percentUsed: Math.round((usedBytes / totalBytes) * 100 * 10) / 10,
+      usedMB: Math.round(usedKB / 1024),
+      totalMB: Math.round(totalKB / 1024),
+      percentUsed: Math.round((usedKB / totalKB) * 100 * 10) / 10,
     };
   } catch {
     return null;
