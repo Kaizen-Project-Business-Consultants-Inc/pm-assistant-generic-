@@ -160,7 +160,7 @@ export const COMPARISON: FeatureRow[] = [
 ];
 
 interface PricingCardsProps {
-  mode: 'checkout' | 'link';
+  mode: 'checkout' | 'link' | 'waitlist';
   forceDark?: boolean;
 }
 
@@ -385,6 +385,13 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                   >
                     Current Plan
                   </button>
+                ) : mode === 'waitlist' ? (
+                  <a
+                    href="#waitlist"
+                    className={`block w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-center transition-colors ${dk ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'}`}
+                  >
+                    {plan.tier === 'trial' ? 'Join Waitlist' : 'Join Waitlist'}
+                  </a>
                 ) : plan.tier === 'trial' ? (
                   <Link
                     to="/register"
@@ -460,7 +467,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
 };
 
 interface PricingSectionProps {
-  mode: 'checkout' | 'link';
+  mode: 'checkout' | 'link' | 'waitlist';
   forceDark?: boolean;
 }
 
@@ -486,8 +493,8 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
     <>
       <PricingCards mode={mode} forceDark={forceDark} />
 
-      {/* Token top-up */}
-      <div className="max-w-xl mx-auto mt-16">
+      {/* Token top-up — hidden in waitlist mode */}
+      {mode !== 'waitlist' && <div className="max-w-xl mx-auto mt-16">
         <div className="bg-amber-900/20 border border-amber-700 rounded-2xl p-6 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Zap className="w-5 h-5 text-amber-400" />
@@ -514,7 +521,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
             )}
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* Feature Comparison Matrix */}
       <div className="mt-20 mb-16">

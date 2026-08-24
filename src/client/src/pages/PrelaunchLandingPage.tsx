@@ -516,8 +516,8 @@ export const PrelaunchLandingPage: React.FC = () => {
           {[
             { label: 'AI features built-in', value: '15+' },
             { label: 'Risk detection models', value: '3' },
-            { label: 'Avg. time saved per PM', value: '6 hrs/wk' },
-            { label: 'Accuracy on delay forecasts', value: '94%' },
+            { label: 'Scheduling methods', value: '5' },
+            { label: 'Report templates', value: '10+' },
           ].map(stat => (
             <div key={stat.label}>
               <div className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">{stat.value}</div>
@@ -572,7 +572,7 @@ export const PrelaunchLandingPage: React.FC = () => {
             Don't manage projects the old way.
           </h2>
           <p className="text-slate-400 mb-8 text-lg">
-            Join the waitlist and get 20% off your first year of Pro (annual plan) — exclusively for early supporters.
+            Join the waitlist and be the first to know when we launch — plus get access to our launch-window Pro discount.
           </p>
           {status === 'success' ? (
             <div className="max-w-md mx-auto bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-8 text-center">
@@ -582,7 +582,7 @@ export const PrelaunchLandingPage: React.FC = () => {
                 </svg>
               </div>
               <p className="text-emerald-400 font-bold text-xl mb-2">You're on the list!</p>
-              <p className="text-slate-400 text-sm">We'll email you the moment we go live with your exclusive 20% discount + Founders badge. See you at launch.</p>
+              <p className="text-slate-400 text-sm">We'll email you the moment we go live. See you at launch.</p>
             </div>
           ) : (
             <>
@@ -593,7 +593,7 @@ export const PrelaunchLandingPage: React.FC = () => {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
-                  className="flex-1 bg-white dark:bg-gray-800/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm transition-all"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm transition-all"
                 />
                 <button
                   type="submit"
@@ -604,7 +604,7 @@ export const PrelaunchLandingPage: React.FC = () => {
                 </button>
               </form>
               {status === 'error' && <p className="mt-3 text-rose-400 text-xs">{message}</p>}
-              <p className="mt-5 text-xs text-slate-400">No spam. Unsubscribe anytime. Your discount is held for 7 days after launch.</p>
+              <p className="mt-5 text-xs text-slate-400">No spam. Unsubscribe anytime.</p>
             </>
           )}
         </div>
@@ -621,7 +621,7 @@ export const PrelaunchLandingPage: React.FC = () => {
               30-day prorated refund guarantee on annual plans
             </p>
           </div>
-          <PricingSection mode="link" forceDark />
+          <PricingSection mode="waitlist" forceDark />
         </div>
       </section>
 

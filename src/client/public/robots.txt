@@ -6,4 +6,4 @@ Disallow: /dashboard
 Disallow: /projects/
 Disallow: /settings
 
-Sitemap: https://pm.kpbc.ca/sitemap.xml
+Sitemap: https://kovarti.com/sitemap.xml

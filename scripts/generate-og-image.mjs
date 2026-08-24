@@ -72,7 +72,7 @@ const svg = `
   <text x="100" y="540" font-family="Arial, sans-serif" font-weight="400" font-size="20" fill="rgba(199,210,254,0.7)">14-day free trial  |  No credit card required</text>
 
   <!-- URL -->
-  <text x="1100" y="590" font-family="Arial, sans-serif" font-weight="600" font-size="18" fill="rgba(199,210,254,0.5)" text-anchor="end">pm.kpbc.ca</text>
+  <text x="1100" y="590" font-family="Arial, sans-serif" font-weight="600" font-size="18" fill="rgba(199,210,254,0.5)" text-anchor="end">kovarti.com</text>
 </svg>`;
 
 const buffer = await sharp(Buffer.from(svg)).png({ quality: 90, compressionLevel: 9 }).toBuffer();
