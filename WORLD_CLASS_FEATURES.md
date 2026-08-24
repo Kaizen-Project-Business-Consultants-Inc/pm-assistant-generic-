@@ -266,6 +266,8 @@ An agentic AI project management platform that combines the scheduling power of 
 - "Show me resource utilization for last month" -> auto-generated visualization
 - "Compare Project A vs Project B" -> side-by-side analysis
 - Deep integration with all project data
+- **SVG chart rendering** — Query results use the extracted `DynamicChart` component (bar, line, pie, horizontal-bar) with an adapter that converts the AI's Chart.js-style schema to the flat `ChartDatum[]` format, supporting multi-dataset grouping and automatic color assignment
+- Charts rendered via extracted `DynamicChart` SVG component with automatic axis scaling and color coding
 
 ### 3.4 Meeting Intelligence Hub
 - Single-page flow at `/meetings` (sidebar: **Intelligence**, Brain icon) — no tabs
@@ -367,6 +369,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Email alerts for assignments, deadlines, status changes
 - Configurable notification preferences per user
 - @mention notifications from comments
+- **Actionable notifications** — notifications can carry `suggestedActions` (array of `{toolName, params, label}`), rendered as inline `AlertActionButton` components in the notification bell dropdown. One-click execution of suggested remediation actions (e.g., reschedule task, acknowledge risk) directly from the notification without navigating away
 - **Benchmark:** All top tools
 
 ### 4.2 File Attachments & Documents
@@ -496,7 +499,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Flow Metrics** — Lead Time (created→done) and Cycle Time (started→done) with avg/median stats and distribution histogram; "metrics" tab; `GET /:scheduleId/flow-metrics` endpoint
 - **Standup Logging** — Daily standup entries per user per sprint (yesterday/today/blockers); date picker with prev/next navigation; team view of all entries for the day; blockers auto-create RAID issues (source: 'standup'); PM notification on submission; full CRUD API on `/sprints/:id/standups`
 - **Retrospective Board** — 3-column board (Went Well/To Improve/Action Items) with color coding; inline add/delete; one-vote-per-user voting system; AI Seed generates items from sprint data via Claude (marked with "AI" badge); convert action items to backlog tasks; full API on `/sprints/:id/retro` with vote/unvote/seed/convert endpoints
-- **Definition of Ready/Done (DoR/DoD)** — Project-level ordered criteria templates (managers only); suggested defaults; per-task checklist initialization from templates; checkbox UI for tracking; DoR badge in Backlog (green check/amber warning); DoD progress fraction on Sprint Board cards; bulk readiness API for efficient rendering; API on `/sprints/definitions/:projectId`
+- **Definition of Ready/Done (DoR/DoD)** — Project-level ordered criteria templates (managers only); suggested defaults; per-task checklist initialization from templates; checkbox UI for tracking in Sprint Board, Backlog, and the **Gantt/Schedule task form modal** (`TaskFormModal`); DoR badge in Backlog (green check/amber warning); DoD progress fraction on Sprint Board cards; bulk readiness API for efficient rendering; API on `/sprints/definitions/:projectId`
 - **Benchmark:** Jira, Azure DevOps, Monday.com
 
 ### 5.6 Reports & Report Builder
@@ -570,6 +573,7 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 - **AI Scan**: project-scoped AI analysis surfaces new Risks and Issues from schedule/task/budget data; user selects which findings to import; imported records tagged `source: ai_scan`
 - **Agent partnership**: background agents write directly to RAID log via `importFromAgent`; agent-written records tagged `source: agent`; `suggest-mitigation` MCP tool surfaces historical lessons-learned for open risks
 - **AI-assisted authoring**: "Suggest with AI" buttons on Mitigation Plan, Trigger Condition, and Response Plan fields; uses RAG-based lesson retrieval + Claude to generate field-specific suggestions (early warning signs for triggers, contingency actions for response plans, preventive strategies for mitigations)
+- **Mitigation Suggestions in Risk Form**: When creating or editing a risk/issue, the `RiskFormModal` shows a collapsible **Suggested Mitigations** section (Shield icon) powered by `MitigationSuggestions` — historical mitigation strategies from past projects, ranked by relevance, with source project attribution
 - **RAID notifications**: owner assignment, status changes, updates posted, severity escalation — all notify the right people (owner + PMs) while excluding the actor to prevent noise
 - Stats bar with live counts (Open Risks, Open Issues, Open Actions, Pending Decisions) + severity distribution bar
 - Search + collapsible multi-filter toolbar (type, status, severity, source) with active filter count badge
@@ -848,3 +852,9 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Guided Onboarding Wizard (3-step post-verification flow: Profile & Role picker → Methodology + optional template project → confirmation; methodology sorts template suggestions; role changeable in Settings; shown once to new accounts) | Done | UX |
 | Registration UX Hardening (submit disabled until ToS accepted + passwords match; invite-flow shows "join this organisation" contextual text) | Done | UX |
 | Abandoned Checkout Recovery (detection banner for users who started paid-tier Stripe checkout but returned without completing; dismissible; prompts to resume) | Done | UX |
+| Cookie Consent Banner (GDPR/PIPEDA-compliant consent banner; GA4 loaded dynamically only after user accepts; Accept/Decline buttons; consent stored in localStorage; GA4 script tags removed from index.html; Privacy Policy updated with consent-based analytics section) | Done | Compliance |
+| Reading Level Badge (Flesch-Kincaid readability score computed client-side on project brief descriptions; color-coded badge next to "Project Brief" heading showing grade level and score) | Done | UX |
+| Custom Field Manager in Project Overview (CustomFieldManager component mounted on Overview tab for editors; define field schemas directly from project page without navigating to Settings) | Done | UX |
+| Mitigation Suggestions in Risk Form (MitigationSuggestions component in RiskFormModal; collapsible section with Shield icon showing historical mitigation strategies from past projects ranked by relevance) | Done | Enhancement |
+| Actionable Notifications (notifications carry suggestedActions array; AlertActionButton renders one-click remediation actions in the notification bell dropdown) | Done | Enhancement |
+| NL Query Chart Upgrade (QueryPage uses extracted DynamicChart SVG component with Chart.js-to-ChartDatum adapter for bar/line/pie/horizontal-bar rendering) | Done | Enhancement |

@@ -484,7 +484,7 @@ The `DagWorkflowService` implements a directed acyclic graph (DAG) execution eng
 |--------|--------|
 | `update_field` | Updates a task field to a specified value |
 | `log_activity` | Logs an activity entry on the task |
-| `send_notification` | Creates a real notification via NotificationService (notifies the project manager) |
+| `send_notification` | Creates a real notification via NotificationService (notifies the project manager). Notifications may include `suggestedActions` — one-click action buttons rendered inline via `AlertActionButton` (e.g., "Reschedule", "Escalate"). |
 | `invoke_agent` | Invokes a registered agent capability inline (e.g., auto-reschedule) |
 
 ### Event-Driven Execution
@@ -690,6 +690,14 @@ The `CustomFieldService` allows each project to define additional metadata field
 
 Custom field values are stored per-entity (task, project) and included in search, filtering, and report outputs.
 
+### Custom Field Manager (Project Overview)
+
+On the **Overview** tab of a project, editors see a **Custom Field Manager** section below the custom field values. This component (`CustomFieldManager`) allows defining new custom field schemas directly from the project page — add fields, set types, configure dropdown options — without navigating to Settings. Changes apply to all entities in the project.
+
+### Custom Field Manager in Project Overview
+
+On the project **Overview** tab, editors see a **Custom Field Manager** section below the existing custom field values. This inline panel (powered by the `CustomFieldManager` component) lets project editors define and manage custom field schemas directly from the project page — add new fields, set types and options, or remove fields — without navigating to Settings.
+
 ---
 
 ## 10. File Attachments
@@ -765,6 +773,10 @@ The `NLQueryService` implements a multi-step AI pipeline:
 2. **Structuring phase**: raw answer is formatted into structured JSON with narrative, data tables, suggested charts, and follow-up questions
 
 Users ask questions like "Which projects are over budget?" or "Show me the critical path for Project Alpha" and receive data-backed answers.
+
+**Chart rendering:** Query results with suggested charts are rendered using the extracted `DynamicChart` component — a shared SVG-based charting system supporting bar, line, pie, and horizontal-bar types. The QueryPage converts the AI's Chart.js-style schema (datasets with data arrays) into the flat `ChartDatum[]` format via an adapter function, supporting multi-dataset grouping and automatic color assignment.
+
+**Chart rendering:** AI-suggested charts (bar, line, pie) are rendered using the extracted `DynamicChart` component — lightweight SVG-based charts with automatic axis scaling, color coding, and responsive sizing. The QueryPage converts the AI's Chart.js-style response schema (datasets with label arrays) into the `DynamicChart` flat data format via an adapter function.
 
 **Trial User Experience:** Trial users who submit a query on the Ask AI page are not blocked with a 403. Instead, `POST /api/v1/nl-query` returns a **sample NL query response** with demo data: a short narrative answer, a sample bar chart (task status breakdown across demo projects), and 3 suggested follow-up questions. An amber upgrade banner reads: "Sample Query — This is a sample response with demo data. Upgrade to a paid plan to query your real project data." No AI tokens are consumed for the sample. This follows the same pattern as Status Reports, EVM, and Monte Carlo.
 
@@ -2352,6 +2364,8 @@ Pure algorithmic Flesch-Kincaid readability scoring (no LLM required). Returns:
 - **grade**: Estimated US school grade level
 - **level**: easy (60+), moderate (30–59), advanced (<30)
 
+The **ReadingLevelBadge** is displayed next to the "Project Brief" heading in the project overview. It computes readability client-side (no API call) from the saved description text (minimum 20 characters). The badge shows the reading level (Easy/Moderate/Advanced) with a tooltip showing the Flesch score and grade.
+
 ---
 
 ## 41. Dashboard
@@ -2863,10 +2877,14 @@ The Terms of Service (`/terms`) has been updated to include the following provis
 
 The Privacy Policy (`/privacy`) has been updated to include:
 
-- **Google Analytics GA4 disclosure** — the application uses Google Analytics 4. Cookies set by GA4 include `_ga` (2-year expiry, identifies unique visitors) and `_ga_*` (session tracking). Users may opt out via browser settings or the Google Analytics opt-out browser add-on.
+- **Cookie consent banner** — Google Analytics 4 (GA4) is only loaded after the user explicitly consents via a cookie consent banner shown on first visit. If the user declines, no analytics cookies are set and no usage data is collected. Consent preference is stored in localStorage (`kovarti_analytics_consent`).
+- **Google Analytics GA4 disclosure** — when consented, GA4 sets `_ga` (2-year expiry, identifies unique visitors) and `_ga_*` (session tracking). Users can revoke consent by clearing localStorage.
+- **Waitlist data collection** — pre-launch waitlist collects email addresses only, stored securely, used solely for launch notification, and deleted within 30 days of launch. Removal by emailing the privacy officer.
 - **International data transfer** — user data may be processed outside Canada by third-party service providers (e.g., Anthropic, Stripe, Resend, Google). Transfers are subject to standard contractual clauses or equivalent safeguards.
 - **PIPEDA compliance** — the policy affirms compliance with Canada's Personal Information Protection and Electronic Documents Act (PIPEDA).
 - **Google as a third-party processor** — Google is identified as a data processor for analytics purposes, governed by Google's own privacy and data processing terms.
+
+The Terms of Service (`/terms`) governing law and jurisdiction is set to the Province of Ontario, Canada.
 
 ---
 
@@ -3411,7 +3429,7 @@ Project-level quality gate templates that define when a task is ready to start (
 - **Project-level templates** — Managers define ordered lists of criteria for both Definition of Ready and Definition of Done at the project level. These templates apply to all tasks within the project.
 - **Template editor** — The Definitions tab provides an editor with add, remove, and reorder controls for each criterion. Suggested default criteria are available as a starting point (e.g., "Acceptance criteria defined" for DoR, "Code reviewed" for DoD).
 - **Per-task checklists** — When a task is created or when templates are first applied, checklist items are initialized from the project templates. Each task gets its own independent copy that can be checked off as work progresses.
-- **Checkbox UI** — Task checklists appear in the Task Form with checkboxes for tracking completion of each criterion.
+- **Checkbox UI** — Task checklists appear in both the Sprint Board task form and the Gantt/Schedule task form modal (between Attachments and Activity panels) with checkboxes for tracking completion of each criterion.
 - **DoR badge (Backlog)** — In the Backlog view, each task displays a readiness badge: a green checkmark if all DoR criteria are met, or an amber warning icon if any remain unchecked. This helps scrum masters quickly identify which stories are truly ready for sprint planning.
 - **DoD badge (Sprint Board)** — On Sprint Board cards, a progress fraction badge (e.g., "3/5") shows how many DoD criteria have been completed, giving the team visibility into remaining work before a task can be considered done.
 - **Bulk readiness API** — `GET /api/v1/sprints/definitions/:projectId/readiness?taskIds=...` returns readiness status for multiple tasks in a single call, enabling efficient badge rendering in list views.

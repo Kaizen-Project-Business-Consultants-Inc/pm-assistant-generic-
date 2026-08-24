@@ -254,9 +254,11 @@ The **Project Brief** card is part of the reorderable overview card grid — dra
 - **Collaborative editing** -- When another user is editing the brief at the same time, an amber indicator with a pulsing dot shows their username (e.g., "jsmith editing"), truncated on narrow screens. The indicator is screen-reader accessible (`role="status"`, `aria-live="polite"`) and respects reduced-motion preferences.
 - **Empty state** -- When no description exists, a placeholder ("Click to add a project brief...") is shown. Editors can click or press Enter to start writing. Read-only users see "No project brief yet."
 - **Markdown support** -- `# Headings`, `**bold**`, `*italic*`, `- lists`, `[links](url)`, and `` `inline code` `` are all rendered.
+- **Reading level badge** -- Next to the "Project Brief" heading, a color-coded badge displays the Flesch-Kincaid readability score (e.g., "Grade 8 · Score 65"). The badge color indicates difficulty: green for easy reading (score ≥ 60), amber for moderate (30–59), red for difficult (< 30). The score is computed client-side — no API call required. Descriptions shorter than 20 characters do not show a badge.
 
 Additional sections below the card grid:
 - **Custom Fields** -- User-defined metadata fields.
+- **Custom Field Manager** -- Editors see a field definition section below custom field values. Add new custom fields (text, number, date, dropdown, checkbox), configure options, and manage field schemas directly from the project overview — no need to navigate to Settings.
 - **Portal Links** -- External portal link management. Each link generates a unique token URL (`/portal/:token`) that stakeholders can access without logging in. The portal shows project progress, task statistics, budget summary, milestone timeline, recent activity, and a comment form. Visibility of each section is controlled by the link's permissions (`canViewBudget`, `canViewGantt`, `canViewReports`, `canComment`).
 - **Export XML** -- Click the **Export XML** button (same row as Export CSV and Export PDF) to download the project as an MSPDI XML file. This format is compatible with Microsoft Project and ProjectLibre and includes tasks, resources, assignments, and dependency links.
 
@@ -1373,7 +1375,7 @@ All AI surfaces are grouped under the **Mjuzi AI** section in the sidebar. "Ask 
    - "Which tasks are overdue across all projects?"
    - "What is the budget utilization for Project Alpha?"
    - "Show me a breakdown of task status by assignee."
-3. The AI returns a written answer, often accompanied by auto-generated charts (bar, line, pie, or doughnut).
+3. The AI returns a written answer, often accompanied by auto-generated SVG charts (bar, line, pie, or horizontal bar) rendered by the shared `DynamicChart` component.
 4. **Suggested follow-ups** appear below the answer for deeper exploration.
 
 > **Trial accounts:** If you are on a trial plan, submitting a query returns a **sample response** with demo data — a short narrative answer, a sample bar chart showing task status across fictitious projects, and 3 suggested follow-up questions. An amber banner at the top of the page identifies it as a sample. No AI tokens are consumed. Upgrade to a paid plan to query your real project data.
@@ -1851,7 +1853,7 @@ Lessons surface automatically at key moments so you benefit from past experience
 
 - **Dashboard Widget** — Add the "Lessons & Insights" widget from the AI group via **Customize Dashboard**. It displays trending patterns and your most recent lessons at a glance.
 - **Project Closeout** — When you change a project's status to **Completed**, a prompt appears offering to run an AI analysis and extract lessons learned from that project automatically.
-- **Risk & Issue Creation** — When entering a new risk or issue in the Risk form, type a title of 10 or more characters and a collapsible **Similar Lessons** panel will appear below the title field, showing relevant lessons from past projects. Expand it to review before continuing.
+- **Risk & Issue Creation** — When entering a new risk or issue in the Risk form, type a title of 10 or more characters and a collapsible **Similar Lessons** panel will appear below the title field, showing relevant lessons from past projects. Expand it to review before continuing. Additionally, a **Suggested Mitigations** section (Shield icon) shows historical mitigation strategies from past projects ranked by relevance — expand it to see source project attribution and apply relevant strategies to your current risk.
 - **Project Kickoff** — On the **Overview** tab of any project in **Planning** status, a banner shows lessons from projects with similar types or categories. Dismiss it once you've reviewed it.
 
 ---
@@ -2784,7 +2786,7 @@ Definitions of Ready and Done establish quality gates for your team -- criteria 
 
 **Per-task checklists:**
 
-Once templates are defined, each task automatically receives a checklist based on the project templates. Open any task to see the DoR and DoD checklists with checkboxes. Check items off as they are completed.
+Once templates are defined, each task automatically receives a checklist based on the project templates. Open any task to see the DoR and DoD checklists with checkboxes — available in Sprint Board task cards, Backlog view, and the **Gantt/Schedule task form modal** (click the edit icon on any task row). Check items off as they are completed.
 
 **Readiness badges in Backlog:**
 
@@ -2872,6 +2874,19 @@ After a request is approved, it can be **fulfilled** by assigning a specific res
 Draft → Pending → Approved or Rejected → Fulfilled or Cancelled
 
 You can **cancel** a request at any time before it is fulfilled.
+
+---
+
+## 36. Cookie Consent & Analytics
+
+On your first visit, a **cookie consent banner** appears at the bottom of the screen asking whether you accept analytics cookies.
+
+- **Accept** — Google Analytics 4 (GA4) is loaded and begins collecting anonymized usage data (pages visited, session duration, device type). Two cookies are set: `_ga` and `_ga_*` (expire after 2 years).
+- **Decline** — No analytics cookies are set and no usage data is collected. GA4 is never loaded.
+
+Your choice is stored in your browser's localStorage. To change your preference later, clear localStorage for this site (which resets the consent banner) or install the [Google Analytics Opt-out Browser Add-on](https://tools.google.com/dlpage/gaoptout).
+
+Essential cookies (authentication, session management) are always active — they are required for the application to function. We do not use advertising cookies. See the [Privacy Policy](/privacy) for full details.
 
 ---
 
