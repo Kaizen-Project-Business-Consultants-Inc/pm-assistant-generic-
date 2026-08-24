@@ -65,13 +65,26 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (overallRating === 0) return;
+
+    // Auto-append page context to help admins diagnose issues
+    let finalComment = comment.trim();
+    const page = window.location.pathname;
+    const ua = navigator.userAgent;
+    // Parse UA to a short readable string
+    const browserMatch = ua.match(/(Chrome|Firefox|Safari|Edge|Opera)\/(\d+)/);
+    const osMatch = ua.match(/(Windows NT [\d.]+|Mac OS X [\d_.]+|Linux|Android [\d.]+|iPhone OS [\d_]+)/);
+    const browser = browserMatch ? `${browserMatch[1]} ${browserMatch[2]}` : 'Unknown';
+    const os = osMatch ? osMatch[1].replace(/_/g, '.') : 'Unknown';
+    const contextBlock = `\n---\nPage: ${page}\nBrowser: ${browser} / ${os}`;
+    finalComment = finalComment ? `${finalComment}${contextBlock}` : contextBlock.trimStart();
+
     mutation.mutate({
       overallRating,
       ...Object.fromEntries(
         Object.entries(featureRatings).filter(([, v]) => v > 0).map(([k, v]) => [k, v])
       ),
       category,
-      comment: comment.trim() || undefined,
+      comment: finalComment || undefined,
     });
   };
 

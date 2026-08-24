@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, ChevronRight, LogOut, User, Moon, Sun, Menu, HelpCircle } from 'lucide-react';
+import { Search, ChevronRight, LogOut, User, Moon, Sun, Menu, HelpCircle, MessageCircleHeart } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
@@ -9,6 +9,7 @@ import { NotificationBell } from '../notifications/NotificationBell';
 import { SUPPORT_EMAIL } from '../../constants/branding';
 import { ConnectionStatus } from './ConnectionStatus';
 import CommandPalette from './CommandPalette';
+import { FeedbackModal } from '../feedback/FeedbackModal';
 
 interface Breadcrumb {
   label: string;
@@ -107,6 +108,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Extract project ID from URL like /project/:id
@@ -356,6 +358,17 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
                 </a>
               </div>
 
+              <div className="py-1">
+                <button
+                  onClick={() => { setDropdownOpen(false); setFeedbackOpen(true); }}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150"
+                  role="menuitem"
+                >
+                  <MessageCircleHeart className="w-4 h-4 text-gray-400" />
+                  <span>Send Feedback</span>
+                </button>
+              </div>
+
               {/* Logout */}
               <div className="border-t border-gray-100 dark:border-gray-700 py-1">
                 <button
@@ -371,6 +384,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
           )}
         </div>
       </div>
+      {feedbackOpen && <FeedbackModal onClose={() => setFeedbackOpen(false)} />}
     </header>
   );
 };
