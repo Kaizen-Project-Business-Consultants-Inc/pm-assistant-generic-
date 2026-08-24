@@ -800,7 +800,7 @@ The top of the page presents two input modes:
 - **Paste** — text area for pasting or typing a transcript directly. Includes a voice recording toggle (browser Speech Recognition) so users can dictate into the text area.
 - **Upload** — drag-and-drop zone accepting `.txt` (Otter.ai), `.vtt` (Teams/Zoom), or `.srt` files. The server auto-detects format, parses speaker attribution and timestamps, and feeds the cleaned text into the AI analysis pipeline via `POST /api/v1/meeting-intelligence/upload-transcript` (multipart form).
 
-**Read.ai** and **Otter.ai** integration buttons are shown disabled with a "Coming Soon" label.
+- **Import Meeting** — opens the `SyncExternalMeetingModal` to manually import a meeting from any external source (Read.ai, Otter.ai, or any other platform). Users fill in the meeting title, date, duration, location, attendees, summary, and action items (one per line, with optional "Name: Description" format for auto-parsed assignee attribution). On submit, a completed meeting record and associated action items are created via `POST /api/v1/meetings/sync-external`.
 
 An optional **Meeting Title** field lets users label the analysis for easier retrieval in the History table.
 
@@ -854,6 +854,7 @@ A searchable, filterable table at the bottom of the page lists all past analyses
 | POST | `/api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` | Duplicate check before RAID import |
 | POST | `/api/v1/meeting-intelligence/:analysisId/send-to-raid` | Import meeting items into RAID log |
 | POST | `/api/v1/meetings/:id/send-minutes` | Email formatted minutes to recipients |
+| POST | `/api/v1/meetings/sync-external` | Import meeting + action items from external source |
 
 ### Lessons Learned
 

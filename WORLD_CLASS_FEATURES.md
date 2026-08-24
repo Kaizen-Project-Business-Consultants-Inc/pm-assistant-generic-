@@ -274,7 +274,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Two input modes:** Paste (with voice recording toggle) and Upload (drag-and-drop `.txt`/`.vtt`/`.srt`)
 - Auto-detects transcript format, extracts speaker attribution and timestamps
 - Optional meeting title field for labeling analyses
-- Read.ai and Otter.ai integration buttons shown disabled with "Coming Soon"
+- **Import Meeting** button — `SyncExternalMeetingModal` for importing meetings from Read.ai, Otter.ai, or any external platform (title, date, duration, location, attendees, summary, action items with auto-parsed "Name: Description" assignee format)
 - AI extracts **5 categories**: Action Items (with assignees and due dates), Decisions, Risks, Issues, Dependencies
 - Auto-creates/updates tasks in the schedule via **Apply Changes**
 - **Send to RAID** — `MeetingToRaidModal` with per-item checkboxes, inline title editing, severity/category dropdowns, duplicate detection pre-check (`check-raid-duplicates`), and `source: 'meeting'` tagging on import

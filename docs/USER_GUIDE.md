@@ -1431,7 +1431,18 @@ Choose one of two input modes at the top of the page:
 - **Paste** -- Type or paste a transcript directly into the text area. Click the microphone icon to use voice recording (browser Speech Recognition) and dictate into the field.
 - **Upload** -- Drag and drop a transcript file, or click to browse. Supported formats: `.txt` (Otter.ai), `.vtt` (Teams/Zoom), `.srt`. The system auto-detects the format, extracts speaker names and timestamps, and prepares the text for analysis.
 
-**Read.ai** and **Otter.ai** integration buttons are visible but currently disabled (labeled "Coming Soon").
+#### Importing from External Platforms (Read.ai, Otter.ai, etc.)
+
+Click the **Import Meeting** button (top-right of the input tabs area) to open the import modal. This lets you bring in meeting data from Read.ai, Otter.ai, or any other meeting platform:
+
+1. Enter the **Meeting Title** (required) and **Date**.
+2. Optionally set **Duration**, **Location/Platform**, and **Source** (e.g., "Read.ai").
+3. Add **Attendees** (comma-separated).
+4. Paste the **Meeting Summary** from your external platform.
+5. Add **Action Items** — one per line. Use the format `Name: Description` to auto-assign (e.g., "John: Finalize the budget proposal"). Lines without a colon are imported as unassigned items.
+6. Click **Import Meeting**. A completed meeting record and all action items are created instantly.
+
+The imported meeting appears in the Analysis History and is accessible from the Meetings page.
 
 Optionally enter a **Meeting Title** to label the analysis for easier retrieval later.
 
