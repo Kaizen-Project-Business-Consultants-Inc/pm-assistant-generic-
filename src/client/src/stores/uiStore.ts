@@ -12,6 +12,7 @@ export interface Notification {
   scheduleId?: string;
   linkType?: string;
   linkId?: string;
+  suggestedActions?: Array<{ toolName: string; params: Record<string, any>; label: string }>;
   read: boolean;
   createdAt: string;
 }

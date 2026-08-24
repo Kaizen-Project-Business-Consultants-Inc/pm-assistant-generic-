@@ -7,9 +7,9 @@ import { Shield, Building2, BarChart3 } from 'lucide-react';
 
 interface Suggestion {
   suggestion: string;
-  sourceProject: string;
-  relevanceScore: number;
-  historicalOutcome: string;
+  source: string;
+  relevance: number;
+  historicalOutcome?: string;
 }
 
 interface MitigationSuggestionsProps {
@@ -35,7 +35,7 @@ export const MitigationSuggestions: React.FC<MitigationSuggestionsProps> = ({
   return (
     <div className="space-y-3">
       {suggestions.map((item, idx) => {
-        const score = Math.min(Math.max(item.relevanceScore || 0, 0), 100);
+        const score = Math.min(Math.max(item.relevance || 0, 0), 100);
         const scoreColor =
           score >= 75
             ? 'bg-green-500'
@@ -66,7 +66,7 @@ export const MitigationSuggestions: React.FC<MitigationSuggestionsProps> = ({
             <div className="flex items-center gap-1.5 mb-3">
               <Building2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                Source: <span className="font-medium text-gray-700 dark:text-gray-200">{item.sourceProject}</span>
+                Source: <span className="font-medium text-gray-700 dark:text-gray-200">{item.source}</span>
               </span>
             </div>
 

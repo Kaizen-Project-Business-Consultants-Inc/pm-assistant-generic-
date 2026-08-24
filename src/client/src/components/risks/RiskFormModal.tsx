@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Sparkles, Loader2, MessageSquare, Send, Trash2, Pencil, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Sparkles, Loader2, MessageSquare, Send, Trash2, Pencil, BookOpen, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { useModal } from '../../hooks/useModal';
+import { MitigationSuggestions } from '../lessons/MitigationSuggestions';
 
 interface RiskFormModalProps {
   isOpen: boolean;
@@ -165,6 +166,19 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   });
 
   const relevantLessons = (lessonsData?.lessons || []).slice(0, 5);
+
+  // Cross-project mitigation suggestions from lessons knowledge base
+  const [showMitigationSuggestions, setShowMitigationSuggestions] = useState(false);
+  const { data: mitigationsData } = useQuery({
+    queryKey: ['risk-mitigations', lessonsSearchKey, form.category],
+    queryFn: () => apiService.suggestMitigations(
+      `${form.title} ${form.description}`.trim(),
+      form.category !== 'other' ? form.category : 'general',
+    ),
+    enabled: !!lessonsSearchKey && (form.type === 'risk' || form.type === 'issue'),
+    staleTime: 60_000,
+  });
+  const mitigationSuggestions = (mitigationsData?.suggestions || []).slice(0, 5);
 
   const handleTypeChange = (newType: string) => {
     setForm(prev => ({
@@ -395,6 +409,30 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Cross-project mitigation suggestions */}
+          {mitigationSuggestions.length > 0 && (form.type === 'risk' || form.type === 'issue') && (
+            <div className="border border-primary-200 dark:border-primary-800 rounded-lg bg-primary-50/50 dark:bg-primary-900/10">
+              <button
+                type="button"
+                onClick={() => setShowMitigationSuggestions(!showMitigationSuggestions)}
+                className="w-full flex items-center justify-between px-3 py-2 text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <Shield className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" />
+                  <span className="text-xs font-medium text-primary-700 dark:text-primary-400">
+                    {mitigationSuggestions.length} mitigation suggestion{mitigationSuggestions.length !== 1 ? 's' : ''} from knowledge base
+                  </span>
+                </div>
+                {showMitigationSuggestions ? <ChevronUp className="w-3.5 h-3.5 text-primary-500" /> : <ChevronDown className="w-3.5 h-3.5 text-primary-500" />}
+              </button>
+              {showMitigationSuggestions && (
+                <div className="px-3 pb-3">
+                  <MitigationSuggestions suggestions={mitigationSuggestions} />
                 </div>
               )}
             </div>

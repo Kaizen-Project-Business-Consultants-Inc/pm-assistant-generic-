@@ -32,6 +32,7 @@ import {
 import { apiService } from '../../services/api';
 import { ProjectBriefCard } from '../../components/project/ProjectBriefCard';
 import { CustomFieldsSection } from '../../components/customfields/CustomFieldsSection';
+import { CustomFieldManager } from '../../components/customfields/CustomFieldManager';
 import { PortalLinkManager } from '../../components/portal/PortalLinkManager';
 
 interface ProjectOverview {
@@ -1207,6 +1208,11 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         {project.id && (
           <div className={cardClass}>
             <CustomFieldsSection entityType="project" entityId={project.id} projectId={project.id} />
+            {canEdit && (
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <CustomFieldManager projectId={project.id} entityType="project" />
+              </div>
+            )}
           </div>
         )}
         {project.id && (

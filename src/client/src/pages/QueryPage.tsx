@@ -8,21 +8,25 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { QueryInput } from '../components/query/QueryInput';
+import { DynamicChart } from '../components/query/DynamicChart';
+import { renderMarkdown } from '../utils/renderMarkdown';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
+interface ChartDataset {
+  label: string;
+  data: number[];
+  backgroundColor?: string | string[];
+  borderColor?: string;
+}
+
 interface ChartData {
   type: 'bar' | 'line' | 'pie' | 'doughnut';
   title?: string;
   labels: string[];
-  datasets: Array<{
-    label: string;
-    data: number[];
-    backgroundColor?: string | string[];
-    borderColor?: string;
-  }>;
+  datasets: ChartDataset[];
 }
 
 interface QueryResult {
@@ -31,126 +35,29 @@ interface QueryResult {
   suggestedFollowUps?: string[];
 }
 
-import { renderMarkdown } from '../utils/renderMarkdown';
-
 // ---------------------------------------------------------------------------
-// DynamicChart (simple inline chart component)
+// Adapter: convert Chart.js-style ChartData → extracted DynamicChart ChartSpec
 // ---------------------------------------------------------------------------
 
 const CHART_COLORS = [
-  '#6366f1', // indigo
-  '#22c55e', // green
-  '#f59e0b', // amber
-  '#ef4444', // red
-  '#8b5cf6', // violet
-  '#06b6d4', // cyan
-  '#ec4899', // pink
-  '#f97316', // orange
+  '#6366f1', '#22c55e', '#f59e0b', '#ef4444',
+  '#8b5cf6', '#06b6d4', '#ec4899', '#f97316',
 ];
 
-const DynamicChart: React.FC<{ chart: ChartData }> = ({ chart }) => {
-  // Simple bar chart rendering using div bars
-  if (chart.type === 'bar' || chart.type === 'line') {
-    const allValues = chart.datasets.flatMap((ds) => ds.data);
-    const maxVal = Math.max(...allValues, 1);
-
-    return (
-      <div className="card mb-4">
-        {chart.title && (
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{chart.title}</h3>
-        )}
-        <div className="space-y-3">
-          {chart.datasets.map((ds, dsIdx) => (
-            <div key={dsIdx}>
-              {chart.datasets.length > 1 && (
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{ds.label}</p>
-              )}
-              <div className="space-y-2">
-                {chart.labels.map((label, i) => {
-                  const val = ds.data[i] || 0;
-                  const pct = (val / maxVal) * 100;
-                  const color =
-                    Array.isArray(ds.backgroundColor)
-                      ? ds.backgroundColor[i] || CHART_COLORS[i % CHART_COLORS.length]
-                      : ds.backgroundColor || CHART_COLORS[dsIdx % CHART_COLORS.length];
-                  return (
-                    <div key={i}>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-gray-600 dark:text-gray-300 truncate">{label}</span>
-                        <span className="font-medium text-gray-900 dark:text-white ml-2">{val}</span>
-                      </div>
-                      <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${pct}%`, backgroundColor: color }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Pie / doughnut - render as horizontal stacked segments
-  if (chart.type === 'pie' || chart.type === 'doughnut') {
-    const ds = chart.datasets[0];
-    if (!ds) return null;
-    const total = ds.data.reduce((a, b) => a + b, 0) || 1;
-
-    return (
-      <div className="card mb-4">
-        {chart.title && (
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{chart.title}</h3>
-        )}
-        {/* Stacked bar */}
-        <div className="w-full h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex">
-          {ds.data.map((val, i) => {
-            const pct = (val / total) * 100;
-            const color =
-              Array.isArray(ds.backgroundColor)
-                ? ds.backgroundColor[i] || CHART_COLORS[i % CHART_COLORS.length]
-                : CHART_COLORS[i % CHART_COLORS.length];
-            return (
-              <div
-                key={i}
-                className="h-full transition-all"
-                style={{ width: `${pct}%`, backgroundColor: color }}
-                title={`${chart.labels[i]}: ${val}`}
-              />
-            );
-          })}
-        </div>
-        {/* Legend */}
-        <div className="flex flex-wrap gap-3 mt-3">
-          {chart.labels.map((label, i) => {
-            const color =
-              Array.isArray(ds.backgroundColor)
-                ? ds.backgroundColor[i] || CHART_COLORS[i % CHART_COLORS.length]
-                : CHART_COLORS[i % CHART_COLORS.length];
-            return (
-              <div key={i} className="flex items-center gap-1.5">
-                <div
-                  className="w-3 h-3 rounded-sm flex-shrink-0"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="text-xs text-gray-600 dark:text-gray-300">
-                  {label} ({ds.data[i]})
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-};
+function toChartSpec(chart: ChartData) {
+  const mappedType = chart.type === 'doughnut' ? 'pie' as const : chart.type;
+  const data = chart.datasets.flatMap((ds, dsIdx) =>
+    chart.labels.map((label, i) => ({
+      label,
+      value: ds.data[i] || 0,
+      color: Array.isArray(ds.backgroundColor)
+        ? ds.backgroundColor[i] || CHART_COLORS[i % CHART_COLORS.length]
+        : ds.backgroundColor || CHART_COLORS[dsIdx % CHART_COLORS.length],
+      group: chart.datasets.length > 1 ? ds.label : undefined,
+    })),
+  );
+  return { type: mappedType, title: chart.title || '', data };
+}
 
 // ---------------------------------------------------------------------------
 // Example queries
@@ -277,7 +184,7 @@ export const QueryPage: React.FC = () => {
           {result.charts &&
             result.charts.length > 0 &&
             result.charts.map((chart, idx) => (
-              <DynamicChart key={idx} chart={chart} />
+              <DynamicChart key={idx} chart={toChartSpec(chart)} />
             ))}
 
           {/* Suggested follow-ups */}

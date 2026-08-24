@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore, Notification } from '../../stores/uiStore';
 import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
+import { AlertActionButton } from './AlertActionButton';
 
 const typeIcons: Record<string, React.ElementType> = {
   risk: Shield,
@@ -102,6 +103,7 @@ export function NotificationBell() {
             message: alert.message,
             projectId: alert.projectId,
             projectName: alert.projectName,
+            suggestedActions: alert.suggestedActions,
             read: false,
           });
         }
@@ -208,6 +210,7 @@ export function NotificationBell() {
               scheduleId: p.scheduleId,
               linkType: p.linkType,
               linkId: p.linkId,
+              suggestedActions: p.suggestedActions,
               read: false,
             });
           }
@@ -387,6 +390,19 @@ export function NotificationBell() {
                           </span>
                         )}
                       </div>
+                      {notification.suggestedActions && notification.suggestedActions.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-1.5" onClick={e => e.stopPropagation()}>
+                          {notification.suggestedActions.map((action, i) => (
+                            <AlertActionButton
+                              key={i}
+                              toolName={action.toolName}
+                              params={action.params}
+                              label={action.label}
+                              onComplete={() => dismissNotification(notification.id)}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

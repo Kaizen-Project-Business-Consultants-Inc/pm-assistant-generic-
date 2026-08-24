@@ -137,7 +137,7 @@ export const COMPARISON: FeatureRow[] = [
   { feature: 'Projects', desc: 'Active projects you can manage simultaneously', trial: '3', consultant_basic: 'Unlimited', consultant_pro: 'Unlimited', sme: 'Unlimited' },
   { feature: 'AI tokens/month', desc: 'Monthly budget for AI-powered features', trial: '25K', consultant_basic: '—', consultant_pro: '500K', sme: '500K/seat' },
   { feature: 'File Storage', desc: 'Space for documents, attachments, and exports', trial: '100MB', consultant_basic: '1GB', consultant_pro: '1GB', sme: '5GB' },
-  { feature: 'Viewer Invites', desc: 'Read-only access for clients and stakeholders', trial: '5', consultant_basic: '5', consultant_pro: '5', sme: 'Unlimited' },
+  { feature: 'Viewer Invites', desc: 'Read-only access for clients and stakeholders', trial: '0', consultant_basic: '5', consultant_pro: '5', sme: 'Unlimited' },
   { feature: 'Gantt Charts & Critical Path', desc: 'Visual timelines with dependency tracking and critical path analysis', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
   { feature: 'Kanban Boards', desc: 'Drag-and-drop task boards for agile workflows', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
   { feature: 'Sprint / Agile Management', desc: 'Sprint planning, backlog grooming, and velocity tracking', trial: true, consultant_basic: true, consultant_pro: true, sme: true },

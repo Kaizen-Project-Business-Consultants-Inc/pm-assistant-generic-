@@ -5,6 +5,7 @@ import { TaskActivityPanel } from './TaskActivityPanel';
 import { TimeLogForm } from '../timetracking/TimeLogForm';
 import { CustomFieldsSection } from '../customfields/CustomFieldsSection';
 import { AttachmentPanel } from '../attachments/AttachmentPanel';
+import { TaskChecklistPanel } from '../sprints/TaskChecklistPanel';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { apiService } from '../../services/api';
 
@@ -798,6 +799,11 @@ export function TaskFormModal({
           {/* Attachments (edit mode only) */}
           {isEdit && task && (
             <AttachmentPanel entityType="task" entityId={task.id} />
+          )}
+
+          {/* Checklists (edit mode only) */}
+          {isEdit && task && projectId && (
+            <TaskChecklistPanel taskId={String(task.id)} projectId={projectId} />
           )}
 
           {/* Comments & Activity (edit mode only) */}

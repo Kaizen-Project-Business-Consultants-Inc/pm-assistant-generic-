@@ -1,11 +1,13 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, FileText, Bold, Italic, Heading2, List, Link2, Code } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 import { renderMarkdown } from '../../utils/renderMarkdown';
+import { analyzeReadingLevel } from '../../utils/readingLevel';
 import { sendWsMessage, useConnectionState } from '../../hooks/useWebSocket';
 import { PresenceIndicator } from '../presence/PresenceIndicator';
+import { ReadingLevelBadge } from '../accessibility/ReadingLevelBadge';
 
 interface ProjectBriefCardProps {
   projectId: string;
@@ -25,6 +27,13 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
   const [recoveredDraft, setRecoveredDraft] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cancelledRef = useRef(false);
+
+  // Reading level badge (computed from current description, not draft)
+  const readingLevel = useMemo(() => {
+    const text = description?.trim();
+    if (!text || text.length < 20) return null;
+    return analyzeReadingLevel(text);
+  }, [description]);
 
   // Refs for unmount flush and optimistic locking
   const draftRef = useRef(draft);
@@ -234,7 +243,10 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
     <div className={`${cardClass} ${editing ? 'ring-2 ring-primary-400 dark:ring-primary-600' : ''} group relative`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white">Project Brief</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Project Brief</h3>
+          {readingLevel && <ReadingLevelBadge score={readingLevel.score} level={readingLevel.level} grade={readingLevel.grade} />}
+        </div>
         <div className="flex items-center gap-2">
           {otherBriefEditors.length > 0 && (
             <PresenceIndicator variant="chip" users={otherBriefEditors} />
