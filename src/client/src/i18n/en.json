@@ -11,7 +11,7 @@
     "reportBuilder": "Report Builder",
     "simulation": "Simulation",
     "scenarios": "Scenario Modeling",
-    "intelligence": "Intelligence",
+    "intelligence": "Meeting Intelligence",
     "lessons": "Lessons",
     "askAi": "Ask AI",
     "agent": "Agent",
@@ -44,7 +44,7 @@
   "section": {
     "plan": "Plan",
     "analyze": "Analyze",
-    "intelligence": "Intelligence",
+    "intelligence": "Meeting Intelligence",
     "workspace": "Workspace",
     "system": "System",
     "work": "Work",

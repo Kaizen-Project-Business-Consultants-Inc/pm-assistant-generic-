@@ -22,7 +22,7 @@ const segmentLabels: Record<string, string> = {
   projects: 'Projects',
   portfolio: 'Portfolio',
   resources: 'Resources',
-  meetings: 'Meetings',
+  meetings: 'Meeting Intelligence',
   lessons: 'Lessons Learned',
   'change-requests': 'Change Requests',
   analytics: 'Analytics',

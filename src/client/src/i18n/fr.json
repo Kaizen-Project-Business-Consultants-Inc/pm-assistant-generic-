@@ -11,7 +11,7 @@
     "reportBuilder": "Constructeur de rapports",
     "simulation": "Simulation",
     "scenarios": "Modélisation de scénarios",
-    "intelligence": "Intelligence",
+    "intelligence": "Intelligence réunion",
     "lessons": "Leçons",
     "askAi": "Demander à l'IA",
     "agent": "Agent",
@@ -32,7 +32,7 @@
   "section": {
     "plan": "Planifier",
     "analyze": "Analyser",
-    "intelligence": "Intelligence",
+    "intelligence": "Intelligence réunion",
     "workspace": "Espace de travail",
     "system": "Système",
     "work": "Travail",
