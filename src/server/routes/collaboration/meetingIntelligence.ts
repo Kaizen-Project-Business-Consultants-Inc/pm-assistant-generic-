@@ -299,8 +299,8 @@ function generateSampleMeetingAnalysis() {
       { description: 'Schedule user testing sessions for next sprint', assignee: 'Sarah Kim', dueDate: 'Next Monday', priority: 'medium' },
     ],
     decisions: [
-      { description: 'Extend testing phase by one week to accommodate additional QA scenarios', decidedBy: 'Project Manager' },
-      { description: 'Use React instead of Vue for the new dashboard component', decidedBy: 'Tech Lead' },
+      { decision: 'Extend testing phase by one week to accommodate additional QA scenarios', rationale: 'Additional QA scenarios needed for payment integration', madeBy: 'Project Manager' },
+      { decision: 'Use React instead of Vue for the new dashboard component', rationale: 'Team has more React experience and existing components are React-based', madeBy: 'Tech Lead' },
     ],
     risks: [
       { description: 'Payment integration delay may impact release timeline', severity: 'high', mitigation: 'Escalate to payments team lead' },

@@ -554,7 +554,10 @@ export const MeetingMinutesPage: React.FC = () => {
                   className="hidden"
                 />
                 <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   onDrop={(e) => {
                     e.preventDefault();
@@ -562,7 +565,8 @@ export const MeetingMinutesPage: React.FC = () => {
                     const file = e.dataTransfer.files?.[0];
                     if (file) uploadTranscriptMutation.mutate(file);
                   }}
-                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-10 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-10 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  aria-label="Upload transcript file"
                 >
                   {uploadTranscriptMutation.isPending ? (
                     <div className="flex flex-col items-center gap-3">
@@ -878,13 +882,23 @@ export const MeetingMinutesPage: React.FC = () => {
 
       {/* Send Minutes Modal */}
       {sendMinutesAnalysisId && sendMinutesMeetingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSendMinutesAnalysisId(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-5 w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setSendMinutesAnalysisId(null)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setSendMinutesAnalysisId(null); }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="send-minutes-title"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-5 w-full max-w-md"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <h3 id="send-minutes-title" className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Mail className="w-4 h-4" /> Send Meeting Minutes
               </h3>
-              <button onClick={() => setSendMinutesAnalysisId(null)}><X className="w-4 h-4 text-gray-400" /></button>
+              <button onClick={() => setSendMinutesAnalysisId(null)} aria-label="Close"><X className="w-4 h-4 text-gray-400" /></button>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               Enter recipient email addresses (comma or newline separated):
