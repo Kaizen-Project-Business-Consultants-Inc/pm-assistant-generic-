@@ -1369,6 +1369,21 @@ class ApiService {
     return response.data;
   }
 
+  async syncExternalMeeting(data: {
+    projectId: string;
+    title: string;
+    scheduledDate: string;
+    durationMinutes?: number;
+    location?: string;
+    attendees?: string[];
+    summary: string;
+    actionItems?: Array<{ description: string; assigneeName?: string; priority?: string }>;
+    source?: string;
+  }) {
+    const response = await this.api.post('/meetings/sync-external', data);
+    return response.data;
+  }
+
   async sendMeetingMinutes(meetingId: string, analysisId: string, recipientEmails: string[]) {
     const response = await this.api.post(`/meetings/${meetingId}/send-minutes`, { analysisId, recipientEmails });
     return response.data;

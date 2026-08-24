@@ -22,6 +22,7 @@ import {
 import { apiService } from '../services/api';
 import { MeetingResultPanel } from '../components/meeting/MeetingResultPanel';
 import { MeetingToRaidModal } from '../components/meeting/MeetingToRaidModal';
+import { SyncExternalMeetingModal } from '../components/meeting/SyncExternalMeetingModal';
 import { mapAnalysisToRaidCandidates, RaidCandidate } from '../utils/meetingToRaidMapper';
 
 // ---------------------------------------------------------------------------
@@ -193,6 +194,10 @@ export const MeetingMinutesPage: React.FC = () => {
   const [minutesEmails, setMinutesEmails] = useState('');
   const [sendMinutesMeetingId, setSendMinutesMeetingId] = useState<string | null>(null);
 
+  // Sync external meeting state
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   // History state
   const [historySearch, setHistorySearch] = useState('');
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
@@ -326,6 +331,21 @@ export const MeetingMinutesPage: React.FC = () => {
       setSendMinutesAnalysisId(null);
       setSendMinutesMeetingId(null);
       setMinutesEmails('');
+    },
+  });
+
+  const syncExternalMutation = useMutation({
+    mutationFn: (data: Parameters<typeof apiService.syncExternalMeeting>[0]) =>
+      apiService.syncExternalMeeting(data),
+    onSuccess: () => {
+      setSyncModalOpen(false);
+      setSyncError(null);
+      queryClient.invalidateQueries({ queryKey: ['meetingHistory', selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['meetings', selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['meetingActionItems'] });
+    },
+    onError: (err: any) => {
+      setSyncError(err?.response?.data?.error || err?.message || 'Failed to import meeting');
     },
   });
 
@@ -469,20 +489,15 @@ export const MeetingMinutesPage: React.FC = () => {
                 <Upload className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
                 Upload
               </button>
-              <div className="ml-auto flex gap-2">
+              <div className="ml-auto">
                 <button
-                  disabled
-                  title="Coming Soon"
-                  className="px-3 py-1.5 text-[10px] font-medium text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 rounded-full cursor-not-allowed"
+                  onClick={() => { setSyncError(null); setSyncModalOpen(true); }}
+                  disabled={!selectedProjectId}
+                  title="Import meeting from Read.ai, Otter.ai, or any external source"
+                  className="px-3 py-1.5 text-[10px] font-medium text-primary-600 dark:text-primary-400 border border-primary-300 dark:border-primary-700 rounded-full hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Read.ai
-                </button>
-                <button
-                  disabled
-                  title="Coming Soon"
-                  className="px-3 py-1.5 text-[10px] font-medium text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 rounded-full cursor-not-allowed"
-                >
-                  Otter.ai
+                  <Upload className="w-3 h-3 inline mr-1 -mt-0.5" />
+                  Import Meeting
                 </button>
               </div>
             </div>
@@ -877,6 +892,23 @@ export const MeetingMinutesPage: React.FC = () => {
       {sendToRaidMutation.isError && (
         <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-300 shadow-lg">
           Failed to import items to RAID log
+        </div>
+      )}
+
+      {/* Sync External Meeting Modal */}
+      <SyncExternalMeetingModal
+        isOpen={syncModalOpen}
+        onClose={() => { setSyncModalOpen(false); setSyncError(null); }}
+        onSubmit={(data) => syncExternalMutation.mutate(data)}
+        projectId={selectedProjectId}
+        isSubmitting={syncExternalMutation.isPending}
+        error={syncError}
+      />
+
+      {/* Sync success toast */}
+      {syncExternalMutation.isSuccess && (
+        <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-xs text-green-700 dark:text-green-300 shadow-lg">
+          Meeting imported successfully with {(syncExternalMutation.data as any)?.actionItems?.length || 0} action item(s)
         </div>
       )}
 

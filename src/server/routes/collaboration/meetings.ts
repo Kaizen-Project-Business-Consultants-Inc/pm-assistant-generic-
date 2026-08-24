@@ -4,6 +4,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { meetingService } from '../../services/MeetingService';
 import { meetingIntelligenceService } from '../../services/MeetingIntelligenceService';
+import { meetingActionItemService } from '../../services/MeetingActionItemService';
 import { emailService } from '../../services/EmailService';
 
 const agendaItemSchema = z.object({
@@ -121,6 +122,61 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     if (!analysisId) throw new Error('analysisId is required');
     const imported = await meetingService.importActionItemsFromAnalysis(id, analysisId, user.userId);
     return { imported };
+  });
+
+  // POST /sync-external — import a meeting from an external source (Read.ai, Otter.ai, etc.)
+  fastify.post('/sync-external', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user!;
+    const syncSchema = z.object({
+      projectId: z.string().min(1),
+      title: z.string().min(1).max(255),
+      scheduledDate: z.string().min(1),
+      durationMinutes: z.number().int().min(1).max(1440).optional(),
+      location: z.string().max(255).optional(),
+      attendees: z.array(z.string().max(255)).max(100).optional(),
+      summary: z.string().min(1).max(50000),
+      actionItems: z.array(z.object({
+        description: z.string().min(1).max(2000),
+        assigneeName: z.string().max(255).optional(),
+        priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+      })).max(100).optional(),
+      source: z.string().max(100).optional(),
+    });
+
+    const parsed = syncSchema.parse(request.body);
+
+    // Create the meeting record (completed, ad_hoc)
+    const meeting = await meetingService.createMeeting(parsed.projectId, {
+      title: parsed.title,
+      meetingType: 'ad_hoc',
+      scheduledDate: parsed.scheduledDate,
+      durationMinutes: parsed.durationMinutes || 60,
+      location: parsed.location,
+      attendees: parsed.attendees,
+      notes: parsed.summary,
+    }, user.userId);
+
+    // Mark as completed
+    await meetingService.completeMeeting(meeting.id, user.userId);
+
+    // Create action items
+    const createdItems = [];
+    if (parsed.actionItems && parsed.actionItems.length > 0) {
+      for (const ai of parsed.actionItems) {
+        const item = await meetingActionItemService.createItem(meeting.id, {
+          description: ai.description,
+          assigneeName: ai.assigneeName,
+          priority: ai.priority || 'medium',
+        }, user.userId);
+        createdItems.push(item);
+      }
+    }
+
+    return reply.status(201).send({
+      meeting,
+      actionItems: createdItems,
+      source: parsed.source || 'external',
+    });
   });
 
   // POST /:id/send-minutes — email formatted meeting minutes to recipients
