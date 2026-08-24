@@ -1,91 +1,24 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowUpDown, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Pencil, Check, Loader2, X, Trash2, CheckSquare, Download, ChevronDown, ChevronRight, Layers, Undo2, Redo2, CornerDownRight, CornerDownLeft, PlusCircle } from 'lucide-react';
+import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
 import { apiService } from '../../services/api';
-import { SavedViewsDropdown, type SavedView } from './SavedViewsDropdown';
-import { exportTasksCSV } from '../../utils/exportUtils';
+import type { SavedView } from './SavedViewsDropdown';
 import type { ColumnKey, ColumnDef } from './tableColumns';
-import type { ColumnState } from '../../hooks/useColumnState';
 import { useColumnDragReorder } from '../../hooks/useColumnDragReorder';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { ResourceQuickAssign } from './ResourceQuickAssign';
-
-const barColors: Record<string, { bg: string; text: string }> = {
-  completed: { bg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-400' },
-  in_progress: { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400' },
-  pending: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' },
-  cancelled: { bg: 'bg-red-100 dark:bg-red-900/20', text: 'text-red-600 dark:text-red-400' },
-};
-
-const priorityColors: Record<string, string> = {
-  urgent: 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400',
-  high: 'bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400',
-  medium: 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400',
-  low: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400',
-};
-
-type SortDir = 'asc' | 'desc';
-
-interface CpmTaskData {
-  taskId: string;
-  ES: number;
-  EF: number;
-  LS: number;
-  LF: number;
-  totalFloat: number;
-  freeFloat: number;
-  isCritical: boolean;
-}
-
-interface BaselineTaskVariance {
-  taskId: string;
-  baselineStart?: string;
-  baselineEnd?: string;
-  startVarianceDays?: number;
-  endVarianceDays?: number;
-}
-
-interface TableViewProps {
-  tasks: GanttTask[];
-  scheduleId: string;
-  onTaskClick: (task: GanttTask) => void;
-  onTaskSelect?: (task: GanttTask) => void;
-  activeTaskId?: string | null;
-  onTaskUpdate: (taskId: string, data: Record<string, unknown>) => void;
-  onTaskReorder?: (updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }>) => void;
-  onQuickAdd?: (name: string) => void;
-  columnState: ColumnState;
-  cpmData?: { tasks: CpmTaskData[]; criticalPathTaskIds: string[] };
-  baselineData?: { taskVariances: BaselineTaskVariance[] };
-  scheduleStartDate?: string;
-  onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
-  onBulkDelete?: (taskIds: string[]) => Promise<void>;
-  onDeleteTask?: (taskId: string) => void;
-  onInsertAfter?: (afterTaskId: string, parentTaskId?: string) => void;
-  onInsertBefore?: (beforeTaskId: string, parentTaskId?: string) => void;
-  onInlineInsert?: (name: string, afterTaskId: string, parentTaskId?: string) => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
-  undoDescription?: string;
-  redoDescription?: string;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  onDuplicateTasks?: (tasks: GanttTask[]) => void;
-}
-
-type GroupByField = '' | 'status' | 'priority' | 'assignedTo';
-
-const statusOptions = ['pending', 'in_progress', 'completed'];
-const priorityOptions = ['low', 'medium', 'high', 'urgent'];
-
-type EditableField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progressPercentage' | 'assignedTo' | 'dependency' | 'duration' | 'budgetAllocated' | 'actualCost' | 'constraintType' | 'constraintDate' | 'notes';
-
-function addDaysToDate(baseDate: string, days: number): string {
-  const d = new Date(baseDate);
-  d.setDate(d.getDate() + days);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
+import { TableToolbar } from './table/TableToolbar';
+import { TableBulkActionBar } from './table/TableBulkActionBar';
+import { TableHeaderRow } from './table/TableHeaderRow';
+import { TableContextMenu } from './table/TableContextMenu';
+import { TableNotesPopup } from './table/TableNotesPopup';
+import {
+  barColors, priorityColors, statusOptions, priorityOptions,
+  SUMMARY_ROLLUP_FIELDS, addDaysToDate, formatDate,
+  type TableViewProps, type SortDir, type GroupByField, type EditableField,
+  type CpmTaskData, type BaselineTaskVariance,
+} from './table/types';
 
 export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
@@ -138,7 +71,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
   // Column resize handler
   const resizingRef = useRef<{ key: string; startX: number; startW: number } | null>(null);
-
   const resizeCleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -199,7 +131,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   // WBS computation
   const wbsMap = useMemo(() => {
     const map = new Map<string, string>();
-    // Group tasks by parent
     const childrenOf = new Map<string | null, GanttTask[]>();
     for (const t of tasks) {
       const parent = t.parentTaskId || null;
@@ -289,7 +220,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     }
   }, [cpmMap, baselineMap]);
 
-  // Build hierarchical ordering: parents followed by their children, recursively
+  // Build hierarchical ordering
   const levelMap = useMemo(() => {
     const map = new Map<string, number>();
     const taskIds = new Set(tasks.map(t => t.id));
@@ -319,7 +250,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       childrenOf.get(parent)!.push(t);
     }
 
-    // Sort children within each group
     const sortChildren = (list: GanttTask[]) => {
       if (!sortField) {
         return [...list].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
@@ -333,7 +263,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       });
     };
 
-    // Build summaryTaskIds inline (tasks that have children)
     const summaryIds = new Set<string>();
     for (const [parentId] of childrenOf) {
       if (parentId !== null) summaryIds.add(parentId);
@@ -390,7 +319,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     });
   }, []);
 
-  // Row drag reorder state — pointer-events-based (HTML5 drag on <tr> is unreliable)
+  // Row drag reorder state
   const [rowDrag, setRowDrag] = useState<{
     taskId: string;
     startIdx: number;
@@ -399,10 +328,10 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   const tbodyRef = useRef<HTMLTableSectionElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
-  const ROW_H = 35; // approximate row height in px
+  const ROW_H = 35;
   const OVERSCAN = 20;
 
-  // Virtualization: compute visible row range
+  // Virtualization
   const useVirtualization = visibleSorted.length >= 100 && !groupBy;
   const containerHeight = scrollContainerRef.current?.clientHeight ?? 600;
   const startRow = useVirtualization ? Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN) : 0;
@@ -410,7 +339,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
   const canDragRows = !!onTaskReorder && !editingCell && selectedIds.size === 0 && !sortField;
 
-  // Helper: collect all descendant task IDs of a given task
   const getDescendantIds = useCallback((taskId: string, allTasks: GanttTask[]): Set<string> => {
     const result = new Set<string>();
     const stack = [taskId];
@@ -431,12 +359,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     e.preventDefault();
     e.stopPropagation();
 
-    const state = {
-      taskId: task.id,
-      startIdx: rowIdx,
-      targetIdx: rowIdx,
-    };
-    setRowDrag(state);
+    setRowDrag({ taskId: task.id, startIdx: rowIdx, targetIdx: rowIdx });
 
     const onMove = (ev: MouseEvent) => {
       if (!tbodyRef.current) return;
@@ -463,42 +386,34 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         const targetTask = visibleSorted[prev.targetIdx];
         if (!draggedTask || !targetTask) return null;
 
-        // Cycle prevention: cannot drop onto self or own descendants
         const descendantIds = getDescendantIds(draggedTask.id, visibleSorted);
         if (targetTask.id === draggedTask.id || descendantIds.has(targetTask.id)) return null;
 
-        // Determine new parent: if target is a summary task, become its child; otherwise become sibling of target
         const isTargetSummary = visibleSorted.some(t => t.parentTaskId === targetTask.id);
         const newParentId = isTargetSummary ? targetTask.id : (targetTask.parentTaskId || null);
 
-        // Collect the dragged block (task + descendants) in flat order
         const blockIds = new Set([draggedTask.id, ...descendantIds]);
         const block = visibleSorted.filter(t => blockIds.has(t.id));
         const rest = visibleSorted.filter(t => !blockIds.has(t.id));
 
-        // Find insertion point in rest array
         const targetIdxInRest = rest.findIndex(t => t.id === targetTask.id);
         if (targetIdxInRest === -1) return null;
 
-        // Insert after target if dropping below start, or at target position if above
         const insertAt = isTargetSummary
-          ? targetIdxInRest + 1 // insert as first child right after the summary
+          ? targetIdxInRest + 1
           : prev.targetIdx > prev.startIdx
-            ? targetIdxInRest + 1 // insert after target
-            : targetIdxInRest;    // insert before target
+            ? targetIdxInRest + 1
+            : targetIdxInRest;
 
         const newList = [...rest];
         newList.splice(insertAt, 0, ...block);
 
-        // Build updates: reassign sort orders for all tasks, and parentTaskId for reparented ones
         const oldParentId = draggedTask.parentTaskId || null;
         const updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }> = [];
         newList.forEach((t, i) => {
-          const newSortOrder = (i + 1) * 10;
           const entry: { taskId: string; sortOrder: number; parentTaskId?: string | null } = {
-            taskId: t.id, sortOrder: newSortOrder,
+            taskId: t.id, sortOrder: (i + 1) * 10,
           };
-          // Only include parentTaskId for the dragged task if its parent changed
           if (t.id === draggedTask.id && newParentId !== oldParentId) {
             entry.parentTaskId = newParentId;
           }
@@ -514,21 +429,20 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     document.addEventListener('mouseup', onUp);
   }, [canDragRows, onTaskReorder, visibleSorted, getDescendantIds]);
 
-  // Row number map: taskId → sequential row number (1-based)
+  // Row number maps
   const rowNumMap = useMemo(() => {
     const map = new Map<string, number>();
     visibleSorted.forEach((task, idx) => map.set(task.id, idx + 1));
     return map;
   }, [visibleSorted]);
 
-  // Reverse map: row number → taskId
   const rowNumToTaskId = useMemo(() => {
     const map = new Map<number, string>();
     visibleSorted.forEach((task, idx) => map.set(idx + 1, task.id));
     return map;
   }, [visibleSorted]);
 
-  // Successor map: taskId → array of { successorId, type, lag }
+  // Successor map
   const successorMap = useMemo(() => {
     const map = new Map<string, Array<{ successorId: string; type: string; lag: number }>>();
     for (const t of tasks) {
@@ -544,10 +458,9 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
   const [depError, setDepError] = useState<{ taskId: string; message: string } | null>(null);
 
-  // Parse predecessor input — comma-separated MS Project format: "3FS+2d,5SS,7"
   const parsePredecessorInput = useCallback((input: string, currentTaskId: string): { deps: Array<{ taskId: string; type: string; lag: number }> } | { error: string } => {
     const trimmed = input.trim();
-    if (!trimmed) return { deps: [] }; // clear all dependencies
+    if (!trimmed) return { deps: [] };
 
     const parts = trimmed.split(',').map(s => s.trim()).filter(Boolean);
     const deps: Array<{ taskId: string; type: string; lag: number }> = [];
@@ -570,29 +483,19 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     }
 
     if (deps.length > 20) return { error: 'Max 20 predecessors' };
-
     return { deps };
   }, [rowNumToTaskId]);
 
-  // Get dependency health status
   const getDepHealth = useCallback((depTaskId: string): 'satisfied' | 'in_progress' | 'at_risk' => {
     const depTask = tasks.find(t => t.id === depTaskId);
     if (!depTask) return 'at_risk';
     if (depTask.status === 'completed') return 'satisfied';
     if (depTask.status === 'in_progress') return 'in_progress';
-    // Check if overdue: not started and past end date
     if (depTask.endDate && new Date(depTask.endDate) < new Date()) return 'at_risk';
     return 'in_progress';
   }, [tasks]);
 
-  const SortIcon = ({ field }: { field: ColumnKey }) => {
-    if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-gray-400 dark:text-gray-500" />;
-    return sortDir === 'asc'
-      ? <ArrowUp className="w-3 h-3 text-primary-600" />
-      : <ArrowDown className="w-3 h-3 text-primary-600" />;
-  };
-
-  const getTaskFieldValue = (task: GanttTask, field: EditableField): string => {
+  const getTaskFieldValue = useCallback((task: GanttTask, field: EditableField): string => {
     switch (field) {
       case 'name': return task.name || '';
       case 'status': return task.status || 'pending';
@@ -612,7 +515,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'dependency': {
         const deps = task.dependencies;
         if (!deps || deps.length === 0) {
-          // Fallback to legacy single dep
           if (!task.dependency) return '';
           const depRowNum = rowNumMap.get(task.dependency);
           if (!depRowNum) return '';
@@ -638,9 +540,9 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'constraintDate': return (task as any).constraintDate || '';
       default: return '';
     }
-  };
+  }, [rowNumMap]);
 
-  // Column auto-fit: measure text width for all rows and set column width to max
+  // Column auto-fit
   const getCellText = useCallback((task: GanttTask, colKey: ColumnKey): string => {
     switch (colKey) {
       case 'name': return task.name || '';
@@ -673,7 +575,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'rowNum': return String(rowNumMap.get(task.id) || '-');
       default: return '-';
     }
-  }, [wbsMap, rowNumMap, getTaskFieldValue]);
+  }, [wbsMap, rowNumMap, getTaskFieldValue, successorMap]);
 
   const autoFitColumn = useCallback((colKey: ColumnKey) => {
     if (!measureCanvasRef.current) {
@@ -696,41 +598,34 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     setColWidths(prev => ({ ...prev, [colKey]: newWidth }));
   }, [visibleColumns, visibleSorted, getCellText, setColWidths]);
 
-  const SUMMARY_ROLLUP_FIELDS: Set<EditableField> = new Set(['startDate', 'endDate', 'progressPercentage', 'status', 'budgetAllocated', 'actualCost', 'duration']);
-
-  const startEditing = (taskId: string, field: EditableField, task: GanttTask) => {
-    // Block editing of rollup fields on summary tasks
+  const startEditing = useCallback((taskId: string, field: EditableField, task: GanttTask) => {
     if (task.isSummary && SUMMARY_ROLLUP_FIELDS.has(field)) return;
     setEditingCell({ taskId, field });
     setEditValue(getTaskFieldValue(task, field));
-  };
+  }, [getTaskFieldValue]);
 
-  /** Click-to-select, click-again-to-edit: first click sets focus, second click edits */
-  const handleCellClick = (taskId: string, field: EditableField, task: GanttTask) => {
-    if (isEditing(taskId, field)) return;
+  const handleCellClick = useCallback((taskId: string, field: EditableField, task: GanttTask) => {
+    if (editingCell?.taskId === taskId && editingCell.field === field) return;
     if (activeTaskId === taskId) {
-      // Already selected — start editing
       startEditing(taskId, field, task);
     } else {
-      // First click — select row and focus cell
       onTaskSelect?.(task);
       setFocusedCell({ taskId, field });
     }
-  };
+  }, [editingCell, activeTaskId, startEditing, onTaskSelect]);
 
-  const cancelEditing = () => {
+  const cancelEditing = useCallback(() => {
     setEditingCell(null);
     setEditValue('');
-  };
+  }, []);
 
-  const saveEdit = (taskId: string, field: EditableField, value: string) => {
+  const saveEdit = useCallback((taskId: string, field: EditableField, value: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
     const originalValue = getTaskFieldValue(task, field);
     if (value === originalValue) { cancelEditing(); return; }
 
-    // Duration: compute new endDate from start + days
     if (field === 'duration') {
       const days = parseInt(value.replace(/d$/i, ''), 10);
       if (isNaN(days) || days < 1 || !task.startDate) { cancelEditing(); return; }
@@ -749,7 +644,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       return;
     }
 
-    // Handle dependency field specially — multi-dep
     if (field === 'dependency') {
       const result = parsePredecessorInput(value, taskId);
       if ('error' in result) {
@@ -767,7 +661,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
           lagDays: d.lag,
         })),
       });
-
       setTimeout(() => {
         setSavingCell(null);
         setSavedCell({ taskId, field });
@@ -796,27 +689,22 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
     }, 300);
-  };
+  }, [tasks, getTaskFieldValue, cancelEditing, onTaskUpdate, parsePredecessorInput]);
 
-  const handleKeyDown = (e: React.KeyboardEvent, taskId: string, field: EditableField) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent, taskId: string, field: EditableField) => {
     if (e.key === 'Enter') { e.preventDefault(); saveEdit(taskId, field, editValue); }
     else if (e.key === 'Escape') { e.preventDefault(); cancelEditing(); }
-  };
+  }, [saveEdit, editValue, cancelEditing]);
 
-  const handleSelectChange = (taskId: string, field: EditableField, value: string) => {
+  const handleSelectChange = useCallback((taskId: string, field: EditableField, value: string) => {
     setEditValue(value);
     saveEdit(taskId, field, value);
-  };
+  }, [saveEdit]);
 
-  const handleDateChange = (taskId: string, field: EditableField, value: string) => {
+  const handleDateChange = useCallback((taskId: string, field: EditableField, value: string) => {
     setEditValue(value);
     saveEdit(taskId, field, value);
-  };
-
-  const formatDate = (d?: string) => {
-    if (!d) return '-';
-    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  }, [saveEdit]);
 
   const isEditing = (taskId: string, field: string) =>
     editingCell?.taskId === taskId && editingCell.field === field;
@@ -828,7 +716,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     savedCell?.taskId === taskId && savedCell.field === field;
 
   const editableCellClass = (taskId: string, field: string, task?: GanttTask) => {
-    // Summary rollup fields are not editable
     if (task?.isSummary && SUMMARY_ROLLUP_FIELDS.has(field as EditableField)) {
       return 'relative cursor-default opacity-70';
     }
@@ -844,33 +731,33 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   const allSelected = visibleSorted.length > 0 && visibleSorted.every(t => selectedIds.has(t.id));
   const someSelected = selectedIds.size > 0;
 
-  const toggleSelectAll = () => {
+  const toggleSelectAll = useCallback(() => {
     if (allSelected) setSelectedIds(new Set());
     else setSelectedIds(new Set(visibleSorted.map(t => t.id)));
-  };
+  }, [allSelected, visibleSorted]);
 
-  const toggleSelect = (taskId: string) => {
+  const toggleSelect = useCallback((taskId: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
       if (next.has(taskId)) next.delete(taskId);
       else next.add(taskId);
       return next;
     });
-  };
+  }, []);
 
-  const showBulkSuccess = (msg: string) => {
+  const showBulkSuccess = useCallback((msg: string) => {
     setBulkMessage(msg);
     setTimeout(() => setBulkMessage(''), 3000);
-  };
+  }, []);
 
-  const clearBulkState = () => {
+  const clearBulkState = useCallback(() => {
     setSelectedIds(new Set());
     setBulkStatus('');
     setBulkPriority('');
     setBulkAssignee('');
-  };
+  }, []);
 
-  const applyBulkUpdate = async (field: string, value: string) => {
+  const applyBulkUpdate = useCallback(async (field: string, value: string) => {
     if (!value || selectedIds.size === 0) return;
     setBulkLoading(true);
     try {
@@ -894,9 +781,9 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     } finally {
       setBulkLoading(false);
     }
-  };
+  }, [selectedIds, onBulkUpdate, scheduleId, queryClient, showBulkSuccess, clearBulkState]);
 
-  const confirmAndDeleteTasks = async (taskIds: string[]) => {
+  const confirmAndDeleteTasks = useCallback(async (taskIds: string[]) => {
     setBulkLoading(true);
     try {
       if (onBulkDelete) {
@@ -914,27 +801,47 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     } finally {
       setBulkLoading(false);
     }
-  };
+  }, [onBulkDelete, scheduleId, queryClient, showBulkSuccess, clearBulkState]);
 
-  const handleDeleteTasks = (taskIds: string[]) => {
+  const handleDeleteTasks = useCallback((taskIds: string[]) => {
     if (taskIds.length === 0) return;
     setPendingDeleteIds(taskIds);
-  };
+  }, []);
 
-  const handleBulkDelete = () => handleDeleteTasks(Array.from(selectedIds));
+  const handleBulkDelete = useCallback(() => handleDeleteTasks(Array.from(selectedIds)), [handleDeleteTasks, selectedIds]);
 
-  const handleRowDelete = (taskId: string) => handleDeleteTasks([taskId]);
+  const handleRowDelete = useCallback((taskId: string) => handleDeleteTasks([taskId]), [handleDeleteTasks]);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; task: GanttTask } | null>(null);
 
-  // Keyboard: Delete, Tab indent/outdent, arrow key nav, copy/paste cells, copy/paste rows
+  // Context menu handlers
+  const handleContextOutdent = useCallback((taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task?.parentTaskId) {
+      const parent = tasks.find(t => t.id === task.parentTaskId);
+      onTaskUpdate(taskId, { parentTaskId: parent?.parentTaskId || null });
+    }
+  }, [tasks, onTaskUpdate]);
+
+  const handleContextIndent = useCallback((taskId: string, aboveTaskId: string) => {
+    if (onBulkUpdate) {
+      onBulkUpdate([taskId], 'parentTaskId', aboveTaskId);
+    } else {
+      onTaskUpdate(taskId, { parentTaskId: aboveTaskId });
+    }
+  }, [onBulkUpdate, onTaskUpdate]);
+
+  const handleContextInlineInsert = useCallback((afterTaskId: string, parentTaskId?: string) => {
+    setInlineInsert({ afterTaskId, parentTaskId });
+  }, []);
+
+  // Keyboard shortcuts
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT';
 
-      // Delete key
       if (e.key === 'Delete' && !isInput) {
         if (selectedIds.size > 0) {
           e.preventDefault();
@@ -945,11 +852,9 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         }
       }
 
-      // Ctrl+C / Ctrl+V: cell copy/paste when focused, row copy/paste otherwise
       if ((e.ctrlKey || e.metaKey) && !isInput) {
         if (e.key === 'c') {
           if (focusedCell) {
-            // Cell copy
             e.preventDefault();
             const task = tasks.find(t => t.id === focusedCell.taskId);
             if (task) {
@@ -958,7 +863,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               navigator.clipboard.writeText(val).catch(() => {});
             }
           } else {
-            // Row copy
             e.preventDefault();
             const toCopy = selectedIds.size > 0
               ? visibleSorted.filter(t => selectedIds.has(t.id))
@@ -974,7 +878,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         }
         if (e.key === 'v') {
           if (focusedCell && copiedValue && copiedValue.field === focusedCell.field) {
-            // Cell paste
             e.preventDefault();
             const apiField = focusedCell.field === 'notes' ? 'description' : focusedCell.field;
             const val = focusedCell.field === 'progressPercentage'
@@ -984,7 +887,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
             setTimeout(() => setPasteFlash(null), 800);
           } else if (copiedTasks.length > 0 && onDuplicateTasks) {
-            // Row paste
             e.preventDefault();
             onDuplicateTasks(copiedTasks);
           }
@@ -992,7 +894,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         }
       }
 
-      // Ctrl+D: Duplicate active task or selected tasks
       if ((e.ctrlKey || e.metaKey) && e.key === 'd' && !isInput && onDuplicateTasks) {
         e.preventDefault();
         const toDup = selectedIds.size > 0
@@ -1004,11 +905,9 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return;
       }
 
-      // Tab indent / Shift+Tab outdent
       if (e.key === 'Tab' && !isInput) {
         e.preventDefault();
         if (e.shiftKey) {
-          // Outdent
           const idsToProcess = selectedIds.size > 0
             ? Array.from(selectedIds)
             : focusedCell?.taskId ? [focusedCell.taskId]
@@ -1025,7 +924,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             }
           }
         } else {
-          // Indent — make child of task above
           const targetIds = selectedIds.size > 0
             ? Array.from(selectedIds)
             : focusedCell?.taskId ? [focusedCell.taskId]
@@ -1049,7 +947,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         }
       }
 
-      // Escape to close context menu or clear focused cell
       if (e.key === 'Escape' && !isInput) {
         if (contextMenu) {
           setContextMenu(null);
@@ -1058,10 +955,8 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         }
       }
 
-      // Arrow key navigation when not editing
       if (!editingCell && !isInput) {
         if (!focusedCell) {
-          // Enter on selected row focuses the first field
           if (e.key === 'Enter' && activeTaskId) {
             e.preventDefault();
             const field = visibleFieldOrder[0] || 'name';
@@ -1112,9 +1007,9 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate, focusedCell, editingCell, visibleSorted, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue]);
+  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate, focusedCell, editingCell, visibleSorted, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess]);
 
-  // When editing ends, restore focusedCell so position isn't lost
+  // Restore focusedCell when editing ends
   useEffect(() => {
     if (!editingCell) return;
     return () => {
@@ -1135,7 +1030,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     if (!notesPopup) return;
     const dismiss = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('.fixed.z-50')) return; // clicked inside popup
+      if (target.closest('.fixed.z-50')) return;
       const task = tasks.find(t => t.id === notesPopup.taskId);
       if (task && notesPopup.value !== (task.description || '')) {
         onTaskUpdate(notesPopup.taskId, { description: notesPopup.value });
@@ -1173,14 +1068,12 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     );
   };
 
-  // Format a CPM offset as a date or "Day N"
   const formatCpmDate = (offset: number | undefined): string => {
     if (offset === undefined) return '-';
     if (scheduleStartDate) return addDaysToDate(scheduleStartDate, offset);
     return `Day ${offset}`;
   };
 
-  // Render a variance badge (positive = late, negative = early)
   const renderVarianceBadge = (days: number | undefined): React.ReactNode => {
     if (days === undefined || days === null) return '-';
     if (days === 0) return <span className="text-xs text-gray-500 dark:text-gray-400">0d</span>;
@@ -1442,8 +1335,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         );
       }
 
-      // Read-only columns
-
       case 'earlyStart':
         return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{formatCpmDate(cpm?.ES)}</td>;
       case 'earlyFinish':
@@ -1511,7 +1402,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               if (deps.length === 0 && !task.dependency) {
                 return <span className="text-gray-400 dark:text-gray-500">-</span>;
               }
-              // Build labels and find worst health
               const items = deps.length > 0 ? deps : (task.dependency ? [{ dependencyId: task.dependency, dependencyType: task.dependencyType || 'FS', lagDays: task.dependencyLagDays || 0 }] : []);
               let worstHealth: 'satisfied' | 'in_progress' | 'at_risk' = 'satisfied';
               const labels: string[] = [];
@@ -1703,181 +1593,69 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     }
   };
 
+  // Notes popup handlers
+  const handleNotesChange = useCallback((value: string) => {
+    setNotesPopup(prev => prev ? { ...prev, value } : null);
+  }, []);
+
+  const handleNotesSave = useCallback(() => {
+    if (!notesPopup) return;
+    const task = tasks.find(t => t.id === notesPopup.taskId);
+    if (task && notesPopup.value !== (task.description || '')) {
+      onTaskUpdate(notesPopup.taskId, { description: notesPopup.value });
+    }
+    setNotesPopup(null);
+  }, [notesPopup, tasks, onTaskUpdate]);
+
+  const handleNotesCancel = useCallback(() => {
+    setNotesPopup(null);
+  }, []);
+
+  // Group-by change handler
+  const handleGroupByChange = useCallback((value: GroupByField) => {
+    setGroupBy(value);
+    setCollapsedGroups(new Set());
+  }, []);
+
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
-      {/* Saved views header */}
-      <div className="flex items-center justify-end gap-1.5 px-3 py-1.5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-        {/* Group by */}
-        <div className="flex items-center gap-1 mr-auto">
-          <Layers className="w-3 h-3 text-gray-400" />
-          <select
-            value={groupBy}
-            onChange={(e) => { setGroupBy(e.target.value as GroupByField); setCollapsedGroups(new Set()); }}
-            className="text-xs border border-gray-200 dark:border-gray-600 rounded px-1.5 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400"
-          >
-            <option value="">No grouping</option>
-            <option value="status">Group by Status</option>
-            <option value="priority">Group by Priority</option>
-            <option value="assignedTo">Group by Assignee</option>
-          </select>
-        </div>
-        {summaryTaskIds.size > 0 && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setCollapsedSummaries(new Set(summaryTaskIds))}
-              className="px-2 py-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-              title="Collapse all summary tasks"
-            >
-              Collapse All
-            </button>
-            <button
-              onClick={() => setCollapsedSummaries(new Set())}
-              className="px-2 py-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-              title="Expand all summary tasks"
-            >
-              Expand All
-            </button>
-          </div>
-        )}
-        {onUndo && (
-          <div className="flex items-center gap-0.5">
-            <button
-              onClick={onUndo}
-              disabled={!canUndo}
-              className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title={undoDescription ? `Undo: ${undoDescription}` : 'Undo (Ctrl+Z)'}
-            >
-              <Undo2 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={onRedo}
-              disabled={!canRedo}
-              className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title={redoDescription ? `Redo: ${redoDescription}` : 'Redo (Ctrl+Y)'}
-            >
-              <Redo2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-        <button
-          onClick={() => exportTasksCSV(visibleSorted, 'tasks')}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          title="Export to CSV"
-        >
-          <Download className="w-3.5 h-3.5" />
-          CSV
-        </button>
-        <SavedViewsDropdown
-          scheduleId={scheduleId}
-          currentColumns={visibleKeys}
-          currentSortField={sortField || 'startDate'}
-          currentSortDir={sortDir}
-          onLoadView={loadSavedView}
-        />
-      </div>
+      {/* Toolbar */}
+      <TableToolbar
+        groupBy={groupBy}
+        onGroupByChange={handleGroupByChange}
+        summaryTaskIds={summaryTaskIds}
+        onCollapseAll={() => setCollapsedSummaries(new Set(summaryTaskIds))}
+        onExpandAll={() => setCollapsedSummaries(new Set())}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        undoDescription={undoDescription}
+        redoDescription={redoDescription}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        visibleSorted={visibleSorted}
+        scheduleId={scheduleId}
+        visibleKeys={visibleKeys}
+        sortField={sortField}
+        sortDir={sortDir}
+        onLoadView={loadSavedView}
+      />
 
-      {/* Bulk action toolbar */}
+      {/* Bulk action bar */}
       {someSelected && (
-        <div className="sticky top-0 z-10 bg-primary-50 border border-primary-200 rounded-lg p-3 m-2 flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <CheckSquare className="w-4 h-4 text-primary-600" />
-            <span className="text-xs font-semibold text-primary-700">{selectedIds.size} selected</span>
-          </div>
-
-          <div className="h-4 w-px bg-primary-200" />
-
-          <div className="flex items-center gap-1">
-            <select
-              className="text-xs px-2 py-1 rounded border border-primary-200 dark:border-primary-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-400"
-              value={bulkStatus}
-              onChange={e => setBulkStatus(e.target.value)}
-              disabled={bulkLoading}
-            >
-              <option value="">Status...</option>
-              {statusOptions.map(s => (
-                <option key={s} value={s}>{s.replace('_', ' ')}</option>
-              ))}
-            </select>
-            {bulkStatus && (
-              <button
-                className="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 disabled:opacity-50"
-                onClick={() => applyBulkUpdate('status', bulkStatus)}
-                disabled={bulkLoading}
-              >
-                Apply
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1">
-            <select
-              className="text-xs px-2 py-1 rounded border border-primary-200 dark:border-primary-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-400"
-              value={bulkPriority}
-              onChange={e => setBulkPriority(e.target.value)}
-              disabled={bulkLoading}
-            >
-              <option value="">Priority...</option>
-              {priorityOptions.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-            {bulkPriority && (
-              <button
-                className="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 disabled:opacity-50"
-                onClick={() => applyBulkUpdate('priority', bulkPriority)}
-                disabled={bulkLoading}
-              >
-                Apply
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1">
-            <input
-              type="text"
-              placeholder="Assign to..."
-              className="text-xs px-2 py-1 rounded border border-primary-200 dark:border-primary-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-400 w-28"
-              value={bulkAssignee}
-              onChange={e => setBulkAssignee(e.target.value)}
-              disabled={bulkLoading}
-              onKeyDown={e => { if (e.key === 'Enter' && bulkAssignee) applyBulkUpdate('assignedTo', bulkAssignee); }}
-            />
-            {bulkAssignee && (
-              <button
-                className="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 disabled:opacity-50"
-                onClick={() => applyBulkUpdate('assignedTo', bulkAssignee)}
-                disabled={bulkLoading}
-              >
-                Apply
-              </button>
-            )}
-          </div>
-
-          <div className="h-4 w-px bg-primary-200" />
-
-          <button
-            className="text-xs px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 flex items-center gap-1"
-            onClick={handleBulkDelete}
-            disabled={bulkLoading}
-          >
-            <Trash2 className="w-3 h-3" />
-            Delete
-          </button>
-
-          <button
-            className="text-xs px-2 py-1 rounded bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center gap-1 ml-auto"
-            onClick={clearBulkState}
-          >
-            <X className="w-3 h-3" />
-            Clear
-          </button>
-
-          {bulkMessage && (
-            <span className="text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
-              {bulkMessage}
-            </span>
-          )}
-        </div>
+        <TableBulkActionBar
+          selectedCount={selectedIds.size}
+          bulkStatus={bulkStatus}
+          bulkPriority={bulkPriority}
+          bulkAssignee={bulkAssignee}
+          bulkMessage={bulkMessage}
+          bulkLoading={bulkLoading}
+          onBulkStatusChange={setBulkStatus}
+          onBulkPriorityChange={setBulkPriority}
+          onBulkAssigneeChange={setBulkAssignee}
+          onApplyBulkUpdate={applyBulkUpdate}
+          onBulkDelete={handleBulkDelete}
+          onClear={clearBulkState}
+        />
       )}
 
       <div
@@ -1888,82 +1666,19 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       >
         <table className="text-sm" style={{ minWidth: '100%' }}>
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-              <th className="w-16 px-2 py-2.5">
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 w-5 text-center">#</span>
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleSelectAll}
-                    className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer"
-                  />
-                </div>
-              </th>
-              {visibleColumns.map((col, colIdx) => (
-                <th
-                  key={col.key}
-                  draggable={colDrag.isDraggable(col.key)}
-                  onDragStart={(e) => colDrag.handleDragStart(e, col.key)}
-                  onDragOver={(e) => colDrag.handleDragOver(e, col.key)}
-                  onDrop={(e) => colDrag.handleDrop(e, col.key)}
-                  onDragEnd={colDrag.handleDragEnd}
-                  className={`px-3 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide select-none relative group/th hover:bg-gray-100 dark:hover:bg-gray-700 ${colDrag.isDraggable(col.key) ? 'cursor-grab active:cursor-grabbing' : ''} ${colDrag.dragColKey === col.key ? 'opacity-40' : ''} ${colDrag.overColKey === col.key && colDrag.dragColKey !== col.key ? 'ring-2 ring-inset ring-primary-400' : ''}`}
-                  style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : { minWidth: col.key === 'name' ? 200 : 100 }}
-                >
-                  <div className="flex items-center gap-1 whitespace-nowrap">
-                    {/* Move arrows — visible on hover */}
-                    <span className="flex items-center gap-0 opacity-0 group-hover/th:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); moveColumn(col.key, 'left'); }}
-                        disabled={colIdx === 0}
-                        className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-20"
-                        title="Move left"
-                        aria-label="Move column left"
-                      >
-                        <ArrowLeft className="w-2.5 h-2.5" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); moveColumn(col.key, 'right'); }}
-                        disabled={colIdx === visibleColumns.length - 1}
-                        className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-20"
-                        title="Move right"
-                        aria-label="Move column right"
-                      >
-                        <ArrowRight className="w-2.5 h-2.5" />
-                      </button>
-                    </span>
-                    {/* Column label — clickable to sort */}
-                    <span
-                      className={`flex items-center gap-1 ${col.sortable ? 'cursor-pointer' : ''}`}
-                      onClick={() => col.sortable && toggleSort(col.key)}
-                    >
-                      {col.label}
-                      {col.sortable && <SortIcon field={col.key} />}
-                    </span>
-                  </div>
-                  {/* Resize handle — double-click to auto-fit */}
-                  <div
-                    draggable={false}
-                    className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize z-10 flex items-center justify-center"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const th = e.currentTarget.parentElement;
-                      handleResizeStart(e, col.key, th?.offsetWidth ?? 120);
-                    }}
-                    onDoubleClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      autoFitColumn(col.key);
-                    }}
-                  >
-                    <div className="w-0.5 h-4 bg-gray-200 dark:bg-gray-600 group-hover/th:bg-primary-400 rounded-full transition-colors" />
-                  </div>
-                </th>
-              ))}
-              <th className="w-10" />
-            </tr>
+            <TableHeaderRow
+              visibleColumns={visibleColumns}
+              sortField={sortField}
+              sortDir={sortDir}
+              onToggleSort={toggleSort}
+              colWidths={colWidths}
+              colDrag={colDrag}
+              moveColumn={moveColumn}
+              onResizeStart={handleResizeStart}
+              onAutoFitColumn={autoFitColumn}
+              allSelected={allSelected}
+              onToggleSelectAll={toggleSelectAll}
+            />
           </thead>
           <tbody ref={tbodyRef}>
             {(() => {
@@ -2096,7 +1811,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               };
 
               if (groupedSorted) {
-                // Grouped rendering
                 const rows: React.ReactNode[] = [];
                 let globalIdx = 0;
                 for (const [groupKey, groupTasks] of groupedSorted) {
@@ -2136,7 +1850,6 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 return rows;
               }
 
-              // Flat rendering (no grouping) — virtualized for large lists
               if (useVirtualization) {
                 const rows: React.ReactNode[] = [];
                 if (startRow > 0) {
@@ -2201,151 +1914,34 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
       {/* Notes popup editor */}
       {notesPopup && (
-        <div
-          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 w-80"
-          style={{
-            left: Math.min(notesPopup.x, window.innerWidth - 340),
-            top: Math.min(notesPopup.y, window.innerHeight - 260),
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Notes</span>
-            <button
-              onClick={() => {
-                const apiField = 'description';
-                const task = tasks.find(t => t.id === notesPopup.taskId);
-                if (task && notesPopup.value !== (task.description || '')) {
-                  onTaskUpdate(notesPopup.taskId, { [apiField]: notesPopup.value });
-                }
-                setNotesPopup(null);
-              }}
-              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <textarea
-            ref={el => { if (el) el.focus(); }}
-            className="w-full text-xs p-2 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-400 resize-y"
-            value={notesPopup.value}
-            onChange={e => setNotesPopup(prev => prev ? { ...prev, value: e.target.value } : null)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                setNotesPopup(null);
-              }
-            }}
-            rows={6}
-          />
-          <div className="flex justify-end gap-2 mt-2">
-            <button
-              onClick={() => setNotesPopup(null)}
-              className="text-xs px-2.5 py-1 rounded border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                const task = tasks.find(t => t.id === notesPopup.taskId);
-                if (task && notesPopup.value !== (task.description || '')) {
-                  onTaskUpdate(notesPopup.taskId, { description: notesPopup.value });
-                }
-                setNotesPopup(null);
-              }}
-              className="text-xs px-2.5 py-1 rounded bg-primary-600 text-white hover:bg-primary-700"
-            >
-              Save
-            </button>
-          </div>
-        </div>
+        <TableNotesPopup
+          taskId={notesPopup.taskId}
+          value={notesPopup.value}
+          x={notesPopup.x}
+          y={notesPopup.y}
+          onChange={handleNotesChange}
+          onSave={handleNotesSave}
+          onCancel={handleNotesCancel}
+        />
       )}
 
       {/* Right-click context menu */}
       {contextMenu && (
-        <div
-          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[180px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {onInsertBefore && (
-            <button
-              className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-              onClick={() => { onInsertBefore(contextMenu.task.id, contextMenu.task.parentTaskId || undefined); setContextMenu(null); }}
-            >
-              <PlusCircle className="w-3.5 h-3.5" /> Insert Before
-            </button>
-          )}
-          {(onInlineInsert || onInsertAfter) && (
-            <button
-              className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-              onClick={() => {
-                if (onInlineInsert) {
-                  setInlineInsert({ afterTaskId: contextMenu.task.id, parentTaskId: contextMenu.task.parentTaskId || undefined });
-                } else {
-                  onInsertAfter!(contextMenu.task.id, contextMenu.task.parentTaskId || undefined);
-                }
-                setContextMenu(null);
-              }}
-            >
-              <PlusCircle className="w-3.5 h-3.5" /> Insert After
-            </button>
-          )}
-          <button
-            className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-            onClick={() => { onTaskClick(contextMenu.task); setContextMenu(null); }}
-          >
-            <Pencil className="w-3.5 h-3.5" /> Edit Task
-          </button>
-          {contextMenu.task.parentTaskId && (
-            <button
-              className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-              onClick={() => {
-                const parent = tasks.find(t => t.id === contextMenu.task.parentTaskId);
-                onTaskUpdate(contextMenu.task.id, { parentTaskId: parent?.parentTaskId || null });
-                setContextMenu(null);
-              }}
-            >
-              <CornerDownLeft className="w-3.5 h-3.5" /> Outdent
-            </button>
-          )}
-          {(() => {
-            const idx = visibleSorted.findIndex(t => t.id === contextMenu.task.id);
-            return idx > 0 ? (
-              <button
-                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                onClick={() => {
-                  const above = visibleSorted[idx - 1];
-                  if (onBulkUpdate) {
-                    onBulkUpdate([contextMenu.task.id], 'parentTaskId', above.id);
-                  } else {
-                    onTaskUpdate(contextMenu.task.id, { parentTaskId: above.id });
-                  }
-                  setContextMenu(null);
-                }}
-              >
-                <CornerDownRight className="w-3.5 h-3.5" /> Indent
-              </button>
-            ) : null;
-          })()}
-          <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-          <button
-            className="w-full text-left px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
-            onClick={() => {
-              const ids = new Set(selectedIds);
-              ids.add(contextMenu.task.id);
-              handleDeleteTasks(Array.from(ids));
-              setContextMenu(null);
-            }}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            {selectedIds.size > 0 && !selectedIds.has(contextMenu.task.id)
-              ? `Delete ${selectedIds.size + 1} Tasks`
-              : selectedIds.size > 1
-              ? `Delete ${selectedIds.size} Tasks`
-              : 'Delete Task'}
-          </button>
-        </div>
+        <TableContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          task={contextMenu.task}
+          selectedIds={selectedIds}
+          visibleSorted={visibleSorted}
+          onInsertBefore={onInsertBefore}
+          onInsertAfter={onInsertAfter}
+          onInlineInsert={onInlineInsert ? handleContextInlineInsert : undefined}
+          onTaskClick={onTaskClick}
+          onOutdent={handleContextOutdent}
+          onIndent={handleContextIndent}
+          onDelete={handleDeleteTasks}
+          onClose={() => setContextMenu(null)}
+        />
       )}
 
       {pendingDeleteIds && (
