@@ -4,7 +4,8 @@
 
 A full-featured, production-grade project management SaaS application combining traditional PM methodologies (CPM, EVM, Agile) with an autonomous AI agent system. 14 specialized agents continuously monitor projects, reason about issues via Claude, and propose (or auto-execute) corrective actions — all with human-in-the-loop governance, confidence scoring, and full audit trails. Built with Fastify, React, and the Anthropic Claude SDK.
 
-**Live:** [https://pm.kpbc.ca](https://pm.kpbc.ca)
+**Production:** [https://kovarti.com](https://kovarti.com)
+**Staging:** [https://pm.kpbc.ca](https://pm.kpbc.ca) (basic auth required)
 
 ---
 

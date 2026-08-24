@@ -295,7 +295,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
               )}
 
               <div className="mb-4">
-                <h2 className={`text-xl font-bold ${textPrimary}`}>{plan.name}</h2>
+                <h3 className={`text-xl font-bold ${textPrimary}`}>{plan.name}</h3>
                 {plan.monthly === 0 ? (
                   <div className="mt-3 flex items-baseline gap-1">
                     <span className={`text-4xl font-bold ${textPrimary}`}>Free</span>
@@ -530,15 +530,16 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
         </h2>
         <div className="overflow-x-auto flex justify-center">
           <table className="text-sm" style={{ maxWidth: '900px', width: '100%' }}>
+            <caption className="sr-only">Feature comparison across subscription tiers</caption>
             <thead>
               <tr className="border-b-2 border-gray-700">
-                <th className="text-left py-3 pr-6 font-semibold text-white">Feature</th>
-                <th className="text-center py-3 px-3 font-semibold text-gray-400 w-20">
+                <th scope="col" className="text-left py-3 pr-6 font-semibold text-white">Feature</th>
+                <th scope="col" className="text-center py-3 px-3 font-semibold text-gray-400 w-20">
                   Trial
                   <div className="text-[10px] font-normal text-gray-500">14 days</div>
                 </th>
-                <th className="text-center py-3 px-3 font-semibold text-white w-20">Basic</th>
-                <th className="text-center py-3 px-3 font-semibold text-primary-400 w-20">Pro</th>
+                <th scope="col" className="text-center py-3 px-3 font-semibold text-white w-20">Basic</th>
+                <th scope="col" className="text-center py-3 px-3 font-semibold text-primary-400 w-20">Pro</th>
               </tr>
             </thead>
             <tbody>
@@ -546,7 +547,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
                 <tr key={row.feature} className={`border-b border-gray-700/50 ${i % 2 === 0 ? 'bg-gray-800/50' : ''}`}>
                   <td className="py-2.5 pr-4">
                     <div className="text-gray-300">{row.feature}</div>
-                    {row.desc && <div className="text-gray-300 mt-0.5">{row.desc}</div>}
+                    {row.desc && <div className="text-xs text-gray-500 mt-0.5">{row.desc}</div>}
                   </td>
                   {(['trial', 'consultant_basic', 'consultant_pro'] as const).map((tier) => {
                     const val = row[tier];

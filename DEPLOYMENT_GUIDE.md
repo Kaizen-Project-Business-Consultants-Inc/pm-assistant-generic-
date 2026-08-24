@@ -4,11 +4,20 @@
 
 PM Assistant is deployed on Oracle Cloud (Always Free tier) with Nginx as reverse proxy and systemd managing the Node.js process.
 
-- **Domain:** https://pm.kpbc.ca
+### Staging
+- **Domain:** https://pm.kpbc.ca (basic auth protected)
 - **Server IP:** 147.5.127.99
 - **SSH access:** `ssh -i "~/.ssh/ssh-key-2026-07-08 (1).key" ubuntu@147.5.127.99`
 - **App directory:** `/opt/pm-app/`
 - **VM:** VM.Standard.E2.1.Micro (1 OCPU, 1GB RAM, x86)
+- **OS:** Ubuntu 24.04
+
+### Production
+- **Domain:** https://kovarti.com
+- **Server IP:** 147.5.127.251
+- **SSH access:** `ssh -i "~/.ssh/ssh-key-2026-07-08 (1).key" ubuntu@147.5.127.251`
+- **App directory:** `/opt/pm-app/`
+- **VM:** VM.Standard.A1.Flex (2 OCPU, 12GB RAM, ARM)
 - **OS:** Ubuntu 24.04
 
 ## Tech Stack
@@ -65,7 +74,7 @@ DB_NAME=pmassist
 JWT_SECRET=<SECRET>
 JWT_REFRESH_SECRET=<SECRET>
 COOKIE_SECRET=<SECRET>
-CORS_ORIGIN=https://pm.kpbc.ca
+CORS_ORIGIN=https://pm.kpbc.ca  # staging; use https://kovarti.com for production
 REDIS_URL=redis://localhost:6379
 AI_ENABLED=true
 AI_MODEL=claude-sonnet-4-5-20250929

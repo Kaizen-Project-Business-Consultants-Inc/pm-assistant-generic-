@@ -4,7 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 const API_KEY = process.env.PM_API_KEY!;
-const BASE_URL = (process.env.PM_BASE_URL || "https://pm.kpbc.ca").replace(
+const BASE_URL = (process.env.PM_BASE_URL || "https://kovarti.com").replace(
   /\/$/,
   ""
 );

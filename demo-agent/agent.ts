@@ -7,7 +7,7 @@ import * as readline from "readline";
 // ---------------------------------------------------------------------------
 
 const PM_API_KEY = process.env.PM_API_KEY;
-const PM_BASE_URL = (process.env.PM_BASE_URL || "https://pm.kpbc.ca").replace(
+const PM_BASE_URL = (process.env.PM_BASE_URL || "https://kovarti.com").replace(
   /\/$/,
   ""
 );

@@ -91,7 +91,7 @@ Before deploying, verify:
 
 - **SCP built files** to server.
 - **Run migrations** via SSH if there are schema changes.
-- **Restart the app** via `cloudlinux-selector`.
+- **Restart the app** via `systemctl restart pm-app`.
 - **Verify restart succeeded** — check that the process is running.
 
 See [deployment.md](./memory/deployment.md) in memory files for full deployment details.
@@ -111,7 +111,8 @@ If something goes wrong after deployment:
 
 - **Code rollback:** `git revert <commit>`, rebuild, redeploy files via SCP, restart.
 - **Migration rollback:** Write a reverse migration SQL (DROP columns/tables, undo ALTERs), run via SSH. Never delete the forward migration file — add a new one.
-- **Emergency restart:** `cloudlinux-selector restart --json --interpreter nodejs --domain pm.kpbc.ca --app-root pm.ca`
+- **Emergency restart (staging):** `ssh ubuntu@147.5.127.99 'sudo systemctl restart pm-app'`
+- **Emergency restart (production):** `ssh ubuntu@147.5.127.251 'sudo systemctl restart pm-app'`
 - **Data recovery:** MariaDB point-in-time recovery via cPanel backups if data was corrupted.
 - **Post-mortem:** Document what went wrong and what was done to fix it.
 

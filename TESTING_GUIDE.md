@@ -3,7 +3,8 @@
 **Last updated:** February 28, 2026
 **Stack:** Fastify + TypeScript (server), React 18 + Vite + Tailwind CSS (client)
 **Database:** MariaDB on TMD Hosting (no local database)
-**Production URL:** https://pm.kpbc.ca
+**Production URL:** https://kovarti.com
+**Staging URL:** https://pm.kpbc.ca (basic auth required)
 
 ---
 
@@ -48,11 +49,11 @@ npm run type-check
 
 ## 2. API Testing Patterns
 
-All API testing is done with `curl` against the production server at `https://pm.kpbc.ca`. There is no local database, so all testing hits the live environment.
+All API testing is done with `curl` against the staging server at `https://pm.kpbc.ca` (basic auth required). There is no local database, so all testing hits the staging environment.
 
 ### General conventions
 
-- Base URL: `https://pm.kpbc.ca/api/v1`
+- Base URL: `https://pm.kpbc.ca/api/v1` (staging) or `https://kovarti.com/api/v1` (production)
 - Authentication: HTTP-only cookies (`access_token` and `refresh_token`) set by the login endpoint
 - Use a cookie jar file (`-b cookies.txt -c cookies.txt`) to persist the session
 - All request/response bodies are JSON

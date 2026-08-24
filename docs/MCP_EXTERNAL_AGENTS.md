@@ -28,7 +28,7 @@ Add to your Claude Desktop `claude_desktop_config.json`:
 {
   "mcpServers": {
     "pm-assistant": {
-      "url": "https://pm.kpbc.ca/mcp",
+      "url": "https://kovarti.com/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY_HERE"
       }
@@ -43,7 +43,7 @@ Or for OAuth (interactive login):
 {
   "mcpServers": {
     "pm-assistant": {
-      "url": "https://mcp.kpbc.ca/mcp"
+      "url": "https://kovarti.com/mcp"
     }
   }
 }

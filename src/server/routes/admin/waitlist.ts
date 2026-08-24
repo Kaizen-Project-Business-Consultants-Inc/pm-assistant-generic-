@@ -28,7 +28,7 @@ export async function waitlistRoutes(fastify: FastifyInstance) {
     const ip = request.ip || 'unknown';
     const rl = await rateLimiter.checkAsync(`waitlist:join:${ip}`, 5, 3_600_000);
     if (!rl.allowed) {
-      return reply.status(429).send({ error: 'A signup has already been submitted from this network. Please try again later.' });
+      return reply.status(429).send({ error: 'Too many signups from this network. Please try again later.' });
     }
 
     const result = joinSchema.safeParse(request.body);

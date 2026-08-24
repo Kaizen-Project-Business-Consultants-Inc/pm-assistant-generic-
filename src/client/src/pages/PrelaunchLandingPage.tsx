@@ -67,7 +67,7 @@ const features = [
   },
 ];
 
-const LAUNCH_DATE = new Date('2026-09-07T00:00:00Z');
+const LAUNCH_DATE = new Date(import.meta.env.VITE_LAUNCH_DATE ?? '2026-09-07T00:00:00Z');
 
 function useCountdown(target: Date) {
   const calc = () => {
@@ -96,6 +96,31 @@ function CountdownUnit({ value, label }: { value: number; label: string }) {
         </span>
       </div>
       <span className="mt-2 text-xs font-medium text-primary-300 uppercase tracking-widest">{label}</span>
+    </div>
+  );
+}
+
+function Countdown({ target }: { target: Date }) {
+  const countdown = useCountdown(target);
+  const isZero = countdown.days === 0 && countdown.hours === 0 && countdown.minutes === 0 && countdown.seconds === 0;
+
+  if (isZero) {
+    return (
+      <div className="mt-10">
+        <p className="text-lg font-bold text-primary-300">We're live! <a href="/register" className="underline hover:text-white">Get started now →</a></p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-10">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">Launching in</p>
+      <div className="flex justify-center lg:justify-start gap-3 sm:gap-4">
+        <CountdownUnit value={countdown.days} label="Days" />
+        <CountdownUnit value={countdown.hours} label="Hours" />
+        <CountdownUnit value={countdown.minutes} label="Minutes" />
+        <CountdownUnit value={countdown.seconds} label="Seconds" />
+      </div>
     </div>
   );
 }
@@ -139,7 +164,7 @@ function HeroMockup() {
           <span className="ml-2.5 text-xs text-slate-500" style={{ fontFamily: "'JetBrains Mono', monospace" }}>portfolio · health</span>
           <span className="ml-auto inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-green-400 px-2 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.12)' }}>
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" style={{ animation: 'hpulse 1.6s ease-in-out infinite' }} />
-            Live
+            Preview
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2.5">
@@ -393,7 +418,6 @@ const featureMockups: Record<string, React.FC> = {
 };
 
 export const PrelaunchLandingPage: React.FC = () => {
-  const countdown = useCountdown(LAUNCH_DATE);
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -439,22 +463,22 @@ export const PrelaunchLandingPage: React.FC = () => {
 
       {/* Announcement bar */}
       <div className="bg-gradient-to-r from-primary-600 via-violet-600 to-purple-600 py-2.5 px-4 text-center text-sm font-medium text-white">
-        <span className="mr-2">🎉</span>
-        Join the waitlist now and get <span className="font-bold underline underline-offset-2">20% off</span> your first year of Pro (annual plan) — limited spots available.
-        <span className="ml-2">🚀</span>
+        <span className="mr-2" aria-hidden="true">🎉</span>
+        Join the waitlist — be the first to know when we launch.
+        <span className="ml-2" aria-hidden="true">🚀</span>
       </div>
 
       {/* Nav */}
       <nav className="border-b border-white/5 backdrop-blur-md bg-slate-950/60 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
-          <div className="flex items-center gap-2.5">
+          <Link to="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-900">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={LOGO_SVG_PATH} />
               </svg>
             </div>
-            <span className="text-lg font-bold">Kovarti</span>
-          </div>
+            <span className="text-lg font-bold">Kovarti PM</span>
+          </Link>
         </div>
       </nav>
 
@@ -491,16 +515,8 @@ export const PrelaunchLandingPage: React.FC = () => {
               </a>
             </div>
 
-            {/* Countdown */}
-            <div className="mt-10">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">Launching in</p>
-              <div className="flex justify-center lg:justify-start gap-3 sm:gap-4">
-                <CountdownUnit value={countdown.days} label="Days" />
-                <CountdownUnit value={countdown.hours} label="Hours" />
-                <CountdownUnit value={countdown.minutes} label="Minutes" />
-                <CountdownUnit value={countdown.seconds} label="Seconds" />
-              </div>
-            </div>
+            {/* Countdown — isolated to avoid re-rendering the whole page every second */}
+            <Countdown target={LAUNCH_DATE} />
           </div>
 
           {/* Right: Product Mockup */}
@@ -581,7 +597,7 @@ export const PrelaunchLandingPage: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <p className="text-emerald-400 font-bold text-xl mb-2">You're on the list!</p>
+              <p className="text-emerald-400 font-bold text-xl mb-2">{message || "You're on the list!"}</p>
               <p className="text-slate-400 text-sm">We'll email you the moment we go live. See you at launch.</p>
             </div>
           ) : (
@@ -593,6 +609,8 @@ export const PrelaunchLandingPage: React.FC = () => {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
+                  aria-label="Email address"
+                  autoComplete="email"
                   className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm transition-all"
                 />
                 <button
@@ -603,7 +621,7 @@ export const PrelaunchLandingPage: React.FC = () => {
                   {status === 'loading' ? 'Joining...' : 'Reserve My Spot'}
                 </button>
               </form>
-              {status === 'error' && <p className="mt-3 text-rose-400 text-xs">{message}</p>}
+              {status === 'error' && <p className="mt-3 text-rose-400 text-sm" role="alert">{message}</p>}
               <p className="mt-5 text-xs text-slate-400">No spam. Unsubscribe anytime.</p>
             </>
           )}
@@ -641,7 +659,7 @@ export const PrelaunchLandingPage: React.FC = () => {
             <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
           </div>
-          <div className="text-xs text-slate-600">&copy; {new Date().getFullYear()} Kovarti. All rights reserved.</div>
+          <div className="text-xs text-slate-500">&copy; {new Date().getFullYear()} Kovarti. All rights reserved.</div>
         </div>
       </footer>
     </div>

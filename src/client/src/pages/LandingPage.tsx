@@ -416,11 +416,10 @@ const featureMockups: Record<string, React.FC<{ static?: boolean }>> = {
   'Natural Language Queries': NLQueryMockup,
 };
 
-function FeatureCard({ feature }: { feature: typeof features[number] }) {
+function FeatureCard({ feature, reducedMotion }: { feature: typeof features[number]; reducedMotion: boolean }) {
   const [showPreview, setShowPreview] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const Mockup = featureMockups[feature.title] as React.FC<{ static?: boolean }> | undefined;
-  const reducedMotion = useReducedMotion();
 
   const show = useCallback(() => {
     if (!Mockup) return;
@@ -434,20 +433,29 @@ function FeatureCard({ feature }: { feature: typeof features[number] }) {
 
   const handleClick = useCallback(() => {
     if (!Mockup) return;
+    clearTimeout(timeoutRef.current);
     setShowPreview((prev) => !prev);
   }, [Mockup]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); }
+    if (e.key === 'Escape') hide();
+  }, [handleClick, hide]);
+
+  useEffect(() => () => clearTimeout(timeoutRef.current), []);
 
   return (
     <div
       tabIndex={0}
       role="button"
       aria-expanded={Mockup ? showPreview : undefined}
-      className={`group relative rounded-2xl p-6 border hover:shadow-lg hover:shadow-primary-500/10 hover:-translate-y-1 hover:z-40 transition-all duration-300 cursor-pointer ${feature.cardBg}`}
+      className={`group relative rounded-2xl p-6 border hover:shadow-lg hover:shadow-primary-500/10 hover:-translate-y-1 hover:z-[60] transition-all duration-300 cursor-pointer ${feature.cardBg}`}
       onMouseEnter={show}
       onMouseLeave={hide}
       onFocus={show}
       onBlur={hide}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
     >
       <div className={`absolute top-0 left-6 right-6 h-1 rounded-b-full bg-gradient-to-r ${feature.accent} opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-300`} />
       <div className={`w-12 h-12 ${feature.iconBg} rounded-xl flex items-center justify-center mb-4`}>
@@ -472,6 +480,7 @@ function FeatureCard({ feature }: { feature: typeof features[number] }) {
 
 export const LandingPage: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const reducedMotion = useReducedMotion();
 
   return (
     <div className="min-h-screen bg-[#0a0f1a] overflow-x-hidden">
@@ -596,7 +605,7 @@ export const LandingPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature) => (
-              <FeatureCard key={feature.title} feature={feature} />
+              <FeatureCard key={feature.title} feature={feature} reducedMotion={reducedMotion} />
             ))}
           </div>
         </div>

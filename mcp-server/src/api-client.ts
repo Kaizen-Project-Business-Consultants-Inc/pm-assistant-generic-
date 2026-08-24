@@ -1,4 +1,4 @@
-const BASE_URL = (process.env.PM_BASE_URL || 'https://pm.kpbc.ca').replace(/\/$/, '');
+const BASE_URL = (process.env.PM_BASE_URL || 'https://kovarti.com').replace(/\/$/, '');
 
 export interface ApiClient {
   get: (path: string) => Promise<unknown>;

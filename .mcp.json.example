@@ -6,7 +6,7 @@
       "args": ["tsx", "mcp-server/src/index.ts"],
       "env": {
         "PM_API_KEY": "kpm_your_api_key_here",
-        "PM_BASE_URL": "https://pm.kpbc.ca"
+        "PM_BASE_URL": "https://kovarti.com"
       }
     }
   }

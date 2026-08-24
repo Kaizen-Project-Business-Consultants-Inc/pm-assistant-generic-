@@ -212,7 +212,7 @@ async function startHttp() {
 
   const provider = new PmOAuthProvider();
 
-  const baseUrl = process.env.PM_BASE_URL || 'https://mcp.kpbc.ca';
+  const baseUrl = process.env.PM_BASE_URL || 'https://kovarti.com';
   const issuerUrl = new URL(baseUrl);
   const resourceServerUrl = new URL('/mcp', baseUrl);
 
