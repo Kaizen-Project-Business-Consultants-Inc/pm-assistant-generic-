@@ -6,6 +6,7 @@ import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { apiService } from './services/api';
 import AppLayout from './components/layout/AppLayout';
+import { CookieConsentBanner } from './components/CookieConsentBanner';
 
 // Eagerly loaded (part of initial bundle — needed immediately)
 import { LoginPage } from './pages/LoginPage';
@@ -179,6 +180,7 @@ function App() {
       </Routes>
       </Suspense>
       </ErrorBoundary>
+      <CookieConsentBanner />
     </Router>
     </AccessibilityProvider>
   );

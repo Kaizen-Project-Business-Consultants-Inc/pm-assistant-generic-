@@ -66,10 +66,10 @@ export const TermsPage: React.FC = () => {
           <p>We may suspend or terminate your account for violations of these Terms. Upon termination, your right to use the Service ceases. You may export your data before termination. We will make reasonable efforts to provide notice before involuntary termination.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">12. Governing Law</h2>
-          <p>These Terms are governed by and construed in accordance with the laws of the Province of British Columbia, Canada. Any disputes arising from these Terms or your use of the Service shall be subject to the exclusive jurisdiction of the courts of British Columbia.</p>
+          <p>These Terms are governed by and construed in accordance with the laws of the Province of Ontario, Canada. Any disputes arising from these Terms or your use of the Service shall be subject to the exclusive jurisdiction of the courts of Ontario.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">13. Dispute Resolution</h2>
-          <p>Before pursuing formal legal action, you agree to first contact us at {SUPPORT_EMAIL} to attempt to resolve the dispute informally. If the dispute cannot be resolved within 30 days, either party may pursue resolution through the courts of British Columbia.</p>
+          <p>Before pursuing formal legal action, you agree to first contact us at {SUPPORT_EMAIL} to attempt to resolve the dispute informally. If the dispute cannot be resolved within 30 days, either party may pursue resolution through the courts of Ontario.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">14. Changes to Terms</h2>
           <p>We may update these Terms from time to time. Material changes will be communicated via email or in-app notification at least 14 days before taking effect. Continued use of the Service after changes constitutes acceptance of the new Terms.</p>

@@ -17,7 +17,8 @@ export const PrivacyPage: React.FC = () => {
           <p><strong>Account information:</strong> Name, email address, username, and password (hashed) when you register.</p>
           <p><strong>Project data:</strong> Projects, tasks, schedules, and other content you create within the Service.</p>
           <p><strong>Payment information:</strong> Billing details are processed by Stripe. We do not store your credit card numbers.</p>
-          <p><strong>Usage data:</strong> We collect information about how you use the Service, including pages visited, features used, session duration, device type, browser type, IP address, and referring URL. This data is collected via Google Analytics (see Section 8).</p>
+          <p><strong>Waitlist information:</strong> If you join our pre-launch waitlist, we collect your email address. Waitlist emails are stored securely and used solely to notify you when the Service launches. Waitlist data is deleted within 30 days of launch. To request removal from the waitlist before launch, contact {PRIVACY_EMAIL}.</p>
+          <p><strong>Usage data:</strong> We collect information about how you use the Service, including pages visited, features used, session duration, device type, browser type, IP address, and referring URL. This data is collected via Google Analytics only if you consent (see Section 8).</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">2. How We Use Your Information</h2>
           <p>We use your information to:</p>
@@ -62,13 +63,14 @@ export const PrivacyPage: React.FC = () => {
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">8. Cookies and Analytics</h2>
           <p><strong>Essential cookies:</strong> We use secure, HTTP-only cookies for authentication and session management. These are strictly necessary for the Service to function.</p>
-          <p><strong>Analytics cookies:</strong> We use Google Analytics 4 (GA4) to understand how visitors use our website. GA4 sets the following cookies:</p>
+          <p><strong>Analytics cookies (consent required):</strong> We use Google Analytics 4 (GA4) to understand how visitors use our website. <strong>GA4 is only loaded after you explicitly consent</strong> via the cookie consent banner shown on your first visit. If you decline, no analytics cookies are set and no usage data is collected.</p>
+          <p>If you consent, GA4 sets the following cookies:</p>
           <ul className="list-disc pl-6 space-y-1">
             <li><code>_ga</code> — Distinguishes unique visitors (expires: 2 years)</li>
             <li><code>_ga_*</code> — Maintains session state (expires: 2 years)</li>
           </ul>
           <p>Google Analytics collects anonymized usage data including pages visited, session duration, device type, browser, approximate location (country/city level from IP address), and referring website. This data is processed by Google in the United States.</p>
-          <p><strong>Opting out:</strong> You can opt out of Google Analytics by installing the <a href="https://tools.google.com/dlpage/gaoptout" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:text-primary-300" target="_blank" rel="noopener noreferrer">Google Analytics Opt-out Browser Add-on</a>, or by using your browser's built-in cookie controls to block third-party cookies.</p>
+          <p><strong>Changing your preference:</strong> You can change your analytics consent at any time by clearing your browser's local storage for this site (which resets the consent banner), or by installing the <a href="https://tools.google.com/dlpage/gaoptout" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:text-primary-300" target="_blank" rel="noopener noreferrer">Google Analytics Opt-out Browser Add-on</a>.</p>
           <p>We do not use advertising cookies or sell data to advertisers.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">9. International Data Transfers</h2>
