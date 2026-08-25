@@ -3274,12 +3274,23 @@ The **My Work** page (`/my-work`) is the default landing page for authenticated 
 
 ### How Tasks Are Collected
 
-The API (`GET /api/v1/my-work`) queries two assignment paths:
+The API (`GET /api/v1/my-work`) matches tasks through three paths:
 
-- **Direct assignment** — tasks where `tasks.assigned_to` matches the current user's resource record (via `resources.user_id`).
+- **Resource ID match** — tasks where `tasks.assigned_to` or `task_assignments.resource_id` matches the user's linked resource record.
+- **Name match** — tasks where `tasks.assigned_to` contains the user's full name or any linked resource name (handles free-text entries like "George Jones" or "DBJ & George Jones").
 - **Team assignments** — tasks where the user appears in the `task_assignments` junction table.
 
 Results are deduplicated and span all projects the user belongs to. Completed tasks are included only if completed within the last 14 days (Recently Completed bucket).
+
+### Resource-to-User Linking
+
+Resources (tenant DB) are automatically linked to users (control plane) by matching email addresses. This happens at three touch points:
+
+- **On resource create/update** — if a resource's email matches a user in the same organization, `resources.user_id` is set automatically.
+- **On project member add** — when a user is added to a project, any unlinked resource with matching email is linked.
+- **On My Work load** — if no resources are linked by `user_id`, the system falls back to email matching and opportunistically sets `user_id` for future queries.
+
+This means tasks appear on My Work without any manual resource-to-user linking step.
 
 ### Empty States
 

@@ -2590,6 +2590,8 @@ The generated report contains four sections:
 
 The **My Work** page (`/my-work`) is the first page you see after logging in. It shows all tasks assigned to you across every project in one place, so you do not need to open each project individually to find your work.
 
+Tasks are matched to you automatically — by your resource record, by your name in the task's "Assigned To" field, and by formal task assignments. If you create a resource with the same email as your user account, the system links them automatically so your tasks appear on My Work without any extra steps.
+
 If you are new and have no assigned tasks yet, a welcome screen appears with shortcuts to create a project or explore templates — the task list appears as soon as you are assigned work.
 
 ### Task Buckets
