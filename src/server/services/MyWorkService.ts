@@ -35,8 +35,6 @@ class MyWorkService {
        JOIN projects p ON s.project_id = p.id
        LEFT JOIN task_assignments ta ON ta.task_id = t.id
        WHERE (t.assigned_to IN (${placeholders}) OR ta.resource_id IN (${placeholders}))
-         AND t.deleted_at IS NULL
-         AND p.deleted_at IS NULL
        ORDER BY t.end_date ASC, t.priority DESC`,
       [...resourceIds, ...resourceIds],
     );
