@@ -1065,6 +1065,7 @@ All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the
   - **Correction memory**: when a user corrects a factual error (e.g. “the budget is $50K, not $30K”), Mjuzi stores the correction via `remember_correction` and avoids repeating the mistake. Project-specific corrections are scoped to that project; general corrections apply across all conversations.
 - **Voice input** (browser Speech Recognition): users can click the mic, speak their message, and the transcript is sent as a normal chat message. Optional **text-to-speech** (“Speak replies”) reads the assistant’s replies aloud when enabled.
 - **Conversation history UI** — History button and New Conversation button in the chat panel header. Click any past conversation to reload it.
+- **Knowledge Base search** — Mjuzi has a `search_knowledge_base` tool that searches embedded product documentation via RAG (Retrieval-Augmented Generation). When users ask how-to questions ("how do I create a subtask?", "where is the Gantt chart?"), Mjuzi searches the indexed documentation instead of guessing. Documentation from USER_GUIDE.md, PRODUCT_MANUAL.md, WORLD_CLASS_FEATURES.md, ADMIN_MANUAL.md, and AI_DESIGN_FEATURES.md is chunked by section heading, embedded via OpenAI text-embedding-3-small, and stored in the `knowledge_base_chunks` table with vector embeddings in the `embeddings` table. Admins can trigger a reindex via `POST /api/v1/admin/knowledge-base/reindex` after doc changes.
 
 ### AI Reports
 

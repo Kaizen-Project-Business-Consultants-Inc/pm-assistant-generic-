@@ -114,6 +114,7 @@ import { tenantAdminRoutes } from './routes/admin/tenants';
 import { operationsRoutes } from './routes/admin/operations';
 import { revenueRoutes } from './routes/admin/revenue';
 import { mcpAnalyticsRoutes } from './routes/admin/mcpAnalytics';
+import { knowledgeBaseRoutes } from './routes/admin/knowledgeBase';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Health check — unauthenticated, for uptime monitors
@@ -233,6 +234,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(operationsRoutes, { prefix: '/api/v1/admin/operations' });
   await fastify.register(revenueRoutes, { prefix: '/api/v1/admin/revenue' });
   await fastify.register(mcpAnalyticsRoutes, { prefix: '/api/v1/admin/mcp-analytics' });
+  await fastify.register(knowledgeBaseRoutes, { prefix: '/api/v1/admin/knowledge-base' });
 
   // Telemetry — lightweight client-side error reporting
   fastify.post('/api/v1/telemetry/404', async (request, reply) => {

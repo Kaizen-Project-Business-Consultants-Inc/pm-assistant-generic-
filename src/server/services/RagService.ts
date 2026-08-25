@@ -1,5 +1,5 @@
 import { databaseService } from '../database/connection';
-import { embeddingService as embeddingServiceSingleton, EmbeddingService, type SimilarityResult } from './EmbeddingService';
+import { embeddingService as embeddingServiceSingleton, EmbeddingService, type SimilarityResult, type EmbeddingDocumentType } from './EmbeddingService';
 import type { LessonLearned } from '../schemas/lessonsLearnedSchemas';
 import type { MeetingAnalysis } from '../schemas/meetingSchemas';
 import logger from '../utils/logger';
@@ -9,14 +9,14 @@ import logger from '../utils/logger';
 // ---------------------------------------------------------------------------
 
 export interface RagResult {
-  documentType: 'lesson' | 'meeting';
+  documentType: EmbeddingDocumentType;
   documentId: string;
   score: number;
   document: LessonLearned | MeetingAnalysis | null;
 }
 
 export interface RagSearchOptions {
-  documentType?: 'lesson' | 'meeting';
+  documentType?: EmbeddingDocumentType;
   topK?: number;
   threshold?: number;
 }

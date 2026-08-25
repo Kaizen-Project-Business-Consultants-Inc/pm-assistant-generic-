@@ -6,9 +6,11 @@ import { embeddingRepository } from '../database/EmbeddingRepository';
 // Types
 // ---------------------------------------------------------------------------
 
+export type EmbeddingDocumentType = 'lesson' | 'meeting' | 'knowledge_base';
+
 export interface EmbeddingRow {
   id: string;
-  document_type: 'lesson' | 'meeting';
+  document_type: EmbeddingDocumentType;
   document_id: string;
   content_hash: string;
   embedding: string; // BLOB from DB
@@ -18,7 +20,7 @@ export interface EmbeddingRow {
 }
 
 export interface SimilarityResult {
-  documentType: 'lesson' | 'meeting';
+  documentType: EmbeddingDocumentType;
   documentId: string;
   score: number;
 }
@@ -71,7 +73,7 @@ export class EmbeddingService {
   // -------------------------------------------------------------------------
 
   async upsertEmbedding(
-    documentType: 'lesson' | 'meeting',
+    documentType: EmbeddingDocumentType,
     documentId: string,
     text: string,
   ): Promise<{ id: string; skipped: boolean }> {
@@ -106,7 +108,7 @@ export class EmbeddingService {
 
   async searchSimilar(
     query: string,
-    documentType?: 'lesson' | 'meeting',
+    documentType?: EmbeddingDocumentType,
     topK?: number,
     threshold?: number,
   ): Promise<SimilarityResult[]> {
@@ -123,7 +125,7 @@ export class EmbeddingService {
     );
 
     return rows.map(row => ({
-      documentType: row.document_type as 'lesson' | 'meeting',
+      documentType: row.document_type as EmbeddingDocumentType,
       documentId: row.document_id,
       score: row.score,
     }));
@@ -133,7 +135,7 @@ export class EmbeddingService {
   // Delete an embedding
   // -------------------------------------------------------------------------
 
-  async deleteEmbedding(documentType: 'lesson' | 'meeting', documentId: string): Promise<void> {
+  async deleteEmbedding(documentType: EmbeddingDocumentType, documentId: string): Promise<void> {
     await embeddingRepository.delete(documentType, documentId);
   }
 

@@ -54,6 +54,7 @@ Mjuzi is the persistent, context-aware conversational AI assistant available thr
 - Action results embedded in responses (e.g., "I created task X" with confirmation)
 - Conversation history UI: browse, switch, and resume past conversations
 - Conversation continues across page navigation and browser refreshes
+- **Knowledge Base RAG:** `search_knowledge_base` tool searches embedded product documentation. 5 doc files (USER_GUIDE, PRODUCT_MANUAL, WORLD_CLASS_FEATURES, ADMIN_MANUAL, AI_DESIGN_FEATURES) are chunked by `###` heading, embedded via OpenAI text-embedding-3-small, and stored in `knowledge_base_chunks` table. Vector search uses MariaDB `VEC_DISTANCE_COSINE()` on the `embeddings` table (document_type='knowledge_base'). Admin reindex endpoint: `POST /api/v1/admin/knowledge-base/reindex`. Claude calls this tool automatically for how-to and feature questions.
 
 **Tool-use flow:**
 1. User sends a message with optional context (project ID, page type)

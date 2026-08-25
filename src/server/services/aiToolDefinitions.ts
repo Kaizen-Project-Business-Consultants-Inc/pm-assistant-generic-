@@ -282,9 +282,21 @@ export const AI_TOOLS: Anthropic.Tool[] = [
       required: ['correctionKey', 'wrongValue', 'correctValue'],
     },
   },
+  {
+    name: 'search_knowledge_base',
+    description: 'Search the PM Assistant product documentation for how-to guides, feature descriptions, and usage instructions. Use this when the user asks "how do I...", "where is...", "what does X do", or any question about using PM Assistant features. Returns relevant documentation chunks.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'The search query — describe what the user wants to know about' },
+        topK: { type: 'number', description: 'Number of results to return (default 5)' },
+      },
+      required: ['query'],
+    },
+  },
 ];
 
 // Tool categories for permission checking
 export const DESTRUCTIVE_TOOLS = ['delete_task', 'clear_all_dependencies'];
 export const MUTATING_TOOLS = ['create_task', 'update_task', 'delete_task', 'create_project', 'update_project', 'reschedule_task', 'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies'];
-export const READ_ONLY_TOOLS = ['list_projects', 'get_project_details', 'list_tasks', 'get_dependency_chain', 'get_projects_due_today', 'get_overdue_projects', 'get_projects_by_status', 'get_overdue_tasks', 'get_high_risk_projects', 'get_portfolio_summary', 'remember_user_preference', 'remember_correction'];
+export const READ_ONLY_TOOLS = ['list_projects', 'get_project_details', 'list_tasks', 'get_dependency_chain', 'get_projects_due_today', 'get_overdue_projects', 'get_projects_by_status', 'get_overdue_tasks', 'get_high_risk_projects', 'get_portfolio_summary', 'remember_user_preference', 'remember_correction', 'search_knowledge_base'];

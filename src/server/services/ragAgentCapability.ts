@@ -10,7 +10,7 @@ agentRegistry.register({
   description: 'Searches project knowledge base using semantic similarity (RAG)',
   inputSchema: z.object({
     query: z.string(),
-    documentType: z.enum(['lesson', 'meeting']).optional(),
+    documentType: z.enum(['lesson', 'meeting', 'knowledge_base']).optional(),
     topK: z.number().optional(),
   }),
   outputSchema: z.object({
@@ -19,7 +19,7 @@ agentRegistry.register({
   }),
   permissions: ['agent:knowledge'],
   timeoutMs: 30000,
-  handler: async (input: { query: string; documentType?: 'lesson' | 'meeting'; topK?: number }) => {
+  handler: async (input: { query: string; documentType?: 'lesson' | 'meeting' | 'knowledge_base'; topK?: number }) => {
     const results = await ragService.search(input.query, {
       documentType: input.documentType,
       topK: input.topK,

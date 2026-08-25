@@ -13,7 +13,7 @@ export async function ragRoutes(fastify: FastifyInstance) {
     try {
       const { query, documentType, topK } = request.body as {
         query: string;
-        documentType?: 'lesson' | 'meeting';
+        documentType?: 'lesson' | 'meeting' | 'knowledge_base';
         topK?: number;
       };
 

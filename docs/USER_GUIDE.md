@@ -1408,6 +1408,12 @@ All AI surfaces are grouped under the **Mjuzi AI** section in the sidebar. "Ask 
 - **Speak replies:** Check **Speak replies** below the input to have Mjuzi’s answers read aloud when each reply is complete. Uncheck to turn this off. The welcome message is never spoken.
 - Voice uses the same AI chat as typing: you can say anything you could type and get the same smart, contextual answer.
 
+**Knowledge Base search**
+
+- When you ask Mjuzi how-to questions about PM Assistant (e.g. "how do I make a subtask?", "where is the Gantt chart?", "what does resource leveling do?"), Mjuzi automatically searches the product documentation to give you accurate answers instead of guessing.
+- This covers all documented features: scheduling, task management, budgets, reports, meetings, resources, and more.
+- You don't need to do anything special — just ask your question naturally and Mjuzi will find the right documentation.
+
 ### AI Task Breakdown
 
 1. Open a project schedule.

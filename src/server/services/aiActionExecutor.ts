@@ -7,6 +7,7 @@ import { auditLedgerService } from './AuditLedgerService';
 import { policyEngineService } from './PolicyEngineService';
 import { deadLetterService } from './DeadLetterService';
 import { agentMemoryService } from './AgentMemoryService';
+import { knowledgeBaseService } from './KnowledgeBaseService';
 
 export interface ActionResult {
   success: boolean;
@@ -77,6 +78,7 @@ export class AIActionExecutor {
         case 'get_portfolio_summary': result = await this.getPortfolioSummary(); break;
         case 'remember_user_preference': result = await this.rememberUserPreference(input, context); break;
         case 'remember_correction': result = await this.rememberCorrection(input, context); break;
+        case 'search_knowledge_base': result = await this.searchKnowledgeBase(input); break;
         default:
           return { success: false, toolName, summary: `Unknown tool: ${toolName}`, error: `Tool '${toolName}' is not recognized` };
       }
@@ -772,6 +774,33 @@ export class AIActionExecutor {
       toolName: 'remember_correction',
       summary: `Noted correction: ${correctionKey} — was "${wrongValue}", should be "${correctValue}"`,
       data: { correctionKey, wrongValue, correctValue, projectId },
+    };
+  }
+
+  private async searchKnowledgeBase(input: Record<string, any>): Promise<ActionResult> {
+    const { query, topK } = input;
+
+    const results = await knowledgeBaseService.search(query, topK || 5);
+
+    if (results.length === 0) {
+      return {
+        success: true,
+        toolName: 'search_knowledge_base',
+        summary: 'No relevant documentation found',
+        data: { results: [] },
+      };
+    }
+
+    // Format results as markdown for Claude to read
+    const formatted = results.map((r, i) =>
+      `### Result ${i + 1}: ${r.title}\n**Source:** ${r.sectionPath}\n**Relevance:** ${Math.round(r.score * 100)}%\n\n${r.content}`,
+    ).join('\n\n---\n\n');
+
+    return {
+      success: true,
+      toolName: 'search_knowledge_base',
+      summary: `Found ${results.length} relevant documentation section(s)`,
+      data: { results: formatted },
     };
   }
 }
