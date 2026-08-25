@@ -4,8 +4,12 @@
 ALTER TABLE embeddings
   MODIFY COLUMN document_type ENUM('lesson','meeting','knowledge_base') NOT NULL;
 
+ALTER TABLE embeddings
+  MODIFY COLUMN id VARCHAR(200) NOT NULL,
+  MODIFY COLUMN document_id VARCHAR(200) NOT NULL;
+
 CREATE TABLE IF NOT EXISTS knowledge_base_chunks (
-  id VARCHAR(128) PRIMARY KEY,
+  id VARCHAR(250) PRIMARY KEY,
   source_file VARCHAR(100) NOT NULL,
   section_path VARCHAR(500) NOT NULL,
   title VARCHAR(300) NOT NULL,
