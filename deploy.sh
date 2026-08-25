@@ -132,6 +132,12 @@ if [ "$CLIENT_ONLY" = false ]; then
   do_ssh "sudo rm -rf /opt/pm-app/dist/server && sudo mkdir -p /opt/pm-app/dist/server && sudo tar xzf /tmp/server-dist.tar.gz -C /opt/pm-app/dist/server/ && sudo ln -sf /opt/pm-app/migrations /opt/pm-app/dist/server/database/migrations && sudo chown -R ubuntu:ubuntu /opt/pm-app/dist && rm /tmp/server-dist.tar.gz"
   rm -f /tmp/server-dist.tar.gz
 
+  # Upload doc files for Knowledge Base reindexing
+  echo "  Uploading doc files..."
+  do_scp PRODUCT_MANUAL.md WORLD_CLASS_FEATURES.md "$SSH_HOST":/opt/pm-app/
+  do_ssh "mkdir -p /opt/pm-app/docs"
+  do_scp docs/USER_GUIDE.md docs/ADMIN_MANUAL.md docs/AI_DESIGN_FEATURES.md "$SSH_HOST":/opt/pm-app/docs/
+
   # Sync dependencies — upload package files and install production deps
   echo "  Syncing dependencies..."
   do_scp package.json "$SSH_HOST":/tmp/pkg.json
