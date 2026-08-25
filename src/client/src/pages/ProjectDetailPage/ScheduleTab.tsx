@@ -12,9 +12,6 @@ import {
   Save,
   MapPin,
   Bot,
-  Search,
-  Filter,
-  X,
   Download,
   Trash2,
   MoreVertical,
@@ -29,14 +26,18 @@ import { NetworkDiagramView } from '../../components/network/NetworkDiagramView'
 import { BurndownPanel } from '../../components/burndown/BurndownPanel';
 import { AutoReschedulePanel } from '../../components/schedule/AutoReschedulePanel';
 import { ImportModal } from '../../components/schedule/ImportModal';
-import { ColumnPickerDropdown } from '../../components/schedule/ColumnPickerDropdown';
 import { TaskListMobile } from '../../components/tasks/TaskListMobile';
 import { useColumnState } from '../../hooks/useColumnState';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { COLUMN_DEFS } from '../../components/schedule/tableColumns';
 import { exportTasksCSV } from '../../utils/exportUtils';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { ScheduleToolbar } from './schedule-tab/ScheduleToolbar';
+import { ScheduleFilterBar } from './schedule-tab/ScheduleFilterBar';
+import { ScheduleSummaryBar } from './schedule-tab/ScheduleSummaryBar';
+import { BaselineVarianceReport } from './schedule-tab/BaselineVarianceReport';
+import { ScenarioComparison } from './schedule-tab/ScenarioComparison';
+import { ResourceLevelingModal } from './schedule-tab/ResourceLevelingModal';
 
 
 export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt' }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string }) {
@@ -58,6 +59,7 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
   const [uploadingSchedule, setUploadingSchedule] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const scheduleFileRef = useRef<HTMLInputElement>(null);
+  const [selectedScheduleIdx, setSelectedScheduleIdx] = useState(0);
 
   const { data: schedulesData, isLoading: schedulesLoading } = useQuery({
     queryKey: ['schedules', projectId],
@@ -196,7 +198,6 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
     );
   }
 
-  const [selectedScheduleIdx, setSelectedScheduleIdx] = useState(0);
   // Guard against out-of-bounds (e.g. after schedule deletion)
   const safeIdx = selectedScheduleIdx >= schedules.length ? 0 : selectedScheduleIdx;
 
@@ -761,7 +762,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
 
   // Unique values for filter dropdowns
   const uniqueStatuses = useMemo(() => [...new Set(tasks.map(t => t.status))].sort(), [tasks]);
-  const uniquePriorities = useMemo(() => [...new Set(tasks.map(t => t.priority).filter(Boolean))].sort(), [tasks]);
+  const uniquePriorities = useMemo(() => [...new Set(tasks.map(t => t.priority).filter((p): p is string => !!p))].sort(), [tasks]);
   const uniqueAssignees = useMemo(() => [...new Set(tasks.map(t => t.assignedTo).filter(Boolean))].sort() as string[], [tasks]);
 
   // Filtered tasks
@@ -826,73 +827,18 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
 
   return (
     <>
-      {/* Compact toolbar: Search | Filters | Columns | Critical Path | overflow */}
-      <div className="flex items-center gap-2 mb-2">
-        {/* Search — hidden in Gantt mode (GanttChart has its own Ctrl+F search) */}
-        {tasks.length > 0 && viewMode !== 'gantt' && (
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search tasks..."
-              className="w-40 lg:w-48 pl-7 pr-7 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-400 focus:border-primary-400"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Filter toggle */}
-        {tasks.length > 0 && (
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-              hasActiveFilters
-                ? 'border-primary-300 dark:border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
-                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
-          >
-            <Filter className="w-3 h-3" />
-            Filters
-            {hasActiveFilters && (
-              <span className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-primary-600 text-white text-[9px] font-bold">
-                {[filterStatus, filterPriority, filterAssignee].filter(Boolean).length}
-              </span>
-            )}
-          </button>
-        )}
-
-        <div className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
-
-        <ColumnPickerDropdown
-          columns={COLUMN_DEFS}
-          visibleKeys={columnState.visibleKeys}
-          onToggle={columnState.toggleColumn}
-          onToggleGroup={columnState.toggleGroup}
-          onMoveColumn={columnState.moveColumn}
-          columnOrder={columnState.columnOrder}
-          onResetOrder={() => columnState.setColumnOrder([])}
-        />
-
-        {viewMode === 'gantt' && (
-            <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showCriticalPath}
-                onChange={(e) => setShowCriticalPath(e.target.checked)}
-                className="accent-red-600 w-3.5 h-3.5"
-              />
-              Critical Path
-            </label>
-        )}
-
-        {/* Overflow menu */}
-        {viewMode === 'gantt' && (
+      <ScheduleToolbar
+        viewMode={viewMode}
+        tasksCount={tasks.length}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onToggleFilters={() => setShowFilters(!showFilters)}
+        hasActiveFilters={hasActiveFilters}
+        activeFilterCount={[filterStatus, filterPriority, filterAssignee].filter(Boolean).length}
+        columnState={columnState}
+        showCriticalPath={showCriticalPath}
+        onCriticalPathChange={setShowCriticalPath}
+        overflowMenu={
           <ScheduleOverflowMenu
             schedule={schedule}
             projectId={projectId}
@@ -930,102 +876,32 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
               setShowScenarioPrompt(true);
             }}
           />
-        )}
-
-        {/* CSV export for non-gantt views */}
-        {viewMode !== 'gantt' && (
-          <button
-            onClick={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors ml-auto"
-            title="Export tasks to CSV"
-          >
-            <Download className="w-3 h-3" />
-            CSV
-          </button>
-        )}
-
-        {/* Filter result count */}
-        {hasActiveFilters && (
-          <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
-            {filteredTasks.length} of {tasks.length} tasks
-          </span>
-        )}
-      </div>
+        }
+        onExportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
+        filteredCount={filteredTasks.length}
+        totalCount={tasks.length}
+      />
 
       {/* Expanded filter dropdowns (shown when toggled) */}
       {showFilters && tasks.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap mb-1">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-          >
-            <option value="">All statuses</option>
-            {uniqueStatuses.map(s => (
-              <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
-          <select
-            value={filterPriority}
-            onChange={(e) => setFilterPriority(e.target.value)}
-            className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-          >
-            <option value="">All priorities</option>
-            {uniquePriorities.map(p => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-          <select
-            value={filterAssignee}
-            onChange={(e) => setFilterAssignee(e.target.value)}
-            className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-          >
-            <option value="">All assignees</option>
-            {uniqueAssignees.map(a => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
-          {hasActiveFilters && (
-            <button
-              onClick={clearAllFilters}
-              className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-            >
-              <X className="w-3 h-3" />
-              Clear
-            </button>
-          )}
-        </div>
+        <ScheduleFilterBar
+          filterStatus={filterStatus}
+          filterPriority={filterPriority}
+          filterAssignee={filterAssignee}
+          onFilterStatusChange={setFilterStatus}
+          onFilterPriorityChange={setFilterPriority}
+          onFilterAssigneeChange={setFilterAssignee}
+          uniqueStatuses={uniqueStatuses}
+          uniquePriorities={uniquePriorities}
+          uniqueAssignees={uniqueAssignees}
+          hasActiveFilters={hasActiveFilters}
+          onClearAll={clearAllFilters}
+        />
       )}
 
       {/* Schedule Summary Bar */}
       {filteredTasks.length > 0 && (
-        <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 text-xs mb-1 flex-wrap">
-          <span className="text-gray-500 dark:text-gray-400">
-            <span className="font-semibold text-gray-700 dark:text-gray-200">{taskStats.total}</span> tasks
-          </span>
-          <span className="w-px h-3 bg-gray-200 dark:bg-gray-600" />
-          <span className="text-green-600 dark:text-green-400">
-            <span className="font-semibold">{taskStats.completed}</span> done
-            <span className="text-gray-400 dark:text-gray-500 ml-0.5">({taskStats.pct}%)</span>
-          </span>
-          <span className="w-px h-3 bg-gray-200 dark:bg-gray-600" />
-          <span className="text-blue-600 dark:text-blue-400">
-            <span className="font-semibold">{taskStats.inProgress}</span> in progress
-          </span>
-          {taskStats.overdue > 0 && (
-            <>
-              <span className="w-px h-3 bg-gray-200 dark:bg-gray-600" />
-              <span className="text-red-600 dark:text-red-400 font-semibold">
-                {taskStats.overdue} overdue
-              </span>
-            </>
-          )}
-          <span className="ml-auto">
-            <div className="w-24 h-1.5 rounded-full bg-gray-200 dark:bg-gray-600 overflow-hidden">
-              <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{ width: `${taskStats.pct}%` }} />
-            </div>
-          </span>
-        </div>
+        <ScheduleSummaryBar stats={taskStats} />
       )}
 
       {showCriticalPath && cpmData && (
@@ -1056,8 +932,15 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
           onInlineInsert={(name, afterTaskId, parentTaskId) => {
             createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', afterTaskId, parentTaskId: parentTaskId || undefined } as any);
           }}
+          onInlineInsertBefore={(name, beforeTaskId, parentTaskId) => {
+            createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', beforeTaskId, parentTaskId: parentTaskId || undefined } as any);
+          }}
           onInsertBefore={(beforeTaskId, parentTaskId) => {
             setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, beforeTaskId });
+            setShowAddForm(true);
+          }}
+          onInsertAfter={(afterTaskId, parentTaskId) => {
+            setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, afterTaskId });
             setShowAddForm(true);
           }}
           columnState={columnState}
@@ -1118,8 +1001,7 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
             createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', afterTaskId, parentTaskId: parentTaskId || undefined } as any);
           }}
           onInsertBefore={(beforeTaskId, parentTaskId) => {
-            setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, beforeTaskId });
-            setShowAddForm(true);
+            createMutation.mutate({ name: 'New Task', status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', beforeTaskId, parentTaskId: parentTaskId || undefined } as any);
           }}
           canUndo={canUndo}
           canRedo={canRedo}
@@ -1148,200 +1030,19 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
 
       {/* Baseline Variance Report */}
       {showComparison && comparison && (
-        <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary-500" />
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-                Baseline Variance Report — {comparison.baselineName}
-              </h3>
-              <span className="text-xs text-gray-400 dark:text-gray-500">
-                Saved {new Date(comparison.baselineDate).toLocaleDateString()}
-              </span>
-            </div>
-            <button
-              onClick={() => setShowComparison(false)}
-              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 text-xs"
-            >
-              Close
-            </button>
-          </div>
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 mb-4">
-            <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-              <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Health</div>
-              <div className={`mt-1 text-lg font-bold ${
-                comparison.summary.scheduleHealthPct >= 70 ? 'text-green-600' :
-                comparison.summary.scheduleHealthPct >= 40 ? 'text-yellow-600' : 'text-red-600'
-              }`}>
-                {comparison.summary.scheduleHealthPct}%
-              </div>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-              <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Slipped</div>
-              <div className="mt-1 text-lg font-bold text-red-600">{comparison.summary.tasksSlipped}</div>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-              <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">On Track</div>
-              <div className="mt-1 text-lg font-bold text-green-600">{comparison.summary.tasksOnTrack}</div>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-              <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Ahead</div>
-              <div className="mt-1 text-lg font-bold text-blue-600">{comparison.summary.tasksAhead}</div>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-              <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Avg End Var</div>
-              <div className={`mt-1 text-lg font-bold ${
-                comparison.summary.avgEndVarianceDays > 0 ? 'text-red-600' : 'text-green-600'
-              }`}>
-                {comparison.summary.avgEndVarianceDays > 0 ? '+' : ''}{comparison.summary.avgEndVarianceDays}d
-              </div>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-              <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">New Tasks</div>
-              <div className="mt-1 text-lg font-bold text-gray-900 dark:text-white">{comparison.summary.newTasks}</div>
-            </div>
-          </div>
-
-          {/* Task Variance Table */}
-          <div className="overflow-x-auto max-h-64 overflow-y-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
-                <tr>
-                  <th className="text-left px-2 py-1.5 font-semibold text-gray-500 dark:text-gray-400 uppercase">Task</th>
-                  <th className="text-center px-2 py-1.5 font-semibold text-gray-500 dark:text-gray-400 uppercase">Start Var</th>
-                  <th className="text-center px-2 py-1.5 font-semibold text-gray-500 dark:text-gray-400 uppercase">End Var</th>
-                  <th className="text-center px-2 py-1.5 font-semibold text-gray-500 dark:text-gray-400 uppercase">Duration Var</th>
-                  <th className="text-center px-2 py-1.5 font-semibold text-gray-500 dark:text-gray-400 uppercase">Progress Var</th>
-                  <th className="text-center px-2 py-1.5 font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparison.taskVariances.map((tv: any) => (
-                  <tr key={tv.taskId} className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-2 py-1.5 text-gray-800 dark:text-gray-100 font-medium">{tv.taskName}</td>
-                    <td className={`text-center px-2 py-1.5 font-medium ${
-                      tv.startVarianceDays > 0 ? 'text-red-600' : tv.startVarianceDays < 0 ? 'text-green-600' : 'text-gray-500 dark:text-gray-400'
-                    }`}>
-                      {tv.startVarianceDays > 0 ? '+' : ''}{tv.startVarianceDays}d
-                    </td>
-                    <td className={`text-center px-2 py-1.5 font-medium ${
-                      tv.endVarianceDays > 0 ? 'text-red-600' : tv.endVarianceDays < 0 ? 'text-green-600' : 'text-gray-500 dark:text-gray-400'
-                    }`}>
-                      {tv.endVarianceDays > 0 ? '+' : ''}{tv.endVarianceDays}d
-                    </td>
-                    <td className={`text-center px-2 py-1.5 font-medium ${
-                      tv.durationVarianceDays > 0 ? 'text-red-600' : tv.durationVarianceDays < 0 ? 'text-green-600' : 'text-gray-500 dark:text-gray-400'
-                    }`}>
-                      {tv.durationVarianceDays > 0 ? '+' : ''}{tv.durationVarianceDays}d
-                    </td>
-                    <td className={`text-center px-2 py-1.5 font-medium ${
-                      tv.progressVariancePct > 0 ? 'text-green-600' : tv.progressVariancePct < 0 ? 'text-red-600' : 'text-gray-500 dark:text-gray-400'
-                    }`}>
-                      {tv.progressVariancePct > 0 ? '+' : ''}{tv.progressVariancePct}%
-                    </td>
-                    <td className="text-center px-2 py-1.5">
-                      {tv.statusChanged ? (
-                        <span className="text-amber-600">{tv.baselineStatus} → {tv.actualStatus}</span>
-                      ) : (
-                        <span className="text-gray-400 dark:text-gray-500">{tv.actualStatus}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <BaselineVarianceReport
+          comparison={comparison}
+          onClose={() => setShowComparison(false)}
+        />
       )}
 
       {/* Scenario Comparison */}
       {showScenarioCompare && scenarioCompareData && (
-        <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Scenario Comparison</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowPromoteConfirm(true)}
-                className="px-2.5 py-1 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
-              >
-                Promote to Base
-              </button>
-              <button onClick={() => setShowScenarioCompare(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs">Close</button>
-            </div>
-          </div>
-
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-              <div className="text-xs font-medium text-gray-400 uppercase">Modified</div>
-              <div className="mt-1 text-lg font-bold text-yellow-600">{scenarioCompareData.summary.totalModified}</div>
-            </div>
-            <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-              <div className="text-xs font-medium text-gray-400 uppercase">Added</div>
-              <div className="mt-1 text-lg font-bold text-green-600">{scenarioCompareData.summary.totalAdded}</div>
-            </div>
-            <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-              <div className="text-xs font-medium text-gray-400 uppercase">Removed</div>
-              <div className="mt-1 text-lg font-bold text-red-600">{scenarioCompareData.summary.totalRemoved}</div>
-            </div>
-            <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-              <div className="text-xs font-medium text-gray-400 uppercase">Duration Δ</div>
-              <div className={`mt-1 text-lg font-bold ${scenarioCompareData.summary.netDurationChange > 0 ? 'text-red-600' : scenarioCompareData.summary.netDurationChange < 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                {scenarioCompareData.summary.netDurationChange > 0 ? '+' : ''}{scenarioCompareData.summary.netDurationChange}d
-              </div>
-            </div>
-          </div>
-
-          {/* Diff table */}
-          {scenarioCompareData.diffs.length > 0 && (
-            <div className="overflow-x-auto max-h-64 overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
-                  <tr>
-                    <th className="text-left px-2 py-1.5 font-semibold text-gray-500 uppercase">Task</th>
-                    <th className="text-center px-2 py-1.5 font-semibold text-gray-500 uppercase">Base Start</th>
-                    <th className="text-center px-2 py-1.5 font-semibold text-gray-500 uppercase">Scenario Start</th>
-                    <th className="text-center px-2 py-1.5 font-semibold text-gray-500 uppercase">Start Δ</th>
-                    <th className="text-center px-2 py-1.5 font-semibold text-gray-500 uppercase">Duration Δ</th>
-                    <th className="text-center px-2 py-1.5 font-semibold text-gray-500 uppercase">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scenarioCompareData.diffs.map((d: any, i: number) => (
-                    <tr key={i} className="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td className="px-2 py-1.5 text-gray-800 dark:text-gray-100 font-medium">{d.taskName}</td>
-                      <td className="text-center px-2 py-1.5 text-gray-500">{d.baseStart?.slice(0, 10) || '—'}</td>
-                      <td className="text-center px-2 py-1.5 text-gray-500">{d.scenarioStart?.slice(0, 10) || '—'}</td>
-                      <td className={`text-center px-2 py-1.5 font-medium ${(d.startDelta ?? 0) > 0 ? 'text-red-600' : (d.startDelta ?? 0) < 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                        {d.startDelta != null ? `${d.startDelta > 0 ? '+' : ''}${d.startDelta}d` : '—'}
-                      </td>
-                      <td className={`text-center px-2 py-1.5 font-medium ${(d.durationDelta ?? 0) > 0 ? 'text-red-600' : (d.durationDelta ?? 0) < 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                        {d.durationDelta != null ? `${d.durationDelta > 0 ? '+' : ''}${d.durationDelta}d` : '—'}
-                      </td>
-                      <td className="text-center px-2 py-1.5">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                          d.status === 'modified' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
-                          d.status === 'added' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
-                          'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                        }`}>
-                          {d.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {scenarioCompareData.diffs.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">No differences — scenario matches the base schedule.</p>
-          )}
-        </div>
+        <ScenarioComparison
+          data={scenarioCompareData}
+          onClose={() => setShowScenarioCompare(false)}
+          onPromote={() => setShowPromoteConfirm(true)}
+        />
       )}
 
       {/* Edit modal */}
@@ -1408,60 +1109,17 @@ function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewM
 
       {/* Resource Leveling Results Modal */}
       {levelingResult !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[70vh] flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Resource Leveling</h3>
-              <button onClick={() => setLevelingResult(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              {levelingResult.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">No resource conflicts detected — schedule is already balanced.</p>
-              ) : (
-                <>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{levelingResult.length} task(s) need date adjustments to resolve resource over-allocations:</p>
-                  <div className="space-y-2">
-                    {levelingResult.map((adj: any) => (
-                      <div key={adj.taskId} className="border border-gray-100 dark:border-gray-700 rounded-lg p-3 text-xs">
-                        <p className="font-medium text-gray-900 dark:text-white">{adj.taskName}</p>
-                        <div className="flex items-center gap-2 mt-1 text-gray-500 dark:text-gray-400">
-                          <span>{adj.originalStart?.slice(0, 10)}</span>
-                          <span>→</span>
-                          <span className="text-orange-600 dark:text-orange-400 font-medium">{adj.newStart?.slice(0, 10)}</span>
-                        </div>
-                        {adj.reason && <p className="mt-1 text-gray-400 dark:text-gray-500 italic">{adj.reason}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            {levelingResult.length > 0 && (
-              <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => setLevelingResult(null)}
-                  className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      await apiService.applyResourceLeveling(schedule.id, levelingResult);
-                      queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-                    } catch { /* ignore */ }
-                    setLevelingResult(null);
-                  }}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-md"
-                >
-                  Apply All
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <ResourceLevelingModal
+          result={levelingResult}
+          onClose={() => setLevelingResult(null)}
+          onApply={async () => {
+            try {
+              await apiService.applyResourceLeveling(schedule.id, levelingResult);
+              queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+            } catch { /* ignore */ }
+            setLevelingResult(null);
+          }}
+        />
       )}
 
       {/* Undo toast */}

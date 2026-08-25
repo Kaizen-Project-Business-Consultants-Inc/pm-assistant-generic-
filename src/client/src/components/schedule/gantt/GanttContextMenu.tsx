@@ -7,6 +7,8 @@ interface GanttContextMenuProps {
   someSelected: boolean;
   onInsertBefore?: (taskId: string, parentTaskId?: string) => void;
   onInsertAfter?: (taskId: string, parentTaskId?: string) => void;
+  onInsertBeforeModal?: (taskId: string, parentTaskId?: string) => void;
+  onInsertAfterModal?: (taskId: string, parentTaskId?: string) => void;
   onTaskClick?: (task: GanttTask) => void;
   onDeleteTask?: (taskId: string) => void;
   onBulkDelete?: (taskIds: string[]) => Promise<void>;
@@ -20,6 +22,8 @@ export const GanttContextMenu = React.memo(function GanttContextMenu({
   someSelected,
   onInsertBefore,
   onInsertAfter,
+  onInsertBeforeModal,
+  onInsertAfterModal,
   onTaskClick,
   onDeleteTask,
   onBulkDelete,
@@ -54,7 +58,34 @@ export const GanttContextMenu = React.memo(function GanttContextMenu({
           Insert Task Below
         </button>
       )}
-      {(onInsertBefore || onInsertAfter) && onDeleteTask && (
+      {(onInsertBeforeModal || onInsertAfterModal) && (
+        <>
+          <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
+          {onInsertBeforeModal && (
+            <button
+              className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={() => { onInsertBeforeModal(contextMenu.task.id, contextMenu.task.parentTaskId); onClose(); }}
+            >
+              <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Task Above…
+            </button>
+          )}
+          {onInsertAfterModal && (
+            <button
+              className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={() => { onInsertAfterModal(contextMenu.task.id, contextMenu.task.parentTaskId); onClose(); }}
+            >
+              <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Task Below…
+            </button>
+          )}
+        </>
+      )}
+      {(onInsertBefore || onInsertAfter || onInsertBeforeModal || onInsertAfterModal) && onDeleteTask && (
         <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
       )}
       {onTaskClick && (

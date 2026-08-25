@@ -85,6 +85,7 @@ export function GanttChart({
   nonWorkingDates,
   onDuplicateTasks,
   onInlineInsert,
+  onInlineInsertBefore,
 }: {
   tasks: GanttTask[];
   scheduleName?: string;
@@ -131,14 +132,16 @@ export function GanttChart({
   onCreateTaskWithDates?: (startDate: string, endDate: string, parentTaskId?: string) => void;
   /** Called to insert a new task after a specific task */
   onInsertAfter?: (afterTaskId: string, parentTaskId?: string) => void;
-  /** Called to insert a new task before a specific task */
+  /** Called to insert a new task before a specific task (opens modal) */
   onInsertBefore?: (beforeTaskId: string, parentTaskId?: string) => void;
   /** Non-working dates to shade on the timeline (YYYY-MM-DD strings) */
   nonWorkingDates?: Set<string>;
   /** Called to duplicate/paste tasks */
   onDuplicateTasks?: (tasks: GanttTask[]) => void;
-  /** Called when user creates a task via inline insert (name + position) */
+  /** Called when user creates a task via inline insert-after (name + position) */
   onInlineInsert?: (name: string, afterTaskId: string, parentTaskId?: string) => void;
+  /** Called when user creates a task via inline insert-before (name + position) */
+  onInlineInsertBefore?: (name: string, beforeTaskId: string, parentTaskId?: string) => void;
 }) {
   const criticalSet = useMemo(() => new Set(criticalPathTaskIds || []), [criticalPathTaskIds]);
   const baselineMap = useMemo(() => {
@@ -151,8 +154,8 @@ export function GanttChart({
     return m;
   }, [baselineTasks]);
 
-  // Inline insert state — when set, a blank input row appears after the target task
-  const [inlineInsert, setInlineInsert] = useState<{ afterTaskId: string; parentTaskId?: string } | null>(null);
+  // Inline insert state — when set, a blank input row appears after/before the target task
+  const [inlineInsert, setInlineInsert] = useState<{ afterTaskId?: string; beforeTaskId?: string; parentTaskId?: string } | null>(null);
 
   // Zoom state — persisted per schedule in localStorage
   const [zoom, setZoom] = useState<ZoomLevel>(() => {
@@ -823,17 +826,20 @@ export function GanttChart({
     return map;
   }, [rows]);
 
-  // Index of the row after which the inline insert row appears (-1 if none)
+  // Index of the row after/before which the inline insert row appears (-1 if none)
   const inlineInsertIdx = useMemo(() => {
     if (!inlineInsert) return -1;
-    return rows.findIndex(r => r.task.id === inlineInsert.afterTaskId);
+    if (inlineInsert.afterTaskId) return rows.findIndex(r => r.task.id === inlineInsert.afterTaskId);
+    if (inlineInsert.beforeTaskId) return rows.findIndex(r => r.task.id === inlineInsert.beforeTaskId);
+    return -1;
   }, [inlineInsert, rows]);
+  const inlineInsertIsBefore = !!(inlineInsert?.beforeTaskId);
 
   // Compute timeline row top position, accounting for the inline insert gap
   const rowTop = useCallback((idx: number) => {
-    const extra = inlineInsertIdx >= 0 && idx > inlineInsertIdx ? ROW_H : 0;
+    const extra = inlineInsertIdx >= 0 && (inlineInsertIsBefore ? idx >= inlineInsertIdx : idx > inlineInsertIdx) ? ROW_H : 0;
     return HEADER_H + idx * ROW_H + extra;
-  }, [inlineInsertIdx]);
+  }, [inlineInsertIdx, inlineInsertIsBefore]);
 
   // Total content height including inline insert row
   const contentHeight = useMemo(() => {
@@ -2184,6 +2190,15 @@ export function GanttChart({
     }
   }, [onInlineInsert, onInsertAfter]);
 
+  // Inline insert-before: show inline input above the target task
+  const handleInsertBefore = useCallback((beforeTaskId: string, parentTaskId?: string) => {
+    if (onInlineInsertBefore) {
+      setInlineInsert({ beforeTaskId, parentTaskId });
+    } else {
+      onInsertBefore?.(beforeTaskId, parentTaskId);
+    }
+  }, [onInlineInsertBefore, onInsertBefore]);
+
   // Clear inline insert when tasks change (creation succeeded)
   const prevTasksLenRef = useRef(tasks.length);
   useEffect(() => {
@@ -2317,9 +2332,51 @@ export function GanttChart({
           <div style={shouldVirtualize ? { height: totalRowsHeight, position: 'relative' } : undefined}>
           {rows.map(({ task, level }, rowIdx) => {
             if (shouldVirtualize && (rowIdx < visStart || rowIdx >= visEnd)) return null;
-            const showInlineInsert = inlineInsertIdx === rowIdx;
+            const showInlineInsertAfter = inlineInsertIdx === rowIdx && !inlineInsertIsBefore;
+            const showInlineInsertBefore = inlineInsertIdx === rowIdx && inlineInsertIsBefore;
             return (
               <Fragment key={task.id}>
+              {showInlineInsertBefore && (
+                <div
+                  className="flex items-center border-b border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20"
+                  style={{ height: ROW_H, minWidth: minRowWidth }}
+                >
+                  <div className="shrink-0 px-1 text-center text-xs text-green-400 dark:text-green-600 font-mono" style={{ width: getColWidth(GANTT_COLUMNS[0]) }}>+</div>
+                  <div className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]), paddingLeft: `${8 + level * 20}px` }}>
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Type task name and press Enter…"
+                      className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none"
+                      onKeyDown={(e) => {
+                        const input = e.currentTarget;
+                        if (e.key === 'Enter' && input.value.trim()) {
+                          e.preventDefault();
+                          onInlineInsertBefore?.(input.value.trim(), inlineInsert!.beforeTaskId!, inlineInsert!.parentTaskId);
+                          input.value = '';
+                        }
+                        if (e.key === 'Escape') setInlineInsert(null);
+                        if (e.key === 'Tab') {
+                          e.preventDefault();
+                          if (input.value.trim()) {
+                            onInlineInsertBefore?.(input.value.trim(), inlineInsert!.beforeTaskId!, inlineInsert!.parentTaskId);
+                            input.value = '';
+                          } else {
+                            setInlineInsert(null);
+                          }
+                        }
+                      }}
+                      onBlur={(e) => { if (!e.currentTarget.value.trim()) setInlineInsert(null); }}
+                    />
+                  </div>
+                  {orderedColumns.map(col => {
+                    if (col.key === 'rowNum' || col.key === 'name' || col.key === 'editIcon') return null;
+                    if (!isColVisible(col)) return null;
+                    return <div key={col.key} className="shrink-0" style={{ width: getColWidth(col) }} />;
+                  })}
+                  <div className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
+                </div>
+              )}
               <GanttLeftPanelRow
                 task={task}
                 level={level}
@@ -2376,7 +2433,7 @@ export function GanttChart({
                 setPendingDeleteIds={setPendingDeleteIds}
                 getDepHealth={getDepHealth}
               />
-              {showInlineInsert && (
+              {showInlineInsertAfter && (
                 <div
                   className="flex items-center border-b border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20"
                   style={{ height: ROW_H, minWidth: minRowWidth }}
@@ -2400,7 +2457,7 @@ export function GanttChart({
                         if (e.key === 'Enter' && input.value.trim()) {
                           e.preventDefault();
                           const name = input.value.trim();
-                          const afterId = inlineInsert!.afterTaskId;
+                          const afterId = inlineInsert!.afterTaskId!;
                           const parentId = inlineInsert!.parentTaskId;
                           onInlineInsert?.(name, afterId, parentId);
                           // Keep inline insert active for continuous entry (Tab-like in MS Project)
@@ -2413,7 +2470,7 @@ export function GanttChart({
                           e.preventDefault();
                           if (input.value.trim()) {
                             const name = input.value.trim();
-                            const afterId = inlineInsert!.afterTaskId;
+                            const afterId = inlineInsert!.afterTaskId!;
                             const parentId = inlineInsert!.parentTaskId;
                             onInlineInsert?.(name, afterId, parentId);
                             input.value = '';
@@ -2807,8 +2864,10 @@ export function GanttChart({
           contextMenu={contextMenu}
           selectedIds={selectedIds}
           someSelected={someSelected}
-          onInsertBefore={onInsertBefore}
+          onInsertBefore={handleInsertBefore}
           onInsertAfter={handleInsertAfter}
+          onInsertBeforeModal={onInsertBefore}
+          onInsertAfterModal={onInsertAfter}
           onTaskClick={onTaskClick}
           onDeleteTask={onDeleteTask}
           onBulkDelete={onBulkDelete}
