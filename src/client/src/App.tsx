@@ -23,6 +23,7 @@ const PricingPage = lazy(() => import('./pages/PricingPage').then(m => ({ defaul
 const TermsPage = lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
 const UserGuidePublicPage = lazy(() => import('./pages/UserGuidePublicPage').then(m => ({ default: m.UserGuidePublicPage })));
+const RoadmapPage = lazy(() => import('./pages/RoadmapPage').then(m => ({ default: m.RoadmapPage })));
 const PrelaunchLandingPage = lazy(() => import('./pages/PrelaunchLandingPage').then(m => ({ default: m.PrelaunchLandingPage })));
 const PortalViewPage = lazy(() => import('./pages/PortalViewPage'));
 const MyWorkPage = lazy(() => import('./pages/MyWorkPage'));
@@ -130,6 +131,7 @@ function App() {
         <Route path={ROUTES.terms} element={<TermsPage />} />
         <Route path={ROUTES.privacy} element={<PrivacyPage />} />
         <Route path={ROUTES.guide} element={<UserGuidePublicPage />} />
+        <Route path={ROUTES.roadmap} element={<RoadmapPage />} />
         <Route path={ROUTES.waitlistAdmin} element={<Navigate to={ROUTES.adminWaitlist} replace />} />
         <Route path={ROUTE_PATTERNS.portal} element={<PortalViewPage />} />
         <Route path={ROUTES.onboarding} element={isAuthenticated ? <OnboardingPage /> : <Navigate to={ROUTES.login} replace />} />

@@ -7,6 +7,7 @@ export const PublicFooter: React.FC = () => (
       <div className="flex justify-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
         <Link to="/terms" className="hover:text-gray-900 dark:hover:text-white">Terms of Service</Link>
         <Link to="/privacy" className="hover:text-gray-900 dark:hover:text-white">Privacy Policy</Link>
+        <Link to="/roadmap" className="hover:text-gray-900 dark:hover:text-white">Roadmap</Link>
       </div>
     </div>
   </footer>

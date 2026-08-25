@@ -15,6 +15,7 @@ export const ROUTES = {
   terms: '/terms',
   privacy: '/privacy',
   guide: '/guide',
+  roadmap: '/roadmap',
   waitlistAdmin: '/waitlist-admin',
   onboarding: '/onboarding',
   myWork: '/my-work',

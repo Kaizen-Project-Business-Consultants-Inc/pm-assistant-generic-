@@ -1,174 +1,54 @@
-# PM Assistant — Roadmap
+# Kovarti PM — Product Roadmap
 
-Last updated: 2026-07-15
-
----
-
-## Tier 1: Cleanup (Finish Methodology Feature) -- DONE
-
-Completed 2026-07-14 in commit `6d5689c`.
-
-| # | Item | Status |
-|---|------|--------|
-| 1 | Wire `getDefaultViewMode()` | Done -- agile projects open Kanban by default |
-| 2 | Delete `getContextCardConfig()` | Done -- removed dead code |
-| 3 | Unit tests for `methodology.ts` | Done -- 13 tests covering all 3 functions x 3 methodologies |
-| 4 | Methodology badge on project cards | Done -- Agile/Hybrid pill badge on dashboard cards |
+This roadmap outlines planned features and improvements for Kovarti PM. Timelines are estimates and may shift based on customer feedback and priorities.
 
 ---
 
-## Tier 2: Polish (Gaps in Existing Features) -- DONE
+## Q3 2026 (September — Launch)
 
-Completed 2026-07-14.
+| Feature | Status |
+|---------|--------|
+| Launch on kovarti.com (Sep 1) | In Progress |
+| Stripe live billing | In Progress |
+| Founders 20% discount offer | In Progress |
 
-| # | Item | Status |
-|---|------|--------|
-| 5 | Methodology in MCP `get-project` response | Done -- verified: MCP resource calls `GET /projects/:id` which returns `toProjectDTO()` including methodology |
-| 6 | Methodology in AI context | Done -- `aiContextBuilder` includes methodology in project context, portfolio context, and both prompt strings |
-| 7 | Methodology in project exports | Done -- JSON export includes methodology field in project object |
-| 8 | Readiness bar auto-dismiss | Done -- shows "All set!" banner when 5/5 complete, auto-dismisses after 3 seconds |
+## Q4 2026 (October — December)
 
----
+| Feature | Status |
+|---------|--------|
+| Slack integration (notifications + `/kovarti` slash command) | Planned |
+| Google Calendar sync (milestones/deadlines to calendar) | Planned |
+| Automation gallery (15+ pre-built workflow templates) | Planned |
+| Push notifications (web push via service worker) | Planned |
+| Gantt dependency drag-to-create (visual linking) | Planned |
 
-## Tier 3: New Features
+## Q1 2027 (January — March)
 
-New user-facing capabilities.
+| Feature | Status |
+|---------|--------|
+| Microsoft Teams integration (notifications + bot) | Planned |
+| Outlook calendar sync (Microsoft Graph API) | Planned |
+| Guest/external collaborator role | Planned |
+| Mobile PWA improvements (offline, camera attachments) | Planned |
+| Time-in-status metrics (cycle time, lead time charts) | Planned |
 
-| # | Item | Description | Effort |
-|---|------|-------------|--------|
-| 9 | Sprint velocity widget on dashboard | Done -- sparkline chart per agile/hybrid project on PM dashboard, shows velocity trend + average + trend arrow. Toggleable via Customize dropdown. | Done |
-| 10 | Backlog view | Done -- dedicated Backlog tab for agile/hybrid projects. Shows unassigned tasks with priority filter, bulk select, and assign-to-sprint. Backend endpoint `GET /sprints/backlog/:scheduleId`. | Done |
-| 11 | Story points on Kanban cards | Done -- column point totals, total sprint points in header, WIP limits with localStorage persistence and amber warning ring. | Done |
-| 12 | MariaDB 11.8 vector upgrade | Done -- Upgraded MariaDB 10.11→11.8.8 on Oracle Cloud. Embeddings column converted from JSON to BLOB (native vector storage). `EmbeddingRepository.searchSimilar()` uses `VEC_DISTANCE_COSINE()` + `VEC_FromText()` for SQL-level similarity search. In-memory cache removed. | Done |
-| 13 | External Cron Scheduler (Audit Item 13) | Done -- All 8 cron jobs moved from in-process `node-cron` to systemd timers. Standalone runner `scripts/runCronJob.ts` executes any job by name. Jobs survive app restarts, have independent failure domains, and log to systemd journal. | Done |
+## Q2 2027 (April — June)
 
----
-
-## Tier 4: Strategic
-
-Longer-term features that build on the methodology foundation.
-
-| # | Item | Description | Effort |
-|---|------|-------------|--------|
-| 14 | Methodology-aware templates | Done -- each template has `defaultMethodology` (IT→agile, Cloud/ERP/Telecom→hybrid, Construction/Roads/Infra→waterfall). Form pre-selects it; user can override. | Done |
-| 15 | Sprint retrospective AI | Done -- `POST /sprints/:id/retrospective` generates AI retrospective via Claude for completed sprints. BookOpen button on completed sprint cards. Inline display panel with dismiss. | Done |
-| 16 | Cumulative flow diagram | Done -- `GET /sprints/:id/cumulative-flow` returns daily task status distribution. SVG stacked area chart (not_started / in_progress / completed) in Sprints tab "flow" view. | Done |
-| 17 | Capacity planning for sprints | Done -- `GET /sprints/:id/capacity` returns recommended velocity based on historical average + team size. Confidence indicator (low/medium/high based on sprint count). "capacity" view in Sprints tab. | Done |
-| 18 | Cross-project portfolio velocity | Done -- Portfolio aggregate row in VelocitySparklineWidget on PM dashboard. Aggregates velocity across all agile/hybrid projects with sparkline + trend arrow. | Done |
-
----
-
-## Tier 5: Quality & Polish
-
-Hardening, testing, and UX improvements.
-
-| # | Item | Description | Effort |
-|---|------|-------------|--------|
-| 19 | CSP enforcement | Done -- Nginx CSP header on all static pages with SHA256 hash for gtag inline script (no `unsafe-inline` for scripts). Helmet CSP tightened: added worker-src, manifest-src, base-uri, form-action, frame-ancestors. Additional headers: X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy. | Done |
-| 20 | E2E test suite | Done -- Playwright tests for 5 critical flows: auth (login, invalid creds, redirect, password toggle), project CRUD (navigate, create blank project, view detail), task management (add task from schedule tab), sprint planning (sprints tab, board view), navigation (dashboard, sidebar, 404). Config at `playwright.config.ts`, tests in `e2e/`. Run with `npm run test:e2e`. | Done |
-| 21 | Accessibility audit | Done -- `useModal` hook with focus trap, Escape-to-close, focus restoration. `AccessibleModal` wrapper component. Applied to all 11 modal components. Added `aria-label` to ~15 icon-only buttons. Added `aria-label` to ~10 unlabelled form inputs. Skip-to-content link. `aria-live` region for screen reader announcements. `role="button"` + keyboard handlers on clickable divs. `aria-hidden` on decorative SVGs. | Done |
-| 22 | Drag-and-drop Kanban | Done -- Both `SprintBoard.tsx` and `KanbanBoard.tsx` use native HTML5 DnD API with `draggable` cards, `onDragStart`/`onDragOver`/`onDragLeave`/`onDrop` handlers, `ring-2 ring-primary-400` visual highlight on target column, "Drop here" text in empty columns, `cursor-grab`/`active:cursor-grabbing` on cards, and optimistic local state updates (`localTaskOverrides` in SprintBoard). | Done |
-| 23 | Gantt dependency arrows | Done -- SVG overlay renders arrows between dependent tasks for all 4 dependency types (FS/SS/FF/SF). Color-coded by health: green (satisfied), yellow (in progress), red (violated). Click-drag from bar edge to create dependencies with blue dashed preview line. Edit/remove via inline Pred column. | Done |
-| 24 | Notification preferences | Done -- Server-persisted per-category notification preferences (6 categories: Agent & Proposals, Risks & Issues, Budget & Finance, Meetings, System Alerts, Deadlines) with independent in-app and email toggles. NotificationService respects preferences before inserting/emailing. System alerts never suppressed for admins. Migration 057. | Done |
-| 25 | User support & admin troubleshooting | Done -- Support mailto links (pre-filled subject/body with context) on login page, 404 page, and both error boundaries. Admin Users page: login status badges (verified/unverified/pending/expired), "Unlock" button to clear stuck login tokens. `POST /admin/users/:id/clear-login-token` endpoint. | Done |
+| Feature | Status |
+|---------|--------|
+| Native mobile app (iOS + Android) | Planned |
+| Zoom/Teams transcript auto-pull (OAuth integrations) | Planned |
+| Advanced resource management (skills matrix, cost rates) | Planned |
+| Public API & developer docs | Planned |
+| Marketplace for community workflow templates | Planned |
 
 ---
 
-## Tier 6: Infrastructure & Performance
+## How We Prioritize
 
-Server-side hardening and optimization.
+We prioritize based on:
+1. **Customer feedback** — features most requested by active users move up.
+2. **Impact** — how many users benefit and how much time it saves.
+3. **Foundation** — infrastructure that unlocks multiple future features.
 
-| # | Item | Description | Effort |
-|---|------|-------------|--------|
-| 26 | API response compression | Done -- @fastify/compress with gzip/deflate, 1KB threshold. Brotli excluded (too CPU-heavy for 1-OCPU VM). Nginx handles static files; this covers API JSON payloads. | Done |
-| 27 | Database connection pool tuning | Done -- Added `DB_CONNECTION_LIMIT` (default: 5), `DB_MAX_IDLE` (default: 2) env vars. Changed idle timeout default from 30s to 60s. Pool config logged at startup. Tuned for 1GB Oracle VM. | Done |
-| 28 | Log rotation | Done -- Already implemented via `winston-daily-rotate-file`: daily rotation, 20MB max per file, 14-day retention (app) / 30-day (error), gzip compression of old files. Verified operational in production. | Done |
-| 29 | Sprint goal tracking | Done -- Sprint cards show progress bar with task completion (X/Y done), points (if set), and color-coded bar (green=100%, blue>=50%, amber<50%). Backend fetches stats in single batch query per sprint list. | Done |
-
----
-
-## Tier 7: AI & Intelligence
-
-AI-powered features building on Claude and RAG infrastructure.
-
-| # | Item | Description | Effort |
-|---|------|-------------|--------|
-| 30 | RAG auto-indexing | Done -- Lessons and meetings were already auto-indexed on create via `persistLesson()`/`persistAnalysis()`. Added re-indexing on lesson update and embedding deletion on lesson delete. All RAG indexing is now fully automatic. | Done |
-| 31 | AI task estimation | Done -- `POST /api/v1/ai/estimate-task` uses historical completed-task data + Claude to suggest `estimated_days` for new tasks. Fallback to average actual days when AI unavailable. Sparkles button in TaskFormModal next to Est. Duration field. 5 unit tests. | Done |
-
----
-
-## Tier 8: UX & Reliability
-
-Dark mode completion, user personalization, and connection resilience.
-
-| # | Item | Description | Effort |
-|---|------|-------------|--------|
-| 32 | Dark mode gaps | Done -- Added `dark:` Tailwind classes to all 18 components that had zero dark mode support (modals, forms, templates, notifications, time tracking, attachments, custom fields). Full coverage now across entire UI. | Done |
-| 35 | Favourite / pinned projects | Done -- `user_favourite_projects` junction table (migration 058). Star toggle on project cards, favourites sorted to top in project list. Sidebar "Pinned" section shows up to 5 favourite projects as direct links. API: `POST/DELETE /:id/favourite`, `GET /favourites`. | Done |
-| 48 | WebSocket reconnection | Done -- Exponential backoff (1s→30s, ±30% jitter, max 20 attempts) replaces constant 3s delay. Connection state indicator in TopBar: green dot (auto-fades), amber pulse (reconnecting), red dot + "Reconnect" button (disconnected). `useConnectionState()` hook + `reconnectNow()` export. | Done |
-
----
-
-## Tier 9: Bulk Operations, Archiving & Webhooks -- DONE
-
-Bulk operations fix, recurring task bug fix, project archiving, CSV export, and webhook expansion.
-
-| # | Item | Description | Status |
-|---|------|-------------|--------|
-| 49 | Bulk operations UI | Done -- Changed bulk route scope from `admin` to `write`. Wired TableView to use `bulkUpdateTaskStatus()` and `bulkUpdateTasks()` API endpoints instead of Promise.all of individual calls. MCP permissions already included project_manager. | Done |
-| 50 | Recurring tasks fix | Done -- Added `recurrence_rule`, `recurrence_parent_id`, `is_recurrence_template` to `createTask()` INSERT statement in ScheduleService. UI, cron job, and DB columns already existed — only the INSERT was missing the columns. | Done |
-| 51 | Project archiving | Done -- Migration 059 adds `archived_at` column + index. Archive/unarchive API routes (`POST /:id/archive`, `POST /:id/unarchive`). Default project queries exclude archived. UI: "Show Archived" toggle on Projects page, "Archived" badge on cards, archive/unarchive button per card. | Done |
-| 52 | CSV export from views | Done -- New `exportUtils.ts` with `downloadCSV()` and `exportTasksCSV()` (proper CSV escaping for commas, quotes, newlines). Export buttons added to TableView toolbar and GanttChart header. Columns: Name, Status, Priority, Assigned To, Start/End Date, Progress %. | Done |
-| 53 | Webhook event expansion | Done -- Migration 060 adds `webhook_deliveries` table. Delivery logging with timing, status codes, and error messages. One automatic retry after 60s on failure. `GET /webhooks/:id/deliveries` endpoint. 8 new events: `sprint.created/started/completed`, `risk.created/updated`, `change_request.created/approved/rejected`. | Done |
-
----
-
-## Tier 10: Security Hardening, Data Hygiene & Reliability -- DONE
-
-Closes remaining audit findings, adds data retention, enhances digest emails, and documents env vars.
-
-| # | Item | Description | Status |
-|---|------|-------------|--------|
-| 54 | Audit batch 1 — project access guards | Done -- Added `requireProjectAccess` to all 13 RAID/risk routes (viewer for GET, editor for POST/PUT). Added `requireProjectAccess('manager')` to project member mutation routes (add/update member) and `owner` for delete. Wrapped all 4 agent memory route handlers in try/catch. Allowlisted `orderBy` param in AuditLedgerRepository to prevent SQL injection. | Done |
-| 55 | Data retention crons | Done -- New `DataRetentionService` purges stale data from 5 tables: webhook_deliveries (30d), dead_letter_queue resolved/failed (30d), agent_memory expired, notifications read (90d), api_key_usage_log (90d). All retention periods configurable via env vars. Migration 061 adds indexes for efficient cleanup queries. New `data-retention` cron job case. | Done |
-| 56 | Digest email enhancement | Done -- `buildDigest()` now queries `audit_ledger` for recent changes on user's projects since last digest. Changes grouped by category (Tasks, Risks, Sprints, Approvals, Projects). Email template renders categorized "Recent Activity" section. Replaced hardcoded `recentChanges: 0` stub. All 12 existing digest tests updated. | Done |
-| 57 | .env.example & config validation | Done -- Updated `.env.example` with missing vars (DB_CONNECTION_LIMIT, DB_MAX_IDLE, data retention vars). Added `logConfigSummary()` to config.ts — logs enabled features and warns about missing recommended vars (REDIS_URL, RESEND_API_KEY, ALERT config) at startup. | Done |
-| 58 | Auth guards & route hardening | Done -- Added `isActive` check to auth middleware after JWT validation (Redis-cached, 5-min TTL) — deactivated users get 401 immediately even with valid JWT/API key. Added ownership check to portal link PUT/DELETE routes. Removed unrestricted dev CORS catch-all (S10). E6/E7 already fixed in current code. | Done |
-
----
-
-## Tier 11: Audit Quick Wins -- DONE
-
-Remaining audit findings: scope corrections, SQL parameterization, prompt injection, API contract fixes, error handling.
-
-| # | Item | Description | Status |
-|---|------|-------------|--------|
-| 59 | SQL parameterization (S7) | Done -- WorkflowRepository `LIMIT` changed from string interpolation to parameterized `?` placeholder. | Done |
-| 60 | AI prompt sanitization (S11) | Done -- AutoRescheduleService task names wrapped in `sanitizeForPrompt()` before passing to Claude. | Done |
-| 61 | Auth scope corrections (A10, A11) | Done -- `PUT /me/accessibility` changed from `requireScope('read')` to `write`. RAID comments POST changed from `read`/`viewer` to `write`/`editor`. | Done |
-| 62 | HTTP 201 on creation endpoints | Done -- Added `reply.status(201)` to 7 POST endpoints: sprint tasks, approval workflows, change requests, API keys, webhooks, integrations, report templates. | Done |
-| 63 | Missing 404 checks | Done -- Added null check + 404 response to integrations `GET /:id`. | Done |
-| 64 | Route error handling (E9) | Done -- Added try/catch to 5 unprotected route handlers: proposals (list, get, actions), autonomy (list, eligibility). | Done |
-| 65 | WebhookService test fix | Done -- Added `vi.mock` for `database/connection` and `utils/logger` to prevent config validation error at import time. All 66 test files now pass (909 tests). | Done |
-| 66 | Deploy script fix | Done -- `deploy.sh` health check curl failure no longer causes exit code 7 under `set -e`. Gracefully handles missing `/health` endpoint. | Done |
-
----
-
-## Tier 12: Final Audit Sweep -- DONE
-
-Ownership checks, project access guards, and 404 responses on remaining routes.
-
-| # | Item | Description | Status |
-|---|------|-------------|--------|
-| 67 | Report template ownership (A8) | Done -- PUT/DELETE `/templates/:id` now verify the template belongs to the requesting user (admins exempt). GET returns 404 for missing templates. | Done |
-| 68 | Custom field project access (A12) | Done -- Added `requireProjectAccess('viewer')` to GET and `requireProjectAccess('editor')` to POST on `/project/:projectId` custom field routes. | Done |
-| 69 | Integration 404 checks (C5, C6) | Done -- PUT and DELETE `/integrations/:id` now return 404 when integration not found. | Done |
-
----
-
-## Prioritization Notes
-
-- **Tiers 1-12 are complete** — all 55 items shipped. Tiers 1-4 on July 14, Tiers 5-7 on July 14-15, Tiers 8-11 on July 15, Tier 12 on July 16, 2026.
-- **Tier 12** closed the final audit items: report template ownership checks, custom field project access guards, and integration 404 responses.
-- **Remaining audit items not fixed (by design):** A6/A7 (attachment project access — entity-based routes have no projectId, risk is low with UUID + scope gating), V2 (text field max lengths — already handled by Zod schemas on all input routes).
+Have a feature request? Email us at support@kovarti.com.

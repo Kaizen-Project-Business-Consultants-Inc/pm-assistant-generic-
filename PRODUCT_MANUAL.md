@@ -2890,6 +2890,12 @@ The Terms of Service (`/terms`) governing law and jurisdiction is set to the Pro
 
 ---
 
+## Public Roadmap Page
+
+The product roadmap is available at `/roadmap` — a public page accessible without login. It shows planned features organized by quarter in a visual timeline layout with status badges (Shipped, In Progress, Planned). The page uses the same `PublicNavbar` and `PublicFooter` as the Terms, Privacy, and Guide pages. A "Roadmap" link appears in both the public navbar and footer. The internal roadmap document is maintained in `ROADMAP.md` at the repository root.
+
+---
+
 ## Getting Started
 
 ### Prerequisites

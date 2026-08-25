@@ -2909,6 +2909,18 @@ Essential cookies (authentication, session management) are always active — the
 
 ---
 
+## 37. Product Roadmap
+
+Visit `/roadmap` (or click **Roadmap** in the navigation bar or footer) to see what features are coming next. The roadmap is organized by quarter and shows each feature with a status badge:
+
+- **Shipped** — already available in the product
+- **In Progress** — actively being built
+- **Planned** — on the schedule for that quarter
+
+No login is required to view the roadmap. Have a feature request? Use the email link at the bottom of the roadmap page to let us know.
+
+---
+
 ## Tips
 
 - **Save often** -- Always click Save after modifying schedules or tasks. Unsaved changes are lost on page refresh.

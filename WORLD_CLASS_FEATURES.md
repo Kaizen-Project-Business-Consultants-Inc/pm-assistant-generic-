@@ -859,3 +859,4 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Mitigation Suggestions in Risk Form (MitigationSuggestions component in RiskFormModal; collapsible section with Shield icon showing historical mitigation strategies from past projects ranked by relevance) | Done | Enhancement |
 | Actionable Notifications (notifications carry suggestedActions array; AlertActionButton renders one-click remediation actions in the notification bell dropdown) | Done | Enhancement |
 | NL Query Chart Upgrade (QueryPage uses extracted DynamicChart SVG component with Chart.js-to-ChartDatum adapter for bar/line/pie/horizontal-bar rendering) | Done | Enhancement |
+| Public Roadmap Page (`/roadmap` — quarterly timeline with status badges, PublicNavbar/Footer, responsive cards; internal `ROADMAP.md` document; navbar + footer links) | Done | Marketing |
