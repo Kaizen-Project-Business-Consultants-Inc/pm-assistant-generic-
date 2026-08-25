@@ -34,7 +34,7 @@ const configSchema = z.object({
 
   // Email Configuration (Resend)
   RESEND_API_KEY: z.string().optional().default(''),
-  RESEND_FROM_EMAIL: z.string().default('noreply@kpbc.ca'),
+  RESEND_FROM_EMAIL: z.string().default('noreply@kovarti.com'),
   APP_URL: z.string().default('http://localhost:5173'),
 
   // Stripe Configuration

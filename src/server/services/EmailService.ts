@@ -769,7 +769,7 @@ export class EmailService {
 
     await this.sendEmail({
       from: config.RESEND_FROM_EMAIL,
-      to: 'kpbcma@gmail.com',
+      to: 'sales@kovarti.com',
       subject: `Early Bird Waitlist: ${subscriberEmail}`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">

@@ -6,6 +6,16 @@ import { PricingSection } from '../components/pricing/PricingCards';
 
 const features = [
   {
+    title: 'Interactive Gantt Charts',
+    description: 'Drag-and-drop scheduling with dependencies, critical path, resource leveling, and PDF export.',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h10M4 14h12M4 18h8" />
+      </svg>
+    ),
+    color: 'from-blue-400 to-indigo-500',
+  },
+  {
     title: 'AI-Powered Scheduling',
     description: 'Generate task breakdowns, dependencies, and optimized timelines in seconds.',
     icon: (
@@ -16,6 +26,16 @@ const features = [
     color: 'from-amber-400 to-orange-500',
   },
   {
+    title: 'Earned Value Management',
+    description: 'CPI, SPI, EAC, and S-Curve charts with what-if simulation. Know exactly where your budget stands.',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    color: 'from-emerald-400 to-teal-500',
+  },
+  {
     title: 'Monte Carlo Simulations',
     description: 'Probabilistic risk analysis that tells you exactly how confident to be in your timeline.',
     icon: (
@@ -23,7 +43,7 @@ const features = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
     ),
-    color: 'from-emerald-400 to-teal-500',
+    color: 'from-lime-400 to-green-500',
   },
   {
     title: 'Smart Risk Detection',
@@ -371,6 +391,99 @@ function MeetingMockup() {
   );
 }
 
+function GanttMockup() {
+  const tasks = [
+    { name: 'Planning', x: 90, w: 60, color: '#3b82f6', y: 42 },
+    { name: 'Design', x: 150, w: 80, color: '#8b5cf6', y: 62 },
+    { name: 'Development', x: 180, w: 120, color: '#06b6d4', y: 82 },
+    { name: 'Testing', x: 260, w: 50, color: '#10b981', y: 102 },
+    { name: 'Launch', x: 310, w: 30, color: '#f59e0b', y: 122 },
+  ];
+  return (
+    <svg viewBox="0 0 360 200" className="w-full h-full">
+      <rect width="360" height="200" fill="#1e293b" />
+      <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Gantt Chart</text>
+      {/* Grid lines */}
+      {[90, 150, 210, 270, 330].map((x, i) => (
+        <line key={i} x1={x} y1="34" x2={x} y2="180" stroke="#334155" strokeWidth="1" />
+      ))}
+      {/* Month headers */}
+      {[{ x: 100, t: 'Jan' }, { x: 160, t: 'Feb' }, { x: 220, t: 'Mar' }, { x: 280, t: 'Apr' }].map((m, i) => (
+        <text key={i} x={m.x} y="34" fill="#64748b" fontSize="9" fontFamily="system-ui">{m.t}</text>
+      ))}
+      {/* Tasks */}
+      {tasks.map((t, i) => (
+        <g key={i} opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.2 + i * 0.25}s`} fill="freeze" />
+          <text x="16" y={t.y + 12} fill="#cbd5e1" fontSize="10" fontFamily="system-ui">{t.name}</text>
+          <rect x={t.x} y={t.y} width="0" height="14" rx="3" fill={t.color} opacity="0.9">
+            <animate attributeName="width" from="0" to={String(t.w)} dur="0.5s" begin={`${0.3 + i * 0.25}s`} fill="freeze" />
+          </rect>
+        </g>
+      ))}
+      {/* Dependencies */}
+      <path d="M150 56 L150 62" stroke="#64748b" strokeWidth="1" strokeDasharray="3,2" opacity="0">
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.0s" fill="freeze" />
+      </path>
+      <path d="M230 76 L230 82" stroke="#64748b" strokeWidth="1" strokeDasharray="3,2" opacity="0">
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.2s" fill="freeze" />
+      </path>
+      {/* Critical path highlight */}
+      <rect x="14" y="148" width="332" height="28" rx="6" fill="#334155" opacity="0">
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.6s" fill="freeze" />
+      </rect>
+      <text x="24" y="166" fill="#f97316" fontSize="10" fontWeight="bold" fontFamily="system-ui" opacity="0">Critical Path: Design → Development → Testing (152d)
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="1.7s" fill="freeze" />
+      </text>
+    </svg>
+  );
+}
+
+function EVMMockup() {
+  return (
+    <svg viewBox="0 0 360 200" className="w-full h-full">
+      <rect width="360" height="200" fill="#1e293b" />
+      <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Earned Value Management</text>
+      {/* Axes */}
+      <line x1="40" y1="30" x2="40" y2="160" stroke="#475569" strokeWidth="1" />
+      <line x1="40" y1="160" x2="340" y2="160" stroke="#475569" strokeWidth="1" />
+      {/* PV (Planned Value) - dashed */}
+      <path d="M40 150 Q120 130 180 100 Q240 70 340 40" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5,3" opacity="0">
+        <animate attributeName="opacity" from="0" to="0.8" dur="0.5s" begin="0.3s" fill="freeze" />
+      </path>
+      {/* EV (Earned Value) - solid green */}
+      <path d="M40 150 Q100 138 150 118 Q200 95 240 80" fill="none" stroke="#10b981" strokeWidth="2" opacity="0" strokeDashoffset="300" strokeDasharray="300">
+        <animate attributeName="opacity" from="0" to="1" dur="0.1s" begin="0.6s" fill="freeze" />
+        <animate attributeName="strokeDashoffset" from="300" to="0" dur="1.2s" begin="0.6s" fill="freeze" />
+      </path>
+      {/* AC (Actual Cost) - solid red */}
+      <path d="M40 150 Q100 132 150 108 Q200 82 240 60" fill="none" stroke="#ef4444" strokeWidth="2" opacity="0" strokeDashoffset="300" strokeDasharray="300">
+        <animate attributeName="opacity" from="0" to="1" dur="0.1s" begin="0.8s" fill="freeze" />
+        <animate attributeName="strokeDashoffset" from="300" to="0" dur="1.2s" begin="0.8s" fill="freeze" />
+      </path>
+      {/* Legend */}
+      {[
+        { x: 50, label: 'PV', color: '#94a3b8' },
+        { x: 110, label: 'EV', color: '#10b981' },
+        { x: 170, label: 'AC', color: '#ef4444' },
+      ].map((l, i) => (
+        <g key={i} opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${1.8 + i * 0.15}s`} fill="freeze" />
+          <line x1={l.x} y1="175" x2={l.x + 16} y2="175" stroke={l.color} strokeWidth="2" />
+          <text x={l.x + 20} y="178" fill={l.color} fontSize="9" fontFamily="system-ui">{l.label}</text>
+        </g>
+      ))}
+      {/* KPI badges */}
+      <g opacity="0">
+        <animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="2.2s" fill="freeze" />
+        <rect x="250" y="168" width="100" height="26" rx="6" fill="#334155" />
+        <text x="260" y="180" fill="#10b981" fontSize="9" fontWeight="bold" fontFamily="system-ui">CPI 0.92</text>
+        <text x="300" y="180" fill="#f97316" fontSize="9" fontWeight="bold" fontFamily="system-ui">SPI 0.88</text>
+      </g>
+    </svg>
+  );
+}
+
 function NLQueryMockup() {
   return (
     <svg viewBox="0 0 360 200" className="w-full h-full">
@@ -409,13 +522,138 @@ function NLQueryMockup() {
 }
 
 const featureMockups: Record<string, React.FC> = {
+  'Interactive Gantt Charts': GanttMockup,
   'AI-Powered Scheduling': SchedulingMockup,
+  'Earned Value Management': EVMMockup,
   'Monte Carlo Simulations': MonteCarloMockup,
   'Smart Risk Detection': RiskDetectionMockup,
   'Meeting Intelligence': MeetingMockup,
   'Portfolio Dashboard': PortfolioMockup,
   'Natural Language Queries': NLQueryMockup,
 };
+
+const faqItems = [
+  {
+    question: 'What does Kovarti do?',
+    answer: 'Kovarti is an AI-powered project management platform. It combines Gantt scheduling, earned value management, risk detection, and Monte Carlo simulations — all with a built-in AI assistant called Mjuzi that gives you real-time project insights.',
+  },
+  {
+    question: 'How is this different from Monday or Asana?',
+    answer: 'Most PM tools are task trackers with AI bolted on. Kovarti was built AI-first — Mjuzi monitors your projects 24/7 for risks, generates schedules from natural language, and runs Monte Carlo simulations to predict delivery confidence. You also get full EVM dashboards (CPI, SPI, S-Curves) that none of those tools offer.',
+  },
+  {
+    question: 'What does it cost?',
+    answer: 'Free 14-day trial, no card required. Basic plan starts at $19/mo for core PM features. Pro plan at $29/mo adds AI scheduling, risk detection, and meeting intelligence. Annual plans get 20% off at launch.',
+  },
+  {
+    question: 'When do you launch?',
+    answer: 'We launch September 7, 2026. Join the waitlist to get early access and our launch-window discount on the Pro plan.',
+  },
+  {
+    question: 'Can I see a demo?',
+    answer: "We're finalizing the demo environment now. Join the waitlist and we'll send you an invite as soon as it's ready — waitlist members get first access.",
+  },
+  {
+    question: 'Is my data secure?',
+    answer: 'Yes. Each organization gets its own isolated database (multi-tenant architecture). We use SSL/TLS encryption, role-based access control, and never share your data with third parties. Your project data is never used to train AI models.',
+  },
+];
+
+function MjuziFaqBot() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedQ, setSelectedQ] = useState<number | null>(null);
+
+  return (
+    <>
+      {/* Chat panel */}
+      {isOpen && (
+        <div className="fixed bottom-20 right-4 sm:right-6 z-50 w-[340px] sm:w-[380px] max-h-[70vh] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40 flex flex-col overflow-hidden animate-in">
+          {/* Header */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-700/50 bg-slate-900">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0">M</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-white">Mjuzi</div>
+              <div className="text-xs text-slate-400">Kovarti AI Assistant</div>
+            </div>
+            <button onClick={() => { setIsOpen(false); setSelectedQ(null); }} className="text-slate-400 hover:text-white transition-colors p-1" aria-label="Close chat">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {/* Greeting */}
+            <div className="flex gap-2.5">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5">M</div>
+              <div className="bg-slate-800 rounded-xl rounded-tl-sm px-3.5 py-2.5 text-sm text-slate-200 leading-relaxed max-w-[85%]">
+                Hi, I'm <span className="font-semibold text-primary-400">Mjuzi</span>! I can answer your questions about Kovarti PM. What would you like to know?
+              </div>
+            </div>
+
+            {/* Answer display */}
+            {selectedQ !== null && (
+              <>
+                <div className="flex justify-end">
+                  <div className="bg-primary-600/20 border border-primary-500/30 rounded-xl rounded-tr-sm px-3.5 py-2.5 text-sm text-primary-200 max-w-[85%]">
+                    {faqItems[selectedQ].question}
+                  </div>
+                </div>
+                <div className="flex gap-2.5">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5">M</div>
+                  <div className="bg-slate-800 rounded-xl rounded-tl-sm px-3.5 py-2.5 text-sm text-slate-200 leading-relaxed max-w-[85%]">
+                    {faqItems[selectedQ].answer}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Question buttons */}
+            <div className="space-y-2 pt-1">
+              <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{selectedQ !== null ? 'Ask another question' : 'Pick a question'}</div>
+              {faqItems.map((item, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSelectedQ(i)}
+                  className={`w-full text-left text-sm px-3 py-2 rounded-lg border transition-all ${
+                    selectedQ === i
+                      ? 'border-primary-500/50 bg-primary-500/10 text-primary-300'
+                      : 'border-slate-700/50 bg-slate-800/50 text-slate-300 hover:border-slate-600 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  {item.question}
+                </button>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <div className="pt-2">
+              <a
+                href="#waitlist"
+                onClick={() => setIsOpen(false)}
+                className="block w-full text-center text-sm font-semibold text-white bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-500 hover:to-purple-500 px-4 py-2.5 rounded-xl transition-all"
+              >
+                Join the Waitlist
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating button */}
+      <button
+        onClick={() => setIsOpen(prev => !prev)}
+        className="fixed bottom-4 right-4 sm:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 hover:from-primary-400 hover:to-purple-500 text-white shadow-lg shadow-primary-900/50 hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center"
+        aria-label={isOpen ? 'Close chat' : 'Chat with Mjuzi'}
+      >
+        {isOpen ? (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        ) : (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+        )}
+      </button>
+    </>
+  );
+}
 
 export const PrelaunchLandingPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -662,6 +900,9 @@ export const PrelaunchLandingPage: React.FC = () => {
           <div className="text-xs text-slate-500">&copy; {new Date().getFullYear()} Kovarti. All rights reserved.</div>
         </div>
       </footer>
+
+      {/* FAQ Bot */}
+      <MjuziFaqBot />
     </div>
   );
 };
