@@ -4,6 +4,8 @@ import { auditLedgerService } from './AuditLedgerService';
 import { resourceAvailabilityService } from './ResourceAvailabilityService';
 import { deadLetterService } from './DeadLetterService';
 import { timeEntryRepository } from '../database/TimeEntryRepository';
+import { databaseService } from '../database/connection';
+import { getRequestContext } from '../middleware/requestContext';
 
 export interface SkillWithProficiency {
   name: string;
@@ -60,6 +62,25 @@ export interface ResourceWorkload {
 }
 
 export class ResourceService {
+  // --- Auto-link resource to user by email ---
+
+  private async autoLinkUser(resourceId: string, email: string | undefined): Promise<void> {
+    if (!email) return;
+    const ctx = getRequestContext();
+    if (!ctx?.organizationId) return;
+    try {
+      const [user] = await databaseService.queryControlPlane<{ id: string }>(
+        'SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND organization_id = ? LIMIT 1',
+        [email, ctx.organizationId],
+      );
+      if (user) {
+        await databaseService.query('UPDATE resources SET user_id = ? WHERE id = ?', [user.id, resourceId]);
+      }
+    } catch {
+      // Fire-and-forget — don't break resource CRUD if linking fails
+    }
+  }
+
   // --- Resource CRUD ---
 
   async findAllResources(): Promise<Resource[]> {
@@ -79,7 +100,9 @@ export class ResourceService {
   }
 
   async createResource(data: Omit<Resource, 'id'>): Promise<Resource> {
-    return resourceRepository.create(data);
+    const resource = await resourceRepository.create(data);
+    this.autoLinkUser(resource.id, resource.email).catch(() => {});
+    return resource;
   }
 
   async updateResource(id: string, data: Partial<Omit<Resource, 'id'>>): Promise<Resource | null> {
@@ -90,6 +113,11 @@ export class ResourceService {
     if (!changed) return existing;
 
     const updated = (await resourceRepository.findById(id))!;
+
+    // Re-link user if email changed
+    if (data.email && data.email !== existing.email) {
+      this.autoLinkUser(id, data.email).catch(() => {});
+    }
 
     auditLedgerService.append({
       actorId: 'system',

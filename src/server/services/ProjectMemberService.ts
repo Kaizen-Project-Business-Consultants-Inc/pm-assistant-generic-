@@ -1,4 +1,5 @@
 import { projectMemberRepository, ProjectMember } from '../database/ProjectMemberRepository';
+import { databaseService } from '../database/connection';
 
 export type { ProjectMember } from '../database/ProjectMemberRepository';
 export type ProjectRole = 'owner' | 'manager' | 'editor' | 'viewer';
@@ -39,7 +40,17 @@ export class ProjectMemberService {
       await projectMemberRepository.updateRole(existing.id, data.role);
       return { ...existing, role: data.role };
     }
-    return projectMemberRepository.insert(projectId, data);
+    const member = await projectMemberRepository.insert(projectId, data);
+
+    // Fire-and-forget: link any unlinked resource with matching email to this user
+    if (data.email) {
+      databaseService.query(
+        'UPDATE resources SET user_id = ? WHERE LOWER(email) = LOWER(?) AND user_id IS NULL',
+        [data.userId, data.email],
+      ).catch(() => {});
+    }
+
+    return member;
   }
 
   async updateRole(memberId: string, role: ProjectRole): Promise<ProjectMember | null> {

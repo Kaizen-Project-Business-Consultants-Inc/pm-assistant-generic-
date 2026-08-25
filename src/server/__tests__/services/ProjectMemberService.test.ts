@@ -122,8 +122,9 @@ describe('ProjectMemberService', () => {
       expect(member.projectId).toBe('p1');
       expect(member.userId).toBe('u2');
       expect(member.role).toBe('editor');
-      expect(mockQuery).toHaveBeenCalledTimes(2);
+      expect(mockQuery).toHaveBeenCalledTimes(3); // findMembership + INSERT + auto-link resource
       expect(mockQuery.mock.calls[1][0]).toContain('INSERT INTO project_members');
+      expect(mockQuery.mock.calls[2][0]).toContain('UPDATE resources');
     });
 
     it('updates role when already a member', async () => {
