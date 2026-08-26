@@ -257,11 +257,11 @@ async function startHttp() {
         return;
       }
 
-      // Validate credentials against users table
+      // Validate credentials against users table (accept username or email)
       interface UserRow { id: string; username: string; password_hash: string; role: string }
       const users = await query<UserRow & import('mysql2/promise').RowDataPacket>(
-        'SELECT id, username, password_hash, role FROM users WHERE username = ? AND is_active = 1',
-        [username],
+        'SELECT id, username, password_hash, role FROM users WHERE (username = ? OR email = ?) AND is_active = 1',
+        [username, username],
       );
 
       if (users.length === 0) {

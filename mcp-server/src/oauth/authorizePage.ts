@@ -120,7 +120,7 @@ export function renderAuthorizePage(params: {
       <input type="hidden" name="code_challenge" value="${escHtml(params.codeChallenge)}">
       ${params.state ? `<input type="hidden" name="state" value="${escHtml(params.state)}">` : ''}
       ${params.scope ? `<input type="hidden" name="scope" value="${escHtml(params.scope)}">` : ''}
-      <label for="username">Username</label>
+      <label for="username">Username or Email</label>
       <input type="text" id="username" name="username" required autocomplete="username" autofocus>
       <label for="password">Password</label>
       <input type="password" id="password" name="password" required autocomplete="current-password">
