@@ -7,6 +7,7 @@
 #   bash deploy.sh staging --server-only  # server only to staging
 #   bash deploy.sh staging --mcp          # MCP server to staging
 #   bash deploy.sh prod --skip-tests      # skip tests
+#   bash deploy.sh prod --prelaunch       # build with countdown landing page
 set -euo pipefail
 
 SSH_KEY="$HOME/.ssh/ssh-key-2026-07-08 (1).key"
@@ -37,6 +38,7 @@ SKIP_TESTS=false
 SERVER_ONLY=false
 CLIENT_ONLY=false
 MCP_ONLY=false
+PRELAUNCH=false
 
 for arg in "$@"; do
   case $arg in
@@ -44,6 +46,7 @@ for arg in "$@"; do
     --server-only) SERVER_ONLY=true ;;
     --client-only) CLIENT_ONLY=true ;;
     --mcp)         MCP_ONLY=true ;;
+    --prelaunch)   PRELAUNCH=true ;;
     *) echo "Unknown option: $arg"; exit 1 ;;
   esac
 done
@@ -99,9 +102,10 @@ else
 fi
 
 # --- Step 3: Build ---
-# Prod builds enable prelaunch mode (waitlist landing page instead of app)
-# Remove VITE_PRELAUNCH=true (or set to false) when ready to go live
-if [ "$ENV" = "prod" ]; then
+# Prelaunch mode shows countdown landing page instead of login/register
+# Pass --prelaunch flag to enable, or omit to build the live app
+if [ "$PRELAUNCH" = true ]; then
+  echo "  ⚠ Prelaunch mode ON (countdown page)"
   export VITE_PRELAUNCH=true
 fi
 
