@@ -38,6 +38,7 @@ export const ROUTES = {
   settings: '/settings',
   changeRequests: '/change-requests',
   goals: '/goals',
+  myFeedback: '/my-feedback',
   notifications: '/notifications',
   resources: '/resources',
   evm: '/evm',

@@ -3487,3 +3487,51 @@ Resource requests capture:
 ### Database
 
 Migration `T023` adds the `resource_requests` table with columns for all request fields, status, requester, reviewer, fulfillment resource link, and timestamps.
+
+## 57. User Feedback System
+
+A closed-loop feedback system where users submit feedback and track responses from the team.
+
+### Submitting Feedback
+
+Users submit feedback via the **Share Your Feedback** modal (accessible from the sidebar). Each submission includes:
+- **Overall rating** (1-5 stars, required)
+- **Feature-specific ratings** — Schedule, RAID, AI, Reporting (optional)
+- **Category** — General, Feature Request, or Bug Report
+- **Comment** — free-text description (up to 5,000 characters)
+- **Screenshot** — paste from clipboard or upload an image file (max 5MB)
+
+Page context (URL, browser, OS) is auto-appended to the comment for diagnostic purposes.
+
+### My Feedback Page
+
+Users can view their submission history at `/my-feedback` (accessible from the sidebar under Personal). Each entry shows:
+- Category icon, comment preview, star rating, and status badge
+- **Status tracking**: Submitted → Under Review → Resolved
+- **Team response** — highlighted reply box when the admin has responded
+- Screenshot indicator if an image was attached
+- Click to expand full details
+
+### Admin Feedback Management
+
+Admins manage feedback at `/admin/feedback`:
+- **Status filters** — All, New, Reviewed, Resolved
+- **Aggregate statistics** — average ratings per feature area
+- **Internal notes** — private notes not visible to the user
+- **Reply to user** — visible response that the user sees on their My Feedback page; sends an email notification
+- **Screenshot viewer** — view user-attached screenshots inline
+- **Status actions** — Mark Reviewed, Resolve
+
+### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/feedback` | Submit feedback (rate-limited: 3/hour) |
+| GET | `/api/v1/feedback/mine` | User's own submissions |
+| GET | `/api/v1/feedback/:id/screenshot` | Get screenshot data (owner or admin) |
+| GET | `/api/v1/feedback` | List all feedback (admin only) |
+| PATCH | `/api/v1/feedback/:id` | Update status, notes, or reply (admin only) |
+
+### Database
+
+Migration `106` adds `admin_reply`, `admin_reply_at`, `admin_reply_by`, and `screenshot_data` columns to the `feedback` table (control plane DB).

@@ -40,6 +40,7 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 32. [Scrum Enhancements](#32-scrum-enhancements)
 34. [Project Grouping (Folders/Spaces)](#34-project-grouping-foldersspaces)
 35. [Resource Request/Approval Workflow](#35-resource-requestapproval-workflow)
+38. [User Feedback](#38-user-feedback)
 
 ---
 
@@ -2876,6 +2877,40 @@ Visit `/roadmap` (or click **Roadmap** in the navigation bar or footer) to see w
 - **Planned** — on the schedule for that quarter
 
 No login is required to view the roadmap. Have a feature request? Use the email link at the bottom of the roadmap page to let us know.
+
+---
+
+## 38. User Feedback
+
+### Submitting Feedback
+
+Click the **heart icon** labeled "My Feedback" in the sidebar (under the Personal section), or use the **Share Your Feedback** button at the bottom of the sidebar to open the feedback modal. You can:
+
+1. **Rate your experience** (1-5 stars, required)
+2. **Rate specific features** — Schedule, RAID, AI, Reporting (optional)
+3. **Select a category** — General Feedback, Feature Request, or Bug Report
+4. **Write a comment** describing what's working or what you'd like improved
+5. **Attach a screenshot** — click "Attach screenshot" to upload an image, or paste one from your clipboard (Ctrl+V)
+
+Your current page URL and browser info are automatically included to help our team diagnose issues.
+
+### Tracking Your Submissions
+
+Navigate to **My Feedback** (`/my-feedback`) from the sidebar to see all your past submissions. Each entry shows:
+
+- **Category** and comment preview
+- **Star rating** you gave
+- **Status badge** — Submitted (new), Under Review (reviewed), or Resolved
+- **Screenshot indicator** — camera icon if you attached an image
+- **Response indicator** — blue dot if the team has replied
+
+Click any entry to expand it and see:
+- Your full comment
+- Your screenshot (if attached)
+- **Team Response** — a highlighted box with the admin's reply and when it was sent
+- If no reply yet, you'll see "Awaiting response from our team"
+
+You'll also receive an **email notification** when an admin responds to your feedback.
 
 ---
 

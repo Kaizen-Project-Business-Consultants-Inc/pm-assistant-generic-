@@ -3084,7 +3084,7 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
-  // --- Feedback (admin) ---
+  // --- Feedback ---
   async getAdminFeedback(params?: string) {
     const response = await this.api.get(`/feedback${params ? `?${params}` : ''}`);
     return response.data;
@@ -3097,6 +3097,16 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
 
   async submitFeedbackItem(data: Record<string, unknown>) {
     const response = await this.api.post('/feedback', data);
+    return response.data;
+  }
+
+  async getMyFeedback() {
+    const response = await this.api.get('/feedback/mine');
+    return response.data;
+  }
+
+  async getFeedbackScreenshot(id: string) {
+    const response = await this.api.get(`/feedback/${id}/screenshot`);
     return response.data;
   }
 

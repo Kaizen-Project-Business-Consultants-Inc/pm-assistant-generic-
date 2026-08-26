@@ -631,6 +631,19 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 - Migration T023: `resource_requests` table
 - **Benchmark:** Smartsheet Resource Management, Planview resource request workflows
 
+### 5.12 User Feedback System (Closed-Loop)
+- Feedback modal with 1-5 star rating, feature-specific ratings, category (bug/feature_request/general), comment, and screenshot attachment
+- Screenshot capture via file upload or clipboard paste (max 5MB, base64-encoded)
+- **My Feedback page** (`/my-feedback`) — users see their submission history with status tracking (Submitted → Under Review → Resolved)
+- Admin reply visible to user — highlighted "Team Response" box with timestamp
+- Email notification sent to user when admin replies (fire-and-forget)
+- Admin internal notes (private) separate from user-visible replies
+- Admin screenshot viewer inline on feedback detail
+- Rate-limited submissions (3/hour)
+- Auto-appended page context (URL, browser, OS) for diagnostics
+- Migration 106: `admin_reply`, `admin_reply_at`, `admin_reply_by`, `screenshot_data` columns on `feedback` table (control plane DB)
+- **Benchmark:** Canny, UserVoice — most PM tools have no built-in feedback loop; users submit into a black hole
+
 ---
 
 ## Launch Offer & Founders Program

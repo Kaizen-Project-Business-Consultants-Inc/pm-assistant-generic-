@@ -58,6 +58,7 @@ const AdminWaitlistPage = lazy(() => import('./pages/admin/AdminWaitlistPage').t
 const AgentProposalsPage = lazy(() => import('./pages/AgentProposalsPage').then(m => ({ default: m.AgentProposalsPage })));
 const ChangeRequestsPage = lazy(() => import('./pages/ChangeRequestsPage').then(m => ({ default: m.ChangeRequestsPage })));
 const GoalsPage = lazy(() => import('./pages/GoalsPage').then(m => ({ default: m.GoalsPage })));
+const MyFeedbackPage = lazy(() => import('./pages/MyFeedbackPage').then(m => ({ default: m.MyFeedbackPage })));
 const ResourceManagementPage = lazy(() => import('./pages/ResourceManagementPage').then(m => ({ default: m.ResourceManagementPage })));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 const EVMDashboardPage = lazy(() => import('./pages/EVMDashboardPage').then(m => ({ default: m.EVMDashboardPage })));
@@ -157,6 +158,7 @@ function App() {
         <Route path={ROUTES.settings} element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
         <Route path={ROUTES.changeRequests} element={<PrivateRoute><ChangeRequestsPage /></PrivateRoute>} />
         <Route path={ROUTES.goals} element={<PrivateRoute><GoalsPage /></PrivateRoute>} />
+        <Route path={ROUTES.myFeedback} element={<PrivateRoute><MyFeedbackPage /></PrivateRoute>} />
         <Route path={ROUTES.notifications} element={<PrivateRoute><NotificationsPage /></PrivateRoute>} />
         <Route path={ROUTES.resources} element={<PrivateRoute><ResourceManagementPage /></PrivateRoute>} />
         <Route path={ROUTES.evm} element={<PrivateRoute><EVMDashboardPage /></PrivateRoute>} />

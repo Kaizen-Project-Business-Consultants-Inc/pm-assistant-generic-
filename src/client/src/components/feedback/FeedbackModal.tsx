@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { X, Star, Send } from 'lucide-react';
+import { X, Star, Send, Camera, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface FeedbackModalProps {
   onClose: () => void;
 }
+
+const MAX_SCREENSHOT_MB = 5;
+const MAX_SCREENSHOT_BYTES = MAX_SCREENSHOT_MB * 1024 * 1024;
 
 const CATEGORIES = [
   { value: 'general', label: 'General Feedback' },
@@ -54,6 +57,9 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
   const [category, setCategory] = useState('general');
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [screenshotData, setScreenshotData] = useState<string | null>(null);
+  const [screenshotError, setScreenshotError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const mutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
@@ -61,6 +67,36 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
     },
     onSuccess: () => setSubmitted(true),
   });
+
+  const handleFileSelect = (file: File) => {
+    setScreenshotError('');
+    if (!file.type.startsWith('image/')) {
+      setScreenshotError('Please select an image file.');
+      return;
+    }
+    if (file.size > MAX_SCREENSHOT_BYTES) {
+      setScreenshotError(`Image too large. Maximum ${MAX_SCREENSHOT_MB}MB.`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setScreenshotData(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) handleFileSelect(file);
+        return;
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +106,6 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
     let finalComment = comment.trim();
     const page = window.location.pathname;
     const ua = navigator.userAgent;
-    // Parse UA to a short readable string
     const browserMatch = ua.match(/(Chrome|Firefox|Safari|Edge|Opera)\/(\d+)/);
     const osMatch = ua.match(/(Windows NT [\d.]+|Mac OS X [\d_.]+|Linux|Android [\d.]+|iPhone OS [\d_]+)/);
     const browser = browserMatch ? `${browserMatch[1]} ${browserMatch[2]}` : 'Unknown';
@@ -85,6 +120,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
       ),
       category,
       comment: finalComment || undefined,
+      ...(screenshotData ? { screenshotData } : {}),
     });
   };
 
@@ -98,7 +134,9 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 text-center" onClick={(e) => e.stopPropagation()}>
           <div className="text-4xl mb-3">&#10024;</div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Thank you!</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">Your feedback helps us improve Kovarti PM.</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Your feedback helps us improve Kovarti PM. You can track your submissions on the <a href="/my-feedback" className="text-primary-600 hover:text-primary-700 underline">My Feedback</a> page.
+          </p>
           <button
             onClick={onClose}
             className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
@@ -115,6 +153,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
       <div
         className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        onPaste={handlePaste}
       >
         <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Share Your Feedback</h2>
@@ -183,6 +222,51 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
             />
           </div>
 
+          {/* Screenshot */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Screenshot <span className="text-gray-400 text-xs font-normal">(optional — paste or upload)</span>
+            </label>
+            {screenshotData ? (
+              <div className="relative inline-block">
+                <img
+                  src={screenshotData}
+                  alt="Screenshot preview"
+                  className="max-h-32 rounded border border-gray-200 dark:border-gray-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setScreenshotData(null); setScreenshotError(''); }}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                  title="Remove screenshot"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-500 dark:text-gray-400 hover:border-primary-400 hover:text-primary-600 transition-colors"
+              >
+                <Camera className="w-4 h-4" />
+                Attach screenshot
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileSelect(file);
+                e.target.value = '';
+              }}
+            />
+            {screenshotError && <p className="text-red-500 text-xs mt-1">{screenshotError}</p>}
+          </div>
+
           {mutation.isError && (
             <p className="text-red-500 text-sm">
               {(mutation.error as any)?.response?.data?.error || 'Failed to submit. Please try again.'}
@@ -195,7 +279,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
           >
             <Send className="w-4 h-4" />
-            {mutation.isPending ? 'Submitting…' : 'Submit Feedback'}
+            {mutation.isPending ? 'Submitting...' : 'Submit Feedback'}
           </button>
         </form>
       </div>
