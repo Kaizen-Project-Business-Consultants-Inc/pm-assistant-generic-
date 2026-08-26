@@ -2588,42 +2588,56 @@ The generated report contains four sections:
 
 ## 32. My Work
 
-The **My Work** page (`/my-work`) is the first page you see after logging in. It shows all tasks assigned to you across every project in one place, so you do not need to open each project individually to find your work.
+The **My Work** page (`/my-work`) is the first page you see after logging in. It is your personal command center — showing everything that needs your attention across all projects in one place.
 
-Tasks are matched to you automatically — by your resource record, by your name in the task's "Assigned To" field, and by formal task assignments. If you create a resource with the same email as your user account, the system links them automatically so your tasks appear on My Work without any extra steps.
+Tasks, meeting action items, and RAID actions are matched to you automatically by your resource record, name, and formal assignments. If you create a resource with the same email as your user account, the system links them automatically.
 
-If you are new and have no assigned tasks yet, a welcome screen appears with shortcuts to create a project or explore templates — the task list appears as soon as you are assigned work.
+If you are new and have no assigned tasks yet, a welcome screen appears with shortcuts to create a project or explore templates.
 
-### Task Buckets
+### Page Zones
 
-Tasks are grouped into six collapsible sections:
+My Work is organized into five zones. Each zone hides automatically when it has no content.
+
+**Attention Bar** — A red or amber banner at the top that only appears when something is urgent: overdue tasks, blocked tasks, or critical risks you own. When everything is clear, you see a calm "You're all clear" greeting instead.
+
+**Needs Your Decision** — Items where someone is waiting on you. Timesheet approvals and resource requests have inline Approve/Reject buttons. Change requests and agent proposals link to the full review screen.
+
+**My Commitments** — Your unified work queue combining tasks, meeting action items, and RAID actions. Use the tabs to filter by type and the project dropdown to focus on one project.
+
+**Looking Ahead** — A 5-day business calendar showing how many tasks and action items are due each day, plus named milestones.
+
+**Recently Completed** — Last 7 days of items you finished (starts collapsed). Click the header to expand.
+
+### Commitment Buckets
+
+Items in the My Commitments zone are grouped into time buckets:
 
 | Section | What it shows |
 |---|---|
-| **Overdue** | Tasks past their due date that are not yet complete |
-| **Due Today** | Tasks due today |
-| **Due This Week** | Tasks due within the next 7 days |
-| **In Progress** | Tasks you have started. Tasks with no due date always appear here rather than in Overdue or Upcoming. |
-| **Upcoming** | Not-started tasks with a future due date beyond this week |
-| **Recently Completed** | Tasks you completed in the last 14 days |
+| **Overdue** | Items past their due date that are not yet complete |
+| **Due Today** | Items due today |
+| **Due This Week** | Items due within the next 7 days |
+| **In Progress** | Items you have started (items with no due date appear here) |
+| **Upcoming** | Not-started items with a future due date |
 
-Each section header shows a count of how many tasks it contains. Empty sections are hidden automatically.
+Each section header shows a count. Empty sections are hidden automatically.
 
-### Reading the Task List
+### Reading a Work Item Row
 
 Each row shows:
 
-- A **colored priority dot** (red = critical, orange = high, yellow = medium, gray = low)
-- The **task name**
+- A **type icon** (task, action item, or RAID action)
+- A **colored priority dot** (red = critical, orange = high, yellow = medium, blue = low)
+- The **item name**
 - The **project name**, which links to the project detail page
-- The **due date**, shown as a relative label (e.g., "2 days ago", "Today", "Aug 22")
+- The **due date**, shown as a relative label (e.g., "2d overdue", "Today", "3d")
 - A **status chip** matching the color scheme used throughout the app
 
-Click any task row to go directly to that project's Schedule tab with the task selected.
+Hover over any row to reveal a **Mark Done** button (green checkmark) and a **Navigate** arrow. Mark Done instantly completes the item with an optimistic update.
 
 ### Collapsing and Expanding Sections
 
-Click any section header to collapse or expand it. This is useful if one bucket is large and you want to focus on another, such as **Overdue** or **Due Today**.
+Click any section header to collapse or expand it. This is useful if one section is large and you want to focus on another.
 
 ---
 

@@ -3274,19 +3274,88 @@ A **Successor** column is available in both the Gantt left panel and the Table V
 
 ---
 
-## 53. My Work
+## 53. My Work — Personal Command Center
 
-The **My Work** page (`/my-work`) is the default landing page for authenticated users. It aggregates every task assigned to the current user across all projects into a single, prioritized view — replacing the need to open each project individually to find personal work items.
+The **My Work** page (`/my-work`) is the default landing page for authenticated users. It serves as a unified "what do I need to do?" hub — answering the four questions a PM asks every morning:
 
-### How Tasks Are Collected
+1. What's on fire?
+2. What needs my decision?
+3. What did I commit to doing?
+4. What's coming this week?
 
-The API (`GET /api/v1/my-work`) matches tasks through three paths:
+The page is organized into five zones, each collapsible and auto-hiding when empty.
 
-- **Resource ID match** — tasks where `tasks.assigned_to` or `task_assignments.resource_id` matches the user's linked resource record.
-- **Name match** — tasks where `tasks.assigned_to` contains the user's full name or any linked resource name (handles free-text entries like "George Jones" or "DBJ & George Jones").
-- **Team assignments** — tasks where the user appears in the `task_assignments` junction table.
+### Zone 1: Attention Bar (conditional)
 
-Results are deduplicated and span all projects the user belongs to. Completed tasks are included only if completed within the last 14 days (Recently Completed bucket).
+A red or amber banner that **only appears** when something urgent needs attention. It disappears entirely when the user is all clear.
+
+- **Overdue task count** + how many days the oldest task is overdue
+- **Critical/high risks or issues** owned by the user (links to RAID log)
+- **Blocked task count**
+
+When nothing is urgent, the page opens with a clean "You're all clear" greeting instead.
+
+### Zone 2: Needs Your Decision (collapsible)
+
+Items where someone else is blocked until this user acts. Sorted by age (oldest first). The section collapses entirely when empty.
+
+| Type | Inline Actions |
+|------|---------------|
+| Timesheet approvals | Approve / Reject |
+| Resource requests | Approve / Reject |
+| Change requests | Navigate to review |
+| Agent proposals | Navigate to review |
+
+### Zone 3: My Commitments (main content)
+
+A unified list merging three item types with tab filtering:
+
+**Tabs:** All (default) | Tasks (N) | Action Items (N) | RAID Actions (N)
+
+**Item types:**
+- **Tasks** — schedule tasks assigned to the user (matched by resource ID, name, or task_assignments)
+- **Meeting Action Items** — from `meeting_action_items` where `assignee_user_id` matches the user
+- **RAID Actions** — from `project_risks` where `owner_id` matches the user and type = 'action'
+
+**Grouped into time buckets** (shared across all types):
+1. Overdue (red) — sorted by days overdue descending
+2. Due Today (orange)
+3. This Week (yellow) — sorted by date ascending
+4. In Progress (blue)
+5. Upcoming (gray) — next 2 weeks only
+
+**Each row shows:** type icon (task/action item/RAID), name, project link, due date (relative), priority dot, status badge.
+
+**Inline actions:** Mark Done (optimistic update), Navigate arrow. Mark Done routes to the correct API based on item type (task update, action item update, or risk resolve).
+
+**Project filter:** dropdown to scope all items to a single project.
+
+### Zone 4: Looking Ahead (collapsible)
+
+Next 5 business days at a glance. Each day card shows:
+- Count of tasks due
+- Count of action items due
+- Named milestones (from tasks where `is_milestone = 1`)
+
+### Zone 5: Recently Completed (collapsible, starts collapsed)
+
+Last 7 days of completed tasks, action items, and RAID actions. Each row shows the item name with strikethrough styling, project name, and completion date.
+
+### How Items Are Collected
+
+The API (`GET /api/v1/my-work`) runs 9 parallel queries:
+
+1. Tasks assigned to user (by resource ID, name match, and task_assignments)
+2. Meeting action items assigned to user
+3. RAID actions owned by user
+4. Timesheet approvals pending on user's manager projects
+5. Resource requests pending on user's manager projects
+6. Change requests pending on user's manager projects
+7. Agent proposals pending on user's projects
+8. Milestones due this week on user's projects
+9. Recently completed tasks
+
+User project memberships are fetched once and reused across queries 4-8.
 
 ### Resource-to-User Linking
 
@@ -3296,43 +3365,10 @@ Resources (tenant DB) are automatically linked to users (control plane) by match
 - **On project member add** — when a user is added to a project, any unlinked resource with matching email is linked.
 - **On My Work load** — if no resources are linked by `user_id`, the system falls back to email matching and opportunistically sets `user_id` for future queries.
 
-This means tasks appear on My Work without any manual resource-to-user linking step.
-
 ### Empty States
 
-- **No projects yet** — new users who have not created any projects see a welcome screen with two CTAs: **Create a Project** (links to `/projects`) and **Use a Template** (opens the New Project wizard on the template picker step). This replaces a blank page that previously showed for brand-new accounts.
-- **Projects exist but no tasks assigned** — users with projects but no personal task assignments see an "all caught up" message with a link to the Projects page.
-
-### Buckets
-
-Tasks are grouped into six collapsible sections, evaluated in priority order:
-
-| Bucket | Criteria |
-|---|---|
-| **Overdue** | Due date is in the past (local time) and status is not complete |
-| **Due Today** | Due date is today (local time) |
-| **Due This Week** | Due date is within the next 7 days (excludes today) |
-| **In Progress** | Status = `in_progress` regardless of due date; tasks with no due date fall here rather than Upcoming |
-| **Upcoming** | Status = `not_started` or `planning` with a future due date beyond this week |
-| **Recently Completed** | Completed within the last 14 days; tasks completed with no end date recorded also appear here |
-
-Each section header shows a count badge. Sections with no tasks are hidden.
-
-**Date comparison:** All due-date comparisons use the user's **local time zone**, not UTC. This prevents tasks from incorrectly appearing as overdue in the evening hours when the UTC date has rolled over but the user's local date has not.
-
-### Task Row Layout
-
-Each row displays:
-
-- **Priority dot** — color-coded (red = critical, orange = high, yellow = medium, gray = low)
-- **Task name**
-- **Project name** — linked, navigates to `/project/:id`
-- **Due date** — relative label (e.g., "2 days ago", "Today", "Aug 22") with color coding
-- **Status chip** — matches the standard status color scheme used elsewhere in the app
-
-Clicking a task row navigates to the project's Schedule tab with that task pre-selected and scrolled into view.
-
-Task rows are rendered as proper `<Link>` elements for full keyboard and screen reader accessibility, rather than interactive `div`/`span` wrappers with ARIA role overrides.
+- **No projects yet** — welcome screen with Create a Project / Use a Template CTAs.
+- **All clear** — green "You're all clear" message when there are no tasks, action items, or decisions needing attention.
 
 ### Sidebar Position
 
