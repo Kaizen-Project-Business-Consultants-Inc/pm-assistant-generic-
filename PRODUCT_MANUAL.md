@@ -2573,7 +2573,7 @@ proposed → open → monitoring → mitigating → mitigated → closed
 
 Fields: title, description, severity, category, owner, root cause, impact assessment, workaround, resolution plan, target resolution date, source.
 
-Issues are differentiated from risks — they represent problems that have already materialized. The form shows issue-specific fields (root cause, impact assessment, workaround, resolution plan) instead of risk fields (trigger condition, mitigation plan, response plan). Probability is not shown since the issue has already occurred.
+Issues are differentiated from risks — they represent problems that have already materialized. The form shows issue-specific fields (root cause, impact assessment, workaround, resolution plan) **plus** shared fields (trigger condition, mitigation plan, response plan) with AI-powered suggestions. Probability is not shown since the issue has already occurred.
 
 Status workflow:
 ```

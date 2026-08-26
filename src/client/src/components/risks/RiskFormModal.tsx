@@ -301,9 +301,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   const isRisk = form.type === 'risk';
   const isIssue = form.type === 'issue';
   const showProbImpact = isRisk;
-  const showTrigger = isRisk;
-  const showMitigation = isRisk;
-  const showResponse = isRisk;
+  const showTrigger = isRisk || isIssue;
+  const showMitigation = isRisk || isIssue;
+  const showResponse = isRisk || isIssue;
   const showIssueFields = isIssue;
   const showActionFields = form.type === 'action';
   const showDecisionFields = form.type === 'decision';
@@ -629,7 +629,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
             </div>
           )}
 
-          {/* Response Plan — risk only */}
+          {/* Response Plan — risk/issue */}
           {showResponse && (
             <div>
               <div className="flex items-center justify-between mb-1">
