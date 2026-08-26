@@ -9,14 +9,16 @@ Project data:
 Schedule & task data:
 {{scheduleData}}
 
+{{raidData}}
+
 For each lesson:
 - Assign a category: schedule, budget, resource, risk, technical, communication, stakeholder, or quality
 - Determine impact: positive (things that went well), negative (things that went wrong), or neutral
 - Provide a clear, specific recommendation
 - Rate your confidence (0-100) in the lesson's validity
 
-Focus on concrete, evidence-based observations from the data. Avoid generic advice.`,
-  '1.0.0',
+Focus on concrete, evidence-based observations from the data. Include lessons derived from risks that materialized, issues that were resolved, and mitigation strategies that worked (or failed). Avoid generic advice.`,
+  '1.1.0',
 );
 
 export const patternDetectionPrompt = new PromptTemplate(

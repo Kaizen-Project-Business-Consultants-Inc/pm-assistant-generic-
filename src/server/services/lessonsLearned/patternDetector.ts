@@ -9,7 +9,7 @@ import { patternDetectionPrompt } from './prompts';
 
 export async function detectPatterns(
   lessons: LessonLearned[],
-  setPatterns: (patterns: Pattern[]) => void,
+  persistPatterns: (patterns: Pattern[]) => Promise<void>,
 ): Promise<Pattern[]> {
   if (lessons.length === 0) {
     return [];
@@ -42,6 +42,7 @@ export async function detectPatterns(
         maxTokens: 4096,
       });
 
+      const now = new Date().toISOString();
       const newPatterns: Pattern[] = result.data.patterns.map((p, i) => ({
         id: `pat-${Date.now()}-${i}`,
         title: p.title,
@@ -51,22 +52,23 @@ export async function detectPatterns(
         category: p.category,
         recommendation: p.recommendation,
         confidence: p.confidence,
+        detectedAt: now,
       }));
 
-      setPatterns(newPatterns);
+      await persistPatterns(newPatterns);
       return newPatterns;
     } catch {
       // Fall through to deterministic detection
     }
   }
 
-  return detectPatternsDeterministic(lessons, setPatterns);
+  return detectPatternsDeterministic(lessons, persistPatterns);
 }
 
-function detectPatternsDeterministic(
+async function detectPatternsDeterministic(
   lessons: LessonLearned[],
-  setPatterns: (patterns: Pattern[]) => void,
-): Pattern[] {
+  persistPatterns: (patterns: Pattern[]) => Promise<void>,
+): Promise<Pattern[]> {
   const categoryGroups: Record<string, LessonLearned[]> = {};
 
   for (const lesson of lessons) {
@@ -78,6 +80,7 @@ function detectPatternsDeterministic(
 
   const detectedPatterns: Pattern[] = [];
   let counter = 0;
+  const now = new Date().toISOString();
 
   for (const [category, categoryLessons] of Object.entries(categoryGroups)) {
     if (categoryLessons.length < 2) continue;
@@ -97,6 +100,7 @@ function detectPatternsDeterministic(
         category,
         recommendation: `Establish organization-wide ${category} management standards and conduct retrospectives focused on ${category} challenges.`,
         confidence: Math.min(90, 50 + negativeCount * 10),
+        detectedAt: now,
       });
     }
 
@@ -110,10 +114,11 @@ function detectPatternsDeterministic(
         category,
         recommendation: `Document and standardize the ${category} practices that led to positive outcomes across these projects.`,
         confidence: Math.min(85, 45 + positiveCount * 10),
+        detectedAt: now,
       });
     }
   }
 
-  setPatterns(detectedPatterns);
+  await persistPatterns(detectedPatterns);
   return detectedPatterns;
 }

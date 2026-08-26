@@ -182,16 +182,16 @@ describe('LessonsLearnedService', () => {
       expect(results).toHaveLength(1);
       expect(mockQuery).toHaveBeenCalledWith(
         expect.stringContaining('project_type = ?'),
-        ['it', 'budget'],
+        ['approved', 'it', 'budget'],
       );
     });
 
-    it('returns all lessons when no filters', async () => {
+    it('returns approved lessons when no filters', async () => {
       mockQuery.mockResolvedValueOnce([]);
       await service.findRelevantLessons();
       expect(mockQuery).toHaveBeenCalledWith(
         expect.stringContaining('ORDER BY confidence DESC'),
-        [],
+        ['approved'],
       );
     });
   });

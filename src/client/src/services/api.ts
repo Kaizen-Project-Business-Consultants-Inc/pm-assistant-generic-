@@ -1476,8 +1476,13 @@ class ApiService {
     return response.data;
   }
 
-  async updateLesson(id: string, data: { title?: string; description?: string; category?: string; impact?: string; recommendation?: string }) {
+  async updateLesson(id: string, data: { title?: string; description?: string; category?: string; impact?: string; recommendation?: string; tags?: string[]; status?: string }) {
     const response = await this.api.put(`/lessons-learned/${id}`, data);
+    return response.data;
+  }
+
+  async updateLessonStatus(id: string, status: string) {
+    const response = await this.api.patch(`/lessons-learned/${id}/status`, { status });
     return response.data;
   }
 
@@ -1492,8 +1497,8 @@ class ApiService {
   }
 
   async getPatterns() {
-    const response = await this.api.get('/lessons-learned/relevant');
-    return response.data;
+    const response = await this.api.get('/lessons-learned/knowledge-base');
+    return response.data?.data || response.data;
   }
 
   // -------------------------------------------------------------------------

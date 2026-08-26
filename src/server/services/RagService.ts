@@ -188,6 +188,10 @@ export class RagService {
   }
 
   private rowToLesson(row: any): LessonLearned {
+    let tags: string[] | null = null;
+    if (row.tags) {
+      try { tags = typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags; } catch { tags = null; }
+    }
     return {
       id: row.id,
       projectId: row.project_id,
@@ -199,6 +203,12 @@ export class RagService {
       impact: row.impact,
       recommendation: row.recommendation,
       confidence: row.confidence,
+      status: row.status ?? 'approved',
+      createdBy: row.created_by ?? null,
+      sourceType: row.source_type ?? 'manual',
+      tags,
+      appliedCount: row.applied_count ?? 0,
+      effectivenessRating: row.effectiveness_rating ?? null,
       createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     };
   }

@@ -4,26 +4,30 @@ import { z } from 'zod';
 // Lesson Learned
 // ---------------------------------------------------------------------------
 
+export const LESSON_STATUSES = ['draft', 'reviewed', 'approved', 'archived'] as const;
+export const LESSON_SOURCE_TYPES = ['manual', 'ai_extracted', 'agent', 'seeded'] as const;
+export const LESSON_CATEGORIES = [
+  'schedule', 'budget', 'resource', 'risk', 'technical',
+  'communication', 'stakeholder', 'quality',
+] as const;
+
 export const LessonLearnedSchema = z.object({
   id: z.string(),
   projectId: z.string(),
   projectName: z.string(),
   projectType: z.string(),
-  category: z.enum([
-    'schedule',
-    'budget',
-    'resource',
-    'risk',
-    'technical',
-    'communication',
-    'stakeholder',
-    'quality',
-  ]),
+  category: z.enum(LESSON_CATEGORIES),
   title: z.string(),
   description: z.string(),
   impact: z.enum(['positive', 'negative', 'neutral']),
   recommendation: z.string(),
   confidence: z.number().min(0).max(100),
+  status: z.enum(LESSON_STATUSES).default('approved'),
+  createdBy: z.number().nullable().optional(),
+  sourceType: z.enum(LESSON_SOURCE_TYPES).default('manual'),
+  tags: z.array(z.string()).nullable().optional(),
+  appliedCount: z.number().default(0),
+  effectivenessRating: z.number().min(0).max(100).nullable().optional(),
   createdAt: z.string(),
 });
 
@@ -42,6 +46,7 @@ export const PatternSchema = z.object({
   category: z.string(),
   recommendation: z.string(),
   confidence: z.number().min(0).max(100),
+  detectedAt: z.string().optional(),
 });
 
 export type Pattern = z.infer<typeof PatternSchema>;
@@ -82,16 +87,7 @@ export type KnowledgeBaseOverview = z.infer<typeof KnowledgeBaseOverviewSchema>;
 export const LessonsExtractionAISchema = z.object({
   lessons: z.array(
     z.object({
-      category: z.enum([
-        'schedule',
-        'budget',
-        'resource',
-        'risk',
-        'technical',
-        'communication',
-        'stakeholder',
-        'quality',
-      ]),
+      category: z.enum(LESSON_CATEGORIES),
       title: z.string(),
       description: z.string(),
       impact: z.enum(['positive', 'negative', 'neutral']),

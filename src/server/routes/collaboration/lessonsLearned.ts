@@ -19,6 +19,7 @@ const addLessonSchema = z.object({
   impact: z.enum(['positive', 'negative', 'neutral']).default('neutral'),
   recommendation: z.string().min(1),
   confidence: z.number().min(0).max(100).optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 const similarSchema = z.object({
@@ -32,6 +33,16 @@ const updateLessonSchema = z.object({
   category: z.string().min(1).optional(),
   impact: z.string().min(1).optional(),
   recommendation: z.string().min(1).optional(),
+  tags: z.array(z.string()).optional(),
+  status: z.enum(['draft', 'reviewed', 'approved', 'archived']).optional(),
+});
+
+const statusSchema = z.object({
+  status: z.enum(['draft', 'reviewed', 'approved', 'archived']),
+});
+
+const effectivenessSchema = z.object({
+  rating: z.number().int().min(0).max(100),
 });
 
 export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
@@ -75,7 +86,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
-      const userId = request.user!.userId;
+      const userId = String(request.user!.userId);
       const lessons = await lessonsLearnedService.extractLessons(projectId, userId);
       return reply.send({ lessons });
     } catch (err) {
@@ -104,7 +115,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('write')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const userId = request.user!.userId;
+      const userId = String(request.user!.userId);
       const patterns = await lessonsLearnedService.detectPatterns(userId);
       return reply.send({ patterns });
     } catch (err) {
@@ -119,7 +130,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { riskDescription, projectType } = mitigationsSchema.parse(request.body);
-      const userId = request.user!.userId;
+      const userId = String(request.user!.userId);
       const suggestions = await lessonsLearnedService.suggestMitigations(riskDescription, projectType, userId);
       return reply.send({ suggestions });
     } catch (err) {
@@ -135,7 +146,11 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = addLessonSchema.parse(request.body);
-      const lesson = await lessonsLearnedService.addLesson(body);
+      const lesson = await lessonsLearnedService.addLesson({
+        ...body,
+        sourceType: 'manual',
+        createdBy: parseInt(String(request.user!.userId), 10),
+      });
       return reply.status(201).send({ lesson });
     } catch (err) {
       if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
@@ -186,6 +201,54 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
       if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
       fastify.log.error({ err }, 'Failed to update lesson');
       return reply.status(500).send({ error: 'Failed to update lesson' });
+    }
+  });
+
+  // PATCH /:id/status — Update lesson status (review workflow)
+  fastify.patch('/:id/status', {
+    preHandler: [requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const { status } = statusSchema.parse(request.body);
+      const updated = await lessonsLearnedService.updateStatus(id, status);
+      if (!updated) return reply.status(404).send({ error: 'Lesson not found' });
+      return { message: `Lesson status updated to ${status}` };
+    } catch (err) {
+      if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
+      fastify.log.error({ err }, 'Failed to update lesson status');
+      return reply.status(500).send({ error: 'Failed to update lesson status' });
+    }
+  });
+
+  // POST /:id/applied — Increment applied count (when user applies a mitigation suggestion)
+  fastify.post('/:id/applied', {
+    preHandler: [requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      await lessonsLearnedService.incrementAppliedCount(id);
+      return { message: 'Applied count incremented' };
+    } catch (err) {
+      fastify.log.error({ err }, 'Failed to increment applied count');
+      return reply.status(500).send({ error: 'Failed to update applied count' });
+    }
+  });
+
+  // PATCH /:id/effectiveness — Rate lesson effectiveness
+  fastify.patch('/:id/effectiveness', {
+    preHandler: [requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const { rating } = effectivenessSchema.parse(request.body);
+      const updated = await lessonsLearnedService.rateEffectiveness(id, rating);
+      if (!updated) return reply.status(404).send({ error: 'Lesson not found' });
+      return { message: 'Effectiveness rating updated' };
+    } catch (err) {
+      if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
+      fastify.log.error({ err }, 'Failed to rate effectiveness');
+      return reply.status(500).send({ error: 'Failed to rate effectiveness' });
     }
   });
 

@@ -43,6 +43,12 @@ async function backfill() {
       impact: row.impact,
       recommendation: row.recommendation,
       confidence: row.confidence,
+      status: row.status ?? 'approved',
+      createdBy: row.created_by ?? null,
+      sourceType: row.source_type ?? 'manual',
+      tags: null,
+      appliedCount: row.applied_count ?? 0,
+      effectivenessRating: row.effectiveness_rating ?? null,
       createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     };
 

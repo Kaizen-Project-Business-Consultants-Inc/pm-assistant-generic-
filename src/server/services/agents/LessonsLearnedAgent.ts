@@ -157,12 +157,15 @@ export class LessonsLearnedAgentClass {
         await lessonsLearnedService.addLesson({
           projectId: input.projectId,
           projectName: project.name,
-          projectType: project.status,
+          projectType: project.projectType,
           category,
           title: lesson.title,
           description: lesson.description,
           impact,
           recommendation: lesson.recommendation,
+          sourceType: 'agent',
+          createdBy: input.userId ? parseInt(input.userId, 10) : undefined,
+          status: 'draft',
         });
         stored++;
       } catch {

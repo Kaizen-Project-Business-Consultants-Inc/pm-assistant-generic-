@@ -303,15 +303,21 @@ An agentic AI project management platform that combines the scheduling power of 
 
 ### 3.5 AI Lessons Learned Engine
 - Learns from every completed project
-- Pattern recognition across project types
-- Auto-suggests risk mitigations from past projects
+- Pattern recognition across project types; patterns persisted in `lesson_patterns` DB table (survive restarts)
+- Auto-suggests risk mitigations from past projects — **approved lessons only**, preventing unvetted content from influencing guidance
 - Knowledge base that grows smarter
 - Full CRUD on the Lessons Learned page: edit opens the lesson modal pre-filled; delete presents a styled confirmation modal before removing the record
 - "Load More" pagination on the Lessons Learned page for incremental loading of large knowledge bases
 - **Dashboard Widget**: "Lessons & Insights" widget in the AI group (opt-in via Customize) — shows trending patterns and recent lessons at a glance
-- **Project Closeout Prompt**: changing a project status to "completed" triggers a modal to extract lessons via AI analysis
+- **Project Closeout Prompt**: changing a project status to "completed" triggers a modal to extract lessons via AI analysis; extraction prompt enriched with project RAID log (risks + issues)
 - **Risk Creation — Similar Lessons**: collapsible panel in RiskFormModal surfaces relevant historical lessons once the title reaches 10+ characters
 - **Project Kickoff — Relevant Lessons**: dismissible banner on the Overview tab of "planning" projects shows lessons from similar project types/categories
+- **Lifecycle workflow** (PMBOK 7 / PRINCE2 / ISO 21500 / OPM3 aligned): draft → reviewed → approved → archived; color-coded status badges in the UI
+- **Contributor tracking**: `source_type` field distinguishes manual, ai_extracted, agent, and seeded lessons; source icons in the UI
+- **Effectiveness tracking**: `applied_count` increments on adoption; `effectiveness_rating` (0–100) for team-rated impact measurement
+- **Tags**: flexible JSON taxonomy for cross-project categorization and filtering
+- **Approve/Archive actions**: one-click buttons on lesson cards for managers to advance the review workflow
+- **Status filter**: filter the Lessons Learned page by draft / reviewed / approved / archived
 
 ### 3.6 Monte Carlo Simulation
 - Probabilistic schedule modeling

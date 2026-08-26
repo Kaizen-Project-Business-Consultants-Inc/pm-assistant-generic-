@@ -3,6 +3,11 @@ import { projectService } from '../ProjectService';
 import { scheduleService } from '../ScheduleService';
 import { type LessonLearned } from '../../schemas/lessonsLearnedSchemas';
 
+/** Creates a seed lesson with common fields pre-filled */
+function seedLesson(base: Omit<LessonLearned, 'status' | 'sourceType' | 'createdBy' | 'tags' | 'appliedCount' | 'effectivenessRating'>): LessonLearned {
+  return { ...base, status: 'approved', sourceType: 'seeded', createdBy: null, tags: null, appliedCount: 0, effectivenessRating: null };
+}
+
 export async function seedFromProjects(persistLesson: (lesson: LessonLearned) => Promise<void>): Promise<number> {
   const existing = await databaseService.query<{ cnt: number }>(
     'SELECT COUNT(*) as cnt FROM lessons_learned WHERE id LIKE ?',
@@ -57,11 +62,9 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
       const scheduleVariance = completionRate - expectedPercent;
 
       if (scheduleVariance < -15) {
-        seededLessons.push({
+        seededLessons.push(seedLesson({
           id: `ll-seed-${++counter}`,
-          projectId: project.id,
-          projectName: project.name,
-          projectType: project.projectType,
+          projectId: project.id, projectName: project.name, projectType: project.projectType,
           category: 'schedule',
           title: 'Significant schedule delay detected',
           description: `Project is ${Math.abs(Math.round(scheduleVariance))}% behind the expected completion rate. Completion is at ${Math.round(completionRate)}% while ${Math.round(expectedPercent)}% was expected by this point.`,
@@ -69,13 +72,11 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
           recommendation: 'Review critical path tasks and consider adding resources or re-negotiating timelines. Implement more frequent schedule check-ins.',
           confidence: 75,
           createdAt: new Date().toISOString(),
-        });
+        }));
       } else if (scheduleVariance > 10) {
-        seededLessons.push({
+        seededLessons.push(seedLesson({
           id: `ll-seed-${++counter}`,
-          projectId: project.id,
-          projectName: project.name,
-          projectType: project.projectType,
+          projectId: project.id, projectName: project.name, projectType: project.projectType,
           category: 'schedule',
           title: 'Project ahead of schedule',
           description: `Project is ${Math.round(scheduleVariance)}% ahead of the expected completion rate. Good scheduling practices are in effect.`,
@@ -83,18 +84,16 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
           recommendation: 'Document the scheduling approach and resource allocation strategy for reuse on future projects.',
           confidence: 80,
           createdAt: new Date().toISOString(),
-        });
+        }));
       }
     }
 
     // Budget analysis
     if (budgetAllocated > 0) {
       if (budgetUtilization > 100) {
-        seededLessons.push({
+        seededLessons.push(seedLesson({
           id: `ll-seed-${++counter}`,
-          projectId: project.id,
-          projectName: project.name,
-          projectType: project.projectType,
+          projectId: project.id, projectName: project.name, projectType: project.projectType,
           category: 'budget',
           title: 'Budget overrun detected',
           description: `Budget utilization at ${Math.round(budgetUtilization)}%. Spent $${budgetSpent.toLocaleString()} of $${budgetAllocated.toLocaleString()} allocated.`,
@@ -102,13 +101,11 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
           recommendation: 'Conduct a budget review to identify cost drivers. Implement tighter change control and consider contingency reserves for future projects.',
           confidence: 85,
           createdAt: new Date().toISOString(),
-        });
+        }));
       } else if (budgetUtilization < 50 && completionRate > 60) {
-        seededLessons.push({
+        seededLessons.push(seedLesson({
           id: `ll-seed-${++counter}`,
-          projectId: project.id,
-          projectName: project.name,
-          projectType: project.projectType,
+          projectId: project.id, projectName: project.name, projectType: project.projectType,
           category: 'budget',
           title: 'Strong cost performance',
           description: `Project is ${Math.round(completionRate)}% complete while only using ${Math.round(budgetUtilization)}% of the budget. Effective cost management observed.`,
@@ -116,7 +113,7 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
           recommendation: 'Document cost management practices and procurement strategies for organizational knowledge base.',
           confidence: 80,
           createdAt: new Date().toISOString(),
-        });
+        }));
       }
     }
 
@@ -124,11 +121,9 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
     if (overdueTasks > 0 && totalTasks > 0) {
       const overdueRatio = overdueTasks / totalTasks;
       if (overdueRatio > 0.2) {
-        seededLessons.push({
+        seededLessons.push(seedLesson({
           id: `ll-seed-${++counter}`,
-          projectId: project.id,
-          projectName: project.name,
-          projectType: project.projectType,
+          projectId: project.id, projectName: project.name, projectType: project.projectType,
           category: 'resource',
           title: 'High rate of overdue tasks',
           description: `${overdueTasks} out of ${totalTasks} tasks (${Math.round(overdueRatio * 100)}%) are overdue. This suggests resource bottlenecks or estimation issues.`,
@@ -136,17 +131,15 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
           recommendation: 'Review task estimation accuracy and resource allocation. Consider breaking large tasks into smaller increments with more frequent checkpoints.',
           confidence: 70,
           createdAt: new Date().toISOString(),
-        });
+        }));
       }
     }
 
     // Task completion quality analysis
     if (completedTasks > 0 && totalTasks > 5) {
-      seededLessons.push({
+      seededLessons.push(seedLesson({
         id: `ll-seed-${++counter}`,
-        projectId: project.id,
-        projectName: project.name,
-        projectType: project.projectType,
+        projectId: project.id, projectName: project.name, projectType: project.projectType,
         category: 'quality',
         title: `Task completion progress on ${project.projectType} project`,
         description: `${completedTasks} of ${totalTasks} tasks completed (${Math.round(completionRate)}%). Project type: ${project.projectType}.`,
@@ -156,7 +149,7 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
           : 'Consider reviewing task prioritization and team workload balance.',
         confidence: 65,
         createdAt: new Date().toISOString(),
-      });
+      }));
     }
   }
 
