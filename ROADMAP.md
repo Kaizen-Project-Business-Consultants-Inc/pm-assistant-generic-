@@ -37,6 +37,7 @@ This roadmap outlines planned features and improvements for Kovarti PM. Timeline
 | Feature | Status |
 |---------|--------|
 | Native mobile app (iOS + Android) | Planned |
+| Voice interface for Mjuzi AI (speech-to-text + TTS) | Planned |
 | Zoom/Teams transcript auto-pull (OAuth integrations) | Planned |
 | Advanced resource management (skills matrix, cost rates) | Planned |
 | Public API & developer docs | Planned |

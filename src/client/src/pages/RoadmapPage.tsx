@@ -51,6 +51,7 @@ const quarters: Quarter[] = [
     period: 'April — June',
     items: [
       { name: 'Native mobile app', description: 'Dedicated iOS and Android apps for on-the-go project management.', status: 'Planned' },
+      { name: 'Voice interface for Mjuzi AI', description: 'Talk to your AI assistant — speech-to-text input and text-to-speech responses.', status: 'Planned' },
       { name: 'Zoom/Teams transcript auto-pull', description: 'Automatically import meeting transcripts via OAuth integrations.', status: 'Planned' },
       { name: 'Advanced resource management', description: 'Skills matrix, cost rates, and capacity forecasting.', status: 'Planned' },
       { name: 'Public API & developer docs', description: 'RESTful API with full documentation for custom integrations.', status: 'Planned' },
