@@ -27,9 +27,13 @@
     <meta name="twitter:description" content="AI-powered project management. Intelligent scheduling, risk prediction, Monte Carlo simulations, and meeting intelligence." />
     <meta name="twitter:image" content="https://kovarti.com/og-image.png" />
 
-    <!-- Fonts (non-render-blocking) -->
+    <!-- Preconnect to third-party origins -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://js.stripe.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+
+    <!-- Fonts (non-render-blocking) -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap" />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
     <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" /></noscript>
@@ -41,6 +45,32 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Kovarti PM" />
     <title>Kovarti PM — AI-Powered Project Management</title>
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Kovarti Project & Business Consulting",
+        "url": "https://kovarti.com",
+        "logo": "https://kovarti.com/og-image.png",
+        "sameAs": [],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "email": "support@kovarti.com",
+          "contactType": "customer support"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Kovarti PM",
+        "url": "https://kovarti.com",
+        "description": "AI-powered project management software"
+      }
+    ]
+    </script>
 
     <!-- GA4 loaded dynamically after cookie consent (see CookieConsentBanner.tsx) -->
   </head>

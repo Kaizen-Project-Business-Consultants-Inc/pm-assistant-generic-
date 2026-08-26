@@ -77,6 +77,21 @@ function PageLoader() {
 
 function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { children: React.ReactNode; skipOnboardingCheck?: boolean; requiredRole?: string }) {
   const { isAuthenticated, user } = useAuthStore();
+
+  // Prevent search engines from indexing authenticated pages
+  useEffect(() => {
+    let meta = document.querySelector('meta[name="robots"]') as HTMLMetaElement;
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'robots';
+      document.head.appendChild(meta);
+    }
+    meta.content = 'noindex, nofollow';
+    return () => {
+      if (meta) meta.content = 'index, follow';
+    };
+  }, []);
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!skipOnboardingCheck && !user?.fullName) return <Navigate to="/onboarding" replace />;
   if (requiredRole && user?.role !== requiredRole) return <Navigate to="/dashboard" replace />;
