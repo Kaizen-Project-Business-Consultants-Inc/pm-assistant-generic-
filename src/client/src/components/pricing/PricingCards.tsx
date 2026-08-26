@@ -187,6 +187,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
   });
   const launchOfferEnabled = stripeConfig?.launchOfferEnabled || false;
   const launchDiscount = stripeConfig?.launchOfferDiscount || 0;
+  const enabledTiers: string[] = stripeConfig?.enabledTiers || [];
 
   const PLANS: PlanDef[] = pricingData?.tiers
     ? [FALLBACK_PLANS[0], ...pricingData.tiers.filter((t: { tier: string }) => t.tier !== 'trial').map(mapApiToPlan)]
@@ -265,6 +266,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {PLANS.filter((p) => p.tier !== 'sme').map((plan) => {
           const isCurrent = mode === 'checkout' && currentTier === plan.tier;
+          const tierDisabled = plan.tier !== 'trial' && enabledTiers.length > 0 && !enabledTiers.includes(plan.tier);
           const seats = plan.perSeat ? smeSeats : 1;
           const unitPrice = billing === 'monthly' ? plan.monthly : plan.annual;
           const isLaunchDiscount = launchOfferEnabled && plan.tier === 'consultant_pro' && billing === 'annual' && launchDiscount > 0;
@@ -399,6 +401,15 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                   >
                     Start Free Trial
                   </Link>
+                ) : tierDisabled ? (
+                  <button
+                    disabled
+                    className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg opacity-50 cursor-not-allowed ${
+                      dk ? 'bg-gray-600 text-gray-300' : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
+                    }`}
+                  >
+                    Coming Soon
+                  </button>
                 ) : mode === 'link' ? (
                   <Link
                     to={`/register?tier=${plan.tier}&billing=${billing}`}
@@ -423,7 +434,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                     {loading === plan.tier ? (
                       <span className="flex items-center justify-center">
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                        Loading…
+                        Loading...
                       </span>
                     ) : isAuthenticated ? (
                       isSubscribed ? 'Switch Plan' : 'Subscribe'

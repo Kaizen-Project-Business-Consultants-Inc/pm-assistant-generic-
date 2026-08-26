@@ -270,10 +270,16 @@ export async function stripeRoutes(fastify: FastifyInstance) {
   fastify.get('/config', {
     schema: { description: 'Get Stripe publishable key', tags: ['stripe'] },
   }, async () => {
+    // Report which tiers have Stripe price IDs configured
+    const enabledTiers: string[] = [];
+    for (const tier of ['consultant_basic', 'consultant_pro', 'sme', 'enterprise']) {
+      if (resolvePriceId(tier, 'monthly')) enabledTiers.push(tier);
+    }
     return {
       publishableKey: config.STRIPE_PUBLISHABLE_KEY,
       launchOfferEnabled: config.LAUNCH_OFFER_ENABLED,
       launchOfferDiscount: config.LAUNCH_OFFER_ENABLED ? 20 : 0,
+      enabledTiers,
     };
   });
 }
