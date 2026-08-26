@@ -381,85 +381,102 @@ class MyWorkService {
     id: string; title: string; projectId: string; projectName: string;
     type: string; severity: string; status: string; dueDate: string | null;
   }>> {
-    const rows = await databaseService.query<any>(
-      `SELECT pr.id, pr.title, pr.project_id AS projectId, p.name AS projectName,
-              pr.type, pr.severity, pr.status, pr.due_date AS dueDate
-       FROM project_risks pr
-       JOIN projects p ON pr.project_id = p.id
-       WHERE pr.owner_id = ?
-         AND pr.status NOT IN ('closed','resolved','cancelled')
-       ORDER BY pr.due_date ASC`,
-      [userId],
-    );
-    return rows.map((r: any) => ({
-      id: r.id,
-      title: r.title,
-      projectId: r.projectId,
-      projectName: r.projectName,
-      type: r.type,
-      severity: r.severity,
-      status: r.status,
-      dueDate: r.dueDate ? String(r.dueDate).slice(0, 10) : null,
-    }));
+    try {
+      const rows = await databaseService.query<any>(
+        `SELECT pr.id, pr.title, pr.project_id AS projectId, p.name AS projectName,
+                pr.type, pr.severity, pr.status, pr.due_date AS dueDate
+         FROM project_risks pr
+         JOIN projects p ON pr.project_id = p.id
+         WHERE pr.owner_id = ?
+           AND pr.status NOT IN ('closed','resolved','cancelled')
+         ORDER BY pr.due_date ASC`,
+        [userId],
+      );
+      return rows.map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        projectId: r.projectId,
+        projectName: r.projectName,
+        type: r.type,
+        severity: r.severity,
+        status: r.status,
+        dueDate: r.dueDate ? String(r.dueDate).slice(0, 10) : null,
+      }));
+    } catch {
+      return [];
+    }
   }
 
   private async queryResourceRequests(managerProjectIds: string[]): Promise<any[]> {
     if (managerProjectIds.length === 0) return [];
-    const ph = managerProjectIds.map(() => '?').join(',');
-    const rows = await databaseService.query<any>(
-      `SELECT rr.id, rr.resource_role AS resourceRole, rr.priority,
-              rr.requested_by AS requestedBy, rr.created_at AS createdAt,
-              p.name AS projectName
-       FROM resource_requests rr
-       JOIN projects p ON rr.project_id = p.id
-       WHERE rr.status = 'pending' AND rr.project_id IN (${ph})
-       ORDER BY rr.created_at ASC`,
-      managerProjectIds,
-    );
-
-    // Look up requester names from control plane
-    const requesterIds = [...new Set(rows.map((r: any) => r.requestedBy).filter(Boolean))];
-    const nameMap = new Map<string, string>();
-    if (requesterIds.length > 0) {
-      const uph = requesterIds.map(() => '?').join(',');
-      const users = await databaseService.queryControlPlane<any>(
-        `SELECT id, full_name FROM users WHERE id IN (${uph})`,
-        requesterIds,
+    try {
+      const ph = managerProjectIds.map(() => '?').join(',');
+      const rows = await databaseService.query<any>(
+        `SELECT rr.id, rr.resource_role AS resourceRole, rr.priority,
+                rr.requested_by AS requestedBy, rr.created_at AS createdAt,
+                p.name AS projectName
+         FROM resource_requests rr
+         JOIN projects p ON rr.project_id = p.id
+         WHERE rr.status = 'pending' AND rr.project_id IN (${ph})
+         ORDER BY rr.created_at ASC`,
+        managerProjectIds,
       );
-      for (const u of users) nameMap.set(u.id, u.full_name || 'Unknown');
-    }
 
-    return rows.map((r: any) => ({ ...r, requestedByName: nameMap.get(r.requestedBy) || 'Unknown' }));
+      // Look up requester names from control plane
+      const requesterIds = [...new Set(rows.map((r: any) => r.requestedBy).filter(Boolean))];
+      const nameMap = new Map<string, string>();
+      if (requesterIds.length > 0) {
+        const uph = requesterIds.map(() => '?').join(',');
+        const users = await databaseService.queryControlPlane<any>(
+          `SELECT id, full_name FROM users WHERE id IN (${uph})`,
+          requesterIds,
+        );
+        for (const u of users) nameMap.set(u.id, u.full_name || 'Unknown');
+      }
+
+      return rows.map((r: any) => ({ ...r, requestedByName: nameMap.get(r.requestedBy) || 'Unknown' }));
+    } catch {
+      return [];
+    }
   }
 
   private async queryChangeRequests(managerProjectIds: string[]): Promise<any[]> {
     if (managerProjectIds.length === 0) return [];
-    const ph = managerProjectIds.map(() => '?').join(',');
-    const rows = await databaseService.query<any>(
-      `SELECT cr.id, cr.title, cr.priority, cr.category, cr.created_at AS createdAt,
-              p.name AS projectName
-       FROM change_requests cr
-       JOIN projects p ON cr.project_id = p.id
-       WHERE cr.status IN ('pending','in_review') AND cr.project_id IN (${ph})
-       ORDER BY cr.created_at ASC`,
-      managerProjectIds,
-    );
-    return rows;
+    try {
+      const ph = managerProjectIds.map(() => '?').join(',');
+      const rows = await databaseService.query<any>(
+        `SELECT cr.id, cr.title, cr.priority, cr.category, cr.created_at AS createdAt,
+                p.name AS projectName
+         FROM change_requests cr
+         JOIN projects p ON cr.project_id = p.id
+         WHERE cr.status IN ('pending','in_review') AND cr.project_id IN (${ph})
+         ORDER BY cr.created_at ASC`,
+        managerProjectIds,
+      );
+      return rows;
+    } catch {
+      return [];
+    }
   }
 
   private async queryProposals(projectIds: string[]): Promise<any[]> {
     if (projectIds.length === 0) return [];
-    const ph = projectIds.map(() => '?').join(',');
-    const rows = await databaseService.query<any>(
-      `SELECT ap.id, ap.title, ap.agent_id AS agentId, ap.created_at AS createdAt,
-              ap.project_id AS projectId, p.name AS projectName
-       FROM action_proposals ap
-       JOIN projects p ON ap.project_id = p.id
-       WHERE ap.status = 'pending' AND ap.project_id IN (${ph})
-       ORDER BY ap.created_at ASC`,
-      projectIds,
-    );
-    return rows;
+    try {
+      const ph = projectIds.map(() => '?').join(',');
+      const rows = await databaseService.query<any>(
+        `SELECT ap.id, ap.title, ap.agent_id AS agentId, ap.created_at AS createdAt,
+                ap.project_id AS projectId, p.name AS projectName
+         FROM action_proposals ap
+         JOIN projects p ON ap.project_id = p.id
+         WHERE ap.status = 'pending' AND ap.project_id IN (${ph})
+         ORDER BY ap.created_at ASC`,
+        projectIds,
+      );
+      return rows;
+    } catch {
+      // Table may not exist in all tenant DBs
+      return [];
+    }
   }
 
   private async queryMilestones(projectIds: string[], startDate: string, endDate: string): Promise<Array<{
