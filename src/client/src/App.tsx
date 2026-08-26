@@ -26,7 +26,6 @@ const UserGuidePublicPage = lazy(() => import('./pages/UserGuidePublicPage').the
 const RoadmapPage = lazy(() => import('./pages/RoadmapPage').then(m => ({ default: m.RoadmapPage })));
 const PrelaunchLandingPage = lazy(() => import('./pages/PrelaunchLandingPage').then(m => ({ default: m.PrelaunchLandingPage })));
 const PortalViewPage = lazy(() => import('./pages/PortalViewPage'));
-const MyWorkPage = lazy(() => import('./pages/MyWorkPage'));
 const DashboardPM = lazy(() => import('./pages/DashboardPM').then(m => ({ default: m.DashboardPM })));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage').then(m => ({ default: m.ProjectDetailPage })));
 const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
@@ -121,9 +120,9 @@ function App() {
       <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public routes */}
-        <Route path={ROUTES.home} element={isAuthenticated ? <Navigate to={ROUTES.myWork} replace /> : (isPrelaunch ? <PrelaunchLandingPage /> : <LandingPage />)} />
-        <Route path={ROUTES.login} element={isPrelaunch && !isAuthenticated ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated ? <Navigate to={ROUTES.myWork} replace /> : <LoginPage />)} />
-        <Route path={ROUTES.register} element={isPrelaunch && !isAuthenticated ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated ? <Navigate to={ROUTES.myWork} replace /> : <RegisterPage />)} />
+        <Route path={ROUTES.home} element={isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : (isPrelaunch ? <PrelaunchLandingPage /> : <LandingPage />)} />
+        <Route path={ROUTES.login} element={isPrelaunch && !isAuthenticated ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : <LoginPage />)} />
+        <Route path={ROUTES.register} element={isPrelaunch && !isAuthenticated ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : <RegisterPage />)} />
         <Route path={ROUTES.verifyEmail} element={<VerifyEmailPage />} />
         <Route path={ROUTES.forgotPassword} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <ForgotPasswordPage />} />
         <Route path={ROUTES.resetPassword} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <ResetPasswordPage />} />
@@ -137,7 +136,6 @@ function App() {
         <Route path={ROUTES.onboarding} element={isAuthenticated ? <OnboardingPage /> : <Navigate to={ROUTES.login} replace />} />
 
         {/* Protected routes */}
-        <Route path={ROUTES.myWork} element={<PrivateRoute><MyWorkPage /></PrivateRoute>} />
         <Route path={ROUTES.dashboard} element={<PrivateRoute><DashboardPM /></PrivateRoute>} />
         <Route path={ROUTES.projects} element={<PrivateRoute><ProjectsPM /></PrivateRoute>} />
         <Route path={ROUTE_PATTERNS.project} element={<PrivateRoute><ProjectDetailPage /></PrivateRoute>} />

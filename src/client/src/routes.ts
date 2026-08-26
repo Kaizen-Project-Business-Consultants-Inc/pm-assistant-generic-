@@ -18,7 +18,6 @@ export const ROUTES = {
   roadmap: '/roadmap',
   waitlistAdmin: '/waitlist-admin',
   onboarding: '/onboarding',
-  myWork: '/my-work',
   dashboard: '/dashboard',
   projects: '/projects',
   reports: '/reports',
