@@ -37,8 +37,7 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 29. [Dashboard Widget Drag-to-Reorder](#29-dashboard-widget-drag-to-reorder)
 30. [Dashboard & Projects](#30-dashboard--projects)
 31. [RAID Log](#31-raid-log)
-32. [My Work](#32-my-work)
-33. [Scrum Enhancements](#33-scrum-enhancements)
+32. [Scrum Enhancements](#32-scrum-enhancements)
 34. [Project Grouping (Folders/Spaces)](#34-project-grouping-foldersspaces)
 35. [Resource Request/Approval Workflow](#35-resource-requestapproval-workflow)
 
@@ -64,7 +63,7 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 ### Logging In
 
 1. Go to the login page (`/login`) and enter your username and password.
-2. Click **Sign In**. You will be redirected to the **My Work** page.
+2. Click **Sign In**. You will be redirected to the **Dashboard**.
 3. If your session expires, you will be returned to the login page automatically.
 4. Use **Forgot Password** if you need to reset your credentials.
 
@@ -83,7 +82,7 @@ On your very first login, a **3-step onboarding wizard** appears to help you get
 
 **Step 3 — You're all set**
 - A confirmation screen shows your trial details (start date, end date, and what's included).
-- If you created a project in Step 2, you are taken directly to that project's Overview page. Otherwise, you land on the My Work page.
+- If you created a project in Step 2, you are taken directly to that project's Overview page. Otherwise, you land on the Dashboard.
 
 The wizard only appears once. After you complete or dismiss it, it will not show again.
 
@@ -118,8 +117,7 @@ The left sidebar provides access to all areas of the application:
 
 | Menu Item      | Description                                 |
 |----------------|---------------------------------------------|
-| My Work        | Personal task aggregation across all projects (default landing page) |
-| Dashboard      | Portfolio overview with KPI tiles and widgets |
+| Dashboard      | Portfolio overview with KPI tiles, daily briefing, and widgets (default landing page) |
 | Projects       | Create and manage projects                  |
 | Reports        | Pre-built report templates                  |
 | Portfolio      | Cross-project Gantt and portfolio view      |
@@ -2584,60 +2582,6 @@ The generated report contains four sections:
 
 **Trial users:** A **sample report** is shown with realistic demo data so you can preview the format. An amber banner identifies it as sample data. The Download, Email, and Schedule options are locked — upgrade to a paid plan to generate RAID reports from your real project data.
 
----
-
-## 32. My Work
-
-The **My Work** page (`/my-work`) is the first page you see after logging in. It is your personal command center — showing everything that needs your attention across all projects in one place.
-
-Tasks, meeting action items, and RAID actions are matched to you automatically by your resource record, name, and formal assignments. If you create a resource with the same email as your user account, the system links them automatically.
-
-If you are new and have no assigned tasks yet, a welcome screen appears with shortcuts to create a project or explore templates.
-
-### Page Zones
-
-My Work is organized into five zones. Each zone hides automatically when it has no content.
-
-**Attention Bar** — A red or amber banner at the top that only appears when something is urgent: overdue tasks, blocked tasks, or critical risks you own. When everything is clear, you see a calm "You're all clear" greeting instead.
-
-**Needs Your Decision** — Items where someone is waiting on you. Timesheet approvals and resource requests have inline Approve/Reject buttons. Change requests and agent proposals link to the full review screen.
-
-**My Commitments** — Your unified work queue combining tasks, meeting action items, and RAID actions. Use the tabs to filter by type and the project dropdown to focus on one project.
-
-**Looking Ahead** — A 5-day business calendar showing how many tasks and action items are due each day, plus named milestones.
-
-**Recently Completed** — Last 7 days of items you finished (starts collapsed). Click the header to expand.
-
-### Commitment Buckets
-
-Items in the My Commitments zone are grouped into time buckets:
-
-| Section | What it shows |
-|---|---|
-| **Overdue** | Items past their due date that are not yet complete |
-| **Due Today** | Items due today |
-| **Due This Week** | Items due within the next 7 days |
-| **In Progress** | Items you have started (items with no due date appear here) |
-| **Upcoming** | Not-started items with a future due date |
-
-Each section header shows a count. Empty sections are hidden automatically.
-
-### Reading a Work Item Row
-
-Each row shows:
-
-- A **type icon** (task, action item, or RAID action)
-- A **colored priority dot** (red = critical, orange = high, yellow = medium, blue = low)
-- The **item name**
-- The **project name**, which links to the project detail page
-- The **due date**, shown as a relative label (e.g., "2d overdue", "Today", "3d")
-- A **status chip** matching the color scheme used throughout the app
-
-Hover over any row to reveal a **Mark Done** button (green checkmark) and a **Navigate** arrow. Mark Done instantly completes the item with an optimistic update.
-
-### Collapsing and Expanding Sections
-
-Click any section header to collapse or expand it. This is useful if one section is large and you want to focus on another.
 
 ---
 
