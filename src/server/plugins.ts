@@ -332,9 +332,17 @@ export async function registerPlugins(fastify: FastifyInstance) {
     return reply.status(statusCode).send(response);
   });
 
-  // Serve static client build in production
+  // Serve static client build in production (Nginx serves these directly, this is a fallback)
   if (config.NODE_ENV === 'production') {
-    const clientDistPath = path.join(__dirname, '..', '..', 'src', 'client', 'dist');
+    // On server: /opt/pm-app/client-dist/  (deploy.sh puts client build there)
+    // Locally: src/client/dist/
+    const candidates = [
+      path.resolve('/opt/pm-app/client-dist'),
+      path.join(__dirname, '..', '..', 'src', 'client', 'dist'),
+      path.join(__dirname, '..', 'client'),
+    ];
+    const fs = await import('fs');
+    const clientDistPath = candidates.find(p => fs.existsSync(p)) || candidates[0];
     await fastify.register(fastifyStatic, {
       root: clientDistPath,
       prefix: '/',
