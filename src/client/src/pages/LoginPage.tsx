@@ -4,8 +4,15 @@ import { Eye, EyeOff, Mail } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
 import { LOGO_SVG_PATH, SUPPORT_EMAIL } from '../constants/branding';
+import { useSEO } from '../hooks/useSEO';
 
 export const LoginPage: React.FC = () => {
+  useSEO({
+    title: 'Sign In — Kovarti PM',
+    description: 'Sign in to your Kovarti PM account. Access your projects, schedules, and AI-powered insights.',
+    canonical: '/login',
+  });
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

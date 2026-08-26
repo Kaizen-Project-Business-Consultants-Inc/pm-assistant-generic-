@@ -2,9 +2,31 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { PricingSection } from '../components/pricing/PricingCards';
+import { useSEO } from '../hooks/useSEO';
 
 export const PricingPage: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
+
+  useSEO({
+    title: 'Pricing — Kovarti PM',
+    description: 'Simple, transparent pricing. Free 14-day trial, Consultant Basic at $19/mo, Consultant Pro at $29/mo with AI features. No credit card required.',
+    canonical: '/pricing',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: 'Kovarti PM Pricing',
+      description: 'Simple, transparent pricing for AI-powered project management.',
+      mainEntity: {
+        '@type': 'SoftwareApplication',
+        name: 'Kovarti PM',
+        offers: [
+          { '@type': 'Offer', name: 'Free Trial', price: '0', priceCurrency: 'USD', description: '14-day free trial with all features' },
+          { '@type': 'Offer', name: 'Consultant Basic', price: '19', priceCurrency: 'USD', billingIncrement: 'P1M' },
+          { '@type': 'Offer', name: 'Consultant Pro', price: '29', priceCurrency: 'USD', billingIncrement: 'P1M' },
+        ],
+      },
+    },
+  });
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] dark">

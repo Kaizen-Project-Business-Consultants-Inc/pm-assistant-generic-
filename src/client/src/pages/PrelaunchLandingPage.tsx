@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LOGO_SVG_PATH, SALES_EMAIL } from '../constants/branding';
 import { PricingSection } from '../components/pricing/PricingCards';
+import { useSEO } from '../hooks/useSEO';
 
 
 const features = [
@@ -656,6 +657,32 @@ function MjuziFaqBot() {
 }
 
 export const PrelaunchLandingPage: React.FC = () => {
+  useSEO({
+    title: 'Kovarti PM — AI-Powered Project Management Software',
+    description: 'Plan smarter, predict risks, and deliver on time. AI scheduling, Monte Carlo simulations, Earned Value Management, Gantt charts, and real-time collaboration.',
+    canonical: '/',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'Kovarti PM',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      description: 'AI-powered project management software with intelligent scheduling, risk prediction, Monte Carlo simulations, and Earned Value Management.',
+      offers: {
+        '@type': 'AggregateOffer',
+        priceCurrency: 'USD',
+        lowPrice: '0',
+        highPrice: '79',
+        offerCount: '4',
+      },
+      creator: {
+        '@type': 'Organization',
+        name: 'Kovarti Project & Business Consulting',
+        url: 'https://kovarti.com',
+      },
+    },
+  });
+
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');

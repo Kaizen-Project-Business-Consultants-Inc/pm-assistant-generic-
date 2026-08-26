@@ -4,8 +4,15 @@ import { Eye, EyeOff, Users, CreditCard } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
 import { TIER_LABELS } from '../constants/branding';
+import { useSEO } from '../hooks/useSEO';
 
 export const RegisterPage: React.FC = () => {
+  useSEO({
+    title: 'Create Account — Kovarti PM',
+    description: 'Start your free 14-day trial of Kovarti PM. No credit card required. AI-powered project management for consultants and teams.',
+    canonical: '/register',
+  });
+
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get('invite') || undefined;
   const tierParam = searchParams.get('tier') as 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise' | null;

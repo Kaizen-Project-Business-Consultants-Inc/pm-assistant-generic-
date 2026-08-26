@@ -2,8 +2,15 @@ import React from 'react';
 import { PublicNavbar } from '../components/layout/PublicNavbar';
 import { PublicFooter } from '../components/layout/PublicFooter';
 import { PRIVACY_EMAIL } from '../constants/branding';
+import { useSEO } from '../hooks/useSEO';
 
 export const PrivacyPage: React.FC = () => {
+  useSEO({
+    title: 'Privacy Policy — Kovarti PM',
+    description: 'Privacy Policy for Kovarti PM. How we collect, use, and protect your data. PIPEDA compliant. Data hosted in Canada.',
+    canonical: '/privacy',
+  });
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-800">
       <PublicNavbar />

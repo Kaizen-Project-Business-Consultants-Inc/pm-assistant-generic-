@@ -5,5 +5,16 @@ Disallow: /ws
 Disallow: /dashboard
 Disallow: /projects/
 Disallow: /settings
+Disallow: /admin
+Disallow: /my-feedback
+Disallow: /schedules/
+Disallow: /sprints/
+Disallow: /reports/
+Disallow: /resources/
+Disallow: /timesheets
+Disallow: /meetings
+Disallow: /query
+Disallow: /billing
+Disallow: /notifications
 
 Sitemap: https://kovarti.com/sitemap.xml

@@ -3,8 +3,15 @@ import { Link } from 'react-router-dom';
 import { PublicNavbar } from '../components/layout/PublicNavbar';
 import { PublicFooter } from '../components/layout/PublicFooter';
 import { SUPPORT_EMAIL } from '../constants/branding';
+import { useSEO } from '../hooks/useSEO';
 
 export const TermsPage: React.FC = () => {
+  useSEO({
+    title: 'Terms of Service — Kovarti PM',
+    description: 'Terms of Service for Kovarti PM. Subscription terms, AI usage limits, acceptable use, and liability information.',
+    canonical: '/terms',
+  });
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-800">
       <PublicNavbar />

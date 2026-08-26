@@ -1,6 +1,7 @@
 import React from 'react';
 import { PublicNavbar } from '../components/layout/PublicNavbar';
 import { PublicFooter } from '../components/layout/PublicFooter';
+import { useSEO } from '../hooks/useSEO';
 
 interface RoadmapItem {
   name: string;
@@ -74,6 +75,12 @@ const timelineColors = [
 ];
 
 export const RoadmapPage: React.FC = () => {
+  useSEO({
+    title: 'Product Roadmap — Kovarti PM',
+    description: 'See what we are building next. Our product roadmap is shaped by customer feedback — the features you need most get built first.',
+    canonical: '/roadmap',
+  });
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-800 flex flex-col">
       <PublicNavbar />
