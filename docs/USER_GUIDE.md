@@ -1827,6 +1827,28 @@ Navigate to **Intelligence** in the sidebar to access:
 
 > **Trial accounts:** If you are on a trial plan, the Portfolio Intelligence and Anomaly Detection panels display **sample data** with fictitious projects and demo findings rather than your real portfolio. An amber banner at the top of the page identifies the results as samples. The **Scenario Modeling** (What-If) section remains fully gated on trial — attempting to submit a scenario shows an upgrade prompt without sample data. Upgrade to a paid plan to run intelligence analysis on your real portfolio.
 
+### What-If Scenario Modeling
+
+The What-If Scenario Modeling panel (at the bottom of the Intelligence & Scenarios page) lets you model hypothetical changes and see their projected impact on schedule, budget, resources, and risk — without touching live project data.
+
+**To run a scenario:**
+
+1. Select a **project** from the dropdown.
+2. Either click a **quick preset** (e.g., "Lose 2 team members") to populate a standard description, or type your own **scenario description** in the text field.
+3. Optionally expand **Parameters** and enter numeric values for Budget Change (%), Timeline Change (days), Resource Change (workers ±), and Scope Change (%). Leave these blank to rely on the text description alone.
+4. Click **Run Scenario**.
+
+**Reading the results:**
+
+- **Confidence score** — how certain the analysis is of the projected outcome.
+- **AI-Enhanced badge** — shown when Claude AI contributed to the analysis.
+- **4 impact cards** — Schedule, Budget, Resource, and Risk, each showing the before value, after value, and % change. Red indicates a negative impact; green indicates a positive one.
+- **New risks identified** — risks that emerge as a consequence of the scenario.
+- **Affected tasks** — tasks impacted by the change, each tagged High, Medium, or Low severity.
+- **AI recommendations** — suggested mitigations or next steps.
+
+No changes are saved to your project. The analysis is read-only and exploratory.
+
 ---
 
 ## 20. Lessons Learned
