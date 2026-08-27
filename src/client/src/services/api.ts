@@ -847,6 +847,16 @@ class ApiService {
     return response.data;
   }
 
+  async getScenarioHistory(projectId: string) {
+    const response = await this.api.get(`/intelligence/scenarios/history/${projectId}`);
+    return response.data;
+  }
+
+  async deleteScenario(id: string) {
+    const response = await this.api.delete(`/intelligence/scenarios/${id}`);
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Project Members (RBAC)
   // -------------------------------------------------------------------------

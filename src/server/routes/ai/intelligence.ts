@@ -92,21 +92,54 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // What-If Scenarios
+  // What-If Scenarios — run scenario
   fastify.post('/scenarios', {
     preHandler: [requireScope('write'), requireFeature('cross_project_intelligence')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      // #10: Trial users get sample data
+      if (await isTrialUser(request)) {
+        return reply.send({ data: generateSampleScenarioResult(), aiPowered: false, sample: true, id: 'sample' });
+      }
       const parsed = AIScenarioRequestSchema.parse(request.body);
       const userId = request.user!.userId;
-      const { result, aiPowered } = await scenarioService.modelScenario(parsed, userId);
-      return reply.send({ data: result, aiPowered });
+      const { result, aiPowered, id } = await scenarioService.modelScenario(parsed, userId);
+      return reply.send({ data: result, aiPowered, id });
     } catch (err) {
       if (err instanceof Error && err.name === 'ZodError') {
         return reply.status(400).send({ error: 'Invalid scenario request data' });
       }
       fastify.log.error({ err }, 'Scenario modeling failed');
       return reply.status(500).send({ error: 'Failed to model scenario' });
+    }
+  });
+
+  // What-If Scenarios — get history for a project
+  fastify.get('/scenarios/history/:projectId', {
+    preHandler: [requireScope('read'), requireFeature('cross_project_intelligence')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      const scenarios = await scenarioService.getHistory(projectId);
+      return reply.send({ scenarios });
+    } catch (err) {
+      fastify.log.error({ err }, 'Failed to get scenario history');
+      return reply.status(500).send({ error: 'Failed to get scenario history' });
+    }
+  });
+
+  // What-If Scenarios — delete a saved scenario
+  fastify.delete('/scenarios/:id', {
+    preHandler: [requireScope('write'), requireFeature('cross_project_intelligence')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const deleted = await scenarioService.deleteScenario(id);
+      if (!deleted) return reply.status(404).send({ error: 'Scenario not found' });
+      return { message: 'Scenario deleted' };
+    } catch (err) {
+      fastify.log.error({ err }, 'Failed to delete scenario');
+      return reply.status(500).send({ error: 'Failed to delete scenario' });
     }
   });
 }
@@ -149,5 +182,21 @@ function generateSampleCrossProject() {
       ],
     },
     summary: 'Portfolio of 4 projects shows generally healthy status. Data Platform is the primary concern with high risk and 92% budget utilization at only 38% progress.',
+  };
+}
+
+function generateSampleScenarioResult() {
+  return {
+    scheduleImpact: { originalDays: 180, projectedDays: 210, changePct: 16.7, explanation: 'Timeline extends by ~30 days due to reduced workforce and dependency cascading.' },
+    budgetImpact: { originalBudget: 250000, projectedBudget: 265000, changePct: 6.0, explanation: 'Extended timeline increases overhead costs by approximately $15K.' },
+    resourceImpact: { currentWorkers: 5, projectedWorkers: 3, explanation: 'Team reduces from 5 to 3 members. Critical skills coverage needs review.' },
+    riskImpact: { currentRiskScore: 35, projectedRiskScore: 58, newRisks: ['Knowledge loss risk from departing team members.', 'Remaining team may face burnout from increased workload.'], explanation: 'Risk score increases significantly due to reduced capacity.' },
+    affectedTasks: [
+      { taskName: 'API Integration', impact: 'On critical path — reduced team delays this task directly.', severity: 'high' as const },
+      { taskName: 'UAT Testing', impact: 'Dependent on API Integration — cascading delay.', severity: 'high' as const },
+      { taskName: 'Documentation', impact: 'May be deprioritized due to resource constraints.', severity: 'medium' as const },
+    ],
+    recommendations: ['Prioritize critical path tasks and defer non-essential work.', 'Consider hiring contractors to maintain velocity on key deliverables.'],
+    confidence: 0.65,
   };
 }

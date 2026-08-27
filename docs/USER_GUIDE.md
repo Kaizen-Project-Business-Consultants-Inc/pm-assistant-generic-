@@ -1825,11 +1825,11 @@ Navigate to **Intelligence** in the sidebar to access:
 - **Resource Conflicts** -- Flags resources assigned to overlapping tasks across projects.
 - **Anomaly Detection** -- AI identifies unusual patterns (sudden cost spikes, schedule anomalies, performance outliers) with severity ratings and recommendations.
 
-> **Trial accounts:** If you are on a trial plan, the Portfolio Intelligence and Anomaly Detection panels display **sample data** with fictitious projects and demo findings rather than your real portfolio. An amber banner at the top of the page identifies the results as samples. The **Scenario Modeling** (What-If) section remains fully gated on trial — attempting to submit a scenario shows an upgrade prompt without sample data. Upgrade to a paid plan to run intelligence analysis on your real portfolio.
+> **Trial accounts:** If you are on a trial plan, all three panels (Portfolio Intelligence, Anomaly Detection, and What-If Scenarios) display **sample data** with fictitious results rather than your real portfolio. An amber banner identifies the results as samples. Upgrade to a paid plan to run intelligence analysis on your real portfolio.
 
 ### What-If Scenario Modeling
 
-The What-If Scenario Modeling panel (at the bottom of the Intelligence & Scenarios page) lets you model hypothetical changes and see their projected impact on schedule, budget, resources, and risk — without touching live project data.
+The What-If Scenario Modeling panel on the Intelligence & Scenarios page lets you model hypothetical changes and see their projected impact on schedule, budget, resources, and risk — without touching live project data.
 
 **To run a scenario:**
 
@@ -1844,10 +1844,22 @@ The What-If Scenario Modeling panel (at the bottom of the Intelligence & Scenari
 - **AI-Enhanced badge** — shown when Claude AI contributed to the analysis.
 - **4 impact cards** — Schedule, Budget, Resource, and Risk, each showing the before value, after value, and % change. Red indicates a negative impact; green indicates a positive one.
 - **New risks identified** — risks that emerge as a consequence of the scenario.
-- **Affected tasks** — tasks impacted by the change, each tagged High, Medium, or Low severity.
+- **Affected tasks** — the most impacted tasks scored by critical path membership, float, overdue status, and budget relevance. Each is tagged High, Medium, or Low severity.
 - **AI recommendations** — suggested mitigations or next steps.
 
-No changes are saved to your project. The analysis is read-only and exploratory.
+**Comparing scenarios:**
+
+After running a scenario, click **Pin for comparison** to save the result. Pin up to 3 scenarios, and a comparison table appears showing schedule, budget, workers, risk score, and confidence side by side. Remove individual pins or click "Clear comparison" to reset.
+
+**Scenario history:**
+
+Every scenario you run is automatically saved. Click **Scenario History** below the results to see all past scenarios for the selected project. Each entry shows a mini impact summary. You can pin history entries for comparison or delete them.
+
+**Cross-links:**
+
+After running a scenario, action buttons appear to:
+- **Run Monte Carlo** — navigate to Monte Carlo simulation for probabilistic analysis on the project's schedule.
+- **Create Schedule Scenario** — navigate to the schedule's scenario clone feature to build a full what-if schedule copy.
 
 ---
 
