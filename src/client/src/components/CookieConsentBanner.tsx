@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const CONSENT_KEY = 'kovarti_analytics_consent';
-const GA_ID = 'G-F99Q92ED7M';
+const GA_ID = 'G-46RCPEQRE5';
 
 function loadGA4() {
   if (document.querySelector(`script[src*="googletagmanager"]`)) return;

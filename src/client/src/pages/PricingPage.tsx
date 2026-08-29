@@ -19,6 +19,8 @@ export const PricingPage: React.FC = () => {
       mainEntity: {
         '@type': 'SoftwareApplication',
         name: 'Kovarti PM',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
         offers: [
           { '@type': 'Offer', name: 'Free Trial', price: '0', priceCurrency: 'USD', description: '14-day free trial with all features' },
           { '@type': 'Offer', name: 'Consultant Basic', price: '19', priceCurrency: 'USD', billingIncrement: 'P1M' },
