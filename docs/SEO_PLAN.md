@@ -1,7 +1,7 @@
 # Kovarti PM — SEO Plan
 
 **Domain:** kovarti.com
-**Last updated:** August 26, 2026
+**Last updated:** August 28, 2026
 
 ---
 
@@ -61,32 +61,30 @@ Sitewide JSON-LD with company name, logo, support email, and website schema.
 
 ---
 
-## Phase 3: Search Engine Registration (YOUR ACTION)
+## Phase 3: Search Engine Registration (IN PROGRESS)
 
-### 3.1 Google Search Console
-- [ ] Go to https://search.google.com/search-console
-- [ ] Add property for `kovarti.com`
-- [ ] Verify ownership (recommended: DNS TXT record method via TMD cPanel)
-  - Add a TXT record: `google-site-verification=XXXXXXXXX`
-- [ ] Submit sitemap: enter `https://kovarti.com/sitemap.xml`
-- [ ] Request indexing for the homepage URL
+### 3.1 Google Search Console (DONE — August 28, 2026)
+- [x] Added property for `kovarti.com`
+- [x] Verified ownership via DNS TXT record (`google-site-verification=...`) in TMD cPanel (TTL 7200)
+- [x] Submitted sitemap: `https://kovarti.com/sitemap.xml`
+- [x] Homepage already indexed — URL Inspection confirmed "URL is on Google"
 - [ ] Monitor "Coverage" tab for crawl errors over the next few days
 - [ ] Check "Core Web Vitals" report once data appears (takes ~28 days)
 
-### 3.2 Bing Webmaster Tools
-- [ ] Go to https://www.bing.com/webmasters
-- [ ] Add site `kovarti.com`
-- [ ] Verify via DNS TXT record or import from Google Search Console
-- [ ] Submit sitemap URL
+### 3.2 Bing Webmaster Tools (DONE — August 28, 2026)
+- [x] Site `kovarti.com` added and detected automatically
+- [x] Recommendations visible (IndexNow, backlinks) — addressed in Phase 4
 
-### 3.3 Google Business Profile (optional but recommended)
-- [ ] Go to https://business.google.com
-- [ ] Create a profile for "Kovarti Project & Business Consulting"
-- [ ] Category: "Software Company" or "Business Management Consultant"
-- [ ] Add website URL, description, logo, and contact info
-- [ ] This helps with branded searches and builds trust signals
+### 3.3 Google Business Profile (TODO)
+- [ ] Create a NEW profile for "Kovarti PM" (separate from existing KPBC profiles)
+- [ ] Category: "Software Company"
+- [ ] Add website URL (`https://kovarti.com`), description, logo, and contact info
+- [ ] Note: Two existing KPBC profiles exist — keep those separate, do not mix with Kovarti
 
-### 3.4 Google Analytics Verification
+### 3.4 Google Analytics (DONE — August 28, 2026)
+- [x] GA4 property created under `kpbcmca@gmail.com`
+- [x] Measurement ID: `G-46RCPEQRE5` (updated in code, deployed to production)
+- [x] GA4 loads dynamically after cookie consent (`CookieConsentBanner.tsx`)
 - [ ] Confirm GA4 is collecting data (check Real-Time reports)
 - [ ] Set up conversions/events for:
   - Registration completed
@@ -94,10 +92,9 @@ Sitewide JSON-LD with company name, logo, support email, and website schema.
   - Checkout session started
 - [ ] Link GA4 to Google Search Console for search query data
 
-### 3.5 Rich Results Testing
-- [ ] Test each public page at https://search.google.com/test/rich-results
-- [ ] Verify JSON-LD is valid and recognized
-- [ ] Fix any warnings (usually minor schema issues)
+### 3.5 Rich Results Testing (DONE — August 28, 2026)
+- [x] Landing page (`/`): 1 valid item detected (Organization)
+- [x] Pricing page (`/pricing`): 1 valid item detected (SoftwareApplication) — fixed missing `applicationCategory` and `operatingSystem` fields
 
 ---
 
