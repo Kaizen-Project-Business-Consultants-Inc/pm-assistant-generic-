@@ -1,24 +1,24 @@
 import { test, expect } from '@playwright/test';
-import { stagingLogin } from './staging-helpers';
 
 // CloudSync project ID on staging (from URL observed in test run)
 const CLOUDSYNC_ID = 'fe0fe4f4-ebdd-4bc0-a439-8e2faf4e8c03';
 
 test.describe('Pre-Launch Staging Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    await stagingLogin(page);
-  });
+  // Auth is handled by globalSetup — storageState is injected automatically
 
-  test('Auth: login redirects to dashboard with user info', async ({ page }) => {
+  test('Auth: dashboard loads with saved session', async ({ page }) => {
+    await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.locator('body')).not.toBeEmpty();
   });
 
   test('Dashboard: morning briefing loads', async ({ page }) => {
+    await page.goto('/dashboard');
     await expect(page.locator('h1, h2, h3').first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('Dashboard: CloudSync project visible', async ({ page }) => {
+    await page.goto('/dashboard');
     await expect(page.getByText('CloudSync').first()).toBeVisible({ timeout: 15_000 });
   });
 
