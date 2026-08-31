@@ -2,15 +2,15 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: 'pre-launch.spec.ts',
-  timeout: 30_000,
-  expect: { timeout: 10_000 },
+  testMatch: 'pre-launch.spec.ts',
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
   fullyParallel: false,
-  retries: 0,
+  retries: 1,
   workers: 1,
   reporter: [['html', { open: 'never' }], ['list']],
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'https://pm.kpbc.ca',
     headless: true,
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
@@ -21,5 +21,4 @@ export default defineConfig({
       use: { browserName: 'chromium' },
     },
   ],
-  // Dev server must already be running — no webServer config for CI flexibility
 });
