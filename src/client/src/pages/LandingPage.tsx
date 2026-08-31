@@ -416,10 +416,64 @@ const featureMockups: Record<string, React.FC<{ static?: boolean }>> = {
   'Natural Language Queries': NLQueryMockup,
 };
 
-function FeatureCard({ feature, reducedMotion }: { feature: typeof features[number]; reducedMotion: boolean }) {
+/* Screenshot image mapping — drop images into public/screenshots/ and update paths here */
+const featureScreenshots: Record<string, string> = {
+  'AI-Powered Scheduling': '/screenshots/scheduling.png',
+  'Monte Carlo Simulations': '/screenshots/monte-carlo.png',
+  'Smart Risk Detection': '/screenshots/risk-detection.png',
+  'Meeting Intelligence': '/screenshots/meeting-intelligence.png',
+  'Portfolio Dashboard': '/screenshots/portfolio.png',
+  'Natural Language Queries': '/screenshots/nl-queries.png',
+};
+
+function ScreenshotModal({ title, src, onClose }: { title: string; src: string; onClose: () => void }) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', handleKey); document.body.style.overflow = ''; };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-8"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${title} screenshot preview`}
+    >
+      <div
+        className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between w-full mb-4">
+          <h3 className="text-white text-lg font-semibold">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white transition-colors p-1"
+            aria-label="Close preview"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <img
+          src={src}
+          alt={`${title} — product screenshot`}
+          className="w-full h-auto max-h-[80vh] object-contain rounded-xl ring-1 ring-white/10 shadow-2xl"
+        />
+        <p className="text-slate-400 text-sm mt-3">Click anywhere outside or press Escape to close</p>
+      </div>
+    </div>
+  );
+}
+
+function FeatureCard({ feature, reducedMotion, onOpenScreenshot, screenshotReady }: { feature: typeof features[number]; reducedMotion: boolean; onOpenScreenshot: (title: string) => void; screenshotReady: boolean }) {
   const [showPreview, setShowPreview] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const Mockup = featureMockups[feature.title] as React.FC<{ static?: boolean }> | undefined;
+  const hasScreenshot = screenshotReady;
 
   const show = useCallback(() => {
     if (!Mockup) return;
@@ -432,10 +486,16 @@ function FeatureCard({ feature, reducedMotion }: { feature: typeof features[numb
   }, []);
 
   const handleClick = useCallback(() => {
+    if (hasScreenshot) {
+      clearTimeout(timeoutRef.current);
+      setShowPreview(false);
+      onOpenScreenshot(feature.title);
+      return;
+    }
     if (!Mockup) return;
     clearTimeout(timeoutRef.current);
     setShowPreview((prev) => !prev);
-  }, [Mockup]);
+  }, [Mockup, hasScreenshot, feature.title, onOpenScreenshot]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); }
@@ -464,6 +524,16 @@ function FeatureCard({ feature, reducedMotion }: { feature: typeof features[numb
       <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
       <p className="text-slate-300 text-sm leading-relaxed">{feature.description}</p>
 
+      {hasScreenshot && (
+        <p className="text-primary-400 text-xs font-medium mt-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          Click to preview
+        </p>
+      )}
+
       {Mockup && showPreview && (
         <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10">
           <div className="absolute left-1/2 -translate-x-1/2 top-full w-3 h-3 bg-[#1e293b] rotate-45 -mt-1.5" />
@@ -480,7 +550,22 @@ function FeatureCard({ feature, reducedMotion }: { feature: typeof features[numb
 
 export const LandingPage: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [screenshotModal, setScreenshotModal] = useState<string | null>(null);
+  const [readyScreenshots, setReadyScreenshots] = useState<Set<string>>(new Set());
   const reducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    Object.entries(featureScreenshots).forEach(([title, src]) => {
+      const img = new Image();
+      img.onload = () => setReadyScreenshots((prev) => new Set(prev).add(title));
+      img.src = src;
+    });
+  }, []);
+
+  const openScreenshot = useCallback((title: string) => {
+    if (title in featureScreenshots) setScreenshotModal(title);
+  }, []);
+  const closeScreenshot = useCallback(() => setScreenshotModal(null), []);
 
   return (
     <div className="min-h-screen bg-[#0a0f1a] overflow-x-hidden">
@@ -605,7 +690,7 @@ export const LandingPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature) => (
-              <FeatureCard key={feature.title} feature={feature} reducedMotion={reducedMotion} />
+              <FeatureCard key={feature.title} feature={feature} reducedMotion={reducedMotion} onOpenScreenshot={openScreenshot} screenshotReady={readyScreenshots.has(feature.title)} />
             ))}
           </div>
         </div>
@@ -680,6 +765,14 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {screenshotModal && (
+        <ScreenshotModal
+          title={screenshotModal}
+          src={featureScreenshots[screenshotModal]}
+          onClose={closeScreenshot}
+        />
+      )}
     </div>
   );
 };
