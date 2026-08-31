@@ -430,6 +430,46 @@ function isVideoSrc(src: string) {
   return /\.(webm|mp4)$/i.test(src);
 }
 
+function DemoVideo({ src }: { src: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isMuted, setIsMuted] = useState(true);
+
+  const handleUnmute = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = false;
+    v.currentTime = 0;
+    setIsMuted(false);
+  }, []);
+
+  return (
+    <div className="relative w-full">
+      <video
+        ref={videoRef}
+        src={src}
+        autoPlay
+        loop
+        muted
+        playsInline
+        controls
+        className="w-full h-auto max-h-[80vh] object-contain rounded-xl ring-1 ring-white/10 shadow-2xl"
+      />
+      {isMuted && (
+        <button
+          onClick={handleUnmute}
+          className="absolute bottom-6 right-6 flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium rounded-full shadow-lg transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+          Click for sound
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ScreenshotModal({ title, src, onClose }: { title: string; src: string; onClose: () => void }) {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -465,14 +505,7 @@ function ScreenshotModal({ title, src, onClose }: { title: string; src: string; 
           </button>
         </div>
         {isVideo ? (
-          <video
-            src={src}
-            autoPlay
-            loop
-            playsInline
-            controls
-            className="w-full h-auto max-h-[80vh] object-contain rounded-xl ring-1 ring-white/10 shadow-2xl"
-          />
+          <DemoVideo src={src} />
         ) : (
           <img
             src={src}
