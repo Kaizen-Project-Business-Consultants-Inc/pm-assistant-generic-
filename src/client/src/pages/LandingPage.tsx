@@ -469,8 +469,8 @@ function ScreenshotModal({ title, src, onClose }: { title: string; src: string; 
             src={src}
             autoPlay
             loop
-            muted
             playsInline
+            controls
             className="w-full h-auto max-h-[80vh] object-contain rounded-xl ring-1 ring-white/10 shadow-2xl"
           />
         ) : (
