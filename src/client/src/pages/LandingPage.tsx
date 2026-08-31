@@ -416,15 +416,19 @@ const featureMockups: Record<string, React.FC<{ static?: boolean }>> = {
   'Natural Language Queries': NLQueryMockup,
 };
 
-/* Screenshot image mapping — drop images into public/screenshots/ and update paths here */
+/* Demo media mapping — supports images (.png/.jpg) and videos (.webm/.mp4) */
 const featureScreenshots: Record<string, string> = {
-  'AI-Powered Scheduling': '/screenshots/scheduling.png',
-  'Monte Carlo Simulations': '/screenshots/monte-carlo.png',
-  'Smart Risk Detection': '/screenshots/risk-detection.png',
-  'Meeting Intelligence': '/screenshots/meeting-intelligence.png',
-  'Portfolio Dashboard': '/screenshots/portfolio.png',
-  'Natural Language Queries': '/screenshots/nl-queries.png',
+  'AI-Powered Scheduling': '/screenshots/scheduling.webm',
+  'Monte Carlo Simulations': '/screenshots/monte-carlo.webm',
+  'Smart Risk Detection': '/screenshots/risk-detection.webm',
+  'Meeting Intelligence': '/screenshots/meeting-intelligence.webm',
+  'Portfolio Dashboard': '/screenshots/portfolio.webm',
+  'Natural Language Queries': '/screenshots/nl-queries.webm',
 };
+
+function isVideoSrc(src: string) {
+  return /\.(webm|mp4)$/i.test(src);
+}
 
 function ScreenshotModal({ title, src, onClose }: { title: string; src: string; onClose: () => void }) {
   useEffect(() => {
@@ -434,13 +438,15 @@ function ScreenshotModal({ title, src, onClose }: { title: string; src: string; 
     return () => { document.removeEventListener('keydown', handleKey); document.body.style.overflow = ''; };
   }, [onClose]);
 
+  const isVideo = isVideoSrc(src);
+
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-8"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label={`${title} screenshot preview`}
+      aria-label={`${title} demo preview`}
     >
       <div
         className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center"
@@ -458,11 +464,22 @@ function ScreenshotModal({ title, src, onClose }: { title: string; src: string; 
             </svg>
           </button>
         </div>
-        <img
-          src={src}
-          alt={`${title} — product screenshot`}
-          className="w-full h-auto max-h-[80vh] object-contain rounded-xl ring-1 ring-white/10 shadow-2xl"
-        />
+        {isVideo ? (
+          <video
+            src={src}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-auto max-h-[80vh] object-contain rounded-xl ring-1 ring-white/10 shadow-2xl"
+          />
+        ) : (
+          <img
+            src={src}
+            alt={`${title} — product screenshot`}
+            className="w-full h-auto max-h-[80vh] object-contain rounded-xl ring-1 ring-white/10 shadow-2xl"
+          />
+        )}
         <p className="text-slate-400 text-sm mt-3">Click anywhere outside or press Escape to close</p>
       </div>
     </div>
@@ -526,11 +543,23 @@ function FeatureCard({ feature, reducedMotion, onOpenScreenshot, screenshotReady
 
       {hasScreenshot && (
         <p className="text-primary-400 text-xs font-medium mt-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-          Click to preview
+          {isVideoSrc(featureScreenshots[feature.title]) ? (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Watch demo
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Click to preview
+            </>
+          )}
         </p>
       )}
 
@@ -556,9 +585,15 @@ export const LandingPage: React.FC = () => {
 
   useEffect(() => {
     Object.entries(featureScreenshots).forEach(([title, src]) => {
-      const img = new Image();
-      img.onload = () => setReadyScreenshots((prev) => new Set(prev).add(title));
-      img.src = src;
+      if (isVideoSrc(src)) {
+        fetch(src, { method: 'HEAD' }).then((r) => {
+          if (r.ok) setReadyScreenshots((prev) => new Set(prev).add(title));
+        }).catch(() => {});
+      } else {
+        const img = new Image();
+        img.onload = () => setReadyScreenshots((prev) => new Set(prev).add(title));
+        img.src = src;
+      }
     });
   }, []);
 
