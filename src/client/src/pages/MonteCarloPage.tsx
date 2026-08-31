@@ -164,7 +164,7 @@ export function MonteCarloPage() {
     queryFn: () => apiService.getProjects(),
   });
 
-  const projects: Project[] = projectsData?.data || projectsData || [];
+  const projects: Project[] = projectsData?.projects || projectsData?.data || [];
 
   // --- Fetch schedules for selected project ---
   const {
@@ -176,7 +176,7 @@ export function MonteCarloPage() {
     enabled: !!selectedProjectId,
   });
 
-  const schedules: Schedule[] = schedulesData?.data || schedulesData || [];
+  const schedules: Schedule[] = schedulesData?.schedules || schedulesData?.data || [];
 
   // --- Preselect from query param ---
   const qsScheduleId = searchParams.get('scheduleId');
