@@ -542,7 +542,7 @@ function FeatureCard({ feature, reducedMotion, onOpenScreenshot, screenshotReady
       <p className="text-slate-300 text-sm leading-relaxed">{feature.description}</p>
 
       {hasScreenshot && (
-        <p className="text-primary-400 text-xs font-medium mt-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <p className="text-primary-400 text-xs font-medium mt-3 flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity duration-300">
           {isVideoSrc(featureScreenshots[feature.title]) ? (
             <>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
