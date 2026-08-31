@@ -438,6 +438,7 @@ function DemoVideo({ src }: { src: string }) {
     const v = videoRef.current;
     if (!v) return;
     v.muted = false;
+    v.loop = false;
     v.currentTime = 0;
     setIsMuted(false);
   }, []);
