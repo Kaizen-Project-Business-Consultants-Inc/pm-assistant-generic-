@@ -729,7 +729,27 @@ export const LandingPage: React.FC = () => {
                 See how it works
               </a>
             </div>
-            <div className="flex items-center gap-5 mt-7 flex-wrap">
+            {/* Launch offer banner */}
+            <a
+              href="#pricing"
+              className="inline-flex items-center gap-3 mt-7 px-5 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-500/20 group"
+              style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.10))', border: '1px solid rgba(245,158,11,0.35)' }}
+            >
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/20">
+                <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </span>
+              <div>
+                <span className="text-sm font-bold text-amber-300">Launch Special — 20% OFF Pro Annual</span>
+                <span className="block text-xs text-amber-200/70">Limited time offer + Founders badge for early supporters</span>
+              </div>
+              <svg className="w-4 h-4 text-amber-400 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+
+            <div className="flex items-center gap-5 mt-5 flex-wrap">
               {['No credit card', '14-day trial', 'Setup in minutes'].map((label) => (
                 <span key={label} className="flex items-center gap-2 text-[13px] text-slate-300">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -802,6 +822,12 @@ export const LandingPage: React.FC = () => {
             <p className="mt-3 text-base text-slate-300">
               Try free for 14 days. Upgrade anytime.
             </p>
+            <div className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-amber-300" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)' }}>
+              <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Launch Special: 20% OFF Pro Annual — limited time only
+            </div>
             <p className="mt-3 inline-flex items-center gap-2 text-sm text-green-400 font-medium">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
               30-day prorated refund guarantee on annual plans
