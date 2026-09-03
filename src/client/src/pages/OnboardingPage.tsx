@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { User, Briefcase, BarChart3, Users, Zap, CheckCircle, ArrowRight, ArrowLeft, SkipForward, CreditCard } from 'lucide-react';
+import { User, Briefcase, BarChart3, Users, Zap, CheckCircle, ArrowRight, ArrowLeft, SkipForward, CreditCard, Mail, Plus, X, Building2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
 
@@ -26,6 +26,27 @@ interface Template {
   projectType?: string;
 }
 
+const TEAM_ROLE_OPTIONS = [
+  { value: 'project_manager', label: 'Project Manager' },
+  { value: 'team_member', label: 'Team Member' },
+  { value: 'viewer', label: 'Viewer' },
+  { value: 'scrum_master', label: 'Scrum Master' },
+  { value: 'executive', label: 'Executive' },
+  { value: 'finance_officer', label: 'Finance Officer' },
+  { value: 'risk_manager', label: 'Risk Manager' },
+  { value: 'pmo', label: 'PMO' },
+  { value: 'ba', label: 'Business Analyst' },
+  { value: 'qa', label: 'QA' },
+  { value: 'tester', label: 'Tester' },
+  { value: 'devops', label: 'DevOps' },
+  { value: 'claude_sme', label: 'Claude SME' },
+];
+
+interface PendingInvite {
+  email: string;
+  role: string;
+}
+
 export const OnboardingPage: React.FC = () => {
   const { user, setUser } = useAuthStore();
   const navigate = useNavigate();
@@ -39,11 +60,23 @@ export const OnboardingPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Step 2 state
+  // Project step state
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [projectName, setProjectName] = useState('');
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+
+  // SME team setup state
+  const isSme = user?.subscriptionTier === 'sme';
+  const totalSteps = isSme ? 4 : 3;
+  const STEP_TEAM = 2; // only used when isSme
+  const STEP_PROJECT = isSme ? 3 : 2;
+  const STEP_DONE = isSme ? 4 : 3;
+  const [seatInfo, setSeatInfo] = useState<{ usedSeats: number; paidSeats: number; availableSeats: number } | null>(null);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('team_member');
+  const [invitesSent, setInvitesSent] = useState(0);
 
   // Track whether the user already had a name when they arrived
   const hadNameOnMount = useRef(!!user?.fullName);
@@ -90,20 +123,29 @@ export const OnboardingPage: React.FC = () => {
       const data = await apiService.getMe();
       if (data.user) setUser(data.user);
 
-      // Load templates for step 2
-      try {
-        const tmplData = await apiService.getTemplates();
-        const list = tmplData.templates || tmplData || [];
-        setTemplates(Array.isArray(list) ? list : []);
-      } catch {
-        setTemplates([]);
-      }
-
       // Clear pending checkout flag — user is proceeding with onboarding
       localStorage.removeItem('pendingCheckout');
       setPendingCheckout(false);
 
-      setStep(2);
+      // For SME, load seat info and go to team setup; otherwise load templates and go to project step
+      if (isSme) {
+        try {
+          const seats = await apiService.getSeatInfo();
+          setSeatInfo(seats);
+        } catch {
+          // Non-blocking — seat info is informational
+        }
+        setStep(STEP_TEAM);
+      } else {
+        try {
+          const tmplData = await apiService.getTemplates();
+          const list = tmplData.templates || tmplData || [];
+          setTemplates(Array.isArray(list) ? list : []);
+        } catch {
+          setTemplates([]);
+        }
+        setStep(STEP_PROJECT);
+      }
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } } };
       setError(axiosError.response?.data?.message || 'Failed to save profile. Please try again.');
@@ -142,7 +184,7 @@ export const OnboardingPage: React.FC = () => {
       });
       const pid = result.projectId || result.project?.id;
       setCreatedProjectId(pid || null);
-      setStep(3);
+      setStep(STEP_DONE);
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } } };
       setError(axiosError.response?.data?.message || 'Failed to create project. You can create one later from the dashboard.');
@@ -152,19 +194,73 @@ export const OnboardingPage: React.FC = () => {
   };
 
   const handleSkipProject = () => {
-    setStep(3);
+    setStep(STEP_DONE);
+  };
+
+  const handleAddInvite = () => {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    if (pendingInvites.some(i => i.email === email)) return;
+    setPendingInvites(prev => [...prev, { email, role: inviteRole }]);
+    setInviteEmail('');
+    setInviteRole('team_member');
+  };
+
+  const handleRemoveInvite = (email: string) => {
+    setPendingInvites(prev => prev.filter(i => i.email !== email));
+  };
+
+  const handleSendInvites = async () => {
+    if (pendingInvites.length === 0) return;
+    setError(null);
+    setIsLoading(true);
+    let sent = 0;
+    try {
+      for (const invite of pendingInvites) {
+        await apiService.inviteOrgMember(invite.email, invite.role);
+        sent++;
+      }
+      setInvitesSent(sent);
+
+      // Load templates for project step
+      try {
+        const tmplData = await apiService.getTemplates();
+        const list = tmplData.templates || tmplData || [];
+        setTemplates(Array.isArray(list) ? list : []);
+      } catch {
+        setTemplates([]);
+      }
+      setStep(STEP_PROJECT);
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      setError(axiosError.response?.data?.message || `Sent ${sent} of ${pendingInvites.length} invites. Some failed.`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSkipTeam = async () => {
+    // Load templates for project step
+    try {
+      const tmplData = await apiService.getTemplates();
+      const list = tmplData.templates || tmplData || [];
+      setTemplates(Array.isArray(list) ? list : []);
+    } catch {
+      setTemplates([]);
+    }
+    setStep(STEP_PROJECT);
   };
 
   const stepIndicator = (
     <div className="flex items-center justify-center gap-2 mb-8">
-      {[1, 2, 3].map((s) => (
+      {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
         <div key={s} className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
             s < step ? 'bg-primary-600 text-white' : s === step ? 'bg-primary-600 text-white ring-2 ring-primary-400/50 ring-offset-2 ring-offset-gray-800' : 'bg-gray-700 text-gray-400'
           }`}>
             {s < step ? <CheckCircle className="w-4 h-4" /> : s}
           </div>
-          {s < 3 && <div className={`w-8 h-0.5 ${s < step ? 'bg-primary-500' : 'bg-gray-700'}`} />}
+          {s < totalSteps && <div className={`w-8 h-0.5 ${s < step ? 'bg-primary-500' : 'bg-gray-700'}`} />}
         </div>
       ))}
     </div>
@@ -222,10 +318,11 @@ export const OnboardingPage: React.FC = () => {
 
                 <div>
                   <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                    Organization Name <span className="text-gray-400 font-normal">(optional)</span>
+                    Organization Name {!isSme && <span className="text-gray-400 font-normal">(optional)</span>}
                   </label>
-                  <input id="organizationName" type="text" autoComplete="organization" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)}
+                  <input id="organizationName" type="text" required={isSme} autoComplete="organization" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)}
                     className="input" placeholder="Your company name" />
+                  {isSme && <p className="text-xs text-primary-400 mt-1">Required for SME team accounts</p>}
                 </div>
 
                 {/* Role selector */}
@@ -279,7 +376,7 @@ export const OnboardingPage: React.FC = () => {
                   </div>
                 </div>
 
-                <button type="submit" disabled={isLoading || !fullName.trim() || !username.trim()}
+                <button type="submit" disabled={isLoading || !fullName.trim() || !username.trim() || (isSme && !organizationName.trim())}
                   className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   {isLoading ? (
                     <div className="flex items-center">
@@ -294,8 +391,136 @@ export const OnboardingPage: React.FC = () => {
             </>
           )}
 
-          {/* Step 2: First Project (optional) */}
-          {step === 2 && (
+          {/* SME Step 2: Team Setup */}
+          {isSme && step === STEP_TEAM && (
+            <>
+              <div className="text-center mb-6">
+                <div className="mx-auto w-12 h-12 bg-primary-100 dark:bg-primary-900/40 rounded-xl flex items-center justify-center mb-4">
+                  <Users className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Set up your team</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Invite team members to collaborate on projects
+                </p>
+              </div>
+
+              {seatInfo && (
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                      <span className="font-medium">{seatInfo.paidSeats}</span> seats total
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400">
+                    <span>{seatInfo.usedSeats} used</span>
+                    <span className="text-green-600 dark:text-green-400">{seatInfo.availableSeats} available</span>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4" role="alert">
+                  <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                </div>
+              )}
+
+              {/* Invite form */}
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddInvite(); } }}
+                  placeholder="colleague@company.com"
+                  className="input flex-1"
+                />
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-2 text-sm text-gray-900 dark:text-white"
+                >
+                  {TEAM_ROLE_OPTIONS.map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleAddInvite}
+                  disabled={!inviteEmail.trim()}
+                  className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Pending invites list */}
+              {pendingInvites.length > 0 && (
+                <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+                  {pendingInvites.map((invite) => (
+                    <div key={invite.email} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-sm text-gray-700 dark:text-gray-200 truncate">{invite.email}</span>
+                        <span className="text-xs text-gray-400 flex-shrink-0">
+                          {TEAM_ROLE_OPTIONS.find(r => r.value === invite.role)?.label || invite.role}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveInvite(invite.email)}
+                        className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 ml-2"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {pendingInvites.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4 mb-4">
+                  Add team member emails above, then send all invites at once.
+                </p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setError(null); setStep(1); }}
+                  className="flex items-center gap-1 px-4 py-2.5 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendInvites}
+                  disabled={isLoading || pendingInvites.length === 0}
+                  className="flex-1 flex justify-center items-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>Send Invites & Continue <ArrowRight className="w-4 h-4" /></>
+                  )}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSkipTeam}
+                className="w-full mt-3 flex justify-center items-center gap-1.5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                <SkipForward className="w-4 h-4" /> I'll invite later
+              </button>
+            </>
+          )}
+
+          {/* Project Step */}
+          {step === STEP_PROJECT && (
             <>
               <div className="text-center mb-6">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create your first project</h2>
@@ -354,7 +579,7 @@ export const OnboardingPage: React.FC = () => {
                   <div className="flex gap-3">
                     <button
                       type="button"
-                      onClick={() => setStep(1)}
+                      onClick={() => { setError(null); setStep(isSme ? STEP_TEAM : 1); }}
                       className="flex items-center gap-1 px-4 py-2.5 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
                       <ArrowLeft className="w-4 h-4" /> Back
@@ -392,8 +617,8 @@ export const OnboardingPage: React.FC = () => {
             </>
           )}
 
-          {/* Step 3: Done */}
-          {step === 3 && (() => {
+          {/* Done Step */}
+          {step === STEP_DONE && (() => {
             const trialEnd = user?.trialEndsAt ? new Date(user.trialEndsAt) : null;
             const daysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 14;
             return (
@@ -408,7 +633,18 @@ export const OnboardingPage: React.FC = () => {
                     : 'Your profile is set up. Head to the dashboard to get started.'}
                 </p>
 
-                {user?.subscriptionTier === 'trial' && (
+                {isSme ? (
+                  <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-4 mb-6 text-left">
+                    <p className="text-sm font-medium text-primary-800 dark:text-primary-300">
+                      {organizationName || 'Your organization'} is ready
+                    </p>
+                    <div className="text-xs text-primary-600 dark:text-primary-400 mt-1 space-y-1">
+                      {seatInfo && <p>{seatInfo.paidSeats} seats on your plan</p>}
+                      {invitesSent > 0 && <p>{invitesSent} team invite{invitesSent !== 1 ? 's' : ''} sent</p>}
+                      <p>Manage your team anytime in Settings → Team.</p>
+                    </div>
+                  </div>
+                ) : user?.subscriptionTier === 'trial' && (
                   <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-4 mb-6 text-left">
                     <p className="text-sm font-medium text-primary-800 dark:text-primary-300">
                       Your 14-day free trial is active
