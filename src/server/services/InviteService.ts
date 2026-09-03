@@ -7,6 +7,7 @@ import { emailService } from './EmailService';
 import { userService } from './UserService';
 import { pricingConfigService } from './PricingConfigService';
 import { runWithTenantContext } from '../middleware/requestContext';
+import { resourceService } from './ResourceService';
 import logger from '../utils/logger';
 
 const VIEWER_LIMITS_FALLBACK: Record<string, number> = {
@@ -111,6 +112,32 @@ export class InviteService {
       } catch (err) {
         logger.error('Failed to add invited user to project', { projectId: invite.projectId, userId, error: err });
       }
+    }
+
+    // Create a resource record for the new user in the tenant DB
+    try {
+      const org = invite.projectId ? null : await organizationRepository.findById(invite.organizationId);
+      const user = await userService.findById(userId);
+      const orgForResource = org || await organizationRepository.findById(invite.organizationId);
+      if (orgForResource?.dbName && user) {
+        await runWithTenantContext(orgForResource.dbName, invite.organizationId, () =>
+          resourceService.createResource({
+            name: user.fullName || user.username || user.email.split('@')[0],
+            role: invite.role,
+            email: user.email,
+            capacityHoursPerWeek: 40,
+            skills: [],
+            isActive: true,
+            costRateHourly: null,
+            overtimeRateHourly: null,
+            resourceGroup: null,
+            userId,
+            calendarTemplateId: null,
+          }),
+        );
+      }
+    } catch (resErr) {
+      logger.warn('Failed to create resource for invited user', { userId, error: resErr });
     }
 
     return { ...invite, status: 'accepted' };

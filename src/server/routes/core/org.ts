@@ -5,6 +5,7 @@ import { organizationService } from '../../services/OrganizationService';
 import { userService } from '../../services/UserService';
 import { emailService } from '../../services/EmailService';
 import { rateLimiter } from '../../middleware/rateLimiter';
+import { resourceService } from '../../services/ResourceService';
 import logger from '../../utils/logger';
 
 const inviteSchema = z.object({
@@ -71,6 +72,25 @@ export async function orgRoutes(fastify: FastifyInstance) {
         // Add existing user to this org
         await userService.update(existingUser.id, { organizationId: org.id, role } as any);
         organizationService.invalidateUserCache(existingUser.id);
+
+        // Create a resource record so they appear in resource management
+        try {
+          await resourceService.createResource({
+            name: existingUser.fullName || existingUser.username || email.split('@')[0],
+            role,
+            email,
+            capacityHoursPerWeek: 40,
+            skills: [],
+            isActive: true,
+            costRateHourly: null,
+            overtimeRateHourly: null,
+            resourceGroup: null,
+            userId: existingUser.id,
+            calendarTemplateId: null,
+          });
+        } catch (resErr) {
+          logger.warn('Failed to create resource for invited user', { email, error: resErr });
+        }
 
         logger.info('User added to organization via invite', { userId: existingUser.id, orgId: org.id });
 
