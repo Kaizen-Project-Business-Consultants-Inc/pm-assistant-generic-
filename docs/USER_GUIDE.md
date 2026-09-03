@@ -70,7 +70,11 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 
 ### First Login — Onboarding Wizard
 
-On your very first login, a **3-step onboarding wizard** appears to help you get set up:
+On your very first login, an onboarding wizard appears to help you get set up. The number of steps depends on your plan.
+
+#### Standard Plans (Trial, Consultant Basic, Consultant Pro)
+
+A **3-step wizard** guides you through initial setup:
 
 **Step 1 — Your Profile**
 - Enter your full name and choose a username.
@@ -85,9 +89,33 @@ On your very first login, a **3-step onboarding wizard** appears to help you get
 - A confirmation screen shows your trial details (start date, end date, and what's included).
 - If you created a project in Step 2, you are taken directly to that project's Overview page. Otherwise, you land on the Dashboard.
 
+#### SME Plan
+
+SME accounts get an extended **4-step wizard** with an additional Team Setup step:
+
+**Step 1 — Profile & Org Setup**
+- Same profile fields as above (name, role, methodology).
+- **Organization Name** is required for SME accounts — fill this in before continuing.
+
+**Step 2 — Team Setup**
+- A seat summary shows how many seats your plan includes, how many are already used, and how many are still available.
+- Use the invite form to add team members: enter an email address and select a role (Owner, Manager, Editor, or Viewer), then click **Send Invite**. Repeat for each person you want to add.
+- Sent invitations appear in the pending-invites list below the form.
+- Click **Send Invites & Continue** to proceed, or **Skip — I'll invite later** if you prefer to set up your team after the wizard.
+
+**Step 3 — Create Your First Project (optional)**
+- Same template picker as Step 2 in the standard flow.
+
+**Step 4 — You're all set**
+- A confirmation screen shows your organization name, total seats, and how many invites were sent during Step 2.
+
+---
+
 The wizard only appears once. After you complete or dismiss it, it will not show again.
 
 > **Abandoned checkout:** If you started a paid subscription checkout but did not complete the Stripe payment, you will see a notice on the onboarding page letting you know. Your free trial is still active — you can subscribe at any time from the **Pricing** page without losing any trial time.
+
+> **Starter templates:** Every new account comes with 6 project templates pre-loaded in your library (Software Development, Construction Project, Marketing Campaign, Product Launch, IT Infrastructure, and Event Planning), so you can create a structured project immediately without building from scratch.
 
 ### Dashboard Overview
 

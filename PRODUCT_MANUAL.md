@@ -1547,6 +1547,23 @@ The New Project wizard includes a **Marketplace** tab alongside the standard tem
 | `POST` | `/api/v1/templates/:id/publish` | Publish one of your org's templates to the marketplace |
 | `POST` | `/api/v1/templates/marketplace/:id/import` | Import a marketplace template into your org |
 
+#### Starter Template Seeding
+
+When a new tenant organization is provisioned, **6 starter project templates** are automatically seeded into the tenant's template library. This gives every new account an immediate set of ready-to-use structures without requiring any manual setup.
+
+| Template | Category |
+|----------|----------|
+| Software Development | IT |
+| Construction Project | Construction |
+| Marketing Campaign | Marketing |
+| Product Launch | Marketing |
+| IT Infrastructure | IT |
+| Event Planning | Operations |
+
+Seeding is **idempotent** — if any of these templates already exist in the tenant's library (e.g., from a prior provisioning attempt), the step is skipped for that template. Seeding failure is **non-fatal**: if the step errors, provisioning continues and the tenant account is still created successfully.
+
+Implemented in: `src/server/services/tenantProvisioner.ts`
+
 ---
 
 ## 19. Integrations
@@ -2538,9 +2555,9 @@ A monitoring cockpit with read-only scope toggle:
 - **Project Cards** — Grid layout with left border colored by health band, health pill, status/priority chips, progress meter, and "View Project" button. Clicking a card navigates to `/project/:id`.
 - **New Project** — Template picker integration for creating projects from templates.
 
-### Onboarding — 3-Step Wizard
+### Onboarding — 3-Step Wizard (Standard Tiers)
 
-New users see a **3-step onboarding wizard** on their first login after registration. The wizard replaces the old single-screen WelcomeModal with a guided setup flow:
+New users on Trial, Consultant Basic, and Consultant Pro tiers see a **3-step onboarding wizard** on their first login after registration. The wizard replaces the old single-screen WelcomeModal with a guided setup flow:
 
 | Step | Content |
 |------|---------|
@@ -2559,6 +2576,21 @@ The `apiService.updateProfile()` call in Step 1 accepts an optional `role` param
 **Abandoned checkout banner:** If a user selects a paid plan, gets redirected to Stripe, and abandons the checkout without completing payment, the onboarding page detects the incomplete checkout state and shows a dismissible banner explaining that the checkout was not completed, with a link to the Pricing page to try again. The banner is cleared automatically on a successful Stripe return or after the user completes Step 1 of onboarding.
 
 Component: `src/client/src/components/onboarding/WelcomeModal.tsx`
+
+### Onboarding — 4-Step Wizard (SME Tier)
+
+SME-tier users get an extended **4-step onboarding wizard** that adds a dedicated Team Setup step between Profile and Project creation, reflecting the multi-user nature of the SME plan.
+
+| Step | Content |
+|------|---------|
+| **Step 1 — Profile & Org Setup** | Same profile fields as the standard wizard (name, role, methodology), plus a **required** Organization Name field. On other tiers the org name field is optional; for SME it must be filled before proceeding. |
+| **Step 2 — Team Setup** (SME only) | Seat summary banner showing total seats purchased, seats already used, and seats still available. An invite form with an email field and a role dropdown (owner / manager / editor / viewer) lets the admin send invitations immediately. Sent invites accumulate in a pending-invites list below the form. Buttons: **Send Invites & Continue** (proceeds after at least one invite is sent) and **Skip — I'll invite later** (proceeds without sending invites). Uses existing APIs: `GET /api/v1/seats` for seat data and `POST /api/v1/org/invite` for each invitation. |
+| **Step 3 — Create First Project** | Same methodology-aware template picker as the standard wizard. |
+| **Step 4 — Done** | Completion screen showing an org summary: organization name, total seats, and the number of invites sent during Step 2, rather than trial countdown info. |
+
+Non-SME tiers are unaffected and continue to use the 3-step flow. The tier is determined at render time from `subscriptionTier === 'sme'` on the authenticated user object.
+
+Component: `src/client/src/components/onboarding/OnboardingPage.tsx`
 
 ### Project Detail Tabs
 
