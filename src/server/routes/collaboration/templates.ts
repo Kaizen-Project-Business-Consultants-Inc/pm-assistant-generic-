@@ -145,11 +145,11 @@ export async function templateRoutes(fastify: FastifyInstance) {
       });
       return reply.status(201).send(result);
     } catch (error: any) {
-      logger.error('Apply template error', { error });
+      logger.error('Apply template error', { error: error.message, stack: error.stack });
       if (error.message === 'Template not found') {
         return reply.status(404).send({ error: 'Template not found' });
       }
-      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to apply template' });
+      return reply.status(500).send({ error: 'Internal server error', message: error.message || 'Failed to apply template' });
     }
   });
 
