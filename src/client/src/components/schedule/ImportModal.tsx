@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { apiService } from '../../services/api';
 import { cleanCsvForImport, sheetToCsv } from '../../utils/csvCleaner';
 import { parseMspdi } from '../../utils/mspdiParser';
+import { ColumnMapper, TARGET_COLUMNS } from './ColumnMapper';
 import { useModal } from '../../hooks/useModal';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 
@@ -42,19 +43,6 @@ interface ExtractedTask {
 
 const DOCUMENT_EXTS = ['pdf', 'docx', 'doc', 'txt'];
 
-const TARGET_COLUMNS = [
-  { value: '', label: '-- skip --' },
-  { value: 'name', label: 'Name' },
-  { value: 'status', label: 'Status' },
-  { value: 'priority', label: 'Priority' },
-  { value: 'startDate', label: 'Start Date' },
-  { value: 'endDate', label: 'End Date' },
-  { value: 'assignedTo', label: 'Assigned To' },
-  { value: 'progressPercentage', label: 'Progress %' },
-  { value: 'estimatedDurationHours', label: 'Est. Duration (hrs)' },
-  { value: 'description', label: 'Description' },
-] as const;
-
 // ---------------------------------------------------------------------------
 // CSV helpers
 // ---------------------------------------------------------------------------
@@ -92,30 +80,6 @@ function parseCSV(text: string): ParsedCSV {
   return { headers, rows };
 }
 
-function autoMap(headers: string[]): Record<number, string> {
-  const map: Record<number, string> = {};
-  const aliases: Record<string, string> = {
-    name: 'name', title: 'name', task: 'name',
-    status: 'status', state: 'status',
-    priority: 'priority',
-    start: 'startDate', startdate: 'startDate', start_date: 'startDate',
-    end: 'endDate', enddate: 'endDate', end_date: 'endDate', due: 'endDate', duedate: 'endDate', due_date: 'endDate',
-    assigned: 'assignedTo', assignedto: 'assignedTo', assigned_to: 'assignedTo', owner: 'assignedTo', assignee: 'assignedTo',
-    progress: 'progressPercentage', progresspercentage: 'progressPercentage', percent: 'progressPercentage',
-    duration: 'estimatedDurationHours', estimateddurationhours: 'estimatedDurationHours', hours: 'estimatedDurationHours',
-    description: 'description', desc: 'description', notes: 'description',
-  };
-  const used = new Set<string>();
-  headers.forEach((h, i) => {
-    const key = h.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const target = aliases[key];
-    if (target && !used.has(target)) {
-      map[i] = target;
-      used.add(target);
-    }
-  });
-  return map;
-}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -164,7 +128,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
     const p = parseCSV(text);
     if (p.headers.length === 0) { setError('CSV appears empty.'); setParsed(null); return; }
     setParsed(p);
-    setColumnMap(autoMap(p.headers));
+    setColumnMap({}); // ColumnMapper will auto-map via its useEffect
   }, []);
 
   const isExcelFile = (file: File) => {
@@ -270,6 +234,9 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
             workbookRef.current = workbook;
             setSheetNames(workbook.SheetNames);
             setSelectedSheet(workbook.SheetNames[0]);
+            // Auto-load first sheet so column mapping appears immediately
+            const csv = sheetToCsv(XLSX, workbook.Sheets[workbook.SheetNames[0]]);
+            loadText(cleanCsvForImport(csv));
           } else {
             const csv = sheetToCsv(XLSX, workbook.Sheets[workbook.SheetNames[0]]);
             loadText(cleanCsvForImport(csv));
@@ -559,25 +526,11 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
               {/* Column mapping & preview */}
               {parsed && (
                 <>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Column Mapping ({mappedCount} mapped)</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {parsed.headers.map((h, i) => (
-                        <div key={i} className="flex flex-col gap-1">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 truncate" title={h}>{h}</span>
-                          <select
-                            value={columnMap[i] ?? ''}
-                            onChange={(e) => setColumnMap((m) => ({ ...m, [i]: e.target.value }))}
-                            className="text-sm rounded border dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-2 py-1"
-                          >
-                            {TARGET_COLUMNS.map((c) => (
-                              <option key={c.value} value={c.value}>{c.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <ColumnMapper
+                    headers={parsed.headers}
+                    mappings={columnMap}
+                    onMappingsChange={setColumnMap}
+                  />
 
                   {/* Preview table */}
                   <div>

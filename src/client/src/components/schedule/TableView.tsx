@@ -156,6 +156,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       endDate: 'endDate', progressPercentage: 'progressPercentage', assignedTo: 'assignedTo',
       duration: 'duration', dependency: 'dependency', notes: 'notes',
       budgetAllocated: 'budgetAllocated', actualCost: 'actualCost',
+      actualStartDate: 'actualStartDate', actualEndDate: 'actualEndDate',
       constraintType: 'constraintType', constraintDate: 'constraintDate',
     };
     return visibleColumns
@@ -212,10 +213,14 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'totalFloat': return cpmMap.get(task.id)?.totalFloat ?? Infinity;
       case 'freeFloat': return cpmMap.get(task.id)?.freeFloat ?? Infinity;
       case 'critical': return cpmMap.get(task.id)?.isCritical ? 0 : 1;
-      case 'baselineStart': return baselineMap.get(task.id)?.baselineStart || '';
-      case 'baselineEnd': return baselineMap.get(task.id)?.baselineEnd || '';
+      case 'baselineStart': return (task as any).baselineStartDate || baselineMap.get(task.id)?.baselineStart || '';
+      case 'baselineEnd': return (task as any).baselineFinishDate || baselineMap.get(task.id)?.baselineEnd || '';
       case 'startVariance': return baselineMap.get(task.id)?.startVarianceDays ?? Infinity;
       case 'endVariance': return baselineMap.get(task.id)?.endVarianceDays ?? Infinity;
+      case 'actualStartDate': return (task as any).actualStartDate || '';
+      case 'actualEndDate': return (task as any).actualEndDate || '';
+      case 'baselineDuration': return (task as any).baselineDurationDays ?? Infinity;
+      case 'baselineCost': return (task as any).baselineCost ?? Infinity;
       default: return '';
     }
   }, [cpmMap, baselineMap]);
@@ -536,6 +541,8 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       }
       case 'budgetAllocated': return (task as any).budgetAllocated != null ? String((task as any).budgetAllocated) : '';
       case 'actualCost': return (task as any).actualCost != null ? String((task as any).actualCost) : '';
+      case 'actualStartDate': return (task as any).actualStartDate || '';
+      case 'actualEndDate': return (task as any).actualEndDate || '';
       case 'constraintType': return (task as any).constraintType || 'ASAP';
       case 'constraintDate': return (task as any).constraintDate || '';
       default: return '';
@@ -571,6 +578,10 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'notes': return task.description || '-';
       case 'budgetAllocated': return (task as any).budgetAllocated != null ? `$${Number((task as any).budgetAllocated).toLocaleString()}` : '-';
       case 'actualCost': return (task as any).actualCost != null ? `$${Number((task as any).actualCost).toLocaleString()}` : '-';
+      case 'actualStartDate': return (task as any).actualStartDate ? formatDate((task as any).actualStartDate) : '-';
+      case 'actualEndDate': return (task as any).actualEndDate ? formatDate((task as any).actualEndDate) : '-';
+      case 'baselineDuration': return (task as any).baselineDurationDays != null ? `${Number((task as any).baselineDurationDays)}d` : '-';
+      case 'baselineCost': return (task as any).baselineCost != null ? `$${Number((task as any).baselineCost).toLocaleString()}` : '-';
       case 'wbs': return wbsMap.get(task.id) || '-';
       case 'rowNum': return String(rowNumMap.get(task.id) || '-');
       default: return '-';
@@ -1369,13 +1380,43 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         );
 
       case 'baselineStart':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{baseline?.baselineStart ? formatDate(baseline.baselineStart) : '-'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{(task as any).baselineStartDate ? formatDate((task as any).baselineStartDate) : baseline?.baselineStart ? formatDate(baseline.baselineStart) : '-'}</td>;
       case 'baselineEnd':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{baseline?.baselineEnd ? formatDate(baseline.baselineEnd) : '-'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{(task as any).baselineFinishDate ? formatDate((task as any).baselineFinishDate) : baseline?.baselineEnd ? formatDate(baseline.baselineEnd) : '-'}</td>;
       case 'startVariance':
         return <td key={col.key} className="px-3 py-2">{renderVarianceBadge(baseline?.startVarianceDays)}</td>;
       case 'endVariance':
         return <td key={col.key} className="px-3 py-2">{renderVarianceBadge(baseline?.endVarianceDays)}</td>;
+
+      case 'actualStartDate':
+      case 'actualEndDate': {
+        const adField = col.key as EditableField;
+        const adVal = (task as any)[col.key] || '';
+        return (
+          <td key={col.key}
+            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${editableCellClass(task.id, adField, task)}`}
+            onClick={() => handleCellClick(task.id, adField, task)}
+          >
+            {isEditing(task.id, adField) ? (
+              <input
+                ref={el => { inputRef.current = el; }}
+                type="date"
+                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 dark:text-gray-100"
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                onKeyDown={e => handleKeyDown(e, task.id, adField)}
+                onBlur={() => saveEdit(task.id, adField, editValue)}
+              />
+            ) : adVal ? formatDate(adVal) : '-'}
+          </td>
+        );
+      }
+
+      case 'baselineDuration':
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 text-right font-mono">{(task as any).baselineDurationDays != null ? `${Number((task as any).baselineDurationDays)}d` : '-'}</td>;
+
+      case 'baselineCost':
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 text-right font-mono">{(task as any).baselineCost != null ? `$${Number((task as any).baselineCost).toLocaleString()}` : '-'}</td>;
 
       case 'dependency': {
         const hasDepError = depError?.taskId === task.id;

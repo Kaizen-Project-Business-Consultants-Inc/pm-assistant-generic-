@@ -3,6 +3,7 @@ export type ColumnKey =
   | 'progressPercentage' | 'assignedTo' | 'duration' | 'earlyStart' | 'earlyFinish'
   | 'lateStart' | 'lateFinish' | 'totalFloat' | 'freeFloat' | 'critical'
   | 'baselineStart' | 'baselineEnd' | 'startVariance' | 'endVariance'
+  | 'actualStartDate' | 'actualEndDate' | 'baselineDuration' | 'baselineCost'
   | 'notes' | 'dependency' | 'successor' | 'wbs' | 'resource'
   | 'budgetAllocated' | 'actualCost' | 'budgetVariance'
   | 'constraintType' | 'constraintDate';
@@ -31,6 +32,8 @@ export const COLUMN_DEFS: ColumnDef[] = [
   { key: 'progressPercentage', label: 'Progress', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'assignedTo', label: 'Assigned To', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'duration', label: 'Duration', group: 'standard', defaultVisible: true, editable: true, sortable: true },
+  { key: 'actualStartDate', label: 'Actual Start', group: 'standard', defaultVisible: false, editable: true, sortable: true },
+  { key: 'actualEndDate', label: 'Actual Finish', group: 'standard', defaultVisible: false, editable: true, sortable: true },
 
   // Scheduling (CPM)
   { key: 'earlyStart', label: 'Early Start', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
@@ -48,6 +51,8 @@ export const COLUMN_DEFS: ColumnDef[] = [
   { key: 'baselineEnd', label: 'Baseline End', group: 'baseline', defaultVisible: false, editable: false, sortable: true },
   { key: 'startVariance', label: 'Start Variance', group: 'baseline', defaultVisible: false, editable: false, sortable: true },
   { key: 'endVariance', label: 'End Variance', group: 'baseline', defaultVisible: false, editable: false, sortable: true },
+  { key: 'baselineDuration', label: 'Baseline Duration', group: 'baseline', defaultVisible: false, editable: false, sortable: true },
+  { key: 'baselineCost', label: 'Baseline Cost', group: 'cost', defaultVisible: false, editable: false, sortable: true },
 
   // Cost
   { key: 'budgetAllocated', label: 'Budget', group: 'cost', defaultVisible: false, editable: true, sortable: true },

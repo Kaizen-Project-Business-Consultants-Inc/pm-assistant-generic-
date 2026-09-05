@@ -108,6 +108,25 @@ export function sheetToCsv(XLSX: any, sheet: any): string {
   ).join('\n');
 }
 
+/**
+ * Detect the meaningful column count by trimming trailing columns whose headers
+ * are purely numeric (e.g. day-number columns in Gantt chart spreadsheets) or empty.
+ * This prevents wide Gantt sheets (500+ columns) from breaking the isDataRow check.
+ */
+function trimGanttColumns(headerCells: string[]): number {
+  let end = headerCells.length;
+  while (end > 0) {
+    const h = headerCells[end - 1].trim();
+    if (h === '' || /^\d+$/.test(h)) {
+      end--;
+    } else {
+      break;
+    }
+  }
+  // If trimming removed everything (unlikely), keep all columns
+  return end > 0 ? end : headerCells.length;
+}
+
 export function cleanCsvForImport(rawCsv: string): string {
   const lines = fixMojibake(rawCsv).split(/\r?\n/).filter(l => l.trim().length > 0);
   if (lines.length === 0) return rawCsv;
@@ -129,14 +148,16 @@ export function cleanCsvForImport(rawCsv: string): string {
     headerIndex = 0;
   }
 
-  const headerCells = splitCsvLine(lines[headerIndex]);
-  const columnCount = headerCells.length;
+  const rawHeaderCells = splitCsvLine(lines[headerIndex]);
+  // Trim trailing Gantt-bar day-number columns
+  const columnCount = trimGanttColumns(rawHeaderCells);
+  const headerCells = rawHeaderCells.slice(0, columnCount);
 
   // Build clean CSV: header + data rows only
   const cleanLines: string[] = [headerCells.map(escapeCsvCell).join(',')];
 
   for (let i = headerIndex + 1; i < lines.length; i++) {
-    const cells = splitCsvLine(lines[i]);
+    const cells = splitCsvLine(lines[i]).slice(0, columnCount);
     if (isDataRow(cells, columnCount)) {
       // Pad or trim to match header column count
       const row = headerCells.map((_, idx) => escapeCsvCell(cells[idx] || ''));

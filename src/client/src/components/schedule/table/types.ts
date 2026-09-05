@@ -4,7 +4,7 @@ import type { ColumnState } from '../../../hooks/useColumnState';
 
 export type SortDir = 'asc' | 'desc';
 export type GroupByField = '' | 'status' | 'priority' | 'assignedTo';
-export type EditableField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progressPercentage' | 'assignedTo' | 'dependency' | 'duration' | 'budgetAllocated' | 'actualCost' | 'constraintType' | 'constraintDate' | 'notes';
+export type EditableField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progressPercentage' | 'assignedTo' | 'dependency' | 'duration' | 'budgetAllocated' | 'actualCost' | 'constraintType' | 'constraintDate' | 'notes' | 'actualStartDate' | 'actualEndDate';
 
 export interface CpmTaskData {
   taskId: string;

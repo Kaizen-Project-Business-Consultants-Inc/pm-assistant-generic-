@@ -237,6 +237,28 @@ Tasks can have multiple resource assignments (`task_assignments` table):
 
 The primary assignee is denormalized to `tasks.assigned_to` for backward compatibility. Assignments are bulk-loaded alongside dependencies for efficient queries. The Task Form modal provides a multi-resource editor with add/remove rows, allocation percentage, and role fields.
 
+### Actual Dates
+
+Each task records when work actually started and finished:
+
+- `actual_start_date` — automatically set to today when a task's status transitions to `in_progress`. Can also be edited inline in the Gantt table or Table view.
+- `actual_end_date` — automatically set to today when a task's status transitions to `completed`. Can also be edited inline.
+
+Both fields are importable via Excel/CSV. The column mapper recognizes header aliases "Actual Start" and "Actual Finish" (and common variants). In the Gantt table column picker, Actual Start and Actual Finish appear in the **Standard** column group and are toggleable.
+
+### Baseline Fields (Task-Level)
+
+When a baseline snapshot is created, the following fields are stamped on each task row:
+
+- `baseline_start_date` — the task's planned start at time of baseline
+- `baseline_finish_date` — the task's planned finish at time of baseline
+- `baseline_duration_days` — the task's planned duration (days) at time of baseline
+- `baseline_cost` — the task's planned cost at time of baseline
+
+These fields persist on the task record itself, so baseline start/finish data survives even if the baseline snapshot is later deleted. The Gantt table and Table view expose Baseline Start and Baseline Finish as toggleable columns in the **Baseline** column group; when task-level baseline fields are populated they take precedence over the baseline snapshot map. Baseline Duration and Baseline Cost are toggleable columns in the **Baseline/Cost** groups.
+
+All four baseline fields are importable via Excel/CSV — the column mapper recognizes "Baseline Start", "Baseline Finish", "Baseline Duration", and "Baseline Cost".
+
 ### Baselines
 
 The `BaselineService` captures point-in-time snapshots of a schedule. Each baseline records every task's start date, end date, estimated days, progress, and status. Baselines are immutable once created and are persisted to the database (`schedule_baselines` and `baseline_tasks` tables), so they survive server restarts. The `BaselineRepository` handles all CRUD operations.
@@ -2275,10 +2297,16 @@ When writing a task comment, typing `@` opens an autocomplete dropdown listing p
 Tasks can be imported in bulk from a CSV or Excel file via `POST /api/v1/schedules/:id/import`. The UI provides:
 
 1. **Upload or paste** — drag-and-drop a `.csv`, `.xlsx`, or `.xls` file (max 5MB) or paste raw CSV text.
-2. **Sheet selection** — for multi-sheet Excel files, a dropdown lets you choose which sheet to import.
-3. **Column mapping** — map columns to task fields (name, start date, end date, estimated days, status, priority, assignee).
+2. **Sheet selection** — for multi-sheet Excel files, a dropdown lets you choose which sheet to import. The first sheet is auto-loaded.
+3. **Smart column mapping** — three-layer automatic mapping with manual override:
+   - **Layer 1 — Exact alias match**: Dictionary of known synonyms (e.g., "Activity" → Name, "Responsibility" → Assigned To, "Planned Start Date" → Start Date).
+   - **Layer 2 — Fuzzy matching**: Levenshtein distance comparison catches misspellings and abbreviations (e.g., "Stat Date" → Start Date). Threshold: distance ≤ 3.
+   - **Layer 3 — AI suggestions**: Claude analyzes remaining unmapped column headers and suggests mappings asynchronously. AI-suggested mappings show a sparkle badge. Graceful fallback if AI is unavailable.
+   - Users can manually override any mapping via dropdown selectors.
 4. **Preview** — inspect the parsed rows before committing.
 5. **Import** — valid rows are created as tasks via `scheduleService.createTask()` (with full dependency validation, audit logging, workflow triggers, sort order management, and WebSocket broadcasts); errors are reported per-row.
+
+The column mapping component (`ColumnMapper`) is shared between the "From File" project creation flow and the schedule-level ImportModal for re-imports on existing schedules.
 
 **Guardrails:**
 - **Schedule validation** — the target schedule must exist (404 otherwise).
@@ -2553,7 +2581,7 @@ A monitoring cockpit with read-only scope toggle:
 
 - **Filter Bar** — Search by name, filter by health band (Healthy/Warning/Critical) and status (Active/Planning/On Hold/Completed).
 - **Project Cards** — Grid layout with left border colored by health band, health pill, status/priority chips, progress meter, and "View Project" button. Clicking a card navigates to `/project/:id`.
-- **New Project** — Template picker integration for creating projects from templates.
+- **New Project** — Unified project creation flow with three options: **Blank Project** (empty project), **From File** (import Excel/CSV with smart column mapping), and **From Template** (category-based template selection). The "From File" flow guides users through file upload, column mapping (with fuzzy matching and AI-assisted suggestions), and project details before creating the project with an imported schedule in one action.
 
 ### Onboarding — 3-Step Wizard (Standard Tiers)
 

@@ -1,5 +1,6 @@
 import { scheduleService } from './ScheduleService';
 import { baselineRepository } from '../database/BaselineRepository';
+import { databaseService } from '../database/connection';
 
 export interface BaselineTask {
   taskId: string;
@@ -103,6 +104,17 @@ export class BaselineService {
     };
 
     await baselineRepository.create(baseline);
+
+    // Stamp task-level baseline fields for MPP parity
+    for (const t of tasks) {
+      const startDate = t.startDate ? t.startDate.slice(0, 10) : null;
+      const endDate = t.endDate ? t.endDate.slice(0, 10) : null;
+      await databaseService.query(
+        `UPDATE tasks SET baseline_start_date = ?, baseline_finish_date = ?, baseline_duration_days = ?, baseline_cost = ? WHERE id = ?`,
+        [startDate, endDate, t.estimatedDays ?? null, t.budgetAllocated ?? null, t.id],
+      );
+    }
+
     return baseline;
   }
 

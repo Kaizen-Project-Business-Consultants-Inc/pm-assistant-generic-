@@ -2992,6 +2992,19 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  async suggestColumns(
+    headers: string[],
+    unmappedHeaders: string[],
+    targetFields: string[],
+  ): Promise<Record<string, string>> {
+    const response = await this.api.post('/schedules/suggest-columns', {
+      headers,
+      unmappedHeaders,
+      targetFields,
+    });
+    return response.data?.suggestions ?? {};
+  }
+
   // -------------------------------------------------------------------------
   // User Preferences (timezone, locale)
   // -------------------------------------------------------------------------

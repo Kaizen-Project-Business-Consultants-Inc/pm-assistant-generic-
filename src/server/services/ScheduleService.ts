@@ -52,6 +52,12 @@ export interface Task {
   actualDurationHours?: number;
   startDate?: string;
   endDate?: string;
+  actualStartDate?: string;
+  actualEndDate?: string;
+  baselineStartDate?: string;
+  baselineFinishDate?: string;
+  baselineDurationDays?: number;
+  baselineCost?: number;
   progressPercentage?: number;
   /** @deprecated Use dependencies[] instead. Kept for backward compat — synced from first dep. */
   dependency?: string;
@@ -110,6 +116,12 @@ export interface CreateTaskData {
   actualDurationHours?: number;
   startDate?: Date | string;
   endDate?: Date | string;
+  actualStartDate?: Date | string;
+  actualEndDate?: Date | string;
+  baselineStartDate?: Date | string;
+  baselineFinishDate?: Date | string;
+  baselineDurationDays?: number;
+  baselineCost?: number;
   progressPercentage?: number;
   /** @deprecated Use dependencies[] instead */
   dependency?: string;
@@ -528,11 +540,13 @@ export class ScheduleService {
       await q(
         `INSERT INTO tasks (id, schedule_id, name, description, acceptance_criteria, status, priority, task_type, assigned_to,
           due_date, estimated_days, estimated_duration_hours, actual_duration_hours,
-          start_date, end_date, progress_percentage, dependency, dependency_type,
+          start_date, end_date, actual_start_date, actual_end_date,
+          baseline_start_date, baseline_finish_date, baseline_duration_days, baseline_cost,
+          progress_percentage, dependency, dependency_type,
           risks, issues, comments, parent_task_id, epic_id, is_milestone, dependency_lag_days, sort_order, created_by,
           recurrence_rule, recurrence_parent_id, is_recurrence_template, budget_allocated, actual_cost,
           constraint_type, constraint_date, work_hours, effort_driven, is_summary)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           data.scheduleId,
@@ -549,6 +563,12 @@ export class ScheduleService {
           data.actualDurationHours ?? null,
           toDateStr(data.startDate),
           toDateStr(data.endDate),
+          toDateStr(data.actualStartDate) || null,
+          toDateStr(data.actualEndDate) || null,
+          toDateStr(data.baselineStartDate) || null,
+          toDateStr(data.baselineFinishDate) || null,
+          data.baselineDurationDays ?? null,
+          data.baselineCost ?? null,
           data.progressPercentage ?? 0,
           legacyDepId,
           legacyDepType,
@@ -672,6 +692,12 @@ export class ScheduleService {
       actualDurationHours: 'actual_duration_hours',
       startDate: 'start_date',
       endDate: 'end_date',
+      actualStartDate: 'actual_start_date',
+      actualEndDate: 'actual_end_date',
+      baselineStartDate: 'baseline_start_date',
+      baselineFinishDate: 'baseline_finish_date',
+      baselineDurationDays: 'baseline_duration_days',
+      baselineCost: 'baseline_cost',
       progressPercentage: 'progress_percentage',
       dependency: 'dependency',
       dependencyType: 'dependency_type',
@@ -704,6 +730,21 @@ export class ScheduleService {
       if (!isNaN(start.getTime())) {
         start.setDate(start.getDate() + effectiveEstDays);
         data.endDate = start.toISOString().split('T')[0];
+      }
+    }
+
+    // Auto-populate actual dates on status transitions
+    if (data.status && data.status !== oldTask.status) {
+      const today = new Date().toISOString().split('T')[0];
+      if (data.status === 'in_progress' && !oldTask.actualStartDate && data.actualStartDate === undefined) {
+        data.actualStartDate = today;
+      }
+      if (data.status === 'completed' && !oldTask.actualEndDate && data.actualEndDate === undefined) {
+        data.actualEndDate = today;
+        // Also set actualStartDate if it was never set
+        if (!oldTask.actualStartDate && data.actualStartDate === undefined) {
+          data.actualStartDate = today;
+        }
       }
     }
 

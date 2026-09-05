@@ -8,7 +8,6 @@ import {
   Landmark,
   Route,
   Layout,
-  FileText,
   AlertCircle,
   Upload,
   CheckCircle2,
@@ -16,12 +15,15 @@ import {
   Briefcase,
   Store,
   Download,
+  Plus,
+  FolderOpen,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { apiService } from '../../services/api';
 import { TemplateCard } from './TemplateCard';
 import { TemplatePreview } from './TemplatePreview';
 import { TemplateCustomizeForm } from './TemplateCustomizeForm';
+import { ColumnMapper } from '../schedule/ColumnMapper';
 import { cleanCsvForImport, sheetToCsv } from '../../utils/csvCleaner';
 import { useModal } from '../../hooks/useModal';
 
@@ -30,7 +32,16 @@ interface TemplatePickerProps {
   onClose: () => void;
 }
 
-type Step = 'category' | 'template' | 'preview' | 'customize' | 'scratch';
+type Step =
+  | 'start'       // NEW: 3-option start screen
+  | 'category'    // template category selection
+  | 'template'    // template grid
+  | 'preview'     // template preview
+  | 'customize'   // template customize form
+  | 'scratch'     // blank project form
+  | 'file-upload' // NEW: file upload for "From File"
+  | 'file-map'    // NEW: column mapping for "From File"
+  | 'file-details'; // NEW: project details for "From File"
 
 const categories = [
   { key: 'it', label: 'IT & Software', icon: Monitor, color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800' },
@@ -43,16 +54,60 @@ const categories = [
   { key: 'marketplace', label: 'Marketplace', icon: Store, color: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800' },
 ];
 
+// ---------------------------------------------------------------------------
+// CSV helpers (for parsing file in "From File" flow)
+// ---------------------------------------------------------------------------
+
+interface ParsedCSV {
+  headers: string[];
+  rows: string[][];
+}
+
+function parseCSV(text: string): ParsedCSV {
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length === 0) return { headers: [], rows: [] };
+
+  const split = (line: string): string[] => {
+    const result: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; } else { inQuotes = !inQuotes; }
+      } else if (ch === ',' && !inQuotes) { result.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    result.push(cur.trim());
+    return result;
+  };
+
+  const headers = split(lines[0]);
+  const rows = lines.slice(1).map(split);
+  return { headers, rows };
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState<Step>('category');
+  const [step, setStep] = useState<Step>('start');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [scratchSubmitting, setScratchSubmitting] = useState(false);
+
+  // "From File" flow state
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [parsedCsvText, setParsedCsvText] = useState<string | null>(null);
-  const [scratchSubmitting, setScratchSubmitting] = useState(false);
+  const [fileParsed, setFileParsed] = useState<ParsedCSV | null>(null);
+  const [columnMap, setColumnMap] = useState<Record<number, string>>({});
+  const [sheetNames, setSheetNames] = useState<string[]>([]);
+  const [selectedSheet, setSelectedSheet] = useState('');
+  const workbookRef = useRef<XLSX.WorkBook | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isExcelFile = (file: File) => {
@@ -62,18 +117,47 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
       file.type === 'application/vnd.ms-excel';
   };
 
+  const loadCsvText = useCallback((csv: string, fileName: string) => {
+    const cleaned = cleanCsvForImport(csv);
+    setParsedCsvText(cleaned);
+    setUploadedFileName(fileName);
+    const p = parseCSV(cleaned);
+    if (p.headers.length === 0) {
+      setErrorMessage('File appears empty or has no recognizable columns.');
+      return;
+    }
+    setFileParsed(p);
+    setStep('file-map');
+  }, []);
+
   const handleFileUpload = useCallback((file: File) => {
     setErrorMessage(null);
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      setErrorMessage(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 5MB.`);
+      return;
+    }
+
     if (isExcelFile(file)) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const csv = sheetToCsv(XLSX, workbook.Sheets[sheetName]);
-          setParsedCsvText(cleanCsvForImport(csv));
-          setUploadedFileName(file.name);
+          if (workbook.SheetNames.length === 0) {
+            setErrorMessage('Excel file has no sheets.');
+            return;
+          }
+
+          if (workbook.SheetNames.length > 1) {
+            workbookRef.current = workbook;
+            setSheetNames(workbook.SheetNames);
+            setSelectedSheet(workbook.SheetNames[0]);
+          }
+
+          // Load first sheet
+          const csv = sheetToCsv(XLSX, workbook.Sheets[workbook.SheetNames[0]]);
+          loadCsvText(csv, file.name);
         } catch {
           setErrorMessage('Failed to parse Excel file.');
         }
@@ -83,27 +167,27 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target?.result as string;
-        setParsedCsvText(cleanCsvForImport(text));
-        setUploadedFileName(file.name);
+        loadCsvText(text, file.name);
       };
       reader.readAsText(file);
     } else {
       setErrorMessage('Please upload a .csv, .xlsx, or .xls file.');
     }
-  }, []);
+  }, [loadCsvText]);
 
-  const clearFile = useCallback(() => {
-    setUploadedFileName(null);
-    setParsedCsvText(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, []);
+  const handleSheetSelect = (name: string) => {
+    setSelectedSheet(name);
+    if (workbookRef.current) {
+      const csv = sheetToCsv(XLSX, workbookRef.current.Sheets[name]);
+      loadCsvText(csv, uploadedFileName || 'file');
+    }
+  };
 
   const isMarketplace = selectedCategory === 'marketplace';
 
   const { data: templatesData, isError: isTemplatesError } = useQuery({
     queryKey: ['templates', selectedCategory],
     queryFn: () => {
-      // For marketing/operations, query 'other' project type with category filter
       if (selectedCategory === 'marketing' || selectedCategory === 'operations') {
         return apiService.getTemplates('other', selectedCategory);
       }
@@ -162,12 +246,17 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
   });
 
   const resetState = () => {
-    setStep('category');
+    setStep('start');
     setSelectedCategory(null);
     setSelectedTemplateId(null);
     setErrorMessage(null);
     setUploadedFileName(null);
     setParsedCsvText(null);
+    setFileParsed(null);
+    setColumnMap({});
+    setSheetNames([]);
+    setSelectedSheet('');
+    workbookRef.current = null;
     setScratchSubmitting(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -181,10 +270,6 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
 
   const handleCategorySelect = (key: string) => {
     setErrorMessage(null);
-    if (key === 'scratch') {
-      setStep('scratch');
-      return;
-    }
     setSelectedCategory(key);
     setStep('template');
   };
@@ -211,13 +296,11 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
   }) => {
     setErrorMessage(null);
     if (!selectedTemplateId) return;
-    applyMutation.mutate({
-      templateId: selectedTemplateId,
-      ...data,
-    });
+    applyMutation.mutate({ templateId: selectedTemplateId, ...data });
   };
 
-  const handleBlankProjectSubmit = async (data: {
+  // "From File" project creation: create project + schedule + import with column map
+  const handleFileProjectSubmit = async (data: {
     projectName: string;
     startDate: string;
     budget?: number;
@@ -228,7 +311,6 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
     setErrorMessage(null);
     setScratchSubmitting(true);
     try {
-      // 1. Create the project
       const result = await apiService.createProject({
         name: data.projectName,
         status: 'planning',
@@ -240,8 +322,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
       });
       const projectId = result.project?.id || result.id;
 
-      // 2. If file was uploaded, create schedule + import tasks
-      if (parsedCsvText && projectId) {
+      if (parsedCsvText && projectId && fileParsed) {
         try {
           const endDate = new Date(data.startDate);
           endDate.setFullYear(endDate.getFullYear() + 1);
@@ -253,15 +334,53 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
           });
           const scheduleId = schedule.schedule?.id || schedule.id;
           if (scheduleId) {
-            await apiService.importTasks(scheduleId, parsedCsvText);
+            // Build header-name-based column map from index-based
+            const headerMap: Record<string, string> = {};
+            for (const [idx, field] of Object.entries(columnMap)) {
+              if (field && fileParsed.headers[Number(idx)]) {
+                headerMap[fileParsed.headers[Number(idx)]] = field;
+              }
+            }
+            await apiService.importTasks(scheduleId, parsedCsvText, headerMap);
           }
         } catch {
-          // Project was created successfully, but import failed — still navigate
           console.warn('Schedule creation or task import failed, but project was created.');
         }
       }
 
-      // 3. Navigate to the new project
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      onClose();
+      resetState();
+      if (projectId) navigate(`/project/${projectId}`, { state: { showReadiness: true } });
+    } catch {
+      setErrorMessage('Failed to create project. Please try again.');
+    } finally {
+      setScratchSubmitting(false);
+    }
+  };
+
+  // Blank project creation (no file)
+  const handleBlankProjectSubmit = async (data: {
+    projectName: string;
+    startDate: string;
+    budget?: number;
+    priority: string;
+    methodology?: string;
+    location?: string;
+  }) => {
+    setErrorMessage(null);
+    setScratchSubmitting(true);
+    try {
+      const result = await apiService.createProject({
+        name: data.projectName,
+        status: 'planning',
+        priority: data.priority,
+        methodology: data.methodology,
+        budgetAllocated: data.budget,
+        startDate: data.startDate,
+        location: data.location,
+      });
+      const projectId = result.project?.id || result.id;
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       onClose();
       resetState();
@@ -276,24 +395,55 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
   if (!isOpen) return null;
 
   const stepTitles: Record<Step, string> = {
-    category: 'New Project',
+    start: 'New Project',
+    category: 'Choose a Category',
     template: 'Choose a Template',
     preview: 'Template Preview',
     customize: 'Customize Your Project',
     scratch: 'New Blank Project',
+    'file-upload': 'Import from File',
+    'file-map': 'Map Columns',
+    'file-details': 'Project Details',
   };
 
-  const stepNumber = step === 'category' ? 0 : (step === 'template' || step === 'preview') ? 1 : 2;
-  const stepIndicators = [
-    { label: 'Category', active: step === 'category', completed: stepNumber > 0 },
-    { label: 'Template', active: step === 'template' || step === 'preview', completed: stepNumber > 1 },
-    { label: 'Create', active: step === 'customize' || step === 'scratch', completed: false },
-  ];
+  // Compute step indicators based on which flow we're in
+  let stepIndicators: { label: string; active: boolean; completed: boolean }[];
+  if (step.startsWith('file')) {
+    const fileStepNum = step === 'file-upload' ? 0 : step === 'file-map' ? 1 : 2;
+    stepIndicators = [
+      { label: 'Upload', active: step === 'file-upload', completed: fileStepNum > 0 },
+      { label: 'Map', active: step === 'file-map', completed: fileStepNum > 1 },
+      { label: 'Create', active: step === 'file-details', completed: false },
+    ];
+  } else if (step === 'scratch') {
+    stepIndicators = [
+      { label: 'Type', active: false, completed: true },
+      { label: 'Create', active: true, completed: false },
+    ];
+  } else {
+    const templateStepNum = step === 'start' ? 0 : (step === 'category' || step === 'template' || step === 'preview') ? 1 : 2;
+    stepIndicators = [
+      { label: 'Type', active: step === 'start', completed: templateStepNum > 0 },
+      { label: 'Template', active: step === 'category' || step === 'template' || step === 'preview', completed: templateStepNum > 1 },
+      { label: 'Create', active: step === 'customize', completed: false },
+    ];
+  }
+
+  const previewRows = fileParsed?.rows.slice(0, 5) ?? [];
+  const mappedCount = Object.values(columnMap).filter(Boolean).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={handleClose} aria-hidden="true" />
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={stepTitles[step]} onKeyDown={handleKeyDown} tabIndex={-1} className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-full sm:max-w-2xl mx-2 sm:mx-4 max-h-[85vh] flex flex-col">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={stepTitles[step]}
+        onKeyDown={handleKeyDown}
+        tabIndex={-1}
+        className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-full sm:max-w-2xl mx-2 sm:mx-4 max-h-[85vh] flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
           <div>
@@ -335,33 +485,239 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
             </div>
           )}
 
-          {/* Step 1: Category Selection */}
-          {step === 'category' && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {categories.map((cat) => {
-                const Icon = cat.icon;
-                return (
-                  <button
-                    key={cat.key}
-                    onClick={() => handleCategorySelect(cat.key)}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all hover:shadow-md ${cat.color}`}
-                  >
-                    <Icon className="w-8 h-8" />
-                    <span className="text-sm font-medium">{cat.label}</span>
-                  </button>
-                );
-              })}
+          {/* ============================================================ */}
+          {/* START: 3-option start screen                                 */}
+          {/* ============================================================ */}
+          {step === 'start' && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Blank Project */}
               <button
-                onClick={() => handleCategorySelect('scratch')}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-500 transition-all"
+                onClick={() => setStep('scratch')}
+                className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-md transition-all group"
               >
-                <FileText className="w-8 h-8" />
-                <span className="text-sm font-medium">Start from Scratch</span>
+                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center group-hover:bg-primary-50 dark:group-hover:bg-primary-900/30 transition-colors">
+                  <Plus className="w-6 h-6 text-gray-500 dark:text-gray-400 group-hover:text-primary-600 dark:group-hover:text-primary-400" />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Blank Project</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Start with an empty project</p>
+                </div>
+              </button>
+
+              {/* From File */}
+              <button
+                onClick={() => setStep('file-upload')}
+                className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all group"
+              >
+                <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 transition-colors">
+                  <Upload className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">From File</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Import from Excel or CSV</p>
+                </div>
+              </button>
+
+              {/* From Template */}
+              <button
+                onClick={() => setStep('category')}
+                className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 hover:shadow-md transition-all group"
+              >
+                <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center group-hover:bg-green-100 dark:group-hover:bg-green-900/30 transition-colors">
+                  <FolderOpen className="w-6 h-6 text-green-500 dark:text-green-400" />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">From Template</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Use a pre-built template</p>
+                </div>
               </button>
             </div>
           )}
 
-          {/* Step 2: Template Grid */}
+          {/* ============================================================ */}
+          {/* FILE-UPLOAD: drag-and-drop file upload                       */}
+          {/* ============================================================ */}
+          {step === 'file-upload' && (
+            <div>
+              <button
+                onClick={() => { setStep('start'); setUploadedFileName(null); setParsedCsvText(null); setFileParsed(null); setSheetNames([]); }}
+                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-4 flex items-center gap-1"
+              >
+                &larr; Back
+              </button>
+              <div
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const file = e.dataTransfer.files[0];
+                  if (file) handleFileUpload(file);
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center justify-center gap-3 p-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors"
+              >
+                <Upload className="w-10 h-10 text-gray-400 dark:text-gray-500" />
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop your file here, or <span className="text-blue-600 font-medium">browse</span></p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">.xlsx, .xls, or .csv (max 5MB)</p>
+                </div>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+              />
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* FILE-MAP: Column mapping with preview                        */}
+          {/* ============================================================ */}
+          {step === 'file-map' && fileParsed && (
+            <div className="space-y-4">
+              <button
+                onClick={() => { setStep('file-upload'); setFileParsed(null); setParsedCsvText(null); setUploadedFileName(null); setColumnMap({}); setSheetNames([]); workbookRef.current = null; }}
+                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1"
+              >
+                &larr; Change file
+              </button>
+
+              {/* File name badge */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <span className="text-sm text-blue-700 dark:text-blue-400 flex-1 truncate">{uploadedFileName}</span>
+                <span className="text-xs text-blue-500">{fileParsed.rows.length} rows</span>
+              </div>
+
+              {/* Sheet selector for multi-sheet Excel files */}
+              {sheetNames.length > 1 && (
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Select Sheet</label>
+                  <select
+                    value={selectedSheet}
+                    onChange={(e) => handleSheetSelect(e.target.value)}
+                    className="text-sm rounded border dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 w-full"
+                  >
+                    {sheetNames.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Column Mapper */}
+              <ColumnMapper
+                headers={fileParsed.headers}
+                mappings={columnMap}
+                onMappingsChange={setColumnMap}
+              />
+
+              {/* Preview table */}
+              {previewRows.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Preview (first {previewRows.length} of {fileParsed.rows.length} rows)
+                  </h3>
+                  <div className="overflow-x-auto border dark:border-gray-700 rounded-lg max-h-[25vh] overflow-y-auto">
+                    <table className="min-w-full text-xs">
+                      <thead className="sticky top-0">
+                        <tr className="bg-gray-50 dark:bg-gray-700">
+                          {fileParsed.headers.map((h, i) => (
+                            <th key={i} className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                              {h}
+                              {columnMap[i] && <span className="ml-1 text-blue-500 text-[10px]">({columnMap[i]})</span>}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewRows.map((row, ri) => (
+                          <tr key={ri} className="border-t dark:border-gray-700 even:bg-gray-50 dark:even:bg-gray-700/30">
+                            {fileParsed.headers.map((_, ci) => (
+                              <td key={ci} className="px-3 py-1.5 text-gray-800 dark:text-gray-200 whitespace-nowrap max-w-[200px] truncate">
+                                {row[ci] ?? ''}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Next button */}
+              <div className="flex items-center justify-end pt-2">
+                <button
+                  disabled={mappedCount === 0}
+                  onClick={() => setStep('file-details')}
+                  className="px-5 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next: Project Details
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* FILE-DETAILS: Project details form (reuse TemplateCustomize) */}
+          {/* ============================================================ */}
+          {step === 'file-details' && (
+            <TemplateCustomizeForm
+              templateName=""
+              estimatedDurationDays={0}
+              phaseCount={0}
+              taskCount={fileParsed?.rows.length ?? 0}
+              tasks={[]}
+              onBack={() => setStep('file-map')}
+              onSubmit={handleFileProjectSubmit}
+              isSubmitting={scratchSubmitting}
+              extraContent={
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  <span className="text-xs text-blue-700 dark:text-blue-400 truncate">{uploadedFileName} — {fileParsed?.rows.length ?? 0} tasks, {mappedCount} columns mapped</span>
+                </div>
+              }
+            />
+          )}
+
+          {/* ============================================================ */}
+          {/* CATEGORY: Template category selection                        */}
+          {/* ============================================================ */}
+          {step === 'category' && (
+            <div>
+              <button
+                onClick={() => setStep('start')}
+                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-3 flex items-center gap-1"
+              >
+                &larr; Back
+              </button>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {categories.map((cat) => {
+                  const Icon = cat.icon;
+                  return (
+                    <button
+                      key={cat.key}
+                      onClick={() => handleCategorySelect(cat.key)}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all hover:shadow-md ${cat.color}`}
+                    >
+                      <Icon className="w-8 h-8" />
+                      <span className="text-sm font-medium">{cat.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* TEMPLATE: Template Grid                                      */}
+          {/* ============================================================ */}
           {step === 'template' && !isMarketplace && (
             <div>
               <button
@@ -393,7 +749,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
             </div>
           )}
 
-          {/* Step 2: Marketplace Grid */}
+          {/* Marketplace Grid */}
           {step === 'template' && isMarketplace && (
             <div>
               <button
@@ -448,7 +804,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
             </div>
           )}
 
-          {/* Step 2b: Preview */}
+          {/* Preview */}
           {step === 'preview' && template && (
             <TemplatePreview
               template={template}
@@ -457,7 +813,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
             />
           )}
 
-          {/* Step 3: Customize */}
+          {/* Customize (from template) */}
           {step === 'customize' && template && (
             <TemplateCustomizeForm
               templateName={template.name}
@@ -472,7 +828,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
             />
           )}
 
-          {/* Step 3b: Blank Project */}
+          {/* Blank Project */}
           {step === 'scratch' && (
             <TemplateCustomizeForm
               templateName=""
@@ -480,57 +836,9 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
               phaseCount={0}
               taskCount={0}
               tasks={[]}
-              onBack={() => setStep('category')}
+              onBack={() => setStep('start')}
               onSubmit={handleBlankProjectSubmit}
               isSubmitting={scratchSubmitting}
-              extraContent={
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    <Upload className="w-3 h-3 inline mr-1" />
-                    Import Schedule (optional)
-                  </label>
-                  {uploadedFileName ? (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-                      <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                      <span className="text-sm text-green-700 flex-1 truncate">{uploadedFileName}</span>
-                      <button
-                        type="button"
-                        onClick={clearFile}
-                        className="text-xs text-gray-500 hover:text-red-600 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-colors"
-                      onClick={() => fileInputRef.current?.click()}
-                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const file = e.dataTransfer.files[0];
-                        if (file) handleFileUpload(file);
-                      }}
-                    >
-                      <Upload className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-                      <p className="text-xs text-gray-500">
-                        Drop .xlsx or .csv here, or <span className="text-primary-600 font-medium">browse</span>
-                      </p>
-                    </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".csv,.xlsx,.xls"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file);
-                    }}
-                  />
-                </div>
-              }
             />
           )}
         </div>

@@ -58,8 +58,9 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
   }, [viewModeKey]);
   const [uploadingSchedule, setUploadingSchedule] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const scheduleFileRef = useRef<HTMLInputElement>(null);
+
   const [selectedScheduleIdx, setSelectedScheduleIdx] = useState(0);
+  const [openImportOnLoad, setOpenImportOnLoad] = useState(false);
 
   const { data: schedulesData, isLoading: schedulesLoading } = useQuery({
     queryKey: ['schedules', projectId],
@@ -69,54 +70,6 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
 
   const schedules: any[] = schedulesData?.schedules || [];
 
-  const handleScheduleFileUpload = useCallback(async (file: File) => {
-    setUploadError(null);
-    setUploadingSchedule(true);
-    try {
-      let csvText: string;
-      const ext = file.name.toLowerCase().split('.').pop();
-      const isExcel = ext === 'xlsx' || ext === 'xls' || ext === 'xlsb' ||
-        file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-        file.type === 'application/vnd.ms-excel';
-
-      if (isExcel) {
-        const XLSX = await import('xlsx');
-        const { cleanCsvForImport, sheetToCsv } = await import('../../utils/csvCleaner');
-        const buffer = await file.arrayBuffer();
-        const data = new Uint8Array(buffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        csvText = cleanCsvForImport(sheetToCsv(XLSX, workbook.Sheets[workbook.SheetNames[0]]));
-      } else if (ext === 'csv') {
-        const { cleanCsvForImport } = await import('../../utils/csvCleaner');
-        csvText = cleanCsvForImport(await file.text());
-      } else {
-        setUploadError('Please upload a .csv, .xlsx, or .xls file.');
-        setUploadingSchedule(false);
-        return;
-      }
-
-      const startDate = projectStartDate || new Date().toISOString().split('T')[0];
-      const endDate = new Date(startDate);
-      endDate.setFullYear(endDate.getFullYear() + 1);
-
-      const schedule = await apiService.createSchedule({
-        projectId,
-        name: `${projectName || 'Project'} Schedule`,
-        startDate,
-        endDate: endDate.toISOString().split('T')[0],
-      });
-      const scheduleId = schedule.schedule?.id || schedule.id;
-      if (scheduleId) {
-        await apiService.importTasks(scheduleId, csvText);
-      }
-      queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
-    } catch {
-      setUploadError('Failed to create schedule or import tasks.');
-    } finally {
-      setUploadingSchedule(false);
-      if (scheduleFileRef.current) scheduleFileRef.current.value = '';
-    }
-  }, [projectId, projectName, projectStartDate, queryClient]);
 
   if (schedulesLoading) {
     return (
@@ -173,26 +126,35 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
           </button>
           <span className="text-xs text-gray-400 dark:text-gray-500">or</span>
           <button
-            onClick={() => scheduleFileRef.current?.click()}
+            onClick={async () => {
+              setUploadingSchedule(true);
+              try {
+                const startDate = projectStartDate || new Date().toISOString().split('T')[0];
+                const endDate = new Date(startDate);
+                endDate.setFullYear(endDate.getFullYear() + 1);
+                await apiService.createSchedule({
+                  projectId,
+                  name: `${projectName || 'Project'} Schedule`,
+                  startDate,
+                  endDate: endDate.toISOString().split('T')[0],
+                });
+                setOpenImportOnLoad(true);
+                queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+              } catch {
+                setUploadError('Failed to create schedule.');
+              } finally {
+                setUploadingSchedule(false);
+              }
+            }}
             disabled={uploadingSchedule}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:bg-gray-300 rounded-lg transition-colors"
           >
             <Upload className="w-4 h-4" />
-            {uploadingSchedule ? 'Importing…' : 'Upload Schedule (.xlsx / .csv)'}
+            {uploadingSchedule ? 'Creating…' : 'Import Schedule (.xlsx / .csv)'}
           </button>
           {uploadError && (
             <p className="text-xs text-red-600">{uploadError}</p>
           )}
-          <input
-            ref={scheduleFileRef}
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleScheduleFileUpload(file);
-            }}
-          />
         </div>
       </div>
     );
@@ -252,7 +214,7 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
         )}
       </div>
 
-      <ScheduleGantt key={schedules[safeIdx].id} schedule={schedules[safeIdx]} viewMode={viewMode} projectId={projectId} />
+      <ScheduleGantt key={schedules[safeIdx].id} schedule={schedules[safeIdx]} viewMode={viewMode} projectId={projectId} openImportOnLoad={openImportOnLoad} onImportOpened={() => setOpenImportOnLoad(false)} />
     </div>
   );
 }
@@ -346,13 +308,19 @@ function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule, desktopV
   );
 }
 
-function ScheduleGantt({ schedule, viewMode, projectId }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown'; projectId: string }) {
+function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImportOpened }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown'; projectId: string; openImportOnLoad?: boolean; onImportOpened?: () => void }) {
   const queryClient = useQueryClient();
   const [editingTask, setEditingTask] = useState<GanttTask | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [createTaskDates, setCreateTaskDates] = useState<{ startDate: string; endDate: string; parentTaskId?: string; afterTaskId?: string; beforeTaskId?: string } | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  useEffect(() => {
+    if (openImportOnLoad) {
+      setShowImportModal(true);
+      onImportOpened?.();
+    }
+  }, [openImportOnLoad, onImportOpened]);
   const [showCriticalPath, setShowCriticalPath] = useState(false);
   const columnState = useColumnState(schedule.id);
   const [selectedBaselineId, setSelectedBaselineId] = useState<string>('');

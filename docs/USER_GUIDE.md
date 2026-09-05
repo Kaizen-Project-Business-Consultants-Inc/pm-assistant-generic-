@@ -188,17 +188,21 @@ The bell icon in the top bar shows unread notifications. Click it to view alerts
 
 ### Creating a Project
 
-1. From the Dashboard, click **Create New Project**.
-2. Fill in the project details:
-   - **Name** (required) -- A descriptive project name.
-   - **Description** -- Overview of the project scope. Supports markdown formatting (headings, bold, italic, lists, links, inline code). Can also be edited inline from the Overview tab's Project Brief card.
-   - **Status** -- Planning, Active, On Hold, Completed, or Cancelled.
-   - **Priority** -- Low, Medium, High, or Urgent.
-   - **Methodology** -- Waterfall (default), Agile, or Hybrid. This controls the default view, tab ordering, readiness bar steps, and context cards (see below).
-   - **Budget Allocated** -- The total budget for the project.
-   - **Start Date / End Date** -- Planned project timeline.
-   - **Assigned PM** -- The project manager responsible.
-3. Click **Create** to save the project.
+Click **Create New Project** from the Dashboard or Projects page. You'll see three options:
+
+**Blank Project** -- Start with an empty project. Fill in the project name, start date, methodology, and optional budget/location, then click Create.
+
+**From File** -- Import tasks from an existing Excel (.xlsx/.xls) or CSV file:
+1. Upload your file (drag-and-drop or browse). For multi-sheet Excel files, select the sheet to import.
+2. **Column Mapping** -- The system automatically maps your spreadsheet columns to task fields using three layers:
+   - *Exact aliases* -- Recognizes common column names like "Activity", "Responsibility", "Planned Start Date", "Actual Start", "Actual Finish", "Baseline Start", "Baseline Finish", "Baseline Duration", and "Baseline Cost".
+   - *Fuzzy matching* -- Catches misspellings and abbreviations (e.g., "Stat Date" maps to Start Date).
+   - *AI suggestions* -- Claude analyzes remaining unmapped columns and suggests mappings (shown with a sparkle icon). Falls back gracefully if AI is unavailable.
+   - You can manually override any mapping using the dropdown selectors.
+3. Review the data preview, then click **Next: Project Details**.
+4. Fill in project name, start date, methodology, and budget. Click **Create Project** -- the project, schedule, and all imported tasks are created in one action.
+
+**From Template** -- Choose from pre-built project templates organized by category (IT & Software, Construction, Infrastructure, Roads & Bridges, Marketing, Operations, General, or Marketplace).
 
 ### Editing a Project
 
@@ -537,7 +541,7 @@ A spreadsheet-like view of all tasks with inline editing. Click the **Columns** 
 
 - **Standard** -- # (row number, always visible), Name, Status, Priority, Start Date, End Date, Progress, Assigned To (visible by default, inline-editable), Notes (hidden by default, click to open popup editor)
 - **Scheduling (CPM)** -- Duration, Early Start, Early Finish, Late Start, Late Finish, Total Float, Free Float, Critical (read-only; enabling any of these triggers CPM computation automatically)
-- **Baseline** -- Baseline Start, Baseline End, Start Variance, End Variance (read-only; populated when a baseline comparison is active)
+- **Baseline** -- Baseline Start, Baseline End, Start Variance, End Variance (read-only; populated when a baseline comparison is active). Baseline Start and Baseline End columns use task-level baseline fields (`baseline_start_date` / `baseline_finish_date`) when available, falling back to the active baseline snapshot. Additional toggleable columns: **Baseline Duration** (days planned at baseline) and **Baseline Cost** (cost planned at baseline), shown in the Baseline/Cost column groups.
 - **Other** -- Predecessor (inline-editable), Successor (read-only; shows which tasks depend on this one), WBS (read-only; auto-computed from task hierarchy)
 
 The **# column** always appears as the first column and cannot be toggled off. It shows sequential row numbers (1, 2, 3...) based on the current sort order.
@@ -633,12 +637,21 @@ Use critical path analysis to focus management attention on the tasks that matte
 
 Baselines capture a snapshot of the schedule at a point in time, enabling comparison against the current plan. Baselines are permanently saved to the database, so they persist across sessions and server restarts.
 
+### Actual Dates (Auto-Populated)
+
+Two fields track when work actually happened:
+
+- **Actual Start** — automatically set to today's date when you change a task's status to **In Progress**. You can also edit it directly in the Gantt table or Table view (enable the column via the Columns picker > Standard group).
+- **Actual Finish** — automatically set to today's date when you change a task's status to **Completed**. Also directly editable.
+
+These fields can be imported from Excel/CSV — the column mapper recognizes headers such as "Actual Start" and "Actual Finish".
+
 ### Creating a Baseline
 
 1. Open a schedule with defined tasks.
 2. Click **Save Baseline** (or use the baselines panel).
 3. Enter a baseline name (e.g., "Original Plan", "Rev 2").
-4. The system captures a copy of all task dates, durations, and progress at that moment and stores it permanently.
+4. The system captures a copy of all task dates, durations, progress, and cost at that moment and stores it permanently. The planned start, finish, duration, and cost are also stamped directly on each task as **baseline fields**, so the data is retained even if the baseline snapshot is later deleted.
 
 ### Comparing Baselines
 

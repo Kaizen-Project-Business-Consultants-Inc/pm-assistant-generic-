@@ -70,6 +70,9 @@ An agentic AI project management platform that combines the scheduling power of 
 - Start, end, and duration variance analysis per task
 - Multiple baseline support (Baseline 1, 2, 3...)
 - Baseline comparison report
+- **Task-level baseline fields** (`baseline_start_date`, `baseline_finish_date`, `baseline_duration_days`, `baseline_cost`) stamped on each task when a baseline is saved; Gantt/Table Baseline columns prefer these task-level fields over snapshot map data when available
+- **Actual date tracking** (`actual_start_date`, `actual_end_date`) auto-populated on status transitions (`in_progress` → sets actual start; `completed` → sets actual end); both fields are inline-editable in the Gantt table and importable via Excel/CSV
+- All 6 new fields importable via Excel/CSV column mapper (recognizes "Actual Start", "Actual Finish", "Baseline Start", "Baseline Finish", "Baseline Duration", "Baseline Cost")
 - **Benchmark:** Primavera P6, MS Project
 
 ### 1.3 Full Earned Value Management (EVM)
@@ -881,3 +884,4 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Actionable Notifications (notifications carry suggestedActions array; AlertActionButton renders one-click remediation actions in the notification bell dropdown) | Done | Enhancement |
 | NL Query Chart Upgrade (QueryPage uses extracted DynamicChart SVG component with Chart.js-to-ChartDatum adapter for bar/line/pie/horizontal-bar rendering) | Done | Enhancement |
 | Public Roadmap Page (`/roadmap` — quarterly timeline with status badges, PublicNavbar/Footer, responsive cards; internal `ROADMAP.md` document; navbar + footer links) | Done | Marketing |
+| Unified Project Creation Flow (3-option start screen: Blank/From File/From Template; "From File" flow: file upload → smart column mapping with 3-layer auto-map (exact alias, fuzzy Levenshtein, AI-assisted suggestions via Claude) → project details → one-click create project + schedule + import; shared ColumnMapper component used in both project creation and schedule ImportModal; suggest-columns API endpoint) | Done | UX |

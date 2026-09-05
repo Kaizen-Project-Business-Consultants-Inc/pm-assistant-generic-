@@ -51,17 +51,20 @@ function mapColumn(header: string, columnMap: Record<string, string> | undefined
     activities: 'name',
     activity: 'name',
     status: 'status',
+    schedule_status: 'status',
     priority: 'priority',
     start_date: 'startDate',
     startdate: 'startDate',
     start: 'startDate',
     target_start: 'startDate',
     planned_start: 'startDate',
+    planned_start_date: 'startDate',
     end_date: 'endDate',
     enddate: 'endDate',
     end: 'endDate',
     target_end: 'endDate',
     planned_end: 'endDate',
+    planned_end_date: 'endDate',
     due_date: 'dueDate',
     duedate: 'dueDate',
     due: 'dueDate',
@@ -71,6 +74,7 @@ function mapColumn(header: string, columnMap: Record<string, string> | undefined
     assignee: 'assignedTo',
     owner: 'assignedTo',
     resource: 'assignedTo',
+    responsibility: 'assignedTo',
     progress: 'progressPercentage',
     progress_percentage: 'progressPercentage',
     progresspercentage: 'progressPercentage',
@@ -80,6 +84,8 @@ function mapColumn(header: string, columnMap: Record<string, string> | undefined
     duration: 'estimatedDurationHours',
     'duration_(weeks)': 'estimatedDurationHours',
     hours: 'estimatedDurationHours',
+    planned_days: 'estimatedDurationHours',
+    days: 'estimatedDurationHours',
     description: 'description',
     deliverables: 'description',
     deliverable: 'description',
@@ -88,6 +94,28 @@ function mapColumn(header: string, columnMap: Record<string, string> | undefined
     purpose: 'description',
     milestone_purpose: 'description',
     'milestone_purpose_&_transparency_objectives': 'description',
+    actual_start: 'actualStartDate',
+    actual_start_date: 'actualStartDate',
+    actualstart: 'actualStartDate',
+    actual_finish: 'actualEndDate',
+    actual_end: 'actualEndDate',
+    actual_end_date: 'actualEndDate',
+    actual_finish_date: 'actualEndDate',
+    actualfinish: 'actualEndDate',
+    actualend: 'actualEndDate',
+    baseline_start: 'baselineStartDate',
+    baseline_start_date: 'baselineStartDate',
+    baselinestart: 'baselineStartDate',
+    baseline_finish: 'baselineFinishDate',
+    baseline_finish_date: 'baselineFinishDate',
+    baseline_end: 'baselineFinishDate',
+    baselinefinish: 'baselineFinishDate',
+    baselineend: 'baselineFinishDate',
+    baseline_duration: 'baselineDurationDays',
+    baseline_duration_days: 'baselineDurationDays',
+    baselineduration: 'baselineDurationDays',
+    baseline_cost: 'baselineCost',
+    baselinecost: 'baselineCost',
     phase: '_phase',
     group: '_phase',
     category: '_phase',
@@ -202,14 +230,24 @@ export async function importRoutes(fastify: FastifyInstance) {
             parentTaskId = phaseTaskIds.get(phase);
           }
 
-          // Validate and default status
+          // Validate and default status (normalize common Gantt labels)
           let status = 'pending';
           if (row.status && row.status.trim() !== '') {
-            const s = row.status.trim().toLowerCase();
-            if (!VALID_STATUSES.includes(s)) {
-              throw new Error(`Invalid status "${row.status}". Must be one of: ${VALID_STATUSES.join(', ')}`);
+            const s = row.status.trim().toLowerCase().replace(/[\s_-]+/g, '_');
+            const statusAliases: Record<string, string> = {
+              pending: 'pending', not_started: 'pending', 'not started': 'pending',
+              in_progress: 'in_progress', 'in progress': 'in_progress', on_track: 'in_progress', ahead: 'in_progress',
+              completed: 'completed', done: 'completed', finished: 'completed',
+              cancelled: 'cancelled', canceled: 'cancelled',
+              delayed: 'in_progress',
+            };
+            const mapped = statusAliases[s];
+            if (mapped) {
+              status = mapped;
+            } else if (VALID_STATUSES.includes(s)) {
+              status = s;
             }
-            status = s;
+            // If unrecognized, silently default to 'pending' rather than failing
           }
 
           // Validate and default priority
@@ -225,6 +263,12 @@ export async function importRoutes(fastify: FastifyInstance) {
           const startDate = toDateStr(row.startDate);
           const endDate = toDateStr(row.endDate);
           const dueDate = toDateStr(row.dueDate);
+          const actualStartDate = toDateStr(row.actualStartDate);
+          const actualEndDate = toDateStr(row.actualEndDate);
+          const baselineStartDate = toDateStr(row.baselineStartDate);
+          const baselineFinishDate = toDateStr(row.baselineFinishDate);
+          const baselineDurationDays = row.baselineDurationDays ? parseFloat(row.baselineDurationDays) : null;
+          const baselineCost = row.baselineCost ? parseFloat(row.baselineCost) : null;
           const progressPercentage = row.progressPercentage ? parseFloat(row.progressPercentage) : 0;
           const estimatedDurationHours = row.estimatedDurationHours ? parseFloat(row.estimatedDurationHours) : null;
 
@@ -251,6 +295,12 @@ export async function importRoutes(fastify: FastifyInstance) {
             startDate: startDate || undefined,
             endDate: endDate || undefined,
             dueDate: dueDate || undefined,
+            actualStartDate: actualStartDate || undefined,
+            actualEndDate: actualEndDate || undefined,
+            baselineStartDate: baselineStartDate || undefined,
+            baselineFinishDate: baselineFinishDate || undefined,
+            baselineDurationDays: baselineDurationDays ?? undefined,
+            baselineCost: baselineCost ?? undefined,
             progressPercentage,
             estimatedDurationHours: estimatedDurationHours ?? undefined,
             parentTaskId,
@@ -312,6 +362,75 @@ export async function importRoutes(fastify: FastifyInstance) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
       logger.error('CSV import error', { error });
       return reply.status(500).send({ error: 'Failed to import CSV' });
+    }
+  });
+
+  // POST /suggest-columns — AI-assisted column mapping suggestions
+  const suggestColumnsSchema = z.object({
+    headers: z.array(z.string()).min(1).max(100),
+    unmappedHeaders: z.array(z.string()).min(1).max(100),
+    targetFields: z.array(z.string()).min(1).max(20),
+  });
+
+  fastify.post('/suggest-columns', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      if (!config.AI_ENABLED || !claudeService.isAvailable()) {
+        return { suggestions: {} };
+      }
+
+      const body = suggestColumnsSchema.parse(request.body);
+
+      const systemPrompt = `You are a project management data integration expert. Given a list of spreadsheet column headers and a list of target field names, suggest which target field each unmapped header should map to.
+
+Target fields available: ${body.targetFields.join(', ')}
+
+Rules:
+1. Only suggest mappings you are confident about.
+2. Each target field can only be used once.
+3. Return a JSON object where keys are the unmapped header names and values are the suggested target field names.
+4. If a header doesn't clearly map to any target field, omit it from the result.
+5. Consider common abbreviations, synonyms, and domain variations (e.g., "S Date" → "startDate", "Resp." → "assignedTo").`;
+
+      const userMessage = `All column headers in the spreadsheet: ${body.headers.join(', ')}
+
+Unmapped headers that need suggestions: ${body.unmappedHeaders.join(', ')}
+
+Return a JSON object mapping unmapped headers to target fields.`;
+
+      const result = await claudeService.complete({
+        systemPrompt,
+        userMessage,
+        responseFormat: 'json',
+        maxTokens: 512,
+        temperature: 0.1,
+        userId: request.user!.userId,
+      });
+
+      let suggestions: Record<string, string> = {};
+      try {
+        const cleaned = result.content.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+        const parsed = JSON.parse(cleaned);
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+          // Validate that values are valid target fields
+          for (const [key, val] of Object.entries(parsed)) {
+            if (typeof val === 'string' && body.targetFields.includes(val)) {
+              suggestions[key] = val;
+            }
+          }
+        }
+      } catch {
+        // AI returned invalid JSON — return empty suggestions
+        logger.warn('AI suggest-columns returned invalid JSON');
+      }
+
+      return { suggestions };
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      }
+      // Graceful fallback — don't fail the import flow because AI is down
+      logger.warn('suggest-columns error', { error: error.message });
+      return { suggestions: {} };
     }
   });
 
