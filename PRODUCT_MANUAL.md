@@ -1917,6 +1917,14 @@ A **Token Top-Up CTA** below the comparison table lets users purchase additional
 
 **Checkout Error Display:** When a Stripe Checkout session fails to initialize (network error, invalid price ID, Stripe API error), the Pricing page displays an **inline error banner** in a styled red alert box.
 
+### SME Access Paths
+
+The SME tier is hidden from the public pricing page but accessible through three paths:
+
+1. **Secret Registration URL** — `/register?tier=sme&billing=monthly` (or `billing=annual`). Includes a seat count picker (minimum 3 seats, $33/seat/month). Uses per-seat Stripe checkout on the organization.
+2. **Admin Tier Change** — In Admin > Users, click the tier badge on any user row to change their tier via a dropdown. Changing to SME automatically sets the org to per-seat billing with minimum 3 seats.
+3. **In-App Upgrade** — On the Account & Billing page, consultant-tier users see an "Upgrade to SME" card that initiates a per-seat Stripe checkout session for their organization (starting at 3 seats).
+
 ### Feature Gating
 
 Trial users have access to core project management features only. The following features are restricted to paid tiers (Consultant Basic, Consultant Pro, SME, Enterprise), with AI features additionally requiring Consultant Pro or higher:

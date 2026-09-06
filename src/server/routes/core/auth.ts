@@ -11,6 +11,7 @@ import { stripeService } from '../../services/StripeService';
 import { organizationService } from '../../services/OrganizationService';
 import { provisionTenantDatabase } from '../../database/tenantProvisioner';
 import { inviteService } from '../../services/InviteService';
+import { organizationRepository } from '../../database/OrganizationRepository';
 import { databaseService } from '../../database/connection';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { resolvePriceId } from '../integrations/stripe';
@@ -31,6 +32,7 @@ const registerSchema = z.object({
   inviteToken: z.string().optional(),
   tier: z.enum(['consultant_basic', 'consultant_pro', 'sme', 'enterprise']).optional(),
   plan: z.enum(['monthly', 'annual']).optional(),
+  seats: z.number().int().min(3).max(100).optional(),
 });
 
 const forgotPasswordSchema = z.object({
@@ -149,7 +151,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       }
 
       const parsed = registerSchema.parse(request.body);
-      const { email, password, organizationName, inviteToken, tier, plan } = parsed;
+      const { email, password, organizationName, inviteToken, tier, plan, seats } = parsed;
 
       // Auto-generate username if not provided (plan signup flow)
       const username = parsed.username || email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') + '_' + crypto.randomBytes(3).toString('hex');
@@ -254,7 +256,33 @@ export async function authRoutes(fastify: FastifyInstance) {
           return reply.status(500).send({ error: 'Stripe not configured', message: 'Pricing is not configured for this tier' });
         }
 
-        const checkoutUrl = await stripeService.createCheckoutSession(stripeCustomerId, priceId, user.id, '/onboarding');
+        let checkoutUrl: string;
+
+        if (tier === 'sme') {
+          // SME uses per-seat checkout on the organization
+          const org = await organizationRepository.findByUserId(user.id);
+          if (!org) {
+            return reply.status(500).send({ error: 'Organization not found', message: 'SME signup requires an organization' });
+          }
+
+          // Ensure org has a Stripe customer
+          let orgStripeCustomerId = org.stripeCustomerId;
+          if (!orgStripeCustomerId) {
+            orgStripeCustomerId = await stripeService.createCustomer(email, org.name, user.id);
+            if (orgStripeCustomerId) {
+              await organizationRepository.update(org.id, { stripeCustomerId: orgStripeCustomerId });
+            }
+          }
+          if (!orgStripeCustomerId) {
+            return reply.status(500).send({ error: 'Failed to create Stripe customer for organization' });
+          }
+
+          const seatCount = Math.max(3, seats || 3);
+          checkoutUrl = await stripeService.createSeatCheckoutSession(orgStripeCustomerId, priceId, seatCount, org.id);
+        } else {
+          // Flat-rate checkout for consultant tiers
+          checkoutUrl = await stripeService.createCheckoutSession(stripeCustomerId, priceId, user.id, '/onboarding');
+        }
 
         // Auto-login: issue JWT cookies
         const newVersion = (user.tokenVersion ?? 0) + 1;

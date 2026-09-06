@@ -124,6 +124,7 @@ export function AdminUsersPage() {
   const [historyUserId, setHistoryUserId] = useState<string | null>(null);
   const [historyUserName, setHistoryUserName] = useState('');
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
+  const [editingTierId, setEditingTierId] = useState<string | null>(null);
 
   const { data: historyData, isLoading: historyLoading } = useQuery({
     queryKey: ['admin-user-sub-events', historyUserId],
@@ -254,6 +255,20 @@ export function AdminUsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       setEditingBudgetId(null);
+    },
+  });
+
+  const changeTier = useMutation({
+    mutationFn: ({ id, tier }: { id: string; tier: string }) =>
+      apiService.adminChangeTier(id, tier),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      setEditingTierId(null);
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || 'Failed to change tier';
+      setDeactivateError(msg);
+      setTimeout(() => setDeactivateError(null), 8000);
     },
   });
 
@@ -474,9 +489,33 @@ export function AdminUsersPage() {
                         </span>
                       </td>
                       <td className="py-3 pr-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${tierColor}`}>
-                          {u.subscription_tier || 'trial'}
-                        </span>
+                        {editingTierId === u.id ? (
+                          <select
+                            value={u.subscription_tier || 'trial'}
+                            onChange={e => { changeTier.mutate({ id: u.id, tier: e.target.value }); }}
+                            onBlur={() => setEditingTierId(null)}
+                            className="px-1.5 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                            autoFocus
+                            disabled={changeTier.isPending}
+                          >
+                            <option value="trial">trial</option>
+                            <option value="consultant_basic">consultant_basic</option>
+                            <option value="consultant_pro">consultant_pro</option>
+                            <option value="sme">sme</option>
+                            <option value="enterprise">enterprise</option>
+                          </select>
+                        ) : (
+                          <button
+                            onClick={() => setEditingTierId(u.id)}
+                            className="group inline-flex items-center gap-1"
+                            title="Click to change tier"
+                          >
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${tierColor}`}>
+                              {u.subscription_tier || 'trial'}
+                            </span>
+                            <Pencil className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100" />
+                          </button>
+                        )}
                       </td>
                       <td className="py-3 pr-3">
                         {u.subscription_status ? (

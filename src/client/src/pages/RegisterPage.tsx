@@ -32,6 +32,7 @@ export const RegisterPage: React.FC = () => {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [seatCount, setSeatCount] = useState(3);
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -82,6 +83,7 @@ export const RegisterPage: React.FC = () => {
         inviteToken,
         tier: isPlanSignup ? tierParam! : undefined,
         plan: isPlanSignup ? billingParam : undefined,
+        seats: isPlanSignup && tierParam === 'sme' ? seatCount : undefined,
       });
 
       // Plan signup flow: auto-login + redirect to Stripe
@@ -233,6 +235,28 @@ export const RegisterPage: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            {isPlanSignup && tierParam === 'sme' && (
+              <div>
+                <label htmlFor="seatCount" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                  Team Seats <span className="text-gray-400 font-normal">(minimum 3)</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="seatCount"
+                    type="number"
+                    min={3}
+                    max={100}
+                    value={seatCount}
+                    onChange={(e) => setSeatCount(Math.max(3, parseInt(e.target.value) || 3))}
+                    className="input w-24"
+                  />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    ${(seatCount * 33).toLocaleString()}/mo ({seatCount} seats x $33)
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-start">
               <input id="terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)}

@@ -86,6 +86,7 @@ class ApiService {
     inviteToken?: string;
     tier?: 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise';
     plan?: 'monthly' | 'annual';
+    seats?: number;
   }) {
     const response = await this.api.post('/auth/register', userData);
     return response.data;
@@ -2820,6 +2821,11 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
 
   async getAdminRevenue() {
     const response = await this.api.get('/admin/revenue');
+    return response.data;
+  }
+
+  async adminChangeTier(userId: string, tier: string) {
+    const response = await this.api.patch(`/admin/users/${userId}/tier`, { tier });
     return response.data;
   }
 

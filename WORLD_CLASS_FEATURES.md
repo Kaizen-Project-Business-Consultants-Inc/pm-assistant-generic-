@@ -557,6 +557,9 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Sample data architecture**: POST-based sample endpoints (`/nl-query`, `/meeting-intelligence/analyze`) exempt from global `requireActiveSubscription` hook via `SUBSCRIPTION_EXEMPT_PREFIXES`; portal links trial check runs before `requireProjectAccess`; meeting intelligence trial check runs before Zod schema validation; all write endpoints remain hard-gated
 - **Trial abuse prevention**: `deleted_emails` table tracks emails of deleted accounts; re-registration with a previously-deleted email skips the 14-day trial (`subscriptionStatus: 'none'`), requiring a paid plan; case-insensitive lookup; migration `079_deleted_emails.sql`
 - **Pricing-first signup flow**: All entry points (landing page hero, nav, login page "Sign up") route through plan selection before registration; landing page "Get Started" anchor-scrolls to inline `#pricing` section; login page links to `/pricing`; Trial card links to `/register`, paid cards link to `/register?tier=<tier>&billing=<billing>` for direct Stripe checkout; tiers: Consultant Basic ($19/mo, core PM, no AI), Consultant Pro ($29/mo, core PM + all AI), SME ($39/mo), Enterprise ($79/mo)
+- **SME access paths** (hidden from public pricing): (1) Secret registration URL `/register?tier=sme&billing=monthly` with seat count picker (min 3), (2) Admin tier change via clickable tier badge in Admin > Users, (3) In-app "Upgrade to SME" card on Account & Billing page for consultant-tier users
+- **Admin tier change** — Admin > Users page: click any user's tier badge to change it via dropdown; SME selection auto-configures org for per-seat billing; logs tier_changed subscription event with admin source
+- **Login error UX** — error banner includes "New to Kovarti? Create an account" link to pricing page (no user enumeration — generic error message preserved)
 - Shareable report links
 - **Benchmark:** Smartsheet, Monday.com
 

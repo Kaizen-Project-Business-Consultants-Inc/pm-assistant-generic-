@@ -2065,6 +2065,7 @@ Navigate to **Account** in the sidebar to manage:
 - **AI usage meter**: A progress bar shows your current-month token consumption vs your effective budget (tier allowance plus any purchased top-up balance), color-coded green (<70%), amber (70–90%), or red (>90%).
 - **Top-up balance**: Your remaining purchased token balance is displayed below the usage meter. Click **Buy More** to purchase additional packs instantly.
 - **Token top-ups**: If you exhaust your monthly AI tokens, purchase additional packs (500K tokens for $5). Top-up tokens are added instantly and do not expire. When your monthly budget is exhausted, AI features are temporarily unavailable but all other features (scheduling, tasks, reports, collaboration) continue working normally. Your budget resets on the first of each month.
+- **Upgrade to SME**: Consultant Basic and Consultant Pro users see an "Upgrade to SME" card on their billing page. Clicking it initiates a per-seat Stripe checkout for your organization (minimum 3 seats at $33/seat/month). SME includes unlimited viewer invites, 5GB storage, and pooled AI tokens for the whole team.
 
 ### Launch Offer
 

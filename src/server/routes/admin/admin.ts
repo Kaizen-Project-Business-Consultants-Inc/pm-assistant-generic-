@@ -10,10 +10,16 @@ import { subscriptionEventRepository } from '../../database/SubscriptionEventRep
 import { redisService } from '../../services/RedisService';
 import { pricingConfigService } from '../../services/PricingConfigService';
 import { pricingConfigRepository } from '../../database/PricingConfigRepository';
+import { organizationRepository } from '../../database/OrganizationRepository';
 import { config, getTierBudget } from '../../config';
+import logger from '../../utils/logger';
 
 const statusSchema = z.object({
   active: z.boolean(),
+});
+
+const changeTierSchema = z.object({
+  tier: z.enum(['trial', 'consultant_basic', 'consultant_pro', 'sme', 'enterprise']),
 });
 
 function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
@@ -150,6 +156,59 @@ export async function adminRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Not found', message: 'User not found' });
       }
       return { message: 'User status updated', isActive: updated.isActive };
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
+  });
+
+  // PATCH /api/v1/admin/users/:id/tier — admin change user tier
+  fastify.patch('/users/:id/tier', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!requireAdmin(request, reply)) return;
+    const { id } = request.params as { id: string };
+    const result = changeTierSchema.safeParse(request.body);
+    if (!result.success) {
+      return reply.status(400).send({ error: 'Bad request', message: 'Valid tier is required' });
+    }
+
+    try {
+      const user = await userService.findById(id);
+      if (!user) return reply.status(404).send({ error: 'Not found', message: 'User not found' });
+
+      const previousTier = user.subscriptionTier || 'trial';
+      const newTier = result.data.tier;
+
+      // Update user tier
+      await userService.update(id, {
+        subscriptionTier: newTier,
+        subscriptionStatus: newTier === 'trial' ? 'trialing' : 'active',
+      });
+
+      // Sync org tier/billing if user has an org
+      const org = await organizationRepository.findByUserId(id);
+      if (newTier === 'sme' && org) {
+        await organizationRepository.update(org.id, {
+          subscriptionTier: 'sme',
+          subscriptionStatus: 'active',
+          billingModel: 'per_seat',
+          seatCount: Math.max(3, await organizationRepository.countNonViewerUsers(org.id) || 3),
+        });
+      } else if (org) {
+        await organizationRepository.update(org.id, {
+          subscriptionTier: newTier,
+          subscriptionStatus: newTier === 'trial' ? 'trialing' : 'active',
+          billingModel: 'flat',
+        });
+      }
+
+      // Log subscription event
+      try {
+        await subscriptionEventRepository.create(id, 'tier_changed', previousTier, newTier, null, null, { source: 'admin' });
+      } catch (logErr) {
+        logger.error('Failed to log tier change event', { userId: id, error: logErr });
+      }
+
+      return { message: `Tier changed from ${previousTier} to ${newTier}`, tier: newTier };
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({ error: 'Internal server error' });

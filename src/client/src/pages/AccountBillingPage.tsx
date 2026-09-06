@@ -102,6 +102,7 @@ export const AccountBillingPage: React.FC = () => {
   const [topUpLoading, setTopUpLoading] = useState(false);
   const [seatLoading, setSeatLoading] = useState(false);
   const [seatError, setSeatError] = useState<string | null>(null);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   const { data, isLoading, error } = useQuery<SubscriptionStatus>({
     queryKey: ['subscription-status'],
@@ -378,6 +379,45 @@ export const AccountBillingPage: React.FC = () => {
               ))}
             </ul>
           </div>
+
+          {/* SME Upgrade Card — visible to consultant tier users */}
+          {(data.tier === 'consultant_basic' || data.tier === 'consultant_pro') && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl shadow-sm p-6 mt-4">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Need a team plan?</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                    Upgrade to SME for per-seat billing, unlimited viewer invites, 5GB storage, and pooled AI tokens for your whole team. Starting at $33/seat/month (min 3 seats).
+                  </p>
+                  <button
+                    onClick={async () => {
+                      setUpgradeLoading(true);
+                      try {
+                        const result = await apiService.createCheckoutSession('monthly', 'sme', 3);
+                        if (result.url) window.location.href = result.url;
+                      } catch {
+                        setSeatError('Failed to start SME checkout. Please try again.');
+                      } finally {
+                        setUpgradeLoading(false);
+                      }
+                    }}
+                    disabled={upgradeLoading}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {upgradeLoading ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Users className="w-4 h-4" />
+                    )}
+                    Upgrade to SME
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         /* Unpaid — Upgrade Card */
