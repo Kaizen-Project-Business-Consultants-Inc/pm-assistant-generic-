@@ -129,7 +129,7 @@ export class AIActionExecutor {
       success: true,
       toolName: 'create_task',
       summary: `Created task "${task.name}" (ID: ${task.id}) in schedule ${scheduleId}${assignedTo ? ` assigned to ${assignedTo}` : ''}${dueDate ? ` due ${dueDate}` : ''}`,
-      data: { taskId: task.id, name: task.name, scheduleId, status: task.status, priority: task.priority },
+      data: { taskId: task.id, name: task.name, scheduleId, status: task.status, priority: task.priority, sortOrder: task.sortOrder },
     };
   }
 

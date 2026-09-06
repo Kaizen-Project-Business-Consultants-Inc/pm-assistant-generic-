@@ -195,10 +195,11 @@ Click **Create New Project** from the Dashboard or Projects page. You'll see thr
 **From File** -- Import tasks from an existing Excel (.xlsx/.xls) or CSV file:
 1. Upload your file (drag-and-drop or browse). For multi-sheet Excel files, select the sheet to import.
 2. **Column Mapping** -- The system automatically maps your spreadsheet columns to task fields using three layers:
-   - *Exact aliases* -- Recognizes common column names like "Activity", "Responsibility", "Planned Start Date", "Actual Start", "Actual Finish", "Baseline Start", "Baseline Finish", "Baseline Duration", and "Baseline Cost".
+   - *Exact aliases* -- Recognizes Microsoft Project (MPP) column names: "Task Name", "Finish", "Resource Names", "% Complete", "Duration", "Notes", plus common alternatives like "Activity", "Responsibility", "Planned Start Date", "Actual Start", "Actual Finish", "Baseline Start", "Baseline Finish", "Baseline Duration", and "Baseline Cost".
    - *Fuzzy matching* -- Catches misspellings and abbreviations (e.g., "Stat Date" maps to Start Date).
    - *AI suggestions* -- Claude analyzes remaining unmapped columns and suggests mappings (shown with a sparkle icon). Falls back gracefully if AI is unavailable.
    - You can manually override any mapping using the dropdown selectors.
+   - *Skip* -- Set any column to "-- skip --" to exclude it from import. All unmapped columns default to skip.
 3. Review the data preview, then click **Next: Project Details**.
 4. Fill in project name, start date, methodology, and budget. Click **Create Project** -- the project, schedule, and all imported tasks are created in one action.
 
@@ -1456,6 +1457,12 @@ All AI surfaces are grouped under the **Mjuzi AI** section in the sidebar. "Ask 
 - When you ask Mjuzi how-to questions about PM Assistant (e.g. "how do I make a subtask?", "where is the Gantt chart?", "what does resource leveling do?"), Mjuzi automatically searches the product documentation to give you accurate answers instead of guessing.
 - This covers all documented features: scheduling, task management, budgets, reports, meetings, resources, and more.
 - You don't need to do anything special — just ask your question naturally and Mjuzi will find the right documentation.
+
+**Live UI sync**
+
+- When Mjuzi creates, updates, or deletes tasks (or modifies projects/dependencies), the schedule views (Gantt, Table, Kanban) automatically refresh — no manual page reload needed.
+- When Mjuzi creates a task, the new task is automatically selected, scrolled into view, and highlighted with a brief yellow flash so you can see exactly where it was placed.
+- If Mjuzi deletes a task that you had selected, the selection is automatically cleared.
 
 ### AI Task Breakdown
 

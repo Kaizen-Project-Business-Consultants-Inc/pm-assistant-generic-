@@ -1172,6 +1172,10 @@ All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the
   - **Correction memory**: when a user corrects a factual error (e.g. “the budget is $50K, not $30K”), Mjuzi stores the correction via `remember_correction` and avoids repeating the mistake. Project-specific corrections are scoped to that project; general corrections apply across all conversations.
 - **Voice input** (browser Speech Recognition): users can click the mic, speak their message, and the transcript is sent as a normal chat message. Optional **text-to-speech** (“Speak replies”) reads the assistant’s replies aloud when enabled.
 - **Conversation history UI** — History button and New Conversation button in the chat panel header. Click any past conversation to reload it.
+- **Live UI sync** — When Mjuzi creates, updates, or deletes tasks (or modifies projects, dependencies, etc.), the schedule views (Gantt, Table, Kanban) automatically refresh via React Query cache invalidation. No manual page reload needed.
+- **Task highlight on creation** — When Mjuzi creates a task, the new task is automatically selected, scrolled into view, and highlighted with a yellow flash for 3 seconds so the user can immediately see where it was placed.
+- **Delete cleanup** — When Mjuzi deletes a task that is currently selected, the selection is automatically cleared to prevent stale UI state.
+- **Tenant-scoped conversations** — Chat conversations are stored in the tenant database (not the shared control plane), ensuring proper multi-tenant data isolation.
 - **Knowledge Base search** — Mjuzi has a `search_knowledge_base` tool that searches embedded product documentation via RAG (Retrieval-Augmented Generation). When users ask how-to questions ("how do I create a subtask?", "where is the Gantt chart?"), Mjuzi searches the indexed documentation instead of guessing. Documentation from USER_GUIDE.md, PRODUCT_MANUAL.md, WORLD_CLASS_FEATURES.md, ADMIN_MANUAL.md, and AI_DESIGN_FEATURES.md is chunked by section heading, embedded via OpenAI text-embedding-3-small, and stored in the `knowledge_base_chunks` table with vector embeddings in the `embeddings` table. Admins can trigger a reindex via `POST /api/v1/admin/knowledge-base/reindex` after doc changes.
 
 ### AI Reports
@@ -2309,10 +2313,11 @@ Tasks can be imported in bulk from a CSV or Excel file via `POST /api/v1/schedul
 1. **Upload or paste** — drag-and-drop a `.csv`, `.xlsx`, or `.xls` file (max 5MB) or paste raw CSV text.
 2. **Sheet selection** — for multi-sheet Excel files, a dropdown lets you choose which sheet to import. The first sheet is auto-loaded.
 3. **Smart column mapping** — three-layer automatic mapping with manual override:
-   - **Layer 1 — Exact alias match**: Dictionary of known synonyms (e.g., "Activity" → Name, "Responsibility" → Assigned To, "Planned Start Date" → Start Date).
+   - **Layer 1 — Exact alias match**: Dictionary of known synonyms using Microsoft Project (MPP) conventions (e.g., "Task Name" → Name, "Finish" → End Date, "Resource Names" → Assigned To, "% Complete" → Progress, "Duration" → Estimated Duration).
    - **Layer 2 — Fuzzy matching**: Levenshtein distance comparison catches misspellings and abbreviations (e.g., "Stat Date" → Start Date). Threshold: distance ≤ 3.
    - **Layer 3 — AI suggestions**: Claude analyzes remaining unmapped column headers and suggests mappings asynchronously. AI-suggested mappings show a sparkle badge. Graceful fallback if AI is unavailable.
    - Users can manually override any mapping via dropdown selectors.
+   - **Skip column** — Any column set to "-- skip --" is excluded from import. All unmapped columns default to skip, ensuring only explicitly mapped columns are imported.
 4. **Preview** — inspect the parsed rows before committing.
 5. **Import** — valid rows are created as tasks via `scheduleService.createTask()` (with full dependency validation, audit logging, workflow triggers, sort order management, and WebSocket broadcasts); errors are reported per-row.
 

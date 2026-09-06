@@ -65,7 +65,7 @@ function mapMessageRow(row: any): ChatMessage {
 
 export class ChatRepository extends BaseRepository<ChatConversation> {
   constructor() {
-    super('chat_conversations', mapConversationRow, { controlPlane: true });
+    super('chat_conversations', mapConversationRow);
   }
 
   async createConversation(data: {

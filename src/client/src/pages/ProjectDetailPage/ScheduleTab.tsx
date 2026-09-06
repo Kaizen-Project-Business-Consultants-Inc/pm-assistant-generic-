@@ -340,7 +340,20 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       }
     };
     window.addEventListener('mjuzi:task-created', handler);
-    return () => window.removeEventListener('mjuzi:task-created', handler);
+
+    // Clear activeTaskId if Mjuzi deletes the selected task
+    const deleteHandler = (e: Event) => {
+      const deletedId = (e as CustomEvent).detail?.taskId;
+      if (deletedId) {
+        setActiveTaskId((current) => current === deletedId ? null : current);
+      }
+    };
+    window.addEventListener('mjuzi:task-deleted', deleteHandler);
+
+    return () => {
+      window.removeEventListener('mjuzi:task-created', handler);
+      window.removeEventListener('mjuzi:task-deleted', deleteHandler);
+    };
   }, []);
 
   const [showCriticalPath, setShowCriticalPath] = useState(false);

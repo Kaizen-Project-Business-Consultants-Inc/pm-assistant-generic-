@@ -181,6 +181,18 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
               }));
             }, 500);
           }
+
+          // If a task was deleted, notify so the UI can clear activeTaskId
+          const deleteAction = [...result.actions].reverse().find(
+            (a: ActionResult) => a.toolName === 'delete_task' && a.success && a.data?.taskId
+          );
+          if (deleteAction?.data?.taskId) {
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('mjuzi:task-deleted', {
+                detail: { taskId: deleteAction.data.taskId },
+              }));
+            }, 500);
+          }
         }
         if (hasProjectMutation) {
           queryClient.invalidateQueries({ queryKey: ['projects'] });
