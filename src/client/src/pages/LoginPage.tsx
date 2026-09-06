@@ -146,6 +146,10 @@ export const LoginPage: React.FC = () => {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                    <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">
+                      New to Kovarti?{' '}
+                      <Link to="/pricing" className="underline font-medium hover:text-red-800 dark:hover:text-red-300">Create an account</Link>
+                    </p>
                   </div>
                 </div>
               </div>
