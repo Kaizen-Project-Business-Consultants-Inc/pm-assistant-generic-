@@ -29,8 +29,8 @@ export const TARGET_COLUMNS = [
 const TARGET_VALUES = TARGET_COLUMNS.filter(c => c.value).map(c => c.value);
 
 const ALIASES: Record<string, string> = {
-  name: 'name', title: 'name', task: 'name', activity: 'name', taskname: 'name',
-  status: 'status', state: 'status', schedulestatus: 'status',
+  name: 'name', title: 'name', activity: 'name', taskname: 'name',
+  status: 'status', state: 'status',
   priority: 'priority',
   start: 'startDate', startdate: 'startDate', start_date: 'startDate',
   plannedstartdate: 'startDate', plannedstart: 'startDate', targetstart: 'startDate',
