@@ -96,7 +96,7 @@ export async function verifyTenantDatabase(dbName: string): Promise<boolean> {
   const pool = databaseService.getPool();
   if (!pool) return false;
 
-  const essentialTables = ['projects', 'users', 'schedules', 'tasks', '_migrations'];
+  const essentialTables = ['projects', 'schedules', 'tasks', '_migrations'];
 
   const conn = await pool.getConnection();
   try {
