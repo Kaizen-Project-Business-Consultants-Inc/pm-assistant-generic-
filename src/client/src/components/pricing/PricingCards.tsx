@@ -279,8 +279,8 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
             ? 'border-primary-500 shadow-xl shadow-primary-500/10'
             : dk ? 'border-slate-600 shadow-lg shadow-black/30' : 'border-gray-200 dark:border-gray-700';
           const textPrimary = dk ? 'text-white' : 'text-gray-900 dark:text-white';
-          const textSecondary = dk ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400';
-          const textTertiary = dk ? 'text-gray-500' : 'text-gray-400 dark:text-gray-500';
+          const textSecondary = dk ? 'text-gray-300' : 'text-gray-500 dark:text-gray-400';
+          const textTertiary = dk ? 'text-gray-400' : 'text-gray-400 dark:text-gray-500';
           const textFeature = dk ? 'text-gray-200' : 'text-gray-700 dark:text-gray-200';
 
           return (
@@ -558,7 +558,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
                 <tr key={row.feature} className={`border-b border-gray-700/50 ${i % 2 === 0 ? 'bg-gray-800/50' : ''}`}>
                   <td className="py-2.5 pr-4">
                     <div className="text-gray-300">{row.feature}</div>
-                    {row.desc && <div className="text-xs text-gray-500 mt-0.5">{row.desc}</div>}
+                    {row.desc && <div className="text-xs text-gray-400 mt-0.5">{row.desc}</div>}
                   </td>
                   {(['trial', 'consultant_basic', 'consultant_pro'] as const).map((tier) => {
                     const val = row[tier];
