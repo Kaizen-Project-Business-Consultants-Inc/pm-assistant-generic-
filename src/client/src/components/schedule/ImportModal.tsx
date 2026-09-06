@@ -273,12 +273,12 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
     setError('');
     try {
       // Convert index-based columnMap to header-name-based for the server
+      // Every header gets an entry: mapped field or '_skip' for unmapped/skipped columns
       const headerMap: Record<string, string> = {};
-      for (const [idx, field] of Object.entries(columnMap)) {
-        const header = parsed.headers[Number(idx)];
+      for (let i = 0; i < parsed.headers.length; i++) {
+        const header = parsed.headers[i];
         if (header) {
-          // Send mapped field, or '_skip' for explicitly skipped columns
-          headerMap[header] = field || '_skip';
+          headerMap[header] = columnMap[i] || '_skip';
         }
       }
       const res = await apiService.importTasks(scheduleId, csvText, headerMap);
