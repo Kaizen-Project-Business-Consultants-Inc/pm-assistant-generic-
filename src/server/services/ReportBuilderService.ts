@@ -19,16 +19,19 @@ export interface ReportConfig {
   sections: ReportSectionConfig[];
 }
 
+export type DataSource = 'projects' | 'tasks' | 'time_entries' | 'budgets' | 'resources' | 'raid_items' | 'meetings' | 'action_items';
+
 export interface ReportSectionConfig {
   title?: string;
-  type: 'kpi' | 'table' | 'bar_chart' | 'line_chart' | 'pie_chart';
-  dataSource: 'projects' | 'tasks' | 'time_entries' | 'budgets';
+  type: 'kpi' | 'kpi_card' | 'table' | 'bar_chart' | 'line_chart' | 'pie_chart';
+  dataSource: DataSource;
   filters?: {
     dateRange?: { start: string; end: string };
     projectId?: string;
     status?: string;
   };
   groupBy?: string;
+  columns?: string[];
 }
 
 export interface ReportSection {
@@ -121,7 +124,7 @@ class ReportBuilderService {
         ...(params?.projectId ? { projectId: params.projectId } : {}),
       };
 
-      const data = await this.executeSectionQuery(section.type, section.dataSource, mergedFilters, section.groupBy);
+      const data = await this.executeSectionQuery(section.type, section.dataSource, mergedFilters, section.groupBy, section.columns);
       sections.push({
         title: section.title || `${section.dataSource} ${section.type}`,
         type: section.type,
@@ -134,9 +137,10 @@ class ReportBuilderService {
 
   private async executeSectionQuery(
     type: ReportSectionConfig['type'] | string,
-    dataSource: ReportSectionConfig['dataSource'],
+    dataSource: DataSource,
     filters: ReportSectionConfig['filters'],
     groupBy?: string,
+    columns?: string[],
   ): Promise<any> {
     // Normalize kpi_card → kpi (designer sends kpi_card, service expects kpi)
     const normalizedType = type === 'kpi_card' ? 'kpi' : type;
@@ -149,35 +153,43 @@ class ReportBuilderService {
     }
 
     if (normalizedType === 'table') {
-      return this.executeTableQuery(tableName, whereClause, whereParams);
+      return this.executeTableQuery(tableName, whereClause, whereParams, columns);
     }
 
     // Chart types: bar_chart, line_chart, pie_chart
-    return this.executeChartQuery(tableName, whereClause, whereParams, groupBy || this.getDefaultGroupBy(dataSource));
+    return this.executeChartQuery(tableName, whereClause, whereParams, groupBy || this.getDefaultGroupBy(dataSource), dataSource);
   }
 
-  private getTableName(dataSource: ReportSectionConfig['dataSource']): string {
+  private getTableName(dataSource: DataSource): string {
     switch (dataSource) {
       case 'projects': return 'projects';
       case 'tasks': return 'tasks';
       case 'time_entries': return 'time_entries';
       case 'budgets': return 'projects';
+      case 'resources': return 'resources';
+      case 'raid_items': return 'project_risks';
+      case 'meetings': return 'meetings';
+      case 'action_items': return 'meeting_action_items';
       default: return 'projects';
     }
   }
 
-  private getDefaultGroupBy(dataSource: ReportSectionConfig['dataSource']): string {
+  private getDefaultGroupBy(dataSource: DataSource): string {
     switch (dataSource) {
       case 'projects': return 'status';
       case 'tasks': return 'status';
       case 'time_entries': return 'project_id';
       case 'budgets': return 'status';
+      case 'resources': return 'role';
+      case 'raid_items': return 'type';
+      case 'meetings': return 'meeting_type';
+      case 'action_items': return 'status';
       default: return 'status';
     }
   }
 
   private buildWhereClause(
-    dataSource: ReportSectionConfig['dataSource'],
+    dataSource: DataSource,
     filters?: ReportSectionConfig['filters'],
   ): { whereClause: string; whereParams: any[] } {
     const conditions: string[] = [];
@@ -188,10 +200,14 @@ class ReportBuilderService {
     if (filters.projectId) {
       if (dataSource === 'projects' || dataSource === 'budgets') {
         conditions.push('id = ?');
+      } else if (dataSource === 'resources') {
+        // resources don't have project_id, skip
       } else {
         conditions.push('project_id = ?');
       }
-      params.push(filters.projectId);
+      if (dataSource !== 'resources') {
+        params.push(filters.projectId);
+      }
     }
 
     if (filters.status) {
@@ -200,7 +216,10 @@ class ReportBuilderService {
     }
 
     if (filters.dateRange) {
-      const dateField = dataSource === 'time_entries' ? 'date' : 'created_at';
+      let dateField = 'created_at';
+      if (dataSource === 'time_entries') dateField = 'date';
+      else if (dataSource === 'meetings') dateField = 'scheduled_date';
+      else if (dataSource === 'action_items') dateField = 'due_date';
       if (filters.dateRange.start) {
         conditions.push(`${dateField} >= ?`);
         params.push(filters.dateRange.start);
@@ -216,7 +235,7 @@ class ReportBuilderService {
   }
 
   private async executeKpiQuery(
-    dataSource: ReportSectionConfig['dataSource'],
+    dataSource: DataSource,
     tableName: string,
     whereClause: string,
     whereParams: any[],
@@ -280,16 +299,107 @@ class ReportBuilderService {
       };
     }
 
+    if (dataSource === 'resources') {
+      const rows = await databaseService.query<any>(
+        `SELECT COUNT(*) as total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active, COALESCE(AVG(capacity_hours_per_week), 0) as avg_capacity, COALESCE(AVG(cost_rate_hourly), 0) as avg_rate FROM ${tableName}${whereClause}`,
+        whereParams,
+      );
+      return {
+        kpis: [
+          { label: 'Total Resources', value: Number(rows[0].total) },
+          { label: 'Active', value: Number(rows[0].active) },
+          { label: 'Avg Capacity (hrs/wk)', value: Number(rows[0].avg_capacity) },
+          { label: 'Avg Rate ($/hr)', value: `$${Number(rows[0].avg_rate).toFixed(2)}` },
+        ],
+      };
+    }
+
+    if (dataSource === 'raid_items') {
+      const rows = await databaseService.query<any>(
+        `SELECT COUNT(*) as total, SUM(CASE WHEN type='risk' THEN 1 ELSE 0 END) as risks, SUM(CASE WHEN type='issue' THEN 1 ELSE 0 END) as issues, SUM(CASE WHEN type='action' THEN 1 ELSE 0 END) as actions, SUM(CASE WHEN type='decision' THEN 1 ELSE 0 END) as decisions FROM ${tableName}${whereClause}`,
+        whereParams,
+      );
+      return {
+        kpis: [
+          { label: 'Total RAID Items', value: Number(rows[0].total) },
+          { label: 'Risks', value: Number(rows[0].risks) },
+          { label: 'Issues', value: Number(rows[0].issues) },
+          { label: 'Actions', value: Number(rows[0].actions) },
+          { label: 'Decisions', value: Number(rows[0].decisions) },
+        ],
+      };
+    }
+
+    if (dataSource === 'meetings') {
+      const rows = await databaseService.query<any>(
+        `SELECT COUNT(*) as total, SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status='scheduled' THEN 1 ELSE 0 END) as upcoming, COALESCE(AVG(duration_minutes), 0) as avg_duration FROM ${tableName}${whereClause}`,
+        whereParams,
+      );
+      return {
+        kpis: [
+          { label: 'Total Meetings', value: Number(rows[0].total) },
+          { label: 'Completed', value: Number(rows[0].completed) },
+          { label: 'Upcoming', value: Number(rows[0].upcoming) },
+          { label: 'Avg Duration (min)', value: Math.round(Number(rows[0].avg_duration)) },
+        ],
+      };
+    }
+
+    if (dataSource === 'action_items') {
+      const rows = await databaseService.query<any>(
+        `SELECT COUNT(*) as total, SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) as open_items, SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END) as in_progress FROM ${tableName}${whereClause}`,
+        whereParams,
+      );
+      const total = Number(rows[0].total);
+      const completed = Number(rows[0].completed);
+      return {
+        kpis: [
+          { label: 'Total Action Items', value: total },
+          { label: 'Open', value: Number(rows[0].open_items) },
+          { label: 'In Progress', value: Number(rows[0].in_progress) },
+          { label: 'Completed', value: completed },
+          { label: 'Completion Rate', value: total > 0 ? `${Math.round((completed / total) * 100)}%` : '0%' },
+        ],
+      };
+    }
+
     return { kpis: [] };
+  }
+
+  /** Allowlisted columns per data source for column selection (prevents SQL injection) */
+  private getAllowedColumns(tableName: string): string[] {
+    const map: Record<string, string[]> = {
+      projects: ['id', 'name', 'status', 'priority', 'progress', 'budget_allocated', 'budget_spent', 'start_date', 'end_date', 'created_at', 'updated_at'],
+      tasks: ['id', 'name', 'status', 'priority', 'assigned_to', 'start_date', 'end_date', 'estimated_days', 'progress', 'budget_allocated', 'created_at'],
+      time_entries: ['id', 'project_id', 'resource_id', 'date', 'hours', 'description', 'status', 'created_at'],
+      resources: ['id', 'name', 'role', 'email', 'capacity_hours_per_week', 'cost_rate_hourly', 'is_active', 'resource_group', 'created_at'],
+      project_risks: ['id', 'project_id', 'type', 'title', 'category', 'severity', 'probability', 'impact', 'risk_score', 'status', 'owner_id', 'due_date', 'created_at'],
+      meetings: ['id', 'project_id', 'title', 'meeting_type', 'scheduled_date', 'duration_minutes', 'location', 'status', 'created_at'],
+      meeting_action_items: ['id', 'meeting_id', 'project_id', 'description', 'assignee_name', 'due_date', 'priority', 'status', 'source', 'created_at'],
+    };
+    return map[tableName] || [];
   }
 
   private async executeTableQuery(
     tableName: string,
     whereClause: string,
     whereParams: any[],
+    columns?: string[],
   ): Promise<any> {
+    let selectClause = '*';
+    const allowed = this.getAllowedColumns(tableName);
+
+    if (columns && columns.length > 0 && allowed.length > 0) {
+      // Filter to only allowed columns
+      const safeColumns = columns.filter(c => allowed.includes(c));
+      if (safeColumns.length > 0) {
+        selectClause = safeColumns.join(', ');
+      }
+    }
+
+    const orderField = tableName === 'meetings' ? 'scheduled_date' : 'created_at';
     const rows = await databaseService.query<any>(
-      `SELECT * FROM ${tableName}${whereClause} ORDER BY created_at DESC LIMIT 500`,
+      `SELECT ${selectClause} FROM ${tableName}${whereClause} ORDER BY ${orderField} DESC LIMIT 500`,
       whereParams,
     );
     if (rows.length === 0) {
@@ -305,18 +415,69 @@ class ReportBuilderService {
     };
   }
 
+  /**
+   * Resolve a groupBy value from the client into a safe SQL expression.
+   * Returns { selectExpr, groupExpr } or null if invalid.
+   */
+  private resolveGroupBy(groupBy: string, dataSource: DataSource): { selectExpr: string; groupExpr: string } | null {
+    // Direct column allowlist (safe against SQL injection)
+    const ALLOWED_COLUMNS = [
+      'status', 'priority', 'project_id', 'assigned_to', 'category', 'role',
+      'type', 'severity', 'meeting_type', 'assignee_name', 'source',
+      'is_active', 'resource_group',
+    ];
+    if (ALLOWED_COLUMNS.includes(groupBy)) {
+      return { selectExpr: groupBy, groupExpr: groupBy };
+    }
+
+    // Client-side aliases → actual column names
+    const aliasMap: Record<string, string> = {
+      project: 'project_id',
+      assignee: 'assigned_to',
+      resource: 'assigned_to',
+    };
+    if (aliasMap[groupBy] && ALLOWED_COLUMNS.includes(aliasMap[groupBy])) {
+      return { selectExpr: aliasMap[groupBy], groupExpr: aliasMap[groupBy] };
+    }
+
+    // Computed temporal groupings
+    const dateFieldMap: Record<DataSource, string> = {
+      projects: 'created_at',
+      tasks: 'created_at',
+      time_entries: 'date',
+      budgets: 'created_at',
+      resources: 'created_at',
+      raid_items: 'created_at',
+      meetings: 'scheduled_date',
+      action_items: 'due_date',
+    };
+    const dateField = dateFieldMap[dataSource] || 'created_at';
+
+    if (groupBy === 'week') {
+      const expr = `DATE_FORMAT(${dateField}, '%x-W%v')`;
+      return { selectExpr: expr, groupExpr: expr };
+    }
+    if (groupBy === 'month') {
+      const expr = `DATE_FORMAT(${dateField}, '%Y-%m')`;
+      return { selectExpr: expr, groupExpr: expr };
+    }
+
+    return null;
+  }
+
   private async executeChartQuery(
     tableName: string,
     whereClause: string,
     whereParams: any[],
     groupBy: string,
+    dataSource?: DataSource,
   ): Promise<any> {
-    // Allowlist to prevent SQL injection via groupBy
-    const ALLOWED_GROUP_BY = ['status', 'priority', 'project_id', 'assigned_to', 'category', 'role'];
-    const safeGroupBy = ALLOWED_GROUP_BY.includes(groupBy) ? groupBy : 'status';
+    const resolved = this.resolveGroupBy(groupBy, dataSource || 'projects');
+    const selectExpr = resolved ? resolved.selectExpr : 'status';
+    const groupExpr = resolved ? resolved.groupExpr : 'status';
 
     const rows = await databaseService.query<any>(
-      `SELECT ${safeGroupBy} as label, COUNT(*) as value FROM ${tableName}${whereClause} GROUP BY ${safeGroupBy} ORDER BY value DESC`,
+      `SELECT ${selectExpr} as label, COUNT(*) as value FROM ${tableName}${whereClause} GROUP BY ${groupExpr} ORDER BY value DESC`,
       whereParams,
     );
     return {

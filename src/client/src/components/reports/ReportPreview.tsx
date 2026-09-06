@@ -5,6 +5,7 @@ import {
   Download,
   Printer,
   FileBarChart,
+  FileSpreadsheet,
   BarChart3,
   LineChart,
   PieChart,
@@ -37,7 +38,7 @@ interface ChartDataPoint {
 
 interface ReportSectionData {
   title: string;
-  type: 'kpi_card' | 'table' | 'bar_chart' | 'line_chart' | 'pie_chart';
+  type: 'kpi' | 'kpi_card' | 'table' | 'bar_chart' | 'line_chart' | 'pie_chart';
   data: {
     kpis?: KpiItem[];
     table?: TableData;
@@ -306,6 +307,7 @@ function PieChartSvg({ data }: { data: ChartDataPoint[] }) {
 
 function SectionRenderer({ section }: { section: ReportSectionData }) {
   const iconMap: Record<string, React.ReactNode> = {
+    kpi: <Activity className="w-4 h-4 text-emerald-600" />,
     kpi_card: <Activity className="w-4 h-4 text-emerald-600" />,
     table: <Table2 className="w-4 h-4 text-blue-600" />,
     bar_chart: <BarChart3 className="w-4 h-4 text-orange-600" />,
@@ -313,14 +315,16 @@ function SectionRenderer({ section }: { section: ReportSectionData }) {
     pie_chart: <PieChart className="w-4 h-4 text-pink-600" />,
   };
 
+  const isKpi = section.type === 'kpi_card' || section.type === 'kpi';
+
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 print:break-inside-avoid print:shadow-none">
       <div className="flex items-center gap-2 mb-4">
-        {iconMap[section.type]}
+        {iconMap[section.type] || iconMap.kpi}
         <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{section.title}</h3>
       </div>
 
-      {section.type === 'kpi_card' && section.data.kpis && (
+      {isKpi && section.data.kpis && (
         <KpiCards kpis={section.data.kpis} />
       )}
 
@@ -348,6 +352,50 @@ function SectionRenderer({ section }: { section: ReportSectionData }) {
   );
 }
 
+function exportExcel(report: GeneratedReport) {
+  // Generate HTML table that Excel can open natively
+  let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body>';
+
+  for (const section of report.sections) {
+    html += `<h3>${section.title}</h3>`;
+    html += '<table border="1" cellpadding="4" cellspacing="0">';
+
+    if ((section.type === 'kpi_card' || section.type === 'kpi') && section.data.kpis) {
+      html += '<tr><th>Metric</th><th>Value</th></tr>';
+      for (const kpi of section.data.kpis) {
+        html += `<tr><td>${kpi.label}</td><td>${kpi.value}</td></tr>`;
+      }
+    }
+
+    if (section.type === 'table' && section.data.table) {
+      html += '<tr>' + section.data.table.headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+      for (const row of section.data.table.rows) {
+        html += '<tr>' + row.map(c => `<td>${c}</td>`).join('') + '</tr>';
+      }
+    }
+
+    if (section.data.chartData) {
+      html += '<tr><th>Label</th><th>Value</th></tr>';
+      for (const d of section.data.chartData) {
+        html += `<tr><td>${d.label}</td><td>${d.value}</td></tr>`;
+      }
+    }
+
+    html += '</table><br/>';
+  }
+
+  html += '</body></html>';
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${report.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function exportCSV(report: GeneratedReport) {
   const lines: string[] = [];
   lines.push(`Report: ${report.name}`);
@@ -357,7 +405,7 @@ function exportCSV(report: GeneratedReport) {
   for (const section of report.sections) {
     lines.push(`--- ${section.title} ---`);
 
-    if (section.type === 'kpi_card' && section.data.kpis) {
+    if ((section.type === 'kpi_card' || section.type === 'kpi') && section.data.kpis) {
       lines.push('Metric,Value');
       for (const kpi of section.data.kpis) {
         lines.push(`"${kpi.label}","${kpi.value}"`);
@@ -439,14 +487,21 @@ export function ReportPreview({ templateId, onClose }: ReportPreviewProps) {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
-              Export CSV
+              CSV
+            </button>
+            <button
+              onClick={() => exportExcel(report)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              Excel
             </button>
             <button
               onClick={() => window.print()}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
             >
               <Printer className="w-3.5 h-3.5" />
-              Export PDF
+              PDF
             </button>
           </div>
         )}

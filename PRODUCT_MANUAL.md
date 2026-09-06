@@ -1199,9 +1199,11 @@ The `ReportBuilderService` provides a configurable report engine:
 
 - **Report templates**: saved configurations with named sections, sharable across users
 - **Section types**: KPI cards, tables, bar charts, line charts, pie charts
-- **Data sources**: projects, tasks, time entries, budgets
+- **8 data sources**: projects, tasks, time entries, budgets, resources, RAID items, meetings, action items
 - **Filters**: date range, project, status
-- **Group-by**: aggregate data by any dimension; the `groupBy` parameter is validated against an allowlist to prevent SQL injection
+- **Group-by**: aggregate data by any dimension including computed temporal groupings (week, month via SQL `DATE_FORMAT`); the `groupBy` parameter is validated against an allowlist to prevent SQL injection. Client-side aliases (`project` → `project_id`, `assignee` → `assigned_to`) are resolved server-side.
+- **Column selection**: table sections support picking specific columns to display; columns are validated against a per-table allowlist to prevent SQL injection. When no columns are selected, all columns are shown.
+- **Export formats**: CSV, Excel (HTML-table `.xls` format natively opened by Excel/LibreOffice), and PDF (browser print)
 
 **Recent fixes:**
 - KPI, chart, and table sections now receive correctly shaped data objects, resolving blank section renders in the report preview.

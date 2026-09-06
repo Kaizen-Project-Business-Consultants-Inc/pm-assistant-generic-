@@ -1284,12 +1284,15 @@ For custom reports, use the **Report Builder**:
 1. Navigate to **Report Builder** in the sidebar.
 2. Click **New Report** to open the report designer.
 3. Configure report sections:
-   - Choose data sources (tasks, resources, time entries, EVM metrics).
-   - Add filters (by project, date range, status, assignee).
-   - Select visualization types (tables, bar charts, line charts, pie charts).
-   - Arrange sections in the desired order.
+   - Choose from **8 data sources**: Projects, Tasks, Time Entries, Budgets, Resources, RAID Items, Meetings, and Action Items.
+   - Add filters (by project, date range, status).
+   - Select visualization types (KPI cards, tables, bar charts, line charts, pie charts).
+   - For **table sections**, click **Select Columns** to pick which columns appear in the table (e.g., Name, Status, Priority). If no columns are selected, all columns are shown.
+   - Choose **Group By** options including temporal groupings like Week and Month for trend charts.
+   - Arrange sections in the desired order using the up/down arrows.
 4. Save the report template with a name and description.
 5. Mark as **Shared** to make it available to other team members.
+6. Click **Generate** to preview the report, then export as **CSV**, **Excel**, or **PDF**.
 
 ### Report History
 

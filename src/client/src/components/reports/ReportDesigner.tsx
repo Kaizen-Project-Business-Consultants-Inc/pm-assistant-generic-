@@ -12,6 +12,9 @@ import {
   Table2,
   Activity,
   ArrowLeft,
+  Columns3,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 
@@ -22,7 +25,7 @@ interface ReportDesignerProps {
 }
 
 type SectionType = 'kpi_card' | 'table' | 'bar_chart' | 'line_chart' | 'pie_chart';
-type DataSource = 'projects' | 'tasks' | 'time_entries' | 'budgets';
+type DataSource = 'projects' | 'tasks' | 'time_entries' | 'budgets' | 'resources' | 'raid_items' | 'meetings' | 'action_items';
 
 interface ReportSection {
   id: string;
@@ -36,6 +39,7 @@ interface ReportSection {
     status: string;
   };
   groupBy: string;
+  columns: string[];
 }
 
 interface TemplateFormData {
@@ -59,6 +63,10 @@ const DATA_SOURCE_OPTIONS: { value: DataSource; label: string }[] = [
   { value: 'tasks', label: 'Tasks' },
   { value: 'time_entries', label: 'Time Entries' },
   { value: 'budgets', label: 'Budgets' },
+  { value: 'resources', label: 'Resources' },
+  { value: 'raid_items', label: 'RAID Items' },
+  { value: 'meetings', label: 'Meetings' },
+  { value: 'action_items', label: 'Action Items' },
 ];
 
 const GROUP_BY_OPTIONS: Record<DataSource, { value: string; label: string }[]> = {
@@ -85,6 +93,109 @@ const GROUP_BY_OPTIONS: Record<DataSource, { value: string; label: string }[]> =
     { value: 'project', label: 'Project' },
     { value: 'status', label: 'Status' },
     { value: 'month', label: 'Month' },
+  ],
+  resources: [
+    { value: 'role', label: 'Role' },
+    { value: 'resource_group', label: 'Group' },
+    { value: 'is_active', label: 'Active Status' },
+  ],
+  raid_items: [
+    { value: 'type', label: 'Type (R/A/I/D)' },
+    { value: 'severity', label: 'Severity' },
+    { value: 'status', label: 'Status' },
+    { value: 'category', label: 'Category' },
+    { value: 'month', label: 'Month' },
+  ],
+  meetings: [
+    { value: 'meeting_type', label: 'Meeting Type' },
+    { value: 'status', label: 'Status' },
+    { value: 'month', label: 'Month' },
+    { value: 'week', label: 'Week' },
+  ],
+  action_items: [
+    { value: 'status', label: 'Status' },
+    { value: 'priority', label: 'Priority' },
+    { value: 'assignee_name', label: 'Assignee' },
+    { value: 'source', label: 'Source' },
+    { value: 'month', label: 'Month' },
+  ],
+};
+
+/** Available columns per data source for table column picker */
+const TABLE_COLUMNS: Record<DataSource, { value: string; label: string }[]> = {
+  projects: [
+    { value: 'name', label: 'Name' },
+    { value: 'status', label: 'Status' },
+    { value: 'priority', label: 'Priority' },
+    { value: 'progress', label: 'Progress' },
+    { value: 'budget_allocated', label: 'Budget' },
+    { value: 'budget_spent', label: 'Spent' },
+    { value: 'start_date', label: 'Start Date' },
+    { value: 'end_date', label: 'End Date' },
+    { value: 'created_at', label: 'Created' },
+  ],
+  tasks: [
+    { value: 'name', label: 'Name' },
+    { value: 'status', label: 'Status' },
+    { value: 'priority', label: 'Priority' },
+    { value: 'assigned_to', label: 'Assigned To' },
+    { value: 'start_date', label: 'Start Date' },
+    { value: 'end_date', label: 'End Date' },
+    { value: 'estimated_days', label: 'Est. Days' },
+    { value: 'progress', label: 'Progress' },
+    { value: 'budget_allocated', label: 'Budget' },
+    { value: 'created_at', label: 'Created' },
+  ],
+  time_entries: [
+    { value: 'date', label: 'Date' },
+    { value: 'hours', label: 'Hours' },
+    { value: 'description', label: 'Description' },
+    { value: 'status', label: 'Status' },
+    { value: 'resource_id', label: 'Resource' },
+    { value: 'created_at', label: 'Created' },
+  ],
+  budgets: [
+    { value: 'name', label: 'Project Name' },
+    { value: 'status', label: 'Status' },
+    { value: 'budget_allocated', label: 'Allocated' },
+    { value: 'budget_spent', label: 'Spent' },
+    { value: 'progress', label: 'Progress' },
+  ],
+  resources: [
+    { value: 'name', label: 'Name' },
+    { value: 'role', label: 'Role' },
+    { value: 'email', label: 'Email' },
+    { value: 'capacity_hours_per_week', label: 'Capacity (hrs/wk)' },
+    { value: 'cost_rate_hourly', label: 'Rate ($/hr)' },
+    { value: 'is_active', label: 'Active' },
+    { value: 'resource_group', label: 'Group' },
+  ],
+  raid_items: [
+    { value: 'title', label: 'Title' },
+    { value: 'type', label: 'Type' },
+    { value: 'category', label: 'Category' },
+    { value: 'severity', label: 'Severity' },
+    { value: 'status', label: 'Status' },
+    { value: 'risk_score', label: 'Risk Score' },
+    { value: 'due_date', label: 'Due Date' },
+    { value: 'created_at', label: 'Created' },
+  ],
+  meetings: [
+    { value: 'title', label: 'Title' },
+    { value: 'meeting_type', label: 'Type' },
+    { value: 'scheduled_date', label: 'Date' },
+    { value: 'duration_minutes', label: 'Duration (min)' },
+    { value: 'location', label: 'Location' },
+    { value: 'status', label: 'Status' },
+  ],
+  action_items: [
+    { value: 'description', label: 'Description' },
+    { value: 'assignee_name', label: 'Assignee' },
+    { value: 'due_date', label: 'Due Date' },
+    { value: 'priority', label: 'Priority' },
+    { value: 'status', label: 'Status' },
+    { value: 'source', label: 'Source' },
+    { value: 'created_at', label: 'Created' },
   ],
 };
 
@@ -115,6 +226,7 @@ function createEmptySection(type: SectionType): ReportSection {
       status: '',
     },
     groupBy: '',
+    columns: [],
   };
 }
 
@@ -127,6 +239,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
     config: {},
   });
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [expandedColumnPickers, setExpandedColumnPickers] = useState<Set<string>>(new Set());
 
   // Fetch existing template if editing
   const { data: existingTemplate, isLoading: templateLoading } = useQuery({
@@ -164,6 +277,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
             status: s.filters?.status || '',
           },
           groupBy: s.groupBy || '',
+          columns: s.columns || [],
         })),
       });
     }
@@ -486,6 +600,65 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                   </div>
                 </div>
               </div>
+
+              {/* Column Picker (table sections only) */}
+              {section.type === 'table' && (
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 mt-3">
+                  <button
+                    onClick={() => setExpandedColumnPickers(prev => {
+                      const next = new Set(prev);
+                      next.has(section.id) ? next.delete(section.id) : next.add(section.id);
+                      return next;
+                    })}
+                    className="flex items-center gap-1.5 text-xs uppercase font-medium text-gray-500 dark:text-gray-400 tracking-wider hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                  >
+                    <Columns3 className="w-3.5 h-3.5" />
+                    Select Columns
+                    {expandedColumnPickers.has(section.id) ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {section.columns.length > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded-full text-[10px] font-semibold">
+                        {section.columns.length}
+                      </span>
+                    )}
+                  </button>
+                  {expandedColumnPickers.has(section.id) && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(TABLE_COLUMNS[section.dataSource] || []).map(col => {
+                        const isSelected = section.columns.includes(col.value);
+                        return (
+                          <button
+                            key={col.value}
+                            onClick={() => {
+                              const newCols = isSelected
+                                ? section.columns.filter(c => c !== col.value)
+                                : [...section.columns, col.value];
+                              updateSection(section.id, { columns: newCols });
+                            }}
+                            className={`px-2 py-1 text-xs rounded-md border transition-colors ${
+                              isSelected
+                                ? 'bg-primary-100 dark:bg-primary-900/40 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300 font-medium'
+                                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-primary-300 dark:hover:border-primary-600'
+                            }`}
+                          >
+                            {col.label}
+                          </button>
+                        );
+                      })}
+                      {section.columns.length > 0 && (
+                        <button
+                          onClick={() => updateSection(section.id, { columns: [] })}
+                          className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {!expandedColumnPickers.has(section.id) && section.columns.length === 0 && (
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">All columns shown by default. Click to pick specific columns.</p>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -512,6 +685,24 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
         <p className="mt-3 text-xs text-red-600 text-right">
           Failed to save template. Please try again.
         </p>
+      )}
+
+      {/* Section count summary */}
+      {form.sections.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(() => {
+            const counts: Record<string, number> = {};
+            form.sections.forEach(s => { counts[s.type] = (counts[s.type] || 0) + 1; });
+            return Object.entries(counts).map(([type, count]) => (
+              <span key={type} className={`text-xs px-2 py-0.5 rounded-full ${TYPE_BADGE_COLORS[type as SectionType] || 'bg-gray-100 text-gray-600'}`}>
+                {count} {SECTION_TYPE_OPTIONS.find(o => o.value === type)?.label || type}
+              </span>
+            ));
+          })()}
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            across {new Set(form.sections.map(s => s.dataSource)).size} data source{new Set(form.sections.map(s => s.dataSource)).size !== 1 ? 's' : ''}
+          </span>
+        </div>
       )}
     </div>
   );

@@ -522,10 +522,14 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Instant reports** return immediately with styled HTML (navy #283480 theme, inline CSS) — no AI, no WebSocket wait. Results displayed in InstantReportModal with PDF/HTML export. API: `POST /api/v1/instant-reports/generate`
 - **Report tiles** show name, description, and AI/Instant badge per report type
 - **"See Also" links** to EVM Dashboard and Monte Carlo Simulation for deeper analytical views
-- Drag-and-drop report designer (Report Builder)
-- Configurable data sources and filters
-- KPI, chart, and table sections render with correct data shapes (fixed section rendering bugs)
-- `groupBy` parameter validated against an allowlist for SQL injection protection
+- **Report Builder** — full custom report designer with section-based layout
+  - **8 data sources**: Projects, Tasks, Time Entries, Budgets, Resources, RAID Items, Meetings, Action Items
+  - **5 section types**: KPI cards, tables, bar charts, line charts, pie charts
+  - **Column picker** for table sections — select specific columns or show all
+  - **Computed groupBy** — week and month temporal groupings via SQL `DATE_FORMAT`, plus aliases (project → project_id, assignee → assigned_to)
+  - **3 export formats**: CSV, Excel (.xls HTML table), PDF (browser print)
+  - KPI queries tailored per data source (e.g., RAID items show risk/issue/action/decision counts; resources show avg capacity and rate)
+- `groupBy` parameter validated against an allowlist for SQL injection protection; table column selection also allowlisted
 - Regular users can delete their own templates (no longer requires admin role)
 - Report Designer correctly persists all sections when updating an existing template
 - Scheduled report delivery via email (daily/weekly/monthly recurring schedules)

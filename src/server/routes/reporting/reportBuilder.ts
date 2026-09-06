@@ -9,14 +9,17 @@ import logger from '../../utils/logger';
 
 const reportSectionSchema = z.object({
   title: z.string().optional(),
-  type: z.enum(['kpi', 'table', 'bar_chart', 'line_chart', 'pie_chart']),
-  dataSource: z.enum(['projects', 'tasks', 'time_entries', 'budgets']),
+  type: z.enum(['kpi', 'kpi_card', 'table', 'bar_chart', 'line_chart', 'pie_chart']),
+  dataSource: z.enum(['projects', 'tasks', 'time_entries', 'budgets', 'resources', 'raid_items', 'meetings', 'action_items']),
   filters: z.object({
     dateRange: z.object({ start: z.string(), end: z.string() }).optional(),
+    dateStart: z.string().optional(),
+    dateEnd: z.string().optional(),
     projectId: z.string().optional(),
     status: z.string().optional(),
   }).optional(),
   groupBy: z.string().optional(),
+  columns: z.array(z.string()).optional(),
 });
 
 const createTemplateSchema = z.object({
