@@ -123,6 +123,13 @@ export class ResourceRepository extends BaseRepository<Resource> {
     return (result.affectedRows ?? 0) > 0;
   }
 
+  async deleteResources(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    const placeholders = ids.map(() => '?').join(',');
+    const result: any = await this.queryRaw(`DELETE FROM resources WHERE id IN (${placeholders})`, ids);
+    return result.affectedRows ?? 0;
+  }
+
   // --- Assignments ---
 
   async findAssignmentsBySchedule(scheduleId: string): Promise<ResourceAssignment[]> {

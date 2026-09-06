@@ -136,6 +136,10 @@ export class ResourceService {
     return resourceRepository.deleteResource(id);
   }
 
+  async deleteResources(ids: string[]): Promise<number> {
+    return resourceRepository.deleteResources(ids);
+  }
+
   // --- Assignment CRUD ---
 
   async findAssignmentsBySchedule(scheduleId: string): Promise<ResourceAssignment[]> {

@@ -99,6 +99,14 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     return { message: 'Resource deleted' };
   });
 
+  // POST /resources/bulk-delete
+  fastify.post('/bulk-delete', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const body = z.object({ ids: z.array(z.string().min(1)).min(1).max(100) }).safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: 'Provide an array of resource IDs (max 100)' });
+    const deleted = await resourceService.deleteResources(body.data.ids);
+    return { deleted };
+  });
+
   // GET /resources/assignments/:scheduleId
   fastify.get('/assignments/:scheduleId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
     const { scheduleId } = request.params as { scheduleId: string };

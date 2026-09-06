@@ -984,6 +984,11 @@ class ApiService {
     return response.data;
   }
 
+  async bulkDeleteResources(ids: string[]) {
+    const response = await this.api.post('/resources/bulk-delete', { ids });
+    return response.data;
+  }
+
   async getResourceWorkload(projectId: string) {
     const response = await this.api.get(`/resources/workload/${projectId}`);
     return response.data;

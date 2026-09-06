@@ -134,6 +134,8 @@ export function ResourceManagementPage() {
   const [groupFilter, setGroupFilter] = useState('');
   const [trendResourceId, setTrendResourceId] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   // Queries
   const { data: projectsData } = useQuery({
@@ -196,6 +198,15 @@ export function ResourceManagementPage() {
   const deleteResourceMutation = useMutation({
     mutationFn: (id: string) => apiService.deleteResource(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['resources'] }),
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => apiService.bulkDeleteResources(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
+      setSelectedIds(new Set());
+      setBulkDeleteConfirm(false);
+    },
   });
 
   function resetForm() {
@@ -455,6 +466,25 @@ export function ResourceManagementPage() {
             </div>
           )}
 
+          {/* Bulk actions toolbar */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <span className="text-sm font-medium text-red-700 dark:text-red-300">{selectedIds.size} selected</span>
+              <button
+                onClick={() => setBulkDeleteConfirm(true)}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors flex items-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+              >
+                Clear Selection
+              </button>
+            </div>
+          )}
+
           {/* Resource list */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             {resourcesLoading ? (
@@ -471,6 +501,20 @@ export function ResourceManagementPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 dark:bg-gray-700">
+                    <th className="w-10 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={filteredResources.length > 0 && filteredResources.every(r => selectedIds.has(r.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds(new Set(filteredResources.map(r => r.id)));
+                          } else {
+                            setSelectedIds(new Set());
+                          }
+                        }}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                    </th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Name</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Role</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Department</th>
@@ -483,7 +527,19 @@ export function ResourceManagementPage() {
                 </thead>
                 <tbody>
                   {filteredResources.map(r => (
-                    <tr key={r.id} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <tr key={r.id} className={`border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 ${selectedIds.has(r.id) ? 'bg-primary-50 dark:bg-primary-900/20' : ''}`}>
+                      <td className="w-10 px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(r.id)}
+                          onChange={(e) => {
+                            const next = new Set(selectedIds);
+                            if (e.target.checked) next.add(r.id); else next.delete(r.id);
+                            setSelectedIds(next);
+                          }}
+                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                      </td>
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{r.name}</td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.role}</td>
                       <td className="px-4 py-3">
@@ -883,6 +939,17 @@ export function ResourceManagementPage() {
           isPending={deleteResourceMutation.isPending}
           onConfirm={() => { deleteResourceMutation.mutate(deleteConfirmId); setDeleteConfirmId(null); }}
           onCancel={() => setDeleteConfirmId(null)}
+        />
+      )}
+
+      {bulkDeleteConfirm && (
+        <ConfirmModal
+          title="Delete Selected Resources"
+          message={`Delete ${selectedIds.size} resource${selectedIds.size > 1 ? 's' : ''}? Any assignments will also be removed.`}
+          confirmLabel={`Delete ${selectedIds.size}`}
+          isPending={bulkDeleteMutation.isPending}
+          onConfirm={() => bulkDeleteMutation.mutate([...selectedIds])}
+          onCancel={() => setBulkDeleteConfirm(false)}
         />
       )}
     </div>
