@@ -321,6 +321,28 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       onImportOpened?.();
     }
   }, [openImportOnLoad, onImportOpened]);
+  // Listen for Mjuzi task creation events to highlight + scroll to new tasks
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const taskId = (e as CustomEvent).detail?.taskId;
+      if (taskId) {
+        setActiveTaskId(taskId);
+        // Scroll to the task row after React re-renders with new data
+        setTimeout(() => {
+          const row = document.querySelector(`[data-task-id="${taskId}"]`);
+          if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Flash highlight
+            row.classList.add('ring-2', 'ring-yellow-400', 'dark:ring-yellow-500');
+            setTimeout(() => row.classList.remove('ring-2', 'ring-yellow-400', 'dark:ring-yellow-500'), 3000);
+          }
+        }, 300);
+      }
+    };
+    window.addEventListener('mjuzi:task-created', handler);
+    return () => window.removeEventListener('mjuzi:task-created', handler);
+  }, []);
+
   const [showCriticalPath, setShowCriticalPath] = useState(false);
   const columnState = useColumnState(schedule.id);
   const [selectedBaselineId, setSelectedBaselineId] = useState<string>('');

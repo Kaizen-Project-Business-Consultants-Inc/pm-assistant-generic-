@@ -168,6 +168,19 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
           queryClient.invalidateQueries({ queryKey: ['tasks'] });
           queryClient.invalidateQueries({ queryKey: ['schedule'] });
           queryClient.invalidateQueries({ queryKey: ['gantt'] });
+
+          // Find the last created task ID to highlight it
+          const createAction = [...result.actions].reverse().find(
+            (a: ActionResult) => a.toolName === 'create_task' && a.success && a.data?.taskId
+          );
+          if (createAction?.data?.taskId) {
+            // Dispatch event after a short delay to let the query refetch complete
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('mjuzi:task-created', {
+                detail: { taskId: createAction.data.taskId },
+              }));
+            }, 500);
+          }
         }
         if (hasProjectMutation) {
           queryClient.invalidateQueries({ queryKey: ['projects'] });
