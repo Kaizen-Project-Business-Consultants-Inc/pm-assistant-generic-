@@ -395,7 +395,7 @@ export class ScheduleService {
    * Recompute a parent task's rollup fields from its children.
    * Recursively walks up the parent chain (max depth 10).
    */
-  private async recomputeParentRollup(parentTaskId: string, depth = 0): Promise<void> {
+  async recomputeParentRollup(parentTaskId: string, depth = 0): Promise<void> {
     if (depth >= 10) return;
     const parent = await this.findTaskById(parentTaskId);
     if (!parent) return;

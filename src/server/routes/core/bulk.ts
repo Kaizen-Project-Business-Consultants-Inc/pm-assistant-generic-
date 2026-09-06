@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from '../../database/connection';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { scheduleService } from '../../services/ScheduleService';
 import logger from '../../utils/logger';
 
 const MAX_BULK = 100;
@@ -210,6 +211,61 @@ export async function bulkRoutes(fastify: FastifyInstance) {
     } catch (error) {
       logger.error('Batch status update error', { error });
       return reply.status(500).send({ error: 'Failed to batch update task status' });
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // DELETE /tasks — Bulk delete tasks
+  // -----------------------------------------------------------------------
+  fastify.delete('/tasks', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const user = request.user!;
+      if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
+
+      const body = z.object({
+        scheduleId: z.string().min(1),
+        taskIds: z.array(z.string().min(1)).min(1).max(MAX_BULK),
+      }).parse(request.body);
+
+      // Gather parent IDs before deletion for rollup recomputation
+      const placeholders = body.taskIds.map(() => '?').join(',');
+      const existing = await databaseService.query<any>(
+        `SELECT id, parent_task_id FROM tasks WHERE id IN (${placeholders}) AND schedule_id = ?`,
+        [...body.taskIds, body.scheduleId],
+      );
+      const parentIds = new Set<string>();
+      for (const row of existing) {
+        if (row.parent_task_id && !body.taskIds.includes(row.parent_task_id)) {
+          parentIds.add(row.parent_task_id);
+        }
+      }
+
+      await databaseService.transaction(async (connection) => {
+        const q = (sql: string, params: any[] = []) => databaseService.queryOn(connection, sql, params);
+
+        // Clear dependency refs pointing to deleted tasks
+        await q(
+          `UPDATE tasks SET dependency = NULL, dependency_type = NULL, dependency_lag_days = 0 WHERE dependency IN (${placeholders}) AND schedule_id = ?`,
+          [...body.taskIds, body.scheduleId],
+        );
+
+        // Delete the tasks
+        await q(
+          `DELETE FROM tasks WHERE id IN (${placeholders}) AND schedule_id = ?`,
+          [...body.taskIds, body.scheduleId],
+        );
+      });
+
+      // Recompute parent rollups (fire-and-forget)
+      for (const pid of parentIds) {
+        scheduleService.recomputeParentRollup(pid).catch(err =>
+          logger.error('[Rollup] recomputeParentRollup error on bulk delete:', err));
+      }
+
+      return { deleted: existing.length };
+    } catch (error) {
+      logger.error('Bulk delete tasks error', { error });
+      return reply.status(500).send({ error: 'Failed to bulk delete tasks' });
     }
   });
 }

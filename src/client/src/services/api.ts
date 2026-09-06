@@ -979,6 +979,11 @@ class ApiService {
     return response.data;
   }
 
+  async bulkDeleteTasks(scheduleId: string, taskIds: string[]) {
+    const response = await this.api.delete('/bulk/tasks', { data: { scheduleId, taskIds } });
+    return response.data;
+  }
+
   async deleteResource(id: string) {
     const response = await this.api.delete(`/resources/${id}`);
     return response.data;

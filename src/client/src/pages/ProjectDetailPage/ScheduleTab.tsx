@@ -681,7 +681,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         sortOrder: t.sortOrder,
       }));
 
-    await Promise.all(taskIds.map(id => apiService.deleteTask(schedule.id, id)));
+    await apiService.bulkDeleteTasks(schedule.id, taskIds);
     queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
 
     pushAction({
@@ -698,7 +698,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         const idsToDelete = deletedTasks
           .map(dt => currentTasks.find(ct => ct.name === dt.name)?.id)
           .filter((id): id is string => !!id);
-        await Promise.all(idsToDelete.map(id => apiService.deleteTask(schedule.id, id)));
+        await apiService.bulkDeleteTasks(schedule.id, idsToDelete);
         queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       },
     });

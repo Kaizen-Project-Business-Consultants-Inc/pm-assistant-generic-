@@ -800,7 +800,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       if (onBulkDelete) {
         await onBulkDelete(taskIds);
       } else {
-        await Promise.all(taskIds.map(id => apiService.deleteTask(scheduleId, id)));
+        await apiService.bulkDeleteTasks(scheduleId, taskIds);
       }
       queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
       showBulkSuccess(`Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`);
