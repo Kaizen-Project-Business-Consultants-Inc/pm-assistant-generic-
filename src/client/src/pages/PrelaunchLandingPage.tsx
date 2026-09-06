@@ -17,7 +17,7 @@ const features = [
     color: 'from-blue-400 to-indigo-500',
   },
   {
-    title: 'AI-Powered Scheduling',
+    title: 'AI Predictive Scheduling',
     description: 'Generate task breakdowns, dependencies, and optimized timelines in seconds.',
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -524,7 +524,7 @@ function NLQueryMockup() {
 
 const featureMockups: Record<string, React.FC> = {
   'Interactive Gantt Charts': GanttMockup,
-  'AI-Powered Scheduling': SchedulingMockup,
+  'AI Predictive Scheduling': SchedulingMockup,
   'Earned Value Management': EVMMockup,
   'Monte Carlo Simulations': MonteCarloMockup,
   'Smart Risk Detection': RiskDetectionMockup,

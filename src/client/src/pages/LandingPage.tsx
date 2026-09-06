@@ -23,7 +23,7 @@ function useReducedMotion(): boolean {
 
 const features = [
   {
-    title: 'AI-Powered Scheduling',
+    title: 'AI Predictive Scheduling',
     description: 'Automatically generate task breakdowns, dependencies, and optimized timelines using AI.',
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -408,7 +408,7 @@ function HeroMockup() {
 }
 
 const featureMockups: Record<string, React.FC<{ static?: boolean }>> = {
-  'AI-Powered Scheduling': SchedulingMockup,
+  'AI Predictive Scheduling': SchedulingMockup,
   'Monte Carlo Simulations': MonteCarloMockup,
   'Smart Risk Detection': RiskDetectionMockup,
   'Meeting Intelligence': MeetingMockup,
@@ -418,7 +418,7 @@ const featureMockups: Record<string, React.FC<{ static?: boolean }>> = {
 
 /* Demo media mapping — supports images (.png/.jpg) and videos (.webm/.mp4) */
 const featureScreenshots: Record<string, string> = {
-  'AI-Powered Scheduling': '/screenshots/scheduling.webm',
+  'AI Predictive Scheduling': '/screenshots/scheduling.webm',
   'Monte Carlo Simulations': '/screenshots/monte-carlo.webm',
   'Smart Risk Detection': '/screenshots/risk-detection.webm',
   'Meeting Intelligence': '/screenshots/meeting-intelligence.webm',
