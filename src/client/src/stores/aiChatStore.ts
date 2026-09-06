@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { apiService } from '../services/api';
+import { queryClient } from '../main';
 
 export interface ChatMessage {
   id: string;
@@ -150,6 +151,28 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
 
       if (result.conversationId) {
         setConversationId(result.conversationId);
+      }
+
+      // If Mjuzi took actions that modify data, invalidate relevant caches
+      if (result.actions && result.actions.length > 0) {
+        const mutatingTools = new Set([
+          'create_task', 'update_task', 'delete_task',
+          'reschedule_task', 'cascade_reschedule',
+          'set_dependency', 'remove_dependency', 'clear_all_dependencies',
+        ]);
+        const projectTools = new Set(['create_project', 'update_project']);
+        const hasMutation = result.actions.some((a: ActionResult) => mutatingTools.has(a.toolName));
+        const hasProjectMutation = result.actions.some((a: ActionResult) => projectTools.has(a.toolName));
+
+        if (hasMutation) {
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          queryClient.invalidateQueries({ queryKey: ['schedule'] });
+          queryClient.invalidateQueries({ queryKey: ['gantt'] });
+        }
+        if (hasProjectMutation) {
+          queryClient.invalidateQueries({ queryKey: ['projects'] });
+          queryClient.invalidateQueries({ queryKey: ['project'] });
+        }
       }
 
       // Refresh conversation list in background
