@@ -38,6 +38,7 @@ const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 /** Normalise a CSV header to a known task field name, applying columnMap overrides first. */
 function mapColumn(header: string, columnMap: Record<string, string> | undefined): string | null {
   const mapped = columnMap?.[header] ?? header;
+  if (mapped === '_skip') return null;
   const key = mapped.trim().toLowerCase().replace(/\s+/g, '_');
 
   const aliases: Record<string, string> = {
@@ -58,6 +59,7 @@ function mapColumn(header: string, columnMap: Record<string, string> | undefined
     target_start: 'startDate',
     planned_start: 'startDate',
     planned_start_date: 'startDate',
+    finish: 'endDate',
     end_date: 'endDate',
     enddate: 'endDate',
     end: 'endDate',
@@ -68,12 +70,16 @@ function mapColumn(header: string, columnMap: Record<string, string> | undefined
     duedate: 'dueDate',
     due: 'dueDate',
     deadline: 'dueDate',
+    resource_names: 'assignedTo',
     assigned_to: 'assignedTo',
     assignedto: 'assignedTo',
     assignee: 'assignedTo',
     owner: 'assignedTo',
     resource: 'assignedTo',
     responsibility: 'assignedTo',
+    '%_complete': 'progressPercentage',
+    percent_complete: 'progressPercentage',
+    complete: 'progressPercentage',
     progress: 'progressPercentage',
     progress_percentage: 'progressPercentage',
     progresspercentage: 'progressPercentage',

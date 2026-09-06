@@ -275,8 +275,10 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
       // Convert index-based columnMap to header-name-based for the server
       const headerMap: Record<string, string> = {};
       for (const [idx, field] of Object.entries(columnMap)) {
-        if (field && parsed.headers[Number(idx)]) {
-          headerMap[parsed.headers[Number(idx)]] = field;
+        const header = parsed.headers[Number(idx)];
+        if (header) {
+          // Send mapped field, or '_skip' for explicitly skipped columns
+          headerMap[header] = field || '_skip';
         }
       }
       const res = await apiService.importTasks(scheduleId, csvText, headerMap);
