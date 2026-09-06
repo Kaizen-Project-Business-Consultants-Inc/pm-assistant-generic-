@@ -192,6 +192,7 @@ export function ProjectDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['pm-all-projects'] });
       setShowEditProject(false);
     },
   });
@@ -199,7 +200,13 @@ export function ProjectDetailPage() {
   const deleteProjectMutation = useMutation({
     mutationFn: () => apiService.deleteProject(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      // Clear all project caches so the list fetches fresh
+      queryClient.removeQueries({ queryKey: ['project', id] });
+      queryClient.removeQueries({ queryKey: ['projects'] });
+      queryClient.removeQueries({ queryKey: ['pm-all-projects'] });
+      queryClient.removeQueries({ queryKey: ['pm-projects'] });
+      queryClient.removeQueries({ queryKey: ['favourite-projects'] });
+      // Navigate — ProjectsPM will have no cache, so it fetches fresh from server
       navigate('/projects');
     },
   });
