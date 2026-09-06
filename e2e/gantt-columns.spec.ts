@@ -1,20 +1,19 @@
 import { test, expect } from '@playwright/test';
 
-// Uses staging auth from globalSetup — storageState injected automatically
-
-// CloudSync project ID on staging (same as pre-launch.spec.ts)
-const CLOUDSYNC_ID = 'fe0fe4f4-ebdd-4bc0-a439-8e2faf4e8c03';
+// TechStart E-Commerce Platform on staging (mike_todo's tenant)
+const PROJECT_ID = '54839f0a-8e9e-4f64-bc96-eef022132444';
 
 async function navigateToGantt(page: import('@playwright/test').Page) {
-  await page.goto(`/project/${CLOUDSYNC_ID}?tab=schedule`);
+  await page.goto(`/project/${PROJECT_ID}?tab=schedule`);
   // Wait for the Gantt table to load
   await expect(
     page.locator('table, [class*="gantt"], canvas, svg').first()
   ).toBeVisible({ timeout: 20_000 });
+  // Extra wait for toolbar to render
+  await page.waitForTimeout(2000);
 }
 
 async function openColumnPicker(page: import('@playwright/test').Page) {
-  // The column picker button has title="Choose columns" and text "Columns"
   const colBtn = page.locator('button[title="Choose columns"]')
     .or(page.getByRole('button', { name: /Columns/i }));
   await expect(colBtn.first()).toBeVisible({ timeout: 10_000 });
