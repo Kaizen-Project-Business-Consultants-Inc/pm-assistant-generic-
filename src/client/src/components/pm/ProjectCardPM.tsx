@@ -148,9 +148,9 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${priorityChipColor(priority)}`}>
           {priority}
         </span>
-        {methodology && methodology !== 'waterfall' && (
-          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
-            {methodology === 'agile' ? 'Agile' : 'Hybrid'}
+        {methodology && (
+          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 capitalize">
+            {methodology}
           </span>
         )}
         {isArchived && (
