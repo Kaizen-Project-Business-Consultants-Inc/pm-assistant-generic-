@@ -563,6 +563,48 @@ export class EmailService {
     });
   }
 
+  async sendProjectInviteEmail(to: string, params: {
+    projectName: string;
+    projectId: string;
+    inviterName: string;
+    role: string;
+    isRegistered: boolean;
+  }): Promise<void> {
+    if (!this.isConfigured) {
+      logger.info(`[EmailService] Project invite email would be sent to ${maskPii(to)} for project "${params.projectName}"`);
+      return;
+    }
+
+    const { projectName, projectId, inviterName, role, isRegistered } = params;
+
+    const ctaUrl = isRegistered
+      ? `${config.APP_URL}/projects/${projectId}`
+      : `${config.APP_URL}/register`;
+    const ctaLabel = isRegistered ? 'View Project' : 'Create Account';
+
+    const bodyHtml = `
+      <p style="color: #4b5563; line-height: 1.6;">
+        ${escapeHtml(inviterName)} has added you to <strong>${escapeHtml(projectName)}</strong> as <strong>${escapeHtml(role)}</strong>.
+      </p>
+      ${isRegistered
+        ? '<p style="color: #4b5563; line-height: 1.6;">Click below to view the project.</p>'
+        : '<p style="color: #4b5563; line-height: 1.6;">Create your free account to access the project and start collaborating.</p>'
+      }
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${ctaUrl}" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+          ${ctaLabel}
+        </a>
+      </div>
+    `;
+
+    await this.sendEmail({
+      from: config.RESEND_FROM_EMAIL,
+      to,
+      subject: `You've been added to ${escapeHtml(projectName)} on Kovarti PM`,
+      html: this.wrapHtml('You\'re invited!', bodyHtml),
+    });
+  }
+
   async sendViewerInviteEmail(to: string, orgName: string, inviterName: string, projectName: string | null, token: string): Promise<void> {
     if (!this.isConfigured) {
       logger.info(`[EmailService] Viewer invite email would be sent to ${maskPii(to)} for org "${orgName}"`);

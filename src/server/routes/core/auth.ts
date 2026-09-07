@@ -14,6 +14,7 @@ import { inviteService } from '../../services/InviteService';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import { databaseService } from '../../database/connection';
 import { rateLimiter } from '../../middleware/rateLimiter';
+import { runWithTenantContext } from '../../middleware/requestContext';
 import { resolvePriceId } from '../integrations/stripe';
 import logger from '../../utils/logger';
 import type { JwtPayload } from '../../types/fastify';
@@ -207,6 +208,22 @@ export async function authRoutes(fastify: FastifyInstance) {
         emailVerificationExpires: isPlanSignup ? undefined : verificationExpires,
         stripeCustomerId: stripeCustomerId || undefined,
       });
+
+      // Fire-and-forget: link any pending project memberships to this new user
+      organizationService.getAllActiveProvisioned().then(async (orgs: any[]) => {
+        for (const org of orgs) {
+          try {
+            await runWithTenantContext(org.dbName, org.id, () =>
+              databaseService.query(
+                'UPDATE project_members SET user_id = ?, user_name = ? WHERE LOWER(email) = LOWER(?) AND user_id LIKE ?',
+                [user.id, fullName || email.split('@')[0], email, 'pending_%'],
+              ),
+            );
+          } catch {
+            // Ignore errors for individual tenants
+          }
+        }
+      }).catch((err: any) => logger.error('Failed to link pending memberships', { userId: user.id, error: err }));
 
       if (isInvitedViewer) {
         // Viewer: no trial, no subscription, accept the invite

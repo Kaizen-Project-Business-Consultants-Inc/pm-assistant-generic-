@@ -111,6 +111,14 @@ export class ProjectMemberRepository extends BaseRepository<ProjectMember> {
     return result.affectedRows > 0;
   }
 
+  async findByEmail(projectId: string, email: string): Promise<ProjectMember | undefined> {
+    const rows = await this.queryRaw(
+      'SELECT * FROM project_members WHERE project_id = ? AND LOWER(email) = LOWER(?)',
+      [projectId, email],
+    );
+    return rows.length > 0 ? rowToMember(rows[0]) : undefined;
+  }
+
   async findUserByEmail(email: string): Promise<{ id: string; fullName: string; email: string } | null> {
     const rows = await databaseService.queryControlPlane(
       'SELECT id, full_name, email FROM users WHERE email = ? LIMIT 1',

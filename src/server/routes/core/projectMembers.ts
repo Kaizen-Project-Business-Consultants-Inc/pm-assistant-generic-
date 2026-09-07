@@ -1,6 +1,9 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 import { projectMemberService } from '../../services/ProjectMemberService';
+import { projectService } from '../../services/ProjectService';
+import { emailService } from '../../services/EmailService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
@@ -48,13 +51,24 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
       // Resolve userId from email if not provided
       let userId = data.userId;
       let userName = data.userName;
+      let isRegistered = true;
+
       if (!userId) {
         const user = await projectMemberService.findUserByEmail(data.email);
-        if (!user) {
-          return reply.status(404).send({ error: 'User not found', message: `No registered user with email ${data.email}` });
+        if (user) {
+          userId = user.id;
+          userName = user.fullName;
+        } else {
+          // Unregistered user — check if already a pending member
+          const existing = await projectMemberService.findByEmail(projectId, data.email);
+          if (existing) {
+            // Update role if re-invited
+            await projectMemberService.updateRole(existing.id, data.role);
+            return reply.status(200).send({ member: { ...existing, role: data.role } });
+          }
+          userId = `pending_${uuidv4()}`;
+          isRegistered = false;
         }
-        userId = user.id;
-        userName = user.fullName;
       }
 
       const member = await projectMemberService.addMember(projectId, {
@@ -64,8 +78,8 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
         role: data.role,
       });
 
-      // Notify the added user (fire-and-forget)
-      if (userId && userId !== (request.user as any)?.userId) {
+      // Notify the added user (fire-and-forget, registered only)
+      if (isRegistered && userId !== (request.user as any)?.userId) {
         notificationService.create({
           userId,
           type: 'member_added',
@@ -77,6 +91,19 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
           linkId: projectId,
         }).catch(err => logger.error('member_added notification error', { error: err }));
       }
+
+      // Send invitation email (fire-and-forget)
+      const inviterName = (request.user as any)?.fullName || (request.user as any)?.email || 'A team member';
+      projectService.findById(projectId).then(project => {
+        const projectName = project?.name || 'a project';
+        emailService.sendProjectInviteEmail(data.email, {
+          projectName,
+          projectId,
+          inviterName,
+          role: data.role,
+          isRegistered,
+        }).catch(err => logger.error('project invite email error', { error: err }));
+      }).catch(err => logger.error('project lookup for invite email error', { error: err }));
 
       return reply.status(201).send({ member });
     } catch (error) {

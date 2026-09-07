@@ -43,7 +43,8 @@ export class ProjectMemberService {
     const member = await projectMemberRepository.insert(projectId, data);
 
     // Fire-and-forget: link any unlinked resource with matching email to this user
-    if (data.email) {
+    // Skip for pending (unregistered) users
+    if (data.email && !data.userId.startsWith('pending_')) {
       databaseService.query(
         'UPDATE resources SET user_id = ? WHERE LOWER(email) = LOWER(?) AND user_id IS NULL',
         [data.userId, data.email],
@@ -70,6 +71,10 @@ export class ProjectMemberService {
     }
 
     return projectMemberRepository.deleteMember(memberId);
+  }
+
+  async findByEmail(projectId: string, email: string): Promise<ProjectMember | undefined> {
+    return projectMemberRepository.findByEmail(projectId, email);
   }
 
   async findUserByEmail(email: string): Promise<{ id: string; fullName: string; email: string } | null> {
