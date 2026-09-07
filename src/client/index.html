@@ -68,6 +68,97 @@
         "name": "Kovarti PM",
         "url": "https://kovarti.com",
         "description": "AI-powered project management software"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Kovarti PM",
+        "url": "https://kovarti.com",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "description": "AI project management platform with predictive scheduling, automatic task generation, dependency mapping, Monte Carlo simulations, and an AI PM assistant.",
+        "offers": [
+          {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD",
+            "name": "Free Trial",
+            "description": "14-day free trial with full access"
+          },
+          {
+            "@type": "Offer",
+            "price": "19",
+            "priceCurrency": "USD",
+            "name": "Basic",
+            "description": "Core PM features, no AI",
+            "priceValidUntil": "2027-12-31",
+            "billingIncrement": "P1M"
+          },
+          {
+            "@type": "Offer",
+            "price": "29",
+            "priceCurrency": "USD",
+            "name": "Pro",
+            "description": "All features including AI scheduling and AI PM assistant",
+            "priceValidUntil": "2027-12-31",
+            "billingIncrement": "P1M"
+          }
+        ],
+        "featureList": "AI scheduling, predictive scheduling, dependency mapping, automatic task generation, project timeline prediction, Monte Carlo simulations, earned value management, Gantt charts, resource leveling, meeting intelligence"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is Kovarti PM?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Kovarti PM is an AI project management platform that combines enterprise-grade scheduling with intelligent automation. It includes AI scheduling, predictive scheduling with Monte Carlo simulations, automatic task generation, dependency mapping, earned value management, and an AI PM assistant called Mjuzi."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does AI scheduling work in Kovarti?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Describe your project scope and Kovarti's AI generates a complete work breakdown structure with tasks, durations, and predecessor links in seconds. The AI scheduling engine builds optimized timelines using predictive scheduling, recalculates the critical path when you make changes, and flags conflicts automatically."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is predictive scheduling?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Predictive scheduling uses Monte Carlo simulations to forecast your real project completion date at P50, P80, and P95 confidence levels. Instead of a single optimistic end date, you get a probability distribution that shows the range of likely outcomes based on thousands of randomized scenarios."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Kovarti support dependency mapping?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Kovarti supports finish-to-start, start-to-start, finish-to-finish, and start-to-finish dependency types with lag days. Dependencies are rendered as arrows on the Gantt chart and network diagram. The engine validates every link to prevent circular dependencies and calculates the critical path automatically."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much does Kovarti PM cost?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Kovarti PM offers a free 14-day trial with full access. Paid plans start at $19/month for Basic (core PM, no AI) and $29/month for Pro (all features including AI scheduling, predictive scheduling, and the AI PM assistant). No credit card required to start."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I import from Microsoft Project?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Kovarti imports Excel (.xlsx/.xls), CSV, and MS Project XML (MSPDI) files. The smart column mapper recognizes Microsoft Project field names like Task Name, Finish, Resource Names, % Complete, and Duration automatically."
+            }
+          }
+        ]
       }
     ]
     </script>
@@ -109,7 +200,23 @@
           <li><strong>Founders and Startups</strong> — plan product launches, coordinate cross-functional work, and forecast delivery dates with confidence</li>
         </ul>
 
-        <p style="margin-top:24px"><a href="/register" style="color:#6366f1;font-weight:600">Get Started Free — 14-day trial</a> | <a href="/login" style="color:#6366f1;font-weight:600">Sign In</a> | <a href="/pricing" style="color:#6366f1;font-weight:600">Pricing</a></p>
+        <h2 style="font-size:1.5rem;font-weight:700;margin-top:32px;margin-bottom:16px">Frequently Asked Questions</h2>
+        <dl style="color:#475569;line-height:1.8">
+          <dt style="font-weight:700;color:#1e293b;margin-top:16px">What is Kovarti PM?</dt>
+          <dd style="margin-left:0;margin-bottom:12px">Kovarti PM is an AI project management platform that combines enterprise-grade scheduling with intelligent automation. It includes AI scheduling, predictive scheduling with Monte Carlo simulations, automatic task generation, dependency mapping, earned value management, and an AI PM assistant called Mjuzi.</dd>
+          <dt style="font-weight:700;color:#1e293b;margin-top:16px">How does AI scheduling work in Kovarti?</dt>
+          <dd style="margin-left:0;margin-bottom:12px">Describe your project scope and Kovarti's AI generates a complete work breakdown structure with tasks, durations, and predecessor links in seconds. The AI scheduling engine builds optimized timelines using predictive scheduling, recalculates the critical path when you make changes, and flags conflicts automatically.</dd>
+          <dt style="font-weight:700;color:#1e293b;margin-top:16px">What is predictive scheduling?</dt>
+          <dd style="margin-left:0;margin-bottom:12px">Predictive scheduling uses Monte Carlo simulations to forecast your real project completion date at P50, P80, and P95 confidence levels. Instead of a single optimistic end date, you get a probability distribution that shows the range of likely outcomes based on thousands of randomized scenarios.</dd>
+          <dt style="font-weight:700;color:#1e293b;margin-top:16px">Does Kovarti support dependency mapping?</dt>
+          <dd style="margin-left:0;margin-bottom:12px">Yes. Kovarti supports finish-to-start, start-to-start, finish-to-finish, and start-to-finish dependency types with lag days. Dependencies are rendered as arrows on the Gantt chart and network diagram. The engine validates every link to prevent circular dependencies and calculates the critical path automatically.</dd>
+          <dt style="font-weight:700;color:#1e293b;margin-top:16px">How much does Kovarti PM cost?</dt>
+          <dd style="margin-left:0;margin-bottom:12px">Kovarti PM offers a free 14-day trial with full access. Paid plans start at $19/month for Basic (core PM, no AI) and $29/month for Pro (all features including AI scheduling, predictive scheduling, and the AI PM assistant). No credit card required to start.</dd>
+          <dt style="font-weight:700;color:#1e293b;margin-top:16px">Can I import from Microsoft Project?</dt>
+          <dd style="margin-left:0;margin-bottom:12px">Yes. Kovarti imports Excel (.xlsx/.xls), CSV, and MS Project XML (MSPDI) files. The smart column mapper recognizes Microsoft Project field names like Task Name, Finish, Resource Names, % Complete, and Duration automatically.</dd>
+        </dl>
+
+        <p style="margin-top:24px"><a href="/register" style="color:#6366f1;font-weight:600">Get Started Free — 14-day trial</a> | <a href="/login" style="color:#6366f1;font-weight:600">Sign In</a> | <a href="/pricing" style="color:#6366f1;font-weight:600">Pricing</a> | <a href="/features" style="color:#6366f1;font-weight:600">Features</a> | <a href="/about" style="color:#6366f1;font-weight:600">About</a></p>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

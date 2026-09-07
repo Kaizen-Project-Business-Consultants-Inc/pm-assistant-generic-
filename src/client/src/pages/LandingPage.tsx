@@ -101,7 +101,7 @@ const features = [
 /* Animated mockup previews for feature cards */
 function SchedulingMockup({ static: isStatic }: { static?: boolean }) {
   return (
-    <svg viewBox="0 0 360 200" className="w-full h-full">
+    <svg viewBox="0 0 360 200" className="w-full h-full" role="img" aria-label="AI scheduling mockup showing a Gantt chart with task bars for Design, Backend, Frontend, Testing, and Deploy phases">
       <rect width="360" height="200" fill="#1e293b" />
       <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Project Timeline</text>
       <text x="16" y="54" fill="#cbd5e1" fontSize="11" fontFamily="system-ui">Design</text>
@@ -141,7 +141,7 @@ function SchedulingMockup({ static: isStatic }: { static?: boolean }) {
 function MonteCarloMockup({ static: isStatic }: { static?: boolean }) {
   const bars = [8, 15, 28, 45, 60, 80, 95, 78, 55, 35, 20, 10, 5];
   return (
-    <svg viewBox="0 0 360 200" className="w-full h-full">
+    <svg viewBox="0 0 360 200" className="w-full h-full" role="img" aria-label="Monte Carlo simulation histogram showing project completion probability distribution with P50 and P80 confidence markers">
       <rect width="360" height="200" fill="#1e293b" />
       <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Completion Probability</text>
       {bars.map((h, i) => (
@@ -174,7 +174,7 @@ function MonteCarloMockup({ static: isStatic }: { static?: boolean }) {
 
 function RiskDetectionMockup({ static: isStatic }: { static?: boolean }) {
   return (
-    <svg viewBox="0 0 360 200" className="w-full h-full">
+    <svg viewBox="0 0 360 200" className="w-full h-full" role="img" aria-label="Autonomous risk scanner detecting budget overrun, resource conflict, and dependency delay risks with severity indicators">
       <rect width="360" height="200" fill="#1e293b" />
       <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Risk Scanner</text>
       {!isStatic && (
@@ -211,7 +211,7 @@ function MeetingMockup({ static: isStatic }: { static?: boolean }) {
     { text: '→ Action: QA testing — Lisa — due Mon', type: 'action' },
   ];
   return (
-    <svg viewBox="0 0 360 200" className="w-full h-full">
+    <svg viewBox="0 0 360 200" className="w-full h-full" role="img" aria-label="Meeting intelligence extracting action items and decisions from a transcript automatically">
       <rect width="360" height="200" fill="#1e293b" />
       <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Meeting Analysis</text>
       {lines.map((line, i) => (
@@ -244,7 +244,7 @@ function PortfolioMockup({ static: isStatic }: { static?: boolean }) {
     { name: 'API Platform', health: 45, color: '#ef4444', w: 122 },
   ];
   return (
-    <svg viewBox="0 0 360 200" className="w-full h-full">
+    <svg viewBox="0 0 360 200" className="w-full h-full" role="img" aria-label="Portfolio dashboard showing health scores and progress bars for multiple projects">
       <rect width="360" height="200" fill="#1e293b" />
       <text x="16" y="26" fill="#94a3b8" fontSize="12" fontFamily="system-ui">Portfolio Health</text>
       {projects.map((p, i) => (
@@ -267,7 +267,7 @@ function PortfolioMockup({ static: isStatic }: { static?: boolean }) {
 
 function NLQueryMockup({ static: isStatic }: { static?: boolean }) {
   return (
-    <svg viewBox="0 0 360 200" className="w-full h-full">
+    <svg viewBox="0 0 360 200" className="w-full h-full" role="img" aria-label="AI PM assistant answering a natural language query about overdue sprint tasks with a formatted response">
       <rect width="360" height="200" fill="#1e293b" />
       <g opacity={isStatic ? "1" : "0"}>
         {!isStatic && <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="0.3s" fill="freeze" />}
@@ -336,7 +336,7 @@ function HeroMockup() {
   }, []);
 
   return (
-    <div className="relative" style={{ animation: 'hfloat 6s ease-in-out infinite' }}>
+    <div className="relative" role="img" aria-label="Kovarti PM portfolio dashboard showing project health at 82%, 7 of 10 projects on track, CPI of 0.94, a Monte Carlo delivery confidence chart, and an AI insight recommending reforecast" style={{ animation: 'hfloat 6s ease-in-out infinite' }}>
       {/* Glow behind card */}
       <div className="absolute -inset-8 blur-xl" style={{ background: 'radial-gradient(circle at 60% 40%, rgba(34,211,238,0.18), transparent 60%)' }} />
 
@@ -394,7 +394,7 @@ function HeroMockup() {
 
         {/* AI insight */}
         <div className="flex gap-2.5 mt-2.5 rounded-xl p-3" style={{ background: 'rgba(59,130,246,0.14)', border: '1px solid rgba(59,130,246,0.25)' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5" aria-hidden="true">
             <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1h6c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" />
             <path d="M9 18h6M10 22h4" />
           </svg>

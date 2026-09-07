@@ -7,6 +7,7 @@ export function AboutPage() {
   useSEO({
     title: 'About — Kovarti PM | AI Project Management Platform',
     description: 'Kovarti PM is an AI project management platform built by project managers for project managers. Learn about our mission, team, and why we built Kovarti.',
+    canonical: '/about',
   });
 
   return (

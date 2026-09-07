@@ -60,6 +60,7 @@ export function FeaturesPage() {
   useSEO({
     title: 'Features — Kovarti PM | AI Project Management Platform',
     description: 'Explore Kovarti PM features: AI scheduling, predictive scheduling, dependency mapping, automatic task generation, Monte Carlo simulations, EVM, and an AI PM assistant.',
+    canonical: '/features',
   });
 
   return (
