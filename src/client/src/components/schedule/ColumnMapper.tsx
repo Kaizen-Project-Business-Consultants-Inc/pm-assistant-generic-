@@ -26,8 +26,6 @@ export const TARGET_COLUMNS = [
   { value: 'baselineCost', label: 'Baseline Cost' },
 ] as const;
 
-const TARGET_VALUES = TARGET_COLUMNS.filter(c => c.value).map(c => c.value);
-
 const ALIASES: Record<string, string> = {
   name: 'name', title: 'name', activity: 'name', taskname: 'name',
   status: 'status', state: 'status',
@@ -74,6 +72,12 @@ export interface ColumnMapperProps {
   mappings: Record<number, string>;
   onMappingsChange: (mappings: Record<number, string>) => void;
   enableAI?: boolean;
+  /** Override target columns (default: task import columns) */
+  targetColumns?: readonly { value: string; label: string }[];
+  /** Override alias map (default: task import aliases) */
+  aliases?: Record<string, string>;
+  /** Override fuzzy-match labels (default: task import labels) */
+  targetLabels?: Record<string, string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -81,12 +85,12 @@ export interface ColumnMapperProps {
 // ---------------------------------------------------------------------------
 
 /** Layer 1: Exact alias matching (same as ImportModal's existing autoMap). */
-function exactAliasMap(headers: string[]): Record<number, string> {
+function exactAliasMap(headers: string[], aliases: Record<string, string>): Record<number, string> {
   const map: Record<number, string> = {};
   const used = new Set<string>();
   headers.forEach((h, i) => {
     const key = h.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const target = ALIASES[key];
+    const target = aliases[key];
     if (target && !used.has(target)) {
       map[i] = target;
       used.add(target);
@@ -99,15 +103,17 @@ function exactAliasMap(headers: string[]): Record<number, string> {
 function fuzzyMap(
   headers: string[],
   existing: Record<number, string>,
+  targetValues: string[],
+  targetLabelsMap: Record<string, string[]>,
 ): Record<number, string> {
   const map = { ...existing };
   const used = new Set(Object.values(map));
 
   // Build flat list of all label variants for unused targets
   const availableTargets: { field: string; label: string }[] = [];
-  for (const field of TARGET_VALUES) {
+  for (const field of targetValues) {
     if (used.has(field)) continue;
-    for (const label of (TARGET_LABELS[field] || [field])) {
+    for (const label of (targetLabelsMap[field] || [field])) {
       availableTargets.push({ field, label });
     }
   }
@@ -132,16 +138,22 @@ function fuzzyMap(
 // Component
 // ---------------------------------------------------------------------------
 
-export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = true }: ColumnMapperProps) {
+export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = true, targetColumns: customTargetColumns, aliases: customAliases, targetLabels: customTargetLabels }: ColumnMapperProps) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSource, setAiSource] = useState<Set<number>>(new Set()); // indices that came from AI
+
+  // Resolve effective columns/aliases/labels (custom or default)
+  const effectiveTargetColumns = customTargetColumns ?? TARGET_COLUMNS;
+  const effectiveAliases = customAliases ?? ALIASES;
+  const effectiveTargetLabels = customTargetLabels ?? TARGET_LABELS;
+  const effectiveTargetValues = effectiveTargetColumns.filter(c => c.value).map(c => c.value);
 
   // Run smart auto-map on mount or when headers change
   useEffect(() => {
     if (headers.length === 0) return;
 
-    const step1 = exactAliasMap(headers);
-    const step2 = fuzzyMap(headers, step1);
+    const step1 = exactAliasMap(headers, effectiveAliases);
+    const step2 = fuzzyMap(headers, step1, effectiveTargetValues, effectiveTargetLabels);
     onMappingsChange(step2);
 
     // Layer 3: AI suggestions for remaining unmapped headers (async)
@@ -149,7 +161,7 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
       const unmapped = headers.filter((_, i) => !step2[i]);
       if (unmapped.length > 0) {
         setAiLoading(true);
-        apiService.suggestColumns(headers, unmapped, TARGET_VALUES as unknown as string[])
+        apiService.suggestColumns(headers, unmapped, effectiveTargetValues as string[])
           .then(suggestions => {
             // Apply AI suggestions to currently unmapped columns
             const newMap = { ...step2 };
@@ -158,7 +170,7 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
             headers.forEach((h, i) => {
               if (newMap[i]) return;
               const suggested = suggestions[h];
-              if (suggested && TARGET_VALUES.includes(suggested as any) && !used.has(suggested)) {
+              if (suggested && effectiveTargetValues.includes(suggested) && !used.has(suggested)) {
                 newMap[i] = suggested;
                 used.add(suggested);
                 newAiSource.add(i);
@@ -219,7 +231,7 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
                 aiSource.has(i) ? 'ring-1 ring-purple-300 dark:ring-purple-700' : ''
               }`}
             >
-              {TARGET_COLUMNS.map((c) => (
+              {effectiveTargetColumns.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
             </select>

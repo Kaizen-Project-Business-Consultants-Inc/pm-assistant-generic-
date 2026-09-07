@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { parse as csvParse } from 'csv-parse/sync';
 import { riskService } from '../../services/RiskService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -9,6 +10,7 @@ import { slackEventDispatcher } from '../../services/integrations/SlackEventDisp
 import { PredictiveIntelligenceService } from '../../services/predictiveIntelligence';
 import { lessonsLearnedService } from '../../services/LessonsLearnedService';
 import { projectService } from '../../services/ProjectService';
+import { projectMemberService } from '../../services/ProjectMemberService';
 
 const RAID_TYPES = ['risk', 'issue', 'action', 'decision'] as const;
 const ALL_STATUSES = ['proposed', 'open', 'monitoring', 'mitigating', 'mitigated', 'closed', 'resolved',
@@ -455,6 +457,209 @@ export async function riskRoutes(fastify: FastifyInstance) {
       if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
       fastify.log.error({ err }, 'Batch import failed');
       return reply.status(500).send({ error: 'Batch import failed' });
+    }
+  });
+
+  // POST /api/v1/projects/:projectId/risks/import — CSV/Excel import with column mapping
+  const csvImportSchema = z.object({
+    csv: z.string().min(1).max(500_000),
+    columnMap: z.record(z.string(), z.string()),
+  });
+
+  // Normalization maps for fuzzy value matching
+  const TYPE_NORM: Record<string, string> = {
+    risk: 'risk', r: 'risk',
+    issue: 'issue', i: 'issue',
+    action: 'action', a: 'action',
+    decision: 'decision', d: 'decision',
+  };
+  const SEVERITY_NORM: Record<string, string> = {
+    critical: 'critical', crit: 'critical', '4': 'critical',
+    high: 'high', h: 'high', '3': 'high',
+    medium: 'medium', med: 'medium', m: 'medium', moderate: 'medium', '2': 'medium',
+    low: 'low', l: 'low', '1': 'low',
+  };
+  const STATUS_NORM: Record<string, string> = {
+    open: 'open', active: 'open',
+    closed: 'closed', done: 'closed', complete: 'closed',
+    'in progress': 'in_progress', inprogress: 'in_progress', wip: 'in_progress', in_progress: 'in_progress',
+    monitoring: 'monitoring', mitigating: 'mitigating', mitigated: 'mitigated',
+    resolved: 'resolved', completed: 'completed',
+    pending: 'pending_decision', pending_decision: 'pending_decision', pendingdecision: 'pending_decision',
+    decided: 'decided', deferred: 'deferred',
+  };
+  const CATEGORY_NORM: Record<string, string> = {
+    schedule: 'schedule', time: 'schedule',
+    budget: 'budget', cost: 'budget', financial: 'budget',
+    resource: 'resource', people: 'resource',
+    technical: 'technical', tech: 'technical',
+    regulatory: 'regulatory', compliance: 'regulatory',
+    stakeholder: 'stakeholder',
+    weather: 'weather',
+    dependency: 'dependency',
+    other: 'other',
+  };
+
+  fastify.post('/:projectId/risks/import', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      const { csv, columnMap } = csvImportSchema.parse(request.body);
+      const userId = request.user!.userId;
+
+      // Parse CSV
+      let records: Record<string, string>[];
+      try {
+        records = csvParse(csv, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+          relax_column_count: true,
+        });
+      } catch {
+        return reply.status(400).send({ error: 'Failed to parse CSV data' });
+      }
+
+      if (records.length === 0) {
+        return reply.status(400).send({ error: 'CSV contains no data rows' });
+      }
+      if (records.length > 200) {
+        return reply.status(400).send({ error: 'Maximum 200 rows per import' });
+      }
+
+      // Build reverse column map: csv header → target field
+      const reverseMap: Record<string, string> = {};
+      for (const [header, field] of Object.entries(columnMap)) {
+        if (field && field !== '_skip') {
+          reverseMap[header] = field;
+        }
+      }
+
+      // Load project members for owner matching
+      const members = await projectMemberService.findByProjectId(projectId);
+      const memberLookup = new Map<string, string>();
+      for (const m of members) {
+        const name = (m as any).userName || (m as any).name || '';
+        if (name) memberLookup.set(name.toLowerCase().trim(), (m as any).userId || (m as any).id);
+        const email = (m as any).email || '';
+        if (email) memberLookup.set(email.toLowerCase().trim(), (m as any).userId || (m as any).id);
+      }
+
+      const succeeded: number[] = [];
+      const failed: { row: number; error: string }[] = [];
+      const seenTitles = new Set<string>();
+
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i];
+        const rowNum = i + 2; // 1-indexed + header row
+
+        try {
+          // Map columns
+          const mapped: Record<string, string> = {};
+          for (const [header, value] of Object.entries(row)) {
+            const field = reverseMap[header];
+            if (field && value) {
+              mapped[field] = value;
+            }
+          }
+
+          // Title is required
+          if (!mapped.title?.trim()) {
+            failed.push({ row: rowNum, error: 'Missing title' });
+            continue;
+          }
+
+          const title = mapped.title.trim().slice(0, 255);
+
+          // Dedup within batch
+          const titleKey = title.toLowerCase();
+          if (seenTitles.has(titleKey)) {
+            failed.push({ row: rowNum, error: 'Duplicate title in batch' });
+            continue;
+          }
+          seenTitles.add(titleKey);
+
+          // Normalize type
+          const rawType = (mapped.type || '').toLowerCase().trim();
+          const type = TYPE_NORM[rawType] || 'risk';
+
+          // Normalize severity
+          const rawSeverity = (mapped.severity || '').toLowerCase().trim();
+          const severity = SEVERITY_NORM[rawSeverity] || undefined;
+
+          // Normalize status
+          const rawStatus = (mapped.status || '').toLowerCase().trim();
+          const status = STATUS_NORM[rawStatus] || undefined;
+
+          // Normalize category
+          const rawCategory = (mapped.category || '').toLowerCase().trim();
+          const category = CATEGORY_NORM[rawCategory] || undefined;
+
+          // Parse probability/impact as integers (1-5)
+          let probability: number | undefined;
+          if (mapped.probability) {
+            const p = parseInt(mapped.probability, 10);
+            if (p >= 1 && p <= 5) probability = p;
+          }
+          let impact: number | undefined;
+          if (mapped.impact) {
+            const imp = parseInt(mapped.impact, 10);
+            if (imp >= 1 && imp <= 5) impact = imp;
+          }
+
+          // Match owner
+          let ownerId: string | undefined;
+          if (mapped.owner) {
+            const ownerKey = mapped.owner.toLowerCase().trim();
+            ownerId = memberLookup.get(ownerKey);
+          }
+
+          // Normalize actionType
+          let actionType: 'preventive' | 'corrective' | 'improvement' | undefined;
+          if (mapped.actionType) {
+            const at = mapped.actionType.toLowerCase().trim();
+            if (['preventive', 'corrective', 'improvement'].includes(at)) {
+              actionType = at as 'preventive' | 'corrective' | 'improvement';
+            }
+          }
+
+          await riskService.create({
+            projectId,
+            type: type as 'risk' | 'issue' | 'action' | 'decision',
+            title,
+            description: mapped.description?.slice(0, 5000) || undefined,
+            category,
+            severity,
+            probability,
+            impact,
+            status,
+            triggerCondition: mapped.triggerCondition?.slice(0, 2000) || undefined,
+            mitigationPlan: mapped.mitigationPlan?.slice(0, 5000) || undefined,
+            responsePlan: mapped.responsePlan?.slice(0, 5000) || undefined,
+            ownerId,
+            dueDate: mapped.dueDate || undefined,
+            actionType,
+            rationale: mapped.rationale?.slice(0, 5000) || undefined,
+            rootCause: mapped.rootCause?.slice(0, 5000) || undefined,
+            workaround: mapped.workaround?.slice(0, 5000) || undefined,
+            source: 'imported',
+            createdBy: userId,
+          });
+
+          succeeded.push(rowNum);
+        } catch (err: any) {
+          failed.push({ row: rowNum, error: err.message || 'Unknown error' });
+        }
+      }
+
+      return reply.status(201).send({
+        data: { succeeded: succeeded.length, failed },
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
+      fastify.log.error({ err }, 'RAID CSV import failed');
+      return reply.status(500).send({ error: 'RAID CSV import failed' });
     }
   });
 

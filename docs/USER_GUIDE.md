@@ -2550,6 +2550,18 @@ The RAID log header contains four **Add** buttons, one per type:
 
 All forms include a **Source** field (Manual / AI Scan / Agent / Import) that is set automatically when records are created by the AI Scan or an agent.
 
+### Importing from CSV/Excel
+
+Click the **Import** button in the RAID toolbar to bulk-load items from a CSV or Excel file.
+
+1. **Upload a file** — drag-and-drop or browse for a `.csv`, `.xlsx`, or `.xls` file (max 5MB). You can also paste CSV text directly.
+2. **Map columns** — the column mapper automatically matches source columns to RAID fields (Type, Title, Description, Severity, Status, Owner, etc.) using alias matching, fuzzy matching, and AI suggestions. Adjust any mappings manually if needed.
+3. **Preview** — check the first 10 rows to verify the mapping looks correct.
+4. **Import** — click the Import button. The server normalises values (e.g., "High" → high, "R" → risk, "In Progress" → in_progress) and matches Owner names to project members.
+5. **Review results** — a summary shows how many items were created and any rows that failed with reasons.
+
+Imported items are tagged with **source: Import** and appear in the RAID log immediately. Maximum 200 rows per import.
+
 **All team members** can raise RAID items — open identification of risks, issues, actions, and decisions is encouraged per PMI/PRINCE2 governance best practice.
 
 ### Triage Workflow

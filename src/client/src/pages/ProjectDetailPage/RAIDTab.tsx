@@ -2,13 +2,14 @@ import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Bot, Activity, ShieldAlert, Search, Filter, X, ChevronUp, ChevronDown,
-  ArrowUpDown, AlertTriangle, FileText,
+  ArrowUpDown, AlertTriangle, FileText, Upload,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { RiskFormModal } from '../../components/risks/RiskFormModal';
 import { AIScanReviewModal } from '../../components/risks/AIScanReviewModal';
 import { RAIDDetailPanel } from '../../components/risks/RAIDDetailPanel';
 import { RAIDReportModal } from '../../components/risks/RAIDReportModal';
+import { RAIDImportModal } from '../../components/raids/RAIDImportModal';
 
 type RaidType = 'risk' | 'issue' | 'action' | 'decision';
 type ViewMode = 'table' | 'board' | 'matrix';
@@ -61,6 +62,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [inlineStatusId, setInlineStatusId] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const filters: Record<string, string> = {};
   if (filterType) filters.type = filterType;
@@ -394,6 +396,13 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
           >
             {scanning ? <Activity className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
             {scanning ? 'Scanning...' : 'AI Scan'}
+          </button>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/30 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg transition-colors"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Import
           </button>
           {scanError && (
             <span className="text-xs text-red-600 dark:text-red-400 max-w-xs truncate" title={scanError}>
@@ -824,6 +833,13 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
         candidates={scanCandidates || []}
         importing={importing}
         aiPowered={scanAiPowered}
+      />
+
+      <RAIDImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        projectId={projectId}
+        onImported={invalidateRaid}
       />
 
       {showReportModal && (

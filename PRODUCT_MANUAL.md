@@ -2796,6 +2796,36 @@ A collapsible filter panel with:
 - **Dropdowns** — Type, Status, Severity, Source filters. A badge on the Filter button shows how many filters are active.
 - **Clear all** — resets all filters. Item count displayed.
 
+### CSV/Excel Import
+
+The **Import** button in the RAID toolbar opens a file-based import modal for bulk-loading RAID items from CSV or Excel files (e.g., exported from other PM tools or PMO templates).
+
+**Supported formats:** `.csv`, `.xlsx`, `.xls` (max 5MB). Multi-sheet Excel files show a sheet selector.
+
+**Workflow:**
+1. Drag-and-drop or browse for a file, or paste CSV text directly.
+2. The column mapper auto-maps source columns to RAID fields using exact alias matching, fuzzy matching, and AI suggestions.
+3. Preview the first 10 rows with mapped column labels.
+4. Click **Import** to create the RAID items.
+5. A result summary shows how many items succeeded and any row-level errors.
+
+**Column mapping:** The mapper recognises common column names and aliases (e.g., "Risk Title" → Title, "Likelihood" → Probability, "Assigned To" → Owner). Unmapped columns can be manually assigned from the dropdown.
+
+**Value normalisation:** The server normalises incoming values to valid RAID field values:
+
+| Field | Example normalisation |
+|-------|----------------------|
+| Type | "R", "risk" → risk; "I", "issue" → issue; "A" → action; "D" → decision |
+| Severity | "High", "H", "3" → high; "Critical", "Crit" → critical |
+| Status | "Open", "Active" → open; "In Progress", "WIP" → in_progress; "Closed", "Done" → closed |
+| Category | "Budget", "Cost", "Financial" → budget; "Technical", "Tech" → technical |
+
+**Owner matching:** If an Owner column is mapped, the server attempts to match the name against project members (case-insensitive display name or email). Unmatched owners are silently skipped (the item is created without an owner).
+
+**Limits:** Maximum 200 rows per import. Duplicate titles within the same batch are rejected.
+
+**API endpoint:** `POST /api/v1/projects/:projectId/risks/import` — accepts `{ csv: string, columnMap: Record<string, string> }`. All imported records are tagged with `source: 'imported'`.
+
 ### Severity Distribution
 
 A horizontal stacked bar chart in the stats row showing the breakdown of critical/high/medium/low items across all RAID records, with colour-coded legend.
