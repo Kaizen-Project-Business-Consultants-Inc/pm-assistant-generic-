@@ -345,6 +345,14 @@ export function ProjectDetailPage() {
                   )}
                 </>
               )}
+              <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 capitalize">
+                {methodology}
+              </span>
+              {project.projectType && project.projectType !== 'other' && (
+                <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 capitalize">
+                  {project.projectType.replace(/_/g, ' ')}
+                </span>
+              )}
             </div>
             {(project.description) && (
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{project.description}</p>
