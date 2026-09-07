@@ -24,6 +24,8 @@ const TermsPage = lazy(() => import('./pages/TermsPage').then(m => ({ default: m
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
 const UserGuidePublicPage = lazy(() => import('./pages/UserGuidePublicPage').then(m => ({ default: m.UserGuidePublicPage })));
 const RoadmapPage = lazy(() => import('./pages/RoadmapPage').then(m => ({ default: m.RoadmapPage })));
+const FeaturesPage = lazy(() => import('./pages/FeaturesPage').then(m => ({ default: m.FeaturesPage })));
+const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
 const PrelaunchLandingPage = lazy(() => import('./pages/PrelaunchLandingPage').then(m => ({ default: m.PrelaunchLandingPage })));
 const PortalViewPage = lazy(() => import('./pages/PortalViewPage'));
 const DashboardPM = lazy(() => import('./pages/DashboardPM').then(m => ({ default: m.DashboardPM })));
@@ -147,6 +149,8 @@ function App() {
         <Route path={ROUTES.privacy} element={<PrivacyPage />} />
         <Route path={ROUTES.guide} element={<UserGuidePublicPage />} />
         <Route path={ROUTES.roadmap} element={<RoadmapPage />} />
+        <Route path={ROUTES.features} element={<FeaturesPage />} />
+        <Route path={ROUTES.about} element={<AboutPage />} />
         <Route path={ROUTES.waitlistAdmin} element={<Navigate to={ROUTES.adminWaitlist} replace />} />
         <Route path={ROUTE_PATTERNS.portal} element={<PortalViewPage />} />
         <Route path={ROUTES.onboarding} element={isAuthenticated ? <OnboardingPage /> : <Navigate to={ROUTES.login} replace />} />

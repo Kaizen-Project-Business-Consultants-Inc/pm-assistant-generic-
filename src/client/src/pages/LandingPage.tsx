@@ -656,7 +656,9 @@ export const LandingPage: React.FC = () => {
             </div>
             {/* Desktop nav */}
             <div className="hidden md:flex items-center space-x-4">
+              <Link to="/features" className="text-sm text-slate-400 hover:text-white transition-colors">Features</Link>
               <a href="#pricing" className="text-sm text-slate-400 hover:text-white transition-colors">Pricing</a>
+              <Link to="/about" className="text-sm text-slate-400 hover:text-white transition-colors">About</Link>
               <Link to="/login" className="text-sm text-slate-400 hover:text-white transition-colors">Sign In</Link>
               <a
                 href="#pricing"
@@ -687,7 +689,9 @@ export const LandingPage: React.FC = () => {
           {/* Mobile menu dropdown */}
           {mobileMenuOpen && (
             <div className="md:hidden border-t border-white/5 py-3 space-y-1">
+              <Link to="/features" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Features</Link>
               <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Pricing</a>
+              <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">About</Link>
               <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Sign In</Link>
               <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-400 rounded-lg text-center mt-2">Get Started</a>
             </div>
@@ -905,6 +909,8 @@ export const LandingPage: React.FC = () => {
               <span className="ml-2 text-sm font-semibold text-white">Kovarti PM</span>
             </div>
             <div className="flex space-x-6 text-sm">
+              <Link to="/features" className="hover:text-white transition-colors">Features</Link>
+              <Link to="/about" className="hover:text-white transition-colors">About</Link>
               <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
               <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
               <Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link>

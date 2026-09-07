@@ -15,6 +15,8 @@ export const PublicNavbar: React.FC = () => (
           <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">Kovarti PM</span>
         </Link>
         <div className="flex items-center space-x-4">
+          <Link to="/features" className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Features</Link>
+          <Link to="/about" className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">About</Link>
           <Link to="/roadmap" className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Roadmap</Link>
         </div>
       </div>
