@@ -814,6 +814,61 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* SEO — What is Kovarti */}
+      <section className="pt-28 pb-20 border-t border-white/5">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-10">
+            The AI project management platform built for real-world delivery
+          </h2>
+          <div className="prose prose-invert prose-slate max-w-none text-slate-300 leading-relaxed space-y-5 text-[15px]">
+            <p>
+              Kovarti is an <strong className="text-white">AI project management platform</strong> that combines
+              enterprise-grade scheduling with intelligent automation. Whether you run waterfall, agile, or hybrid
+              projects, Kovarti gives you the tools to plan, track, and deliver with confidence — powered by an
+              AI engine that learns from your data and gets smarter over time.
+            </p>
+            <p>
+              At the core is <strong className="text-white">AI scheduling</strong> — describe your project scope
+              and Kovarti's AI generates a complete work breakdown structure with tasks, durations, and
+              predecessor links in seconds. Need to adjust? Drag tasks on the interactive Gantt chart, and the
+              engine recalculates the critical path and flags conflicts automatically. This is{' '}
+              <strong className="text-white">predictive scheduling</strong> that goes beyond static timelines:
+              Monte Carlo simulations run thousands of scenarios to forecast your real completion date at P50,
+              P80, and P95 confidence levels, giving you honest{' '}
+              <strong className="text-white">project timeline prediction</strong> instead of wishful thinking.
+            </p>
+            <p>
+              <strong className="text-white">Automatic task generation</strong> saves hours of manual planning.
+              Upload a meeting transcript and Kovarti extracts action items, decisions, and risks — then turns them
+              into tracked tasks with assignees and due dates. Import an Excel file or MS Project export and the
+              smart column mapper recognizes your fields instantly. Break down an epic into subtasks with one click
+              using the AI task breakdown tool.
+            </p>
+            <p>
+              <strong className="text-white">Dependency mapping</strong> is built into every view. Define
+              finish-to-start, start-to-start, finish-to-finish, or start-to-finish relationships with lag days,
+              and see them rendered as arrows on the Gantt chart, network diagram, and critical path analysis.
+              The engine validates every link — no circular dependencies, no orphaned predecessors — so your
+              schedule stays logically sound as it evolves.
+            </p>
+            <p>
+              Meet <strong className="text-white">Mjuzi</strong>, your{' '}
+              <strong className="text-white">AI PM assistant</strong>. Mjuzi lives in a chat panel on every page
+              and understands your project context. Ask it to create tasks, scan for risks, generate status
+              reports, or explain what's driving your schedule variance — and it takes action using real project
+              data, not generic templates. Mjuzi remembers your preferences, learns from corrections, and
+              integrates findings from autonomous risk and resource scanners that run in the background.
+            </p>
+            <p>
+              From earned value management and S-curve forecasting to resource leveling and timesheet approvals,
+              Kovarti delivers the depth of tools like MS Project and Primavera P6 — wrapped in a modern interface
+              that teams actually want to use. Start your free 14-day trial and see why project managers are
+              switching to AI-powered project delivery.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Preview */}
       <section id="pricing" className="pt-28 pb-20 border-t border-white/5 scroll-mt-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
