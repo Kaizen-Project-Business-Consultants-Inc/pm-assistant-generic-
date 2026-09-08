@@ -113,7 +113,18 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
   const generateMutation = useMutation({
     mutationFn: () => apiService.generateRescheduleProposal(scheduleId),
     onSuccess: (data) => {
-      setProposal(data.proposal || data);
+      const raw = data.proposal || data;
+      // Map backend shape (proposedChanges, *Date) to frontend shape (changes, *Start/*End)
+      const changes = (raw.proposedChanges || raw.changes || []).map((c: any) => ({
+        taskId: c.taskId,
+        taskName: c.taskName,
+        currentStart: c.currentStartDate || c.currentStart,
+        currentEnd: c.currentEndDate || c.currentEnd,
+        proposedStart: c.proposedStartDate || c.proposedStart,
+        proposedEnd: c.proposedEndDate || c.proposedEnd,
+        reason: c.reason,
+      }));
+      setProposal({ ...raw, changes });
     },
   });
 
@@ -140,7 +151,17 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
     mutationFn: ({ proposalId, modifications }: { proposalId: string; modifications: any[] }) =>
       apiService.modifyRescheduleProposal(proposalId, modifications),
     onSuccess: (data) => {
-      setProposal(data.proposal || data);
+      const raw = data.proposal || data;
+      const changes = (raw.proposedChanges || raw.changes || []).map((c: any) => ({
+        taskId: c.taskId,
+        taskName: c.taskName,
+        currentStart: c.currentStartDate || c.currentStart,
+        currentEnd: c.currentEndDate || c.currentEnd,
+        proposedStart: c.proposedStartDate || c.proposedStart,
+        proposedEnd: c.proposedEndDate || c.proposedEnd,
+        reason: c.reason,
+      }));
+      setProposal({ ...raw, changes });
       setIsModifying(false);
       setModifiedChanges({});
     },
