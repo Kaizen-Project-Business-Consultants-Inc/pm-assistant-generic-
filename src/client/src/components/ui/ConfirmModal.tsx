@@ -10,6 +10,7 @@ interface ConfirmModalProps {
   isPending?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  children?: React.ReactNode;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -21,6 +22,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   isPending = false,
   onConfirm,
   onCancel,
+  children,
 }) => {
   const btnColor = variant === 'danger'
     ? 'bg-red-600 hover:bg-red-700'
@@ -30,6 +32,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     <AccessibleModal isOpen={true} onClose={onCancel} ariaLabel={title} className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-sm mx-4">
       <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{message}</p>
+      {children}
       <div className="flex justify-end gap-3">
         <button
           onClick={onCancel}

@@ -8,6 +8,10 @@ import { requireFeature } from '../../middleware/requireTier';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { userService } from '../../services/UserService';
 import { scheduleService } from '../../services/ScheduleService';
+import { emailService } from '../../services/EmailService';
+import { databaseService } from '../../database/connection';
+import { inviteService } from '../../services/InviteService';
+import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
 
 const skillSchema = z.union([
@@ -69,6 +73,50 @@ export async function resourceRoutes(fastify: FastifyInstance) {
         ...raw,
         skills: normalizeSkills(raw.skills),
       } as any);
+
+      // Send invitation email (fire-and-forget, rate-limited)
+      if (raw.email) {
+        const inviterUserId = (request.user as any)?.userId;
+        const inviterName = (request.user as any)?.fullName || (request.user as any)?.email || 'A team member';
+
+        // Rate limit: max 20 resource invite emails per hour per user
+        rateLimiter.checkAsync(`resource-invite:${inviterUserId}`, 20, 3_600_000).then(async (rl) => {
+          if (!rl.allowed) {
+            logger.warn('Resource invite rate limit exceeded', { userId: inviterUserId, email: raw.email });
+            return;
+          }
+
+          try {
+            const [existingUser] = await databaseService.queryControlPlane<{ id: string }>(
+              'SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1',
+              [raw.email],
+            );
+
+            if (existingUser) {
+              // Registered user — send direct email, no invite token needed
+              await emailService.sendResourceInviteEmail(raw.email, {
+                resourceName: raw.name,
+                role: raw.role,
+                inviterName,
+                isRegistered: true,
+              });
+            } else {
+              // Unregistered user — create org-scoped invite (with seat/viewer limit checks, dedup)
+              const invite = await inviteService.createInvite(inviterUserId, raw.email, null, 'viewer', { skipEmail: true });
+              await emailService.sendResourceInviteEmail(raw.email, {
+                resourceName: raw.name,
+                role: raw.role,
+                inviterName,
+                isRegistered: false,
+                inviteToken: invite.token,
+              });
+            }
+          } catch (err: any) {
+            logger.error('Resource invite email error', { error: err?.message || err });
+          }
+        }).catch(err => logger.error('Resource invite rate limit check error', { error: err?.message || err }));
+      }
+
       return reply.status(201).send({ resource });
     } catch (error) {
       logger.error('Create resource error', { error });
@@ -91,11 +139,72 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // GET /resources/:id/delete-impact — Preview what will be affected by deleting this resource
+  fastify.get('/:id/delete-impact', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const resource = await resourceService.findResourceById(id);
+    if (!resource) return reply.status(404).send({ error: 'Resource not found' });
+
+    // Count task assignments (Gantt resource column)
+    const [taskAssignmentRow] = await databaseService.query<{ cnt: number }>(
+      'SELECT COUNT(*) AS cnt FROM task_assignments WHERE resource_id = ?', [id],
+    );
+    const taskAssignments = Number(taskAssignmentRow?.cnt || 0);
+
+    // Count resource assignments (workload/capacity planning)
+    const [resourceAssignmentRow] = await databaseService.query<{ cnt: number }>(
+      'SELECT COUNT(*) AS cnt FROM resource_assignments WHERE resource_id = ?', [id],
+    );
+    const resourceAssignments = Number(resourceAssignmentRow?.cnt || 0);
+
+    // Count RAID items owned by this user
+    let raidItems = 0;
+    if (resource.userId) {
+      const [raidRow] = await databaseService.query<{ cnt: number }>(
+        "SELECT COUNT(*) AS cnt FROM project_risks WHERE owner_id = ? AND status NOT IN ('closed','resolved','cancelled')", [resource.userId],
+      );
+      raidItems = Number(raidRow?.cnt || 0);
+    }
+
+    return {
+      resourceName: resource.name,
+      taskAssignments,
+      resourceAssignments,
+      raidItems,
+    };
+  });
+
   // DELETE /resources/:id
   fastify.delete('/:id', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
+    const { removeAccess } = request.query as { removeAccess?: string };
+
+    // Look up resource before deleting (need email for access removal)
+    const resource = await resourceService.findResourceById(id);
+    if (!resource) return reply.status(404).send({ error: 'Resource not found' });
+
     const deleted = await resourceService.deleteResource(id);
     if (!deleted) return reply.status(404).send({ error: 'Resource not found' });
+
+    // Optionally remove the user's access to the organization
+    if (removeAccess === 'true' && resource.email) {
+      databaseService.queryControlPlane<{ id: string; organization_id: string }>(
+        'SELECT id, organization_id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1',
+        [resource.email],
+      ).then(async ([user]) => {
+        if (!user) return;
+        // Only deactivate if the user belongs to the same org as the requester
+        const requesterOrgId = (request.user as any)?.organizationId;
+        if (user.organization_id && user.organization_id === requesterOrgId) {
+          await databaseService.queryControlPlane(
+            'UPDATE users SET organization_id = NULL, is_active = 0 WHERE id = ?',
+            [user.id],
+          );
+          logger.info('User access removed on resource delete', { userId: user.id, email: resource.email });
+        }
+      }).catch(err => logger.error('Failed to remove user access on resource delete', { error: err?.message || err }));
+    }
+
     return { message: 'Resource deleted' };
   });
 

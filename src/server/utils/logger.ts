@@ -137,6 +137,14 @@ if (process.env.NODE_ENV !== 'production') {
       winston.format.simple()
     )
   }));
+} else {
+  // Production: also log to stdout so systemd/journalctl captures output
+  logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      winston.format.json()
+    )
+  }));
 }
 
 export const requestLogger = (request: any, reply: any, done: any) => {

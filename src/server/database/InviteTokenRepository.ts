@@ -82,6 +82,14 @@ class InviteTokenRepository {
     );
   }
 
+  async findPendingByEmailAndOrg(email: string, organizationId: string): Promise<InviteToken | null> {
+    const rows = await databaseService.queryControlPlane(
+      `SELECT * FROM invite_tokens WHERE LOWER(email) = LOWER(?) AND organization_id = ? AND status = 'pending' AND expires_at > NOW() LIMIT 1`,
+      [email, organizationId],
+    );
+    return rows.length > 0 ? mapRow(rows[0]) : null;
+  }
+
   async countActiveViewersByOrg(organizationId: string): Promise<number> {
     const rows = await databaseService.queryControlPlane(
       `SELECT COUNT(*) AS cnt FROM users WHERE organization_id = ? AND role = 'viewer'`,

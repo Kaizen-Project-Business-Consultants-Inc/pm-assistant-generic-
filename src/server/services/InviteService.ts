@@ -31,6 +31,7 @@ export class InviteService {
     email: string,
     projectId?: string | null,
     role: string = 'viewer',
+    options?: { skipEmail?: boolean },
   ): Promise<InviteToken> {
     const inviter = await userService.findById(inviterUserId);
     if (!inviter) throw new Error('Inviter not found');
@@ -53,6 +54,12 @@ export class InviteService {
       }
     }
 
+    // Check for existing pending invite for this email+org (dedup)
+    const existing = await inviteTokenRepository.findPendingByEmailAndOrg(email, org.id);
+    if (existing) {
+      return existing;
+    }
+
     const id = uuidv4();
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
@@ -61,12 +68,14 @@ export class InviteService {
       id, token, inviterUserId, org.id, projectId || null, email, role, expiresAt,
     );
 
-    // Send invite email
-    emailService.sendViewerInviteEmail(
-      email, org.name, inviter.fullName, projectId || null, token,
-    ).catch(err => {
-      logger.error('Failed to send viewer invite email', { email, error: err });
-    });
+    // Send invite email (unless caller handles it)
+    if (!options?.skipEmail) {
+      emailService.sendViewerInviteEmail(
+        email, org.name, inviter.fullName, projectId || null, token,
+      ).catch(err => {
+        logger.error('Failed to send viewer invite email', { email, error: err });
+      });
+    }
 
     return (await inviteTokenRepository.findById(id))!;
   }

@@ -134,6 +134,9 @@ export function ResourceManagementPage() {
   const [groupFilter, setGroupFilter] = useState('');
   const [trendResourceId, setTrendResourceId] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [removeAccessOnDelete, setRemoveAccessOnDelete] = useState(false);
+  const [deleteImpact, setDeleteImpact] = useState<{ taskAssignments: number; resourceAssignments: number; raidItems: number } | null>(null);
+  const [deleteImpactLoading, setDeleteImpactLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
@@ -196,7 +199,7 @@ export function ResourceManagementPage() {
   });
 
   const deleteResourceMutation = useMutation({
-    mutationFn: (id: string) => apiService.deleteResource(id),
+    mutationFn: ({ id, removeAccess }: { id: string; removeAccess: boolean }) => apiService.deleteResource(id, removeAccess),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['resources'] }),
   });
 
@@ -564,7 +567,12 @@ export function ResourceManagementPage() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => openEdit(r)} className="p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit resource"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setDeleteConfirmId(r.id)} className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete resource"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => {
+                            setDeleteConfirmId(r.id);
+                            setDeleteImpact(null);
+                            setDeleteImpactLoading(true);
+                            apiService.getResourceDeleteImpact(r.id).then(setDeleteImpact).catch(() => setDeleteImpact(null)).finally(() => setDeleteImpactLoading(false));
+                          }} className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete resource"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -934,18 +942,50 @@ export function ResourceManagementPage() {
       {deleteConfirmId && (
         <ConfirmModal
           title="Delete Resource"
-          message="Delete this resource? Any assignments will also be removed."
+          message="This will remove the resource and their workload/capacity assignments."
           confirmLabel="Delete"
           isPending={deleteResourceMutation.isPending}
-          onConfirm={() => { deleteResourceMutation.mutate(deleteConfirmId); setDeleteConfirmId(null); }}
-          onCancel={() => setDeleteConfirmId(null)}
-        />
+          onConfirm={() => { deleteResourceMutation.mutate({ id: deleteConfirmId, removeAccess: removeAccessOnDelete }); setDeleteConfirmId(null); setRemoveAccessOnDelete(false); setDeleteImpact(null); }}
+          onCancel={() => { setDeleteConfirmId(null); setRemoveAccessOnDelete(false); setDeleteImpact(null); }}
+        >
+          {deleteImpactLoading && (
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Checking assignments...</p>
+          )}
+          {deleteImpact && (deleteImpact.taskAssignments > 0 || deleteImpact.raidItems > 0) && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                <div className="text-xs text-amber-800 dark:text-amber-300">
+                  <p className="font-medium mb-1">This person has active assignments:</p>
+                  <ul className="list-disc ml-4 space-y-0.5">
+                    {deleteImpact.taskAssignments > 0 && (
+                      <li>{deleteImpact.taskAssignments} task assignment{deleteImpact.taskAssignments > 1 ? 's' : ''} on schedules</li>
+                    )}
+                    {deleteImpact.raidItems > 0 && (
+                      <li>{deleteImpact.raidItems} active RAID item{deleteImpact.raidItems > 1 ? 's' : ''} owned</li>
+                    )}
+                  </ul>
+                  <p className="mt-1.5 text-amber-700 dark:text-amber-400">These will not be reassigned automatically. Consider reassigning before deleting.</p>
+                </div>
+              </div>
+            </div>
+          )}
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={removeAccessOnDelete}
+              onChange={(e) => setRemoveAccessOnDelete(e.target.checked)}
+              className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+            />
+            Also remove this person's access to the organization
+          </label>
+        </ConfirmModal>
       )}
 
       {bulkDeleteConfirm && (
         <ConfirmModal
           title="Delete Selected Resources"
-          message={`Delete ${selectedIds.size} resource${selectedIds.size > 1 ? 's' : ''}? Any assignments will also be removed.`}
+          message={`This will remove ${selectedIds.size} resource${selectedIds.size > 1 ? 's' : ''} and all their task assignments.`}
           confirmLabel={`Delete ${selectedIds.size}`}
           isPending={bulkDeleteMutation.isPending}
           onConfirm={() => bulkDeleteMutation.mutate([...selectedIds])}

@@ -209,21 +209,27 @@ export async function authRoutes(fastify: FastifyInstance) {
         stripeCustomerId: stripeCustomerId || undefined,
       });
 
-      // Fire-and-forget: link any pending project memberships to this new user
+      // Fire-and-forget: link any pending project memberships + resources to this new user
       organizationService.getAllActiveProvisioned().then(async (orgs: any[]) => {
         for (const org of orgs) {
           try {
-            await runWithTenantContext(org.dbName, org.id, () =>
-              databaseService.query(
+            await runWithTenantContext(org.dbName, org.id, async () => {
+              // Link pending project members
+              await databaseService.query(
                 'UPDATE project_members SET user_id = ?, user_name = ? WHERE LOWER(email) = LOWER(?) AND user_id LIKE ?',
                 [user.id, fullName || email.split('@')[0], email, 'pending_%'],
-              ),
-            );
+              );
+              // Link resources by email (set user_id where it's NULL)
+              await databaseService.query(
+                'UPDATE resources SET user_id = ? WHERE LOWER(email) = LOWER(?) AND user_id IS NULL',
+                [user.id, email],
+              );
+            });
           } catch {
             // Ignore errors for individual tenants
           }
         }
-      }).catch((err: any) => logger.error('Failed to link pending memberships', { userId: user.id, error: err }));
+      }).catch((err: any) => logger.error('Failed to link pending memberships/resources', { userId: user.id, error: err }));
 
       if (isInvitedViewer) {
         // Viewer: no trial, no subscription, accept the invite

@@ -13,6 +13,15 @@ export const RegisterPage: React.FC = () => {
     canonical: '/register',
   });
 
+  // Prevent invite token from leaking via Referer header to external resources
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.name = 'referrer';
+    meta.content = 'no-referrer';
+    document.head.appendChild(meta);
+    return () => { document.head.removeChild(meta); };
+  }, []);
+
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get('invite') || undefined;
   const tierParam = searchParams.get('tier') as 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise' | null;

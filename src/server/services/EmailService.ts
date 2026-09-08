@@ -29,7 +29,13 @@ export class EmailService {
 
   private async sendEmail(params: { from: string; to: string | string[]; subject: string; html: string; attachments?: any[] }): Promise<void> {
     try {
-      await this.getClient().emails.send(params as any);
+      const result = await this.getClient().emails.send(params as any);
+      if (result.error) {
+        this.trackSend(false);
+        const errMsg = `Resend API error: ${(result.error as any).message || JSON.stringify(result.error)}`;
+        logger.error(errMsg);
+        throw new Error(errMsg);
+      }
       this.trackSend(true);
     } catch (err) {
       this.trackSend(false);
@@ -39,6 +45,26 @@ export class EmailService {
 
   private get isConfigured(): boolean {
     return !!config.RESEND_API_KEY;
+  }
+
+  /** Call on startup to verify the Resend API key is valid */
+  async verifyConnection(): Promise<void> {
+    if (!this.isConfigured) {
+      logger.warn('[EmailService] RESEND_API_KEY not set — email sending is disabled');
+      return;
+    }
+    try {
+      const client = this.getClient();
+      const result = await (client as any).domains.list();
+      if (result.error) {
+        logger.error(`[EmailService] *** RESEND API KEY IS INVALID *** — ${(result.error as any).message || JSON.stringify(result.error)}. No emails will be delivered!`);
+      } else {
+        const domainNames = (result.data?.data || []).map((d: any) => d.name).join(', ');
+        logger.info(`[EmailService] Resend connection verified — domains: ${domainNames || 'none'}`);
+      }
+    } catch (err: any) {
+      logger.error(`[EmailService] *** RESEND CONNECTION FAILED *** — ${err.message}. No emails will be delivered!`);
+    }
   }
 
   private async trackSend(success: boolean): Promise<void> {
@@ -602,6 +628,48 @@ export class EmailService {
       to,
       subject: `You've been added to ${escapeHtml(projectName)} on Kovarti PM`,
       html: this.wrapHtml('You\'re invited!', bodyHtml),
+    });
+  }
+
+  async sendResourceInviteEmail(to: string, params: {
+    resourceName: string;
+    role: string;
+    inviterName: string;
+    isRegistered: boolean;
+    inviteToken?: string;
+  }): Promise<void> {
+    if (!this.isConfigured) {
+      logger.info(`[EmailService] Resource invite email would be sent to ${maskPii(to)} (role: ${params.role})`);
+      return;
+    }
+
+    const { resourceName, role, inviterName, isRegistered, inviteToken } = params;
+
+    const ctaUrl = isRegistered
+      ? `${config.APP_URL}/`
+      : `${config.APP_URL}/register${inviteToken ? `?invite=${inviteToken}` : ''}`;
+    const ctaLabel = isRegistered ? 'Go to Dashboard' : 'Create Account';
+
+    const bodyHtml = `
+      <p style="color: #4b5563; line-height: 1.6;">
+        ${escapeHtml(inviterName)} has added you as a resource on <strong>Kovarti PM</strong> with the role <strong>${escapeHtml(role)}</strong>.
+      </p>
+      ${isRegistered
+        ? '<p style="color: #4b5563; line-height: 1.6;">You can now view your assignments and workload from your dashboard.</p>'
+        : '<p style="color: #4b5563; line-height: 1.6;">Create your free account to view your assignments and start collaborating.</p>'
+      }
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${ctaUrl}" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+          ${ctaLabel}
+        </a>
+      </div>
+    `;
+
+    await this.sendEmail({
+      from: config.RESEND_FROM_EMAIL,
+      to,
+      subject: `You've been added as ${escapeHtml(role)} on Kovarti PM`,
+      html: this.wrapHtml('You\'re on the team!', bodyHtml),
     });
   }
 

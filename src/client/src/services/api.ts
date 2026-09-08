@@ -990,8 +990,13 @@ class ApiService {
     return response.data;
   }
 
-  async deleteResource(id: string) {
-    const response = await this.api.delete(`/resources/${id}`);
+  async getResourceDeleteImpact(id: string) {
+    const response = await this.api.get(`/resources/${id}/delete-impact`);
+    return response.data as { resourceName: string; taskAssignments: number; resourceAssignments: number; raidItems: number };
+  }
+
+  async deleteResource(id: string, removeAccess?: boolean) {
+    const response = await this.api.delete(`/resources/${id}${removeAccess ? '?removeAccess=true' : ''}`);
     return response.data;
   }
 

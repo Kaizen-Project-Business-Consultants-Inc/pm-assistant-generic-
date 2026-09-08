@@ -106,9 +106,9 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
       }).catch(err => logger.error('project lookup for invite email error', { error: err }));
 
       return reply.status(201).send({ member });
-    } catch (error) {
-      logger.error('Add member error', { error });
-      return reply.status(500).send({ error: 'Internal server error' });
+    } catch (error: any) {
+      logger.error('Add member error', { error: error?.message || error, stack: error?.stack });
+      return reply.status(500).send({ error: 'Internal server error', message: error?.message });
     }
   });
 

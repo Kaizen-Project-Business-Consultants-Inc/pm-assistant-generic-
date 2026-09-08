@@ -9,6 +9,7 @@ import { runAllTenantMigrations } from './database/tenantMigrationRunner';
 import './services/agentCapabilities';
 import { redisService } from './services/RedisService';
 import { metricsService } from './services/MetricsService';
+import { emailService } from './services/EmailService';
 import { serviceContainer } from './container';
 
 const fastify = Fastify({
@@ -45,6 +46,9 @@ async function start() {
       // Load persisted metrics from Redis
       await metricsService.loadFromRedis();
     }
+
+    // Verify external service connections
+    await emailService.verifyConnection();
 
     // Register service container for DI
     fastify.decorate('services', serviceContainer);
