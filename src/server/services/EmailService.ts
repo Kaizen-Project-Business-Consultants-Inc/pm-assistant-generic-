@@ -646,16 +646,16 @@ export class EmailService {
     const { resourceName, role, inviterName, isRegistered, inviteToken } = params;
 
     const ctaUrl = isRegistered
-      ? `${config.APP_URL}/`
+      ? `${config.APP_URL}/login`
       : `${config.APP_URL}/register${inviteToken ? `?invite=${inviteToken}` : ''}`;
-    const ctaLabel = isRegistered ? 'Go to Dashboard' : 'Create Account';
+    const ctaLabel = isRegistered ? 'Log In' : 'Create Account';
 
     const bodyHtml = `
       <p style="color: #4b5563; line-height: 1.6;">
         ${escapeHtml(inviterName)} has added you as a resource on <strong>Kovarti PM</strong> with the role <strong>${escapeHtml(role)}</strong>.
       </p>
       ${isRegistered
-        ? '<p style="color: #4b5563; line-height: 1.6;">You can now view your assignments and workload from your dashboard.</p>'
+        ? '<p style="color: #4b5563; line-height: 1.6;">Log in to view your assignments and workload.</p>'
         : '<p style="color: #4b5563; line-height: 1.6;">Create your free account to view your assignments and start collaborating.</p>'
       }
       <div style="text-align: center; margin: 32px 0;">

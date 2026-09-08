@@ -74,50 +74,57 @@ export async function resourceRoutes(fastify: FastifyInstance) {
         skills: normalizeSkills(raw.skills),
       } as any);
 
-      // Send invitation email (fire-and-forget, rate-limited)
+      // Determine invite scenario and send appropriate email
+      let warning: string | undefined;
       if (raw.email) {
         const inviterUserId = (request.user as any)?.userId;
         const inviterName = (request.user as any)?.fullName || (request.user as any)?.email || 'A team member';
+        const inviterOrgId = (request.user as any)?.organizationId;
 
-        // Rate limit: max 20 resource invite emails per hour per user
-        rateLimiter.checkAsync(`resource-invite:${inviterUserId}`, 20, 3_600_000).then(async (rl) => {
-          if (!rl.allowed) {
-            logger.warn('Resource invite rate limit exceeded', { userId: inviterUserId, email: raw.email });
-            return;
-          }
-
+        // Check rate limit synchronously before responding
+        const rl = await rateLimiter.checkAsync(`resource-invite:${inviterUserId}`, 20, 3_600_000);
+        if (!rl.allowed) {
+          logger.warn('Resource invite rate limit exceeded', { userId: inviterUserId, email: raw.email });
+          warning = 'Invite email rate limit reached. No email was sent.';
+        } else {
           try {
-            const [existingUser] = await databaseService.queryControlPlane<{ id: string }>(
-              'SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1',
+            const [existingUser] = await databaseService.queryControlPlane<{ id: string; organization_id: string }>(
+              'SELECT id, organization_id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1',
               [raw.email],
             );
 
             if (existingUser) {
-              // Registered user — send direct email, no invite token needed
-              await emailService.sendResourceInviteEmail(raw.email, {
-                resourceName: raw.name,
-                role: raw.role,
-                inviterName,
-                isRegistered: true,
-              });
+              if (existingUser.organization_id === inviterOrgId) {
+                // Same org — send "Go to Dashboard" email
+                emailService.sendResourceInviteEmail(raw.email, {
+                  resourceName: raw.name,
+                  role: raw.role,
+                  inviterName,
+                  isRegistered: true,
+                }).catch(err => logger.error('Resource invite email error', { error: err?.message || err }));
+              } else {
+                // Different org — do NOT send misleading email, warn the manager
+                warning = 'This person has an account in another organization. A resource record was created for planning purposes, but they won\'t have access to your projects until multi-org membership is available.';
+                logger.info('Resource created for cross-org user — no email sent', { email: raw.email, inviterOrgId, userOrgId: existingUser.organization_id });
+              }
             } else {
               // Unregistered user — create org-scoped invite (with seat/viewer limit checks, dedup)
               const invite = await inviteService.createInvite(inviterUserId, raw.email, null, 'viewer', { skipEmail: true });
-              await emailService.sendResourceInviteEmail(raw.email, {
+              emailService.sendResourceInviteEmail(raw.email, {
                 resourceName: raw.name,
                 role: raw.role,
                 inviterName,
                 isRegistered: false,
                 inviteToken: invite.token,
-              });
+              }).catch(err => logger.error('Resource invite email error', { error: err?.message || err }));
             }
           } catch (err: any) {
             logger.error('Resource invite email error', { error: err?.message || err });
           }
-        }).catch(err => logger.error('Resource invite rate limit check error', { error: err?.message || err }));
+        }
       }
 
-      return reply.status(201).send({ resource });
+      return reply.status(201).send({ resource, warning });
     } catch (error) {
       logger.error('Create resource error', { error });
       return reply.status(400).send({ error: 'Invalid resource data' });

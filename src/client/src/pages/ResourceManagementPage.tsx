@@ -137,6 +137,7 @@ export function ResourceManagementPage() {
   const [removeAccessOnDelete, setRemoveAccessOnDelete] = useState(false);
   const [deleteImpact, setDeleteImpact] = useState<{ taskAssignments: number; resourceAssignments: number; raidItems: number } | null>(null);
   const [deleteImpactLoading, setDeleteImpactLoading] = useState(false);
+  const [resourceWarning, setResourceWarning] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
@@ -189,7 +190,13 @@ export function ResourceManagementPage() {
 
   const createResourceMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => apiService.createResource(data as any),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['resources'] }); resetForm(); },
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
+      resetForm();
+      if (result?.warning) {
+        setResourceWarning(result.warning);
+      }
+    },
   });
 
   const updateResourceMutation = useMutation({
@@ -313,6 +320,14 @@ export function ResourceManagementPage() {
           </div>
         </div>
       </div>
+
+      {resourceWarning && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-amber-800 dark:text-amber-300 flex-1">{resourceWarning}</p>
+          <button onClick={() => setResourceWarning(null)} className="text-amber-500 hover:text-amber-700 dark:hover:text-amber-200"><X className="w-4 h-4" /></button>
+        </div>
+      )}
 
       {/* Top-level tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
