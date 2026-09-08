@@ -16,6 +16,7 @@ This roadmap outlines planned features and improvements for Kovarti PM. Timeline
 
 | Feature | Status |
 |---------|--------|
+| Multi-org membership (users belong to multiple orgs, org switcher) | Planned |
 | Slack integration (notifications + `/kovarti` slash command) | Planned |
 | Google Calendar sync (milestones/deadlines to calendar) | Planned |
 | Automation gallery (15+ pre-built workflow templates) | Planned |
@@ -38,6 +39,7 @@ This roadmap outlines planned features and improvements for Kovarti PM. Timeline
 |---------|--------|
 | Native mobile app (iOS + Android) | Planned |
 | Voice interface for Mjuzi AI (speech-to-text + TTS) | Planned |
+| Multi-agent consensus layer (cross-check + contradiction detection) | Planned |
 | Zoom/Teams transcript auto-pull (OAuth integrations) | Planned |
 | Advanced resource management (skills matrix, cost rates) | Planned |
 | Public API & developer docs | Planned |
