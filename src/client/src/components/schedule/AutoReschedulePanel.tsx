@@ -386,10 +386,10 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
                     <thead>
                       <tr className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase text-xs">
                         <th className="text-left px-3 py-2 font-semibold">Task Name</th>
-                        <th className="text-left px-3 py-2 font-semibold">Current Start</th>
-                        <th className="text-left px-3 py-2 font-semibold">Current End</th>
-                        <th className="text-left px-3 py-2 font-semibold">Proposed Start</th>
-                        <th className="text-left px-3 py-2 font-semibold">Proposed End</th>
+                        {!isModifying && <th className="text-left px-3 py-2 font-semibold">Current Start</th>}
+                        {!isModifying && <th className="text-left px-3 py-2 font-semibold">Current End</th>}
+                        <th className="text-left px-3 py-2 font-semibold">{isModifying ? 'New Start' : 'Proposed Start'}</th>
+                        <th className="text-left px-3 py-2 font-semibold">{isModifying ? 'New End' : 'Proposed End'}</th>
                         <th className="text-left px-3 py-2 font-semibold">Reason</th>
                       </tr>
                     </thead>
@@ -405,12 +405,16 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
                             <td className="px-3 py-2 font-medium text-gray-900 dark:text-white whitespace-nowrap">
                               {change.taskName}
                             </td>
-                            <td className="px-3 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                              {formatDate(change.currentStart)}
-                            </td>
-                            <td className="px-3 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                              {formatDate(change.currentEnd)}
-                            </td>
+                            {!isModifying && (
+                              <td className="px-3 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                {formatDate(change.currentStart)}
+                              </td>
+                            )}
+                            {!isModifying && (
+                              <td className="px-3 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                {formatDate(change.currentEnd)}
+                              </td>
+                            )}
                             <td className={`px-3 py-2 whitespace-nowrap ${isModifying ? '' : dateTextClass(startDir)}`}>
                               {isModifying ? (
                                 <input
