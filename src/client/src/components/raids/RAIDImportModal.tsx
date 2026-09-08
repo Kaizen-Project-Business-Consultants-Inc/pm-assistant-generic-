@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { X, Upload, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { apiService } from '../../services/api';
-import { cleanCsvForImport, sheetToCsv } from '../../utils/csvCleaner';
+import { cleanCsvForImport, sheetToCsv, escapeCsvCell } from '../../utils/csvCleaner';
 import { ColumnMapper } from '../schedule/ColumnMapper';
 import { useModal } from '../../hooks/useModal';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
@@ -39,23 +39,38 @@ const RAID_TARGET_COLUMNS = [
 const RAID_ALIASES: Record<string, string> = {
   type: 'type', raidtype: 'type', itemtype: 'type', recordtype: 'type',
   title: 'title', name: 'title', item: 'title', risktitle: 'title',
+  riskissuetitle: 'title', issuetitle: 'title', actiontitle: 'title',
+  decisiontitle: 'title', assumptiontitle: 'title', dependencytitle: 'title',
+  riskissue: 'title', riskissuedescription: 'title',
   description: 'description', details: 'description', notes: 'description', comments: 'description',
+  riskdescription: 'description', issuedescription: 'description',
+  actiondescription: 'description', decisiondescription: 'description',
   category: 'category', area: 'category', domain: 'category',
   severity: 'severity', priority: 'severity', rating: 'severity', level: 'severity',
+  risklevel: 'severity', riskrating: 'severity',
   probability: 'probability', likelihood: 'probability', prob: 'probability',
+  l: 'probability', p: 'probability',
   impact: 'impact', consequence: 'impact', effect: 'impact',
-  status: 'status', state: 'status',
+  c: 'impact', i: 'impact',
+  status: 'status', state: 'status', currentstatus: 'status',
   owner: 'owner', assignedto: 'owner', responsible: 'owner', riskowner: 'owner', assignee: 'owner',
+  issueowner: 'owner', actionowner: 'owner', actionee: 'owner', responsibleperson: 'owner',
   mitigation: 'mitigationPlan', mitigationplan: 'mitigationPlan', response: 'mitigationPlan', treatment: 'mitigationPlan',
-  responseplan: 'responsePlan', contingency: 'responsePlan',
-  trigger: 'triggerCondition', triggercondition: 'triggerCondition',
+  mitigationstrategy: 'mitigationPlan', mitigationaction: 'mitigationPlan',
+  responseplan: 'responsePlan', contingency: 'responsePlan', contingencyplan: 'responsePlan',
+  trigger: 'triggerCondition', triggercondition: 'triggerCondition', triggerevent: 'triggerCondition',
   duedate: 'dueDate', deadline: 'dueDate', targetdate: 'dueDate', due: 'dueDate',
+  targetcompletiondate: 'dueDate', requiredbydate: 'dueDate', requiredby: 'dueDate',
+  datedue: 'dueDate', completiondate: 'dueDate',
   actiontype: 'actionType',
   rationale: 'rationale', reason: 'rationale', justification: 'rationale',
+  decisionrationale: 'rationale',
   rootcause: 'rootCause', cause: 'rootCause',
   workaround: 'workaround', alternative: 'workaround',
   validationplan: 'validationPlan', validation: 'validationPlan',
-  dependententity: 'dependentEntity', dependency: 'dependentEntity', dependson: 'dependentEntity', 'dependent on': 'dependentEntity',
+  howtovalidate: 'validationPlan', validationmethod: 'validationPlan',
+  dependententity: 'dependentEntity', dependency: 'dependentEntity', dependson: 'dependentEntity',
+  dependenton: 'dependentEntity', externalparty: 'dependentEntity', supplier: 'dependentEntity',
   forum: 'forum', decisionforum: 'forum',
   sourcemeeting: 'sourceMeeting', meeting: 'sourceMeeting',
 };
@@ -301,53 +316,40 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
         }
 
         // Auto-map columns using aliases
-        const autoMap: Record<string, string> = {};
+        const headerMap: Record<string, string> = {};
         for (const header of p.headers) {
           const key = header.toLowerCase().replace(/[^a-z0-9]/g, '');
-          if (RAID_ALIASES[key]) {
-            autoMap[header] = RAID_ALIASES[key];
-          }
+          headerMap[header] = RAID_ALIASES[key] || '_skip';
         }
 
-        // Force-inject type column — always set to the sheet's RAID type
-        // Add a synthetic "type" value by injecting it into the CSV
-        const typeHeader = p.headers.find(h => autoMap[h] === 'type');
-        if (!typeHeader) {
-          // No type column — prepend one and re-create CSV with type column
-          const mergedLines = [['type', ...p.headers].join(',')];
-          for (const row of p.rows) {
-            mergedLines.push([raidType, ...row].join(','));
+        // Reconstruct CSV with proper escaping + inject type column
+        const hasTypeCol = Object.values(headerMap).includes('type');
+        const typeIdx = hasTypeCol ? p.headers.findIndex(h => headerMap[h] === 'type') : -1;
+
+        // Build new CSV lines with proper quoting
+        const outHeaders = hasTypeCol ? p.headers : ['_raid_type_', ...p.headers];
+        const outLines = [outHeaders.map(escapeCsvCell).join(',')];
+        for (const row of p.rows) {
+          if (hasTypeCol) {
+            // Override the type column value with the sheet's RAID type
+            const newRow = row.map((v, i) => escapeCsvCell(i === typeIdx ? raidType : v));
+            outLines.push(newRow.join(','));
+          } else {
+            // Prepend the type value
+            outLines.push([escapeCsvCell(raidType), ...row.map(escapeCsvCell)].join(','));
           }
-          const mergedCsv = mergedLines.join('\n');
-          const headerMap: Record<string, string> = { type: 'type' };
-          for (const h of p.headers) {
-            headerMap[h] = autoMap[h] || '_skip';
-          }
-          const res = await apiService.importRaidItems(projectId, mergedCsv, headerMap);
-          const data = res?.data ?? res;
-          results.push({ sheet: name, type: raidType, succeeded: data.succeeded ?? 0, failed: (data.failed ?? []).length });
-          if ((data.succeeded ?? 0) > 0) anySuccess = true;
-        } else {
-          // Has type column — just override its mapping
-          autoMap[typeHeader] = 'type';
-          const headerMap: Record<string, string> = {};
-          for (const h of p.headers) {
-            headerMap[h] = autoMap[h] || '_skip';
-          }
-          // Rewrite the type column values to the sheet's RAID type
-          const rewrittenLines = [p.headers.join(',')];
-          const typeIdx = p.headers.indexOf(typeHeader);
-          for (const row of p.rows) {
-            const newRow = [...row];
-            newRow[typeIdx] = raidType;
-            rewrittenLines.push(newRow.join(','));
-          }
-          const rewrittenCsv = rewrittenLines.join('\n');
-          const res = await apiService.importRaidItems(projectId, rewrittenCsv, headerMap);
-          const data = res?.data ?? res;
-          results.push({ sheet: name, type: raidType, succeeded: data.succeeded ?? 0, failed: (data.failed ?? []).length });
-          if ((data.succeeded ?? 0) > 0) anySuccess = true;
         }
+        const outCsv = outLines.join('\n');
+
+        // Adjust headerMap for injected type column
+        if (!hasTypeCol) {
+          headerMap['_raid_type_'] = 'type';
+        }
+
+        const res = await apiService.importRaidItems(projectId, outCsv, headerMap);
+        const data = res?.data ?? res;
+        results.push({ sheet: name, type: raidType, succeeded: data.succeeded ?? 0, failed: (data.failed ?? []).length });
+        if ((data.succeeded ?? 0) > 0) anySuccess = true;
       } catch {
         results.push({ sheet: name, type: raidType, succeeded: 0, failed: -1 });
       }

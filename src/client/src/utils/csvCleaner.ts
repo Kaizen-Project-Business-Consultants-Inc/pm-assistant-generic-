@@ -21,6 +21,11 @@ const HEADER_TERMS = [
   'description', 'deliverable', 'deliverables', 'notes',
   'progress', 'duration', 'hours', 'days',
   'dependency', 'predecessor',
+  // RAID-specific
+  'risk', 'issue', 'action', 'decision', 'assumption',
+  'severity', 'probability', 'likelihood', 'impact', 'consequence',
+  'category', 'mitigation', 'trigger', 'rationale', 'workaround',
+  'ref', 'id', 'no', 'type', 'responsible',
 ];
 
 function splitCsvLine(line: string): string[] {
@@ -69,7 +74,7 @@ function isDataRow(cells: string[], columnCount: number): boolean {
   return nonEmpty >= threshold;
 }
 
-function escapeCsvCell(value: string): string {
+export function escapeCsvCell(value: string): string {
   if (value.includes(',') || value.includes('"') || value.includes('\n')) {
     return '"' + value.replace(/"/g, '""') + '"';
   }
