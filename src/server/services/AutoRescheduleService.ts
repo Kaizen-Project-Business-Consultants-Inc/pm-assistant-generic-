@@ -329,10 +329,10 @@ Please propose date changes to reschedule affected tasks with minimal disruption
       logger.warn('[AutoReschedule] Could not persist proposal to DB');
     }
 
-    // Log activity
-    if (userId) {
+    // Log activity on the first proposed task (logActivity requires a valid taskId)
+    if (userId && proposedChanges.length > 0) {
       await this.scheduleService.logActivity(
-        scheduleId,
+        proposedChanges[0].taskId,
         userId,
         'System',
         'auto-reschedule-proposed',

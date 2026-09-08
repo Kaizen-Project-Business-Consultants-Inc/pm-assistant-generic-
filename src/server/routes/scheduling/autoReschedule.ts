@@ -86,11 +86,11 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
       const proposal = await autoRescheduleService.generateProposal(scheduleId, userId);
       webhookService.dispatch('proposal.created', { proposal }, userId);
       return { proposal };
-    } catch (error) {
-      logger.error('Generate proposal error', { error });
+    } catch (error: any) {
+      logger.error('Generate proposal error: ' + (error?.message || error), { stack: error?.stack });
       return reply.status(500).send({
         error: 'Internal server error',
-        message: 'Failed to generate reschedule proposal',
+        message: error?.message || 'Failed to generate reschedule proposal',
       });
     }
   });
