@@ -292,7 +292,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Duplicate detection** — `POST /api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` runs before the modal opens and highlights probable matches against existing open RAID records
 - All imported records tagged `source: 'meeting'` (new enum value added to RAID source via migration `T025_raid_meeting_source.sql`)
 - `meetingToRaidMapper.ts` utility handles type/severity/category defaults for each meeting item shape
-- **Benchmark:** Jira (meeting-to-issue bridge), Confluence AI (action tracking) — exceeds both with per-item curation, duplicate awareness, full RAID type coverage including Dependencies, and history re-import
+- **Benchmark:** Jira (meeting-to-issue bridge), Confluence AI (action tracking) — exceeds both with per-item curation, duplicate awareness, full RAIDAD type coverage (all 6 types including Assumptions and Dependencies), and history re-import
 
 ### 3.4.4 Email Digest Enhancement
 - **3 new digest sections** added to the daily/weekly digest email:
@@ -528,7 +528,7 @@ An agentic AI project management platform that combines the scheduling power of 
   - **Column picker** for table sections — select specific columns or show all
   - **Computed groupBy** — week and month temporal groupings via SQL `DATE_FORMAT`, plus aliases (project → project_id, assignee → assigned_to)
   - **3 export formats**: CSV, Excel (.xls HTML table), PDF (browser print)
-  - KPI queries tailored per data source (e.g., RAID items show risk/issue/action/decision counts; resources show avg capacity and rate)
+  - KPI queries tailored per data source (e.g., RAIDAD items show risk/issue/action/decision/assumption/dependency counts; resources show avg capacity and rate)
 - `groupBy` parameter validated against an allowlist for SQL injection protection; table column selection also allowlisted
 - Regular users can delete their own templates (no longer requires admin role)
 - Report Designer correctly persists all sections when updating an existing template
@@ -572,29 +572,34 @@ An agentic AI project management platform that combines the scheduling power of 
 
 ---
 
-### 5.8 RAID Management (BMC Remedy/Helix ITSM-Inspired)
+### 5.8 RAIDAD Management (BMC Remedy/Helix ITSM-Inspired)
 
-A structured project control register for Risks, Actions, Issues, and Decisions — modelled on enterprise ITSM practices from BMC Remedy/Helix and adapted for project management.
+A structured project control register expanded from 4 types (RAID) to 6 types (RAIDAD): Risk, Action, Issue, Decision, Assumption, and Dependency — modelled on enterprise ITSM practices from BMC Remedy/Helix and adapted for project management. Aligned with DBJ spreadsheet conventions.
 
 **Capabilities:**
-- Four record types in a single unified register: Risk, Action, Issue, Decision
-- Global sequential type-prefixed IDs (R-001, I-001, A-001, D-001) assigned atomically and never recycled
-- Type-specific status workflows with triage entry point: Risk (proposed → open → monitoring → mitigating → mitigated → closed), Issue (proposed → open → in_progress → resolved → closed), Action (proposed → open → in_progress → completed → closed / deferred), Decision (proposed → pending_decision → decided → deferred / reversed)
-- **Triage workflow**: any team member can raise RAID items (PMI/PRINCE2 open identification); non-PM roles create items as `proposed` requiring PM review; PM/admin roles bypass triage to `open`; PMs/owners receive notification when items need triage
-- Action records carry due_date and action_type (follow_up, decision_required, information_only, escalation)
+- Six record types in a single unified register: Risk, Action, Issue, Decision, Assumption, Dependency
+- Global sequential type-prefixed IDs (R-001, I-001, A-001, D-001, AS-001, DP-001) assigned atomically and never recycled
+- Type-specific status workflows with triage entry point: Risk (proposed → open → monitoring → mitigating → mitigated → closed), Issue (proposed → open → in_progress → resolved → closed), Action (proposed → open → in_progress → completed → closed / deferred), Decision (proposed → pending_decision → decided → deferred / reversed), Assumption (open → validated | unverified → closed), Dependency (open → pending → complete | at_risk → closed)
+- **Triage workflow**: any team member can raise RAIDAD items (PMI/PRINCE2 open identification); non-PM roles create items as `proposed` requiring PM review; PM/admin roles bypass triage to `open`; PMs/owners receive notification when items need triage
+- Action records carry due_date and action_type (follow_up, decision_required, information_only, escalation, review, approval, communication, monitoring — 8 total)
 - Decision records carry rationale, decided_by, decision_date, and alternatives_considered
+- Assumption records carry a **Validation Plan** field (how and when the assumption will be verified)
+- Dependency records carry a **Dependent Entity** field (the system, team, or deliverable depended upon)
+- All record types support **Forum** (where the item will be discussed/resolved) and **Source Meeting** (meeting where the item originated) fields
+- **Owner Name** free-text field on all types (supplements owner dropdown for external or unlisted parties)
+- Expanded to **13 categories**: technical, financial, resource, schedule, scope, external, quality, compliance, stakeholder, vendor, security, infrastructure, process
 - No-delete semantics: records are cancelled (with mandatory reason) rather than deleted; cancelled IDs are never reused; decision reversal (admin-only) creates a `reversed` terminal state
 - Slide-out detail panel with inline field editing, dedicated Updates section for team communication, and a pure audit Activity trail
 - Updates section: team narratives stored in `raid_updates` table, separate from audit log; users can post and delete their own updates
 - Activity auto-logged on every status transition, field edit, cancel, reverse, update added, or update deleted; legacy comments hidden from display
-- Role-based permission matrix: all roles can create RAID items (triage-gated for non-PM roles); admin=all operations including reverse; project_manager/scrum_master/pmo/ba=create + triage + cancel; reverse restricted to admin
-- **CSV/Excel Import**: bulk-load RAID items from `.csv`, `.xlsx`, `.xls` files; smart column mapper with exact alias, fuzzy, and AI-powered matching; value normalisation for type/severity/status/category; owner matching against project members; max 200 rows per import; dedup by title; all records tagged `source: 'imported'`
+- Role-based permission matrix: all roles can create RAIDAD items (triage-gated for non-PM roles); admin=all operations including reverse; project_manager/scrum_master/pmo/ba=create + triage + cancel; reverse restricted to admin
+- **CSV/Excel Import**: bulk-load from `.csv`, `.xlsx`, `.xls` files; **multi-tab Excel support** — sheets named RAID, Risks, Issues, Actions, Decisions, Assumptions, Dependencies are auto-detected and imported by type; smart column mapper with exact alias, fuzzy, and AI-powered matching; value normalisation for type/severity/status/category; owner matching against project members; max 200 rows per import; dedup by title; all records tagged `source: 'imported'`; aligned with DBJ spreadsheet column layout
 - **AI Scan**: project-scoped AI analysis surfaces new Risks and Issues from schedule/task/budget data; user selects which findings to import; imported records tagged `source: ai_scan`
 - **Agent partnership**: background agents write directly to RAID log via `importFromAgent`; agent-written records tagged `source: agent`; `suggest-mitigation` MCP tool surfaces historical lessons-learned for open risks
 - **AI-assisted authoring**: "Suggest with AI" buttons on Mitigation Plan, Trigger Condition, and Response Plan fields; uses RAG-based lesson retrieval + Claude to generate field-specific suggestions (early warning signs for triggers, contingency actions for response plans, preventive strategies for mitigations)
 - **Mitigation Suggestions in Risk Form**: When creating or editing a risk/issue, the `RiskFormModal` shows a collapsible **Suggested Mitigations** section (Shield icon) powered by `MitigationSuggestions` — historical mitigation strategies from past projects, ranked by relevance, with source project attribution
 - **RAID notifications**: owner assignment, status changes, updates posted, severity escalation — all notify the right people (owner + PMs) while excluding the actor to prevent noise
-- Stats bar with live counts (Open Risks, Open Issues, Open Actions, Pending Decisions) + severity distribution bar
+- Stats bar with live counts (Open Risks, Open Issues, Open Actions, Pending Decisions, Open Assumptions, Open Dependencies) + severity distribution bar
 - Search + collapsible multi-filter toolbar (type, status, severity, source) with active filter count badge
 - **Three view modes**: Table (sortable columns, inline status change, bulk select), Board (Kanban drag-and-drop by status), Risk Matrix (5×5 heatmap)
 - **Sortable columns** — click any column header (ID, Title, Type, Severity, Status, Owner, Score, Date) to sort asc/desc
@@ -603,8 +608,8 @@ A structured project control register for Risks, Actions, Issues, and Decisions 
 - **Due date warnings** — overdue/due-soon badges on actions and issues with unresolved statuses
 - **RAID tab badge** — total open item count shown on the tab header
 - **Mobile card layout** — responsive cards on small screens with compact severity/status badges
-- **Benchmark:** BMC Remedy/Helix ITSM (no-delete audit semantics, sequential IDs, mandatory cancel reason); exceeds traditional PM tools with AI Scan, risk matrix heatmap, Kanban board, and inline status changes
-- **RAID Report**: data-driven (no AI) comprehensive RAID report with filter controls (type checkboxes, severity, owner dropdown); report sections include Summary Dashboard (4 cards with severity breakdown), All Items Table, Overdue Actions, and Key Mitigations; Download as HTML, email to stakeholders, schedule recurring delivery (daily/weekly/monthly with `raid-report::` prefix); trial users see sample report with locked email/schedule/download; same preview/download/email/schedule UX pattern as the AI Status Report; `POST /api/v1/raid-reports/generate` endpoint
+- **Benchmark:** BMC Remedy/Helix ITSM (no-delete audit semantics, sequential IDs, mandatory cancel reason); exceeds traditional PM tools with 6 record types (RAIDAD), AI Scan, risk matrix heatmap, Kanban board, multi-tab Excel import, and inline status changes
+- **RAIDAD Report**: data-driven (no AI) comprehensive report with filter controls (type checkboxes, severity, owner dropdown); report sections include Summary Dashboard (6 type cards with severity breakdown), All Items Table, Overdue Actions, Open Assumptions, At-Risk Dependencies, and Key Mitigations; Download as HTML, email to stakeholders, schedule recurring delivery (daily/weekly/monthly with `raid-report::` prefix); trial users see sample report with locked email/schedule/download; same preview/download/email/schedule UX pattern as the AI Status Report; `POST /api/v1/raid-reports/generate` endpoint
 
 ### 5.9 Strategic Risk Analysis (Risk Scan)
 
@@ -801,6 +806,7 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Dashboard & Projects consolidation (PM pages promoted to primary) | Done | Enhancement |
 | PM Dashboard Design Gap Fixes (dark mode, KPI dots, linkPrefix) | Done | Enhancement |
 | RAID Management (Risk/Action/Issue/Decision register, sequential IDs, no-delete, AI Scan, agent writes) | Done | Enhancement |
+| RAIDAD Expansion (Assumption + Dependency types; AS-001/DP-001 prefixes; per-type status workflows; Validation Plan, Dependent Entity, Forum, Source Meeting, Owner Name fields; 13 categories; 8 action types; multi-tab Excel import with auto-detection; DBJ spreadsheet alignment) | Done | Enhancement |
 | RAID Report (data-driven report with filters, summary dashboard, overdue actions, key mitigations, download/email/schedule) | Done | Enhancement |
 | Report History Organization (sortable paginated table, tiered type dropdown with sub-types, date range picker, search, delete, download, server-side filtering/pagination) | Done | Enhancement |
 | NL Workflow Builder (AI generates DAG workflows from plain English descriptions) | Done | Enhancement |

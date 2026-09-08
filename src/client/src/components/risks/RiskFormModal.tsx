@@ -11,7 +11,7 @@ interface RiskFormModalProps {
   onSaved: () => void;
   projectId: string;
   editRisk?: any;
-  defaultType?: 'risk' | 'issue' | 'action' | 'decision';
+  defaultType?: 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency';
   members?: any[];
 }
 
@@ -24,16 +24,22 @@ const CATEGORIES = [
   { value: 'stakeholder', label: 'Stakeholder' },
   { value: 'weather', label: 'Weather' },
   { value: 'dependency', label: 'Dependency' },
+  { value: 'financial', label: 'Financial' },
+  { value: 'functional', label: 'Functional' },
+  { value: 'operational', label: 'Operational' },
+  { value: 'legal', label: 'Legal' },
   { value: 'other', label: 'Other' },
 ];
 
 const SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
 
 const STATUSES: Record<string, readonly string[]> = {
-  risk:     ['open', 'monitoring', 'mitigating', 'mitigated', 'closed'],
-  issue:    ['open', 'in_progress', 'resolved', 'closed'],
-  action:   ['open', 'in_progress', 'completed', 'closed', 'deferred'],
-  decision: ['pending_decision', 'decided', 'deferred'],
+  risk:       ['open', 'monitoring', 'mitigating', 'mitigated', 'closed'],
+  issue:      ['open', 'in_progress', 'resolved', 'closed'],
+  action:     ['open', 'in_progress', 'completed', 'closed', 'deferred'],
+  decision:   ['pending_decision', 'decided', 'deferred'],
+  assumption: ['open', 'validated', 'unverified', 'closed'],
+  dependency: ['open', 'pending', 'complete', 'at_risk', 'closed'],
 };
 
 const RAID_TYPES = [
@@ -41,6 +47,8 @@ const RAID_TYPES = [
   { value: 'issue', label: 'Issue', color: 'bg-orange-600' },
   { value: 'action', label: 'Action', color: 'bg-blue-600' },
   { value: 'decision', label: 'Decision', color: 'bg-purple-600' },
+  { value: 'assumption', label: 'Assumption', color: 'bg-teal-600' },
+  { value: 'dependency', label: 'Dependency', color: 'bg-cyan-600' },
 ] as const;
 
 const DEFAULT_STATUS: Record<string, string> = {
@@ -48,6 +56,8 @@ const DEFAULT_STATUS: Record<string, string> = {
   issue: 'open',
   action: 'open',
   decision: 'pending_decision',
+  assumption: 'open',
+  dependency: 'open',
 };
 
 export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, defaultType = 'risk', members = [] }: RiskFormModalProps) {
@@ -91,6 +101,12 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
     stakeholdersConsulted: [] as string[],
     // Related RAID
     linkedRaidIds: [] as string[],
+    // DBJ alignment fields
+    validationPlan: '',
+    dependentEntity: '',
+    forum: '',
+    sourceMeeting: '',
+    ownerName: '',
   });
 
   useEffect(() => {
@@ -120,6 +136,11 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
         alternativesConsidered: editRisk.alternativesConsidered || '',
         stakeholdersConsulted: editRisk.stakeholdersConsulted || [],
         linkedRaidIds: editRisk.linkedRaidIds || [],
+        validationPlan: editRisk.validationPlan || '',
+        dependentEntity: editRisk.dependentEntity || '',
+        forum: editRisk.forum || '',
+        sourceMeeting: editRisk.sourceMeeting || '',
+        ownerName: editRisk.ownerName || '',
       });
     } else {
       setForm({
@@ -147,6 +168,11 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
         alternativesConsidered: '',
         stakeholdersConsulted: [],
         linkedRaidIds: [],
+        validationPlan: '',
+        dependentEntity: '',
+        forum: '',
+        sourceMeeting: '',
+        ownerName: '',
       });
     }
     setError(null);
@@ -214,6 +240,11 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
       if (!payload.alternativesConsidered) delete payload.alternativesConsidered;
       if (!payload.stakeholdersConsulted || payload.stakeholdersConsulted.length === 0) delete payload.stakeholdersConsulted;
       if (!payload.linkedRaidIds || payload.linkedRaidIds.length === 0) delete payload.linkedRaidIds;
+      if (!payload.validationPlan) delete payload.validationPlan;
+      if (!payload.dependentEntity) delete payload.dependentEntity;
+      if (!payload.forum) delete payload.forum;
+      if (!payload.sourceMeeting) delete payload.sourceMeeting;
+      if (!payload.ownerName) delete payload.ownerName;
 
       if (editRisk) {
         await apiService.updateRiskItem(projectId, editRisk.id, payload);
@@ -300,6 +331,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   const riskScore = form.probability * form.impact;
   const isRisk = form.type === 'risk';
   const isIssue = form.type === 'issue';
+  const isAssumption = form.type === 'assumption';
+  const isDependency = form.type === 'dependency';
   const showProbImpact = isRisk;
   const showTrigger = isRisk || isIssue;
   const showMitigation = isRisk || isIssue;
@@ -307,6 +340,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   const showIssueFields = isIssue;
   const showActionFields = form.type === 'action';
   const showDecisionFields = form.type === 'decision';
+  const showAssumptionFields = isAssumption;
+  const showDependencyFields = isDependency;
 
   const inputClass = 'w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent';
   const labelClass = 'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1';
@@ -363,6 +398,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 form.type === 'issue' ? 'What is the issue?' :
                 form.type === 'action' ? 'What action needs to be taken?' :
                 form.type === 'decision' ? 'What decision needs to be made?' :
+                form.type === 'assumption' ? 'What assumption is being made?' :
+                form.type === 'dependency' ? 'What is the dependency?' :
                 'What might go wrong?'
               }
             />
@@ -496,6 +533,15 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                   </option>
                 ))}
               </select>
+              {!form.ownerId && (
+                <input
+                  type="text"
+                  value={form.ownerName}
+                  onChange={e => setForm(prev => ({ ...prev, ownerName: e.target.value }))}
+                  className={`${inputClass} mt-1`}
+                  placeholder="Or type owner name..."
+                />
+              )}
             </div>
             {editRisk?.createdBy && (
               <div>
@@ -526,6 +572,11 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                   <option value="preventive">Preventive</option>
                   <option value="corrective">Corrective</option>
                   <option value="improvement">Improvement</option>
+                  <option value="financial">Financial</option>
+                  <option value="functional">Functional</option>
+                  <option value="technical">Technical</option>
+                  <option value="operational">Operational</option>
+                  <option value="legal">Legal</option>
                 </select>
               </div>
             </div>
@@ -572,6 +623,89 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                   onChange={e => setForm(prev => ({ ...prev, alternativesConsidered: e.target.value }))}
                   className={`${inputClass} h-16 resize-none`}
                   placeholder="What alternatives were evaluated?"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Decision: Forum + Source Meeting */}
+          {showDecisionFields && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Forum</label>
+                <input
+                  type="text"
+                  value={form.forum}
+                  onChange={e => setForm(prev => ({ ...prev, forum: e.target.value }))}
+                  className={inputClass}
+                  placeholder="e.g. Steering Committee"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Source Meeting</label>
+                <input
+                  type="text"
+                  value={form.sourceMeeting}
+                  onChange={e => setForm(prev => ({ ...prev, sourceMeeting: e.target.value }))}
+                  className={inputClass}
+                  placeholder="e.g. Weekly PMO Review"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Assumption-specific fields */}
+          {showAssumptionFields && (
+            <>
+              <div>
+                <label className={labelClass}>Validation Plan</label>
+                <textarea
+                  value={form.validationPlan}
+                  onChange={e => setForm(prev => ({ ...prev, validationPlan: e.target.value }))}
+                  className={`${inputClass} h-20 resize-none`}
+                  placeholder="How will this assumption be validated?"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>Target Validation Date</label>
+                  <input
+                    type="date"
+                    value={form.dueDate}
+                    onChange={e => setForm(prev => ({ ...prev, dueDate: e.target.value }))}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Severity if Invalid</label>
+                  <select value={form.severity} onChange={e => setForm(prev => ({ ...prev, severity: e.target.value }))} className={inputClass}>
+                    {SEVERITIES.map(s => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Dependency-specific fields */}
+          {showDependencyFields && (
+            <>
+              <div>
+                <label className={labelClass}>Dependent Entity</label>
+                <input
+                  type="text"
+                  value={form.dependentEntity}
+                  onChange={e => setForm(prev => ({ ...prev, dependentEntity: e.target.value }))}
+                  className={inputClass}
+                  placeholder="External system, team, vendor, or deliverable..."
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Required By Date</label>
+                <input
+                  type="date"
+                  value={form.dueDate}
+                  onChange={e => setForm(prev => ({ ...prev, dueDate: e.target.value }))}
+                  className={inputClass}
                 />
               </div>
             </>

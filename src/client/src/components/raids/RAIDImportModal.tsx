@@ -13,7 +13,7 @@ import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 
 const RAID_TARGET_COLUMNS = [
   { value: '', label: '-- skip --' },
-  { value: 'type', label: 'Type (R/I/A/D)' },
+  { value: 'type', label: 'Type (R/I/A/D/AS/DP)' },
   { value: 'title', label: 'Title' },
   { value: 'description', label: 'Description' },
   { value: 'category', label: 'Category' },
@@ -30,6 +30,10 @@ const RAID_TARGET_COLUMNS = [
   { value: 'rationale', label: 'Rationale' },
   { value: 'rootCause', label: 'Root Cause' },
   { value: 'workaround', label: 'Workaround' },
+  { value: 'validationPlan', label: 'Validation Plan' },
+  { value: 'dependentEntity', label: 'Dependent Entity' },
+  { value: 'forum', label: 'Forum' },
+  { value: 'sourceMeeting', label: 'Source Meeting' },
 ] as const;
 
 const RAID_ALIASES: Record<string, string> = {
@@ -50,6 +54,10 @@ const RAID_ALIASES: Record<string, string> = {
   rationale: 'rationale', reason: 'rationale', justification: 'rationale',
   rootcause: 'rootCause', cause: 'rootCause',
   workaround: 'workaround', alternative: 'workaround',
+  validationplan: 'validationPlan', validation: 'validationPlan',
+  dependententity: 'dependentEntity', dependency: 'dependentEntity', dependson: 'dependentEntity', 'dependent on': 'dependentEntity',
+  forum: 'forum', decisionforum: 'forum',
+  sourcemeeting: 'sourceMeeting', meeting: 'sourceMeeting',
 };
 
 const RAID_TARGET_LABELS: Record<string, string[]> = {
@@ -70,6 +78,10 @@ const RAID_TARGET_LABELS: Record<string, string[]> = {
   rationale: ['rationale', 'reason', 'justification'],
   rootCause: ['root cause', 'cause'],
   workaround: ['workaround', 'alternative'],
+  validationPlan: ['validation plan', 'validation'],
+  dependentEntity: ['dependent entity', 'dependency', 'depends on', 'dependent on'],
+  forum: ['forum', 'decision forum'],
+  sourceMeeting: ['source meeting', 'meeting'],
 };
 
 // ---------------------------------------------------------------------------
@@ -92,6 +104,17 @@ interface ImportResult {
   succeeded: number;
   failed: { row: number; error: string }[];
 }
+
+// Sheet name → RAID type mapping for multi-tab import
+const SHEET_TYPE_MAP: Record<string, string> = {
+  risks: 'risk', risk: 'risk',
+  issues: 'issue', issue: 'issue',
+  actions: 'action', action: 'action',
+  decisions: 'decision', decision: 'decision',
+  assumptions: 'assumption', assumption: 'assumption',
+  dependencies: 'dependency', dependency: 'dependency',
+};
+const SKIP_SHEETS = new Set(['dashboard', 'summary', 'overview', 'instructions', 'template', 'readme', 'cover']);
 
 // ---------------------------------------------------------------------------
 // CSV parser (same as ImportModal)
@@ -144,6 +167,8 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
   const [dragOver, setDragOver] = useState(false);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [selectedSheet, setSelectedSheet] = useState('');
+  const [multiTabResults, setMultiTabResults] = useState<{ sheet: string; type: string; succeeded: number; failed: number }[] | null>(null);
+  const [importingAll, setImportingAll] = useState(false);
   const workbookRef = useRef<XLSX.WorkBook | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -155,6 +180,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
     setError('');
     setSheetNames([]);
     setSelectedSheet('');
+    setMultiTabResults(null);
     workbookRef.current = null;
   };
 
@@ -251,6 +277,90 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
     }
   };
 
+  // Multi-tab import: import all RAID-named sheets at once
+  const handleImportAllSheets = async () => {
+    if (!workbookRef.current) return;
+    setImportingAll(true);
+    setError('');
+    const results: { sheet: string; type: string; succeeded: number; failed: number }[] = [];
+    let anySuccess = false;
+
+    for (const name of workbookRef.current.SheetNames) {
+      const normalized = name.toLowerCase().trim();
+      if (SKIP_SHEETS.has(normalized)) continue;
+      const raidType = SHEET_TYPE_MAP[normalized];
+      if (!raidType) continue;
+
+      try {
+        const csv = sheetToCsv(XLSX, workbookRef.current.Sheets[name]);
+        const cleaned = cleanCsvForImport(csv);
+        const p = parseCSV(cleaned);
+        if (p.headers.length === 0 || p.rows.length === 0) {
+          results.push({ sheet: name, type: raidType, succeeded: 0, failed: 0 });
+          continue;
+        }
+
+        // Auto-map columns using aliases
+        const autoMap: Record<string, string> = {};
+        for (const header of p.headers) {
+          const key = header.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (RAID_ALIASES[key]) {
+            autoMap[header] = RAID_ALIASES[key];
+          }
+        }
+
+        // Force-inject type column — always set to the sheet's RAID type
+        // Add a synthetic "type" value by injecting it into the CSV
+        const typeHeader = p.headers.find(h => autoMap[h] === 'type');
+        if (!typeHeader) {
+          // No type column — prepend one and re-create CSV with type column
+          const mergedLines = [['type', ...p.headers].join(',')];
+          for (const row of p.rows) {
+            mergedLines.push([raidType, ...row].join(','));
+          }
+          const mergedCsv = mergedLines.join('\n');
+          const headerMap: Record<string, string> = { type: 'type' };
+          for (const h of p.headers) {
+            headerMap[h] = autoMap[h] || '_skip';
+          }
+          const res = await apiService.importRaidItems(projectId, mergedCsv, headerMap);
+          const data = res?.data ?? res;
+          results.push({ sheet: name, type: raidType, succeeded: data.succeeded ?? 0, failed: (data.failed ?? []).length });
+          if ((data.succeeded ?? 0) > 0) anySuccess = true;
+        } else {
+          // Has type column — just override its mapping
+          autoMap[typeHeader] = 'type';
+          const headerMap: Record<string, string> = {};
+          for (const h of p.headers) {
+            headerMap[h] = autoMap[h] || '_skip';
+          }
+          // Rewrite the type column values to the sheet's RAID type
+          const rewrittenLines = [p.headers.join(',')];
+          const typeIdx = p.headers.indexOf(typeHeader);
+          for (const row of p.rows) {
+            const newRow = [...row];
+            newRow[typeIdx] = raidType;
+            rewrittenLines.push(newRow.join(','));
+          }
+          const rewrittenCsv = rewrittenLines.join('\n');
+          const res = await apiService.importRaidItems(projectId, rewrittenCsv, headerMap);
+          const data = res?.data ?? res;
+          results.push({ sheet: name, type: raidType, succeeded: data.succeeded ?? 0, failed: (data.failed ?? []).length });
+          if ((data.succeeded ?? 0) > 0) anySuccess = true;
+        }
+      } catch {
+        results.push({ sheet: name, type: raidType, succeeded: 0, failed: -1 });
+      }
+    }
+
+    setMultiTabResults(results);
+    if (anySuccess) onImported?.();
+    setImportingAll(false);
+  };
+
+  // Check if workbook has any RAID-named sheets
+  const raidSheetCount = sheetNames.filter(n => SHEET_TYPE_MAP[n.toLowerCase().trim()] && !SKIP_SHEETS.has(n.toLowerCase().trim())).length;
+
   const { dialogRef, handleKeyDown } = useModal(isOpen, onClose);
 
   if (!isOpen) return null;
@@ -271,8 +381,29 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
         </div>
 
         <div className="p-4 space-y-4">
+          {/* Multi-tab import results */}
+          {multiTabResults && (
+            <div className="space-y-2">
+              <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm font-medium">
+                Multi-tab import complete
+              </div>
+              <div className="space-y-1">
+                {multiTabResults.map((r, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm">
+                    <span className="font-medium text-gray-700 dark:text-gray-300 w-28 truncate capitalize">{r.sheet}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 capitalize">{r.type}</span>
+                    <span className="text-green-600 dark:text-green-400">{r.succeeded} imported</span>
+                    {r.failed > 0 && <span className="text-red-600 dark:text-red-400">{r.failed} failed</span>}
+                    {r.failed === -1 && <span className="text-red-600 dark:text-red-400">error</span>}
+                  </div>
+                ))}
+              </div>
+              <button onClick={reset} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Import more</button>
+            </div>
+          )}
+
           {/* Result summary */}
-          {result && (
+          {result && !multiTabResults && (
             <div className="space-y-2">
               <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm font-medium">
                 {result.succeeded} RAID item{result.succeeded !== 1 ? 's' : ''} imported successfully.
@@ -339,15 +470,32 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
               {sheetNames.length > 1 && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Sheet</h3>
-                  <select
-                    value={selectedSheet}
-                    onChange={(e) => handleSheetSelect(e.target.value)}
-                    className="text-sm rounded border dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 w-full"
-                  >
-                    {sheetNames.map((name) => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedSheet}
+                      onChange={(e) => handleSheetSelect(e.target.value)}
+                      className="text-sm rounded border dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 flex-1"
+                    >
+                      {sheetNames.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                    {raidSheetCount >= 2 && (
+                      <button
+                        onClick={handleImportAllSheets}
+                        disabled={importingAll}
+                        className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 whitespace-nowrap"
+                      >
+                        <Upload size={14} />
+                        {importingAll ? 'Importing...' : `Import All Sheets (${raidSheetCount})`}
+                      </button>
+                    )}
+                  </div>
+                  {raidSheetCount >= 2 && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      Detected RAID tabs: {sheetNames.filter(n => SHEET_TYPE_MAP[n.toLowerCase().trim()]).join(', ')}
+                    </p>
+                  )}
                 </div>
               )}
 

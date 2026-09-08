@@ -16,13 +16,17 @@ const TYPE_COLORS: Record<string, string> = {
   issue: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   action: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   decision: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  assumption: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  dependency: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
 };
 
 const VALID_STATUSES: Record<string, string[]> = {
-  risk:     ['open', 'monitoring', 'mitigating', 'mitigated', 'closed'],
-  issue:    ['open', 'in_progress', 'resolved', 'closed'],
-  action:   ['open', 'in_progress', 'completed', 'closed', 'deferred'],
-  decision: ['pending_decision', 'decided', 'deferred'],
+  risk:       ['open', 'monitoring', 'mitigating', 'mitigated', 'closed'],
+  issue:      ['open', 'in_progress', 'resolved', 'closed'],
+  action:     ['open', 'in_progress', 'completed', 'closed', 'deferred'],
+  decision:   ['pending_decision', 'decided', 'deferred'],
+  assumption: ['open', 'validated', 'unverified', 'closed'],
+  dependency: ['open', 'pending', 'complete', 'at_risk', 'closed'],
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -39,6 +43,11 @@ const STATUS_COLORS: Record<string, string> = {
   pending_decision: 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',
   decided: 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400',
   deferred: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
+  validated: 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400',
+  unverified: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
+  at_risk: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400',
+  complete: 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400',
+  pending: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
 };
 
 const ACTIVITY_LABELS: Record<string, string> = {
@@ -408,6 +417,60 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
                   </div>
                 )}
               </>
+            )}
+
+            {/* Owner Name (free-text fallback) */}
+            {item.ownerName && !item.ownerId && (
+              <div>
+                <p className={labelClass}>Owner (Name)</p>
+                <p className={valueClass}>{item.ownerName}</p>
+              </div>
+            )}
+
+            {/* Assumption-specific fields */}
+            {item.type === 'assumption' && item.validationPlan && (
+              <div>
+                <p className={labelClass}>Validation Plan</p>
+                <p className={`${valueClass} whitespace-pre-wrap mt-1`}>{item.validationPlan}</p>
+              </div>
+            )}
+            {item.type === 'assumption' && item.dueDate && (
+              <div>
+                <p className={labelClass}>Target Validation Date</p>
+                <p className={valueClass}>{formatDate(item.dueDate)}</p>
+              </div>
+            )}
+
+            {/* Dependency-specific fields */}
+            {item.type === 'dependency' && item.dependentEntity && (
+              <div>
+                <p className={labelClass}>Dependent Entity</p>
+                <p className={valueClass}>{item.dependentEntity}</p>
+              </div>
+            )}
+            {item.type === 'dependency' && item.dueDate && (
+              <div>
+                <p className={labelClass}>Required By Date</p>
+                <p className={valueClass}>{formatDate(item.dueDate)}</p>
+              </div>
+            )}
+
+            {/* Decision: Forum + Source Meeting */}
+            {item.type === 'decision' && (item.forum || item.sourceMeeting) && (
+              <div className="grid grid-cols-2 gap-3">
+                {item.forum && (
+                  <div>
+                    <p className={labelClass}>Forum</p>
+                    <p className={valueClass}>{item.forum}</p>
+                  </div>
+                )}
+                {item.sourceMeeting && (
+                  <div>
+                    <p className={labelClass}>Source Meeting</p>
+                    <p className={valueClass}>{item.sourceMeeting}</p>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Related RAID items */}

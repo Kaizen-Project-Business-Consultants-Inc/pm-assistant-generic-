@@ -4,7 +4,7 @@
 
 export interface RAIDReportItem {
   recordId: string;
-  type: 'risk' | 'issue' | 'action' | 'decision';
+  type: 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency';
   title: string;
   severity: string;
   status: string;

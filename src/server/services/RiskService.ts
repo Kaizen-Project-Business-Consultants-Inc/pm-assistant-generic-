@@ -4,10 +4,12 @@ import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import logger from '../utils/logger';
 
 const VALID_STATUSES: Record<string, string[]> = {
-  risk:     ['proposed', 'open', 'monitoring', 'mitigating', 'mitigated', 'closed', 'cancelled'],
-  issue:    ['proposed', 'open', 'in_progress', 'resolved', 'closed', 'cancelled'],
-  action:   ['proposed', 'open', 'in_progress', 'completed', 'closed', 'cancelled', 'deferred'],
-  decision: ['proposed', 'pending_decision', 'decided', 'deferred', 'reversed'],
+  risk:       ['proposed', 'open', 'monitoring', 'mitigating', 'mitigated', 'closed', 'cancelled'],
+  issue:      ['proposed', 'open', 'in_progress', 'resolved', 'closed', 'cancelled'],
+  action:     ['proposed', 'open', 'in_progress', 'completed', 'closed', 'cancelled', 'deferred'],
+  decision:   ['proposed', 'pending_decision', 'decided', 'deferred', 'reversed'],
+  assumption: ['proposed', 'open', 'validated', 'unverified', 'closed', 'cancelled'],
+  dependency: ['proposed', 'open', 'pending', 'complete', 'at_risk', 'closed', 'cancelled'],
 };
 
 // Roles that skip triage — their items go straight to 'open'
@@ -32,7 +34,7 @@ class RiskService {
 
   async create(data: {
     projectId: string;
-    type: 'risk' | 'issue' | 'action' | 'decision';
+    type: 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency';
     title: string;
     description?: string;
     category?: string;
@@ -51,7 +53,7 @@ class RiskService {
     linkedProposalId?: string;
     createdBy: string;
     dueDate?: string;
-    actionType?: 'preventive' | 'corrective' | 'improvement';
+    actionType?: 'preventive' | 'corrective' | 'improvement' | 'financial' | 'functional' | 'technical' | 'operational' | 'legal';
     rationale?: string;
     decidedBy?: string;
     decisionDate?: string;
@@ -61,6 +63,11 @@ class RiskService {
     rootCause?: string;
     impactAssessment?: string;
     workaround?: string;
+    validationPlan?: string;
+    dependentEntity?: string;
+    forum?: string;
+    sourceMeeting?: string;
+    ownerName?: string;
   }, userRole?: string): Promise<ProjectRisk> {
     // Auto-set triage status for non-PM roles (unless caller explicitly set status)
     if (!data.status && userRole && !TRIAGE_BYPASS_ROLES.has(userRole)) {

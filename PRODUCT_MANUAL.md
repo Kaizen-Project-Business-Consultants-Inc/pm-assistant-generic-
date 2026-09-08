@@ -146,7 +146,7 @@ Full-text search across 9 entity types: projects, tasks, RAID items (risks/issue
 
 **Enriched results** include contextual fields beyond just name/description/status:
 - **Tasks**: priority, assigned_to, progress_percentage, start_date, end_date
-- **RAID items**: severity, record_id, category, type (risk/issue/action/decision)
+- **RAID items**: severity, record_id, category, type (risk/issue/action/decision/assumption/dependency)
 - **Goals**: progress, goal_type, owner_id
 - **Resources**: role, skills, is_active
 - **Sprints**: goal, start_date, end_date
@@ -2693,11 +2693,11 @@ Old routes (`/dashboard-pm`, `/projects-pm`) redirect to the new paths for backw
 
 ## 45. RAID Management
 
-RAID (Risks, Actions, Issues, Decisions) is a structured project control framework that gives project managers a single, auditable register for every threat, action item, live problem, and key decision on a project. The implementation is inspired by enterprise ITSM tooling (BMC Remedy / Helix) and enforces no-delete semantics, global sequential record IDs, and a full activity timeline on every record.
+RAID (Risks, Actions, Issues, Decisions) is a structured project control framework that gives project managers a single, auditable register for every threat, action item, live problem, key decision, assumption, and dependency on a project. The implementation is inspired by enterprise ITSM tooling (BMC Remedy / Helix) and enforces no-delete semantics, global sequential record IDs, and a full activity timeline on every record.
 
 ### Framework Overview
 
-Each project has one RAID log containing records of four types:
+Each project has one RAID log containing records of six types:
 
 | Type | Purpose |
 |------|---------|
@@ -2705,6 +2705,8 @@ Each project has one RAID log containing records of four types:
 | **Action** | A task or follow-up that must be completed by a specific owner and due date |
 | **Issue** | A problem that has already materialised and is actively impacting the project |
 | **Decision** | A formal project decision with rationale, decision maker, and alternatives considered |
+| **Assumption** | A fact treated as true for planning purposes that has not yet been verified |
+| **Dependency** | An external deliverable, system, or team that the project relies on |
 
 ### Global Sequential Record IDs
 
@@ -2714,6 +2716,8 @@ Every RAID record is assigned a globally unique, type-prefixed sequential identi
 - Issues: `I-001`, `I-002`, …
 - Actions: `A-001`, `A-002`, …
 - Decisions: `D-001`, `D-002`, …
+- Assumptions: `AS-001`, `AS-002`, …
+- Dependencies: `DP-001`, `DP-002`, …
 
 IDs are assigned atomically from a per-project counter and never recycled. A cancelled or reversed record retains its original ID permanently.
 
@@ -2743,7 +2747,7 @@ proposed → open → in_progress → resolved → closed
 
 #### Action
 
-Fields: title, description, owner, due_date, action_type (follow_up / decision_required / information_only / escalation), source.
+Fields: title, description, owner, due_date, action_type (follow_up / decision_required / information_only / escalation / financial / functional / technical / operational / legal), source.
 
 Status workflow:
 ```
@@ -2754,7 +2758,10 @@ proposed → open → in_progress → completed → closed
 
 #### Decision
 
-Fields: title, description, owner, rationale, decided_by, decision_date, alternatives_considered, source.
+Fields: title, description, owner, rationale, decided_by, decision_date, alternatives_considered, forum, source_meeting, source.
+
+- **Forum** — the governance body or meeting where the decision was made (e.g., "Steering Committee", "Sprint Review").
+- **Source Meeting** — reference to the specific meeting record (linked from the Meetings module) where the decision originated.
 
 Status workflow:
 ```
@@ -2762,9 +2769,53 @@ proposed → pending_decision → decided → deferred
                                       ↘ reversed (admin only — requires reason)
 ```
 
+#### Assumption
+
+Fields: title, description, severity, category, owner, owner_name (free-text fallback when no matched project member), validation_plan, source.
+
+- **Validation Plan** — describes how and when the assumption will be confirmed or refuted (e.g., "Confirm with legal team by end of Phase 1").
+
+Status workflow:
+```
+proposed → open → unverified → validated → closed
+                             ↘ cancelled (requires reason)
+```
+
+- `unverified` — assumption has been reviewed but cannot yet be confirmed.
+- `validated` — assumption has been confirmed as true; record is retained for audit purposes.
+
+#### Dependency
+
+Fields: title, description, severity, category, owner, owner_name (free-text fallback), dependent_entity, due_date, source.
+
+- **Dependent Entity** — the external team, system, vendor, or project that must deliver for this dependency to be met (e.g., "Infrastructure Team", "Third-party API vendor").
+
+Status workflow:
+```
+proposed → open → at_risk → complete → closed
+                           ↘ pending
+                           ↘ cancelled (requires reason)
+```
+
+- `at_risk` — the dependency is in jeopardy; the dependent entity has flagged a delay or blocker.
+- `pending` — waiting on the dependent entity with no confirmed risk yet.
+- `complete` — the dependent deliverable has been received.
+
+### Categories
+
+The `category` field classifies items by domain and is available on Risk, Issue, Assumption, and Dependency records. Supported values:
+
+| Category | Covers |
+|----------|--------|
+| `financial` | Budget overruns, cost variances, funding risks |
+| `functional` | Feature gaps, requirements issues, scope concerns |
+| `operational` | Process, staffing, vendor, or delivery-capacity issues |
+| `technical` | Architecture, infrastructure, integration, or quality issues |
+| `legal` | Regulatory, compliance, contractual, or IP concerns |
+
 ### Triage Workflow
 
-RAID items follow a triage workflow aligned with PMI/PRINCE2 governance best practice. **Any team member** can raise a risk, issue, action, or decision — open identification is encouraged.
+RAID items follow a triage workflow aligned with PMI/PRINCE2 governance best practice. **Any team member** can raise a risk, issue, action, decision, assumption, or dependency — open identification is encouraged.
 
 - **Non-PM roles** (team_member, qa, tester, devops, ba): items are created with status `proposed` and require PM review before becoming active.
 - **PM/admin roles** (admin, project_manager, scrum_master, risk_manager, pmo): items bypass triage and are created directly as `open`.
@@ -2800,14 +2851,24 @@ A collapsible filter panel with:
 
 The **Import** button in the RAID toolbar opens a file-based import modal for bulk-loading RAID items from CSV or Excel files (e.g., exported from other PM tools or PMO templates).
 
-**Supported formats:** `.csv`, `.xlsx`, `.xls` (max 5MB). Multi-sheet Excel files show a sheet selector.
+**Supported formats:** `.csv`, `.xlsx`, `.xls` (max 5MB).
 
-**Workflow:**
+**Single-sheet workflow:**
 1. Drag-and-drop or browse for a file, or paste CSV text directly.
 2. The column mapper auto-maps source columns to RAID fields using exact alias matching, fuzzy matching, and AI suggestions.
 3. Preview the first 10 rows with mapped column labels.
 4. Click **Import** to create the RAID items.
 5. A result summary shows how many items succeeded and any row-level errors.
+
+**Multi-sheet "Import All Sheets" workflow:**
+
+For Excel workbooks that follow a standard PMO layout with one RAID type per tab, the **Import All Sheets** button processes all recognised sheets in a single operation:
+
+1. Upload a `.xlsx` or `.xls` file with multiple sheets.
+2. The importer detects sheets whose names match RAID type keywords: **Risks**, **Issues**, **Actions**, **Decisions**, **Assumptions**, **Dependencies** (case-insensitive, partial match — e.g., "Project Risks" is recognised as a Risks sheet).
+3. For each detected sheet, the importer auto-maps columns and infers the RAID type from the sheet name, so a "Risks" tab does not need a Type column.
+4. Click **Import All Sheets** to create items from every detected sheet simultaneously.
+5. A per-sheet result summary shows success counts and row-level errors for each tab. Sheets that are not recognised as RAID-type sheets are silently skipped.
 
 **Column mapping:** The mapper recognises common column names and aliases (e.g., "Risk Title" → Title, "Likelihood" → Probability, "Assigned To" → Owner). Unmapped columns can be manually assigned from the dropdown.
 
@@ -2815,12 +2876,12 @@ The **Import** button in the RAID toolbar opens a file-based import modal for bu
 
 | Field | Example normalisation |
 |-------|----------------------|
-| Type | "R", "risk" → risk; "I", "issue" → issue; "A" → action; "D" → decision |
+| Type | "R", "risk" → risk; "I", "issue" → issue; "A" → action; "D" → decision; "AS", "assumption" → assumption; "DP", "dependency" → dependency |
 | Severity | "High", "H", "3" → high; "Critical", "Crit" → critical |
-| Status | "Open", "Active" → open; "In Progress", "WIP" → in_progress; "Closed", "Done" → closed |
-| Category | "Budget", "Cost", "Financial" → budget; "Technical", "Tech" → technical |
+| Status | "Open", "Active" → open; "In Progress", "WIP" → in_progress; "Closed", "Done" → closed; "Validated" → validated; "At Risk" → at_risk |
+| Category | "Budget", "Cost", "Financial" → financial; "Technical", "Tech" → technical; "Functional", "Func" → functional; "Operational", "Ops" → operational; "Legal", "Compliance" → legal |
 
-**Owner matching:** If an Owner column is mapped, the server attempts to match the name against project members (case-insensitive display name or email). Unmatched owners are silently skipped (the item is created without an owner).
+**Owner matching:** If an Owner column is mapped, the server attempts to match the name against project members (case-insensitive display name or email). Unmatched owner values are stored verbatim in the `owner_name` free-text field so no data is lost.
 
 **Limits:** Maximum 200 rows per import. Duplicate titles within the same batch are rejected.
 
@@ -2896,14 +2957,14 @@ A data-driven (no AI) RAID report that provides a comprehensive snapshot of all 
 **How to access:** Navigate to the **RAID** tab on any project, then click the **RAID Report** button in the toolbar.
 
 **Report Filters:**
-- **Type** — Checkboxes for Risk, Issue, Action, and Decision. Select one or more to include in the report.
+- **Type** — Checkboxes for Risk, Issue, Action, Decision, Assumption, and Dependency. Select one or more to include in the report.
 - **Severity** — Filter by critical, high, medium, and/or low severity levels.
 - **Owner** — Dropdown to filter items by a specific owner.
 
 Click **Generate Report** to produce the report with the selected filters applied.
 
 **Report Sections:**
-1. **Summary Dashboard** — Four cards showing the count of open items by type (Risks, Issues, Actions, Decisions), each with a severity breakdown (critical / high / medium / low counts).
+1. **Summary Dashboard** — Six cards showing the count of open items by type (Risks, Issues, Actions, Decisions, Assumptions, Dependencies), each with a severity breakdown (critical / high / medium / low counts).
 2. **All Items Table** — A full table of all RAID items matching the current filters, with columns for ID, Title, Type, Severity, Status, Owner, and Date.
 3. **Overdue Actions** — A highlighted section listing all Action and Issue items past their due date or target resolution date, sorted by how overdue they are.
 4. **Key Mitigations** — A section showing active mitigation plans for open risks, so stakeholders can see what preventive measures are in place.
@@ -2921,18 +2982,18 @@ Click **Generate Report** to produce the report with the selected filters applie
 
 ### Role-Based Permissions
 
-| Role | Create Risk | Create Issue | Create Action | Create Decision | Cancel | Reverse |
-|------|-------------|--------------|---------------|-----------------|--------|---------|
-| `admin` | Yes | Yes | Yes | Yes | Yes | Yes |
-| `project_manager` | Yes | Yes | Yes | Yes | Yes | No |
-| `scrum_master` | Yes | Yes | Yes | Yes | Yes | No |
-| `pmo` | Yes | Yes | Yes | Yes | Yes | No |
-| `ba` | Yes | Yes | Yes | Yes | Yes | No |
-| `risk_manager` | Yes | Yes | No | No | Yes | No |
-| `team_member` | No | Yes | Yes | No | Own only | No |
-| `finance_officer` | No | No | No | No | No | No |
-| `executive` | No | No | No | No | No | No |
-| `qa` / `tester` / `devops` / `claude_sme` | No | No | No | No | No | No |
+| Role | Create Risk | Create Issue | Create Action | Create Decision | Create Assumption | Create Dependency | Cancel | Reverse |
+|------|-------------|--------------|---------------|-----------------|-------------------|-------------------|--------|---------|
+| `admin` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| `project_manager` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No |
+| `scrum_master` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No |
+| `pmo` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No |
+| `ba` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No |
+| `risk_manager` | Yes | Yes | No | No | Yes | Yes | Yes | No |
+| `team_member` | No | Yes | Yes | No | Yes | No | Own only | No |
+| `finance_officer` | No | No | No | No | No | No | No | No |
+| `executive` | No | No | No | No | No | No | No | No |
+| `qa` / `tester` / `devops` / `claude_sme` | No | No | No | No | No | No | No | No |
 
 Reverse (decision reversal) is restricted to `admin` only regardless of project membership role.
 

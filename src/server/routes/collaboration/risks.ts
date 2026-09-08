@@ -12,11 +12,12 @@ import { lessonsLearnedService } from '../../services/LessonsLearnedService';
 import { projectService } from '../../services/ProjectService';
 import { projectMemberService } from '../../services/ProjectMemberService';
 
-const RAID_TYPES = ['risk', 'issue', 'action', 'decision'] as const;
+const RAID_TYPES = ['risk', 'issue', 'action', 'decision', 'assumption', 'dependency'] as const;
 const ALL_STATUSES = ['proposed', 'open', 'monitoring', 'mitigating', 'mitigated', 'closed', 'resolved',
-  'cancelled', 'reversed', 'in_progress', 'completed', 'pending_decision', 'decided', 'deferred'] as const;
+  'cancelled', 'reversed', 'in_progress', 'completed', 'pending_decision', 'decided', 'deferred',
+  'validated', 'unverified', 'at_risk', 'complete', 'pending'] as const;
 const SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
-const CATEGORIES = ['schedule', 'budget', 'resource', 'technical', 'regulatory', 'stakeholder', 'weather', 'dependency', 'other'] as const;
+const CATEGORIES = ['schedule', 'budget', 'resource', 'technical', 'regulatory', 'stakeholder', 'weather', 'dependency', 'other', 'financial', 'functional', 'operational', 'legal'] as const;
 
 const createRiskSchema = z.object({
   type: z.enum(RAID_TYPES),
@@ -34,7 +35,7 @@ const createRiskSchema = z.object({
   linkedTaskIds: z.array(z.string()).optional(),
   // Action fields
   dueDate: z.string().optional(),
-  actionType: z.enum(['preventive', 'corrective', 'improvement']).optional(),
+  actionType: z.enum(['preventive', 'corrective', 'improvement', 'financial', 'functional', 'technical', 'operational', 'legal']).optional(),
   // Decision fields
   rationale: z.string().max(5000).optional(),
   decidedBy: z.string().optional(),
@@ -47,6 +48,12 @@ const createRiskSchema = z.object({
   rootCause: z.string().max(5000).optional(),
   impactAssessment: z.string().max(5000).optional(),
   workaround: z.string().max(5000).optional(),
+  // DBJ alignment fields
+  validationPlan: z.string().max(5000).optional(),
+  dependentEntity: z.string().max(500).optional(),
+  forum: z.string().max(255).optional(),
+  sourceMeeting: z.string().max(255).optional(),
+  ownerName: z.string().max(255).optional(),
 });
 
 const updateRiskSchema = createRiskSchema.partial();
@@ -76,8 +83,8 @@ function canPerformRaidAction(role: string, itemType: string, action: string): b
   if (action === 'comment') return true;
   if (action === 'reverse') return false; // admin only
   if (role === 'viewer') return action === 'update'; // ownership checked at endpoint level
-  if (role === 'team_member') return action === 'create' && ['issue', 'action'].includes(itemType);
-  if (role === 'risk_manager') return ['risk', 'issue'].includes(itemType);
+  if (role === 'team_member') return action === 'create' && ['issue', 'action', 'assumption', 'dependency'].includes(itemType);
+  if (role === 'risk_manager') return ['risk', 'issue', 'assumption', 'dependency'].includes(itemType);
   if (['project_manager', 'scrum_master', 'pmo', 'ba'].includes(role)) return true;
   return false;
 }
@@ -472,6 +479,8 @@ export async function riskRoutes(fastify: FastifyInstance) {
     issue: 'issue', i: 'issue',
     action: 'action', a: 'action',
     decision: 'decision', d: 'decision',
+    assumption: 'assumption', as: 'assumption',
+    dependency: 'dependency', dep: 'dependency',
   };
   const SEVERITY_NORM: Record<string, string> = {
     critical: 'critical', crit: 'critical', '4': 'critical',
@@ -481,22 +490,29 @@ export async function riskRoutes(fastify: FastifyInstance) {
   };
   const STATUS_NORM: Record<string, string> = {
     open: 'open', active: 'open',
-    closed: 'closed', done: 'closed', complete: 'closed',
+    closed: 'closed', done: 'closed',
     'in progress': 'in_progress', inprogress: 'in_progress', wip: 'in_progress', in_progress: 'in_progress',
     monitoring: 'monitoring', mitigating: 'mitigating', mitigated: 'mitigated',
     resolved: 'resolved', completed: 'completed',
-    pending: 'pending_decision', pending_decision: 'pending_decision', pendingdecision: 'pending_decision',
+    pending: 'pending', pending_decision: 'pending_decision', pendingdecision: 'pending_decision',
     decided: 'decided', deferred: 'deferred',
+    validated: 'validated', unverified: 'unverified',
+    at_risk: 'at_risk', 'at risk': 'at_risk', atrisk: 'at_risk',
+    complete: 'complete',
   };
   const CATEGORY_NORM: Record<string, string> = {
     schedule: 'schedule', time: 'schedule',
-    budget: 'budget', cost: 'budget', financial: 'budget',
+    budget: 'budget', cost: 'budget',
     resource: 'resource', people: 'resource',
     technical: 'technical', tech: 'technical',
     regulatory: 'regulatory', compliance: 'regulatory',
     stakeholder: 'stakeholder',
     weather: 'weather',
     dependency: 'dependency',
+    financial: 'financial',
+    functional: 'functional',
+    operational: 'operational',
+    legal: 'legal',
     other: 'other',
   };
 
@@ -616,17 +632,30 @@ export async function riskRoutes(fastify: FastifyInstance) {
           }
 
           // Normalize actionType
-          let actionType: 'preventive' | 'corrective' | 'improvement' | undefined;
+          let actionType: 'preventive' | 'corrective' | 'improvement' | 'financial' | 'functional' | 'technical' | 'operational' | 'legal' | undefined;
           if (mapped.actionType) {
             const at = mapped.actionType.toLowerCase().trim();
-            if (['preventive', 'corrective', 'improvement'].includes(at)) {
-              actionType = at as 'preventive' | 'corrective' | 'improvement';
+            if (['preventive', 'corrective', 'improvement', 'financial', 'functional', 'technical', 'operational', 'legal'].includes(at)) {
+              actionType = at as typeof actionType;
             }
+          }
+
+          // Map probability text to numeric (Low=1, Medium=3, High=5)
+          if (!probability && mapped.probability) {
+            const pt = mapped.probability.toLowerCase().trim();
+            const probTextMap: Record<string, number> = { low: 1, medium: 3, med: 3, moderate: 3, high: 5 };
+            if (probTextMap[pt]) probability = probTextMap[pt];
+          }
+
+          // Owner fallback: if owner text doesn't match a member, store as ownerName
+          let ownerName: string | undefined;
+          if (mapped.owner && !ownerId) {
+            ownerName = mapped.owner.trim().slice(0, 255) || undefined;
           }
 
           await riskService.create({
             projectId,
-            type: type as 'risk' | 'issue' | 'action' | 'decision',
+            type: type as 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency',
             title,
             description: mapped.description?.slice(0, 5000) || undefined,
             category,
@@ -638,11 +667,16 @@ export async function riskRoutes(fastify: FastifyInstance) {
             mitigationPlan: mapped.mitigationPlan?.slice(0, 5000) || undefined,
             responsePlan: mapped.responsePlan?.slice(0, 5000) || undefined,
             ownerId,
+            ownerName,
             dueDate: mapped.dueDate || undefined,
             actionType,
             rationale: mapped.rationale?.slice(0, 5000) || undefined,
             rootCause: mapped.rootCause?.slice(0, 5000) || undefined,
             workaround: mapped.workaround?.slice(0, 5000) || undefined,
+            validationPlan: mapped.validationPlan?.slice(0, 5000) || undefined,
+            dependentEntity: mapped.dependentEntity?.slice(0, 500) || undefined,
+            forum: mapped.forum?.slice(0, 255) || undefined,
+            sourceMeeting: mapped.sourceMeeting?.slice(0, 255) || undefined,
             source: 'imported',
             createdBy: userId,
           });

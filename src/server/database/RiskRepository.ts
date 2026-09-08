@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 export interface ProjectRisk {
   id: string;
   projectId: string;
-  type: 'risk' | 'issue' | 'action' | 'decision';
+  type: 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency';
   title: string;
   description: string | null;
   category: string;
@@ -33,7 +33,7 @@ export interface ProjectRisk {
   sequenceNumber: number | null;
   recordId: string | null;
   dueDate: string | null;
-  actionType: 'preventive' | 'corrective' | 'improvement' | null;
+  actionType: 'preventive' | 'corrective' | 'improvement' | 'financial' | 'functional' | 'technical' | 'operational' | 'legal' | null;
   rationale: string | null;
   decidedBy: string | null;
   decisionDate: string | null;
@@ -45,6 +45,12 @@ export interface ProjectRisk {
   rootCause: string | null;
   impactAssessment: string | null;
   workaround: string | null;
+  // DBJ alignment fields
+  validationPlan: string | null;
+  dependentEntity: string | null;
+  forum: string | null;
+  sourceMeeting: string | null;
+  ownerName: string | null;
 }
 
 export interface RaidActivityLog {
@@ -124,6 +130,11 @@ function mapRow(row: any): ProjectRisk {
     rootCause: row.root_cause ?? null,
     impactAssessment: row.impact_assessment ?? null,
     workaround: row.workaround ?? null,
+    validationPlan: row.validation_plan ?? null,
+    dependentEntity: row.dependent_entity ?? null,
+    forum: row.forum ?? null,
+    sourceMeeting: row.source_meeting ?? null,
+    ownerName: row.owner_name ?? null,
   };
 }
 
@@ -143,7 +154,7 @@ function mapActivityRow(row: any): RaidActivityLog {
 }
 
 export interface RiskFilters {
-  type?: 'risk' | 'issue' | 'action' | 'decision';
+  type?: 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency';
   status?: string;
   severity?: string;
   source?: string;
@@ -159,10 +170,14 @@ export interface RiskStats {
   totalIssues: number;
   totalActions: number;
   totalDecisions: number;
+  totalAssumptions: number;
+  totalDependencies: number;
   openRisks: number;
   openIssues: number;
   openActions: number;
   pendingDecisions: number;
+  openAssumptions: number;
+  openDependencies: number;
   critical: number;
   triggered: number;
 }
@@ -200,6 +215,11 @@ const COLUMN_MAP: Record<string, string> = {
   rootCause: 'root_cause',
   impactAssessment: 'impact_assessment',
   workaround: 'workaround',
+  validationPlan: 'validation_plan',
+  dependentEntity: 'dependent_entity',
+  forum: 'forum',
+  sourceMeeting: 'source_meeting',
+  ownerName: 'owner_name',
 };
 
 class RiskRepository extends BaseRepository<ProjectRisk> {
@@ -208,7 +228,7 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
   }
 
   async nextSequenceId(type: string): Promise<{ sequenceNumber: number; recordId: string }> {
-    const prefix: Record<string, string> = { risk: 'R', issue: 'I', action: 'A', decision: 'D' };
+    const prefix: Record<string, string> = { risk: 'R', issue: 'I', action: 'A', decision: 'D', assumption: 'AS', dependency: 'DP' };
     const p = prefix[type] || 'X';
     return databaseService.transaction(async (conn) => {
       const rows = await databaseService.queryOn<{ next_val: number }>(conn,
@@ -271,7 +291,7 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
 
   async create(data: {
     projectId: string;
-    type: 'risk' | 'issue' | 'action' | 'decision';
+    type: 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency';
     title: string;
     description?: string;
     category?: string;
@@ -290,7 +310,7 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
     linkedProposalId?: string;
     createdBy: string;
     dueDate?: string;
-    actionType?: 'preventive' | 'corrective' | 'improvement';
+    actionType?: 'preventive' | 'corrective' | 'improvement' | 'financial' | 'functional' | 'technical' | 'operational' | 'legal';
     rationale?: string;
     decidedBy?: string;
     decisionDate?: string;
@@ -300,9 +320,20 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
     rootCause?: string;
     impactAssessment?: string;
     workaround?: string;
+    validationPlan?: string;
+    dependentEntity?: string;
+    forum?: string;
+    sourceMeeting?: string;
+    ownerName?: string;
   }): Promise<ProjectRisk> {
     const id = uuidv4();
     const { sequenceNumber, recordId } = await this.nextSequenceId(data.type);
+
+    const defaultStatus: Record<string, string> = {
+      decision: 'pending_decision',
+      assumption: 'open',
+      dependency: 'open',
+    };
 
     await databaseService.query(
       `INSERT INTO project_risks (id, project_id, type, title, description, category, severity,
@@ -310,8 +341,9 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
         source, source_agent_id, ai_confidence, linked_task_ids, linked_proposal_id, created_by,
         sequence_number, record_id, due_date, action_type, rationale, decided_by, decision_date,
         alternatives_considered, stakeholders_consulted, linked_raid_ids,
-        root_cause, impact_assessment, workaround)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        root_cause, impact_assessment, workaround,
+        validation_plan, dependent_entity, forum, source_meeting, owner_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.projectId,
@@ -322,7 +354,7 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
         data.severity || 'medium',
         data.probability ?? 3,
         data.impact ?? 3,
-        data.status || (data.type === 'decision' ? 'pending_decision' : 'open'),
+        data.status || defaultStatus[data.type] || 'open',
         data.triggerCondition || null,
         data.mitigationPlan || null,
         data.responsePlan || null,
@@ -346,6 +378,11 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
         data.rootCause || null,
         data.impactAssessment || null,
         data.workaround || null,
+        data.validationPlan || null,
+        data.dependentEntity || null,
+        data.forum || null,
+        data.sourceMeeting || null,
+        data.ownerName || null,
       ],
     );
     return (await this.findById(id))!;
@@ -388,10 +425,14 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
          SUM(type = 'issue') AS totalIssues,
          SUM(type = 'action') AS totalActions,
          SUM(type = 'decision') AS totalDecisions,
+         SUM(type = 'assumption') AS totalAssumptions,
+         SUM(type = 'dependency') AS totalDependencies,
          SUM(type = 'risk' AND status NOT IN ('closed','mitigated','resolved','cancelled')) AS openRisks,
          SUM(type = 'issue' AND status NOT IN ('closed','resolved','cancelled')) AS openIssues,
          SUM(type = 'action' AND status NOT IN ('closed','completed','cancelled','deferred')) AS openActions,
          SUM(type = 'decision' AND status = 'pending_decision') AS pendingDecisions,
+         SUM(type = 'assumption' AND status NOT IN ('closed','validated','cancelled')) AS openAssumptions,
+         SUM(type = 'dependency' AND status NOT IN ('closed','complete','cancelled')) AS openDependencies,
          SUM(severity = 'critical' AND status NOT IN ('closed','mitigated','resolved','cancelled')) AS critical,
          SUM(triggered = TRUE) AS triggered
        FROM project_risks WHERE project_id = ?`,
@@ -403,10 +444,14 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
       totalIssues: Number(r.totalIssues) || 0,
       totalActions: Number(r.totalActions) || 0,
       totalDecisions: Number(r.totalDecisions) || 0,
+      totalAssumptions: Number(r.totalAssumptions) || 0,
+      totalDependencies: Number(r.totalDependencies) || 0,
       openRisks: Number(r.openRisks) || 0,
       openIssues: Number(r.openIssues) || 0,
       openActions: Number(r.openActions) || 0,
       pendingDecisions: Number(r.pendingDecisions) || 0,
+      openAssumptions: Number(r.openAssumptions) || 0,
+      openDependencies: Number(r.openDependencies) || 0,
       critical: Number(r.critical) || 0,
       triggered: Number(r.triggered) || 0,
     };

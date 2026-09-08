@@ -11,19 +11,21 @@ import { RAIDDetailPanel } from '../../components/risks/RAIDDetailPanel';
 import { RAIDReportModal } from '../../components/risks/RAIDReportModal';
 import { RAIDImportModal } from '../../components/raids/RAIDImportModal';
 
-type RaidType = 'risk' | 'issue' | 'action' | 'decision';
+type RaidType = 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency';
 type ViewMode = 'table' | 'board' | 'matrix';
 type SortField = 'recordId' | 'title' | 'type' | 'severity' | 'status' | 'owner' | 'riskScore' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
 const VALID_STATUSES: Record<string, string[]> = {
-  risk:     ['open', 'monitoring', 'mitigating', 'mitigated', 'closed'],
-  issue:    ['open', 'in_progress', 'resolved', 'closed'],
-  action:   ['open', 'in_progress', 'completed', 'closed', 'deferred'],
-  decision: ['pending_decision', 'decided', 'deferred'],
+  risk:       ['open', 'monitoring', 'mitigating', 'mitigated', 'closed'],
+  issue:      ['open', 'in_progress', 'resolved', 'closed'],
+  action:     ['open', 'in_progress', 'completed', 'closed', 'deferred'],
+  decision:   ['pending_decision', 'decided', 'deferred'],
+  assumption: ['open', 'validated', 'unverified', 'closed'],
+  dependency: ['open', 'pending', 'complete', 'at_risk', 'closed'],
 };
 
-const BOARD_COLUMNS = ['open', 'monitoring', 'mitigating', 'in_progress', 'mitigated', 'resolved', 'completed', 'decided', 'closed'];
+const BOARD_COLUMNS = ['open', 'monitoring', 'mitigating', 'in_progress', 'mitigated', 'resolved', 'completed', 'decided', 'validated', 'unverified', 'pending', 'complete', 'at_risk', 'closed'];
 
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
@@ -237,9 +239,10 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
     if (s === 'open') return 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400';
     if (s === 'monitoring') return 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400';
     if (s === 'mitigating' || s === 'in_progress') return 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400';
-    if (s === 'mitigated' || s === 'resolved' || s === 'completed' || s === 'decided') return 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400';
+    if (s === 'mitigated' || s === 'resolved' || s === 'completed' || s === 'decided' || s === 'validated' || s === 'complete') return 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400';
     if (s === 'pending_decision') return 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400';
-    if (s === 'deferred') return 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400';
+    if (s === 'deferred' || s === 'unverified' || s === 'pending') return 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400';
+    if (s === 'at_risk') return 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400';
     if (s === 'cancelled' || s === 'reversed') return 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500';
     return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
   };
@@ -249,6 +252,8 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
     if (t === 'issue') return 'bg-orange-500';
     if (t === 'action') return 'bg-blue-500';
     if (t === 'decision') return 'bg-purple-500';
+    if (t === 'assumption') return 'bg-teal-500';
+    if (t === 'dependency') return 'bg-cyan-500';
     return 'bg-gray-500';
   };
 
@@ -256,6 +261,8 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
     if (t === 'risk') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
     if (t === 'issue') return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
     if (t === 'action') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+    if (t === 'assumption') return 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400';
+    if (t === 'dependency') return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400';
     return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
   };
 
@@ -342,6 +349,18 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
             <span className="text-xs text-gray-500 dark:text-gray-400">Pending Decisions</span>
             <span className="text-sm font-bold text-purple-600 dark:text-purple-400">{stats.pendingDecisions ?? 0}</span>
           </div>
+          {(stats.openAssumptions ?? 0) > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-50 dark:bg-teal-900/20">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Open Assumptions</span>
+              <span className="text-sm font-bold text-teal-600 dark:text-teal-400">{stats.openAssumptions}</span>
+            </div>
+          )}
+          {(stats.openDependencies ?? 0) > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-50 dark:bg-cyan-900/20">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Open Dependencies</span>
+              <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400">{stats.openDependencies}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20">
             <span className="text-xs text-gray-500 dark:text-gray-400">Critical</span>
             <span className="text-sm font-bold text-red-700 dark:text-red-300">{stats.critical ?? 0}</span>
@@ -388,6 +407,12 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
           </button>
           <button onClick={() => openAdd('decision')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors">
             <Plus className="w-3.5 h-3.5" /> Decision
+          </button>
+          <button onClick={() => openAdd('assumption')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Assumption
+          </button>
+          <button onClick={() => openAdd('dependency')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Dependency
           </button>
           <button
             onClick={handleAiScan}
@@ -468,6 +493,8 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
               <option value="issue">Issues</option>
               <option value="action">Actions</option>
               <option value="decision">Decisions</option>
+              <option value="assumption">Assumptions</option>
+              <option value="dependency">Dependencies</option>
             </select>
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={selectClass}>
               <option value="">All Statuses</option>
@@ -483,6 +510,11 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
               <option value="deferred">Deferred</option>
               <option value="cancelled">Cancelled</option>
               <option value="reversed">Reversed</option>
+              <option value="validated">Validated</option>
+              <option value="unverified">Unverified</option>
+              <option value="at_risk">At Risk</option>
+              <option value="complete">Complete</option>
+              <option value="pending">Pending</option>
               <option value="closed">Closed</option>
             </select>
             <select value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)} className={selectClass}>

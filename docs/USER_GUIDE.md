@@ -265,7 +265,7 @@ Available cards:
 - **EVM Metrics** -- CPI and SPI gauges with earned value, planned value, and cost/schedule variance. Click to navigate to the Performance tab.
 - **Budget** -- Budget allocated vs spent with utilization percentage bar, currency formatting, and over-budget warning.
 - **Due Soon** -- Tasks due within the next 7 days, sorted by urgency.
-- **RAID Summary** -- 2x2 grid showing open risks, open issues, open actions, and pending decisions with critical/triggered badges. Click to navigate to the RAID tab.
+- **RAID Summary** -- Grid showing open risks, open issues, open actions, pending decisions, open assumptions, and open dependencies with critical/triggered badges. Click to navigate to the RAID tab.
 - **Current Sprint** -- Active sprint name, day progress (Day X of Y), task completion bar, and sprint goal.
 - **Recent Activity** -- Last 6 audit trail entries with user, action, and timestamp.
 - **Blocked Tasks** -- Tasks with "blocked" status, showing blockers and assignees.
@@ -2135,7 +2135,7 @@ Paid plan users (Consultant Basic, Consultant Pro, SME, and Enterprise) can invi
 **What viewers can do:**
 
 - View any project they have been explicitly invited to (read-only).
-- Update RAID items (risks, actions, issues, decisions) that are assigned to them.
+- Update RAID items (risks, actions, issues, decisions, assumptions, dependencies) that are assigned to them.
 
 **What viewers cannot do:**
 
@@ -2537,18 +2537,22 @@ Access via the sidebar under **Plan → Projects**.
 
 ## 31. RAID Log
 
-The RAID Log is a project-level register for Risks, Actions, Issues, and Decisions. Access it from the **RAID** tab on any project detail page (or via the RAID tab in the PM Project Detail view).
+The RAID Log is a project-level register for Risks, Actions, Issues, Decisions, Assumptions, and Dependencies. Access it from the **RAID** tab on any project detail page (or via the RAID tab in the PM Project Detail view).
 
 ### Creating Records
 
-The RAID log header contains four **Add** buttons, one per type:
+The RAID log header contains six **Add** buttons, one per type:
 
 - **+ Risk** — Opens the Risk form. Fill in title, description, severity (low / medium / high / critical), probability, impact, owner, and optional mitigation plan. Click **Save** to create. The record is assigned the next `R-NNN` ID automatically. When editing an existing risk, three fields offer a **"Suggest with AI"** button: **Mitigation Plan** (preventive strategies), **Trigger Condition** (early warning signs), and **Response Plan** (contingency actions). Click the button to have AI generate suggestions based on your organisation's lessons-learned knowledge base.
 - **+ Issue** — Opens the Issue form. Issues have their own fields distinct from risks: title, description, severity, category, owner, root cause ("Why did this happen?"), impact assessment, workaround ("Temporary fix"), resolution plan ("Permanent fix"), and target resolution date. Issues also include trigger condition, mitigation plan, and response plan fields (shared with risks) — each with an **AI Suggest** button for AI-powered recommendations grounded in historical lessons. Probability is not shown since the issue has already occurred. Assigned an `I-NNN` ID.
-- **+ Action** — Opens the Action form. Fill in title, description, owner, due date, and action type (Follow-Up / Decision Required / Information Only / Escalation). Assigned an `A-NNN` ID.
-- **+ Decision** — Opens the Decision form. Fill in title, description, decided by, rationale, decision date, and alternatives considered. Assigned a `D-NNN` ID.
+- **+ Action** — Opens the Action form. Fill in title, description, owner, due date, and action type (Follow-Up / Decision Required / Information Only / Escalation / Financial / Functional / Technical / Operational / Legal). Assigned an `A-NNN` ID.
+- **+ Decision** — Opens the Decision form. Fill in title, description, decided by, rationale, decision date, alternatives considered, **Forum** (the meeting or governance body where the decision was made), and **Source Meeting** (link to a specific meeting record). Assigned a `D-NNN` ID.
+- **+ Assumption** — Opens the Assumption form (teal accent, `AS-NNN` IDs). Fill in title, description, severity, owner, and assumption-specific fields: **Validation Plan** (how and when the assumption will be verified), **Target Validation Date**, and **Severity if Invalid** (consequence severity if the assumption proves false). Assigned an `AS-NNN` ID.
+- **+ Dependency** — Opens the Dependency form (cyan accent, `DP-NNN` IDs). Fill in title, description, severity, owner, and dependency-specific fields: **Dependent Entity** (the team, system, or external party this project depends on) and **Required By Date** (the latest date the dependency must be resolved). Assigned a `DP-NNN` ID.
 
 All forms include a **Source** field (Manual / AI Scan / Agent / Import) that is set automatically when records are created by the AI Scan or an agent.
+
+**Owner field:** The Owner field accepts any project member. If a name is typed that does not match an existing project member, it is saved as a free-text fallback so external contacts or names not yet in the system can still be recorded.
 
 ### Importing from CSV/Excel
 
@@ -2557,12 +2561,14 @@ Click the **Import** button in the RAID toolbar to bulk-load items from a CSV or
 1. **Upload a file** — drag-and-drop or browse for a `.csv`, `.xlsx`, or `.xls` file (max 5MB). You can also paste CSV text directly.
 2. **Map columns** — the column mapper automatically matches source columns to RAID fields (Type, Title, Description, Severity, Status, Owner, etc.) using alias matching, fuzzy matching, and AI suggestions. Adjust any mappings manually if needed.
 3. **Preview** — check the first 10 rows to verify the mapping looks correct.
-4. **Import** — click the Import button. The server normalises values (e.g., "High" → high, "R" → risk, "In Progress" → in_progress) and matches Owner names to project members.
+4. **Import** — click the Import button. The server normalises values (e.g., "High" → high, "R" → risk, "In Progress" → in_progress) and matches Owner names to project members. If an owner name does not match a project member it is saved as a free-text fallback.
 5. **Review results** — a summary shows how many items were created and any rows that failed with reasons.
+
+**Multi-tab Excel import:** If the uploaded `.xlsx` or `.xls` file contains multiple sheets, the importer automatically detects any sheet whose name matches a RAID type keyword (Risks, Issues, Actions, Decisions, Assumptions, Dependencies) and processes each one. The type is set automatically from the sheet name, so a column mapping for Type is not required. A per-sheet result summary is shown after import so you can see how many items were created from each tab.
 
 Imported items are tagged with **source: Import** and appear in the RAID log immediately. Maximum 200 rows per import.
 
-**All team members** can raise RAID items — open identification of risks, issues, actions, and decisions is encouraged per PMI/PRINCE2 governance best practice.
+**All team members** can raise RAID items — open identification of risks, issues, actions, assumptions, dependencies, and decisions is encouraged per PMI/PRINCE2 governance best practice.
 
 ### Triage Workflow
 
@@ -2597,7 +2603,7 @@ A collapsible filter panel in the toolbar provides:
 
 - **Search box** — Filters records by title or description as you type.
 - **Filter toggle** — Click the Filter button to reveal/hide filter dropdowns. A badge shows how many filters are active.
-- **Type** dropdown — Show all types or filter to Risks, Issues, Actions, or Decisions only.
+- **Type** dropdown — Show all types or filter to Risks, Issues, Actions, Decisions, Assumptions, or Dependencies only.
 - **Status** dropdown — Filter by a specific status.
 - **Severity** dropdown — Filter to a specific severity level.
 - **Source** dropdown — Filter by how the record was created (manual, ai_scan, agent, import).
@@ -2613,6 +2619,8 @@ At the top of the RAID log, a stats bar shows at-a-glance counts:
 - **Open Issues** — Issues in `open` or `in_progress` status.
 - **Open Actions** — Actions in `open`, `in_progress`, or `deferred` status.
 - **Pending Decisions** — Decisions in `pending_decision` status.
+- **Open Assumptions** — Assumptions in `open` or `unvalidated` status.
+- **Open Dependencies** — Dependencies in `open` or `at_risk` status.
 - **Critical** — All items with critical severity.
 - **Severity distribution** — A horizontal stacked bar chart showing the breakdown of critical/high/medium/low items with colour legend.
 
@@ -2620,7 +2628,7 @@ These counts update immediately whenever a record is created, updated, or cancel
 
 ### Tab Badge
 
-The RAID tab header shows a count badge with the total number of open items (open risks + open issues + open actions + pending decisions), providing at-a-glance visibility without clicking into the tab.
+The RAID tab header shows a count badge with the total number of open items (open risks + open issues + open actions + pending decisions + open assumptions + open dependencies), providing at-a-glance visibility without clicking into the tab.
 
 ### Slide-Out Detail Panel
 
@@ -2695,7 +2703,7 @@ Click the **RAID Report** button in the RAID tab toolbar to generate a comprehen
 
 1. Click **RAID Report** in the toolbar.
 2. A modal opens with filter controls:
-   - **Type** — Check or uncheck Risk, Issue, Action, and Decision to include or exclude each type.
+   - **Type** — Check or uncheck Risk, Issue, Action, Decision, Assumption, and Dependency to include or exclude each type.
    - **Severity** — Select which severity levels to include (critical, high, medium, low).
    - **Owner** — Choose a specific owner from the dropdown, or leave blank for all owners.
 3. Click **Generate Report**.
@@ -2704,7 +2712,7 @@ Click the **RAID Report** button in the RAID tab toolbar to generate a comprehen
 
 The generated report contains four sections:
 
-1. **Summary Dashboard** — Four cards (one per RAID type) showing the count of open items with a severity breakdown (how many are critical, high, medium, or low).
+1. **Summary Dashboard** — Six cards (one per RAID type) showing the count of open items with a severity breakdown (how many are critical, high, medium, or low).
 2. **All Items Table** — A complete table of all RAID items matching your filters, with columns for ID, Title, Type, Severity, Status, Owner, and Date.
 3. **Overdue Actions** — A highlighted list of Action and Issue items that are past their due date or target resolution date, sorted by how overdue they are. Use this to quickly identify items that need immediate attention.
 4. **Key Mitigations** — A summary of active mitigation plans for open risks, so stakeholders can see what preventive measures are in place.
