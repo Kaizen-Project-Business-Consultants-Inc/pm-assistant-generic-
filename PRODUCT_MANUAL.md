@@ -2737,7 +2737,7 @@ proposed → open → monitoring → mitigating → mitigated → closed
 
 Fields: title, description, severity, category, owner, root cause, impact assessment, workaround, resolution plan, target resolution date, source.
 
-Issues are differentiated from risks — they represent problems that have already materialized. The form shows issue-specific fields (root cause, impact assessment, workaround, resolution plan) **plus** shared fields (trigger condition, mitigation plan, response plan) with AI-powered suggestions. Probability is not shown since the issue has already occurred.
+Issues are differentiated from risks — they represent problems that have already materialized. The form shows issue-specific fields only: root cause, impact assessment, workaround, resolution plan, and target resolution date. **Trigger Condition, Mitigation Plan, and Response Plan are risk-only fields** and do not appear on the issue form. Probability is not shown since the issue has already occurred.
 
 Status workflow:
 ```
@@ -2870,7 +2870,9 @@ For Excel workbooks that follow a standard PMO layout with one RAID type per tab
 4. Click **Import All Sheets** to create items from every detected sheet simultaneously.
 5. A per-sheet result summary shows success counts and row-level errors for each tab. Sheets that are not recognised as RAID-type sheets are silently skipped.
 
-**Column mapping:** The mapper recognises common column names and aliases (e.g., "Risk Title" → Title, "Likelihood" → Probability, "Assigned To" → Owner). Unmapped columns can be manually assigned from the dropdown.
+**Column mapping:** The mapper recognises common column names and aliases (e.g., "Risk Title" → Title, "Risk Description" → Title, "Likelihood" → Probability, "Assigned To" → Owner). If no Title column exists but a description column is present (e.g., "Risk Description", "Issue Description"), the description is automatically used as the title. Unmapped columns can be manually assigned from the dropdown.
+
+**Date parsing:** Dates in any common format are automatically parsed: DD-Mon-YYYY (e.g., "15-Aug-2026"), MM/DD/YYYY, YYYY-MM-DD, and other formats recognised by JavaScript's `Date` constructor. Invalid dates are silently skipped rather than causing row failures.
 
 **Value normalisation:** The server normalises incoming values to valid RAID field values:
 
