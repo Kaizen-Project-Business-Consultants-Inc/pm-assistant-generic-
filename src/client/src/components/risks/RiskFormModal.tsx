@@ -334,9 +334,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   const isAssumption = form.type === 'assumption';
   const isDependency = form.type === 'dependency';
   const showProbImpact = isRisk;
-  const showTrigger = isRisk || isIssue;
-  const showMitigation = isRisk || isIssue;
-  const showResponse = isRisk || isIssue;
+  const showTrigger = isRisk;
+  const showMitigation = isRisk;
+  const showResponse = isRisk;
   const showIssueFields = isIssue;
   const showActionFields = form.type === 'action';
   const showDecisionFields = form.type === 'decision';

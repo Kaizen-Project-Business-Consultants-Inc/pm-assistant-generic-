@@ -43,8 +43,9 @@ const RAID_ALIASES: Record<string, string> = {
   decisiontitle: 'title', assumptiontitle: 'title', dependencytitle: 'title',
   riskissue: 'title', riskissuedescription: 'title',
   description: 'description', details: 'description', notes: 'description', comments: 'description',
-  riskdescription: 'description', issuedescription: 'description',
-  actiondescription: 'description', decisiondescription: 'description',
+  riskdescription: 'title', issuedescription: 'title',
+  actiondescription: 'title', decisiondescription: 'title',
+  assumptiondescription: 'title', dependencydescription: 'title',
   category: 'category', area: 'category', domain: 'category',
   severity: 'severity', priority: 'severity', rating: 'severity', level: 'severity',
   risklevel: 'severity', riskrating: 'severity',
@@ -77,7 +78,7 @@ const RAID_ALIASES: Record<string, string> = {
 
 const RAID_TARGET_LABELS: Record<string, string[]> = {
   type: ['type', 'raid type', 'item type', 'record type'],
-  title: ['title', 'name', 'risk title', 'item'],
+  title: ['title', 'name', 'risk title', 'item', 'risk description', 'issue description', 'action description', 'decision description'],
   description: ['description', 'details', 'notes', 'comments'],
   category: ['category', 'area', 'domain'],
   severity: ['severity', 'priority', 'rating', 'level'],

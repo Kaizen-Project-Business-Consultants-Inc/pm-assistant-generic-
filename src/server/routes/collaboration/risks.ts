@@ -580,7 +580,11 @@ export async function riskRoutes(fastify: FastifyInstance) {
             }
           }
 
-          // Title is required
+          // Title is required — fall back to description if no title column
+          if (!mapped.title?.trim() && mapped.description?.trim()) {
+            mapped.title = mapped.description;
+            delete mapped.description; // used as title, don't duplicate
+          }
           if (!mapped.title?.trim()) {
             failed.push({ row: rowNum, error: 'Missing title' });
             continue;
@@ -645,6 +649,28 @@ export async function riskRoutes(fastify: FastifyInstance) {
             const pt = mapped.probability.toLowerCase().trim();
             const probTextMap: Record<string, number> = { low: 1, medium: 3, med: 3, moderate: 3, high: 5 };
             if (probTextMap[pt]) probability = probTextMap[pt];
+          }
+
+          // Parse due date — handle various formats (DD-Mon-YYYY, MM/DD/YYYY, etc.)
+          if (mapped.dueDate) {
+            const raw = mapped.dueDate.trim();
+            const d = new Date(raw);
+            if (!isNaN(d.getTime())) {
+              mapped.dueDate = d.toISOString().slice(0, 10);
+            } else {
+              // Try DD-Mon-YYYY (e.g. "15-Aug-2026")
+              const m = raw.match(/^(\d{1,2})[\/\-](\w{3,})[\/\-](\d{4})$/);
+              if (m) {
+                const d2 = new Date(`${m[2]} ${m[1]}, ${m[3]}`);
+                if (!isNaN(d2.getTime())) {
+                  mapped.dueDate = d2.toISOString().slice(0, 10);
+                } else {
+                  delete mapped.dueDate;
+                }
+              } else {
+                delete mapped.dueDate;
+              }
+            }
           }
 
           // Owner fallback: if owner text doesn't match a member, store as ownerName
