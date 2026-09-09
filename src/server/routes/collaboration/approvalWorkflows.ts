@@ -147,7 +147,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
       const changeRequests = await approvalWorkflowService.getChangeRequests(projectId, { status, priority, sortBy, sortDir });
       return { changeRequests };
     } catch (error) {
-      logger.error('Get change requests error', { error });
+      logger.error('Get change requests error', { error: error instanceof Error ? { message: error.message, stack: error.stack } : error });
       return reply.status(500).send({ error: 'Failed to fetch change requests' });
     }
   });

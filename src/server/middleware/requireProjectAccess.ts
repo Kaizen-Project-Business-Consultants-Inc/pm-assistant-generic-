@@ -74,15 +74,23 @@ export function requireProjectAccess(minRole: ProjectRole = 'viewer') {
     }
 
     const foundMembership = await projectMemberService.findMembership(projectId, user.userId);
-    const membership = foundMembership ?? await (async () => {
-      const project = await projectService.findById(projectId);
-      if (project && project.createdBy === user.userId) {
-        return { projectId, userId: user.userId, role: 'owner' as ProjectRole } as Awaited<ReturnType<typeof projectMemberService.findMembership>>;
-      }
-      return null;
-    })();
+    const project = foundMembership ? null : await projectService.findById(projectId);
+    const membership = foundMembership ?? (project && project.createdBy === user.userId
+      ? { projectId, userId: user.userId, role: 'owner' as ProjectRole } as Awaited<ReturnType<typeof projectMemberService.findMembership>>
+      : null);
 
     if (!membership) {
+      // Allow all authenticated users viewer-level access to demo projects
+      if (project?.isDemo) {
+        if (ROLE_HIERARCHY[minRole] > ROLE_HIERARCHY['viewer']) {
+          return reply.status(403).send({
+            error: 'Read-only',
+            message: 'Demo projects are read-only',
+          });
+        }
+        request.projectMembership = { projectId, userId: user.userId, role: 'viewer' as ProjectRole } as Awaited<ReturnType<typeof projectMemberService.findMembership>>;
+        return;
+      }
       return reply.status(404).send({
         error: 'Not found',
         message: 'The requested resource was not found',

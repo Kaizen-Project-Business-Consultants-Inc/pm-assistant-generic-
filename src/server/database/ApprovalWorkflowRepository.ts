@@ -181,9 +181,9 @@ export class ApprovalWorkflowRepository extends BaseRepository<ApprovalWorkflow>
   }
 
   async findChangeRequests(projectId: string, filters?: { status?: string; priority?: string; sortBy?: string; sortDir?: string }): Promise<ChangeRequest[]> {
-    let sql = `SELECT cr.*, u.name AS requested_by_name
+    let sql = `SELECT cr.*, u.full_name AS requested_by_name
                FROM change_requests cr
-               LEFT JOIN users u ON u.id = cr.requested_by
+               LEFT JOIN pmassist.users u ON u.id = cr.requested_by
                WHERE cr.project_id = ?`;
     const params: any[] = [projectId];
     if (filters?.status) { sql += ' AND cr.status = ?'; params.push(filters.status); }
@@ -197,9 +197,9 @@ export class ApprovalWorkflowRepository extends BaseRepository<ApprovalWorkflow>
 
   async findChangeRequestById(id: string): Promise<ChangeRequest | null> {
     const rows = await this.queryRaw(
-      `SELECT cr.*, u.name AS requested_by_name
+      `SELECT cr.*, u.full_name AS requested_by_name
        FROM change_requests cr
-       LEFT JOIN users u ON u.id = cr.requested_by
+       LEFT JOIN pmassist.users u ON u.id = cr.requested_by
        WHERE cr.id = ?`, [id]);
     return rows.length > 0 ? changeRequestRowToDTO(rows[0]) : null;
   }
@@ -276,9 +276,9 @@ export class ApprovalWorkflowRepository extends BaseRepository<ApprovalWorkflow>
 
   async findApprovalHistory(crId: string): Promise<ApprovalAction[]> {
     const rows = await this.queryRaw(
-      `SELECT aa.*, u.name AS acted_by_name
+      `SELECT aa.*, u.full_name AS acted_by_name
        FROM approval_actions aa
-       LEFT JOIN users u ON u.id = aa.acted_by
+       LEFT JOIN pmassist.users u ON u.id = aa.acted_by
        WHERE aa.change_request_id = ? ORDER BY aa.acted_at`,
       [crId],
     );

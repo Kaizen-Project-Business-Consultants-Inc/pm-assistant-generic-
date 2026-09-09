@@ -11,7 +11,7 @@ import {
   TrendingUp,
   Database,
   RefreshCw,
-  Brain,
+
   Edit2,
   Trash2,
   CheckCircle,
@@ -22,6 +22,7 @@ import {
   Sparkles,
   ArrowUpCircle,
   BarChart3,
+  MoreHorizontal,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { PatternCard } from '../components/lessons/PatternCard';
@@ -84,16 +85,6 @@ const CATEGORIES = [
   'Other',
 ];
 
-const PROJECT_TYPES = [
-  'All',
-  'Construction',
-  'IT',
-  'Infrastructure',
-  'Research',
-  'Manufacturing',
-  'Other',
-];
-
 const IMPACT_OPTIONS = [
   { value: 'positive', label: 'Positive', color: 'bg-green-100 text-green-700' },
   { value: 'negative', label: 'Negative', color: 'bg-red-100 text-red-700' },
@@ -105,6 +96,20 @@ const STATUS_FILTERS = ['All', 'draft', 'reviewed', 'approved', 'archived', 'pen
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function impactDot(impact: string) {
+  const colors: Record<string, string> = {
+    positive: 'bg-green-500',
+    negative: 'bg-red-500',
+    neutral: 'bg-gray-400',
+  };
+  return (
+    <span
+      className={`inline-block w-2 h-2 rounded-full ${colors[impact] || 'bg-gray-400'}`}
+      title={impact}
+    />
+  );
+}
 
 function impactBadge(impact: string) {
   const colors: Record<string, string> = {
@@ -288,118 +293,29 @@ const AddLessonModal: React.FC<{
 };
 
 // ---------------------------------------------------------------------------
-// PMO Report Section
-// ---------------------------------------------------------------------------
-
-const PMOReportSection: React.FC = () => {
-  const [expanded, setExpanded] = useState(false);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['lessonsReport'],
-    queryFn: () => apiService.getLessonsReport(),
-    enabled: expanded,
-  });
-
-  const report = data?.data;
-
-  return (
-    <div className="card">
-      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center gap-2 text-left">
-        <BarChart3 className="w-4 h-4 text-indigo-500" />
-        <span className="text-sm font-semibold text-gray-900 dark:text-white flex-1">PMO Lessons Report</span>
-        {expanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
-      </button>
-
-      {expanded && (
-        <div className="mt-4 space-y-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-            </div>
-          ) : report ? (
-            <>
-              {/* Stats row */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="rounded-lg bg-gray-50 dark:bg-gray-700 p-3 text-center">
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">{report.totalLessons}</p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">Total</p>
-                </div>
-                <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 p-3 text-center">
-                  <p className="text-lg font-bold text-amber-700 dark:text-amber-300">{report.elevated}</p>
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 uppercase">Elevated</p>
-                </div>
-                <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-center">
-                  <p className="text-lg font-bold text-red-700 dark:text-red-300">{(report.bySeverity?.critical || 0) + (report.bySeverity?.high || 0)}</p>
-                  <p className="text-[10px] text-red-600 dark:text-red-400 uppercase">High/Critical</p>
-                </div>
-                <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-3 text-center">
-                  <p className="text-lg font-bold text-green-700 dark:text-green-300">{report.byImpact?.positive || 0}</p>
-                  <p className="text-[10px] text-green-600 dark:text-green-400 uppercase">Positive</p>
-                </div>
-              </div>
-
-              {/* Trending categories */}
-              {report.trendingCategories?.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2">Trending Categories (Last 30 Days)</h4>
-                  <div className="space-y-1.5">
-                    {report.trendingCategories.filter((t: any) => t.recentCount > 0).slice(0, 5).map((t: any) => (
-                      <div key={t.category} className="flex items-center justify-between text-xs">
-                        <span className="text-gray-600 dark:text-gray-300">{t.category}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-400 dark:text-gray-500">{t.count} total</span>
-                          <span className="font-semibold text-indigo-600 dark:text-indigo-400">+{t.recentCount} recent</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Elevated lessons */}
-              {report.elevatedLessons?.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2 flex items-center gap-1.5">
-                    <ArrowUpCircle className="w-3.5 h-3.5 text-amber-500" />
-                    Elevated Lessons
-                  </h4>
-                  <div className="space-y-1.5">
-                    {report.elevatedLessons.map((l: any) => (
-                      <div key={l.id} className="flex items-center gap-2 text-xs rounded-md bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800 px-3 py-2">
-                        {severityBadge(l.severity)}
-                        <span className="text-gray-900 dark:text-white font-medium truncate">{l.title}</span>
-                        <span className="text-gray-400 dark:text-gray-500 ml-auto whitespace-nowrap">{l.projectName}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-xs text-gray-400 dark:text-gray-500 italic">No report data available</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
 
 export const LessonsLearnedPage: React.FC = () => {
   const queryClient = useQueryClient();
 
+  // Project scope
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+
   // Filter state
   const [filterCategory, setFilterCategory] = useState('All');
-  const [filterProjectType, setFilterProjectType] = useState('All');
   const [filterStatus, setFilterStatus] = useState<string>('All');
 
   // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Expand/collapse state
+  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [showPMOReport, setShowPMOReport] = useState(false);
+  const [showPatterns, setShowPatterns] = useState(false);
 
   // Pagination state
   const [allLessonsAccum, setAllLessonsAccum] = useState<Lesson[]>([]);
@@ -408,8 +324,14 @@ export const LessonsLearnedPage: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const LESSONS_PAGE_SIZE = 20;
 
-  // Extract lessons selector
-  const [extractProjectId, setExtractProjectId] = useState('');
+  const toggleLesson = (id: string) => {
+    setExpandedLessons(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // ---- Queries ----
 
@@ -419,9 +341,18 @@ export const LessonsLearnedPage: React.FC = () => {
   });
 
   const { data: lessonsData, isLoading: lessonsLoading } = useQuery({
-    queryKey: ['lessons'],
-    queryFn: () => apiService.getLessons(LESSONS_PAGE_SIZE, 0),
+    queryKey: ['lessons', selectedProjectId],
+    queryFn: () => apiService.getLessons(LESSONS_PAGE_SIZE, 0, selectedProjectId || undefined),
+    enabled: !!selectedProjectId,
   });
+
+  // Reset pagination when project changes
+  useEffect(() => {
+    setAllLessonsAccum([]);
+    setLessonsTotal(0);
+    setLessonsOffset(0);
+    setExpandedLessons(new Set());
+  }, [selectedProjectId]);
 
   // Sync initial query into accumulated state
   useEffect(() => {
@@ -438,21 +369,28 @@ export const LessonsLearnedPage: React.FC = () => {
     queryFn: () => apiService.getPatterns(),
   });
 
+  const { data: reportData, isLoading: reportLoading } = useQuery({
+    queryKey: ['lessonsReport'],
+    queryFn: () => apiService.getLessonsReport(),
+    enabled: showPMOReport,
+  });
+
   const projects: Project[] = projectsData?.data || projectsData?.projects || [];
   const allLessons: Lesson[] = allLessonsAccum;
   const patterns: Pattern[] = patternsData?.patterns || [];
+  const report = reportData?.data;
 
   const handleLoadMoreLessons = useCallback(async () => {
     setLoadingMore(true);
     try {
-      const res = await apiService.getLessons(LESSONS_PAGE_SIZE, lessonsOffset);
+      const res = await apiService.getLessons(LESSONS_PAGE_SIZE, lessonsOffset, selectedProjectId || undefined);
       const items: Lesson[] = res?.lessons || [];
       setAllLessonsAccum(prev => [...prev, ...items]);
       setLessonsOffset(prev => prev + items.length);
       if (res?.total !== undefined) setLessonsTotal(res.total);
     } catch { /* non-critical */ }
     setLoadingMore(false);
-  }, [lessonsOffset]);
+  }, [lessonsOffset, selectedProjectId]);
 
   // ---- Filtered lessons ----
 
@@ -460,25 +398,15 @@ export const LessonsLearnedPage: React.FC = () => {
     return allLessons.filter((lesson) => {
       if (filterCategory !== 'All' && lesson.category !== filterCategory) return false;
       if (filterStatus !== 'All' && lesson.status !== filterStatus) return false;
-      if (filterProjectType !== 'All') {
-        const proj = projects.find((p) => p.id === lesson.projectId);
-        if (proj && proj.type && proj.type !== filterProjectType) return false;
-      }
       return true;
     });
-  }, [allLessons, filterCategory, filterProjectType, filterStatus, projects]);
+  }, [allLessons, filterCategory, filterStatus]);
 
   // ---- Counts ----
 
   const draftCount = useMemo(() => allLessons.filter(l => l.status === 'draft').length, [allLessons]);
-
-  const categoryBreakdown = useMemo(() => {
-    const counts: Record<string, number> = {};
-    allLessons.forEach((l) => {
-      counts[l.category] = (counts[l.category] || 0) + 1;
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [allLessons]);
+  const positiveCount = useMemo(() => allLessons.filter(l => l.impact === 'positive').length, [allLessons]);
+  const negativeCount = useMemo(() => allLessons.filter(l => l.impact === 'negative').length, [allLessons]);
 
   // ---- Mutations ----
 
@@ -523,37 +451,131 @@ export const LessonsLearnedPage: React.FC = () => {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lessons'] }); queryClient.invalidateQueries({ queryKey: ['patterns'] }); },
   });
 
+  const hasActiveFilters = filterCategory !== 'All' || filterStatus !== 'All';
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-primary-500" />
-            Lessons Learned
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Knowledge base of project lessons, patterns, and recommendations.
-          </p>
+    <div className="space-y-4">
+      {/* Header — title + project selector + actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <BookOpen className="w-5 h-5 text-primary-500" />
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white">Lessons Learned</h1>
+          <div className="relative">
+            <select
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="input appearance-none pr-8 text-sm py-1.5"
+            >
+              <option value="">Select a project...</option>
+              {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+          </div>
+          {/* Compact inline stats — only when project selected */}
+          {selectedProjectId && (
+            <div className="hidden sm:flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+              <span className="font-semibold text-gray-900 dark:text-white">{allLessons.length}</span> total
+              <span className="text-gray-300 dark:text-gray-600">|</span>
+              <span className="text-green-600 dark:text-green-400">{positiveCount}</span> positive
+              <span className="text-gray-300 dark:text-gray-600">|</span>
+              <span className="text-red-600 dark:text-red-400">{negativeCount}</span> negative
+              {patterns.length > 0 && (
+                <>
+                  <span className="text-gray-300 dark:text-gray-600">|</span>
+                  <span className="text-amber-600 dark:text-amber-400">{patterns.length}</span> patterns
+                </>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => seedMutation.mutate()} disabled={seedMutation.isPending} className="btn btn-secondary flex items-center gap-1.5 text-sm">
-            {seedMutation.isPending ? <div className="w-4 h-4 border-2 border-gray-400/30 border-t-gray-600 rounded-full animate-spin" /> : <Database className="w-4 h-4" />}
-            Seed
-          </button>
-          <button onClick={() => setShowAddModal(true)} className="btn btn-primary flex items-center gap-1.5 text-sm">
-            <Plus className="w-4 h-4" />
-            Add Lesson
-          </button>
+          {selectedProjectId && (
+            <button onClick={() => setShowAddModal(true)} className="btn btn-primary flex items-center gap-1.5 text-sm">
+              <Plus className="w-4 h-4" />
+              Add Lesson
+            </button>
+          )}
+          {/* Actions dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowActionsMenu(!showActionsMenu)}
+              className="btn btn-secondary flex items-center gap-1.5 text-sm"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            {showActionsMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowActionsMenu(false)} />
+                <div className="absolute right-0 mt-1 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 py-1">
+                  <button
+                    onClick={() => { seedMutation.mutate(); setShowActionsMenu(false); }}
+                    disabled={seedMutation.isPending}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    <Database className="w-4 h-4 text-gray-400" />
+                    Seed Knowledge Base
+                  </button>
+                  <button
+                    onClick={() => { detectPatternsMutation.mutate(); setShowActionsMenu(false); }}
+                    disabled={detectPatternsMutation.isPending}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    <RefreshCw className="w-4 h-4 text-gray-400" />
+                    Detect Patterns
+                  </button>
+                  <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+                  <button
+                    onClick={() => { setShowPMOReport(!showPMOReport); setShowActionsMenu(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <BarChart3 className="w-4 h-4 text-gray-400" />
+                    {showPMOReport ? 'Hide' : 'Show'} PMO Report
+                  </button>
+                  {patterns.length > 0 && (
+                    <button
+                      onClick={() => { setShowPatterns(!showPatterns); setShowActionsMenu(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      <TrendingUp className="w-4 h-4 text-gray-400" />
+                      {showPatterns ? 'Hide' : 'Show'} Patterns
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
+      {/* No project selected — empty state */}
+      {!selectedProjectId && (
+        <div className="card text-center py-16">
+          <BookOpen className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-3" />
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Select a project</h3>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Choose a project above to view its lessons learned.
+          </p>
+        </div>
+      )}
+
+      {/* Mobile stats (visible only on small screens) */}
+      {selectedProjectId && (
+        <div className="flex sm:hidden items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+          <span className="font-semibold text-gray-900 dark:text-white">{allLessons.length}</span> total
+          <span className="text-gray-300 dark:text-gray-600">|</span>
+          <span className="text-green-600 dark:text-green-400">{positiveCount}</span> positive
+          <span className="text-gray-300 dark:text-gray-600">|</span>
+          <span className="text-red-600 dark:text-red-400">{negativeCount}</span> negative
+        </div>
+      )}
+
       {/* Draft review banner */}
-      {draftCount > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-          <Eye className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-          <p className="text-sm text-yellow-800 dark:text-yellow-300">
-            <span className="font-semibold">{draftCount} lesson{draftCount > 1 ? 's' : ''}</span> pending review. AI-extracted and agent-generated lessons start as drafts until approved.
+      {selectedProjectId && draftCount > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <Eye className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+          <p className="text-xs text-yellow-800 dark:text-yellow-300">
+            <span className="font-semibold">{draftCount}</span> pending review
           </p>
           <button onClick={() => setFilterStatus('draft')} className="ml-auto text-xs font-medium text-yellow-700 dark:text-yellow-300 hover:underline whitespace-nowrap">
             Show drafts
@@ -561,210 +583,248 @@ export const LessonsLearnedPage: React.FC = () => {
         </div>
       )}
 
-      {/* Dashboard cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{allLessons.length}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Lessons</p>
-          </div>
+      {/* Extract lessons — uses selected project */}
+      {selectedProjectId && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => extractLessonsMutation.mutate(selectedProjectId)}
+            disabled={extractLessonsMutation.isPending}
+            className="btn btn-secondary flex items-center gap-1.5 text-xs py-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
+            {extractLessonsMutation.isPending ? <div className="w-3.5 h-3.5 border-2 border-gray-400/30 border-t-gray-600 rounded-full animate-spin" /> : <Lightbulb className="w-3.5 h-3.5" />}
+            Extract Lessons from {selectedProject?.name || 'Project'}
+          </button>
+          {extractLessonsMutation.isSuccess && <span className="text-xs text-green-600 font-medium">Extracted as drafts</span>}
+          {seedMutation.isSuccess && <span className="text-xs text-green-600 font-medium">Knowledge base seeded</span>}
+          {detectPatternsMutation.isSuccess && <span className="text-xs text-green-600 font-medium">Patterns detected</span>}
         </div>
+      )}
+
+      {/* PMO Report — toggled from actions menu */}
+      {selectedProjectId && showPMOReport && (
         <div className="card">
-          <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-2">Categories</p>
-          {categoryBreakdown.length === 0 ? (
-            <p className="text-xs text-gray-400 dark:text-gray-500 italic">No data</p>
-          ) : (
-            <div className="space-y-1.5">
-              {categoryBreakdown.slice(0, 5).map(([cat, count]) => (
-                <div key={cat} className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between text-xs mb-0.5">
-                      <span className="text-gray-600 dark:text-gray-300 truncate">{cat}</span>
-                      <span className="text-gray-500 dark:text-gray-400 font-medium">{count}</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div className="h-full bg-primary-500 rounded-full" style={{ width: `${allLessons.length > 0 ? (count / allLessons.length) * 100 : 0}%` }} />
-                    </div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-indigo-500" />
+              PMO Lessons Report
+            </h3>
+            <button onClick={() => setShowPMOReport(false)} className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {reportLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+            </div>
+          ) : report ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="rounded-lg bg-gray-50 dark:bg-gray-700 p-2.5 text-center">
+                  <p className="text-base font-bold text-gray-900 dark:text-white">{report.totalLessons}</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">Total</p>
+                </div>
+                <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 p-2.5 text-center">
+                  <p className="text-base font-bold text-amber-700 dark:text-amber-300">{report.elevated}</p>
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 uppercase">Elevated</p>
+                </div>
+                <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-2.5 text-center">
+                  <p className="text-base font-bold text-red-700 dark:text-red-300">{(report.bySeverity?.critical || 0) + (report.bySeverity?.high || 0)}</p>
+                  <p className="text-[10px] text-red-600 dark:text-red-400 uppercase">High/Critical</p>
+                </div>
+                <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-2.5 text-center">
+                  <p className="text-base font-bold text-green-700 dark:text-green-300">{report.byImpact?.positive || 0}</p>
+                  <p className="text-[10px] text-green-600 dark:text-green-400 uppercase">Positive</p>
+                </div>
+              </div>
+              {report.trendingCategories?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Trending (30 Days)</h4>
+                  <div className="space-y-1">
+                    {report.trendingCategories.filter((t: any) => t.recentCount > 0).slice(0, 5).map((t: any) => (
+                      <div key={t.category} className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600 dark:text-gray-300">{t.category}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400 dark:text-gray-500">{t.count}</span>
+                          <span className="font-semibold text-indigo-600 dark:text-indigo-400">+{t.recentCount}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
+              {report.elevatedLessons?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5 flex items-center gap-1.5">
+                    <ArrowUpCircle className="w-3.5 h-3.5 text-amber-500" />
+                    Elevated
+                  </h4>
+                  <div className="space-y-1">
+                    {report.elevatedLessons.map((l: any) => (
+                      <div key={l.id} className="flex items-center gap-2 text-xs rounded-md bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800 px-3 py-1.5">
+                        {severityBadge(l.severity)}
+                        <span className="text-gray-900 dark:text-white font-medium truncate">{l.title}</span>
+                        <span className="text-gray-400 dark:text-gray-500 ml-auto whitespace-nowrap">{l.projectName}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+          ) : (
+            <p className="text-xs text-gray-400 dark:text-gray-500 italic">No report data available</p>
           )}
         </div>
-        <div className="card flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center">
-            <Brain className="w-6 h-6 text-amber-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{patterns.length}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Patterns Detected</p>
-          </div>
-        </div>
-      </div>
+      )}
 
-      {/* Action buttons row */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <select value={extractProjectId} onChange={(e) => setExtractProjectId(e.target.value)} className="input appearance-none pr-8 text-sm py-1.5">
-              <option value="">Select project...</option>
-              {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-          </div>
-          <button onClick={() => { if (extractProjectId) extractLessonsMutation.mutate(extractProjectId); }}
-            disabled={!extractProjectId || extractLessonsMutation.isPending}
-            className="btn btn-secondary flex items-center gap-1.5 text-sm py-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
-            {extractLessonsMutation.isPending ? <div className="w-4 h-4 border-2 border-gray-400/30 border-t-gray-600 rounded-full animate-spin" /> : <Lightbulb className="w-4 h-4" />}
-            Extract Lessons
-          </button>
-        </div>
-        <button onClick={() => detectPatternsMutation.mutate()} disabled={detectPatternsMutation.isPending}
-          className="btn btn-secondary flex items-center gap-1.5 text-sm py-1.5">
-          {detectPatternsMutation.isPending ? <div className="w-4 h-4 border-2 border-gray-400/30 border-t-gray-600 rounded-full animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          Detect Patterns
-        </button>
-        {extractLessonsMutation.isSuccess && <span className="text-xs text-green-600 font-medium">Lessons extracted (as drafts).</span>}
-        {detectPatternsMutation.isSuccess && <span className="text-xs text-green-600 font-medium">Patterns detected.</span>}
-        {seedMutation.isSuccess && <span className="text-xs text-green-600 font-medium">Knowledge base seeded.</span>}
-      </div>
-
-      {/* Patterns section */}
-      {patterns.length > 0 && (
+      {/* Patterns section — toggled */}
+      {selectedProjectId && showPatterns && patterns.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-amber-500" />
-            Detected Patterns
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-amber-500" />
+              Detected Patterns
+            </h2>
+            <button onClick={() => setShowPatterns(false)} className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {patterns.map((pattern, idx) => (<PatternCard key={idx} pattern={pattern} />))}
           </div>
         </div>
       )}
 
-      {/* PMO Report section */}
-      <PMOReportSection />
+      {/* Filter bar + lessons list */}
+      {selectedProjectId && <div>
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <Search className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+          <div className="relative">
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input appearance-none pr-7 text-xs py-1.5">
+              {STATUS_FILTERS.map((s) => (<option key={s} value={s}>{s === 'All' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+          </div>
+          <div className="relative">
+            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="input appearance-none pr-7 text-xs py-1.5">
+              {CATEGORIES.map((c) => (<option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+          </div>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{filteredLessons.length} lessons</span>
+          {hasActiveFilters && (
+            <button
+              onClick={() => { setFilterCategory('All'); setFilterStatus('All'); }}
+              className="text-xs text-primary-600 dark:text-primary-400 hover:underline"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
 
-      {/* Filter controls */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Filters:</span>
-        </div>
-        <div className="relative">
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input appearance-none pr-8 text-sm py-1.5">
-            {STATUS_FILTERS.map((s) => (<option key={s} value={s}>{s === 'All' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-        </div>
-        <div className="relative">
-          <select value={filterProjectType} onChange={(e) => setFilterProjectType(e.target.value)} className="input appearance-none pr-8 text-sm py-1.5">
-            {PROJECT_TYPES.map((t) => (<option key={t} value={t}>{t === 'All' ? 'All Project Types' : t}</option>))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-        </div>
-        <div className="relative">
-          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="input appearance-none pr-8 text-sm py-1.5">
-            {CATEGORIES.map((c) => (<option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-        </div>
-        <span className="text-xs text-gray-400 dark:text-gray-500">{filteredLessons.length} lessons</span>
-      </div>
-
-      {/* Lessons list */}
-      <div>
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-          Lessons
-        </h2>
-
+        {/* Lessons list */}
         {lessonsLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
           </div>
         ) : filteredLessons.length === 0 ? (
-          <div className="card text-center py-12">
-            <BookOpen className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+          <div className="card text-center py-10">
+            <BookOpen className="mx-auto h-10 w-10 text-gray-300 mb-2" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">No lessons found</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Add your first lesson or seed the knowledge base to get started.
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Add your first lesson or seed the knowledge base.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredLessons.map((lesson) => (
-              <div key={lesson.id} className={`card hover:shadow-md transition-shadow duration-200 ${lesson.status === 'draft' ? 'border-l-4 border-l-yellow-400' : lesson.status === 'archived' ? 'opacity-60' : ''}`}>
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2 min-w-0">
+          <div className="space-y-1">
+            {filteredLessons.map((lesson) => {
+              const isExpanded = expandedLessons.has(lesson.id);
+              return (
+                <div
+                  key={lesson.id}
+                  className={`card !py-0 !px-0 overflow-hidden transition-shadow duration-200 hover:shadow-md ${lesson.status === 'draft' ? 'border-l-4 border-l-yellow-400' : lesson.status === 'archived' ? 'opacity-60' : ''}`}
+                >
+                  {/* Collapsed row */}
+                  <div
+                    className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none"
+                    onClick={() => toggleLesson(lesson.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLesson(lesson.id); } }}
+                  >
+                    <ChevronRight className={`w-3.5 h-3.5 text-gray-400 flex-shrink-0 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
+                    {impactDot(lesson.impact)}
                     {sourceIcon(lesson.sourceType)}
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{lesson.title}</h3>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{lesson.title}</h3>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {lesson.isElevated && (
+                        <span title="Elevated to org-wide"><ArrowUpCircle className="w-3.5 h-3.5 text-amber-500" /></span>
+                      )}
+                      {statusBadge(lesson.status)}
+                      {severityBadge(lesson.severity)}
+                      <span className="hidden sm:inline-block rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-2 py-0.5 text-[10px] font-medium">
+                        {lesson.category}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {lesson.isElevated && (
-                      <span title="Elevated to org-wide"><ArrowUpCircle className="w-3.5 h-3.5 text-amber-500" /></span>
-                    )}
-                    {statusBadge(lesson.status)}
-                    {severityBadge(lesson.severity)}
-                    {impactBadge(lesson.impact)}
-                    <span className="inline-block rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-2 py-0.5 text-xs font-medium">
-                      {lesson.category}
-                    </span>
-                    {/* Review actions */}
-                    {lesson.status === 'draft' && (
-                      <button onClick={() => statusMutation.mutate({ id: lesson.id, status: 'approved' })}
-                        className="p-1 rounded text-green-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/30" title="Approve">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    {lesson.status === 'approved' && !lesson.isElevated && (
-                      <button onClick={() => elevateMutation.mutate(lesson.id)}
-                        className="p-1 rounded text-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30" title="Elevate to org-wide">
-                        <ArrowUpCircle className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    {lesson.status === 'approved' && (
-                      <button onClick={() => statusMutation.mutate({ id: lesson.id, status: 'archived' })}
-                        className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700" title="Archive">
-                        <Archive className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    <button onClick={() => setEditingLesson(lesson)} className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => setConfirmDeleteId(lesson.id)} className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </div>
+
+                  {/* Expanded detail */}
+                  {isExpanded && (
+                    <div className="px-4 pb-3 border-t border-gray-100 dark:border-gray-700">
+                      <div className="pt-3 space-y-2">
+                        <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{lesson.description}</p>
+                        {lesson.rootCause && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <span className="font-semibold text-red-600 dark:text-red-400">Root Cause:</span> {lesson.rootCause}
+                          </p>
+                        )}
+                        {lesson.recommendation && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <span className="font-semibold text-amber-600 dark:text-amber-400">Recommendation:</span> {lesson.recommendation}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+                            {lesson.projectName && <span>Project: {lesson.projectName}</span>}
+                            {(lesson.appliedCount ?? 0) > 0 && <span>Applied {lesson.appliedCount}x</span>}
+                            {lesson.effectivenessRating != null && <span>Effectiveness: {lesson.effectivenessRating}%</span>}
+                            <span className="sm:hidden rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-2 py-0.5 text-[10px] font-medium">
+                              {lesson.category}
+                            </span>
+                            {impactBadge(lesson.impact)}
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            {lesson.status === 'draft' && (
+                              <button onClick={(e) => { e.stopPropagation(); statusMutation.mutate({ id: lesson.id, status: 'approved' }); }}
+                                className="p-1.5 rounded text-green-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/30" title="Approve">
+                                <CheckCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {lesson.status === 'approved' && !lesson.isElevated && (
+                              <button onClick={(e) => { e.stopPropagation(); elevateMutation.mutate(lesson.id); }}
+                                className="p-1.5 rounded text-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30" title="Elevate to org-wide">
+                                <ArrowUpCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {lesson.status === 'approved' && (
+                              <button onClick={(e) => { e.stopPropagation(); statusMutation.mutate({ id: lesson.id, status: 'archived' }); }}
+                                className="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700" title="Archive">
+                                <Archive className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button onClick={(e) => { e.stopPropagation(); setEditingLesson(lesson); }} className="p-1.5 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(lesson.id); }} className="p-1.5 rounded text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-2">{lesson.description}</p>
-                {lesson.rootCause && (
-                  <div className="rounded-md bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800 px-3 py-2 mb-2">
-                    <p className="text-xs text-red-800 dark:text-red-300">
-                      <span className="font-semibold">Root Cause:</span> {lesson.rootCause}
-                    </p>
-                  </div>
-                )}
-                {lesson.recommendation && (
-                  <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 px-3 py-2 mb-2">
-                    <p className="text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5">
-                      <Lightbulb className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
-                      <span>{lesson.recommendation}</span>
-                    </p>
-                  </div>
-                )}
-                <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  {lesson.projectName && <span>Project: {lesson.projectName}</span>}
-                  {(lesson.appliedCount ?? 0) > 0 && <span>Applied {lesson.appliedCount}x</span>}
-                  {lesson.effectivenessRating != null && <span>Effectiveness: {lesson.effectivenessRating}%</span>}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {/* Load More + Count */}
         {lessonsTotal > 0 && (
-          <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center justify-between mt-3">
             <p className="text-xs text-gray-500 dark:text-gray-400">Showing {allLessons.length} of {lessonsTotal}</p>
             {allLessons.length < lessonsTotal && (
               <button onClick={handleLoadMoreLessons} disabled={loadingMore}
@@ -775,7 +835,7 @@ export const LessonsLearnedPage: React.FC = () => {
             )}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Add Lesson Modal */}
       {showAddModal && (

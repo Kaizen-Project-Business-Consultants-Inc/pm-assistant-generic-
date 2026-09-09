@@ -1537,8 +1537,10 @@ class ApiService {
     return response.data;
   }
 
-  async getLessons(limit = 20, offset = 0) {
-    const response = await this.api.get('/lessons-learned', { params: { limit, offset } });
+  async getLessons(limit = 20, offset = 0, projectId?: string) {
+    const params: Record<string, any> = { limit, offset };
+    if (projectId) params.projectId = projectId;
+    const response = await this.api.get('/lessons-learned', { params });
     return response.data;
   }
 
