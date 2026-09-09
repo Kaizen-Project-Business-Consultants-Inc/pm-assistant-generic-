@@ -187,7 +187,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   const { data: lessonsData, isFetching: lessonsFetching } = useQuery({
     queryKey: ['risk-lessons', lessonsSearchKey, form.category],
     queryFn: () => apiService.getRelevantLessons(undefined, form.category !== 'other' ? form.category : undefined),
-    enabled: !!lessonsSearchKey && !editRisk && (form.type === 'risk' || form.type === 'issue'),
+    enabled: !!lessonsSearchKey && !editRisk,
     staleTime: 60_000,
   });
 
@@ -417,7 +417,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           </div>
 
           {/* Similar Lessons — shown when creating a new risk/issue with enough text */}
-          {!editRisk && relevantLessons.length > 0 && (form.type === 'risk' || form.type === 'issue') && (
+          {!editRisk && relevantLessons.length > 0 && (
             <div className="border border-amber-200 dark:border-amber-800 rounded-lg bg-amber-50/50 dark:bg-amber-900/10">
               <button
                 type="button"

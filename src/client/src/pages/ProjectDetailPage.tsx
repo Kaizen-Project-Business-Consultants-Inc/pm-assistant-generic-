@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -87,6 +87,14 @@ export function ProjectDetailPage() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [showEditProject, setShowEditProject] = useState(false);
+  const location = useLocation();
+  const isNewProject = !!(location.state as any)?.showReadiness;
+  const [showLessonsBanner, setShowLessonsBanner] = useState(false);
+
+  // Show lessons banner only on first visit after project creation
+  useEffect(() => {
+    if (isNewProject) setShowLessonsBanner(true);
+  }, [isNewProject]);
 
   const { user } = useAuthStore();
   const canEditStatus = user?.role === 'admin' || user?.role === 'project_manager';
@@ -135,6 +143,15 @@ export function ProjectDetailPage() {
     staleTime: 120_000,
   });
   const readinessResources: any[] = readinessResourcesData?.resources || [];
+
+  // Proactive lessons — fetch relevant lessons when a new project is created
+  const { data: projectLessonsData } = useQuery({
+    queryKey: ['project-lessons', project?.name],
+    queryFn: () => apiService.getRelevantLessons(),
+    enabled: showLessonsBanner && !!project,
+    staleTime: 300_000,
+  });
+  const projectLessons = (projectLessonsData?.lessons || []).slice(0, 5);
 
   // Sprint count for readiness bar (agile/hybrid)
   const methodology: Methodology = (project?.methodology || 'waterfall') as Methodology;
@@ -523,6 +540,43 @@ export function ProjectDetailPage() {
         sprintCount={sprintCount}
         onTabChange={(tab) => setActiveTab(tab as Tab)}
       />
+
+      {/* Proactive Lessons Banner — shown after project creation */}
+      {showLessonsBanner && projectLessons.length > 0 && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Lessons from Past Projects</h3>
+            </div>
+            <button
+              onClick={() => setShowLessonsBanner(false)}
+              className="p-1 rounded hover:bg-amber-200/50 dark:hover:bg-amber-800/50 text-amber-500 hover:text-amber-700 transition-colors"
+              aria-label="Dismiss lessons"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <div className="space-y-2">
+            {projectLessons.map((lesson: any) => (
+              <div key={lesson.id} className="px-3 py-2 rounded-md bg-white dark:bg-gray-800 border border-amber-100 dark:border-amber-900/30">
+                <div className="flex items-start gap-2">
+                  <span className={`mt-0.5 flex-shrink-0 w-2 h-2 rounded-full ${lesson.impact === 'negative' ? 'bg-red-400' : lesson.impact === 'positive' ? 'bg-green-400' : 'bg-gray-400'}`} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{lesson.title}</p>
+                    {lesson.recommendation && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{lesson.recommendation}</p>
+                    )}
+                    {lesson.projectName && (
+                      <p className="text-[11px] text-gray-400 mt-0.5">From: {lesson.projectName}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700">
