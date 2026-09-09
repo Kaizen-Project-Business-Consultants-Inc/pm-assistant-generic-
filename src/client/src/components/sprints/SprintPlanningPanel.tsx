@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Play, CheckCircle2, Target, GripVertical, Search } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { LessonsPanel } from '../lessons/LessonsPanel';
 
 interface Task {
   id: string;
@@ -327,6 +328,9 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
           </div>
         </div>
       </div>
+
+      {/* Lessons from past projects */}
+      <LessonsPanel projectId={projectId} category="schedule" />
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

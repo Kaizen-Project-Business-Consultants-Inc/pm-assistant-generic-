@@ -4,8 +4,8 @@ import { scheduleService } from '../ScheduleService';
 import { type LessonLearned } from '../../schemas/lessonsLearnedSchemas';
 
 /** Creates a seed lesson with common fields pre-filled */
-function seedLesson(base: Omit<LessonLearned, 'status' | 'sourceType' | 'createdBy' | 'tags' | 'appliedCount' | 'effectivenessRating'>): LessonLearned {
-  return { ...base, status: 'approved', sourceType: 'seeded', createdBy: null, tags: null, appliedCount: 0, effectivenessRating: null };
+function seedLesson(base: Omit<LessonLearned, 'status' | 'sourceType' | 'createdBy' | 'tags' | 'appliedCount' | 'effectivenessRating' | 'rootCause' | 'severity' | 'recurrenceScore' | 'isElevated' | 'sourceArtifacts' | 'helpfulCount' | 'dismissedCount'>): LessonLearned {
+  return { ...base, rootCause: null, severity: null, recurrenceScore: 0, isElevated: false, sourceArtifacts: null, status: 'approved', sourceType: 'seeded', createdBy: null, tags: null, appliedCount: 0, effectivenessRating: null, helpfulCount: 0, dismissedCount: 0 };
 }
 
 export async function seedFromProjects(persistLesson: (lesson: LessonLearned) => Promise<void>): Promise<number> {

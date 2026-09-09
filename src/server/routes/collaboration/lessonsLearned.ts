@@ -18,6 +18,8 @@ const addLessonSchema = z.object({
   description: z.string().min(1),
   impact: z.enum(['positive', 'negative', 'neutral']).default('neutral'),
   recommendation: z.string().min(1),
+  rootCause: z.string().optional(),
+  severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   confidence: z.number().min(0).max(100).optional(),
   tags: z.array(z.string()).optional(),
 });
@@ -33,12 +35,21 @@ const updateLessonSchema = z.object({
   category: z.string().min(1).optional(),
   impact: z.string().min(1).optional(),
   recommendation: z.string().min(1).optional(),
+  rootCause: z.string().optional(),
+  severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  isElevated: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
-  status: z.enum(['draft', 'reviewed', 'approved', 'archived']).optional(),
+  status: z.enum(['draft', 'reviewed', 'approved', 'archived', 'pending_elevation']).optional(),
 });
 
 const statusSchema = z.object({
-  status: z.enum(['draft', 'reviewed', 'approved', 'archived']),
+  status: z.enum(['draft', 'reviewed', 'approved', 'archived', 'pending_elevation']),
+});
+
+const feedbackSchema = z.object({
+  action: z.enum(['helpful', 'dismissed', 'outdated']),
+  comment: z.string().optional(),
+  context: z.string().optional(),
 });
 
 const effectivenessSchema = z.object({
@@ -48,17 +59,26 @@ const effectivenessSchema = z.object({
 export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
-  // GET / — Paginated list of lessons
+  // GET / — Paginated list of lessons with optional filters
   fastify.get('/', {
     preHandler: [requireScope('read')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { limit = '20', offset = '0' } = request.query as { limit?: string; offset?: string };
+      const { limit = '20', offset = '0', projectId, isElevated, status, category, severity } = request.query as {
+        limit?: string; offset?: string; projectId?: string; isElevated?: string; status?: string; category?: string; severity?: string;
+      };
       const parsedLimit = parseInt(limit, 10);
       const parsedOffset = parseInt(offset, 10);
+      const filters = {
+        projectId: projectId || undefined,
+        isElevated: isElevated === 'true' ? true : isElevated === 'false' ? false : undefined,
+        status: status || undefined,
+        category: category || undefined,
+        severity: severity || undefined,
+      };
       const [lessons, total] = await Promise.all([
-        lessonsLearnedService.getLessons(parsedLimit, parsedOffset),
-        lessonsLearnedService.countLessons(),
+        lessonsLearnedService.getLessons(parsedLimit, parsedOffset, filters),
+        lessonsLearnedService.countLessons(filters),
       ]);
       return reply.send({ lessons, total, limit: parsedLimit, offset: parsedOffset });
     } catch (err) {
@@ -77,6 +97,19 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
     } catch (err) {
       fastify.log.error({ err }, 'Failed to get knowledge base');
       return reply.status(500).send({ error: 'Failed to retrieve knowledge base' });
+    }
+  });
+
+  // GET /report — PMO lessons report with aggregated stats
+  fastify.get('/report', {
+    preHandler: [requireScope('read')],
+  }, async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const report = await lessonsLearnedService.getLessonsReport();
+      return reply.send({ data: report });
+    } catch (err) {
+      fastify.log.error({ err }, 'Failed to get lessons report');
+      return reply.status(500).send({ error: 'Failed to generate lessons report' });
     }
   });
 
@@ -204,6 +237,21 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // PATCH /:id/elevate — Elevate a lesson to org-wide visibility
+  fastify.patch('/:id/elevate', {
+    preHandler: [requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const updated = await lessonsLearnedService.elevateLesson(id);
+      if (!updated) return reply.status(404).send({ error: 'Lesson not found' });
+      return { message: 'Lesson elevated to org-wide' };
+    } catch (err) {
+      fastify.log.error({ err }, 'Failed to elevate lesson');
+      return reply.status(500).send({ error: 'Failed to elevate lesson' });
+    }
+  });
+
   // PATCH /:id/status — Update lesson status (review workflow)
   fastify.patch('/:id/status', {
     preHandler: [requireScope('write')],
@@ -249,6 +297,23 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
       if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
       fastify.log.error({ err }, 'Failed to rate effectiveness');
       return reply.status(500).send({ error: 'Failed to rate effectiveness' });
+    }
+  });
+
+  // POST /:id/feedback — Submit user feedback on a lesson
+  fastify.post('/:id/feedback', {
+    preHandler: [requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const { action, comment, context } = feedbackSchema.parse(request.body);
+      const userId = parseInt(String(request.user!.userId), 10);
+      await lessonsLearnedService.submitFeedback(id, userId, action, comment, context);
+      return reply.status(204).send();
+    } catch (err) {
+      if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
+      fastify.log.error({ err }, 'Failed to submit lesson feedback');
+      return reply.status(500).send({ error: 'Failed to submit feedback' });
     }
   });
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ThumbsUp, Trash2, ArrowRightCircle, Sparkles } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { LessonsPanel } from '../lessons/LessonsPanel';
 
 interface RetrospectiveBoardProps {
   sprintId: string;
@@ -102,6 +103,9 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: Retrospe
       {seedMutation.isError && (
         <p className="text-xs text-red-500">{(seedMutation.error as any)?.response?.data?.error || 'AI seed failed'}</p>
       )}
+
+      {/* Lessons from past projects */}
+      <LessonsPanel projectId={projectId} category="quality" />
 
       {/* 3-column board */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

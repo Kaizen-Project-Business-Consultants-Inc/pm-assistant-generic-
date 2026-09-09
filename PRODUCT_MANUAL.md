@@ -930,6 +930,27 @@ Lessons learned surface proactively at four points in the project lifecycle:
 - **Risk Creation — Similar Lessons** — In `RiskFormModal`, a collapsible panel auto-appears once the risk/issue title reaches 10+ characters, showing relevant historical lessons from past projects to inform the current entry.
 - **Project Kickoff — Relevant Lessons** — On the Overview tab of projects in "planning" status, a dismissible banner surfaces lessons from similar project types and categories to guide early decisions.
 
+#### Severity Classification
+
+Each lesson carries a `severity` field (`low` / `medium` / `high` / `critical`) displayed as a color-coded badge on the lesson card. Severity is set manually in the Add/Edit modal or extracted automatically by AI during closeout analysis. It indicates how significantly the underlying event affected the project and how urgently the lesson should inform future practice.
+
+#### Root Cause
+
+A freeform `root_cause` (TEXT) field captures the underlying cause of the event, separate from the lesson description and recommendation. It is shown on the lesson card beneath the description and is editable via the Add/Edit modal. AI extraction populates it automatically where causality can be inferred.
+
+#### Elevation Workflow
+
+High-impact lessons can be **elevated** to surface them with higher priority across the knowledge base. Elevated lessons are returned first in `findRelevantLessons()` results (ordered `is_elevated DESC, confidence DESC`) and are flagged with a visual indicator on their cards. Elevation is toggled via the **Elevate** button on the lesson card.
+
+A **PMO Report** section on the Lessons Learned page (collapsible) aggregates elevated and high/critical-severity lessons across projects into a single executive view for portfolio-level review.
+
+#### Proactive Surfacing — Sprint Planning and Retrospectives
+
+In addition to risk creation and project kickoff, lessons now surface in two agile contexts:
+
+- **Sprint Planning** — A collapsible amber **LessonsPanel** appears in the Sprint Planning panel, pre-filtered to `category=schedule` lessons. It surfaces relevant past lessons so the team can account for known patterns before committing sprint scope.
+- **Retrospective Board** — The same LessonsPanel appears on the Retrospective Board, pre-filtered to `category=quality` lessons, so retrospective discussions are grounded in the organization's accumulated experience.
+
 #### API Endpoints (Lessons Lifecycle)
 
 | Method | Endpoint | Description |
@@ -937,6 +958,8 @@ Lessons learned surface proactively at four points in the project lifecycle:
 | PATCH | `/api/v1/lessons-learned/:id/status` | Advance or revert lesson status (review workflow) |
 | POST | `/api/v1/lessons-learned/:id/applied` | Increment applied count when a suggestion is used |
 | PATCH | `/api/v1/lessons-learned/:id/effectiveness` | Set effectiveness rating (0–100) |
+| PATCH | `/api/v1/lessons-learned/:id/elevate` | Toggle elevation flag on a lesson |
+| GET | `/api/v1/lessons-learned/report` | PMO report — elevated and high/critical lessons across projects |
 
 ### Task Prioritization
 

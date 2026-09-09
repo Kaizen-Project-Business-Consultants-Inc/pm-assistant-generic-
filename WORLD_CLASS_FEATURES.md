@@ -321,6 +321,13 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Tags**: flexible JSON taxonomy for cross-project categorization and filtering
 - **Approve/Archive actions**: one-click buttons on lesson cards for managers to advance the review workflow
 - **Status filter**: filter the Lessons Learned page by draft / reviewed / approved / archived
+- **Severity classification**: `low / medium / high / critical` field with color-coded badges; set manually or AI-extracted at closeout
+- **Root cause field**: freeform TEXT field capturing underlying causality, displayed on lesson cards and AI-populated during extraction
+- **Elevation workflow**: lessons can be elevated (flagged high-priority); elevated lessons rank first in `findRelevantLessons()` results; toggled via Elevate button on lesson cards
+- **PMO Report**: collapsible section on the Lessons Learned page aggregating elevated and high/critical lessons across all projects for portfolio-level review
+- **Sprint Planning surfacing**: LessonsPanel (collapsible amber panel) in Sprint Planning shows schedule-category lessons before sprint commitment
+- **Retrospective Board surfacing**: LessonsPanel on Retrospective Board shows quality-category lessons to ground retrospective discussions in organizational history
+- **New API endpoints**: `PATCH /lessons-learned/:id/elevate` (toggle elevation), `GET /lessons-learned/report` (PMO report)
 
 ### 3.6 Monte Carlo Simulation
 - Probabilistic schedule modeling

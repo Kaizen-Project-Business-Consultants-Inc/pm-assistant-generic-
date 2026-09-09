@@ -4,12 +4,22 @@ import { z } from 'zod';
 // Lesson Learned
 // ---------------------------------------------------------------------------
 
-export const LESSON_STATUSES = ['draft', 'reviewed', 'approved', 'archived'] as const;
+export const LESSON_STATUSES = ['draft', 'reviewed', 'approved', 'archived', 'pending_elevation'] as const;
 export const LESSON_SOURCE_TYPES = ['manual', 'ai_extracted', 'agent', 'seeded'] as const;
 export const LESSON_CATEGORIES = [
   'schedule', 'budget', 'resource', 'risk', 'technical',
   'communication', 'stakeholder', 'quality',
 ] as const;
+
+export const LESSON_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
+export const LESSON_FEEDBACK_ACTIONS = ['helpful', 'dismissed', 'outdated'] as const;
+
+export const SourceArtifactSchema = z.object({
+  type: z.string(),
+  id: z.string(),
+});
+
+export type SourceArtifact = z.infer<typeof SourceArtifactSchema>;
 
 export const LessonLearnedSchema = z.object({
   id: z.string(),
@@ -21,6 +31,11 @@ export const LessonLearnedSchema = z.object({
   description: z.string(),
   impact: z.enum(['positive', 'negative', 'neutral']),
   recommendation: z.string(),
+  rootCause: z.string().nullable().optional(),
+  severity: z.enum(LESSON_SEVERITIES).nullable().optional(),
+  recurrenceScore: z.number().min(0).max(100).default(0),
+  isElevated: z.boolean().default(false),
+  sourceArtifacts: z.array(SourceArtifactSchema).nullable().optional(),
   confidence: z.number().min(0).max(100),
   status: z.enum(LESSON_STATUSES).default('approved'),
   createdBy: z.number().nullable().optional(),
@@ -28,6 +43,8 @@ export const LessonLearnedSchema = z.object({
   tags: z.array(z.string()).nullable().optional(),
   appliedCount: z.number().default(0),
   effectivenessRating: z.number().min(0).max(100).nullable().optional(),
+  helpfulCount: z.number().default(0),
+  dismissedCount: z.number().default(0),
   createdAt: z.string(),
 });
 
@@ -92,6 +109,8 @@ export const LessonsExtractionAISchema = z.object({
       description: z.string(),
       impact: z.enum(['positive', 'negative', 'neutral']),
       recommendation: z.string(),
+      rootCause: z.string().nullable().optional(),
+      severity: z.enum(LESSON_SEVERITIES).nullable().optional(),
       confidence: z.number().min(0).max(100),
     }),
   ),
@@ -126,3 +145,24 @@ export const MitigationAISchema = z.object({
 });
 
 export type MitigationAI = z.infer<typeof MitigationAISchema>;
+
+// ---------------------------------------------------------------------------
+// PMO Lessons Report
+// ---------------------------------------------------------------------------
+
+export const LessonsReportSchema = z.object({
+  totalLessons: z.number(),
+  elevated: z.number(),
+  bySeverity: z.record(z.string(), z.number()),
+  byCategory: z.record(z.string(), z.number()),
+  byImpact: z.record(z.string(), z.number()),
+  trendingCategories: z.array(z.object({
+    category: z.string(),
+    count: z.number(),
+    recentCount: z.number(),
+  })),
+  elevatedLessons: z.array(LessonLearnedSchema),
+  highSeverityLessons: z.array(LessonLearnedSchema),
+});
+
+export type LessonsReport = z.infer<typeof LessonsReportSchema>;

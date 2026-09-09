@@ -1497,7 +1497,7 @@ class ApiService {
     return response.data;
   }
 
-  async addLesson(data: { projectId: string; projectName: string; projectType: string; category: string; title: string; description: string; impact: string; recommendation: string }) {
+  async addLesson(data: { projectId: string; projectName: string; projectType: string; category: string; title: string; description: string; impact: string; recommendation: string; rootCause?: string; severity?: string }) {
     const response = await this.api.post('/lessons-learned', data);
     return response.data;
   }
@@ -1507,7 +1507,7 @@ class ApiService {
     return response.data;
   }
 
-  async updateLesson(id: string, data: { title?: string; description?: string; category?: string; impact?: string; recommendation?: string; tags?: string[]; status?: string }) {
+  async updateLesson(id: string, data: { title?: string; description?: string; category?: string; impact?: string; recommendation?: string; rootCause?: string; severity?: string; isElevated?: boolean; tags?: string[]; status?: string }) {
     const response = await this.api.put(`/lessons-learned/${id}`, data);
     return response.data;
   }
@@ -1519,6 +1519,21 @@ class ApiService {
 
   async deleteLesson(id: string) {
     const response = await this.api.delete(`/lessons-learned/${id}`);
+    return response.data;
+  }
+
+  async elevateLesson(id: string) {
+    const response = await this.api.patch(`/lessons-learned/${id}/elevate`);
+    return response.data;
+  }
+
+  async getLessonsReport() {
+    const response = await this.api.get('/lessons-learned/report');
+    return response.data;
+  }
+
+  async submitLessonFeedback(lessonId: string, action: 'helpful' | 'dismissed' | 'outdated', comment?: string, context?: string) {
+    const response = await this.api.post(`/lessons-learned/${lessonId}/feedback`, { action, comment, context });
     return response.data;
   }
 

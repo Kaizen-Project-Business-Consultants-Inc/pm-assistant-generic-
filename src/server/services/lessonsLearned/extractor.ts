@@ -96,6 +96,17 @@ export async function extractLessons(
         maxTokens: 4096,
       });
 
+      // Build source artifacts from the extraction context
+      const sourceArtifacts: Array<{ type: string; id: string }> = [
+        { type: 'project', id: projectId },
+      ];
+      for (const s of schedules) {
+        sourceArtifacts.push({ type: 'schedule', id: s.id });
+      }
+      for (const r of raidData) {
+        if (r.type && r.title) sourceArtifacts.push({ type: r.type, id: r.title });
+      }
+
       const newLessons: LessonLearned[] = result.data.lessons.map((l, i) => ({
         id: `ll-${projectId}-${Date.now()}-${i}`,
         projectId,
@@ -106,6 +117,11 @@ export async function extractLessons(
         description: l.description,
         impact: l.impact,
         recommendation: l.recommendation,
+        rootCause: l.rootCause ?? null,
+        severity: l.severity ?? null,
+        recurrenceScore: 0,
+        isElevated: false,
+        sourceArtifacts,
         confidence: l.confidence,
         status: 'draft' as const,
         createdBy: createdBy ?? null,
@@ -113,6 +129,8 @@ export async function extractLessons(
         tags: null,
         appliedCount: 0,
         effectivenessRating: null,
+        helpfulCount: 0,
+        dismissedCount: 0,
         createdAt: new Date().toISOString(),
       }));
 
@@ -136,12 +154,19 @@ function makeDeterministicLesson(
 ): LessonLearned {
   return {
     ...base,
+    rootCause: null,
+    severity: null,
+    recurrenceScore: 0,
+    isElevated: false,
+    sourceArtifacts: null,
     status: 'draft',
     createdBy: createdBy ?? null,
     sourceType: 'ai_extracted',
     tags: null,
     appliedCount: 0,
     effectivenessRating: null,
+    helpfulCount: 0,
+    dismissedCount: 0,
     createdAt: new Date().toISOString(),
   };
 }

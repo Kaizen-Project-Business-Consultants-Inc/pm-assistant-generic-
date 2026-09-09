@@ -42,6 +42,11 @@ async function backfill() {
       description: row.description,
       impact: row.impact,
       recommendation: row.recommendation,
+      rootCause: row.root_cause ?? null,
+      severity: row.severity ?? null,
+      recurrenceScore: row.recurrence_score ?? 0,
+      isElevated: row.is_elevated === 1 || row.is_elevated === true,
+      sourceArtifacts: null,
       confidence: row.confidence,
       status: row.status ?? 'approved',
       createdBy: row.created_by ?? null,
@@ -49,6 +54,8 @@ async function backfill() {
       tags: null,
       appliedCount: row.applied_count ?? 0,
       effectivenessRating: row.effectiveness_rating ?? null,
+      helpfulCount: 0,
+      dismissedCount: 0,
       createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     };
 

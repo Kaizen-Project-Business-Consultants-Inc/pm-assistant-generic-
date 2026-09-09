@@ -15,10 +15,12 @@ For each lesson:
 - Assign a category: schedule, budget, resource, risk, technical, communication, stakeholder, or quality
 - Determine impact: positive (things that went well), negative (things that went wrong), or neutral
 - Provide a clear, specific recommendation
+- Identify the root cause (rootCause) — the underlying reason this lesson emerged. Use null if not applicable (e.g. positive lessons).
+- Assign a severity: low, medium, high, or critical. Use null for positive/neutral lessons without clear severity.
 - Rate your confidence (0-100) in the lesson's validity
 
 Focus on concrete, evidence-based observations from the data. Include lessons derived from risks that materialized, issues that were resolved, and mitigation strategies that worked (or failed). Avoid generic advice.`,
-  '1.1.0',
+  '1.2.0',
 );
 
 export const patternDetectionPrompt = new PromptTemplate(

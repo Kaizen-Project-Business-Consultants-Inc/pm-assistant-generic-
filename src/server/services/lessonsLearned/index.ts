@@ -2,11 +2,14 @@ import { databaseService } from '../../database/connection';
 import { ragService } from '../RagService';
 import { embeddingService } from '../EmbeddingService';
 import logger from '../../utils/logger';
+import { randomUUID } from 'crypto';
 import {
   type LessonLearned,
   type Pattern,
   type MitigationSuggestion,
   type KnowledgeBaseOverview,
+  type LessonsReport,
+  type SourceArtifact,
 } from '../../schemas/lessonsLearnedSchemas';
 import { seedFromProjects } from './seeder';
 import { extractLessons } from './extractor';
@@ -15,11 +18,12 @@ import { suggestMitigations, type SuggestionField } from './mitigationAdvisor';
 
 // ── Row mapper ────────────────────────────────────────────────────────────
 
+function parseJson<T>(val: any, fallback: T): T {
+  if (!val) return fallback;
+  try { return typeof val === 'string' ? JSON.parse(val) : val; } catch { return fallback; }
+}
+
 function rowToLesson(row: any): LessonLearned {
-  let tags: string[] | null = null;
-  if (row.tags) {
-    try { tags = typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags; } catch { tags = null; }
-  }
   return {
     id: row.id,
     projectId: row.project_id,
@@ -30,13 +34,20 @@ function rowToLesson(row: any): LessonLearned {
     description: row.description,
     impact: row.impact,
     recommendation: row.recommendation,
+    rootCause: row.root_cause ?? null,
+    severity: row.severity ?? null,
+    recurrenceScore: row.recurrence_score ?? 0,
+    isElevated: row.is_elevated === 1 || row.is_elevated === true,
+    sourceArtifacts: parseJson<SourceArtifact[] | null>(row.source_artifacts, null),
     confidence: row.confidence,
     status: row.status ?? 'approved',
     createdBy: row.created_by ?? null,
     sourceType: row.source_type ?? 'manual',
-    tags,
+    tags: parseJson<string[] | null>(row.tags, null),
     appliedCount: row.applied_count ?? 0,
     effectivenessRating: row.effectiveness_rating ?? null,
+    helpfulCount: row.helpful_count ?? 0,
+    dismissedCount: row.dismissed_count ?? 0,
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
   };
 }
@@ -64,13 +75,19 @@ function rowToPattern(row: any): Pattern {
 export class LessonsLearnedService {
   async persistLesson(lesson: LessonLearned): Promise<void> {
     await databaseService.query(
-      `INSERT INTO lessons_learned (id, project_id, project_name, project_type, category, title, description, impact, recommendation, confidence, status, created_by, source_type, tags, applied_count, effectiveness_rating, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description), recommendation = VALUES(recommendation), confidence = VALUES(confidence)`,
+      `INSERT INTO lessons_learned (id, project_id, project_name, project_type, category, title, description, impact, recommendation, root_cause, severity, recurrence_score, is_elevated, source_artifacts, confidence, status, created_by, source_type, tags, applied_count, effectiveness_rating, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description), recommendation = VALUES(recommendation), root_cause = VALUES(root_cause), severity = VALUES(severity), recurrence_score = VALUES(recurrence_score), is_elevated = VALUES(is_elevated), source_artifacts = VALUES(source_artifacts), confidence = VALUES(confidence)`,
       [
         lesson.id, lesson.projectId, lesson.projectName, lesson.projectType,
         lesson.category, lesson.title, lesson.description, lesson.impact,
-        lesson.recommendation, lesson.confidence,
+        lesson.recommendation,
+        lesson.rootCause ?? null,
+        lesson.severity ?? null,
+        lesson.recurrenceScore ?? 0,
+        lesson.isElevated ? 1 : 0,
+        lesson.sourceArtifacts ? JSON.stringify(lesson.sourceArtifacts) : null,
+        lesson.confidence,
         lesson.status ?? 'approved',
         lesson.createdBy ?? null,
         lesson.sourceType ?? 'manual',
@@ -81,8 +98,12 @@ export class LessonsLearnedService {
       ],
     );
 
+    // Index + recurrence check (fire-and-forget)
     ragService.indexLesson(lesson).catch((err) => {
       logger.error(`[RAG] Failed to index lesson ${lesson.id}:`, (err as Error).message);
+    });
+    this.checkRecurrence(lesson).catch((err) => {
+      logger.error(`[Recurrence] Failed for lesson ${lesson.id}:`, (err as Error).message);
     });
   }
 
@@ -137,12 +158,13 @@ export class LessonsLearnedService {
     return { totalLessons: lessons.length, byCategory, byProjectType, byImpact, recentLessons, patterns };
   }
 
-  async findRelevantLessons(projectType?: string, category?: string): Promise<LessonLearned[]> {
-    let sql = 'SELECT * FROM lessons_learned WHERE status = ?';
+  async findRelevantLessons(projectType?: string, category?: string, limit = 5): Promise<LessonLearned[]> {
+    let sql = 'SELECT * FROM lessons_learned WHERE status = ? AND confidence >= 60';
     const params: any[] = ['approved'];
     if (projectType) { sql += ' AND project_type = ?'; params.push(projectType); }
     if (category) { sql += ' AND category = ?'; params.push(category); }
-    sql += ' ORDER BY confidence DESC';
+    sql += ' ORDER BY is_elevated DESC, confidence DESC LIMIT ?';
+    params.push(limit);
     const rows = await databaseService.query<any>(sql, params);
     return rows.map(rowToLesson);
   }
@@ -183,7 +205,7 @@ export class LessonsLearnedService {
     return (result as any).affectedRows > 0;
   }
 
-  async updateStatus(id: string, status: 'draft' | 'reviewed' | 'approved' | 'archived'): Promise<boolean> {
+  async updateStatus(id: string, status: 'draft' | 'reviewed' | 'approved' | 'archived' | 'pending_elevation'): Promise<boolean> {
     const result = await databaseService.query<any>(
       'UPDATE lessons_learned SET status = ? WHERE id = ?',
       [status, id],
@@ -200,6 +222,8 @@ export class LessonsLearnedService {
     description: string;
     impact: LessonLearned['impact'];
     recommendation: string;
+    rootCause?: string;
+    severity?: LessonLearned['severity'];
     confidence?: number;
     sourceType?: LessonLearned['sourceType'];
     createdBy?: number;
@@ -216,6 +240,11 @@ export class LessonsLearnedService {
       description: data.description,
       impact: data.impact,
       recommendation: data.recommendation,
+      rootCause: data.rootCause ?? null,
+      severity: data.severity ?? null,
+      recurrenceScore: 0,
+      isElevated: false,
+      sourceArtifacts: null,
       confidence: data.confidence ?? 80,
       status: data.status ?? (data.sourceType === 'manual' ? 'approved' : 'draft'),
       createdBy: data.createdBy ?? null,
@@ -223,24 +252,37 @@ export class LessonsLearnedService {
       tags: data.tags ?? null,
       appliedCount: 0,
       effectivenessRating: null,
+      helpfulCount: 0,
+      dismissedCount: 0,
       createdAt: new Date().toISOString(),
     };
     await this.persistLesson(lesson);
     return lesson;
   }
 
-  async getLessons(limit = 20, offset = 0): Promise<LessonLearned[]> {
-    const rows = await databaseService.query<any>(
-      'SELECT * FROM lessons_learned ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      [limit, offset],
-    );
+  async getLessons(limit = 20, offset = 0, filters?: { projectId?: string; isElevated?: boolean; status?: string; category?: string; severity?: string }): Promise<LessonLearned[]> {
+    let sql = 'SELECT * FROM lessons_learned WHERE 1=1';
+    const params: any[] = [];
+    if (filters?.projectId) { sql += ' AND project_id = ?'; params.push(filters.projectId); }
+    if (filters?.isElevated !== undefined) { sql += ' AND is_elevated = ?'; params.push(filters.isElevated ? 1 : 0); }
+    if (filters?.status) { sql += ' AND status = ?'; params.push(filters.status); }
+    if (filters?.category) { sql += ' AND category = ?'; params.push(filters.category); }
+    if (filters?.severity) { sql += ' AND severity = ?'; params.push(filters.severity); }
+    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+    const rows = await databaseService.query<any>(sql, params);
     return rows.map(rowToLesson);
   }
 
-  async countLessons(): Promise<number> {
-    const rows = await databaseService.query<{ cnt: number }>(
-      'SELECT COUNT(*) as cnt FROM lessons_learned',
-    );
+  async countLessons(filters?: { projectId?: string; isElevated?: boolean; status?: string; category?: string; severity?: string }): Promise<number> {
+    let sql = 'SELECT COUNT(*) as cnt FROM lessons_learned WHERE 1=1';
+    const params: any[] = [];
+    if (filters?.projectId) { sql += ' AND project_id = ?'; params.push(filters.projectId); }
+    if (filters?.isElevated !== undefined) { sql += ' AND is_elevated = ?'; params.push(filters.isElevated ? 1 : 0); }
+    if (filters?.status) { sql += ' AND status = ?'; params.push(filters.status); }
+    if (filters?.category) { sql += ' AND category = ?'; params.push(filters.category); }
+    if (filters?.severity) { sql += ' AND severity = ?'; params.push(filters.severity); }
+    const rows = await databaseService.query<{ cnt: number }>(sql, params);
     return Number(rows[0]?.cnt ?? 0);
   }
 
@@ -261,7 +303,7 @@ export class LessonsLearnedService {
     return rows.map(rowToLesson);
   }
 
-  async updateLesson(id: string, data: { title?: string; description?: string; category?: string; impact?: string; recommendation?: string; tags?: string[]; status?: string }): Promise<boolean> {
+  async updateLesson(id: string, data: { title?: string; description?: string; category?: string; impact?: string; recommendation?: string; rootCause?: string; severity?: string; isElevated?: boolean; tags?: string[]; status?: string }): Promise<boolean> {
     const fields: string[] = [];
     const values: any[] = [];
     if (data.title !== undefined) { fields.push('title = ?'); values.push(data.title); }
@@ -269,6 +311,9 @@ export class LessonsLearnedService {
     if (data.category !== undefined) { fields.push('category = ?'); values.push(data.category); }
     if (data.impact !== undefined) { fields.push('impact = ?'); values.push(data.impact); }
     if (data.recommendation !== undefined) { fields.push('recommendation = ?'); values.push(data.recommendation); }
+    if (data.rootCause !== undefined) { fields.push('root_cause = ?'); values.push(data.rootCause); }
+    if (data.severity !== undefined) { fields.push('severity = ?'); values.push(data.severity); }
+    if (data.isElevated !== undefined) { fields.push('is_elevated = ?'); values.push(data.isElevated ? 1 : 0); }
     if (data.tags !== undefined) { fields.push('tags = ?'); values.push(JSON.stringify(data.tags)); }
     if (data.status !== undefined) { fields.push('status = ?'); values.push(data.status); }
     if (fields.length === 0) return false;
@@ -287,6 +332,149 @@ export class LessonsLearnedService {
     }
 
     return updated;
+  }
+
+  async elevateLesson(id: string): Promise<boolean> {
+    const result = await databaseService.query<any>(
+      'UPDATE lessons_learned SET is_elevated = 1 WHERE id = ?',
+      [id],
+    );
+    return (result as any).affectedRows > 0;
+  }
+
+  async getLessonsReport(): Promise<LessonsReport> {
+    const lessons = await this.getAllLessonsUnbounded();
+
+    const bySeverity: Record<string, number> = {};
+    const byCategory: Record<string, number> = {};
+    const byImpact: Record<string, number> = {};
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentByCategory: Record<string, number> = {};
+
+    for (const lesson of lessons) {
+      if (lesson.severity) bySeverity[lesson.severity] = (bySeverity[lesson.severity] || 0) + 1;
+      byCategory[lesson.category] = (byCategory[lesson.category] || 0) + 1;
+      byImpact[lesson.impact] = (byImpact[lesson.impact] || 0) + 1;
+
+      if (new Date(lesson.createdAt) >= thirtyDaysAgo) {
+        recentByCategory[lesson.category] = (recentByCategory[lesson.category] || 0) + 1;
+      }
+    }
+
+    const trendingCategories = Object.entries(byCategory)
+      .map(([category, count]) => ({ category, count, recentCount: recentByCategory[category] || 0 }))
+      .sort((a, b) => b.recentCount - a.recentCount);
+
+    const elevatedLessons = lessons.filter(l => l.isElevated);
+    const highSeverityLessons = lessons.filter(l => l.severity === 'high' || l.severity === 'critical');
+
+    return {
+      totalLessons: lessons.length,
+      elevated: elevatedLessons.length,
+      bySeverity,
+      byCategory,
+      byImpact,
+      trendingCategories,
+      elevatedLessons,
+      highSeverityLessons,
+    };
+  }
+
+  /** Returns all approved lessons without LIMIT for reporting */
+  private async getAllLessonsUnbounded(): Promise<LessonLearned[]> {
+    const rows = await databaseService.query<any>(
+      'SELECT * FROM lessons_learned WHERE status IN (?, ?) ORDER BY is_elevated DESC, confidence DESC',
+      ['approved', 'reviewed'],
+    );
+    return rows.map(rowToLesson);
+  }
+
+  // ── Recurrence calculation (embedding similarity) ───────────────────────
+
+  private async checkRecurrence(lesson: LessonLearned): Promise<void> {
+    if (!ragService.isAvailable()) return;
+
+    try {
+      const similar = await ragService.search(
+        [lesson.title, lesson.rootCause || '', lesson.recommendation].join(' | '),
+        { documentType: 'lesson', topK: 5 },
+      );
+
+      // Count similar lessons (score >= 0.85) from different projects
+      const highSimilarity = similar.filter(
+        r => r.score >= 0.85 && r.document && (r.document as LessonLearned).id !== lesson.id,
+      );
+      if (highSimilarity.length === 0) return;
+
+      const distinctProjects = new Set(
+        highSimilarity.map(r => (r.document as LessonLearned).projectId),
+      );
+      // Don't count the current lesson's own project
+      distinctProjects.delete(lesson.projectId);
+
+      const recurrenceCount = highSimilarity.length;
+      const score = Math.min(100, recurrenceCount * 25); // 25 per match, cap at 100
+
+      // Update recurrence score on the current lesson
+      await databaseService.query(
+        'UPDATE lessons_learned SET recurrence_score = ? WHERE id = ? AND recurrence_score < ?',
+        [score, lesson.id, score],
+      );
+
+      // Auto-flag for elevation when recurrence >= 3 across 2+ distinct projects
+      if (recurrenceCount >= 3 && distinctProjects.size >= 2) {
+        await databaseService.query(
+          `UPDATE lessons_learned SET status = 'pending_elevation' WHERE id = ? AND status = 'approved' AND is_elevated = 0`,
+          [lesson.id],
+        );
+        logger.info(`[Recurrence] Lesson ${lesson.id} flagged for elevation (recurrence=${recurrenceCount}, projects=${distinctProjects.size})`);
+      }
+    } catch (err) {
+      logger.warn(`[Recurrence] Check failed for lesson ${lesson.id}:`, (err as Error).message);
+    }
+  }
+
+  // ── Feedback ─────────────────────────────────────────────────────────────
+
+  async submitFeedback(lessonId: string, userId: number, action: 'helpful' | 'dismissed' | 'outdated', comment?: string, context?: string): Promise<void> {
+    // Upsert: one feedback per user per lesson (last action wins)
+    const existing = await databaseService.query<any>(
+      'SELECT id FROM lesson_feedback WHERE lesson_id = ? AND user_id = ?',
+      [lessonId, userId],
+    );
+    if (existing.length > 0) {
+      await databaseService.query(
+        'UPDATE lesson_feedback SET action = ?, comment = ?, context = ?, created_at = NOW() WHERE id = ?',
+        [action, comment ?? null, context ?? null, existing[0].id],
+      );
+    } else {
+      await databaseService.query(
+        'INSERT INTO lesson_feedback (id, lesson_id, user_id, action, comment, context) VALUES (?, ?, ?, ?, ?, ?)',
+        [randomUUID(), lessonId, userId, action, comment ?? null, context ?? null],
+      );
+    }
+  }
+
+  async getFeedbackCounts(lessonId: string): Promise<{ helpful: number; dismissed: number; outdated: number }> {
+    const rows = await databaseService.query<{ action: string; cnt: number }>(
+      'SELECT action, COUNT(*) as cnt FROM lesson_feedback WHERE lesson_id = ? GROUP BY action',
+      [lessonId],
+    );
+    const counts = { helpful: 0, dismissed: 0, outdated: 0 };
+    for (const row of rows) {
+      if (row.action in counts) counts[row.action as keyof typeof counts] = Number(row.cnt);
+    }
+    return counts;
+  }
+
+  async getUserFeedback(lessonId: string, userId: number): Promise<string | null> {
+    const rows = await databaseService.query<{ action: string }>(
+      'SELECT action FROM lesson_feedback WHERE lesson_id = ? AND user_id = ?',
+      [lessonId, userId],
+    );
+    return rows[0]?.action ?? null;
   }
 
   async deleteLesson(id: string): Promise<boolean> {

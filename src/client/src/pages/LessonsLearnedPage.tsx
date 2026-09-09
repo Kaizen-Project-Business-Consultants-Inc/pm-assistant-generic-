@@ -6,6 +6,7 @@ import {
   Plus,
   X,
   ChevronDown,
+  ChevronRight,
   Lightbulb,
   TrendingUp,
   Database,
@@ -19,6 +20,8 @@ import {
   Bot,
   User,
   Sparkles,
+  ArrowUpCircle,
+  BarChart3,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { PatternCard } from '../components/lessons/PatternCard';
@@ -34,6 +37,10 @@ interface Lesson {
   category: string;
   impact: 'positive' | 'negative' | 'neutral';
   recommendation: string;
+  rootCause?: string | null;
+  severity?: 'low' | 'medium' | 'high' | 'critical' | null;
+  recurrenceScore?: number;
+  isElevated?: boolean;
   projectId?: string;
   projectName?: string;
   createdAt?: string;
@@ -93,7 +100,7 @@ const IMPACT_OPTIONS = [
   { value: 'neutral', label: 'Neutral', color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200' },
 ];
 
-const STATUS_FILTERS = ['All', 'draft', 'reviewed', 'approved', 'archived'] as const;
+const STATUS_FILTERS = ['All', 'draft', 'reviewed', 'approved', 'archived', 'pending_elevation'] as const;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -120,6 +127,7 @@ function statusBadge(status?: string) {
     reviewed: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
     approved: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
     archived: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700',
+    pending_elevation: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
   };
   if (!status) return null;
   return (
@@ -139,6 +147,23 @@ function sourceIcon(sourceType?: string) {
   }
 }
 
+function severityBadge(severity?: string | null) {
+  if (!severity) return null;
+  const colors: Record<string, string> = {
+    critical: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+    high: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+    medium: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
+    low: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400',
+  };
+  return (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${colors[severity] || ''}`}>
+      {severity}
+    </span>
+  );
+}
+
+const SEVERITY_OPTIONS = ['', 'low', 'medium', 'high', 'critical'] as const;
+
 // ---------------------------------------------------------------------------
 // Add Lesson Modal
 // ---------------------------------------------------------------------------
@@ -148,7 +173,7 @@ const AddLessonModal: React.FC<{
   onClose: () => void;
   onSubmit: (data: any) => void;
   isSubmitting: boolean;
-  initial?: { title: string; description: string; category: string; impact: string; recommendation: string; projectId: string };
+  initial?: { title: string; description: string; category: string; impact: string; recommendation: string; projectId: string; rootCause?: string; severity?: string };
   title?: string;
 }> = ({ projects, onClose, onSubmit, isSubmitting, initial, title: modalTitle }) => {
   const [form, setForm] = useState({
@@ -157,6 +182,8 @@ const AddLessonModal: React.FC<{
     category: initial?.category || 'Other',
     impact: (initial?.impact || 'neutral') as 'positive' | 'negative' | 'neutral',
     recommendation: initial?.recommendation || '',
+    rootCause: initial?.rootCause || '',
+    severity: initial?.severity || '',
     projectId: initial?.projectId || '',
   });
 
@@ -226,6 +253,19 @@ const AddLessonModal: React.FC<{
             <textarea value={form.recommendation} onChange={(e) => update('recommendation', e.target.value)} className="input w-full resize-y" rows={2} placeholder="What should teams do differently..." />
           </div>
           <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Root Cause</label>
+            <textarea value={form.rootCause} onChange={(e) => update('rootCause', e.target.value)} className="input w-full resize-y" rows={2} placeholder="Underlying reason this issue occurred..." />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Severity</label>
+            <div className="relative">
+              <select value={form.severity} onChange={(e) => update('severity', e.target.value)} className="input w-full appearance-none pr-8">
+                {SEVERITY_OPTIONS.map((s) => (<option key={s} value={s}>{s ? s.charAt(0).toUpperCase() + s.slice(1) : 'None'}</option>))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+            </div>
+          </div>
+          <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Project</label>
             <div className="relative">
               <select value={form.projectId} onChange={(e) => update('projectId', e.target.value)} className="input w-full appearance-none pr-8">
@@ -243,6 +283,103 @@ const AddLessonModal: React.FC<{
           </div>
         </form>
       </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// PMO Report Section
+// ---------------------------------------------------------------------------
+
+const PMOReportSection: React.FC = () => {
+  const [expanded, setExpanded] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['lessonsReport'],
+    queryFn: () => apiService.getLessonsReport(),
+    enabled: expanded,
+  });
+
+  const report = data?.data;
+
+  return (
+    <div className="card">
+      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center gap-2 text-left">
+        <BarChart3 className="w-4 h-4 text-indigo-500" />
+        <span className="text-sm font-semibold text-gray-900 dark:text-white flex-1">PMO Lessons Report</span>
+        {expanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+      </button>
+
+      {expanded && (
+        <div className="mt-4 space-y-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+            </div>
+          ) : report ? (
+            <>
+              {/* Stats row */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-gray-50 dark:bg-gray-700 p-3 text-center">
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">{report.totalLessons}</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">Total</p>
+                </div>
+                <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 p-3 text-center">
+                  <p className="text-lg font-bold text-amber-700 dark:text-amber-300">{report.elevated}</p>
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 uppercase">Elevated</p>
+                </div>
+                <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-center">
+                  <p className="text-lg font-bold text-red-700 dark:text-red-300">{(report.bySeverity?.critical || 0) + (report.bySeverity?.high || 0)}</p>
+                  <p className="text-[10px] text-red-600 dark:text-red-400 uppercase">High/Critical</p>
+                </div>
+                <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-3 text-center">
+                  <p className="text-lg font-bold text-green-700 dark:text-green-300">{report.byImpact?.positive || 0}</p>
+                  <p className="text-[10px] text-green-600 dark:text-green-400 uppercase">Positive</p>
+                </div>
+              </div>
+
+              {/* Trending categories */}
+              {report.trendingCategories?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2">Trending Categories (Last 30 Days)</h4>
+                  <div className="space-y-1.5">
+                    {report.trendingCategories.filter((t: any) => t.recentCount > 0).slice(0, 5).map((t: any) => (
+                      <div key={t.category} className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600 dark:text-gray-300">{t.category}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400 dark:text-gray-500">{t.count} total</span>
+                          <span className="font-semibold text-indigo-600 dark:text-indigo-400">+{t.recentCount} recent</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Elevated lessons */}
+              {report.elevatedLessons?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2 flex items-center gap-1.5">
+                    <ArrowUpCircle className="w-3.5 h-3.5 text-amber-500" />
+                    Elevated Lessons
+                  </h4>
+                  <div className="space-y-1.5">
+                    {report.elevatedLessons.map((l: any) => (
+                      <div key={l.id} className="flex items-center gap-2 text-xs rounded-md bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800 px-3 py-2">
+                        {severityBadge(l.severity)}
+                        <span className="text-gray-900 dark:text-white font-medium truncate">{l.title}</span>
+                        <span className="text-gray-400 dark:text-gray-500 ml-auto whitespace-nowrap">{l.projectName}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-gray-400 dark:text-gray-500 italic">No report data available</p>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -363,6 +500,11 @@ export const LessonsLearnedPage: React.FC = () => {
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       apiService.updateLessonStatus(id, status),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lessons'] }); },
+  });
+
+  const elevateMutation = useMutation({
+    mutationFn: (id: string) => apiService.elevateLesson(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lessons'] }); },
   });
 
@@ -503,6 +645,9 @@ export const LessonsLearnedPage: React.FC = () => {
         </div>
       )}
 
+      {/* PMO Report section */}
+      <PMOReportSection />
+
       {/* Filter controls */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
@@ -559,7 +704,11 @@ export const LessonsLearnedPage: React.FC = () => {
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{lesson.title}</h3>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {lesson.isElevated && (
+                      <span title="Elevated to org-wide"><ArrowUpCircle className="w-3.5 h-3.5 text-amber-500" /></span>
+                    )}
                     {statusBadge(lesson.status)}
+                    {severityBadge(lesson.severity)}
                     {impactBadge(lesson.impact)}
                     <span className="inline-block rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-2 py-0.5 text-xs font-medium">
                       {lesson.category}
@@ -569,6 +718,12 @@ export const LessonsLearnedPage: React.FC = () => {
                       <button onClick={() => statusMutation.mutate({ id: lesson.id, status: 'approved' })}
                         className="p-1 rounded text-green-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/30" title="Approve">
                         <CheckCircle className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {lesson.status === 'approved' && !lesson.isElevated && (
+                      <button onClick={() => elevateMutation.mutate(lesson.id)}
+                        className="p-1 rounded text-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30" title="Elevate to org-wide">
+                        <ArrowUpCircle className="w-3.5 h-3.5" />
                       </button>
                     )}
                     {lesson.status === 'approved' && (
@@ -582,6 +737,13 @@ export const LessonsLearnedPage: React.FC = () => {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-2">{lesson.description}</p>
+                {lesson.rootCause && (
+                  <div className="rounded-md bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800 px-3 py-2 mb-2">
+                    <p className="text-xs text-red-800 dark:text-red-300">
+                      <span className="font-semibold">Root Cause:</span> {lesson.rootCause}
+                    </p>
+                  </div>
+                )}
                 {lesson.recommendation && (
                   <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 px-3 py-2 mb-2">
                     <p className="text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5">
@@ -623,7 +785,7 @@ export const LessonsLearnedPage: React.FC = () => {
       {/* Edit Lesson Modal */}
       {editingLesson && (
         <AddLessonModal projects={projects}
-          initial={{ title: editingLesson.title, description: editingLesson.description, category: editingLesson.category, impact: editingLesson.impact, recommendation: editingLesson.recommendation, projectId: editingLesson.projectId || '' }}
+          initial={{ title: editingLesson.title, description: editingLesson.description, category: editingLesson.category, impact: editingLesson.impact, recommendation: editingLesson.recommendation, rootCause: editingLesson.rootCause || '', severity: editingLesson.severity || '', projectId: editingLesson.projectId || '' }}
           title="Edit Lesson" onClose={() => setEditingLesson(null)} onSubmit={(data) => updateLessonMutation.mutate({ id: editingLesson.id, data })} isSubmitting={updateLessonMutation.isPending} />
       )}
 

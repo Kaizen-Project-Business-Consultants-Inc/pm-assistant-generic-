@@ -1926,6 +1926,8 @@ After running a scenario, action buttons appear to:
    - **Category** -- e.g., Planning, Execution, Communication, Risk.
    - **Impact** -- Positive, Negative, or Neutral.
    - **Recommendation** -- What to do differently.
+   - **Root Cause** (optional) -- The underlying cause of the event, separate from the description.
+   - **Severity** -- How significantly the event affected the project: Low, Medium, High, or Critical.
    - **Tags** (optional) -- Comma-separated keywords for cross-project categorization (e.g., `vendor`, `estimation`).
    - **Project** (optional) -- Associate with a specific project.
 4. Save the lesson. New lessons start in **Draft** status.
@@ -1948,6 +1950,34 @@ Every lesson has a status that tracks its maturity. Managers can advance lessons
 **Draft review banner:** if there are unreviewed draft lessons, a banner appears at the top of the Lessons page prompting you to review them.
 
 **Status filter:** use the status filter dropdown on the Lessons page to view lessons by lifecycle stage.
+
+### Severity Badges
+
+Each lesson card displays a color-coded **Severity** badge:
+
+| Severity | Color |
+|---|---|
+| Low | Grey |
+| Medium | Yellow |
+| High | Orange |
+| Critical | Red |
+
+Severity is set in the Add/Edit modal and is also populated automatically when lessons are AI-extracted at project closeout.
+
+### Root Cause
+
+The **Root Cause** field captures the underlying reason the event occurred, shown on the lesson card beneath the description. It is separate from the lesson description and recommendation. You can add or edit it via the Edit modal. When AI extraction runs at project closeout it populates the root cause automatically where causality can be inferred.
+
+### Elevating Lessons
+
+High-impact lessons can be **elevated** to prioritize them across the knowledge base. Click the **Elevate** button on a lesson card to toggle elevation on or off. Elevated lessons:
+
+- Appear first in the similar lessons panels shown during risk creation, sprint planning, and retrospectives.
+- Are included in the PMO Report for portfolio-level review.
+
+### PMO Report
+
+The **PMO Report** section on the Lessons Learned page (collapsible) gathers all elevated lessons and lessons rated High or Critical severity across your projects into a single view. Use it to brief leadership or conduct a portfolio retrospective without manually filtering individual cards.
 
 ### Source Icons
 
@@ -1992,6 +2022,8 @@ Lessons surface automatically at key moments so you benefit from past experience
 - **Project Closeout** — When you change a project's status to **Completed**, a prompt appears offering to run an AI analysis and extract lessons learned from that project automatically. The AI analysis includes the project's risk and issue log for richer, more operationally grounded lessons.
 - **Risk & Issue Creation** — When entering a new risk or issue in the Risk form, type a title of 10 or more characters and a collapsible **Similar Lessons** panel will appear below the title field, showing relevant lessons from past projects. Expand it to review before continuing. Additionally, a **Suggested Mitigations** section (Shield icon) shows historical mitigation strategies from approved lessons ranked by relevance — expand it to see source project attribution and apply relevant strategies to your current risk.
 - **Project Kickoff** — On the **Overview** tab of any project in **Planning** status, a banner shows lessons from projects with similar types or categories. Dismiss it once you've reviewed it.
+- **Sprint Planning** — A collapsible amber **Lessons** panel appears in the Sprint Planning panel showing schedule-related lessons from past projects. Expand it before committing sprint scope to account for known planning patterns.
+- **Retrospective Board** — The same collapsible amber **Lessons** panel appears on the Retrospective Board, filtered to quality-related lessons, to ground your retrospective discussion in the team's accumulated experience.
 
 ---
 

@@ -125,14 +125,18 @@ export class RagService {
   // -------------------------------------------------------------------------
 
   private lessonToText(lesson: LessonLearned): string {
-    return [
+    const parts = [
       lesson.category,
       lesson.impact,
       lesson.projectType,
       lesson.title,
       lesson.description,
       lesson.recommendation,
-    ].join(' | ');
+    ];
+    if (lesson.rootCause) parts.push(lesson.rootCause);
+    if (lesson.severity) parts.push(lesson.severity);
+    if (lesson.tags?.length) parts.push(lesson.tags.join(', '));
+    return parts.join(' | ');
   }
 
   private meetingToText(analysis: MeetingAnalysis): string {
@@ -202,6 +206,11 @@ export class RagService {
       description: row.description,
       impact: row.impact,
       recommendation: row.recommendation,
+      rootCause: row.root_cause ?? null,
+      severity: row.severity ?? null,
+      recurrenceScore: row.recurrence_score ?? 0,
+      isElevated: row.is_elevated === 1 || row.is_elevated === true,
+      sourceArtifacts: null,
       confidence: row.confidence,
       status: row.status ?? 'approved',
       createdBy: row.created_by ?? null,
@@ -209,6 +218,8 @@ export class RagService {
       tags,
       appliedCount: row.applied_count ?? 0,
       effectivenessRating: row.effectiveness_rating ?? null,
+      helpfulCount: 0,
+      dismissedCount: 0,
       createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     };
   }
