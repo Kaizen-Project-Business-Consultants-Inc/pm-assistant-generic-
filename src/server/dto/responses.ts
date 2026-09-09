@@ -45,6 +45,7 @@ export interface ProjectDTO {
   createdAt: string;
   updatedAt: string;
   archivedAt?: string;
+  isDemo?: boolean;
 }
 
 export function toProjectDTO(row: Record<string, any>): ProjectDTO {
@@ -70,6 +71,7 @@ export function toProjectDTO(row: Record<string, any>): ProjectDTO {
     createdAt: String(row.createdAt ?? row.created_at),
     updatedAt: String(row.updatedAt ?? row.updated_at),
     archivedAt: row.archivedAt ?? row.archived_at ?? undefined,
+    isDemo: row.isDemo ?? row.is_demo ?? false,
   };
 }
 

@@ -32,6 +32,7 @@ function rowToProject(row: any): Project {
     updatedAt: String(row.updated_at),
     archivedAt: row.archived_at ? String(row.archived_at) : undefined,
     groupId: row.group_id ?? undefined,
+    isDemo: row.is_demo === 1 || row.is_demo === true,
   };
 }
 
@@ -70,7 +71,7 @@ export class ProjectRepository extends BaseRepository<Project> {
     const rows = await this.queryRaw(
       `SELECT DISTINCT p.* FROM projects p
        LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
-       WHERE p.id = ? AND (p.created_by = ? OR pm.user_id IS NOT NULL)`,
+       WHERE p.id = ? AND (p.created_by = ? OR pm.user_id IS NOT NULL OR p.is_demo = 1)`,
       [userId, id, userId],
     );
     return rows.length > 0 ? rowToProject(rows[0]) : null;
@@ -85,8 +86,8 @@ export class ProjectRepository extends BaseRepository<Project> {
     const rows = await this.queryRaw(
       `SELECT DISTINCT p.* FROM projects p
        LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
-       WHERE p.created_by = ? OR pm.user_id IS NOT NULL
-       ORDER BY p.created_at DESC`,
+       WHERE p.created_by = ? OR pm.user_id IS NOT NULL OR p.is_demo = 1
+       ORDER BY p.is_demo ASC, p.created_at DESC`,
       [userId, userId],
     );
     return this.mapRows(rows);
@@ -96,7 +97,7 @@ export class ProjectRepository extends BaseRepository<Project> {
     const rows = await this.queryRaw(
       `SELECT COUNT(DISTINCT p.id) as count FROM projects p
        LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
-       WHERE (p.created_by = ? OR pm.user_id IS NOT NULL) AND p.archived_at IS NULL`,
+       WHERE (p.created_by = ? OR pm.user_id IS NOT NULL OR p.is_demo = 1) AND p.archived_at IS NULL`,
       [userId, userId],
     );
     return Number(rows[0]?.count ?? 0);
@@ -107,15 +108,15 @@ export class ProjectRepository extends BaseRepository<Project> {
     const countRows = await this.queryRaw(
       `SELECT COUNT(DISTINCT p.id) as count FROM projects p
        LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
-       WHERE (p.created_by = ? OR pm.user_id IS NOT NULL)${archiveFilter}`,
+       WHERE (p.created_by = ? OR pm.user_id IS NOT NULL OR p.is_demo = 1)${archiveFilter}`,
       [userId, userId],
     );
     const total = Number(countRows[0]?.count ?? 0);
     const rows = await this.queryRaw(
       `SELECT DISTINCT p.* FROM projects p
        LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
-       WHERE (p.created_by = ? OR pm.user_id IS NOT NULL)${archiveFilter}
-       ORDER BY p.created_at DESC
+       WHERE (p.created_by = ? OR pm.user_id IS NOT NULL OR p.is_demo = 1)${archiveFilter}
+       ORDER BY p.is_demo ASC, p.created_at DESC
        LIMIT ? OFFSET ?`,
       [userId, userId, limit, offset],
     );

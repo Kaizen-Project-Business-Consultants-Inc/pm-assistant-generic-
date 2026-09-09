@@ -289,6 +289,8 @@ export function ProjectDetailPage() {
     );
   }
 
+  const isDemo = !!(project as any).isDemo || !!(project as any).is_demo;
+
   const status = statusStyles[project.status] || statusStyles.planning;
   const progress = project.progressPercentage || project.progress_percentage || 0;
   const budgetAllocated = project.budgetAllocated || project.budget_allocated || 0;
@@ -306,6 +308,17 @@ export function ProjectDetailPage() {
 
   return (
     <div className="space-y-6">
+      {/* Demo Project Banner */}
+      {isDemo && (
+        <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 flex items-center gap-3">
+          <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">Sample Project — Read Only</p>
+            <p className="text-xs text-blue-600 dark:text-blue-400">This is a demonstration project showcasing all PM Assistant features. Explore every tab to see the full platform in action.</p>
+          </div>
+        </div>
+      )}
+
       {/* Back Button + Header */}
       <div>
         <button
@@ -320,7 +333,7 @@ export function ProjectDetailPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white break-words">{project.name}</h1>
-              {canEditStatus ? (
+              {canEditStatus && !isDemo ? (
                 <select
                   value={project.status}
                   onChange={(e) => {
@@ -350,7 +363,7 @@ export function ProjectDetailPage() {
                   >
                     {status.label}
                   </span>
-                  {project.status === 'planning' && (
+                  {project.status === 'planning' && !isDemo && (
                     <button
                       onClick={() => statusMutation.mutate({ status: 'active' })}
                       disabled={statusMutation.isPending}
@@ -379,7 +392,7 @@ export function ProjectDetailPage() {
             {otherViewers.length > 0 && (
               <PresenceIndicator variant="avatars" users={otherViewers} />
             )}
-            {canEditStatus && (
+            {canEditStatus && !isDemo && (
               <button
                 onClick={() => setShowEditProject(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"

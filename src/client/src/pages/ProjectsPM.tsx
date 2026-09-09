@@ -121,6 +121,7 @@ export function ProjectsPM() {
     endDate: p.endDate || p.plannedEndDate || '',
     archivedAt: p.archivedAt ?? undefined,
     groupId: p.group_id || p.groupId || null,
+    isDemo: p.isDemo || p.is_demo || false,
     daysLeft: p.daysLeft ?? (() => {
       if (!p.endDate && !p.plannedEndDate) return undefined;
       try {
@@ -417,6 +418,7 @@ export function ProjectsPM() {
                     <td className="px-4 py-3">
                       <Link to={`/project/${p.id}`} className="text-sm font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                         {p.name}
+                        {(p as any).isDemo && <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 uppercase">Sample</span>}
                       </Link>
                       {p.client && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{p.client}</p>}
                     </td>

@@ -45,6 +45,15 @@ const statusUpdateSchema = z.object({
   cancellationReason: z.string().max(2000).optional(),
 });
 
+async function rejectIfDemo(projectId: string, reply: FastifyReply): Promise<boolean> {
+  const p = await projectService.findById(projectId);
+  if (p?.isDemo) {
+    reply.status(403).send({ error: 'Read-only', message: 'This is a sample project and cannot be modified.' });
+    return true;
+  }
+  return false;
+}
+
 export async function projectRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -171,6 +180,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
+      if (await rejectIfDemo(id, reply)) return;
       const data = updateProjectSchema.parse(request.body);
       const userId = request.user!.userId;
 
@@ -215,6 +225,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
     try {
       const user = request.user!;
       const { id } = request.params as { id: string };
+      if (await rejectIfDemo(id, reply)) return;
       const { status, cancellationReason } = statusUpdateSchema.parse(request.body);
 
       if (status === 'cancelled' && !cancellationReason?.trim()) {
@@ -254,6 +265,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
+      if (await rejectIfDemo(id, reply)) return;
       const userId = request.user!.userId;
 
       // SME/Enterprise tiers cannot delete projects — archive instead
