@@ -42,6 +42,7 @@ const RAID_ALIASES: Record<string, string> = {
   riskissuetitle: 'title', issuetitle: 'title', actiontitle: 'title',
   decisiontitle: 'title', assumptiontitle: 'title', dependencytitle: 'title',
   riskissue: 'title', riskissuedescription: 'title',
+  actioninputrequired: 'title', decisiontaken: 'title',
   description: 'description', details: 'description', notes: 'description', comments: 'description',
   riskdescription: 'title', issuedescription: 'title',
   actiondescription: 'title', decisiondescription: 'title',
@@ -63,22 +64,26 @@ const RAID_ALIASES: Record<string, string> = {
   duedate: 'dueDate', deadline: 'dueDate', targetdate: 'dueDate', due: 'dueDate',
   targetcompletiondate: 'dueDate', requiredbydate: 'dueDate', requiredby: 'dueDate',
   datedue: 'dueDate', completiondate: 'dueDate',
+  targetclosedate: 'dueDate', datedecided: 'dueDate',
   actiontype: 'actionType',
   rationale: 'rationale', reason: 'rationale', justification: 'rationale',
-  decisionrationale: 'rationale',
+  decisionrationale: 'rationale', rationalebasis: 'rationale',
+  optionsconsidered: 'description', impactsaffecteddesignarea: 'description',
+  decidedby: 'owner',
   rootcause: 'rootCause', cause: 'rootCause',
   workaround: 'workaround', alternative: 'workaround',
   validationplan: 'validationPlan', validation: 'validationPlan',
   howtovalidate: 'validationPlan', validationmethod: 'validationPlan',
   dependententity: 'dependentEntity', dependency: 'dependentEntity', dependson: 'dependentEntity',
   dependenton: 'dependentEntity', externalparty: 'dependentEntity', supplier: 'dependentEntity',
+  dependententityparty: 'dependentEntity',
   forum: 'forum', decisionforum: 'forum',
   sourcemeeting: 'sourceMeeting', meeting: 'sourceMeeting',
 };
 
 const RAID_TARGET_LABELS: Record<string, string[]> = {
   type: ['type', 'raid type', 'item type', 'record type'],
-  title: ['title', 'name', 'risk title', 'item', 'risk description', 'issue description', 'action description', 'decision description'],
+  title: ['title', 'name', 'risk title', 'item', 'risk description', 'issue description', 'action description', 'decision description', 'action/input required', 'decision taken'],
   description: ['description', 'details', 'notes', 'comments'],
   category: ['category', 'area', 'domain'],
   severity: ['severity', 'priority', 'rating', 'level'],
@@ -89,7 +94,7 @@ const RAID_TARGET_LABELS: Record<string, string[]> = {
   mitigationPlan: ['mitigation', 'mitigation plan', 'treatment', 'response'],
   responsePlan: ['response plan', 'contingency'],
   triggerCondition: ['trigger', 'trigger condition'],
-  dueDate: ['due date', 'deadline', 'target date'],
+  dueDate: ['due date', 'deadline', 'target date', 'target close date', 'date decided'],
   actionType: ['action type'],
   rationale: ['rationale', 'reason', 'justification'],
   rootCause: ['root cause', 'cause'],
@@ -237,8 +242,10 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
           if (workbook.SheetNames.length > 1) {
             workbookRef.current = workbook;
             setSheetNames(workbook.SheetNames);
-            setSelectedSheet(workbook.SheetNames[0]);
-            const csv = sheetToCsv(XLSX, workbook.Sheets[workbook.SheetNames[0]]);
+            // Auto-select first RAID-type sheet instead of Dashboard
+            const firstRaid = workbook.SheetNames.find(n => SHEET_TYPE_MAP[n.toLowerCase().trim()]) || workbook.SheetNames[0];
+            setSelectedSheet(firstRaid);
+            const csv = sheetToCsv(XLSX, workbook.Sheets[firstRaid]);
             loadText(cleanCsvForImport(csv));
           } else {
             const csv = sheetToCsv(XLSX, workbook.Sheets[workbook.SheetNames[0]]);
@@ -282,7 +289,9 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
           headerMap[header] = columnMap[i] || '_skip';
         }
       }
-      const res = await apiService.importRaidItems(projectId, csvText, headerMap);
+      // Detect default type from selected sheet name
+      const sheetType = selectedSheet ? SHEET_TYPE_MAP[selectedSheet.toLowerCase().trim()] : undefined;
+      const res = await apiService.importRaidItems(projectId, csvText, headerMap, sheetType);
       const data = res?.data ?? res;
       setResult({ succeeded: data.succeeded ?? 0, failed: data.failed ?? [] });
       if ((data.succeeded ?? 0) > 0) onImported?.();
@@ -323,31 +332,23 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
           headerMap[header] = RAID_ALIASES[key] || '_skip';
         }
 
-        // Reconstruct CSV with proper escaping + inject type column
-        const hasTypeCol = Object.values(headerMap).includes('type');
-        const typeIdx = hasTypeCol ? p.headers.findIndex(h => headerMap[h] === 'type') : -1;
+        // If a "type" column exists but we're setting type from the sheet name,
+        // remap that column to actionType (for Actions sheets where "Type" = category)
+        const typeHeader = p.headers.find(h => headerMap[h] === 'type');
+        if (typeHeader) {
+          headerMap[typeHeader] = 'actionType';
+        }
 
-        // Build new CSV lines with proper quoting
-        const outHeaders = hasTypeCol ? p.headers : ['_raid_type_', ...p.headers];
+        // Prepend the RAID type column from the sheet name
+        const outHeaders = ['_raid_type_', ...p.headers];
         const outLines = [outHeaders.map(escapeCsvCell).join(',')];
         for (const row of p.rows) {
-          if (hasTypeCol) {
-            // Override the type column value with the sheet's RAID type
-            const newRow = row.map((v, i) => escapeCsvCell(i === typeIdx ? raidType : v));
-            outLines.push(newRow.join(','));
-          } else {
-            // Prepend the type value
-            outLines.push([escapeCsvCell(raidType), ...row.map(escapeCsvCell)].join(','));
-          }
+          outLines.push([escapeCsvCell(raidType), ...row.map(escapeCsvCell)].join(','));
         }
         const outCsv = outLines.join('\n');
+        headerMap['_raid_type_'] = 'type';
 
-        // Adjust headerMap for injected type column
-        if (!hasTypeCol) {
-          headerMap['_raid_type_'] = 'type';
-        }
-
-        const res = await apiService.importRaidItems(projectId, outCsv, headerMap);
+        const res = await apiService.importRaidItems(projectId, outCsv, headerMap, raidType);
         const data = res?.data ?? res;
         results.push({ sheet: name, type: raidType, succeeded: data.succeeded ?? 0, failed: (data.failed ?? []).length });
         if ((data.succeeded ?? 0) > 0) anySuccess = true;
@@ -486,7 +487,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
                     {raidSheetCount >= 2 && (
                       <button
                         onClick={handleImportAllSheets}
-                        disabled={importingAll}
+                        disabled={importingAll || !!multiTabResults}
                         className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 whitespace-nowrap"
                       >
                         <Upload size={14} />
@@ -552,7 +553,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
                   <div className="flex items-center justify-between">
                     <button onClick={reset} className="text-sm text-gray-500 dark:text-gray-400 hover:underline">Back</button>
                     <button
-                      disabled={importing || mappedCount === 0}
+                      disabled={importing || mappedCount === 0 || !!result}
                       onClick={handleImport}
                       className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
                     >

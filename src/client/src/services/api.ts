@@ -584,8 +584,8 @@ class ApiService {
     return response.data;
   }
 
-  async importRaidItems(projectId: string, csv: string, columnMap: Record<string, string>): Promise<{ data: { succeeded: number; failed: { row: number; error: string }[] } }> {
-    const response = await this.api.post(`/projects/${projectId}/risks/import`, { csv, columnMap });
+  async importRaidItems(projectId: string, csv: string, columnMap: Record<string, string>, defaultType?: string): Promise<{ data: { succeeded: number; failed: { row: number; error: string }[] } }> {
+    const response = await this.api.post(`/projects/${projectId}/risks/import`, { csv, columnMap, defaultType });
     return response.data;
   }
 

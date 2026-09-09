@@ -471,6 +471,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
   const csvImportSchema = z.object({
     csv: z.string().min(1).max(500_000),
     columnMap: z.record(z.string(), z.string()),
+    defaultType: z.enum(['risk', 'issue', 'action', 'decision', 'assumption', 'dependency']).optional(),
   });
 
   // Normalization maps for fuzzy value matching
@@ -498,7 +499,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
     decided: 'decided', deferred: 'deferred',
     validated: 'validated', unverified: 'unverified',
     at_risk: 'at_risk', 'at risk': 'at_risk', atrisk: 'at_risk',
-    complete: 'complete',
+    complete: 'completed',
   };
   const CATEGORY_NORM: Record<string, string> = {
     schedule: 'schedule', time: 'schedule',
@@ -521,7 +522,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
-      const { csv, columnMap } = csvImportSchema.parse(request.body);
+      const { csv, columnMap, defaultType } = csvImportSchema.parse(request.body);
       const userId = request.user!.userId;
 
       // Parse CSV
@@ -602,7 +603,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
           // Normalize type
           const rawType = (mapped.type || '').toLowerCase().trim();
-          const type = TYPE_NORM[rawType] || 'risk';
+          const type = TYPE_NORM[rawType] || defaultType || 'risk';
 
           // Normalize severity
           const rawSeverity = (mapped.severity || '').toLowerCase().trim();

@@ -59,8 +59,8 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   const [importing, setImporting] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [sortField, setSortField] = useState<SortField>('createdAt');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [sortField, setSortField] = useState<SortField>('recordId');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [inlineStatusId, setInlineStatusId] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
