@@ -139,8 +139,8 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path={ROUTES.home} element={isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : (isPrelaunch ? <PrelaunchLandingPage /> : <LandingPage />)} />
-        <Route path={ROUTES.login} element={isPrelaunch && !isAuthenticated ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : <LoginPage />)} />
-        <Route path={ROUTES.register} element={isPrelaunch && !isAuthenticated ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : <RegisterPage />)} />
+        <Route path={ROUTES.login} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : <LoginPage />)} />
+        <Route path={ROUTES.register} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated && !window.location.search.includes('invite=') ? <Navigate to={ROUTES.dashboard} replace /> : <RegisterPage />)} />
         <Route path={ROUTES.verifyEmail} element={<VerifyEmailPage />} />
         <Route path={ROUTES.forgotPassword} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <ForgotPasswordPage />} />
         <Route path={ROUTES.resetPassword} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <ResetPasswordPage />} />

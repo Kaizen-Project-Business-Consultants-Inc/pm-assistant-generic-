@@ -78,6 +78,22 @@ const commentSchema = z.object({
   comment: z.string().min(1).max(5000),
 });
 
+/** Derive a concise title from a long description text */
+function deriveTitle(text: string): string {
+  // Strip filler prefixes like "Risk that...", "There is a risk that...", "The assumption is that..."
+  let t = text.replace(/^(there\s+is\s+a\s+)?(risk|issue|action|decision|assumption|dependency)\s+(is\s+)?that\s+/i, '');
+  // Capitalize first letter after stripping
+  t = t.charAt(0).toUpperCase() + t.slice(1);
+  // Split on sentence boundaries: . ; — or line break
+  const parts = t.split(/(?<=[.;])\s+|\s*[—–]\s+|\n/);
+  let title = parts[0].replace(/[.;]+$/, '').trim();
+  // If still too long, truncate at last word boundary before 120 chars
+  if (title.length > 120) {
+    title = title.slice(0, 120).replace(/\s+\S*$/, '') + '...';
+  }
+  return title || text.slice(0, 120);
+}
+
 function canPerformRaidAction(role: string, itemType: string, action: string): boolean {
   if (role === 'admin') return true;
   if (action === 'comment') return true;
@@ -584,7 +600,19 @@ export async function riskRoutes(fastify: FastifyInstance) {
           // Title is required — fall back to description if no title column
           if (!mapped.title?.trim() && mapped.description?.trim()) {
             mapped.title = mapped.description;
-            delete mapped.description; // used as title, don't duplicate
+            mapped.description = mapped.title; // keep full text as description too
+          }
+          // If title came from description, derive a concise title and keep full text in description
+          if (mapped.title?.trim() && !mapped.description?.trim()) {
+            // Only title, no description — copy full text to description, shorten title
+            const full = mapped.title.trim();
+            if (full.length > 120) {
+              mapped.description = full;
+              mapped.title = deriveTitle(full);
+            }
+          } else if (mapped.title?.trim() && mapped.description?.trim() && mapped.title === mapped.description) {
+            // Both set to the same value (from fallback above) — derive a concise title
+            mapped.title = deriveTitle(mapped.description.trim());
           }
           if (!mapped.title?.trim()) {
             failed.push({ row: rowNum, error: 'Missing title' });

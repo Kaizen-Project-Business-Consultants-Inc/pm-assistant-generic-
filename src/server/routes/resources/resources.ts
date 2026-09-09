@@ -78,9 +78,29 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       let warning: string | undefined;
       if (raw.email) {
         const inviterUserId = (request.user as any)?.userId;
-        const inviterName = (request.user as any)?.fullName || (request.user as any)?.email || 'A team member';
+        const inviterEmail = (request.user as any)?.email;
+        const inviterName = (request.user as any)?.fullName || inviterEmail || 'A team member';
         const inviterOrgId = (request.user as any)?.organizationId;
 
+        // Check if creating a resource with own email
+        if (inviterEmail && raw.email.toLowerCase() === inviterEmail.toLowerCase()) {
+          warning = 'This resource uses your own email. You already have access to this organization — no invite was sent.';
+        }
+
+        // Check if a resource with this email already exists
+        if (!warning) {
+          const [existing] = await databaseService.query<{ id: string; name: string }>(
+            'SELECT id, name FROM resources WHERE LOWER(email) = LOWER(?) AND id != ? LIMIT 1',
+            [raw.email, resource.id],
+          );
+          if (existing) {
+            warning = `A resource with this email already exists: "${existing.name}". No invite was sent.`;
+          }
+        }
+
+        if (warning) {
+          // Skip email sending
+        } else {
         // Check rate limit synchronously before responding
         const rl = await rateLimiter.checkAsync(`resource-invite:${inviterUserId}`, 20, 3_600_000);
         if (!rl.allowed) {
@@ -122,6 +142,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
             logger.error('Resource invite email error', { error: err?.message || err });
           }
         }
+        } // end else (not self-resource)
       }
 
       return reply.status(201).send({ resource, warning });

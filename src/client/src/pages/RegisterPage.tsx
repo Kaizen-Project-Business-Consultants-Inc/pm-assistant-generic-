@@ -29,7 +29,7 @@ export const RegisterPage: React.FC = () => {
 
   const isPlanSignup = !!tierParam && !inviteToken;
 
-  const { setUser } = useAuthStore();
+  const { setUser, user, logout } = useAuthStore();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -115,6 +115,37 @@ export const RegisterPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Authenticated user arrived via invite link — show logout prompt
+  if (user && inviteToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
+          <div className="mx-auto w-12 h-12 bg-amber-100 dark:bg-amber-900/40 rounded-xl flex items-center justify-center mb-4">
+            <Users className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Already logged in</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-2">
+            You're signed in as <strong>{user.fullName || user.email}</strong>.
+          </p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
+            To accept this invitation and create a new account, sign out first.
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => { logout(); }}
+              className="w-full py-2.5 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+            >
+              Sign Out &amp; Create Account
+            </button>
+            <Link to="/dashboard" className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (

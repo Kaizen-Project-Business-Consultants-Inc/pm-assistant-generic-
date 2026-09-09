@@ -188,10 +188,32 @@ export function ResourceManagementPage() {
   const resources: Resource[] = resourcesData?.resources || [];
   const isResourcesSample: boolean = resourcesData?.sample || false;
 
+  // Invites — for resource status column
+  const { data: invitesData } = useQuery({
+    queryKey: ['invites'],
+    queryFn: () => apiService.listInvites(),
+  });
+  const inviteStatusMap = useMemo(() => {
+    const map: Record<string, 'pending' | 'accepted' | 'expired' | 'revoked'> = {};
+    const invites = invitesData?.invites || [];
+    for (const inv of invites) {
+      const email = inv.email.toLowerCase();
+      let status = inv.status;
+      if (status === 'pending' && new Date(inv.expiresAt) < new Date()) status = 'expired';
+      // Keep the most relevant status per email (pending > expired > accepted > revoked)
+      const priority: Record<string, number> = { pending: 0, expired: 1, accepted: 2, revoked: 3 };
+      if (!map[email] || (priority[status] ?? 9) < (priority[map[email]] ?? 9)) {
+        map[email] = status;
+      }
+    }
+    return map;
+  }, [invitesData]);
+
   const createResourceMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => apiService.createResource(data as any),
     onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ['resources'] });
+      queryClient.invalidateQueries({ queryKey: ['invites'] });
       resetForm();
       if (result?.warning) {
         setResourceWarning(result.warning);
@@ -538,6 +560,7 @@ export function ResourceManagementPage() {
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Department</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Skills</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Email</th>
+                    <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Status</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Hours/Wk</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">$/hr</th>
                     <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Actions</th>
@@ -577,6 +600,21 @@ export function ResourceManagementPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.email}</td>
+                      <td className="px-4 py-3 text-center">
+                        {r.userId ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Confirmed</span>
+                        ) : r.email ? (
+                          inviteStatusMap[r.email.toLowerCase()] === 'pending' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">Pending</span>
+                          ) : inviteStatusMap[r.email.toLowerCase()] === 'expired' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Expired</span>
+                          ) : (
+                            <span className="text-gray-300 dark:text-gray-600">--</span>
+                          )
+                        ) : (
+                          <span className="text-gray-300 dark:text-gray-600">--</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.capacityHoursPerWeek || 40}</td>
                       <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.costRateHourly != null ? `$${r.costRateHourly.toFixed(2)}` : '--'}</td>
                       <td className="px-4 py-3 text-right">
