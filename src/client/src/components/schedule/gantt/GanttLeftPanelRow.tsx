@@ -199,7 +199,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   return (
     <div
       data-task-id={task.id}
-      className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer ${isParent ? 'font-semibold' : ''} ${rowIdx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} ${isActive ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-inset ring-primary-200 dark:ring-primary-700' : ''} ${rowDragTargetHere ? 'border-t-2 border-t-blue-500' : ''} ${isRowDragSource ? 'opacity-40' : ''}`}
+      className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer ${isParent ? 'font-semibold bg-gray-100/80 dark:bg-gray-700/40' : ''} ${!isParent && rowIdx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} ${isActive ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-inset ring-primary-200 dark:ring-primary-700' : ''} ${rowDragTargetHere ? 'border-t-2 border-t-blue-500' : ''} ${isRowDragSource ? 'opacity-40' : ''}`}
       style={shouldVirtualize ? { height: ROW_H, position: 'absolute', top: rowIdx * ROW_H, left: 0, right: 0, minWidth: minRowWidth } : { height: ROW_H, minWidth: minRowWidth }}
       onClick={(e) => onRowClick(e, task)}
       onDoubleClick={() => onRowDoubleClick(task)}
