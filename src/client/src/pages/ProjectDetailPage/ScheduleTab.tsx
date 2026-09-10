@@ -372,16 +372,28 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
 
   // Quick filter pills
   const { user } = useAuthStore();
+  const VALID_QF = ['all', 'due', 'late', 'at_risk', 'my_tasks', 'unassigned'];
   const [quickFilter, setQuickFilter] = useState<QuickFilterType>(() => {
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const qf = urlParams.get('qf');
-      if (qf && ['all', 'due_this_week', 'due_next_2_weeks', 'late', 'at_risk', 'my_tasks', 'unassigned'].includes(qf)) return qf as QuickFilterType;
+      if (qf && VALID_QF.includes(qf)) return qf as QuickFilterType;
       const saved = localStorage.getItem(`schedule-quick-filter-${schedule.id}`);
-      if (saved && ['all', 'due_this_week', 'due_next_2_weeks', 'late', 'at_risk', 'my_tasks', 'unassigned'].includes(saved)) return saved as QuickFilterType;
+      if (saved && VALID_QF.includes(saved)) return saved as QuickFilterType;
     } catch { /* noop */ }
     return 'all';
   });
+  const [dueWeeks, setDueWeeks] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('schedule-due-weeks');
+      if (saved) { const n = Number(saved); if (n >= 1 && n <= 4) return n; }
+    } catch { /* noop */ }
+    return 2;
+  });
+  const handleDueWeeksChange = useCallback((weeks: number) => {
+    setDueWeeks(weeks);
+    try { localStorage.setItem('schedule-due-weeks', String(weeks)); } catch { /* noop */ }
+  }, []);
   const [riskThresholds, setRiskThresholds] = useState<RiskThresholds>(() => {
     try {
       const saved = localStorage.getItem('schedule-risk-thresholds');
@@ -826,13 +838,11 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   const quickFilterCounts = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    const weekEnd = new Date(now);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    const twoWeekEnd = new Date(now);
-    twoWeekEnd.setDate(twoWeekEnd.getDate() + 14);
+    const dueEnd = new Date(now);
+    dueEnd.setDate(dueEnd.getDate() + dueWeeks * 7);
     const userId = user?.id;
 
-    const counts: Record<QuickFilterType, number> = { all: dropdownFilteredTasks.length, due_this_week: 0, due_next_2_weeks: 0, late: 0, at_risk: 0, my_tasks: 0, unassigned: 0 };
+    const counts: Record<QuickFilterType, number> = { all: dropdownFilteredTasks.length, due: 0, late: 0, at_risk: 0, my_tasks: 0, unassigned: 0 };
     for (const t of dropdownFilteredTasks) {
       const risk = taskRiskMap.get(t.id);
       const status = t.status?.toLowerCase();
@@ -840,8 +850,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       if (t.endDate && !isFinished) {
         const end = new Date(t.endDate);
         end.setHours(0, 0, 0, 0);
-        if (end >= now && end <= weekEnd) counts.due_this_week++;
-        if (end >= now && end <= twoWeekEnd) counts.due_next_2_weeks++;
+        if (end >= now && end <= dueEnd) counts.due++;
       }
       if (risk === 'late') counts.late++;
       if (risk === 'at_risk' || risk === 'critical') counts.at_risk++;
@@ -849,7 +858,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       if (!t.assignedTo) counts.unassigned++;
     }
     return counts;
-  }, [dropdownFilteredTasks, taskRiskMap, user?.id]);
+  }, [dropdownFilteredTasks, taskRiskMap, user?.id, dueWeeks]);
 
   const filteredTasks = useMemo(() => {
     if (quickFilter === 'all') return dropdownFilteredTasks;
@@ -861,17 +870,11 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       const status = t.status?.toLowerCase();
       const isFinished = status === 'completed' || status === 'done' || status === 'cancelled';
       switch (quickFilter) {
-        case 'due_this_week': {
+        case 'due': {
           if (!t.endDate || isFinished) return false;
           const end = new Date(t.endDate); end.setHours(0, 0, 0, 0);
-          const weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7);
-          return end >= now && end <= weekEnd;
-        }
-        case 'due_next_2_weeks': {
-          if (!t.endDate || isFinished) return false;
-          const end = new Date(t.endDate); end.setHours(0, 0, 0, 0);
-          const twoWeekEnd = new Date(now); twoWeekEnd.setDate(twoWeekEnd.getDate() + 14);
-          return end >= now && end <= twoWeekEnd;
+          const dueEnd = new Date(now); dueEnd.setDate(dueEnd.getDate() + dueWeeks * 7);
+          return end >= now && end <= dueEnd;
         }
         case 'late': return risk === 'late';
         case 'at_risk': return risk === 'at_risk' || risk === 'critical';
@@ -880,7 +883,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         default: return true;
       }
     });
-  }, [dropdownFilteredTasks, quickFilter, taskRiskMap, user?.id]);
+  }, [dropdownFilteredTasks, quickFilter, taskRiskMap, user?.id, dueWeeks]);
 
   const hasActiveFilters = !!(searchQuery || filterStatus || filterPriority || filterAssignee || quickFilter !== 'all');
   const clearAllFilters = useCallback(() => {
@@ -992,6 +995,8 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         <QuickFilterPills
           activeFilter={quickFilter}
           onFilterChange={handleQuickFilterChange}
+          dueWeeks={dueWeeks}
+          onDueWeeksChange={handleDueWeeksChange}
           counts={quickFilterCounts}
           thresholds={riskThresholds}
           onThresholdsChange={handleThresholdsChange}
