@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { useCallback, useRef } from 'react';
 import type { RiskThresholds } from '../../../utils/taskRiskAssessment';
 import { ThresholdConfigPopover } from './ThresholdConfigPopover';
 
@@ -15,37 +14,16 @@ interface QuickFilterPillsProps {
   onThresholdsChange: (t: RiskThresholds) => void;
 }
 
-const PILLS: { type: QuickFilterType; label: string; tint?: 'danger' | 'warning'; hasDueDropdown?: boolean }[] = [
+const PILLS: { type: QuickFilterType; label: string; tint?: 'danger' | 'warning' }[] = [
   { type: 'all', label: 'All' },
-  { type: 'due', label: 'Due', hasDueDropdown: true },
   { type: 'late', label: 'Late', tint: 'danger' },
   { type: 'at_risk', label: 'At Risk', tint: 'warning' },
   { type: 'my_tasks', label: 'My Tasks' },
   { type: 'unassigned', label: 'Unassigned' },
 ];
 
-const DUE_OPTIONS = [
-  { weeks: 1, label: '1 Week' },
-  { weeks: 2, label: '2 Weeks' },
-  { weeks: 3, label: '3 Weeks' },
-  { weeks: 4, label: '4 Weeks' },
-];
-
 export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDueWeeksChange, counts, thresholds, onThresholdsChange }: QuickFilterPillsProps) {
   const tablistRef = useRef<HTMLDivElement>(null);
-  const [dueDropdownOpen, setDueDropdownOpen] = useState(false);
-  const dueDropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!dueDropdownOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (dueDropdownRef.current && !dueDropdownRef.current.contains(e.target as Node)) setDueDropdownOpen(false);
-    };
-    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setDueDropdownOpen(false); };
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleEsc);
-    return () => { document.removeEventListener('mousedown', handleClick); document.removeEventListener('keydown', handleEsc); };
-  }, [dueDropdownOpen]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -56,9 +34,8 @@ export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDue
     if (e.key === 'ArrowRight') nextIdx = (currentIdx + 1) % buttons.length;
     if (e.key === 'ArrowLeft') nextIdx = (currentIdx - 1 + buttons.length) % buttons.length;
     buttons[nextIdx].focus();
-    onFilterChange(PILLS[nextIdx].type);
     e.preventDefault();
-  }, [onFilterChange]);
+  }, []);
 
   const pillClass = (isActive: boolean, hasDangerTint: boolean, hasWarningTint: boolean) =>
     isActive
@@ -78,6 +55,8 @@ export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDue
           ? 'bg-orange-200 dark:bg-orange-800/50 text-orange-800 dark:text-orange-200'
           : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400';
 
+  const isDueActive = activeFilter === 'due';
+
   return (
     <div className="flex items-center gap-1.5">
       <div
@@ -87,56 +66,58 @@ export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDue
         className="flex items-center gap-1 overflow-x-auto scrollbar-thin pb-0.5"
         onKeyDown={handleKeyDown}
       >
-        {PILLS.map((pill) => {
+        {/* All pill */}
+        <button
+          role="tab"
+          aria-selected={activeFilter === 'all'}
+          tabIndex={activeFilter === 'all' ? 0 : -1}
+          onClick={() => onFilterChange('all')}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border whitespace-nowrap transition-colors ${pillClass(activeFilter === 'all', false, false)}`}
+        >
+          All
+        </button>
+
+        {/* Due pill with native select */}
+        <div className="inline-flex items-center">
+          <button
+            role="tab"
+            aria-selected={isDueActive}
+            tabIndex={isDueActive ? 0 : -1}
+            onClick={() => onFilterChange('due')}
+            className={`inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-medium rounded-l-full border border-r-0 whitespace-nowrap transition-colors ${pillClass(isDueActive, false, false)}`}
+          >
+            Due
+            <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full ${badgeClass(isDueActive, false, false)}`}>
+              {counts.due}
+            </span>
+          </button>
+          <select
+            value={dueWeeks}
+            onChange={(e) => {
+              onDueWeeksChange(Number(e.target.value));
+              onFilterChange('due');
+            }}
+            className={`py-1 pl-1 pr-5 text-xs font-medium rounded-r-full border border-l-0 cursor-pointer appearance-none bg-no-repeat transition-colors ${
+              isDueActive
+                ? 'bg-primary-600 text-white border-primary-600'
+                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+            }`}
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='${isDueActive ? 'white' : '%239ca3af'}' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundPosition: 'right 4px center' }}
+            aria-label="Due date range"
+          >
+            <option value={1}>1w</option>
+            <option value={2}>2w</option>
+            <option value={3}>3w</option>
+            <option value={4}>4w</option>
+          </select>
+        </div>
+
+        {/* Remaining pills */}
+        {PILLS.slice(1).map((pill) => {
           const isActive = activeFilter === pill.type;
           const count = counts[pill.type];
           const hasDangerTint = !isActive && pill.tint === 'danger' && count > 0;
           const hasWarningTint = !isActive && pill.tint === 'warning' && count > 0;
-
-          if (pill.hasDueDropdown) {
-            const dueLabel = `Due ${dueWeeks}w`;
-            return (
-              <div key={pill.type} className="relative" ref={dueDropdownRef}>
-                <div className="inline-flex items-center">
-                  <button
-                    role="tab"
-                    aria-selected={isActive}
-                    tabIndex={isActive ? 0 : -1}
-                    onClick={() => { onFilterChange('due'); }}
-                    className={`inline-flex items-center gap-1 pl-2.5 pr-1 py-1 text-xs font-medium rounded-l-full border border-r-0 whitespace-nowrap transition-colors ${pillClass(isActive, false, false)}`}
-                  >
-                    {dueLabel}
-                    <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full ${badgeClass(isActive, false, false)}`}>
-                      {count}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setDueDropdownOpen(!dueDropdownOpen)}
-                    aria-label="Change due date range"
-                    aria-expanded={dueDropdownOpen}
-                    className={`inline-flex items-center justify-center px-1.5 py-1 text-xs rounded-r-full border border-l-0 transition-colors ${pillClass(isActive, false, false)}`}
-                  >
-                    <ChevronDown className={`w-3 h-3 ${isActive ? 'text-white/70' : 'text-gray-400'}`} />
-                  </button>
-                </div>
-                {dueDropdownOpen && (
-                  <div className="absolute left-0 top-full mt-1 z-50 w-28 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1">
-                    {DUE_OPTIONS.map(opt => (
-                      <button
-                        key={opt.weeks}
-                        onClick={() => { onDueWeeksChange(opt.weeks); setDueDropdownOpen(false); if (activeFilter !== 'due') onFilterChange('due'); }}
-                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                          dueWeeks === opt.weeks ? 'font-semibold text-primary-600 dark:text-primary-400' : 'text-gray-700 dark:text-gray-300'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          }
 
           return (
             <button
@@ -148,11 +129,9 @@ export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDue
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border whitespace-nowrap transition-colors ${pillClass(isActive, hasDangerTint, hasWarningTint)}`}
             >
               {pill.label}
-              {pill.type !== 'all' && (
-                <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full ${badgeClass(isActive, hasDangerTint, hasWarningTint)}`}>
-                  {count}
-                </span>
-              )}
+              <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full ${badgeClass(isActive, hasDangerTint, hasWarningTint)}`}>
+                {count}
+              </span>
             </button>
           );
         })}
