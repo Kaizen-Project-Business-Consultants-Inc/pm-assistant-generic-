@@ -153,6 +153,13 @@ export class ApprovalWorkflowService {
     return approvalWorkflowRepository.findChangeRequests(projectId, filters);
   }
 
+  /** Lightweight CR lookup — returns basic fields or null, no joins/enrichment. */
+  async getChangeRequestRaw(id: string): Promise<{ projectId: string; status: string; requestedBy: string } | null> {
+    const row = await approvalWorkflowRepository.findChangeRequestRaw(id);
+    if (!row) return null;
+    return { projectId: row.project_id, status: row.status, requestedBy: row.requested_by };
+  }
+
   async getChangeRequestDetail(id: string): Promise<{
     changeRequest: ChangeRequest;
     approvalHistory: (ApprovalAction & { stepName?: string; stepRole?: string })[];

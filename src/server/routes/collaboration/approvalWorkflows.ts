@@ -6,6 +6,7 @@ import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
 import { projectMemberService } from '../../services/ProjectMemberService';
+import { projectService } from '../../services/ProjectService';
 import logger from '../../utils/logger';
 
 const workflowStepSchema = z.object({
@@ -49,20 +50,35 @@ const actOnStepSchema = z.object({
 async function requireCRProjectAccess(request: FastifyRequest, reply: FastifyReply, minRole: 'viewer' | 'editor' = 'viewer') {
   const user = request.user!;
   const { id } = request.params as { id: string };
-  const detail = await approvalWorkflowService.getChangeRequestDetail(id).catch(() => null);
-  if (!detail) return reply.status(404).send({ error: 'Change request not found' });
+
+  // Use lightweight raw lookup instead of full getChangeRequestDetail (avoids 3 queries)
+  const cr = await approvalWorkflowService.getChangeRequestRaw(id);
+  if (!cr) return reply.status(404).send({ error: 'Change request not found' });
 
   // Global roles bypass
   if (['admin', 'pmo'].includes(user.role)) return;
   if (user.role === 'executive' && minRole === 'viewer') return;
 
-  const membership = await projectMemberService.findMembership(detail.changeRequest.projectId, user.userId);
-  if (!membership) return reply.status(404).send({ error: 'Not found' });
-
-  const hierarchy: Record<string, number> = { owner: 4, manager: 3, editor: 2, viewer: 1 };
-  if ((hierarchy[membership.role] || 0) < (hierarchy[minRole] || 0)) {
-    return reply.status(403).send({ error: 'Insufficient project role' });
+  // Check project membership
+  const membership = await projectMemberService.findMembership(cr.projectId, user.userId);
+  if (membership) {
+    const hierarchy: Record<string, number> = { owner: 4, manager: 3, editor: 2, viewer: 1 };
+    if ((hierarchy[membership.role] || 0) < (hierarchy[minRole] || 0)) {
+      return reply.status(403).send({ error: 'Insufficient project role' });
+    }
+    return;
   }
+
+  // Demo project: allow viewer-level access to all authenticated users
+  const project = await projectService.findById(cr.projectId);
+  if (project?.isDemo) {
+    if (minRole !== 'viewer') {
+      return reply.status(403).send({ error: 'Read-only', message: 'Demo projects are read-only' });
+    }
+    return;
+  }
+
+  return reply.status(404).send({ error: 'Not found' });
 }
 
 export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
@@ -163,7 +179,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
     } catch (error) {
       const msg = error instanceof Error ? error.message : '';
       if (msg.includes('not found')) return reply.status(404).send({ error: msg });
-      logger.error('Get change request detail error', { error });
+      logger.error('Get change request detail error', { error: error instanceof Error ? { message: error.message, stack: error.stack } : error });
       return reply.status(500).send({ error: 'Failed to fetch change request detail' });
     }
   });
