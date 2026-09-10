@@ -3843,7 +3843,7 @@ Conditions can be nested into AND/OR groups to express complex logic (e.g., "sta
 
 ### Actions
 
-10 action types are available:
+11 action types are available:
 
 | Action | Description |
 |--------|-------------|
@@ -3857,6 +3857,32 @@ Conditions can be nested into AND/OR groups to express complex logic (e.g., "sta
 | `escalate` | Escalate to a manager or owner with a message |
 | `call_webhook` | POST a JSON payload to an external URL |
 | `log_audit` | Write a structured entry to the audit trail |
+| `auto_assign` | Automatically assign a task to a resource based on strategy |
+
+### Auto-Assign Strategies
+
+The `auto_assign` action supports three strategies for automatic task assignment:
+
+| Strategy | Description |
+|----------|-------------|
+| `role_match` (default) | Match task type to resource role (e.g., bugs → developers/QA, epics → PMs), then pick the least busy among matches |
+| `least_busy` | Assign to the resource with the fewest active (non-completed) tasks in the project |
+| `round_robin` | Distribute evenly by rotating through active resources |
+
+If no suitable resource is found, falls back to an optional `fallbackUserId`. Only applies to tasks — skips if the task already has an assignee.
+
+### Dynamic Recipient Resolution
+
+Actions that send notifications or emails (`notify`, `send_email`, `escalate`) support dynamic recipient tokens that resolve at execution time:
+
+| Token | Resolves To |
+|-------|-------------|
+| `assignee` | The user currently assigned to the triggering entity |
+| `creator` | The user who created the triggering entity |
+| `project_owner` | The user who owns the project |
+| `trigger_user` | The user whose action triggered the automation |
+
+You can also use raw email addresses or user UUIDs. Multiple recipients are supported.
 
 ### Safety Guards
 
@@ -3869,6 +3895,24 @@ Conditions can be nested into AND/OR groups to express complex logic (e.g., "sta
 - **Enable/disable toggle** — rules can be turned on or off without deleting them
 - **Dry-run / test** — execute a rule against sample data to verify conditions and preview actions before enabling
 - **Execution history** — every run is logged with trigger event, condition evaluation result, actions taken, outcome, and timestamp
+
+### Frontend UI
+
+The Automations tab is available on the project detail page (in the overflow tabs menu). It provides:
+
+- **Automation list** — table view with status badges (draft/active/disabled/error), enable/disable toggles, and delete with confirmation
+- **Create/edit form** — guided form with:
+  - Trigger event type selector grouped by entity (Task, Project, Risk, Sprint, Change Request, Proposal)
+  - Condition builder with nested AND/OR groups, 14 operators, and max depth of 2
+  - Action editor with per-action-type parameter fields, labels, placeholders, and help text
+  - Template variable reference panel showing available `{{entity.*}}`, `{{project.*}}`, `{{event.*}}`, and `{{previous.*}}` variables
+  - Dynamic recipient picker for notify/email/escalate actions with token options (assignee, creator, project_owner, trigger_user)
+  - Safety limits configuration (max runs/day, cooldown seconds)
+- **Automation detail** — summary cards (status, trigger, total runs, last triggered), dry-run testing, and execution history table
+
+### Resource Picker
+
+The schedule table view and Gantt chart now use a searchable dropdown for the Assigned To field instead of free-text input. This saves the user's ID (not name), enabling automations to resolve the assignee's email for notifications and emails.
 
 ### API Endpoints
 

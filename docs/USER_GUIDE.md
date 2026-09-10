@@ -3118,8 +3118,34 @@ The Automation Engine lets you define event-driven rules at the project level �
 | Escalate | Sends an escalation message to a manager or owner |
 | Call Webhook | POSTs a JSON payload to an external URL |
 | Log Audit | Writes a structured entry to the audit trail |
+| Auto-Assign | Automatically assigns an unassigned task to a resource based on strategy |
 
 6. Click **Save** to create the rule. It is enabled by default.
+
+### Dynamic Recipients
+
+Actions that send notifications or emails (Notify, Send Email, Escalate) support dynamic recipient tokens that resolve at execution time:
+
+- **assignee** — the user currently assigned to the triggering task/entity
+- **creator** — the user who created the triggering entity
+- **project_owner** — the user who owns the project
+- **trigger_user** — the user whose action triggered the automation
+
+Select tokens from the dropdown when configuring recipient fields. You can also enter raw email addresses or combine multiple recipients.
+
+### Auto-Assign
+
+The Auto-Assign action automatically assigns newly created tasks to a team member. Three strategies are available:
+
+- **Role Match** (default) — maps the task type to likely resource roles (e.g., bugs go to developers/QA, epics go to PMs) and picks the least busy match
+- **Least Busy** — assigns to the resource with the fewest active tasks in the project
+- **Round Robin** — distributes tasks evenly across all active resources
+
+Auto-assign only applies to tasks and skips tasks that already have an assignee. You can set an optional fallback user if no suitable resource is found.
+
+### Resource Picker
+
+When assigning tasks in the schedule table view or Gantt chart, the Assigned To field uses a searchable dropdown showing all project resources by name and role. This saves the user's ID (not just a name), which enables automations to resolve the assignee's email for notifications.
 
 ### Testing Before Enabling
 
