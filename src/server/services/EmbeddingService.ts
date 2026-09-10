@@ -6,7 +6,7 @@ import { embeddingRepository } from '../database/EmbeddingRepository';
 // Types
 // ---------------------------------------------------------------------------
 
-export type EmbeddingDocumentType = 'lesson' | 'meeting' | 'knowledge_base';
+export type EmbeddingDocumentType = 'lesson' | 'meeting' | 'knowledge_base' | 'project_document';
 
 export interface EmbeddingRow {
   id: string;

@@ -46,8 +46,9 @@ const TimeTrackingTab = lazy(() => import('../components/project/TimeTrackingTab
 const BudgetTab = lazy(() => import('../components/project/BudgetTab').then(m => ({ default: m.BudgetTab })));
 const AttachmentPanel = lazy(() => import('../components/attachments/AttachmentPanel').then(m => ({ default: m.AttachmentPanel })));
 const AutomationsTab = lazy(() => import('./ProjectDetailPage/AutomationsTab').then(m => ({ default: m.AutomationsTab })));
+const DocumentsTab = lazy(() => import('./ProjectDetailPage/DocumentsTab').then(m => ({ default: m.DocumentsTab })));
 
-type Tab = 'overview' | 'schedule' | 'raid' | 'ai-insights' | 'performance' | 'scenarios' | 'team' | 'agent-activity' | 'change-requests' | 'sprints' | 'backlog' | 'resources' | 'time' | 'files' | 'budget' | 'automations';
+type Tab = 'overview' | 'schedule' | 'raid' | 'ai-insights' | 'performance' | 'scenarios' | 'team' | 'agent-activity' | 'change-requests' | 'sprints' | 'backlog' | 'resources' | 'time' | 'files' | 'budget' | 'automations' | 'documents';
 
 
 const statusStyles: Record<string, { label: string; color: string }> = {
@@ -77,7 +78,7 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const validTabs: Tab[] = ['overview', 'schedule', 'raid', 'ai-insights', 'performance', 'scenarios', 'team', 'agent-activity', 'change-requests', 'sprints', 'backlog', 'resources', 'time', 'files', 'budget', 'automations'];
+  const validTabs: Tab[] = ['overview', 'schedule', 'raid', 'ai-insights', 'performance', 'scenarios', 'team', 'agent-activity', 'change-requests', 'sprints', 'backlog', 'resources', 'time', 'files', 'budget', 'automations', 'documents'];
   const tabParam = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTabState] = useState<Tab>(tabParam && validTabs.includes(tabParam) ? tabParam : 'overview');
   const setActiveTab = (tab: Tab) => {
@@ -655,6 +656,7 @@ export function ProjectDetailPage() {
           </div>
         )}
         {activeTab === 'automations' && <AutomationsTab projectId={id!} />}
+        {activeTab === 'documents' && <DocumentsTab projectId={id!} />}
       </Suspense>
 
       {project && (

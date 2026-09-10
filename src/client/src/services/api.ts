@@ -3381,6 +3381,49 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     const response = await this.api.post(`/projects/${projectId}/automations/${id}/test`, data || {});
     return response.data;
   }
+  // -------------------------------------------------------------------------
+  // Document Intelligence
+  // -------------------------------------------------------------------------
+
+  async uploadProjectDocument(projectId: string, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post(`/projects/${projectId}/documents/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async getProjectDocuments(projectId: string, filters?: { documentType?: string; projectPhase?: string; search?: string }) {
+    const params: Record<string, string> = {};
+    if (filters?.documentType) params.documentType = filters.documentType;
+    if (filters?.projectPhase) params.projectPhase = filters.projectPhase;
+    if (filters?.search) params.search = filters.search;
+    const response = await this.api.get(`/projects/${projectId}/documents`, { params });
+    return response.data;
+  }
+
+  async getProjectDocument(projectId: string, documentId: string) {
+    const response = await this.api.get(`/projects/${projectId}/documents/${documentId}`);
+    return response.data;
+  }
+
+  async searchProjectDocuments(projectId: string, query: string, topK?: number) {
+    const params: Record<string, string> = { q: query };
+    if (topK) params.topK = String(topK);
+    const response = await this.api.get(`/projects/${projectId}/documents/search`, { params });
+    return response.data;
+  }
+
+  async deleteProjectDocument(projectId: string, documentId: string) {
+    const response = await this.api.delete(`/projects/${projectId}/documents/${documentId}`);
+    return response.data;
+  }
+
+  async reprocessProjectDocument(projectId: string, documentId: string) {
+    const response = await this.api.post(`/projects/${projectId}/documents/${documentId}/reprocess`);
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();
