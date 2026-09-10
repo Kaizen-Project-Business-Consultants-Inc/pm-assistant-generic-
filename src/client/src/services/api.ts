@@ -3327,6 +3327,60 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     const response = await this.api.put('/users/me/view-preferences', prefs);
     return response.data;
   }
+
+  // -------------------------------------------------------------------------
+  // Automations
+  // -------------------------------------------------------------------------
+
+  async getAutomationEventTypes(projectId: string) {
+    const response = await this.api.get(`/projects/${projectId}/automations/event-types`);
+    return response.data;
+  }
+
+  async getAutomations(projectId: string) {
+    const response = await this.api.get(`/projects/${projectId}/automations`);
+    return response.data;
+  }
+
+  async getAutomation(projectId: string, id: string) {
+    const response = await this.api.get(`/projects/${projectId}/automations/${id}`);
+    return response.data;
+  }
+
+  async createAutomation(projectId: string, data: Record<string, unknown>) {
+    const response = await this.api.post(`/projects/${projectId}/automations`, data);
+    return response.data;
+  }
+
+  async updateAutomation(projectId: string, id: string, data: Record<string, unknown>) {
+    const response = await this.api.put(`/projects/${projectId}/automations/${id}`, data);
+    return response.data;
+  }
+
+  async deleteAutomation(projectId: string, id: string) {
+    const response = await this.api.delete(`/projects/${projectId}/automations/${id}`);
+    return response.data;
+  }
+
+  async enableAutomation(projectId: string, id: string) {
+    const response = await this.api.post(`/projects/${projectId}/automations/${id}/enable`);
+    return response.data;
+  }
+
+  async disableAutomation(projectId: string, id: string) {
+    const response = await this.api.post(`/projects/${projectId}/automations/${id}/disable`);
+    return response.data;
+  }
+
+  async getAutomationExecutions(projectId: string, id: string, limit = 20, offset = 0) {
+    const response = await this.api.get(`/projects/${projectId}/automations/${id}/executions`, { params: { limit, offset } });
+    return response.data;
+  }
+
+  async testAutomation(projectId: string, id: string, data?: { eventPayload?: Record<string, unknown>; entityId?: string }) {
+    const response = await this.api.post(`/projects/${projectId}/automations/${id}/test`, data || {});
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();

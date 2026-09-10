@@ -45,8 +45,9 @@ const BacklogView = lazy(() => import('../components/backlog/BacklogView').then(
 const TimeTrackingTab = lazy(() => import('../components/project/TimeTrackingTab').then(m => ({ default: m.TimeTrackingTab })));
 const BudgetTab = lazy(() => import('../components/project/BudgetTab').then(m => ({ default: m.BudgetTab })));
 const AttachmentPanel = lazy(() => import('../components/attachments/AttachmentPanel').then(m => ({ default: m.AttachmentPanel })));
+const AutomationsTab = lazy(() => import('./ProjectDetailPage/AutomationsTab').then(m => ({ default: m.AutomationsTab })));
 
-type Tab = 'overview' | 'schedule' | 'raid' | 'ai-insights' | 'performance' | 'scenarios' | 'team' | 'agent-activity' | 'change-requests' | 'sprints' | 'backlog' | 'resources' | 'time' | 'files' | 'budget';
+type Tab = 'overview' | 'schedule' | 'raid' | 'ai-insights' | 'performance' | 'scenarios' | 'team' | 'agent-activity' | 'change-requests' | 'sprints' | 'backlog' | 'resources' | 'time' | 'files' | 'budget' | 'automations';
 
 
 const statusStyles: Record<string, { label: string; color: string }> = {
@@ -76,7 +77,7 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const validTabs: Tab[] = ['overview', 'schedule', 'raid', 'ai-insights', 'performance', 'scenarios', 'team', 'agent-activity', 'change-requests', 'sprints', 'backlog', 'resources', 'time', 'files', 'budget'];
+  const validTabs: Tab[] = ['overview', 'schedule', 'raid', 'ai-insights', 'performance', 'scenarios', 'team', 'agent-activity', 'change-requests', 'sprints', 'backlog', 'resources', 'time', 'files', 'budget', 'automations'];
   const tabParam = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTabState] = useState<Tab>(tabParam && validTabs.includes(tabParam) ? tabParam : 'overview');
   const setActiveTab = (tab: Tab) => {
@@ -649,6 +650,7 @@ export function ProjectDetailPage() {
             <AttachmentPanel entityType="project" entityId={id!} />
           </div>
         )}
+        {activeTab === 'automations' && <AutomationsTab projectId={id!} />}
       </Suspense>
 
       {project && (
