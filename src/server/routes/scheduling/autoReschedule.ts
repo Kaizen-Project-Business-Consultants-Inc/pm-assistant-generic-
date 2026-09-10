@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { autoRescheduleService } from '../../services/AutoRescheduleService';
 import { ProposedChangeSchema } from '../../schemas/autoRescheduleSchemas';
 import { webhookService } from '../../services/WebhookService';
+import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
@@ -85,6 +86,7 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
       const userId = user.userId;
       const proposal = await autoRescheduleService.generateProposal(scheduleId, userId);
       webhookService.dispatch('proposal.created', { proposal }, userId);
+      automationEventBus.emit({ type: 'proposal.created', entityType: 'proposal', entityId: proposal.id, projectId: '', userId, payload: proposal as any, timestamp: new Date().toISOString() }).catch(() => {});
       return { proposal };
     } catch (error: any) {
       logger.error('Generate proposal error: ' + (error?.message || error), { stack: error?.stack });
@@ -111,6 +113,7 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
       }
       const user = request.user!;
       webhookService.dispatch('proposal.accepted', { proposalId: id }, user.userId);
+      automationEventBus.emit({ type: 'proposal.accepted', entityType: 'proposal', entityId: id, projectId: '', userId: user.userId, payload: { proposalId: id }, timestamp: new Date().toISOString() }).catch(() => {});
       return { message: 'Proposal accepted and changes applied successfully' };
     } catch (error) {
       logger.error('Accept proposal error', { error });

@@ -7,6 +7,7 @@ import { baselineService } from '../../services/BaselineService';
 import { dagWorkflowService } from '../../services/DagWorkflowService';
 import { WebSocketService } from '../../services/WebSocketService';
 import { webhookService } from '../../services/WebhookService';
+import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import { recurrenceService } from '../../services/RecurrenceService';
 import { authMiddleware } from '../../middleware/auth';
@@ -198,6 +199,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const schedule = await scheduleService.findById(scheduleId);
       WebSocketService.broadcast({ type: 'task_created', payload: { task } }, schedule?.projectId);
       webhookService.dispatch('task.created', { task }, user?.userId);
+      automationEventBus.emit({ type: 'task.created', entityType: 'task', entityId: task.id, projectId: schedule?.projectId || '', userId: user.userId, payload: task, timestamp: new Date().toISOString() }).catch(() => {});
       return reply.status(201).send({ task });
     } catch (error) {
       if (error instanceof DependencyValidationError) {
@@ -252,6 +254,19 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const user = request.user!;
       webhookService.dispatch('task.updated', { task, cascadedChanges }, user?.userId);
 
+      // Automation event bus — emit task.updated + derived events
+      if (schedule?.projectId) {
+        const autoEvent = { entityType: 'task' as const, entityId: task.id, projectId: schedule.projectId, userId: user.userId, payload: task, previous: oldTask as any, timestamp: new Date().toISOString() };
+        automationEventBus.emit({ ...autoEvent, type: 'task.updated' }).catch(() => {});
+        if (oldTask.status !== task.status) {
+          automationEventBus.emit({ ...autoEvent, type: 'task.status_changed' }).catch(() => {});
+          if (task.status === 'completed') automationEventBus.emit({ ...autoEvent, type: 'task.completed' }).catch(() => {});
+        }
+        if ((oldTask.assignedTo ?? '') !== (task.assignedTo ?? '')) {
+          automationEventBus.emit({ ...autoEvent, type: 'task.assigned' }).catch(() => {});
+        }
+      }
+
       // Slack notification for completed tasks
       if (task.status === 'completed' && schedule?.projectId) {
         slackEventDispatcher.dispatchToSlack('task.updated', { task }, schedule.projectId);
@@ -280,6 +295,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       WebSocketService.broadcast({ type: 'task_deleted', payload: { taskId } }, schedule?.projectId);
       const user = request.user!;
       webhookService.dispatch('task.deleted', { taskId }, user?.userId);
+      automationEventBus.emit({ type: 'task.deleted', entityType: 'task', entityId: taskId, projectId: schedule?.projectId || '', userId: user.userId, payload: { taskId }, timestamp: new Date().toISOString() }).catch(() => {});
       return { message: 'Task deleted successfully' };
     } catch (error) {
       logger.error('Delete task error', { error });

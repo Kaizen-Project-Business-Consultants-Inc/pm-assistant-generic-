@@ -6,6 +6,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
+import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import { PredictiveIntelligenceService } from '../../services/predictiveIntelligence';
 import { lessonsLearnedService } from '../../services/LessonsLearnedService';
@@ -169,6 +170,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
       const risk = await riskService.create({ ...body, projectId, createdBy: userId }, userRole);
       webhookService.dispatch('risk.created', { risk, projectId }, userId);
+      automationEventBus.emit({ type: 'risk.created', entityType: 'risk', entityId: risk.id, projectId, userId, payload: risk as any, timestamp: new Date().toISOString() }).catch(() => {});
       slackEventDispatcher.dispatchToSlack('risk.created', { risk, projectId }, projectId);
       return reply.status(201).send({ data: risk });
     } catch (err) {
@@ -199,7 +201,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
     ],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { riskId } = request.params as { projectId: string; riskId: string };
+      const { projectId, riskId } = request.params as { projectId: string; riskId: string };
       const body = updateRiskSchema.parse(request.body);
       const userId = request.user!.userId;
       const userRole = request.user!.role;
@@ -216,6 +218,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
       const risk = await riskService.update(riskId, body, userId);
       if (!risk) return reply.status(404).send({ error: 'RAID item not found' });
       webhookService.dispatch('risk.updated', { risk }, userId);
+      automationEventBus.emit({ type: 'risk.updated', entityType: 'risk', entityId: riskId, projectId, userId, payload: risk as any, timestamp: new Date().toISOString() }).catch(() => {});
       return reply.send({ data: risk });
     } catch (err) {
       if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });

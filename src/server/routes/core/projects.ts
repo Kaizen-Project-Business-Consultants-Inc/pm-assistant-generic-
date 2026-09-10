@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
+import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import { auditLedgerService } from '../../services/AuditLedgerService';
 import { scheduleService } from '../../services/ScheduleService';
@@ -167,6 +168,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
         userId,
       });
       webhookService.dispatch('project.created', { project }, userId);
+      automationEventBus.emit({ type: 'project.created', entityType: 'project', entityId: project.id, projectId: project.id, userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});
       return reply.status(201).send({ project: toProjectDTO(project) });
     } catch (error) {
       logger.error('Create project error', { error });
@@ -210,6 +212,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Project not found', message: 'Project does not exist or you do not have access' });
       }
       webhookService.dispatch('project.updated', { project }, userId);
+      automationEventBus.emit({ type: 'project.updated', entityType: 'project', entityId: id, projectId: id, userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});
       slackEventDispatcher.dispatchToSlack('project.updated', { project }, id);
       return { project: toProjectDTO(project) };
     } catch (error) {
@@ -251,6 +254,8 @@ export async function projectRoutes(fastify: FastifyInstance) {
       }
 
       webhookService.dispatch('project.updated', { project }, user.userId);
+      automationEventBus.emit({ type: 'project.updated', entityType: 'project', entityId: id, projectId: id, userId: user.userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});
+      automationEventBus.emit({ type: 'project.status_changed', entityType: 'project', entityId: id, projectId: id, userId: user.userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});
       slackEventDispatcher.dispatchToSlack('project.updated', { project }, id);
       return { project };
     } catch (error) {

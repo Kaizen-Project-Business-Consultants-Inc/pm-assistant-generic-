@@ -3811,3 +3811,80 @@ Admins manage feedback at `/admin/feedback`:
 ### Database
 
 Migration `106` adds `admin_reply`, `admin_reply_at`, `admin_reply_by`, and `screenshot_data` columns to the `feedback` table (control plane DB).
+
+## 58. Automation Engine
+
+An event-driven rules engine that lets users define automations at the project level: when a trigger event fires, conditions are evaluated, and if they pass, one or more actions execute automatically.
+
+### Triggers
+
+21 event types across 6 entities:
+
+| Entity | Events |
+|--------|--------|
+| **task** | created, updated, deleted, status_changed, assigned, completed |
+| **project** | created, updated, status_changed |
+| **risk** | created, updated, status_changed |
+| **sprint** | created, started, completed |
+| **change_request** | created, approved, rejected, returned, withdrawn |
+| **proposal** | created, accepted |
+
+### Conditions
+
+Rules support 14 condition operators with nested AND/OR logic:
+
+- **Comparison:** `equals`, `not_equals`, `greater_than`, `less_than`, `greater_equal`, `less_equal`
+- **String:** `contains`, `not_contains`
+- **Set:** `in`, `not_in`
+- **Date:** `before`, `after`
+- **Null checks:** `is_empty`, `is_not_empty`
+
+Conditions can be nested into AND/OR groups to express complex logic (e.g., "status equals 'at_risk' AND priority is 'high' OR budget exceeded 90%").
+
+### Actions
+
+10 action types are available:
+
+| Action | Description |
+|--------|-------------|
+| `create_task` | Create a new task in the project with specified fields |
+| `notify` | Send an in-app notification to specified users or roles |
+| `send_email` | Send an email to specified recipients |
+| `add_risk` | Add a RAID risk item with severity and category |
+| `change_status` | Update the status of the triggering entity |
+| `update_field` | Set a field value on the triggering entity |
+| `add_comment` | Post a comment on the triggering entity |
+| `escalate` | Escalate to a manager or owner with a message |
+| `call_webhook` | POST a JSON payload to an external URL |
+| `log_audit` | Write a structured entry to the audit trail |
+
+### Safety Guards
+
+- **Max runs/day** — configurable cap (default 50) prevents runaway automations from flooding the system
+- **Cooldown** — minimum seconds between successive executions of the same rule
+- **Recursion depth limit** — automations triggered by other automations are capped at depth 3 to prevent infinite loops
+
+### Management
+
+- **Enable/disable toggle** — rules can be turned on or off without deleting them
+- **Dry-run / test** — execute a rule against sample data to verify conditions and preview actions before enabling
+- **Execution history** — every run is logged with trigger event, condition evaluation result, actions taken, outcome, and timestamp
+
+### API Endpoints
+
+All endpoints are scoped to a project: `/api/v1/projects/:projectId/automations/`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | List all automations for the project |
+| POST | `/` | Create a new automation rule |
+| GET | `/:id` | Get a single automation rule |
+| PUT | `/:id` | Update a rule (trigger, conditions, actions, settings) |
+| DELETE | `/:id` | Delete a rule |
+| POST | `/:id/enable` | Enable a rule |
+| POST | `/:id/disable` | Disable a rule |
+| GET | `/:id/executions` | List execution history for a rule |
+| POST | `/:id/test` | Dry-run a rule with sample payload |
+| GET | `/event-types` | List available trigger event types and field catalog |
+| POST | `/trigger` | Manually fire a trigger event (for testing) |
+| GET | `/stats` | Aggregated run counts and error rates across all rules |

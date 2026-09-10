@@ -67,6 +67,7 @@ import { lessonsLearnedRoutes } from './routes/collaboration/lessonsLearned';
 import { intakeFormRoutes } from './routes/collaboration/intakeForms';
 import { riskRoutes } from './routes/collaboration/risks';
 import { goalRoutes } from './routes/goals';
+import { automationRoutes } from './routes/automation/automations';
 
 // Reporting
 import { reportBuilderRoutes } from './routes/reporting/reportBuilder';
@@ -184,6 +185,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(intakeFormRoutes, { prefix: '/api/v1/intake' });
   await fastify.register(riskRoutes, { prefix: '/api/v1/projects' });
   await fastify.register(goalRoutes, { prefix: '/api/v1/goals' });
+  await fastify.register(automationRoutes, { prefix: '/api/v1/projects' });
 
   // Reporting
   await fastify.register(reportBuilderRoutes, { prefix: '/api/v1/report-builder' });

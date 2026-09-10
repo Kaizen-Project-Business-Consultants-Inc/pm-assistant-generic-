@@ -3088,6 +3088,61 @@ You'll also receive an **email notification** when an admin responds to your fee
 
 ---
 
+## 39. Automation Engine
+
+The Automation Engine lets you define event-driven rules at the project level — no code required. A rule has three parts: a **trigger** (what happened), **conditions** (whether to proceed), and **actions** (what to do).
+
+### Creating an Automation
+
+1. Open a project and navigate to the **Automations** tab (or access it from project Settings).
+2. Click **New Automation**.
+3. Choose a **trigger event** — the moment that starts the rule. Triggers are grouped by entity:
+   - **Task** — created, updated, deleted, status changed, assigned, completed
+   - **Project** — created, updated, status changed
+   - **Risk** — created, updated, status changed
+   - **Sprint** — created, started, completed
+   - **Change Request** — created, approved, rejected, returned, withdrawn
+   - **Proposal** — created, accepted
+4. Add **conditions** (optional) — filters that must all pass before actions run. You can nest conditions in AND/OR groups. Available operators include equals, not_equals, contains, not_contains, greater_than, less_than, greater_equal, less_equal, in, not_in, before, after, is_empty, and is_not_empty.
+5. Add one or more **actions** to execute when conditions pass:
+
+| Action | What it does |
+|--------|--------------|
+| Create Task | Creates a new task in the project |
+| Notify | Sends an in-app notification to specified users or roles |
+| Send Email | Sends an email to specified recipients |
+| Add Risk | Creates a RAID risk item |
+| Change Status | Updates the status of the triggering entity |
+| Update Field | Sets a field value on the triggering entity |
+| Add Comment | Posts a comment on the triggering entity |
+| Escalate | Sends an escalation message to a manager or owner |
+| Call Webhook | POSTs a JSON payload to an external URL |
+| Log Audit | Writes a structured entry to the audit trail |
+
+6. Click **Save** to create the rule. It is enabled by default.
+
+### Testing Before Enabling
+
+Use the **Test** (dry-run) button to execute the rule against sample data. The result shows which conditions passed or failed, and what actions would have fired — without making any actual changes.
+
+### Execution History
+
+Click **History** on any rule to see a log of every time it ran: the trigger event, condition outcome, actions taken, and whether the run succeeded or errored.
+
+### Enable / Disable
+
+Toggle the switch on any rule to pause it without deleting it. Disabled rules do not fire, even if their trigger event occurs.
+
+### Safety Limits
+
+The engine has built-in guards to prevent runaway automation:
+
+- **Max 50 runs/day** per rule (configurable by admins) — the rule silently skips additional triggers once the daily cap is reached.
+- **Cooldown period** — a minimum wait time between successive executions of the same rule.
+- **Recursion depth limit of 3** — if an automation action triggers another automation, the chain is capped at three levels deep to prevent infinite loops.
+
+---
+
 ## Tips
 
 - **Save often** -- Always click Save after modifying schedules or tasks. Unsaved changes are lost on page refresh.

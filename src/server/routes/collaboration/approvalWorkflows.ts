@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
+import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { projectMemberService } from '../../services/ProjectMemberService';
 import { projectService } from '../../services/ProjectService';
 import logger from '../../utils/logger';
@@ -147,6 +148,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
       const body = createChangeRequestSchema.parse(request.body);
       const changeRequest = await approvalWorkflowService.createChangeRequest(projectId, { ...body, requestedBy: user.userId });
       webhookService.dispatch('change_request.created', { changeRequest, projectId }, user.userId);
+      automationEventBus.emit({ type: 'change_request.created', entityType: 'change_request', entityId: changeRequest.id, projectId, userId: user.userId, payload: changeRequest as any, timestamp: new Date().toISOString() }).catch(() => {});
       return reply.status(201).send({ changeRequest });
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
@@ -253,6 +255,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
       };
       const eventName = eventMap[action] || 'change_request.updated';
       webhookService.dispatch(eventName, { changeRequestId: id, action, comment }, user.userId);
+      automationEventBus.emit({ type: eventName, entityType: 'change_request', entityId: id, projectId: result.projectId, userId: user.userId, payload: result as any, timestamp: new Date().toISOString() }).catch(() => {});
       return { result };
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
@@ -272,6 +275,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const result = await approvalWorkflowService.withdrawChangeRequest(id, user.userId);
       webhookService.dispatch('change_request.withdrawn', { changeRequestId: id }, user.userId);
+      automationEventBus.emit({ type: 'change_request.withdrawn', entityType: 'change_request', entityId: id, projectId: result.projectId, userId: user.userId, payload: result as any, timestamp: new Date().toISOString() }).catch(() => {});
       return { result };
     } catch (error) {
       const msg = error instanceof Error ? error.message : '';

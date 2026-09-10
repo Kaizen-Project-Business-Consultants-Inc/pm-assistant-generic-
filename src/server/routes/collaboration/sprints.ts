@@ -8,6 +8,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
+import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
@@ -35,6 +36,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
       const body = createSprintSchema.parse(request.body);
       const sprint = await sprintService.create(body.projectId, body.scheduleId, body, user.userId);
       webhookService.dispatch('sprint.created', { sprint }, user.userId);
+      automationEventBus.emit({ type: 'sprint.created', entityType: 'sprint', entityId: sprint.id, projectId: sprint.projectId, userId: user.userId, payload: sprint as any, timestamp: new Date().toISOString() }).catch(() => {});
       return reply.status(201).send({ sprint });
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
@@ -146,6 +148,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.startSprint(id);
       webhookService.dispatch('sprint.started', { sprint }, request.user!.userId);
+      automationEventBus.emit({ type: 'sprint.started', entityType: 'sprint', entityId: sprint.id, projectId: sprint.projectId, userId: request.user!.userId, payload: sprint as any, timestamp: new Date().toISOString() }).catch(() => {});
       slackEventDispatcher.dispatchToSlack('sprint.started', { sprint }, sprint.projectId);
       return { sprint };
     } catch (error) {
@@ -160,6 +163,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.completeSprint(id);
       webhookService.dispatch('sprint.completed', { sprint }, request.user!.userId);
+      automationEventBus.emit({ type: 'sprint.completed', entityType: 'sprint', entityId: sprint.id, projectId: sprint.projectId, userId: request.user!.userId, payload: sprint as any, timestamp: new Date().toISOString() }).catch(() => {});
       slackEventDispatcher.dispatchToSlack('sprint.completed', { sprint }, sprint.projectId);
       return { sprint };
     } catch (error) {
