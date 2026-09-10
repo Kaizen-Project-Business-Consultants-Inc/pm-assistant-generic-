@@ -47,7 +47,46 @@ const coerceDateString = z.preprocess((val: unknown) => {
   return String(val);
 }, z.string());
 
-export const DocumentAIResponseSchema = z.object({
+// The model may wrap fields in nested objects or use camelCase.
+// This preprocessor flattens common wrapper patterns before Zod validation.
+function flattenModelOutput(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  const obj = raw as Record<string, unknown>;
+
+  // If model wrapped everything in a single top-level key like "analysis" or "result", unwrap
+  const keys = Object.keys(obj);
+  if (keys.length === 1 && typeof obj[keys[0]] === 'object' && obj[keys[0]] !== null) {
+    const inner = obj[keys[0]] as Record<string, unknown>;
+    // Only unwrap if the inner object looks like our schema (has document_type or summary)
+    if ('document_type' in inner || 'documentType' in inner || 'summary' in inner) {
+      return flattenModelOutput(inner);
+    }
+  }
+
+  // Normalize camelCase to snake_case for known fields
+  const normalized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    normalized[snakeKey] = value;
+  }
+
+  // Also merge nested "classification" or "extracted_items" sub-objects into flat
+  for (const wrapperKey of ['classification', 'extracted_items', 'extraction', 'insights', 'entity_linking']) {
+    const sub = normalized[wrapperKey];
+    if (sub && typeof sub === 'object' && !Array.isArray(sub)) {
+      const subObj = sub as Record<string, unknown>;
+      for (const [k, v] of Object.entries(subObj)) {
+        const sk = k.replace(/([A-Z])/g, '_$1').toLowerCase();
+        if (!(sk in normalized)) normalized[sk] = v;
+      }
+      delete normalized[wrapperKey];
+    }
+  }
+
+  return normalized;
+}
+
+export const DocumentAIResponseSchema = z.preprocess(flattenModelOutput, z.object({
   document_type: z.preprocess((val) => {
     // Normalize common model variations to our enum values
     const s = String(val).toLowerCase().replace(/[- ]/g, '_');
@@ -83,7 +122,7 @@ export const DocumentAIResponseSchema = z.object({
     milestones: z.array(z.object({ id: z.string(), name: z.string(), reason: z.string() })).optional().default([]),
   }).default({ tasks: [], risks: [], milestones: [] }),
   confidence: z.number().min(0).max(1).default(0.5),
-});
+}));
 
 export type DocumentAIResponse = z.infer<typeof DocumentAIResponseSchema>;
 
