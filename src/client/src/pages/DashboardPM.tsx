@@ -148,11 +148,30 @@ export function DashboardPM() {
     : 0;
 
   const overdueTasks  = analytics?.tasks?.overdue ?? 0;
-  const risks         = pred?.risks;
-  const criticalRisks = risks?.critical || 0;
-  const highRisks     = risks?.high || 0;
-  const openRisks     = risks ? criticalRisks + highRisks + (risks.medium || 0) : 0;
   const atRiskCount   = analytics?.portfolio?.atRiskProjects?.length ?? 0;
+
+  // Aggregate real RAID open risk counts across all active projects
+  const projectIds = useMemo(() => activeProjects.map(p => p.id), [activeProjects]);
+  const { data: raidStatsAll } = useQuery({
+    queryKey: ['raid-stats-all', projectIds],
+    queryFn: async () => {
+      if (!projectIds.length) return { openRisks: 0, critical: 0 };
+      const results = await Promise.all(projectIds.map(id => apiService.getRiskStats(id).catch(() => null)));
+      let openRisks = 0, critical = 0;
+      for (const r of results) {
+        const d = r?.data || r;
+        if (d) {
+          openRisks += d.openRisks || 0;
+          critical += d.critical || 0;
+        }
+      }
+      return { openRisks, critical };
+    },
+    staleTime: 120_000,
+    enabled: projectIds.length > 0,
+  });
+  const openRisks = raidStatsAll?.openRisks ?? 0;
+  const criticalRisks = raidStatsAll?.critical ?? 0;
 
   const allocated     = analytics?.budget?.totalAllocated ?? 0;
   const spent         = analytics?.budget?.totalSpent     ?? 0;
@@ -174,7 +193,7 @@ export function DashboardPM() {
 
   // D4: Risk tile — color by severity, not volume
   const riskColor: 'green' | 'amber' | 'red' | 'teal' | 'gray' =
-    criticalRisks > 0 ? 'red' : highRisks > 0 ? 'amber' : 'green';
+    criticalRisks > 0 ? 'red' : openRisks > 0 ? 'amber' : 'green';
   const riskSubtitle = criticalRisks > 0
     ? `${criticalRisks} critical`
     : atRiskCount > 0
