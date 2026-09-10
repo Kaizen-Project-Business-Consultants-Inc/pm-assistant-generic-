@@ -97,22 +97,28 @@ export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDue
             const dueLabel = `Due ${dueWeeks}w`;
             return (
               <div key={pill.type} className="relative" ref={dueDropdownRef}>
-                <button
-                  role="tab"
-                  aria-selected={isActive}
-                  tabIndex={isActive ? 0 : -1}
-                  onClick={() => onFilterChange('due')}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full border whitespace-nowrap transition-colors ${pillClass(isActive, false, false)}`}
-                >
-                  {dueLabel}
-                  <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full ${badgeClass(isActive, false, false)}`}>
-                    {count}
-                  </span>
-                  <ChevronDown
-                    className={`w-3 h-3 -mr-0.5 ${isActive ? 'text-white/70' : 'text-gray-400'}`}
-                    onClick={(e) => { e.stopPropagation(); setDueDropdownOpen(!dueDropdownOpen); }}
-                  />
-                </button>
+                <div className="inline-flex items-center">
+                  <button
+                    role="tab"
+                    aria-selected={isActive}
+                    tabIndex={isActive ? 0 : -1}
+                    onClick={() => { onFilterChange('due'); }}
+                    className={`inline-flex items-center gap-1 pl-2.5 pr-1 py-1 text-xs font-medium rounded-l-full border border-r-0 whitespace-nowrap transition-colors ${pillClass(isActive, false, false)}`}
+                  >
+                    {dueLabel}
+                    <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full ${badgeClass(isActive, false, false)}`}>
+                      {count}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setDueDropdownOpen(!dueDropdownOpen)}
+                    aria-label="Change due date range"
+                    aria-expanded={dueDropdownOpen}
+                    className={`inline-flex items-center justify-center px-1.5 py-1 text-xs rounded-r-full border border-l-0 transition-colors ${pillClass(isActive, false, false)}`}
+                  >
+                    <ChevronDown className={`w-3 h-3 ${isActive ? 'text-white/70' : 'text-gray-400'}`} />
+                  </button>
+                </div>
                 {dueDropdownOpen && (
                   <div className="absolute left-0 top-full mt-1 z-50 w-28 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1">
                     {DUE_OPTIONS.map(opt => (
