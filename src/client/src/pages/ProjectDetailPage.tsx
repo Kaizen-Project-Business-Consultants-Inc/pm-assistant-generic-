@@ -293,7 +293,11 @@ export function ProjectDetailPage() {
   const isDemo = !!(project as any).isDemo || !!(project as any).is_demo;
 
   const status = statusStyles[project.status] || statusStyles.planning;
-  const progress = project.progressPercentage || project.progress_percentage || 0;
+  const progress = project.progressPercentage || project.progress_percentage || (() => {
+    if (!readinessTasks.length) return 0;
+    const sum = readinessTasks.reduce((acc: number, t: any) => acc + (t.progressPercentage || t.progress_percentage || (t.status === 'completed' ? 100 : 0)), 0);
+    return Math.round(sum / readinessTasks.length);
+  })();
   const budgetAllocated = project.budgetAllocated || project.budget_allocated || 0;
   const budgetSpent = project.budgetSpent || project.budget_spent || 0;
   const budgetPct =

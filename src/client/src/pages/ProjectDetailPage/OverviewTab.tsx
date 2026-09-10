@@ -433,7 +433,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
           <StatBox label="Total Tasks" value={taskStats?.total ?? 0} onClick={() => onNavigateToTab?.('schedule')} />
           <StatBox label="Completed" value={taskStats?.byStatus?.completed ?? 0} color="text-green-600 dark:text-green-400" onClick={() => onNavigateToTab?.('schedule')} />
           <StatBox label="Overdue" value={taskStats?.overdue ?? 0} color={taskStats?.overdue > 0 ? 'text-red-600 dark:text-red-400' : undefined} onClick={() => onNavigateToTab?.('schedule')} />
-          <StatBox label="In Progress" value={taskStats?.byStatus?.in_progress ?? 0} color="text-blue-600 dark:text-blue-400" onClick={() => onNavigateToTab?.('schedule')} />
+          <StatBox label="In Progress" value={taskStats?.byStatus?.inProgress ?? taskStats?.byStatus?.in_progress ?? 0} color="text-blue-600 dark:text-blue-400" onClick={() => onNavigateToTab?.('schedule')} />
         </div>
         {taskStats?.completedLast30Days != null && (
           <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
