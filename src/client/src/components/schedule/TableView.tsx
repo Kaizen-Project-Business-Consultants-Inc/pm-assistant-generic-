@@ -21,7 +21,7 @@ import {
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
 
-export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks }: TableViewProps) {
+export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
@@ -1753,12 +1753,14 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               const renderTaskRow = (task: GanttTask, rowIdx: number) => {
                 const isSelected = selectedIds.has(task.id);
                 const isDragTarget = rowDrag && rowDrag.targetIdx === rowIdx && rowDrag.taskId !== task.id;
+                const riskLevel = taskRiskMap?.get(task.id);
+                const riskBorder = riskLevel === 'late' || riskLevel === 'critical' ? 'border-l-4 border-l-red-500' : riskLevel === 'at_risk' ? 'border-l-4 border-l-orange-400' : '';
                 return (
                   <tr
                     key={task.id}
                     data-row-idx={rowIdx}
                     data-task-id={task.id}
-                    className={`border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-all duration-150 group cursor-pointer ${summaryTaskIds.has(task.id) ? 'font-semibold bg-gray-100/80 dark:bg-gray-700/40' : ''} ${isSelected ? 'bg-primary-50/40 dark:bg-primary-900/20' : ''} ${activeTaskId === task.id ? 'ring-1 ring-inset ring-primary-200 dark:ring-primary-700 bg-primary-50/60 dark:bg-primary-900/30' : ''} ${isDragTarget ? 'border-t-2 border-t-primary-400' : ''} ${rowDrag?.taskId === task.id ? 'relative z-10 scale-[1.02] shadow-lg shadow-primary-200/40 dark:shadow-primary-900/60 bg-primary-50 dark:bg-primary-900/40 opacity-90' : ''}`}
+                    className={`border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-all duration-150 group cursor-pointer ${riskBorder} ${summaryTaskIds.has(task.id) ? 'font-semibold bg-gray-100/80 dark:bg-gray-700/40' : ''} ${isSelected ? 'bg-primary-50/40 dark:bg-primary-900/20' : ''} ${activeTaskId === task.id ? 'ring-1 ring-inset ring-primary-200 dark:ring-primary-700 bg-primary-50/60 dark:bg-primary-900/30' : ''} ${isDragTarget ? 'border-t-2 border-t-primary-400' : ''} ${rowDrag?.taskId === task.id ? 'relative z-10 scale-[1.02] shadow-lg shadow-primary-200/40 dark:shadow-primary-900/60 bg-primary-50 dark:bg-primary-900/40 opacity-90' : ''}`}
                     onClick={() => onTaskSelect?.(task)}
                     onContextMenu={(e) => {
                       e.preventDefault();

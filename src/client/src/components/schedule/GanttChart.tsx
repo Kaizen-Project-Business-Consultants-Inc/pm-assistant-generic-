@@ -84,6 +84,7 @@ export function GanttChart({
   onInsertBefore,
   nonWorkingDates,
   onDuplicateTasks,
+  taskRiskMap,
   onInlineInsert,
   onInlineInsertBefore,
 }: {
@@ -136,6 +137,8 @@ export function GanttChart({
   onInsertBefore?: (beforeTaskId: string, parentTaskId?: string) => void;
   /** Non-working dates to shade on the timeline (YYYY-MM-DD strings) */
   nonWorkingDates?: Set<string>;
+  /** Risk assessment map for visual highlighting */
+  taskRiskMap?: Map<string, import('../../utils/taskRiskAssessment').TaskRiskLevel>;
   /** Called to duplicate/paste tasks */
   onDuplicateTasks?: (tasks: GanttTask[]) => void;
   /** Called when user creates a task via inline insert-after (name + position) */
@@ -2783,6 +2786,7 @@ export function GanttChart({
                   onProgressMouseDown={onTaskUpdate ? handleProgressMouseDown : undefined}
                   onDepDrawMouseDown={onTaskUpdate ? handleDepDrawMouseDown : undefined}
                   hasOnTaskUpdate={!!onTaskUpdate}
+                  riskLevel={taskRiskMap?.get(task.id)}
                 />
               );
             })}

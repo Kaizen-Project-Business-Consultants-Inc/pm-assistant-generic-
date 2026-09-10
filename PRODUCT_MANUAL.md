@@ -136,6 +136,28 @@ A cross-view **filter bar** appears above all schedule views (Gantt, Kanban, Cal
 
 All filters apply to whichever view is active — the same `filteredTasks` array is passed to Gantt, Kanban, Calendar, and Table views.
 
+### Schedule Quick Filter Pills & At-Risk Visual Highlighting
+
+A **pill-based quick filter bar** sits above the schedule views with 7 one-click filters, each showing a live badge count:
+
+| Pill | Includes |
+|------|----------|
+| **All** | Every task (default) |
+| **Due This Week** | Tasks with end date within the current calendar week |
+| **Due 2 Weeks** | Tasks due within the next 14 days |
+| **Late** | Tasks past their end date and not completed |
+| **At Risk** | Tasks where actual progress lags expected progress beyond the configurable threshold |
+| **My Tasks** | Tasks assigned to the currently logged-in user |
+| **Unassigned** | Tasks with no assignee |
+
+**Risk assessment** — "At Risk" and "Late" status are determined by comparing expected progress (calculated from elapsed time between start and end dates) against the task's actual `progress_percentage`. A task is **at risk** when the gap exceeds the configured At Risk threshold (default 20%) and **critical/late** when it exceeds the Critical threshold (default 50%) or is past its end date.
+
+**Visual highlighting** — Late and critical tasks receive a **red left border** (Table view), **red bar border** (Gantt), or **red card border** (Kanban). At-risk tasks receive an **orange** equivalent highlight. Highlighting applies regardless of which filter pill is active.
+
+**Configurable thresholds** — Click the gear icon next to the pill bar to open the threshold settings popover. Adjust the **At Risk % gap** (default 20) and **Critical % gap** (default 50). Settings persist to `localStorage`.
+
+**Persistence** — The active filter pill is saved to `localStorage` and reflected in the URL as `?qf=<filter>` (e.g. `?qf=late`), so sharing or refreshing a URL restores the same filter view.
+
 ### Bulk Operations
 
 Bulk create, update, and status-change endpoints allow operating on multiple tasks or projects in a single request.

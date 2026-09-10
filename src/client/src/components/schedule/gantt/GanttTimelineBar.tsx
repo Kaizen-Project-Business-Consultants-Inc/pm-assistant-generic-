@@ -47,6 +47,7 @@ export interface GanttTimelineBarProps {
   onProgressMouseDown?: (e: React.MouseEvent, task: GanttTask, barWidth: number, barLeft: number) => void;
   onDepDrawMouseDown?: (e: React.MouseEvent, task: GanttTask, edge: 'start' | 'finish') => void;
   hasOnTaskUpdate: boolean;
+  riskLevel?: import('../../../utils/taskRiskAssessment').TaskRiskLevel;
 }
 
 // ---------------------------------------------------------------------------
@@ -80,6 +81,7 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
   onProgressMouseDown,
   onDepDrawMouseDown,
   hasOnTaskUpdate,
+  riskLevel,
 }: GanttTimelineBarProps) {
   const start = toDate(task.startDate);
   const end = toDate(task.endDate);
@@ -198,8 +200,8 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
         className="absolute inset-0 rounded-sm"
         style={{
           backgroundColor: colors.bg,
-          border: isSelected ? '2px solid #3b82f6' : isCritical ? '2px solid #dc2626' : isOverallocated ? '2px solid #f59e0b' : `1px solid ${colors.fill}40`,
-          boxShadow: isSelected ? '0 0 0 2px rgba(59,130,246,0.3)' : isOverallocated ? '0 0 0 2px rgba(245,158,11,0.3)' : undefined,
+          border: isSelected ? '2px solid #3b82f6' : isCritical ? '2px solid #dc2626' : (riskLevel === 'late' || riskLevel === 'critical') ? '2px solid #ef4444' : riskLevel === 'at_risk' ? '2px solid #f97316' : isOverallocated ? '2px solid #f59e0b' : `1px solid ${colors.fill}40`,
+          boxShadow: isSelected ? '0 0 0 2px rgba(59,130,246,0.3)' : (riskLevel === 'late' || riskLevel === 'critical') ? '0 0 0 2px rgba(239,68,68,0.2)' : riskLevel === 'at_risk' ? '0 0 0 2px rgba(249,115,22,0.2)' : isOverallocated ? '0 0 0 2px rgba(245,158,11,0.3)' : undefined,
         }}
       />
 

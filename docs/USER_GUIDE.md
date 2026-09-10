@@ -501,6 +501,24 @@ A cross-view **filter bar** appears above all schedule views (Gantt, Kanban, Cal
 - **Task count** — "X of Y tasks" indicator.
 - **CSV Export** — downloads the currently filtered tasks as a CSV file named after the schedule.
 
+#### Quick Filter Pills & At-Risk Highlighting
+
+A row of **quick filter pills** above the schedule views lets you narrow tasks with one click. Each pill shows a live count badge:
+
+- **All** — show every task (default).
+- **Due This Week** — tasks ending within the current calendar week.
+- **Due 2 Weeks** — tasks due within the next 14 days.
+- **Late** — tasks past their end date and not yet completed.
+- **At Risk** — tasks where actual progress is trailing expected progress by more than the threshold.
+- **My Tasks** — tasks assigned to you.
+- **Unassigned** — tasks with no assignee.
+
+**Visual highlighting** — Late/critical tasks show a red border (left border in Table view, bar border in Gantt, card border in Kanban). At-risk tasks show an orange border. Highlighting is always on — it is independent of the active filter pill.
+
+**Adjust thresholds** — Click the **gear icon** beside the pill bar to set the At Risk gap % (default 20) and Critical gap % (default 50). These are saved in your browser.
+
+**Persistence** — Your selected pill is remembered across page refreshes and encoded in the URL as `?qf=late` (or the relevant filter name), so you can share or bookmark a filtered view.
+
 #### Mobile Schedule View
 
 On mobile, the Schedule tab switches to a dedicated mobile experience with a **view switcher** (List / Kanban / Calendar). The mobile view initializes from the desktop view mode — if you were on Kanban or Calendar on desktop, the mobile view starts with that same mode selected:

@@ -22,6 +22,7 @@ interface KanbanBoardProps {
   onQuickAdd?: (name: string, status: string) => void;
   scheduleId?: string;
   activeTaskId?: string | null;
+  taskRiskMap?: Map<string, import('../../utils/taskRiskAssessment').TaskRiskLevel>;
 }
 
 const COLUMNS: { id: string; label: string; color: string; bg: string; border: string }[] = [
@@ -93,7 +94,7 @@ function saveWipLimits(scheduleId: string, limits: Record<string, number>) {
 
 type SwimlaneSetting = '' | 'assignee' | 'priority';
 
-export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQuickAdd, scheduleId, activeTaskId }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQuickAdd, scheduleId, activeTaskId, taskRiskMap }: KanbanBoardProps) {
   const [quickAddColumn, setQuickAddColumn] = useState<string | null>(null);
   const [quickAddValue, setQuickAddValue] = useState('');
   const quickAddRef = React.useRef<HTMLInputElement>(null);
@@ -279,7 +280,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                               draggable
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onClick={() => onTaskClick?.(task)}
-                              className={`bg-white dark:bg-gray-700 rounded-md border p-2 text-xs cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow ${activeTaskId === task.id ? 'border-primary-400 ring-1 ring-primary-200' : 'border-gray-200 dark:border-gray-600'}`}
+                              className={`bg-white dark:bg-gray-700 rounded-md border p-2 text-xs cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow ${activeTaskId === task.id ? 'border-primary-400 ring-1 ring-primary-200' : (taskRiskMap?.get(task.id) === 'late' || taskRiskMap?.get(task.id) === 'critical') ? 'border-red-400 dark:border-red-500' : taskRiskMap?.get(task.id) === 'at_risk' ? 'border-orange-400 dark:border-orange-500' : 'border-gray-200 dark:border-gray-600'}`}
                             >
                               <span className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1">{task.name}</span>
                             </div>
@@ -354,7 +355,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                       draggable
                       onDragStart={(e) => handleDragStart(e, task.id)}
                       onClick={() => onTaskClick?.(task)}
-                      className={`bg-white dark:bg-gray-700 rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group ${activeTaskId === task.id ? 'border-primary-400 ring-1 ring-primary-200' : 'border-gray-200 dark:border-gray-600'}`}
+                      className={`bg-white dark:bg-gray-700 rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group ${activeTaskId === task.id ? 'border-primary-400 ring-1 ring-primary-200' : (taskRiskMap?.get(task.id) === 'late' || taskRiskMap?.get(task.id) === 'critical') ? 'border-red-400 dark:border-red-500' : taskRiskMap?.get(task.id) === 'at_risk' ? 'border-orange-400 dark:border-orange-500' : 'border-gray-200 dark:border-gray-600'}`}
                     >
                       {/* Title */}
                       <div className="text-xs font-medium text-gray-900 dark:text-gray-100 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors flex items-center gap-1.5">

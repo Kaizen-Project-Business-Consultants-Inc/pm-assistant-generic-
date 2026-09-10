@@ -51,6 +51,7 @@ export interface TableViewProps {
   onUndo?: () => void;
   onRedo?: () => void;
   onDuplicateTasks?: (tasks: GanttTask[]) => void;
+  taskRiskMap?: Map<string, import('../../../utils/taskRiskAssessment').TaskRiskLevel>;
 }
 
 export const barColors: Record<string, { bg: string; text: string }> = {

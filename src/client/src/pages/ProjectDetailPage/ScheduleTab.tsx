@@ -38,6 +38,9 @@ import { ScheduleSummaryBar } from './schedule-tab/ScheduleSummaryBar';
 import { BaselineVarianceReport } from './schedule-tab/BaselineVarianceReport';
 import { ScenarioComparison } from './schedule-tab/ScenarioComparison';
 import { ResourceLevelingModal } from './schedule-tab/ResourceLevelingModal';
+import { QuickFilterPills, type QuickFilterType } from './schedule-tab/QuickFilterPills';
+import { buildTaskRiskMap, DEFAULT_RISK_THRESHOLDS, type RiskThresholds } from '../../utils/taskRiskAssessment';
+import { useAuthStore } from '../../stores/authStore';
 
 
 export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt' }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string }) {
@@ -366,6 +369,41 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   const [filterPriority, setFilterPriority] = useState<string>('');
   const [filterAssignee, setFilterAssignee] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Quick filter pills
+  const { user } = useAuthStore();
+  const [quickFilter, setQuickFilter] = useState<QuickFilterType>(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const qf = urlParams.get('qf');
+      if (qf && ['all', 'due_this_week', 'due_next_2_weeks', 'late', 'at_risk', 'my_tasks', 'unassigned'].includes(qf)) return qf as QuickFilterType;
+      const saved = localStorage.getItem(`schedule-quick-filter-${schedule.id}`);
+      if (saved && ['all', 'due_this_week', 'due_next_2_weeks', 'late', 'at_risk', 'my_tasks', 'unassigned'].includes(saved)) return saved as QuickFilterType;
+    } catch { /* noop */ }
+    return 'all';
+  });
+  const [riskThresholds, setRiskThresholds] = useState<RiskThresholds>(() => {
+    try {
+      const saved = localStorage.getItem('schedule-risk-thresholds');
+      if (saved) { const parsed = JSON.parse(saved); if (parsed.atRiskGapPct && parsed.criticalGapPct) return parsed; }
+    } catch { /* noop */ }
+    return { ...DEFAULT_RISK_THRESHOLDS };
+  });
+
+  const handleQuickFilterChange = useCallback((f: QuickFilterType) => {
+    setQuickFilter(f);
+    try { localStorage.setItem(`schedule-quick-filter-${schedule.id}`, f); } catch { /* noop */ }
+    const url = new URL(window.location.href);
+    if (f === 'all') url.searchParams.delete('qf');
+    else url.searchParams.set('qf', f);
+    window.history.replaceState({}, '', url.toString());
+  }, [schedule.id]);
+
+  const handleThresholdsChange = useCallback((t: RiskThresholds) => {
+    setRiskThresholds(t);
+    try { localStorage.setItem('schedule-risk-thresholds', JSON.stringify(t)); } catch { /* noop */ }
+  }, []);
+
   const [levelingResult, setLevelingResult] = useState<any[] | null>(null);
   const [levelingBusy, setLevelingBusy] = useState(false);
   const [showScenarioCompare, setShowScenarioCompare] = useState(false);
@@ -768,8 +806,11 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   const uniquePriorities = useMemo(() => [...new Set(tasks.map(t => t.priority).filter((p): p is string => !!p))].sort(), [tasks]);
   const uniqueAssignees = useMemo(() => [...new Set(tasks.map(t => t.assignedTo).filter(Boolean))].sort() as string[], [tasks]);
 
-  // Filtered tasks
-  const filteredTasks = useMemo(() => {
+  // Risk map (computed once for all tasks)
+  const taskRiskMap = useMemo(() => buildTaskRiskMap(tasks, riskThresholds), [tasks, riskThresholds]);
+
+  // Filtered tasks — dropdown filters first, then quick filter
+  const dropdownFilteredTasks = useMemo(() => {
     let result = tasks;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -781,13 +822,74 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     return result;
   }, [tasks, searchQuery, filterStatus, filterPriority, filterAssignee]);
 
-  const hasActiveFilters = !!(searchQuery || filterStatus || filterPriority || filterAssignee);
+  // Quick filter counts (computed from dropdown-filtered tasks)
+  const quickFilterCounts = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(now);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const twoWeekEnd = new Date(now);
+    twoWeekEnd.setDate(twoWeekEnd.getDate() + 14);
+    const userId = user?.id;
+
+    const counts: Record<QuickFilterType, number> = { all: dropdownFilteredTasks.length, due_this_week: 0, due_next_2_weeks: 0, late: 0, at_risk: 0, my_tasks: 0, unassigned: 0 };
+    for (const t of dropdownFilteredTasks) {
+      const risk = taskRiskMap.get(t.id);
+      const status = t.status?.toLowerCase();
+      const isFinished = status === 'completed' || status === 'done' || status === 'cancelled';
+      if (t.endDate && !isFinished) {
+        const end = new Date(t.endDate);
+        end.setHours(0, 0, 0, 0);
+        if (end >= now && end <= weekEnd) counts.due_this_week++;
+        if (end >= now && end <= twoWeekEnd) counts.due_next_2_weeks++;
+      }
+      if (risk === 'late') counts.late++;
+      if (risk === 'at_risk' || risk === 'critical') counts.at_risk++;
+      if (userId && t.assignedTo === userId) counts.my_tasks++;
+      if (!t.assignedTo) counts.unassigned++;
+    }
+    return counts;
+  }, [dropdownFilteredTasks, taskRiskMap, user?.id]);
+
+  const filteredTasks = useMemo(() => {
+    if (quickFilter === 'all') return dropdownFilteredTasks;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const userId = user?.id;
+    return dropdownFilteredTasks.filter(t => {
+      const risk = taskRiskMap.get(t.id);
+      const status = t.status?.toLowerCase();
+      const isFinished = status === 'completed' || status === 'done' || status === 'cancelled';
+      switch (quickFilter) {
+        case 'due_this_week': {
+          if (!t.endDate || isFinished) return false;
+          const end = new Date(t.endDate); end.setHours(0, 0, 0, 0);
+          const weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7);
+          return end >= now && end <= weekEnd;
+        }
+        case 'due_next_2_weeks': {
+          if (!t.endDate || isFinished) return false;
+          const end = new Date(t.endDate); end.setHours(0, 0, 0, 0);
+          const twoWeekEnd = new Date(now); twoWeekEnd.setDate(twoWeekEnd.getDate() + 14);
+          return end >= now && end <= twoWeekEnd;
+        }
+        case 'late': return risk === 'late';
+        case 'at_risk': return risk === 'at_risk' || risk === 'critical';
+        case 'my_tasks': return userId ? t.assignedTo === userId : false;
+        case 'unassigned': return !t.assignedTo;
+        default: return true;
+      }
+    });
+  }, [dropdownFilteredTasks, quickFilter, taskRiskMap, user?.id]);
+
+  const hasActiveFilters = !!(searchQuery || filterStatus || filterPriority || filterAssignee || quickFilter !== 'all');
   const clearAllFilters = useCallback(() => {
     setSearchQuery('');
     setFilterStatus('');
     setFilterPriority('');
     setFilterAssignee('');
-  }, []);
+    handleQuickFilterChange('all');
+  }, [handleQuickFilterChange]);
 
   // Task stats for summary bar (use filtered tasks)
   const taskStats = (() => {
@@ -885,6 +987,17 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         totalCount={tasks.length}
       />
 
+      {/* Quick filter pills */}
+      {tasks.length > 0 && (
+        <QuickFilterPills
+          activeFilter={quickFilter}
+          onFilterChange={handleQuickFilterChange}
+          counts={quickFilterCounts}
+          thresholds={riskThresholds}
+          onThresholdsChange={handleThresholdsChange}
+        />
+      )}
+
       {/* Expanded filter dropdowns (shown when toggled) */}
       {showFilters && tasks.length > 0 && (
         <ScheduleFilterBar
@@ -967,12 +1080,14 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           }))}
           nonWorkingDates={nonWorkingDates}
           onDuplicateTasks={handleDuplicateTasks}
+          taskRiskMap={taskRiskMap}
         />
       )}
       {viewMode === 'kanban' && (
         <KanbanBoard
           tasks={filteredTasks}
           allTasks={tasks}
+          taskRiskMap={taskRiskMap}
           onTaskClick={(task) => { setActiveTaskId(task.id); setEditingTask(task as GanttTask); }}
           onStatusChange={handleKanbanStatusChange}
           onQuickAdd={(name, status) => {
@@ -1013,6 +1128,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           onUndo={undo}
           onRedo={redo}
           onDuplicateTasks={handleDuplicateTasks}
+          taskRiskMap={taskRiskMap}
         />
       )}
       {viewMode === 'calendar' && (
