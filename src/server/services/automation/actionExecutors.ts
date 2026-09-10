@@ -3,6 +3,71 @@ import logger from '../../utils/logger';
 
 type ActionExecutorFn = (params: Record<string, any>, context: AutomationContext, event: AutomationEvent) => Promise<void>;
 
+// Dynamic recipient tokens that resolve at execution time
+const RECIPIENT_TOKENS = ['assignee', 'creator', 'project_owner', 'trigger_user'] as const;
+
+interface ResolvedRecipient {
+  userId: string;
+  email: string;
+}
+
+async function resolveRecipients(
+  raw: string | string[],
+  context: AutomationContext,
+  event: AutomationEvent,
+): Promise<ResolvedRecipient[]> {
+  const { userService } = await import('../UserService');
+  const tokens = Array.isArray(raw) ? raw : [raw];
+  const results: ResolvedRecipient[] = [];
+
+  for (const token of tokens) {
+    const t = token.trim().toLowerCase();
+    try {
+      if (t === 'assignee') {
+        const uid = context.entity?.assignedTo || context.entity?.assigned_to;
+        if (uid) {
+          const user = await userService.findById(uid);
+          if (user) results.push({ userId: user.id, email: user.email });
+        }
+      } else if (t === 'creator') {
+        const uid = context.entity?.createdBy || context.entity?.created_by || context.entity?.ownerUserId;
+        if (uid) {
+          const user = await userService.findById(uid);
+          if (user) results.push({ userId: user.id, email: user.email });
+        }
+      } else if (t === 'project_owner') {
+        const pid = context.project?.createdBy || context.project?.created_by;
+        if (pid) {
+          const user = await userService.findById(pid);
+          if (user) results.push({ userId: user.id, email: user.email });
+        }
+      } else if (t === 'trigger_user') {
+        const user = await userService.findById(event.userId);
+        if (user) results.push({ userId: user.id, email: user.email });
+      } else if (token.includes('@')) {
+        // Raw email address — use as-is, no userId
+        results.push({ userId: '', email: token });
+      } else if (/^[0-9a-f-]{36}$/i.test(token)) {
+        // UUID — look up user
+        const user = await userService.findById(token);
+        if (user) results.push({ userId: user.id, email: user.email });
+      } else {
+        // Might be a template-resolved value (user ID or email)
+        if (token.includes('@')) {
+          results.push({ userId: '', email: token });
+        } else if (token) {
+          const user = await userService.findById(token);
+          if (user) results.push({ userId: user.id, email: user.email });
+        }
+      }
+    } catch (err) {
+      logger.warn(`[AutomationAction] Failed to resolve recipient "${token}":`, err);
+    }
+  }
+
+  return results;
+}
+
 function isPrivateUrl(urlStr: string): boolean {
   try {
     const url = new URL(urlStr);
@@ -39,10 +104,14 @@ const executors: Record<ActionType, ActionExecutorFn> = {
 
   async notify(params, context, event) {
     const { notificationService } = await import('../NotificationService');
-    const recipients = Array.isArray(params.recipients) ? params.recipients : [params.recipients];
-    for (const userId of recipients) {
+    const resolved = await resolveRecipients(params.recipients, context, event);
+    if (resolved.length === 0) {
+      logger.warn(`[AutomationAction] notify: no recipients resolved from "${params.recipients}"`);
+      return;
+    }
+    for (const r of resolved) {
       await notificationService.create({
-        userId,
+        userId: r.userId,
         type: 'automation',
         severity: params.severity || 'medium',
         title: params.title || 'Automation Notification',
@@ -54,12 +123,17 @@ const executors: Record<ActionType, ActionExecutorFn> = {
     }
   },
 
-  async send_email(params) {
+  async send_email(params, context, event) {
     const { emailService } = await import('../EmailService');
-    const recipients = Array.isArray(params.to) ? params.to : [params.to];
-    for (const to of recipients) {
-      await emailService.sendNotificationEmail(to, params.subject, params.subject, params.body);
+    const resolved = await resolveRecipients(params.to, context, event);
+    if (resolved.length === 0) {
+      logger.warn(`[AutomationAction] send_email: no recipients resolved from "${params.to}"`);
+      return;
     }
+    for (const r of resolved) {
+      await emailService.sendNotificationEmail(r.email, params.subject, params.subject, params.body);
+    }
+    logger.info(`[AutomationAction] Sent email to ${resolved.map(r => r.email).join(', ')}`);
   },
 
   async add_risk(params, context, event) {
@@ -108,10 +182,14 @@ const executors: Record<ActionType, ActionExecutorFn> = {
 
   async escalate(params, context, event) {
     const { notificationService } = await import('../NotificationService');
-    const recipients = Array.isArray(params.recipients) ? params.recipients : [params.recipients];
-    for (const userId of recipients) {
+    const resolved = await resolveRecipients(params.recipients, context, event);
+    if (resolved.length === 0) {
+      logger.warn(`[AutomationAction] escalate: no recipients resolved from "${params.recipients}"`);
+      return;
+    }
+    for (const r of resolved) {
       await notificationService.create({
-        userId,
+        userId: r.userId,
         type: 'automation',
         severity: 'critical',
         title: params.title || 'Escalation',

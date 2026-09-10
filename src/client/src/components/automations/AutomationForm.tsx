@@ -41,19 +41,29 @@ interface ParamDef {
 const ACTION_TYPES: { value: string; label: string; description: string; params: ParamDef[] }[] = [
   {
     value: 'notify', label: 'Send Notification',
-    description: 'Sends an in-app notification to specified users',
+    description: 'Sends an in-app notification to the selected recipient',
     params: [
-      { key: 'recipients', label: 'Recipient (User ID)', placeholder: 'e.g. user-id-here or {{entity.assignedTo}}', help: 'User ID or template variable like {{entity.createdBy}}' },
+      { key: 'recipients', label: 'Send To', placeholder: '', inputType: 'select', options: [
+        { value: 'assignee', label: 'Task Assignee (whoever the task is assigned to)' },
+        { value: 'creator', label: 'Entity Creator (whoever created the task/item)' },
+        { value: 'project_owner', label: 'Project Owner' },
+        { value: 'trigger_user', label: 'User Who Triggered the Event' },
+      ], help: 'Dynamically resolved at execution time — always sends to the current assignee/creator' },
       { key: 'messageTemplate', label: 'Message', placeholder: 'Task "{{entity.name}}" has been created', inputType: 'textarea', help: 'Use {{entity.name}}, {{entity.status}}, {{project.name}} etc.', fullWidth: true },
     ],
   },
   {
     value: 'send_email', label: 'Send Email',
-    description: 'Sends an email to the specified address',
+    description: 'Sends an email — recipient is resolved dynamically at execution time',
     params: [
-      { key: 'to', label: 'To (Email Address)', placeholder: 'e.g. pm@company.com or {{entity.createdByEmail}}', help: 'Email address or template variable' },
+      { key: 'to', label: 'Send To', placeholder: '', inputType: 'select', options: [
+        { value: 'assignee', label: 'Task Assignee (whoever the task is assigned to)' },
+        { value: 'creator', label: 'Entity Creator (whoever created the task/item)' },
+        { value: 'project_owner', label: 'Project Owner' },
+        { value: 'trigger_user', label: 'User Who Triggered the Event' },
+      ], help: 'Email address is looked up from the user profile at execution time. If you reassign a task, the email goes to the new assignee.' },
       { key: 'subject', label: 'Subject', placeholder: 'New task created: {{entity.name}}', help: 'Template variables available' },
-      { key: 'body', label: 'Body', placeholder: 'A new task "{{entity.name}}" was created in project {{project.name}}.\n\nStatus: {{entity.status}}\nAssigned to: {{entity.assignedTo}}', inputType: 'textarea', help: 'Use {{entity.*}}, {{project.*}}, {{event.*}} variables', fullWidth: true },
+      { key: 'body', label: 'Body', placeholder: 'A new task "{{entity.name}}" was created in project {{project.name}}.\n\nStatus: {{entity.status}}', inputType: 'textarea', help: 'Use {{entity.*}}, {{project.*}}, {{event.*}} variables', fullWidth: true },
     ],
   },
   {
@@ -99,7 +109,12 @@ const ACTION_TYPES: { value: string; label: string; description: string; params:
     value: 'escalate', label: 'Escalate',
     description: 'Sends a high-priority notification (escalation)',
     params: [
-      { key: 'recipients', label: 'Recipient (User ID)', placeholder: 'e.g. manager-user-id or {{entity.createdBy}}', help: 'User ID or template variable' },
+      { key: 'recipients', label: 'Escalate To', placeholder: '', inputType: 'select', options: [
+        { value: 'project_owner', label: 'Project Owner' },
+        { value: 'creator', label: 'Entity Creator' },
+        { value: 'assignee', label: 'Task Assignee' },
+        { value: 'trigger_user', label: 'User Who Triggered the Event' },
+      ], help: 'Dynamically resolved at execution time' },
       { key: 'messageTemplate', label: 'Escalation Message', placeholder: 'URGENT: {{entity.name}} requires immediate attention', inputType: 'textarea', help: 'Use {{entity.*}}, {{project.*}} variables', fullWidth: true },
     ],
   },
