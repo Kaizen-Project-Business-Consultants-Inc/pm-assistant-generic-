@@ -233,6 +233,99 @@ const executors: Record<ActionType, ActionExecutorFn> = {
       source: 'system',
     });
   },
+
+  async auto_assign(params, context, event) {
+    if (event.entityType !== 'task') {
+      logger.warn('[AutomationAction] auto_assign only works on tasks');
+      return;
+    }
+
+    // Skip if task already has an assignee
+    const entity = context.entity || {};
+    if (entity.assignedTo || entity.assigned_to) {
+      logger.info(`[AutomationAction] auto_assign skipped — task already assigned to ${entity.assignedTo || entity.assigned_to}`);
+      return;
+    }
+
+    const { resourceService } = await import('../ResourceService');
+    const { scheduleService } = await import('../ScheduleService');
+
+    // Get all active resources
+    const allResources = await resourceService.findAllResources();
+    const activeResources = allResources.filter(r => r.isActive && r.userId);
+
+    if (activeResources.length === 0) {
+      logger.warn('[AutomationAction] auto_assign: no active resources with linked users');
+      return;
+    }
+
+    const strategy = params.strategy || 'role_match';
+    const taskType = entity.taskType || entity.task_type || 'task';
+    let picked: typeof activeResources[0] | null = null;
+
+    if (strategy === 'role_match' || strategy === 'least_busy') {
+      // Map task types to likely resource roles
+      const roleMap: Record<string, string[]> = {
+        task: [],
+        story: ['developer', 'engineer', 'dev'],
+        bug: ['developer', 'engineer', 'dev', 'qa', 'tester'],
+        epic: ['project_manager', 'lead', 'manager', 'pm'],
+      };
+      const preferredRoles = roleMap[taskType] || [];
+
+      // Get candidates — role-matched first, then everyone
+      let candidates = activeResources;
+      if (strategy === 'role_match' && preferredRoles.length > 0) {
+        const roleMatched = activeResources.filter(r =>
+          preferredRoles.some(role => r.role.toLowerCase().includes(role))
+        );
+        if (roleMatched.length > 0) candidates = roleMatched;
+      }
+
+      // Count current assignments per resource to find least busy
+      const schedules = await scheduleService.findByProjectId(event.projectId);
+      const scheduleIds = schedules.map(s => s.id);
+      const tasks = scheduleIds.length > 0 ? await scheduleService.findTasksByScheduleIds(scheduleIds) : [];
+      const assignmentCounts = new Map<string, number>();
+      for (const t of tasks) {
+        const uid = t.assignedTo || (t as any).assigned_to;
+        if (uid && t.status !== 'completed' && t.status !== 'cancelled') {
+          assignmentCounts.set(uid, (assignmentCounts.get(uid) || 0) + 1);
+        }
+      }
+
+      // Pick the candidate with the fewest active assignments
+      let minCount = Infinity;
+      for (const r of candidates) {
+        const count = assignmentCounts.get(r.userId!) || 0;
+        if (count < minCount) {
+          minCount = count;
+          picked = r;
+        }
+      }
+    } else if (strategy === 'round_robin') {
+      // Simple round-robin based on task count modulo
+      const rrSchedules = await scheduleService.findByProjectId(event.projectId);
+      const rrIds = rrSchedules.map(s => s.id);
+      const rrTasks = rrIds.length > 0 ? await scheduleService.findTasksByScheduleIds(rrIds) : [];
+      const idx = rrTasks.length % activeResources.length;
+      picked = activeResources[idx];
+    }
+
+    if (!picked) {
+      // Fallback
+      if (params.fallbackUserId) {
+        await scheduleService.updateTask(event.entityId, { assignedTo: params.fallbackUserId });
+        logger.info(`[AutomationAction] auto_assign: used fallback user ${params.fallbackUserId}`);
+      } else {
+        logger.warn('[AutomationAction] auto_assign: no suitable resource found');
+      }
+      return;
+    }
+
+    await scheduleService.updateTask(event.entityId, { assignedTo: picked.userId! });
+    logger.info(`[AutomationAction] auto_assign: assigned task ${event.entityId} to ${picked.name} (${picked.userId}) via ${strategy}`);
+  },
 };
 
 export async function executeAction(

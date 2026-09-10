@@ -11,7 +11,7 @@ function validateDefinition(eventType: string, definition: AutomationDefinition)
   if (!definition.actions || !Array.isArray(definition.actions)) {
     throw Object.assign(new Error('Definition must include an actions array'), { statusCode: 400 });
   }
-  const validActions = ['create_task', 'notify', 'send_email', 'add_risk', 'change_status', 'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit'];
+  const validActions = ['create_task', 'notify', 'send_email', 'add_risk', 'change_status', 'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit', 'auto_assign'];
   for (const action of definition.actions) {
     if (!validActions.includes(action.type)) {
       throw Object.assign(new Error(`Invalid action type: ${action.type}`), { statusCode: 400 });
@@ -45,7 +45,7 @@ describe('AutomationService.validateDefinition', () => {
   });
 
   it('accepts all valid action types', () => {
-    const types = ['create_task', 'notify', 'send_email', 'add_risk', 'change_status', 'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit'] as const;
+    const types = ['create_task', 'notify', 'send_email', 'add_risk', 'change_status', 'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit', 'auto_assign'] as const;
     for (const type of types) {
       const def: AutomationDefinition = {
         actions: [{ id: 'a1', type, params: {}, runOrder: 0 }],

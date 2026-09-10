@@ -133,6 +133,17 @@ const ACTION_TYPES: { value: string; label: string; description: string; params:
       { key: 'messageTemplate', label: 'Audit Message', placeholder: 'Automation triggered: {{entity.name}} — {{event.type}}', inputType: 'textarea', help: 'Template variables available', fullWidth: true },
     ],
   },
+  {
+    value: 'auto_assign', label: 'Auto-Assign Resource',
+    description: 'Automatically assigns the best available resource based on role, skills, and workload',
+    params: [
+      { key: 'strategy', label: 'Assignment Strategy', inputType: 'select', placeholder: '', options: [
+        { value: 'role_match', label: 'Role Match + Least Busy (match task type to resource role, then pick lightest workload)' },
+        { value: 'least_busy', label: 'Least Busy (assign to whoever has the fewest active tasks)' },
+        { value: 'round_robin', label: 'Round Robin (distribute tasks evenly across all resources)' },
+      ], help: 'Skips if the task already has an assignee' },
+    ],
+  },
 ];
 
 const OPERATORS = [

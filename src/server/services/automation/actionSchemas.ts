@@ -54,4 +54,8 @@ export const actionParamSchemas: Record<string, z.ZodType<any>> = {
     messageTemplate: z.string().min(1),
     action: z.string().optional(),
   }),
+  auto_assign: z.object({
+    strategy: z.enum(['role_match', 'least_busy', 'round_robin']).optional(),
+    fallbackUserId: z.string().optional(),
+  }),
 };

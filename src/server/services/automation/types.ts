@@ -10,7 +10,8 @@ export type ActionType =
   | 'add_comment'
   | 'escalate'
   | 'call_webhook'
-  | 'log_audit';
+  | 'log_audit'
+  | 'auto_assign';
 
 export type ConditionOperator =
   | 'equals' | 'not_equals'

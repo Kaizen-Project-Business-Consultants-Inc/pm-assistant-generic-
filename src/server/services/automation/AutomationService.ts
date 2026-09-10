@@ -80,7 +80,7 @@ export class AutomationService {
     if (!definition.actions || !Array.isArray(definition.actions)) {
       throw Object.assign(new Error('Definition must include an actions array'), { statusCode: 400 });
     }
-    const validActions = ['create_task', 'notify', 'send_email', 'add_risk', 'change_status', 'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit'];
+    const validActions = ['create_task', 'notify', 'send_email', 'add_risk', 'change_status', 'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit', 'auto_assign'];
     for (const action of definition.actions) {
       if (!validActions.includes(action.type)) {
         throw Object.assign(new Error(`Invalid action type: ${action.type}`), { statusCode: 400 });
