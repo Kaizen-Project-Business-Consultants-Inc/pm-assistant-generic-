@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
 import { apiService } from '../../services/api';
@@ -8,6 +8,7 @@ import type { ColumnKey, ColumnDef } from './tableColumns';
 import { useColumnDragReorder } from '../../hooks/useColumnDragReorder';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { ResourceQuickAssign } from './ResourceQuickAssign';
+import { ResourcePickerDropdown } from './ResourcePickerDropdown';
 import { TableToolbar } from './table/TableToolbar';
 import { TableBulkActionBar } from './table/TableBulkActionBar';
 import { TableHeaderRow } from './table/TableHeaderRow';
@@ -23,6 +24,22 @@ import {
 export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
+
+  // Resource lookup for assignedTo display
+  const { data: resourceData } = useQuery({
+    queryKey: ['resources'],
+    queryFn: () => apiService.getResources(),
+    staleTime: 60_000,
+  });
+  const resourceNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of (resourceData?.resources || []) as { id: string; name: string; userId?: string | null }[]) {
+      if (r.userId) map.set(r.userId, r.name);
+      map.set(r.id, r.name);
+    }
+    return map;
+  }, [resourceData]);
+
   const [sortField, setSortField] = useState<ColumnKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [groupBy, setGroupBy] = useState<GroupByField>('');
@@ -1295,21 +1312,31 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-32 ${editableCellClass(task.id, 'assignedTo', task)}`}
+            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-32 relative ${editableCellClass(task.id, 'assignedTo', task)}`}
             onClick={() => handleCellClick(task.id, 'assignedTo', task)}
           >
             {isEditing(task.id, 'assignedTo') ? (
-              <input
-                ref={el => { inputRef.current = el; }}
-                type="text"
-                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 text-gray-600 dark:text-gray-300"
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                onKeyDown={e => handleKeyDown(e, task.id, 'assignedTo')}
-                onBlur={() => saveEdit(task.id, 'assignedTo', editValue)}
+              <ResourcePickerDropdown
+                value={task.assignedTo || null}
+                onSelect={(userId) => {
+                  cancelEditing();
+                  onTaskUpdate(task.id, { assignedTo: userId });
+                  setSavingCell({ taskId: task.id, field: 'assignedTo' });
+                  setTimeout(() => {
+                    setSavingCell(null);
+                    setSavedCell({ taskId: task.id, field: 'assignedTo' });
+                    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+                    savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
+                  }, 300);
+                }}
+                onClear={() => {
+                  cancelEditing();
+                  onTaskUpdate(task.id, { assignedTo: '' });
+                }}
+                onClose={cancelEditing}
               />
             ) : (
-              task.assignedTo || '-'
+              resourceNameMap.get(task.assignedTo || '') || task.assignedTo || '-'
             )}
             {renderSaveIndicator(task.id, 'assignedTo')}
             {renderHoverPencil(task.id, 'assignedTo')}

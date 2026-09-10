@@ -1,5 +1,8 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ResourceQuickAssign } from '../ResourceQuickAssign';
+import { ResourcePickerDropdown } from '../ResourcePickerDropdown';
+import { apiService } from '../../../services/api';
 import {
   type GanttTask,
   type GanttColDef,
@@ -180,6 +183,21 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   getDepHealth,
 }: GanttLeftPanelRowProps) {
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null);
+
+  // Resource lookup for assignedTo display
+  const { data: resourceData } = useQuery({
+    queryKey: ['resources'],
+    queryFn: () => apiService.getResources(),
+    staleTime: 60_000,
+  });
+  const resourceNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of (resourceData?.resources || []) as { id: string; name: string; userId?: string | null }[]) {
+      if (r.userId) map.set(r.userId, r.name);
+      map.set(r.id, r.name);
+    }
+    return map;
+  }, [resourceData]);
 
   // Auto-focus input when entering edit mode
   useEffect(() => {
@@ -561,22 +579,26 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'assigned') return (
           <div
             key="assigned"
-            className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 truncate ${cellClass('assignedTo')}`}
+            className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 truncate relative ${cellClass('assignedTo')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'assignedTo', task)}
-            title={task.assignedTo || undefined}
+            title={resourceNameMap.get(task.assignedTo || '') || task.assignedTo || undefined}
           >
-            {isEditingField(editingField, 'assignedTo') ? (
-              <input
-                ref={el => { inputRef.current = el; }}
-                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center"
-                value={editValue}
-                onChange={e => onEditValueChange(e.target.value)}
-                onBlur={() => onSaveEdit(task.id, 'assignedTo', editValue)}
-                onKeyDown={e => onKeyDown(e, task.id, 'assignedTo')}
+            {isEditingField(editingField, 'assignedTo') && onTaskUpdate ? (
+              <ResourcePickerDropdown
+                value={task.assignedTo || null}
+                onSelect={(userId) => {
+                  onCancelEditing();
+                  onTaskUpdate(task.id, { assignedTo: userId });
+                }}
+                onClear={() => {
+                  onCancelEditing();
+                  onTaskUpdate(task.id, { assignedTo: '' });
+                }}
+                onClose={onCancelEditing}
               />
             ) : (
-              task.assignedTo || '\u2014'
+              resourceNameMap.get(task.assignedTo || '') || task.assignedTo || '\u2014'
             )}
           </div>
         );
