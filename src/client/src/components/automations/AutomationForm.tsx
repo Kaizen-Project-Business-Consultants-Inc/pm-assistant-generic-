@@ -28,17 +28,96 @@ interface ConditionGroup {
   conditions: (ConditionRule | ConditionGroup)[];
 }
 
-const ACTION_TYPES = [
-  { value: 'notify', label: 'Send Notification', params: ['recipients', 'messageTemplate'] },
-  { value: 'send_email', label: 'Send Email', params: ['to', 'subject', 'body'] },
-  { value: 'create_task', label: 'Create Task', params: ['title', 'scheduleId'] },
-  { value: 'change_status', label: 'Change Status', params: ['newStatus'] },
-  { value: 'update_field', label: 'Update Field', params: ['field', 'value'] },
-  { value: 'add_risk', label: 'Add Risk', params: ['title', 'severity', 'riskType'] },
-  { value: 'add_comment', label: 'Add Comment', params: ['messageTemplate'] },
-  { value: 'escalate', label: 'Escalate', params: ['recipients', 'messageTemplate'] },
-  { value: 'call_webhook', label: 'Call Webhook', params: ['url', 'method'] },
-  { value: 'log_audit', label: 'Log Audit Entry', params: ['messageTemplate'] },
+interface ParamDef {
+  key: string;
+  label: string;
+  placeholder: string;
+  help?: string;
+  inputType?: 'text' | 'textarea' | 'select';
+  options?: { value: string; label: string }[];
+  fullWidth?: boolean;
+}
+
+const ACTION_TYPES: { value: string; label: string; description: string; params: ParamDef[] }[] = [
+  {
+    value: 'notify', label: 'Send Notification',
+    description: 'Sends an in-app notification to specified users',
+    params: [
+      { key: 'recipients', label: 'Recipient (User ID)', placeholder: 'e.g. user-id-here or {{entity.assignedTo}}', help: 'User ID or template variable like {{entity.createdBy}}' },
+      { key: 'messageTemplate', label: 'Message', placeholder: 'Task "{{entity.name}}" has been created', inputType: 'textarea', help: 'Use {{entity.name}}, {{entity.status}}, {{project.name}} etc.', fullWidth: true },
+    ],
+  },
+  {
+    value: 'send_email', label: 'Send Email',
+    description: 'Sends an email to the specified address',
+    params: [
+      { key: 'to', label: 'To (Email Address)', placeholder: 'e.g. pm@company.com or {{entity.createdByEmail}}', help: 'Email address or template variable' },
+      { key: 'subject', label: 'Subject', placeholder: 'New task created: {{entity.name}}', help: 'Template variables available' },
+      { key: 'body', label: 'Body', placeholder: 'A new task "{{entity.name}}" was created in project {{project.name}}.\n\nStatus: {{entity.status}}\nAssigned to: {{entity.assignedTo}}', inputType: 'textarea', help: 'Use {{entity.*}}, {{project.*}}, {{event.*}} variables', fullWidth: true },
+    ],
+  },
+  {
+    value: 'create_task', label: 'Create Task',
+    description: 'Creates a new task in the specified schedule',
+    params: [
+      { key: 'title', label: 'Task Title', placeholder: 'Follow up on: {{entity.name}}', help: 'Template variables available' },
+      { key: 'scheduleId', label: 'Schedule ID', placeholder: 'ID of the schedule to create the task in', help: 'Find this in the schedule URL' },
+    ],
+  },
+  {
+    value: 'change_status', label: 'Change Status',
+    description: 'Changes the status of the triggering entity',
+    params: [
+      { key: 'newStatus', label: 'New Status', placeholder: 'e.g. in_progress, completed, at_risk', help: 'Must be a valid status for the entity type' },
+    ],
+  },
+  {
+    value: 'update_field', label: 'Update Field',
+    description: 'Updates a field on the triggering entity',
+    params: [
+      { key: 'field', label: 'Field Name', placeholder: 'e.g. priority, assignedTo', help: 'The entity field to update' },
+      { key: 'value', label: 'New Value', placeholder: 'e.g. high or {{entity.createdBy}}', help: 'Template variables available' },
+    ],
+  },
+  {
+    value: 'add_risk', label: 'Add Risk',
+    description: 'Creates a new risk/issue in the project RAID log',
+    params: [
+      { key: 'title', label: 'Risk Title', placeholder: 'Task "{{entity.name}}" may need attention', help: 'Template variables available' },
+      { key: 'severity', label: 'Severity', inputType: 'select', placeholder: '', options: [{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' }] },
+      { key: 'riskType', label: 'Type', inputType: 'select', placeholder: '', options: [{ value: 'risk', label: 'Risk' }, { value: 'issue', label: 'Issue' }] },
+    ],
+  },
+  {
+    value: 'add_comment', label: 'Add Comment',
+    description: 'Adds a comment to the triggering task',
+    params: [
+      { key: 'messageTemplate', label: 'Comment Text', placeholder: 'Automated: Status changed to {{entity.status}}', inputType: 'textarea', help: 'Template variables available', fullWidth: true },
+    ],
+  },
+  {
+    value: 'escalate', label: 'Escalate',
+    description: 'Sends a high-priority notification (escalation)',
+    params: [
+      { key: 'recipients', label: 'Recipient (User ID)', placeholder: 'e.g. manager-user-id or {{entity.createdBy}}', help: 'User ID or template variable' },
+      { key: 'messageTemplate', label: 'Escalation Message', placeholder: 'URGENT: {{entity.name}} requires immediate attention', inputType: 'textarea', help: 'Use {{entity.*}}, {{project.*}} variables', fullWidth: true },
+    ],
+  },
+  {
+    value: 'call_webhook', label: 'Call Webhook',
+    description: 'Sends an HTTP request to an external URL',
+    params: [
+      { key: 'url', label: 'Webhook URL', placeholder: 'https://hooks.slack.com/services/...', help: 'Must be a public HTTPS URL' },
+      { key: 'method', label: 'HTTP Method', inputType: 'select', placeholder: '', options: [{ value: 'POST', label: 'POST' }, { value: 'GET', label: 'GET' }, { value: 'PUT', label: 'PUT' }] },
+    ],
+  },
+  {
+    value: 'log_audit', label: 'Log Audit Entry',
+    description: 'Creates an entry in the project audit trail',
+    params: [
+      { key: 'messageTemplate', label: 'Audit Message', placeholder: 'Automation triggered: {{entity.name}} — {{event.type}}', inputType: 'textarea', help: 'Template variables available', fullWidth: true },
+    ],
+  },
 ];
 
 const OPERATORS = [
@@ -187,7 +266,7 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
   const typeDef = ACTION_TYPES.find((t) => t.value === action.type);
 
   return (
-    <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 space-y-2 bg-white dark:bg-gray-800">
+    <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 space-y-3 bg-white dark:bg-gray-800">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <GripVertical className="w-4 h-4 text-gray-400" />
@@ -208,51 +287,46 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
       </div>
 
       {typeDef && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {typeDef.params.map((param) => (
-            <div key={param}>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">{param}</label>
-              {param === 'body' || param === 'messageTemplate' ? (
-                <textarea
-                  value={action.params[param] || ''}
-                  onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param]: e.target.value } })}
-                  rows={2}
-                  placeholder={`{{entity.name}} template vars available`}
-                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                />
-              ) : param === 'method' ? (
-                <select
-                  value={action.params[param] || 'POST'}
-                  onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param]: e.target.value } })}
-                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                >
-                  <option value="POST">POST</option>
-                  <option value="GET">GET</option>
-                  <option value="PUT">PUT</option>
-                </select>
-              ) : param === 'severity' ? (
-                <select
-                  value={action.params[param] || 'medium'}
-                  onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param]: e.target.value } })}
-                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={action.params[param] || ''}
-                  onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param]: e.target.value } })}
-                  placeholder={param}
-                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                />
-              )}
-            </div>
-          ))}
-        </div>
+        <>
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">{typeDef.description}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {typeDef.params.map((param) => (
+              <div key={param.key} className={param.fullWidth ? 'sm:col-span-2' : ''}>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{param.label}</label>
+                {param.inputType === 'textarea' ? (
+                  <textarea
+                    value={action.params[param.key] || ''}
+                    onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param.key]: e.target.value } })}
+                    rows={3}
+                    placeholder={param.placeholder}
+                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  />
+                ) : param.inputType === 'select' && param.options ? (
+                  <select
+                    value={action.params[param.key] || param.options[0]?.value || ''}
+                    onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param.key]: e.target.value } })}
+                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  >
+                    {param.options.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={action.params[param.key] || ''}
+                    onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param.key]: e.target.value } })}
+                    placeholder={param.placeholder}
+                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  />
+                )}
+                {param.help && (
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{param.help}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -456,6 +530,34 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
           ))}
         </div>
       </div>
+
+      {/* Template Variables Reference */}
+      {actions.length > 0 && (
+        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Available Template Variables</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
+            <div>
+              <span className="font-medium text-gray-700 dark:text-gray-300">Entity (trigger):</span>
+              <div className="ml-2 space-y-0.5 mt-0.5">
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{entity.name}}'}</code> — name/title</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{entity.status}}'}</code> — current status</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{entity.assignedTo}}'}</code> — assigned user</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{entity.createdBy}}'}</code> — creator</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{entity.priority}}'}</code> — priority level</div>
+              </div>
+            </div>
+            <div>
+              <span className="font-medium text-gray-700 dark:text-gray-300">Context:</span>
+              <div className="ml-2 space-y-0.5 mt-0.5">
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{project.name}}'}</code> — project name</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{event.type}}'}</code> — event type</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{previous.status}}'}</code> — previous value</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{event.userId}}'}</code> — who triggered</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Safety Limits */}
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
