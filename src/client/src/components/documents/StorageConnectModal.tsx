@@ -248,13 +248,14 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
             </p>
             <input
               className="w-full text-sm border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600"
-              placeholder="https://...sharepoint.com/:f:/g/personal/..."
+              placeholder="Paste the sharing link you received"
               value={shareUrl}
               onChange={(e) => setShareUrl(e.target.value)}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') submitShareLink(); }}
             />
             <p className="text-xs text-gray-400">
+              The link may contain "sharepoint.com" — that's normal for OneDrive business accounts.
               You must have access to this shared folder with your Microsoft account.
             </p>
             <div className="flex justify-end gap-2">

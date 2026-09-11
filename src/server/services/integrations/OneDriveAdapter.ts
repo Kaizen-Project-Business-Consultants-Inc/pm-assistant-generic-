@@ -216,13 +216,43 @@ class OneDriveAdapter implements StorageAdapter {
       .replace(/\//g, '_')
       .replace(/=+$/, '');
 
-    const resp = await fetch(`${GRAPH_BASE}/shares/${encoded}/driveItem`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    // Cross-tenant shares return 308; must follow manually preserving the Auth header
+    // and include Prefer: redeemSharingLink to redeem the share for the calling user.
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${accessToken}`,
+      Prefer: 'redeemSharingLink',
+    };
+
+    let url = `${GRAPH_BASE}/shares/${encoded}/driveItem`;
+    let resp!: Response;
+
+    for (let i = 0; i < 10; i++) {
+      resp = await fetch(url, { headers, redirect: 'manual' });
+
+      if ([301, 302, 307, 308].includes(resp.status)) {
+        const location = resp.headers.get('location');
+        logger.info('Share link redirect', { hop: i, from: url, to: location, status: resp.status });
+        if (!location) {
+          // 308 with no Location = Graph needs different scope or account type
+          break;
+        }
+        url = location;
+        continue;
+      }
+      break;
+    }
 
     if (!resp.ok) {
-      const text = await resp.text();
-      logger.error('Resolve share link failed', { status: resp.status, body: text });
+      const text = await resp.text().catch(() => '');
+      logger.error('Resolve share link failed', { status: resp.status, body: text, url });
+
+      if (resp.status === 308) {
+        throw new Error(
+          'Cannot access this shared folder. This usually means your Microsoft account ' +
+          'does not have permission, or you need to sign in with a work/school account ' +
+          '(not a personal account). Open the sharing link in your browser first to accept the share, then try again.'
+        );
+      }
       throw new Error(`Failed to resolve shared folder link: ${resp.status}`);
     }
 
