@@ -3440,6 +3440,47 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   getDocumentDownloadUrl(projectId: string, documentId: string): string {
     return `${this.api.defaults.baseURL}/projects/${projectId}/documents/${documentId}/download`;
   }
+
+  // -------------------------------------------------------------------------
+  // Storage Connectors (BYOS)
+  // -------------------------------------------------------------------------
+
+  async listStorageConnectors(projectId: string) {
+    const response = await this.api.get(`/projects/${projectId}/storage-connectors`);
+    return response.data;
+  }
+
+  async initiateOneDriveAuth(projectId: string) {
+    const response = await this.api.post(`/projects/${projectId}/storage-connectors/onedrive/auth`);
+    return response.data;
+  }
+
+  async browseConnectorFolder(projectId: string, connectorId: string, folderId?: string) {
+    const params: Record<string, string> = {};
+    if (folderId) params.folderId = folderId;
+    const response = await this.api.get(`/projects/${projectId}/storage-connectors/${connectorId}/browse`, { params });
+    return response.data;
+  }
+
+  async setConnectorFolders(projectId: string, connectorId: string, folderIds: string[]) {
+    const response = await this.api.put(`/projects/${projectId}/storage-connectors/${connectorId}/folders`, { folderIds });
+    return response.data;
+  }
+
+  async triggerConnectorSync(projectId: string, connectorId: string) {
+    const response = await this.api.post(`/projects/${projectId}/storage-connectors/${connectorId}/sync`);
+    return response.data;
+  }
+
+  async updateStorageConnector(projectId: string, connectorId: string, data: { displayName?: string; status?: string; syncIntervalMinutes?: number }) {
+    const response = await this.api.put(`/projects/${projectId}/storage-connectors/${connectorId}`, data);
+    return response.data;
+  }
+
+  async deleteStorageConnector(projectId: string, connectorId: string) {
+    const response = await this.api.delete(`/projects/${projectId}/storage-connectors/${connectorId}`);
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();

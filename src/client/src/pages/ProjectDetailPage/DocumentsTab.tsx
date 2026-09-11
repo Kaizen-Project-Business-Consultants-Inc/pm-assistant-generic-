@@ -18,8 +18,11 @@ import {
   Pencil,
   Check,
   Download,
+  Cloud,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { OneDriveConnectModal } from '../../components/documents/OneDriveConnectModal';
+import { StorageConnectorStatus } from '../../components/documents/StorageConnectorStatus';
 
 interface DocumentsTabProps {
   projectId: string;
@@ -100,6 +103,8 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploadDescription, setUploadDescription] = useState('');
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [syncingConnectorId, setSyncingConnectorId] = useState<string | null>(null);
 
   // Fetch document list
   const { data: docsData, isLoading } = useQuery({
@@ -140,6 +145,37 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
   });
   const selectedDoc = detailData?.document;
   const entityLinks: any[] = detailData?.entityLinks || [];
+
+  // Storage connectors
+  const { data: connectorsData } = useQuery({
+    queryKey: ['storage-connectors', projectId],
+    queryFn: () => apiService.listStorageConnectors(projectId),
+    staleTime: 30_000,
+  });
+  const connectors: any[] = connectorsData?.connectors || [];
+
+  const syncMutation = useMutation({
+    mutationFn: (connectorId: string) => apiService.triggerConnectorSync(projectId, connectorId),
+    onSuccess: () => {
+      setSyncingConnectorId(null);
+      queryClient.invalidateQueries({ queryKey: ['project-documents', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['storage-connectors', projectId] });
+    },
+    onError: () => setSyncingConnectorId(null),
+  });
+
+  const togglePauseMutation = useMutation({
+    mutationFn: (connector: any) =>
+      apiService.updateStorageConnector(projectId, connector.id, {
+        status: connector.status === 'paused' ? 'active' : 'paused',
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['storage-connectors', projectId] }),
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: (connectorId: string) => apiService.deleteStorageConnector(projectId, connectorId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['storage-connectors', projectId] }),
+  });
 
   // Upload mutation
   const uploadMutation = useMutation({
@@ -245,7 +281,15 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
             maxLength={500}
           />
         </div>
-        <p className="text-xs text-gray-400 mt-1">PDF, DOCX, DOC, TXT, CSV, MD (max 10MB)</p>
+        <div className="flex items-center justify-center gap-3 mt-2">
+          <p className="text-xs text-gray-400">PDF, DOCX, DOC, TXT, CSV, MD (max 10MB)</p>
+          <button
+            className="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
+            onClick={() => setShowConnectModal(true)}
+          >
+            <Cloud className="w-3.5 h-3.5" /> Connect OneDrive
+          </button>
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -263,6 +307,27 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
           <p className="text-sm text-red-500 mt-2">Upload failed. Please try again.</p>
         )}
       </div>
+
+      {/* Connected storage sources */}
+      {connectors.length > 0 && (
+        <div className="space-y-2">
+          {connectors.map((c: any) => (
+            <StorageConnectorStatus
+              key={c.id}
+              connector={c}
+              onSync={() => { setSyncingConnectorId(c.id); syncMutation.mutate(c.id); }}
+              onTogglePause={() => togglePauseMutation.mutate(c)}
+              onDisconnect={() => { if (confirm('Disconnect this storage source? Synced documents will remain.')) disconnectMutation.mutate(c.id); }}
+              isSyncing={syncingConnectorId === c.id && syncMutation.isPending}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Connect Storage + OneDrive modal */}
+      {showConnectModal && (
+        <OneDriveConnectModal projectId={projectId} onClose={() => setShowConnectModal(false)} />
+      )}
 
       {/* Filters row */}
       <div className="flex flex-wrap gap-2 items-center">

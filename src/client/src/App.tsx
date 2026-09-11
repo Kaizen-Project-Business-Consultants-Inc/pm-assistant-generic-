@@ -67,6 +67,7 @@ const EVMDashboardPage = lazy(() => import('./pages/EVMDashboardPage').then(m =>
 const KPIDrillInPage = lazy(() => import('./pages/KPIDrillInPage').then(m => ({ default: m.KPIDrillInPage })));
 const ProjectsPM = lazy(() => import('./pages/ProjectsPM').then(m => ({ default: m.ProjectsPM })));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then(m => ({ default: m.OnboardingPage })));
+const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
 function PageLoader() {
@@ -195,6 +196,9 @@ function App() {
         <Route path={ROUTES.adminSchedules} element={<PrivateRoute requiredRole="admin"><AdminSchedulesPage /></PrivateRoute>} />
         <Route path={ROUTES.adminWaitlist} element={<PrivateRoute requiredRole="admin"><AdminWaitlistPage /></PrivateRoute>} />
         <Route path={ROUTES.admin} element={<Navigate to={ROUTES.adminUsers} replace />} />
+
+        {/* OAuth callback (no auth required — runs in popup) */}
+        <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 
         {/* Catch-all */}
         <Route path="*" element={<NotFoundPage />} />

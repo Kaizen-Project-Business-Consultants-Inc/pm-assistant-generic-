@@ -4021,3 +4021,63 @@ All endpoints are scoped to a project: `/api/v1/projects/:projectId/documents/`
 | PATCH | `/:documentId` | Update description, folder, or pin status |
 | DELETE | `/:documentId` | Delete document, embeddings, and entity links |
 | POST | `/:documentId/reprocess` | Re-run AI processing |
+
+### Cloud Storage Connectors (BYOS)
+
+Connect your OneDrive (or SharePoint) account to automatically sync documents from cloud storage into Kovarti's Document Intelligence pipeline. Kovarti never stores your cloud credentials in plain text and only reads files (never modifies or deletes them).
+
+**Setting Up OneDrive:**
+
+1. Go to the Documents tab on any project
+2. Click the "Connect OneDrive" link in the upload area
+3. Sign in with your Microsoft account in the popup window
+4. Select which folders to sync (or leave empty to sync the entire drive)
+5. Documents matching supported types (PDF, DOCX, DOC, TXT, CSV, MD, max 10MB) are automatically downloaded, classified, and indexed
+
+**Automatic Sync:**
+
+- Connectors sync every 15 minutes by default (configurable from 15 to 1440 minutes)
+- Uses Microsoft Graph delta API for efficient incremental sync (only changed files)
+- New files are processed through the full AI pipeline (classification, summary, embeddings)
+- Deleted files in OneDrive are automatically removed from Kovarti
+- Modified files are re-downloaded and reprocessed
+
+**Connector Status:**
+
+Each connected source shows a status chip in the Documents tab:
+- **Active** (green): Syncing normally
+- **Paused** (yellow): User paused sync, can be resumed
+- **Error** (red): Sync failed 3+ consecutive times, shows error message
+- **Disconnected**: Connector removed
+
+**Actions:**
+- **Sync now:** Trigger an immediate sync instead of waiting for the scheduled interval
+- **Pause/Resume:** Temporarily halt or restart automatic syncing
+- **Disconnect:** Remove the connector (synced documents remain in the project)
+
+**Security:**
+- OAuth 2.0 with PKCE (proof key for code exchange) — prevents authorization code interception
+- Tokens encrypted at rest with AES-256-GCM
+- Tokens never exposed in API responses
+- OAuth state validated server-side (single-use, 10-minute TTL)
+- Read-only permissions: `Files.Read.All`, `User.Read`, `offline_access`
+
+**Prerequisites (Admin):**
+- Azure AD app registration with redirect URI `{APP_URL}/api/v1/projects/:projectId/storage-connectors/onedrive/callback`
+- Environment variables: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `CONNECTOR_ENCRYPTION_KEY` (32+ chars)
+
+**Storage Connector API Endpoints:**
+
+All endpoints scoped to a project: `/api/v1/projects/:projectId/storage-connectors/`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | List connectors for the project |
+| POST | `/onedrive/auth` | Initiate OneDrive OAuth flow (returns `authUrl`) |
+| GET | `/onedrive/callback` | OAuth redirect handler (creates connector) |
+| GET | `/:id` | Get connector details |
+| GET | `/:id/browse?folderId=` | Browse OneDrive folders |
+| PUT | `/:id/folders` | Set which folders to sync |
+| POST | `/:id/sync` | Trigger manual sync |
+| PUT | `/:id` | Update settings (displayName, status, syncIntervalMinutes) |
+| DELETE | `/:id` | Disconnect and remove connector |

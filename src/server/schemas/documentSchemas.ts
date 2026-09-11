@@ -150,6 +150,11 @@ export interface ProjectDocument {
   processingStatus: ProcessingStatus;
   errorMessage: string | null;
   uploadedBy: string;
+  connectorId: string | null;
+  externalId: string | null;
+  externalPath: string | null;
+  externalModifiedAt: string | null;
+  externalEtag: string | null;
   createdAt: string;
   updatedAt: string;
 }

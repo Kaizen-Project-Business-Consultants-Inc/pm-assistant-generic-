@@ -3227,6 +3227,24 @@ Type a natural language question in the AI search field (e.g., "budget constrain
 - **Reprocess** — click the refresh icon to re-run AI analysis (useful after AI improvements)
 - **Delete** — click the trash icon and confirm to permanently remove the document
 
+### Connecting OneDrive (Cloud Storage)
+
+Automatically sync documents from your Microsoft OneDrive or SharePoint:
+
+1. On the Documents tab, click **Connect OneDrive** in the upload area
+2. A popup opens for Microsoft sign-in — authorize read-only access
+3. After authorization, a folder picker appears — select which folders to sync (or leave empty for all files)
+4. Click **Save** — Kovarti begins syncing supported files (PDF, DOCX, DOC, TXT, CSV, MD under 10MB)
+
+**After connecting:**
+- Documents sync automatically every 15 minutes (configurable)
+- New and changed files are downloaded and processed through the AI pipeline
+- Deleted files in OneDrive are automatically removed from Kovarti
+- The connector status chip shows sync status, last sync time, and any errors
+- Use **Sync now** to trigger an immediate sync
+- **Pause/Resume** to temporarily halt sync
+- **Disconnect** to remove the connector (already-synced documents stay)
+
 ---
 
 ## Tips

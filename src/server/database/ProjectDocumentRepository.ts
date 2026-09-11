@@ -31,6 +31,11 @@ function mapRow(row: any): ProjectDocument {
     processingStatus: row.processing_status,
     errorMessage: row.error_message || null,
     uploadedBy: row.uploaded_by,
+    connectorId: row.connector_id || null,
+    externalId: row.external_id || null,
+    externalPath: row.external_path || null,
+    externalModifiedAt: row.external_modified_at ? String(row.external_modified_at) : null,
+    externalEtag: row.external_etag || null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -155,6 +160,61 @@ class ProjectDocumentRepository {
       [projectId],
     );
     return rows.map((r: any) => r.folder);
+  }
+
+  async findByExternalId(connectorId: string, externalId: string): Promise<ProjectDocument | null> {
+    const rows = await databaseService.query<any>(
+      'SELECT * FROM project_documents WHERE connector_id = ? AND external_id = ?',
+      [connectorId, externalId],
+    );
+    return rows.length > 0 ? mapRow(rows[0]) : null;
+  }
+
+  async upsertFromConnector(data: {
+    existingId?: string;
+    projectId: string;
+    connectorId: string;
+    externalId: string;
+    externalPath: string;
+    externalModifiedAt: Date | null;
+    externalEtag: string | null;
+    filename: string;
+    originalFilename: string;
+    contentType: string;
+    fileSize: number;
+    uploadedBy: string;
+  }): Promise<ProjectDocument> {
+    if (data.existingId) {
+      // Update existing record
+      await databaseService.query(
+        `UPDATE project_documents SET
+           filename = ?, original_filename = ?, content_type = ?, file_size = ?,
+           external_path = ?, external_modified_at = ?, external_etag = ?,
+           processing_status = 'pending', error_message = NULL
+         WHERE id = ?`,
+        [
+          data.filename, data.originalFilename, data.contentType, data.fileSize,
+          data.externalPath, data.externalModifiedAt, data.externalEtag,
+          data.existingId,
+        ],
+      );
+      return (await this.findById(data.existingId))!;
+    }
+
+    // Insert new record
+    const id = uuidv4();
+    await databaseService.query(
+      `INSERT INTO project_documents
+       (id, project_id, filename, original_filename, content_type, file_size, uploaded_by,
+        connector_id, external_id, external_path, external_modified_at, external_etag)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id, data.projectId, data.filename, data.originalFilename, data.contentType, data.fileSize,
+        data.uploadedBy, data.connectorId, data.externalId, data.externalPath,
+        data.externalModifiedAt, data.externalEtag,
+      ],
+    );
+    return (await this.findById(id))!;
   }
 
   async delete(id: string): Promise<void> {

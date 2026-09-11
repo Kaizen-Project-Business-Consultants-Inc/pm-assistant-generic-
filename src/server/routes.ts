@@ -101,6 +101,7 @@ import { apiKeyRoutes } from './routes/integrations/apiKeys';
 import { stripeRoutes } from './routes/integrations/stripe';
 import { slackRoutes } from './routes/integrations/slack';
 import { mcpProxyRoutes } from './routes/integrations/mcpProxy';
+import { storageConnectorRoutes } from './routes/integrations/storageConnectors';
 
 // Admin
 import { adminRoutes } from './routes/admin/admin';
@@ -221,6 +222,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(stripeRoutes, { prefix: '/api/v1/stripe' });
   await fastify.register(slackRoutes, { prefix: '/api/v1/slack' });
   await fastify.register(mcpProxyRoutes, { prefix: '/mcp' });
+  await fastify.register(storageConnectorRoutes, { prefix: '/api/v1/projects' });
 
   // Admin
   await fastify.register(adminRoutes, { prefix: '/api/v1/admin' });

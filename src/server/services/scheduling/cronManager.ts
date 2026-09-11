@@ -20,6 +20,7 @@ export interface CronTasks {
   healthSnapshotTask: cron.ScheduledTask | null;
   trialReminderTask: cron.ScheduledTask | null;
   deadlineTask: cron.ScheduledTask | null;
+  storageSyncTask: cron.ScheduledTask | null;
 }
 
 export function startCronTasks(
@@ -35,6 +36,7 @@ export function startCronTasks(
     healthSnapshotTask: null,
     trialReminderTask: null,
     deadlineTask: null,
+    storageSyncTask: null,
   };
 
   // Agent-specific jobs: gated by AGENT_ENABLED
@@ -212,6 +214,27 @@ export function startCronTasks(
     });
   });
 
+  // Storage connector sync — every 15 minutes
+  logger.info('[cron] Starting storage connector sync (every 15 min)');
+  tasks.storageSyncTask = cron.schedule('*/15 * * * *', async () => {
+    await forEachTenant(async (tenant) => {
+      const label = tenant?.slug ?? 'default';
+      const start = Date.now();
+      try {
+        const { runStorageSync } = await import('./storageSyncJob');
+        await runStorageSync();
+        logger.info(`[cron:storage-sync] ${label} completed`, {
+          cronJob: 'storage-sync', tenant: label, durationMs: Date.now() - start,
+        });
+      } catch (error) {
+        logger.error(`[cron:storage-sync] ${label} FAILED`, {
+          cronJob: 'storage-sync', tenant: label, durationMs: Date.now() - start,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  });
+
   return tasks;
 }
 
@@ -224,6 +247,7 @@ export function stopCronTasks(tasks: CronTasks): void {
   if (tasks.healthSnapshotTask) { tasks.healthSnapshotTask.stop(); tasks.healthSnapshotTask = null; }
   if (tasks.trialReminderTask) { tasks.trialReminderTask.stop(); tasks.trialReminderTask = null; }
   if (tasks.deadlineTask) { tasks.deadlineTask.stop(); tasks.deadlineTask = null; }
+  if (tasks.storageSyncTask) { tasks.storageSyncTask.stop(); tasks.storageSyncTask = null; }
   logger.info('[Agent] Stopped agent scheduler');
 }
 

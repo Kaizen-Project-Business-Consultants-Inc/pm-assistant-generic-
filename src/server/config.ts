@@ -130,6 +130,11 @@ const configSchema = z.object({
   // File Upload Configuration
   UPLOAD_DIR: z.string().default(process.env['HOME'] || process.env['USERPROFILE'] ? `${process.env['HOME'] || process.env['USERPROFILE']}/uploads/pm-assistant` : './uploads/pm-assistant'),
   MAX_UPLOAD_SIZE_MB: z.coerce.number().min(1).max(100).default(10),
+
+  // Storage Connector (OneDrive/SharePoint BYOS)
+  MICROSOFT_CLIENT_ID: z.string().optional().default(''),
+  MICROSOFT_CLIENT_SECRET: z.string().optional().default(''),
+  CONNECTOR_ENCRYPTION_KEY: z.string().optional().default(''),
 }).refine((data) => {
   if (data.JWT_SECRET === data.JWT_REFRESH_SECRET) {
     throw new Error('JWT_SECRET and JWT_REFRESH_SECRET must be different');
@@ -252,6 +257,9 @@ export function validateConfiguration() {
       SLACK_BOT_TOKEN: process.env['SLACK_BOT_TOKEN'],
       UPLOAD_DIR: process.env['UPLOAD_DIR'],
       MAX_UPLOAD_SIZE_MB: process.env['MAX_UPLOAD_SIZE_MB'],
+      MICROSOFT_CLIENT_ID: process.env['MICROSOFT_CLIENT_ID'],
+      MICROSOFT_CLIENT_SECRET: process.env['MICROSOFT_CLIENT_SECRET'],
+      CONNECTOR_ENCRYPTION_KEY: process.env['CONNECTOR_ENCRYPTION_KEY'],
     };
 
     // Logger not yet available during bootstrap — use process.stderr
