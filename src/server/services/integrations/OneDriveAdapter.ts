@@ -177,20 +177,33 @@ class OneDriveAdapter implements StorageAdapter {
 
   async listFolderFiles(accessToken: string, folderId: string, connectorConfig?: ConnectorConfig): Promise<StorageItem[]> {
     const base = driveBase(connectorConfig);
-    const url = `${base}/items/${folderId}/children?$select=id,name,size,file,folder,parentReference,lastModifiedDateTime,eTag&$top=200`;
-    let allItems: StorageItem[] = [];
-    let currentUrl: string | undefined = url;
+    const MAX_DEPTH = 10;
+    const allItems: StorageItem[] = [];
+    const queue: { id: string; depth: number }[] = [{ id: folderId, depth: 0 }];
 
-    while (currentUrl) {
-      const resp: Response = await fetch(currentUrl, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        signal: AbortSignal.timeout(30000),
-      });
+    while (queue.length > 0) {
+      const { id, depth } = queue.shift()!;
+      let currentUrl: string | undefined = `${base}/items/${id}/children?$select=id,name,size,file,folder,parentReference,lastModifiedDateTime,eTag&$top=200`;
 
-      if (!resp.ok) throw new Error(`List folder files failed: ${resp.status}`);
-      const data: any = await resp.json();
-      allItems = allItems.concat((data.value || []).map(toStorageItem));
-      currentUrl = data['@odata.nextLink'] as string | undefined;
+      while (currentUrl) {
+        const resp: Response = await fetch(currentUrl, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          signal: AbortSignal.timeout(30000),
+        });
+
+        if (!resp.ok) throw new Error(`List folder files failed: ${resp.status}`);
+        const data: any = await resp.json();
+        const items: StorageItem[] = (data.value || []).map(toStorageItem);
+
+        for (const item of items) {
+          allItems.push(item);
+          if (item.isFolder && depth < MAX_DEPTH) {
+            queue.push({ id: item.id, depth: depth + 1 });
+          }
+        }
+
+        currentUrl = data['@odata.nextLink'] as string | undefined;
+      }
     }
 
     return allItems;
