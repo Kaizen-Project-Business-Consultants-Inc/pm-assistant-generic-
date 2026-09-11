@@ -4024,23 +4024,30 @@ All endpoints are scoped to a project: `/api/v1/projects/:projectId/documents/`
 
 ### Cloud Storage Connectors (BYOS)
 
-Connect your OneDrive (or SharePoint) account to automatically sync documents from cloud storage into Kovarti's Document Intelligence pipeline. Kovarti never stores your cloud credentials in plain text and only reads files (never modifies or deletes them).
+Connect your OneDrive (or SharePoint) account so Kovarti can index and analyze your documents without ever storing them. This is the **Bring Your Own Storage (BYOS)** model: your files stay in OneDrive, and Kovarti only keeps lightweight metadata, AI insights, and search embeddings (~10KB per document).
+
+**How BYOS Works:**
+
+- During sync, files are temporarily downloaded for text extraction and AI analysis, then **immediately deleted** from Kovarti's servers
+- Kovarti stores only: document name, AI classification, summary, tags, entity links, and search embeddings
+- When you download a document, it is **streamed live from OneDrive** through Kovarti as a pass-through proxy
+- Your OneDrive remains the single source of truth — Kovarti never holds your files
 
 **Setting Up OneDrive:**
 
 1. Go to the Documents tab on any project
-2. Click the "Connect OneDrive" link in the upload area
-3. Sign in with your Microsoft account in the popup window
-4. Select which folders to sync (or leave empty to sync the entire drive)
-5. Documents matching supported types (PDF, DOCX, DOC, TXT, CSV, MD, max 10MB) are automatically downloaded, classified, and indexed
+2. Click the **Connect OneDrive** button in the upload area
+3. Sign in with your Microsoft account in the popup (account picker shown)
+4. Select which folders to sync — only those folders are indexed
+5. Documents matching supported types (PDF, DOCX, DOC, TXT, CSV, MD, max 10MB) are processed through the AI pipeline
 
 **Automatic Sync:**
 
 - Connectors sync every 15 minutes by default (configurable from 15 to 1440 minutes)
-- Uses Microsoft Graph delta API for efficient incremental sync (only changed files)
-- New files are processed through the full AI pipeline (classification, summary, embeddings)
-- Deleted files in OneDrive are automatically removed from Kovarti
-- Modified files are re-downloaded and reprocessed
+- When specific folders are selected, sync lists those folders directly (fast)
+- New files are temporarily downloaded, AI-processed, then the temp file is deleted
+- Deleted files in OneDrive are automatically removed from Kovarti's index
+- Modified files are re-processed with updated AI insights
 
 **Connector Status:**
 

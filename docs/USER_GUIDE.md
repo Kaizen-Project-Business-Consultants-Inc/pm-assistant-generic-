@@ -3227,23 +3227,29 @@ Type a natural language question in the AI search field (e.g., "budget constrain
 - **Reprocess** — click the refresh icon to re-run AI analysis (useful after AI improvements)
 - **Delete** — click the trash icon and confirm to permanently remove the document
 
-### Connecting OneDrive (Cloud Storage)
+### Connecting OneDrive (Cloud Storage — BYOS)
 
-Automatically sync documents from your Microsoft OneDrive or SharePoint:
+Bring Your Own Storage: connect your Microsoft OneDrive or SharePoint so Kovarti can analyze your documents without ever storing them. Your files stay in OneDrive — Kovarti only keeps AI-generated metadata and search indexes.
 
-1. On the Documents tab, click **Connect OneDrive** in the upload area
-2. A popup opens for Microsoft sign-in — authorize read-only access
-3. After authorization, a folder picker appears — select which folders to sync (or leave empty for all files)
-4. Click **Save** — Kovarti begins syncing supported files (PDF, DOCX, DOC, TXT, CSV, MD under 10MB)
+1. On the Documents tab, click the **Connect OneDrive** button
+2. A popup opens — choose your Microsoft account and authorize read-only access
+3. A folder picker appears — select which folders to sync
+4. Click **Save** — Kovarti indexes supported files (PDF, DOCX, DOC, TXT, CSV, MD under 10MB)
+
+**How it works:**
+- During sync, files are temporarily downloaded for AI text extraction, then **immediately deleted**
+- Kovarti stores only the document name, AI classification, summary, tags, and search embeddings
+- When you click **Download**, the file is streamed live from your OneDrive — Kovarti is just a pass-through
+- Your OneDrive is the single source of truth
 
 **After connecting:**
 - Documents sync automatically every 15 minutes (configurable)
-- New and changed files are downloaded and processed through the AI pipeline
-- Deleted files in OneDrive are automatically removed from Kovarti
+- New and changed files are re-analyzed with updated AI insights
+- Deleted files in OneDrive are automatically removed from Kovarti's index
 - The connector status chip shows sync status, last sync time, and any errors
 - Use **Sync now** to trigger an immediate sync
 - **Pause/Resume** to temporarily halt sync
-- **Disconnect** to remove the connector (already-synced documents stay)
+- **Disconnect** to remove the connector (AI metadata stays in the project)
 
 ---
 

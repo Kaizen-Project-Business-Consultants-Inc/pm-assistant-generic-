@@ -384,9 +384,10 @@ An agentic AI project management platform that combines the scheduling power of 
 - Pinned documents always sort to top; folder filter and search cover filename, description, and AI summary
 - Detail panel with editable description and folder, all AI insights, and entity links
 - Reprocess button to re-run AI analysis on any document
-- **OneDrive/SharePoint BYOS connector:** OAuth 2.0 + PKCE flow, folder picker, incremental delta sync
-- Automatic sync every 15 min (configurable), downloads new/changed files, removes deleted files
-- Tokens encrypted at rest (AES-256-GCM), never exposed in API, SSRF-safe (hardcoded Graph URL)
+- **OneDrive/SharePoint BYOS connector:** true Bring Your Own Storage — files never stored in Kovarti, only metadata + AI insights + embeddings (~10KB/doc)
+- OAuth 2.0 + PKCE flow, Microsoft account picker, folder-specific sync (no full-drive scan)
+- Temp download → AI process → delete temp file; downloads proxied live from OneDrive on demand
+- Automatic sync every 15 min (configurable), tokens encrypted at rest (AES-256-GCM), SSRF-safe
 - Sync status chips with pause/resume, manual sync, and disconnect controls
 
 ---
