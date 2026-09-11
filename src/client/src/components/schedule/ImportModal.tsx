@@ -485,6 +485,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
                     <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop a file here, or click to browse</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">.csv, .xlsx, .xml, .pdf, .docx, .txt supported (max 5MB)</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF, Word, and text files are analyzed by AI to extract tasks automatically</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">Using Microsoft Project? Save as XML first (File → Save As → XML), then import the .xml file here.</p>
                     <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.xml,.pdf,.docx,.doc,.txt,text/csv,text/xml,application/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/plain" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                   </div>
 

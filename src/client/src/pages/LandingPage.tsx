@@ -916,7 +916,7 @@ export const LandingPage: React.FC = () => {
                     ['Meeting transcript → action items', true, 'partial'],
                     ['Bring Your Own Storage (BYOS)', true, false],
                     ['Multi-provider cloud sync', true, 'partial'],
-                    ['MS Project import (MPP/MSPDI)', true, 'partial'],
+                    ['MS Project import (MSPDI/XML)', true, 'partial'],
                     ['Resource leveling & what-if scenarios', true, 'partial'],
                     ['Workflow automation engine', true, true],
                     ['Per-seat pricing (no hidden fees)', true, 'partial'],
