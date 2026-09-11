@@ -373,6 +373,18 @@ An agentic AI project management platform that combines the scheduling power of 
 - "Agent Activity" tab on project detail page
 - Full transparency into why alerts were or weren't created
 
+### 3.9 Document Intelligence
+- Upload project documents (PDF, DOCX, DOC, TXT, CSV, MD) via drag-and-drop or file picker
+- AI automatically classifies document type and project phase
+- Extracts decisions, risks, issues, action items, key dates
+- Generates executive summary and keyword tags
+- Links document content to existing project tasks, risks, and milestones
+- Semantic search across all project documents using vector embeddings
+- **Findability features:** Short description field, custom folders, pin/favourite, prominent search
+- Pinned documents always sort to top; folder filter and search cover filename, description, and AI summary
+- Detail panel with editable description and folder, all AI insights, and entity links
+- Reprocess button to re-run AI analysis on any document
+
 ---
 
 ## Priority 4: Production Polish (Make It Shippable)

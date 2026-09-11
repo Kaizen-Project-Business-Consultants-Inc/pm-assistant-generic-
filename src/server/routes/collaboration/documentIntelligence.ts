@@ -55,6 +55,9 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
       const filePath = path.join(uploadDir, docFilename);
       await fsPromises.writeFile(filePath, buffer);
 
+      // Extract optional description from multipart fields
+      const description = (file.fields?.description as any)?.value || null;
+
       // Create DB record
       const doc = await projectDocumentRepository.create({
         projectId,
@@ -63,6 +66,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
         contentType: file.mimetype,
         fileSize: buffer.length,
         uploadedBy: user.userId,
+        description: description ? String(description).slice(0, 500) : undefined,
       });
 
       // Trigger async processing (fire-and-forget)
@@ -83,19 +87,46 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
     const query = request.query as {
       documentType?: string;
       projectPhase?: string;
+      folder?: string;
       search?: string;
     };
 
     const documents = await projectDocumentRepository.findByProject(projectId, {
       documentType: query.documentType as any,
       projectPhase: query.projectPhase as any,
+      folder: query.folder,
       search: query.search,
     });
 
     return { documents };
   });
 
-  // GET /:projectId/documents/search — semantic search
+  // GET /:projectId/documents/folders — list distinct folder names
+  fastify.get('/:projectId/documents/folders', { preHandler: [requireScope('read')] }, async (request: FastifyRequest) => {
+    const { projectId } = request.params as { projectId: string };
+    const folders = await projectDocumentRepository.getDistinctFolders(projectId);
+    return { folders };
+  });
+
+  // PATCH /:projectId/documents/:documentId — update description, folder, pin status
+  fastify.patch('/:projectId/documents/:documentId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { documentId } = request.params as { projectId: string; documentId: string };
+    const body = request.body as { description?: string | null; folder?: string | null; isPinned?: boolean };
+
+    const document = await projectDocumentRepository.findById(documentId);
+    if (!document) return reply.status(404).send({ error: 'Document not found' });
+
+    await projectDocumentRepository.updateMeta(documentId, {
+      description: body.description !== undefined ? (body.description ? String(body.description).slice(0, 500) : null) : undefined,
+      folder: body.folder !== undefined ? (body.folder ? String(body.folder).slice(0, 100) : null) : undefined,
+      isPinned: body.isPinned,
+    });
+
+    const updated = await projectDocumentRepository.findById(documentId);
+    return { document: updated };
+  });
+
+  // GET /:projectId/documents/search — semantic search with text fallback
   fastify.get('/:projectId/documents/search', { preHandler: [requireScope('read')] }, async (request: FastifyRequest) => {
     const { projectId } = request.params as { projectId: string };
     const { q, topK } = request.query as { q?: string; topK?: string };
@@ -104,13 +135,22 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
       return { results: [] };
     }
 
-    const results = await documentIntelligenceService.searchDocuments(
-      projectId,
-      q.trim(),
-      topK ? parseInt(topK, 10) : 10,
-    );
+    const query = q.trim();
+    const limit = topK ? parseInt(topK, 10) : 10;
 
-    return { results };
+    // Try semantic search first, fall back to text search
+    try {
+      const results = await documentIntelligenceService.searchDocuments(projectId, query, limit);
+      if (results.length > 0) return { results };
+    } catch (err: any) {
+      logger.warn('Semantic search unavailable, falling back to text search', { error: err.message });
+    }
+
+    // Text-based fallback
+    const docs = await projectDocumentRepository.findByProject(projectId, { search: query });
+    return {
+      results: docs.slice(0, limit).map(doc => ({ document: doc, score: 0 })),
+    };
   });
 
   // GET /:projectId/documents/:documentId — full document with insights + linked entities
@@ -123,6 +163,30 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
     const entityLinks = await documentEntityLinkRepository.findByDocument(documentId);
 
     return { document, entityLinks };
+  });
+
+  // GET /:projectId/documents/:documentId/download — stream file back to client
+  fastify.get('/:projectId/documents/:documentId/download', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { projectId, documentId } = request.params as { projectId: string; documentId: string };
+
+    const document = await projectDocumentRepository.findById(documentId);
+    if (!document || document.projectId !== projectId) {
+      return reply.status(404).send({ error: 'Document not found' });
+    }
+
+    const filePath = documentIntelligenceService.getFilePath(projectId, document.filename);
+    try {
+      await fsPromises.access(filePath);
+    } catch {
+      return reply.status(404).send({ error: 'File not found on disk' });
+    }
+
+    const stream = fs.createReadStream(filePath);
+    return reply
+      .header('Content-Type', document.contentType)
+      .header('Content-Disposition', `attachment; filename="${encodeURIComponent(document.originalFilename)}"`)
+      .header('Content-Length', document.fileSize)
+      .send(stream);
   });
 
   // DELETE /:projectId/documents/:documentId — remove document + embeddings + entity links

@@ -3954,3 +3954,70 @@ All endpoints are scoped to a project: `/api/v1/projects/:projectId/automations/
 | GET | `/event-types` | List available trigger event types and field catalog |
 | POST | `/trigger` | Manually fire a trigger event (for testing) |
 | GET | `/stats` | Aggregated run counts and error rates across all rules |
+
+## 59. Document Intelligence
+
+An AI-powered document management system that ingests, classifies, summarizes, and enables intelligent search across project documents.
+
+### Upload & Processing
+
+- **Upload area:** Drag-and-drop or file picker on the Documents tab (accessible via the overflow/More menu on project detail)
+- **Supported formats:** PDF, DOCX, DOC, TXT, CSV, MD (max 10MB per file)
+- **Multiple file upload:** Hold Ctrl/Cmd to select multiple files
+- **Optional description:** Enter a short description before uploading to help identify the document later
+- **AI processing:** After upload, the document is automatically processed by Claude AI:
+  - **Classification:** Document type (Requirements, Design, Meeting Minutes, Risk Log, etc.) and project phase (Initiation, Planning, Execution, etc.)
+  - **Summary:** AI-generated executive summary
+  - **Tags:** Auto-generated keyword tags
+  - **Extracted insights:** Decisions, risks, issues, action items (with assignees/due dates), and key dates
+  - **Entity linking:** AI matches document content to existing tasks, risks, and milestones in the project
+  - **Confidence score:** How confident the AI is in its classification (0-100%)
+- **Processing status:** Pending → Processing → Completed (green checkmark) or Failed (red warning)
+- **Reprocess:** Click the refresh icon in the detail panel to re-run AI processing
+- **Embeddings:** Document text is chunked and embedded for semantic search
+
+### Finding Documents
+
+Four features for quickly finding documents:
+
+1. **Search bar** — Prominent search at the top of the Documents tab. Searches across filename, description, and AI summary.
+2. **Folders** — Assign documents to custom folders (e.g., "Vendor Docs", "Contracts"). Folder filter dropdown appears when folders exist. Type a new folder name or pick an existing one from the autocomplete list.
+3. **Pins (Favourites)** — Click the star icon to pin frequently-accessed documents. Pinned documents always appear at the top of the list.
+4. **Description** — Add a short description (up to 500 chars) to any document. Descriptions are shown in the list view and are searchable.
+
+### Filters
+
+- **Document Type:** Filter by AI-classified type (Requirements, Design, Meeting Minutes, etc.)
+- **Project Phase:** Filter by phase (Initiation, Planning, Execution, Monitoring, Closure)
+- **Folder:** Filter by assigned folder
+- **AI Semantic Search:** Type a natural language question (e.g., "budget constraints") to find documents by meaning, not just keywords. Requires EMBEDDING_ENABLED=true and OPENAI_API_KEY.
+
+### Detail Panel
+
+Click any document to open the detail side panel showing:
+- Filename, file size, upload date
+- Editable description and folder
+- Pin/unpin button
+- Document type and phase badges with confidence score
+- AI summary
+- Tags
+- Extracted decisions, risks, issues, action items
+- Key dates mentioned
+- Linked entities (tasks, risks, milestones)
+- Error message (if processing failed)
+- Reprocess and delete buttons
+
+### API Endpoints
+
+All endpoints are scoped to a project: `/api/v1/projects/:projectId/documents/`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/upload` | Upload a document (multipart, optional description field) |
+| GET | `/` | List documents with filters (documentType, projectPhase, folder, search) |
+| GET | `/folders` | List distinct folder names in the project |
+| GET | `/search?q=...` | Semantic search across document content |
+| GET | `/:documentId` | Get document details with entity links |
+| PATCH | `/:documentId` | Update description, folder, or pin status |
+| DELETE | `/:documentId` | Delete document, embeddings, and entity links |
+| POST | `/:documentId/reprocess` | Re-run AI processing |

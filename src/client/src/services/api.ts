@@ -3385,19 +3385,21 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   // Document Intelligence
   // -------------------------------------------------------------------------
 
-  async uploadProjectDocument(projectId: string, file: File) {
+  async uploadProjectDocument(projectId: string, file: File, description?: string) {
     const formData = new FormData();
     formData.append('file', file);
+    if (description) formData.append('description', description);
     const response = await this.api.post(`/projects/${projectId}/documents/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   }
 
-  async getProjectDocuments(projectId: string, filters?: { documentType?: string; projectPhase?: string; search?: string }) {
+  async getProjectDocuments(projectId: string, filters?: { documentType?: string; projectPhase?: string; folder?: string; search?: string }) {
     const params: Record<string, string> = {};
     if (filters?.documentType) params.documentType = filters.documentType;
     if (filters?.projectPhase) params.projectPhase = filters.projectPhase;
+    if (filters?.folder) params.folder = filters.folder;
     if (filters?.search) params.search = filters.search;
     const response = await this.api.get(`/projects/${projectId}/documents`, { params });
     return response.data;
@@ -3415,6 +3417,16 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  async getProjectDocumentFolders(projectId: string) {
+    const response = await this.api.get(`/projects/${projectId}/documents/folders`);
+    return response.data;
+  }
+
+  async updateProjectDocument(projectId: string, documentId: string, data: { description?: string | null; folder?: string | null; isPinned?: boolean }) {
+    const response = await this.api.patch(`/projects/${projectId}/documents/${documentId}`, data);
+    return response.data;
+  }
+
   async deleteProjectDocument(projectId: string, documentId: string) {
     const response = await this.api.delete(`/projects/${projectId}/documents/${documentId}`);
     return response.data;
@@ -3423,6 +3435,10 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   async reprocessProjectDocument(projectId: string, documentId: string) {
     const response = await this.api.post(`/projects/${projectId}/documents/${documentId}/reprocess`);
     return response.data;
+  }
+
+  getDocumentDownloadUrl(projectId: string, documentId: string): string {
+    return `${this.api.defaults.baseURL}/projects/${projectId}/documents/${documentId}/download`;
   }
 }
 

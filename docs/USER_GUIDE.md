@@ -3187,6 +3187,48 @@ The engine has built-in guards to prevent runaway automation:
 
 ---
 
+## 40. Document Intelligence
+
+Upload and manage project documents with AI-powered classification, summarization, and search.
+
+### Getting Started
+1. Navigate to a project's detail page
+2. Click the overflow menu (three dots / "More") and select **Documents**
+3. You'll see the Document Hub with a search bar, upload area, and filters
+
+### Uploading Documents
+- **Drag & drop** files onto the upload area, or click **browse** to select files
+- Supported formats: PDF, DOCX, DOC, TXT, CSV, MD (max 10MB each)
+- Optionally enter a **description** before uploading (e.g., "vendor response for LMS phase 2")
+- Multiple files can be uploaded at once (hold Ctrl/Cmd)
+- After upload, AI automatically processes the document (15-30 seconds)
+
+### Finding Documents Quickly
+- **Search** — the search bar at the top of the tab searches across filenames, descriptions, and AI summaries
+- **Pin favourites** — click the star icon on any document to pin it to the top of the list
+- **Folders** — assign documents to custom folders (e.g., "Contracts", "Vendor Docs") via the detail panel. Use the folder dropdown filter to narrow the list.
+- **Descriptions** — add a short description to any document for easy identification
+
+### Viewing Document Details
+Click any document in the list to open the detail panel on the right:
+- **Description** — editable inline (click the pencil icon)
+- **Folder** — editable inline with autocomplete for existing folder names
+- **Pin** — toggle the star to pin/unpin
+- **Classification** — AI-assigned document type and project phase
+- **Summary** — AI-generated executive summary
+- **Tags** — keyword tags for quick scanning
+- **Insights** — extracted decisions, risks, issues, action items, and key dates
+- **Linked entities** — tasks, risks, and milestones referenced in the document
+
+### AI Semantic Search
+Type a natural language question in the AI search field (e.g., "budget constraints") to find documents by meaning. This uses vector embeddings for intelligent matching.
+
+### Reprocessing & Deleting
+- **Reprocess** — click the refresh icon to re-run AI analysis (useful after AI improvements)
+- **Delete** — click the trash icon and confirm to permanently remove the document
+
+---
+
 ## Tips
 
 - **Save often** -- Always click Save after modifying schedules or tasks. Unsaved changes are lost on page refresh.

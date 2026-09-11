@@ -135,12 +135,15 @@ export interface ProjectDocument {
   projectId: string;
   filename: string;
   originalFilename: string;
+  description: string | null;
   contentType: string;
   fileSize: number;
   extractedText: string | null;
   documentType: DocumentType;
   projectPhase: ProjectPhase;
   tags: string[];
+  folder: string | null;
+  isPinned: boolean;
   aiSummary: string | null;
   aiInsights: DocumentAIResponse | null;
   confidence: number;
