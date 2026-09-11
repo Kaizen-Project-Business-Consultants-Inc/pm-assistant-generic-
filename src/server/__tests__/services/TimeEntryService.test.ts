@@ -117,7 +117,7 @@ describe('TimeEntryService', () => {
     it('passes date filters', async () => {
       mockRepo.findByProject.mockResolvedValueOnce([]);
       await service.getByProject('p1', '2026-01-01', '2026-01-31');
-      expect(mockRepo.findByProject).toHaveBeenCalledWith('p1', '2026-01-01', '2026-01-31');
+      expect(mockRepo.findByProject).toHaveBeenCalledWith('p1', '2026-01-01', '2026-01-31', undefined);
     });
   });
 
