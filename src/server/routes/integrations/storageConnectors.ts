@@ -75,7 +75,9 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
       return reply.status(501).send({ error: `${getProviderLabel(provider as StorageProvider)} integration is not configured` });
     }
 
-    const result = await storageConnectorService.initiateOAuthFlow(projectId, user.userId, provider as StorageProvider);
+    const body = (request.body || {}) as Record<string, string>;
+    const extra = Object.keys(body).length > 0 ? body : undefined;
+    const result = await storageConnectorService.initiateOAuthFlow(projectId, user.userId, provider as StorageProvider, extra);
     return result;
   });
 

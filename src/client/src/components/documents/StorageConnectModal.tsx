@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Cloud, Loader2, HardDrive } from 'lucide-react';
+import { X, Cloud, Loader2, HardDrive, Link2, FolderOpen } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { FolderPicker } from './FolderPicker';
@@ -9,7 +9,7 @@ interface StorageConnectModalProps {
   onClose: () => void;
 }
 
-type Step = 'provider' | 'siteUrl' | 'authorizing' | 'folders' | 'done';
+type Step = 'provider' | 'onedriveChoice' | 'shareLink' | 'siteUrl' | 'authorizing' | 'folders' | 'done';
 
 interface ProviderInfo {
   id: string;
@@ -37,6 +37,7 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
   const [connectorId, setConnectorId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [siteUrl, setSiteUrl] = useState('');
+  const [shareUrl, setShareUrl] = useState('');
 
   const { data: providersData } = useQuery({
     queryKey: ['storage-providers', projectId],
@@ -111,6 +112,8 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
     setError(null);
     if (providerId === 'sharepoint') {
       setStep('siteUrl');
+    } else if (providerId === 'onedrive') {
+      setStep('onedriveChoice');
     } else {
       authMutation.mutate({ provider: providerId });
     }
@@ -122,6 +125,14 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
       return;
     }
     authMutation.mutate({ provider: 'sharepoint', extra: { siteUrl: siteUrl.trim() } });
+  };
+
+  const submitShareLink = () => {
+    if (!shareUrl.trim()) {
+      setError('Please paste a OneDrive sharing link');
+      return;
+    }
+    authMutation.mutate({ provider: 'onedrive', extra: { shareUrl: shareUrl.trim() } });
   };
 
   return (
@@ -184,6 +195,84 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
                 <Loader2 className="w-4 h-4 animate-spin" /> Preparing...
               </div>
             )}
+          </div>
+        )}
+
+        {step === 'onedriveChoice' && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              How would you like to connect OneDrive?
+            </p>
+            <div className="space-y-3">
+              <button
+                className="w-full flex items-center gap-3 p-4 rounded-lg border-2 border-blue-200 hover:border-blue-500 hover:bg-blue-50 dark:border-blue-800 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 transition-colors text-left"
+                onClick={() => authMutation.mutate({ provider: 'onedrive' })}
+                disabled={authMutation.isPending}
+              >
+                <FolderOpen className="w-6 h-6 text-blue-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">My OneDrive</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Connect your own OneDrive storage</p>
+                </div>
+              </button>
+              <button
+                className="w-full flex items-center gap-3 p-4 rounded-lg border-2 border-purple-200 hover:border-purple-500 hover:bg-purple-50 dark:border-purple-800 dark:hover:border-purple-500 dark:hover:bg-purple-900/20 transition-colors text-left"
+                onClick={() => setStep('shareLink')}
+                disabled={authMutation.isPending}
+              >
+                <Link2 className="w-6 h-6 text-purple-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Shared Folder Link</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Paste a OneDrive sharing link from a coworker</p>
+                </div>
+              </button>
+            </div>
+            <button
+              className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              onClick={() => setStep('provider')}
+            >
+              &larr; Back
+            </button>
+            {authMutation.isPending && (
+              <div className="flex items-center justify-center gap-2 text-sm text-primary-600">
+                <Loader2 className="w-4 h-4 animate-spin" /> Preparing...
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 'shareLink' && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Paste the OneDrive sharing link for the folder you want to connect.
+            </p>
+            <input
+              className="w-full text-sm border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600"
+              placeholder="https://...sharepoint.com/:f:/g/personal/..."
+              value={shareUrl}
+              onChange={(e) => setShareUrl(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') submitShareLink(); }}
+            />
+            <p className="text-xs text-gray-400">
+              You must have access to this shared folder with your Microsoft account.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-3 py-2 text-sm border rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+                onClick={() => { setStep('onedriveChoice'); setShareUrl(''); }}
+              >
+                Back
+              </button>
+              <button
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                onClick={submitShareLink}
+                disabled={authMutation.isPending}
+              >
+                {authMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Continue
+              </button>
+            </div>
           </div>
         )}
 

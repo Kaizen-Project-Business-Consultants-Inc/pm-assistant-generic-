@@ -3236,9 +3236,12 @@ Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox s
 1. On the Documents tab, click the **Connect Storage** button
 2. Pick your provider from the grid (only admin-configured providers are available)
 3. For **SharePoint**: enter the site URL first, then sign in
-4. A popup opens — sign in and authorize read-only access
-5. A folder picker appears — select which folders to sync
-6. Click **Save** — Kovarti indexes supported files (PDF, DOCX, DOC, TXT, CSV, MD under 10MB)
+4. For **OneDrive**: choose **My OneDrive** (your own storage) or **Shared Folder Link** (paste a sharing URL from a coworker)
+   - Shared folder links look like `https://...sharepoint.com/:f:/g/personal/...`
+   - You must have access to the shared folder with your Microsoft account
+5. A popup opens — sign in and authorize read-only access
+6. A folder picker appears — select which folders to sync
+7. Click **Save** — Kovarti indexes supported files (PDF, DOCX, DOC, TXT, CSV, MD under 10MB)
 
 **How it works:**
 - During sync, files are temporarily downloaded for AI text extraction, then **immediately deleted**

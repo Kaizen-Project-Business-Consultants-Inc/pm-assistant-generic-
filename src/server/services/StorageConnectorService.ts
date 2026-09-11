@@ -38,7 +38,7 @@ const TIER_DOC_LIMITS: Record<string, number> = {
 };
 
 class StorageConnectorService {
-  async initiateOAuthFlow(projectId: string, userId: string, provider: StorageProvider): Promise<{ authUrl: string }> {
+  async initiateOAuthFlow(projectId: string, userId: string, provider: StorageProvider, extra?: Record<string, string>): Promise<{ authUrl: string }> {
     const creds = getProviderCredentials(provider);
     if (!creds.clientId) throw new Error(`${getProviderLabel(provider)} integration not configured`);
 
@@ -60,6 +60,8 @@ class StorageConnectorService {
         projectId, userId, codeVerifier, provider,
         tenantDbName: tenantCtx?.dbName || null,
         tenantOrgId: tenantCtx?.orgId || null,
+        shareUrl: extra?.shareUrl || null,
+        siteUrl: extra?.siteUrl || null,
       }),
       OAUTH_STATE_TTL,
     );
@@ -83,7 +85,7 @@ class StorageConnectorService {
     const raw = await redisService.get(`oauth:storage:${state}`);
     if (!raw) throw new Error('Invalid or expired OAuth state');
 
-    const { projectId, userId, codeVerifier, provider, tenantDbName, tenantOrgId } = JSON.parse(raw);
+    const { projectId, userId, codeVerifier, provider, tenantDbName, tenantOrgId, shareUrl, siteUrl } = JSON.parse(raw);
 
     // Delete state (single-use)
     await redisService.del(`oauth:storage:${state}`);
@@ -104,6 +106,15 @@ class StorageConnectorService {
     // Test connection to get user info for display name
     const user = await adapter.testConnection(tokens.access_token);
 
+    // Resolve shared folder link if provided
+    let connectorConfigExtra: Record<string, unknown> = {};
+    let displayNameSuffix = user.displayName;
+    if (shareUrl && adapter.resolveShareLink) {
+      const shared = await adapter.resolveShareLink(tokens.access_token, shareUrl);
+      connectorConfigExtra = { driveId: shared.driveId, sharedItemId: shared.itemId, shareUrl };
+      displayNameSuffix = `${user.displayName} (${shared.name})`;
+    }
+
     // Encrypt tokens
     const accessTokenEnc = encryptToken(tokens.access_token);
     const refreshTokenEnc = encryptToken(tokens.refresh_token);
@@ -115,12 +126,12 @@ class StorageConnectorService {
     const createConnector = async () => storageConnectorRepository.create({
       projectId,
       provider,
-      displayName: `${label} - ${user.displayName}`,
+      displayName: `${label} - ${displayNameSuffix}`,
       accessTokenEnc,
       refreshTokenEnc,
       tokenExpiresAt,
       createdBy: userId,
-      config: { email: user.email, syncFolders: [] },
+      config: { email: user.email, syncFolders: [], ...connectorConfigExtra },
     });
 
     let connector: StorageConnector;

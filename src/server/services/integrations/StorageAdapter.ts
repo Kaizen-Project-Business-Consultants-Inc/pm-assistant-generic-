@@ -30,6 +30,9 @@ export interface DeltaResult {
 
 export interface ConnectorConfig {
   siteId?: string;
+  driveId?: string;
+  sharedItemId?: string;
+  shareUrl?: string;
   syncFolders?: string[];
   [key: string]: unknown;
 }
@@ -67,4 +70,6 @@ export interface StorageAdapter {
   downloadFile(accessToken: string, itemId: string, connectorConfig?: ConnectorConfig): Promise<Buffer>;
 
   getScopes(): string;
+
+  resolveShareLink?(accessToken: string, shareUrl: string): Promise<{ driveId: string; itemId: string; name: string }>;
 }

@@ -5,6 +5,9 @@ const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 const AUTH_BASE = 'https://login.microsoftonline.com/common/oauth2/v2.0';
 
 function driveBase(connectorConfig?: ConnectorConfig): string {
+  if (connectorConfig?.driveId) {
+    return `${GRAPH_BASE}/drives/${connectorConfig.driveId}`;
+  }
   if (connectorConfig?.siteId) {
     return `${GRAPH_BASE}/sites/${connectorConfig.siteId}/drive`;
   }
@@ -121,9 +124,14 @@ class OneDriveAdapter implements StorageAdapter {
 
   async listFolder(accessToken: string, folderId?: string, connectorConfig?: ConnectorConfig): Promise<StorageItem[]> {
     const base = driveBase(connectorConfig);
-    const path = folderId
-      ? `${base}/items/${folderId}/children`
-      : `${base}/root/children`;
+    let path: string;
+    if (folderId) {
+      path = `${base}/items/${folderId}/children`;
+    } else if (connectorConfig?.sharedItemId) {
+      path = `${base}/items/${connectorConfig.sharedItemId}/children`;
+    } else {
+      path = `${base}/root/children`;
+    }
 
     const resp = await fetch(`${path}?$select=id,name,size,file,folder,parentReference`, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -198,6 +206,35 @@ class OneDriveAdapter implements StorageAdapter {
     if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
     const arrayBuffer = await resp.arrayBuffer();
     return Buffer.from(arrayBuffer);
+  }
+
+  async resolveShareLink(accessToken: string, shareUrl: string): Promise<{ driveId: string; itemId: string; name: string }> {
+    // Encode sharing URL per Microsoft Graph Shares API: "u!" + base64url(shareUrl)
+    const encoded = 'u!' + Buffer.from(shareUrl, 'utf-8')
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    const resp = await fetch(`${GRAPH_BASE}/shares/${encoded}/driveItem`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      logger.error('Resolve share link failed', { status: resp.status, body: text });
+      throw new Error(`Failed to resolve shared folder link: ${resp.status}`);
+    }
+
+    const item = await resp.json() as any;
+    const driveId = item.parentReference?.driveId || item.remoteItem?.parentReference?.driveId;
+    const itemId = item.id || item.remoteItem?.id;
+
+    if (!driveId || !itemId) {
+      throw new Error('Could not resolve drive ID from shared link — ensure the link points to a folder');
+    }
+
+    return { driveId, itemId, name: item.name || 'Shared Folder' };
   }
 
   getScopes(): string {

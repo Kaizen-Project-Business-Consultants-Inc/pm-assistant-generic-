@@ -4030,7 +4030,7 @@ Connect your cloud storage (OneDrive, SharePoint, Google Drive, or Dropbox) so K
 
 | Provider | Auth | Delta Sync | Notes |
 |----------|------|------------|-------|
-| OneDrive | OAuth 2.0 + PKCE | Microsoft Graph delta API | Personal & business accounts |
+| OneDrive | OAuth 2.0 + PKCE | Microsoft Graph delta API | Personal & business accounts; supports shared folder links |
 | SharePoint | OAuth 2.0 + PKCE | Microsoft Graph delta API | Requires site URL; uses same Microsoft app |
 | Google Drive | OAuth 2.0 + PKCE | Changes API with pageToken | Exports Google Docs as DOCX, Sheets as CSV |
 | Dropbox | OAuth 2.0 | list_folder/continue cursor | No PKCE support |
@@ -4057,9 +4057,10 @@ Connect your cloud storage (OneDrive, SharePoint, Google Drive, or Dropbox) so K
 2. Click the **Connect Storage** button in the upload area
 3. Pick your provider from the grid (only providers configured by admin are available)
 4. For SharePoint: enter the site URL first, then sign in
-5. Sign in with your account in the popup
-6. Select which folders to sync — only those folders are indexed
-7. Documents matching supported types (PDF, DOCX, DOC, TXT, CSV, MD, max 10MB) are processed through the AI pipeline
+5. For OneDrive: choose **My OneDrive** (your own storage) or **Shared Folder Link** (paste a sharing URL from a coworker, e.g., `https://...sharepoint.com/:f:/g/personal/...`)
+6. Sign in with your account in the popup (for shared links, you must have access to the shared folder)
+7. Select which folders to sync — only those folders are indexed
+8. Documents matching supported types (PDF, DOCX, DOC, TXT, CSV, MD, max 10MB) are processed through the AI pipeline
 
 **Automatic Sync:**
 
