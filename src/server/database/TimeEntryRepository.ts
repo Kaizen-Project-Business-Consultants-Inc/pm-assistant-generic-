@@ -70,14 +70,18 @@ class TimeEntryRepository {
   }
 
   async findByProject(projectId: string, startDate?: string, endDate?: string, userId?: string): Promise<TimeEntry[]> {
-    let sql = 'SELECT * FROM time_entries WHERE project_id = ?';
+    let sql = `SELECT te.*, t.name AS task_name, u.full_name AS user_name
+      FROM time_entries te
+      LEFT JOIN tasks t ON t.id = te.task_id
+      LEFT JOIN pmassist.users u ON u.id = te.user_id
+      WHERE te.project_id = ?`;
     const params: any[] = [projectId];
-    if (startDate) { sql += ' AND date >= ?'; params.push(startDate); }
-    if (endDate) { sql += ' AND date <= ?'; params.push(endDate); }
-    if (userId) { sql += ' AND user_id = ?'; params.push(userId); }
-    sql += ' ORDER BY date DESC';
+    if (startDate) { sql += ' AND te.date >= ?'; params.push(startDate); }
+    if (endDate) { sql += ' AND te.date <= ?'; params.push(endDate); }
+    if (userId) { sql += ' AND te.user_id = ?'; params.push(userId); }
+    sql += ' ORDER BY te.date DESC';
     const rows = await databaseService.query(sql, params);
-    return rows.map(rowToDTO);
+    return rows.map((row: any) => ({ ...rowToDTO(row), taskName: row.task_name || null, userName: row.user_name || null }));
   }
 
   async findByUserAndDateRange(userId: string, startDate: string, endDate: string): Promise<TimeEntry[]> {
