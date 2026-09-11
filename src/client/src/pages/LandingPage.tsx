@@ -657,6 +657,7 @@ export const LandingPage: React.FC = () => {
             {/* Desktop nav */}
             <div className="hidden md:flex items-center space-x-4">
               <Link to="/features" className="text-sm text-slate-400 hover:text-white transition-colors">Features</Link>
+              <a href="#why-kovarti" className="text-sm text-slate-400 hover:text-white transition-colors">Why Kovarti</a>
               <a href="#pricing" className="text-sm text-slate-400 hover:text-white transition-colors">Pricing</a>
               <Link to="/about" className="text-sm text-slate-400 hover:text-white transition-colors">About</Link>
               <Link to="/login" className="text-sm text-slate-400 hover:text-white transition-colors">Sign In</Link>
@@ -690,6 +691,7 @@ export const LandingPage: React.FC = () => {
           {mobileMenuOpen && (
             <div className="md:hidden border-t border-white/5 py-3 space-y-1">
               <Link to="/features" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Features</Link>
+              <a href="#why-kovarti" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Why Kovarti</a>
               <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Pricing</a>
               <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">About</Link>
               <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Sign In</Link>
@@ -814,6 +816,155 @@ export const LandingPage: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why Kovarti */}
+      <section id="why-kovarti" className="pt-28 pb-20 border-t border-white/5 scroll-mt-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white">Why teams choose Kovarti</h2>
+            <p className="mt-3 text-base text-slate-300 max-w-2xl mx-auto">
+              Most PM tools give you task boards. Kovarti gives you the depth of Microsoft Project with the intelligence of AI — at a fraction of the cost.
+            </p>
+          </div>
+
+          {/* Differentiator cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+            {[
+              {
+                title: 'Your data stays yours',
+                description: 'Bring Your Own Storage — connect OneDrive, SharePoint, Google Drive, or Dropbox. Kovarti indexes and analyzes your documents but never stores them. Your cloud storage remains the single source of truth.',
+                icon: (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                ),
+                color: 'from-emerald-500 to-teal-400',
+                iconBg: 'bg-emerald-500/10 text-emerald-400',
+              },
+              {
+                title: 'Real scheduling, not just task lists',
+                description: 'Gantt charts with critical path, resource leveling, earned value management, and Monte Carlo simulations. Import from MS Project (MPP/MSPDI). This is project scheduling — not a dressed-up to-do list.',
+                icon: (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                ),
+                color: 'from-blue-500 to-indigo-400',
+                iconBg: 'bg-blue-500/10 text-blue-400',
+              },
+              {
+                title: 'AI that actually does PM work',
+                description: '16 autonomous agents scan for risks, flag budget overruns, detect scope creep, and suggest mitigations — continuously, not just when you ask. Mjuzi, your AI assistant, speaks PM fluently.',
+                icon: (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                ),
+                color: 'from-violet-500 to-purple-400',
+                iconBg: 'bg-violet-500/10 text-violet-400',
+              },
+              {
+                title: 'Transparent, fair pricing',
+                description: 'No hidden per-user fees that punish growth. Consultants pay a flat rate. SME teams get per-seat pricing starting at $33/seat. No surprise charges, no feature paywalls behind enterprise tiers.',
+                icon: (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ),
+                color: 'from-amber-500 to-orange-400',
+                iconBg: 'bg-amber-500/10 text-amber-400',
+              },
+            ].map((item) => (
+              <div key={item.title} className="relative rounded-2xl p-6 border bg-[#111827]/70 border-white/5 backdrop-blur-sm">
+                <div className={`absolute top-0 left-6 right-6 h-1 rounded-b-full bg-gradient-to-r ${item.color}`} />
+                <div className={`w-12 h-12 ${item.iconBg} rounded-xl flex items-center justify-center mb-4`}>
+                  {item.icon}
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
+                <p className="text-slate-300 text-sm leading-relaxed">{item.description}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Comparison table */}
+          <div className="rounded-2xl border border-white/5 overflow-hidden bg-[#111827]/70 backdrop-blur-sm">
+            <div className="px-6 py-4 border-b border-white/5">
+              <h3 className="text-lg font-semibold text-white">How Kovarti compares</h3>
+              <p className="text-sm text-slate-400 mt-1">Feature depth matters. Here's where typical PM tools leave gaps.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="text-left text-slate-400 font-medium px-6 py-3 w-[40%]">Capability</th>
+                    <th className="text-center px-4 py-3">
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-cyan-400 font-bold">Kovarti</span>
+                    </th>
+                    <th className="text-center text-slate-400 font-medium px-4 py-3">Typical PM Tool</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {[
+                    ['Gantt with critical path & dependencies', true, 'partial'],
+                    ['Monte Carlo schedule simulation', true, false],
+                    ['Earned Value Management (EVM)', true, false],
+                    ['AI risk scanning & mitigation', true, false],
+                    ['Natural language project queries', true, false],
+                    ['Meeting transcript → action items', true, 'partial'],
+                    ['Bring Your Own Storage (BYOS)', true, false],
+                    ['Multi-provider cloud sync', true, 'partial'],
+                    ['MS Project import (MPP/MSPDI)', true, 'partial'],
+                    ['Resource leveling & what-if scenarios', true, 'partial'],
+                    ['Workflow automation engine', true, true],
+                    ['Per-seat pricing (no hidden fees)', true, 'partial'],
+                  ].map(([label, kovarti, other], i) => (
+                    <tr key={i} className="hover:bg-white/[0.02]">
+                      <td className="px-6 py-2.5 text-slate-300">{label as string}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        {kovarti === true && (
+                          <svg className="w-5 h-5 mx-auto text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        {other === true ? (
+                          <svg className="w-5 h-5 mx-auto text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : other === 'partial' ? (
+                          <span className="text-xs text-yellow-400 font-medium">Varies</span>
+                        ) : (
+                          <svg className="w-5 h-5 mx-auto text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                          </svg>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-4 border-t border-white/5">
+              <p className="text-xs text-slate-500">"Typical PM Tool" represents the common feature set across tools like Monday.com, Asana, ClickUp, and Wrike. Individual tools may vary.</p>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="text-center mt-12">
+            <a
+              href="#pricing"
+              className="inline-flex items-center gap-2 text-[15px] font-bold text-white bg-gradient-to-br from-primary-500 to-cyan-400 hover:from-primary-600 hover:to-cyan-500 px-8 py-3.5 rounded-xl transition-all shadow-lg shadow-primary-500/35 hover:shadow-xl hover:shadow-primary-500/40 hover:-translate-y-0.5"
+            >
+              Start your free trial
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </a>
+            <p className="text-sm text-slate-400 mt-3">14-day trial, no credit card required</p>
           </div>
         </div>
       </section>
