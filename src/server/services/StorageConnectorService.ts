@@ -10,6 +10,7 @@ import { documentIntelligenceService } from './DocumentIntelligenceService';
 import { oneDriveAdapter } from './integrations/OneDriveAdapter';
 import { redisService } from './RedisService';
 import { validateMimeType } from '../utils/mimeValidator';
+import { getTenantContext, runWithTenantContext } from '../middleware/requestContext';
 import logger from '../utils/logger';
 
 const ALLOWED_MIME_TYPES = [
@@ -41,14 +42,19 @@ class StorageConnectorService {
     // State token (anti-CSRF)
     const state = crypto.randomBytes(24).toString('hex');
 
-    // Store in Redis with TTL
+    // Store in Redis with TTL (include tenant context for the unauthenticated callback)
+    const tenantCtx = getTenantContext();
     await redisService.set(
       `oauth:onedrive:${state}`,
-      JSON.stringify({ projectId, userId, codeVerifier }),
+      JSON.stringify({
+        projectId, userId, codeVerifier,
+        tenantDbName: tenantCtx?.dbName || null,
+        tenantOrgId: tenantCtx?.orgId || null,
+      }),
       OAUTH_STATE_TTL,
     );
 
-    const redirectUri = `${config.APP_URL}/api/v1/projects/${projectId}/storage-connectors/onedrive/callback`;
+    const redirectUri = `${config.APP_URL}/api/v1/storage-connectors/onedrive/callback`;
     const scopes = 'Files.Read.All User.Read offline_access';
 
     const params = new URLSearchParams({
@@ -65,20 +71,19 @@ class StorageConnectorService {
     return { authUrl: `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}` };
   }
 
-  async handleOAuthCallback(projectId: string, state: string, code: string): Promise<StorageConnector> {
+  async handleOAuthCallback(state: string, code: string): Promise<StorageConnector> {
     // Validate state
     const raw = await redisService.get(`oauth:onedrive:${state}`);
     if (!raw) throw new Error('Invalid or expired OAuth state');
 
-    const { projectId: storedProjectId, userId, codeVerifier } = JSON.parse(raw);
-    if (storedProjectId !== projectId) throw new Error('Project ID mismatch');
+    const { projectId, userId, codeVerifier, tenantDbName, tenantOrgId } = JSON.parse(raw);
 
     // Delete state (single-use)
     await redisService.del(`oauth:onedrive:${state}`);
 
-    const redirectUri = `${config.APP_URL}/api/v1/projects/${projectId}/storage-connectors/onedrive/callback`;
+    const redirectUri = `${config.APP_URL}/api/v1/storage-connectors/onedrive/callback`;
 
-    // Exchange code for tokens
+    // Exchange code for tokens (no tenant context needed — external API call)
     const tokens = await oneDriveAdapter.exchangeCodeForTokens(
       code, redirectUri,
       config.MICROSOFT_CLIENT_ID, config.MICROSOFT_CLIENT_SECRET,
@@ -93,8 +98,8 @@ class StorageConnectorService {
     const refreshTokenEnc = encryptToken(tokens.refresh_token);
     const tokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
-    // Create connector record
-    const connector = await storageConnectorRepository.create({
+    // Create connector record — needs tenant context for DB write
+    const createConnector = async () => storageConnectorRepository.create({
       projectId,
       provider: 'onedrive',
       displayName: `OneDrive - ${user.displayName}`,
@@ -104,6 +109,13 @@ class StorageConnectorService {
       createdBy: userId,
       config: { email: user.mail, syncFolders: [] },
     });
+
+    let connector: StorageConnector;
+    if (tenantDbName && tenantOrgId) {
+      connector = await runWithTenantContext(tenantDbName, tenantOrgId, createConnector);
+    } else {
+      connector = await createConnector();
+    }
 
     logger.info('OneDrive connector created', { connectorId: connector.id, projectId, user: user.mail });
     return connector;

@@ -6,6 +6,32 @@ import { storageConnectorRepository, toPublic } from '../../database/StorageConn
 import { config } from '../../config';
 import logger from '../../utils/logger';
 
+// OAuth callback — top-level route, no auth (called by Microsoft redirect)
+export async function storageConnectorCallbackRoutes(fastify: FastifyInstance) {
+  // GET /storage-connectors/onedrive/callback — OAuth callback from Microsoft
+  fastify.get('/storage-connectors/onedrive/callback', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { code, state, error } = request.query as { code?: string; state?: string; error?: string };
+
+    if (error) {
+      logger.warn('OneDrive OAuth denied', { error });
+      return reply.redirect(`${config.APP_URL}/oauth/callback?error=${encodeURIComponent(error)}`);
+    }
+
+    if (!code || !state) {
+      return reply.redirect(`${config.APP_URL}/oauth/callback?error=missing_params`);
+    }
+
+    try {
+      const connector = await storageConnectorService.handleOAuthCallback(state, code);
+      return reply.redirect(`${config.APP_URL}/oauth/callback?success=true&connectorId=${connector.id}&provider=onedrive`);
+    } catch (err: any) {
+      logger.error('OneDrive OAuth callback failed', { error: err.message });
+      return reply.redirect(`${config.APP_URL}/oauth/callback?error=${encodeURIComponent(err.message)}`);
+    }
+  });
+}
+
+// Project-scoped routes — require auth
 export async function storageConnectorRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -27,30 +53,6 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
 
     const result = await storageConnectorService.initiateOAuthFlow(projectId, user.userId);
     return result;
-  });
-
-  // GET /:projectId/storage-connectors/onedrive/callback — OAuth callback
-  fastify.get('/:projectId/storage-connectors/onedrive/callback', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { projectId } = request.params as { projectId: string };
-    const { code, state, error } = request.query as { code?: string; state?: string; error?: string };
-
-    if (error) {
-      logger.warn('OneDrive OAuth denied', { projectId, error });
-      // Redirect to frontend with error
-      return reply.redirect(`${config.APP_URL}/oauth/callback?error=${encodeURIComponent(error)}`);
-    }
-
-    if (!code || !state) {
-      return reply.redirect(`${config.APP_URL}/oauth/callback?error=missing_params`);
-    }
-
-    try {
-      const connector = await storageConnectorService.handleOAuthCallback(projectId, state, code);
-      return reply.redirect(`${config.APP_URL}/oauth/callback?success=true&connectorId=${connector.id}&provider=onedrive`);
-    } catch (err: any) {
-      logger.error('OneDrive OAuth callback failed', { projectId, error: err.message });
-      return reply.redirect(`${config.APP_URL}/oauth/callback?error=${encodeURIComponent(err.message)}`);
-    }
   });
 
   // GET /:projectId/storage-connectors/:id — get connector details

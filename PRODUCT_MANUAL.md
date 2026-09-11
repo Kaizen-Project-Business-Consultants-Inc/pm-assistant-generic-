@@ -4063,7 +4063,7 @@ Each connected source shows a status chip in the Documents tab:
 - Read-only permissions: `Files.Read.All`, `User.Read`, `offline_access`
 
 **Prerequisites (Admin):**
-- Azure AD app registration with redirect URI `{APP_URL}/api/v1/projects/:projectId/storage-connectors/onedrive/callback`
+- Azure AD app registration with redirect URI `{APP_URL}/api/v1/storage-connectors/onedrive/callback`
 - Environment variables: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `CONNECTOR_ENCRYPTION_KEY` (32+ chars)
 
 **Storage Connector API Endpoints:**
