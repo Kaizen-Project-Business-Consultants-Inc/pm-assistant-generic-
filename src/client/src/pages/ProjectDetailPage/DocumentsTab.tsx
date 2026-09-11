@@ -281,15 +281,13 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
             maxLength={500}
           />
         </div>
-        <div className="flex items-center justify-center gap-3 mt-2">
-          <p className="text-xs text-gray-400">PDF, DOCX, DOC, TXT, CSV, MD (max 10MB)</p>
-          <button
-            className="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
-            onClick={() => setShowConnectModal(true)}
-          >
-            <Cloud className="w-3.5 h-3.5" /> Connect OneDrive
-          </button>
-        </div>
+        <p className="text-xs text-gray-400 mt-2">PDF, DOCX, DOC, TXT, CSV, MD (max 10MB)</p>
+        <button
+          className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-primary-300 dark:border-primary-600 text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
+          onClick={() => setShowConnectModal(true)}
+        >
+          <Cloud className="w-4 h-4" /> Connect OneDrive
+        </button>
         <input
           ref={fileInputRef}
           type="file"

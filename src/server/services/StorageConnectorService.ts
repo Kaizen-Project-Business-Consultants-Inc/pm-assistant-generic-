@@ -65,7 +65,7 @@ class StorageConnectorService {
       state,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
-      prompt: 'consent',
+      prompt: 'select_account',
     });
 
     return { authUrl: `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}` };
@@ -201,26 +201,40 @@ class StorageConnectorService {
     const syncFolders: string[] = (connector.config as any)?.syncFolders || [];
 
     try {
-      const delta = await oneDriveAdapter.getDelta(accessToken, connector.deltaToken || undefined);
+      // If specific folders are selected, list them directly (fast).
+      // Otherwise fall back to delta API for full-drive incremental sync.
+      let items: import('./integrations/OneDriveAdapter').DriveItem[];
+      let deltaLink: string | undefined;
+
+      if (syncFolders.length > 0) {
+        // Targeted sync: list files in each selected folder
+        const folderResults = await Promise.all(
+          syncFolders.map(fid => oneDriveAdapter.listFolderFiles(accessToken, fid)),
+        );
+        items = folderResults.flat();
+        deltaLink = undefined; // No delta tracking for folder-specific sync
+      } else {
+        // Full drive delta sync
+        const delta = await oneDriveAdapter.getDelta(accessToken, connector.deltaToken || undefined);
+        items = delta.value;
+        deltaLink = delta['@odata.deltaLink'];
+      }
+
       let synced = 0;
       let deleted = 0;
       let skipped = 0;
 
-      for (const item of delta.value) {
+      for (const item of items) {
         if (synced + deleted >= MAX_FILES_PER_SYNC) {
           skipped++;
           continue;
         }
 
-        // Handle deletions
+        // Handle deletions (only from delta API)
         if (item.deleted) {
           const existing = await projectDocumentRepository.findByExternalId(connectorId, item.id);
           if (existing) {
-            // Delete file from disk
-            try {
-              const filePath = documentIntelligenceService.getFilePath(connector.projectId, existing.filename);
-              await fs.unlink(filePath);
-            } catch { /* file may already be gone */ }
+            // BYOS: no local file to delete — just clean up metadata + embeddings
             documentIntelligenceService.deleteDocumentEmbeddings(existing.id).catch(() => {});
             await projectDocumentRepository.delete(existing.id);
             deleted++;
@@ -230,12 +244,6 @@ class StorageConnectorService {
 
         // Skip folders
         if (item.folder) continue;
-
-        // Filter to synced folders (if configured)
-        if (syncFolders.length > 0 && item.parentReference?.id) {
-          const parentId = item.parentReference.id;
-          if (!syncFolders.includes(parentId)) continue;
-        }
 
         // Skip unsupported types
         const mimeType = item.file?.mimeType;
@@ -266,15 +274,15 @@ class StorageConnectorService {
           continue;
         }
 
-        // Save to disk
+        // Save to temp file for AI processing (BYOS: not kept permanently)
         const ext = path.extname(item.name) || '';
-        const docFilename = `${uuidv4()}${ext}`;
-        const uploadDir = path.join(config.UPLOAD_DIR, 'documents', connector.projectId);
-        await fs.mkdir(uploadDir, { recursive: true });
-        const filePath = path.join(uploadDir, docFilename);
-        await fs.writeFile(filePath, buffer);
+        const tmpFilename = `tmp_${uuidv4()}${ext}`;
+        const tmpDir = path.join(config.UPLOAD_DIR, 'documents', '_tmp');
+        await fs.mkdir(tmpDir, { recursive: true });
+        const tmpPath = path.join(tmpDir, tmpFilename);
+        await fs.writeFile(tmpPath, buffer);
 
-        // Upsert document record
+        // Upsert document record (no permanent filename — file lives in OneDrive)
         const externalPath = item.parentReference?.path
           ? `${item.parentReference.path}/${item.name}`
           : item.name;
@@ -287,30 +295,25 @@ class StorageConnectorService {
           externalPath,
           externalModifiedAt: item.lastModifiedDateTime ? new Date(item.lastModifiedDateTime) : null,
           externalEtag: item.eTag || null,
-          filename: existing ? existing.filename : docFilename,
+          filename: '', // BYOS: no local file stored
           originalFilename: item.name,
           contentType: mimeType,
           fileSize: buffer.length,
           uploadedBy: connector.createdBy,
         });
 
-        // If we reused existing record but file content changed, delete old file
-        if (existing && existing.filename !== docFilename) {
-          try {
-            await fs.unlink(documentIntelligenceService.getFilePath(connector.projectId, existing.filename));
-          } catch { /* ok */ }
-        }
-
-        // Fire-and-forget AI processing
-        documentIntelligenceService.processDocument(connector.projectId, doc.id, filePath, connector.createdBy).catch(err =>
-          logger.error('Connector doc processing error', { documentId: doc.id, error: err.message }),
-        );
+        // AI processing, then clean up temp file
+        documentIntelligenceService.processDocument(connector.projectId, doc.id, tmpPath, connector.createdBy)
+          .catch(err => logger.error('Connector doc processing error', { documentId: doc.id, error: err.message }))
+          .finally(() => fs.unlink(tmpPath).catch(() => {}));
 
         synced++;
       }
 
-      // Update delta token
-      await storageConnectorRepository.updateDelta(connectorId, delta['@odata.deltaLink'] || null);
+      // Update delta token (only when using full-drive delta sync)
+      if (deltaLink) {
+        await storageConnectorRepository.updateDelta(connectorId, deltaLink);
+      }
 
       // Clear error state if was in error
       if (connector.status === 'error') {
@@ -330,6 +333,17 @@ class StorageConnectorService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Stream a file from OneDrive on-demand (BYOS: Kovarti doesn't store the file).
+   */
+  async streamFileFromProvider(connectorId: string, externalId: string): Promise<Buffer> {
+    const connector = await storageConnectorRepository.findById(connectorId);
+    if (!connector) throw new Error('Connector not found');
+
+    const accessToken = await this.refreshTokenIfNeeded(connector);
+    return oneDriveAdapter.downloadFile(accessToken, externalId);
   }
 
   async disconnect(connectorId: string): Promise<void> {

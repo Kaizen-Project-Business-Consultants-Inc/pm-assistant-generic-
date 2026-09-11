@@ -9,6 +9,7 @@ import { validateMimeType } from '../../utils/mimeValidator';
 import { projectDocumentRepository } from '../../database/ProjectDocumentRepository';
 import { documentEntityLinkRepository } from '../../database/DocumentEntityLinkRepository';
 import { documentIntelligenceService } from '../../services/DocumentIntelligenceService';
+import { storageConnectorService } from '../../services/StorageConnectorService';
 import { config } from '../../config';
 import logger from '../../utils/logger';
 
@@ -174,6 +175,22 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Document not found' });
     }
 
+    // BYOS: connector docs are streamed from the provider on-demand
+    if (document.connectorId && document.externalId) {
+      try {
+        const buffer = await storageConnectorService.streamFileFromProvider(document.connectorId, document.externalId);
+        return reply
+          .header('Content-Type', document.contentType)
+          .header('Content-Disposition', `attachment; filename="${encodeURIComponent(document.originalFilename)}"`)
+          .header('Content-Length', buffer.length)
+          .send(buffer);
+      } catch (err: any) {
+        logger.error('BYOS download failed', { documentId, connectorId: document.connectorId, error: err.message });
+        return reply.status(502).send({ error: 'Failed to fetch file from storage provider' });
+      }
+    }
+
+    // Locally uploaded documents — serve from disk
     const filePath = documentIntelligenceService.getFilePath(projectId, document.filename);
     try {
       await fsPromises.access(filePath);
@@ -196,12 +213,14 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
     const document = await projectDocumentRepository.findById(documentId);
     if (!document) return reply.status(404).send({ error: 'Document not found' });
 
-    // Delete file from disk
-    try {
-      const filePath = documentIntelligenceService.getFilePath(projectId, document.filename);
-      await fsPromises.unlink(filePath);
-    } catch {
-      // File may already be gone
+    // Delete local file from disk (only for directly uploaded docs, not BYOS)
+    if (document.filename && !document.connectorId) {
+      try {
+        const filePath = documentIntelligenceService.getFilePath(projectId, document.filename);
+        await fsPromises.unlink(filePath);
+      } catch {
+        // File may already be gone
+      }
     }
 
     // Delete embeddings (fire-and-forget)

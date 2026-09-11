@@ -23,21 +23,28 @@ export function OAuthCallbackPage() {
       setMessage('Completing authorization...');
     }
 
-    // Post result to parent window (opener)
+    const result = {
+      type: 'oauth-callback',
+      success: success === 'true',
+      error: error || null,
+      connectorId: connectorId || null,
+      provider: provider || null,
+    };
+
+    // Try postMessage to opener (works if same-origin opener reference survived)
     if (window.opener) {
-      window.opener.postMessage(
-        {
-          type: 'oauth-callback',
-          success: success === 'true',
-          error: error || null,
-          connectorId: connectorId || null,
-          provider: provider || null,
-        },
-        window.location.origin,
-      );
-      // Close after a short delay so user sees the status
-      setTimeout(() => window.close(), 1500);
+      window.opener.postMessage(result, window.location.origin);
     }
+
+    // Also broadcast via localStorage (works even when opener is null due to cross-origin navigation)
+    try {
+      localStorage.setItem('oauth-callback-result', JSON.stringify(result));
+      // Remove after a tick so future storage events aren't stale
+      setTimeout(() => localStorage.removeItem('oauth-callback-result'), 500);
+    } catch { /* localStorage may be unavailable */ }
+
+    // Close after a short delay so user sees the status
+    setTimeout(() => window.close(), 1500);
   }, []);
 
   return (

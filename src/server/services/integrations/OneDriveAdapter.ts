@@ -116,10 +116,13 @@ class OneDriveAdapter {
     let allItems: DriveItem[] = [];
     let currentUrl: string | undefined = url;
     let finalDeltaLink: string | undefined;
+    const MAX_PAGES = 50; // Safety cap — don't paginate forever on huge drives
+    let pages = 0;
 
-    while (currentUrl) {
+    while (currentUrl && pages < MAX_PAGES) {
       const resp: Response = await fetch(currentUrl, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(30000), // 30s per page
       });
 
       if (!resp.ok) throw new Error(`Delta query failed: ${resp.status}`);
@@ -129,12 +132,41 @@ class OneDriveAdapter {
       if (data['@odata.deltaLink']) {
         finalDeltaLink = data['@odata.deltaLink'];
       }
+      pages++;
+    }
+
+    if (currentUrl && pages >= MAX_PAGES) {
+      logger.warn('Delta pagination capped', { pages, items: allItems.length });
     }
 
     return {
       value: allItems,
       '@odata.deltaLink': finalDeltaLink,
     };
+  }
+
+  /**
+   * List all files in a specific folder (non-recursive).
+   * Used as an alternative to delta for targeted folder sync.
+   */
+  async listFolderFiles(accessToken: string, folderId: string): Promise<DriveItem[]> {
+    const url = `${GRAPH_BASE}/me/drive/items/${folderId}/children?$select=id,name,size,file,folder,parentReference,lastModifiedDateTime,eTag&$top=200`;
+    let allItems: DriveItem[] = [];
+    let currentUrl: string | undefined = url;
+
+    while (currentUrl) {
+      const resp: Response = await fetch(currentUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(30000),
+      });
+
+      if (!resp.ok) throw new Error(`List folder files failed: ${resp.status}`);
+      const data: any = await resp.json();
+      allItems = allItems.concat(data.value || []);
+      currentUrl = data['@odata.nextLink'] as string | undefined;
+    }
+
+    return allItems;
   }
 
   async downloadFile(accessToken: string, itemId: string): Promise<Buffer> {

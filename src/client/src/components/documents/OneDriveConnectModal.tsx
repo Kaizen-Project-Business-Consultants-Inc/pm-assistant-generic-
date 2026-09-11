@@ -49,25 +49,41 @@ export function OneDriveConnectModal({ projectId, onClose }: OneDriveConnectModa
     },
   });
 
-  // Listen for OAuth callback postMessage
-  const handleMessage = useCallback((event: MessageEvent) => {
-    if (event.origin !== window.location.origin) return;
-    if (event.data?.type !== 'oauth-callback') return;
-
-    if (event.data.success && event.data.connectorId) {
-      setConnectorId(event.data.connectorId);
+  // Handle OAuth callback result (from postMessage or localStorage)
+  const handleOAuthResult = useCallback((data: any) => {
+    if (data?.type !== 'oauth-callback') return;
+    if (data.success && data.connectorId) {
+      setConnectorId(data.connectorId);
       setStep('folders');
       queryClient.invalidateQueries({ queryKey: ['storage-connectors', projectId] });
     } else {
-      setError(event.data.error || 'Authorization failed');
+      setError(data.error || 'Authorization failed');
       setStep('connect');
     }
   }, [projectId, queryClient]);
 
   useEffect(() => {
+    // Listen for postMessage (works if opener survived cross-origin nav)
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      handleOAuthResult(event.data);
+    };
+
+    // Listen for localStorage (fallback when opener is null)
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== 'oauth-callback-result' || !event.newValue) return;
+      try {
+        handleOAuthResult(JSON.parse(event.newValue));
+      } catch { /* ignore parse errors */ }
+    };
+
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [handleMessage]);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [handleOAuthResult]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
