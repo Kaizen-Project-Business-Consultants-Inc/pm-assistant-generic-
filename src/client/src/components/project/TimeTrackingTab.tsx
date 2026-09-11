@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, Plus, Trash2, BarChart3, X, Users, User } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -24,8 +24,6 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
   const { user: currentUser } = useAuthStore();
   const [subTab, setSubTab] = useState<SubTab>('entries');
   const [showLogForm, setShowLogForm] = useState(false);
-  const [viewMode, setViewMode] = useState<'mine' | 'all'>('mine');
-
   // Get project members to determine current user's role
   const { data: membersData } = useQuery({
     queryKey: ['project-members', projectId],
@@ -35,6 +33,15 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
   const members: any[] = membersData?.members || [];
   const currentMember = members.find((m: any) => m.userId === currentUser?.id);
   const isManagerOrOwner = currentMember?.role === 'owner' || currentMember?.role === 'manager';
+
+  const [viewMode, setViewMode] = useState<'mine' | 'all'>('all');
+  const viewModeInitialized = useRef(false);
+  useEffect(() => {
+    if (membersData && !viewModeInitialized.current) {
+      viewModeInitialized.current = true;
+      setViewMode(isManagerOrOwner ? 'all' : 'mine');
+    }
+  }, [membersData, isManagerOrOwner]);
   const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [formHours, setFormHours] = useState('');
   const [formDescription, setFormDescription] = useState('');
