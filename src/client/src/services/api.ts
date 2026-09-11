@@ -1936,10 +1936,11 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
-  async getProjectTimeEntries(projectId: string, startDate?: string, endDate?: string) {
+  async getProjectTimeEntries(projectId: string, startDate?: string, endDate?: string, userId?: string) {
     const params: Record<string, string> = {};
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
+    if (userId) params.userId = userId;
     const response = await this.api.get(`/time-entries/project/${projectId}`, { params });
     return response.data;
   }

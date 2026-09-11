@@ -59,12 +59,12 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // GET /project/:projectId — entries for a project
+  // GET /project/:projectId — entries for a project (optionally filtered by userId)
   fastify.get('/project/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
-      const { startDate, endDate } = request.query as { startDate?: string; endDate?: string };
-      const entries = await timeEntryService.getByProject(projectId, startDate, endDate);
+      const { startDate, endDate, userId } = request.query as { startDate?: string; endDate?: string; userId?: string };
+      const entries = await timeEntryService.getByProject(projectId, startDate, endDate, userId);
       return { entries };
     } catch (error) {
       logger.error('Get project time entries error', { error });

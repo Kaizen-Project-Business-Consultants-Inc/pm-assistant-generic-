@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Clock, Plus, Trash2, BarChart3, X } from 'lucide-react';
+import { Clock, Plus, Trash2, BarChart3, X, Users, User } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { useAuthStore } from '../../stores/authStore';
 import { ActualVsEstimatedChart } from '../timetracking/ActualVsEstimatedChart';
 
 interface TimeEntry {
@@ -20,8 +21,20 @@ type SubTab = 'entries' | 'comparison';
 
 export function TimeTrackingTab({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuthStore();
   const [subTab, setSubTab] = useState<SubTab>('entries');
   const [showLogForm, setShowLogForm] = useState(false);
+  const [viewMode, setViewMode] = useState<'mine' | 'all'>('mine');
+
+  // Get project members to determine current user's role
+  const { data: membersData } = useQuery({
+    queryKey: ['project-members', projectId],
+    queryFn: () => apiService.getProjectMembers(projectId),
+    staleTime: 60_000,
+  });
+  const members: any[] = membersData?.members || [];
+  const currentMember = members.find((m: any) => m.userId === currentUser?.id);
+  const isManagerOrOwner = currentMember?.role === 'owner' || currentMember?.role === 'manager';
   const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [formHours, setFormHours] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -52,10 +65,11 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
   });
   const tasks: any[] = tasksData?.data || tasksData?.tasks || [];
 
-  // Time entries for this project
+  // Time entries for this project — filtered by user when in "mine" mode
+  const filterUserId = viewMode === 'mine' ? currentUser?.id : undefined;
   const { data: entriesData, isLoading: entriesLoading } = useQuery({
-    queryKey: ['project-time-entries', projectId],
-    queryFn: () => apiService.getProjectTimeEntries(projectId),
+    queryKey: ['project-time-entries', projectId, filterUserId],
+    queryFn: () => apiService.getProjectTimeEntries(projectId, undefined, undefined, filterUserId),
     enabled: !!projectId,
   });
   const entries: TimeEntry[] = entriesData?.entries || entriesData?.data || [];
@@ -124,12 +138,39 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
           </div>
         </div>
         {subTab === 'entries' && (
-          <button
-            onClick={() => setShowLogForm(true)}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Log Time
-          </button>
+          <div className="flex items-center gap-2">
+            {/* My Time / All Time toggle */}
+            <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode('mine')}
+                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  viewMode === 'mine'
+                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" /> My Time
+              </button>
+              {isManagerOrOwner && (
+                <button
+                  onClick={() => setViewMode('all')}
+                  className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    viewMode === 'all'
+                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" /> All Time
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setShowLogForm(true)}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Log Time
+            </button>
+          </div>
         )}
       </div>
 

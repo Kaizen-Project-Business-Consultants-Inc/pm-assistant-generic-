@@ -56,8 +56,8 @@ export class TimeEntryService {
     return timeEntryRepository.findByTask(taskId);
   }
 
-  async getByProject(projectId: string, startDate?: string, endDate?: string): Promise<TimeEntry[]> {
-    return timeEntryRepository.findByProject(projectId, startDate, endDate);
+  async getByProject(projectId: string, startDate?: string, endDate?: string, userId?: string): Promise<TimeEntry[]> {
+    return timeEntryRepository.findByProject(projectId, startDate, endDate, userId);
   }
 
   async getWeeklyTimesheet(userId: string, weekStart: string): Promise<{

@@ -69,11 +69,12 @@ class TimeEntryRepository {
     return rows.map(rowToDTO);
   }
 
-  async findByProject(projectId: string, startDate?: string, endDate?: string): Promise<TimeEntry[]> {
+  async findByProject(projectId: string, startDate?: string, endDate?: string, userId?: string): Promise<TimeEntry[]> {
     let sql = 'SELECT * FROM time_entries WHERE project_id = ?';
     const params: any[] = [projectId];
     if (startDate) { sql += ' AND date >= ?'; params.push(startDate); }
     if (endDate) { sql += ' AND date <= ?'; params.push(endDate); }
+    if (userId) { sql += ' AND user_id = ?'; params.push(userId); }
     sql += ' ORDER BY date DESC';
     const rows = await databaseService.query(sql, params);
     return rows.map(rowToDTO);
