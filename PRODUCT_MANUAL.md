@@ -716,6 +716,61 @@ Time entries follow a formal approval lifecycle before they are considered final
 
 **Database:** Migration `T019_timesheet_approval.sql` adds `status`, `approved_by`, and `approved_at` columns to `time_entries` and creates the `timesheet_submissions` table.
 
+### AI Time Module — Rule-Based Insights
+
+The Time tab includes intelligent anomaly detection, compliance monitoring, and weekly review summaries — all computed on-the-fly from existing data (no AI API calls).
+
+#### Time Anomaly Detection
+
+The `TimeAnomalyService` scans time entries and flags suspicious patterns:
+
+| Anomaly Type | Severity | Rule |
+|---|---|---|
+| Excessive daily hours | High | >10h logged in a single day |
+| Excessive weekly hours | Medium | >50h logged in a single week |
+| Duplicate entries | Medium | Same user + task + date appears more than once |
+| Weekend work | Low | Entries on Saturday or Sunday |
+| Over-estimate | High | Actual hours > 150% of task estimated hours |
+| Missing hours | Low | <6h logged on a weekday with entries |
+
+Anomalies are displayed in a collapsible `TimeAnomalyPanel` at the top of the Time tab (visible to owners/managers). Each anomaly shows color-coded severity badges (red/amber/blue) with type icons. Anomalies can be dismissed client-side.
+
+**API endpoints:**
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/time-entries/anomalies/:projectId` | Detect anomalies (query: `startDate`, `endDate`, default last 30 days) |
+| GET | `/time-entries/compliance/:projectId` | Compliance status per user (query: `weekStart`, default current week) |
+| GET | `/time-entries/weekly-review/:projectId` | Weekly review pack (query: `weekStart`, default current week) |
+
+#### Timesheet Compliance Engine
+
+A daily cron job (weekdays at 16:00) checks if project members have logged time:
+
+- Sends `timesheet_reminder` notifications to users with no time logged for the day.
+- On Thursday/Friday, also checks earlier weekdays in the week.
+- If a user hasn't logged time for 3+ consecutive weekdays, escalates to their project managers with a high-severity notification.
+- Redis dedup prevents duplicate reminders for the same user+date.
+
+#### Weekly Review Pack
+
+A Friday cron job (17:00) generates per-project weekly summaries:
+
+- Total hours by team member (with bar chart visualization).
+- Anomaly count and compliance percentage.
+- Top tasks by hours consumed.
+- Over-budget tasks (actual vs estimated comparison).
+- Delivered as `weekly_review` notifications to project owners/managers.
+- On-demand generation via the API endpoint.
+- Displayed in a collapsible `WeeklyReviewPanel` in the Time tab with a date picker.
+
+#### Automation Events
+
+Time entry CRUD and timesheet submission emit automation events for the automation engine:
+
+- `time_entry.created`, `time_entry.updated`, `time_entry.deleted`
+- `timesheet.submitted`
+
 ---
 
 ## 9. Custom Fields

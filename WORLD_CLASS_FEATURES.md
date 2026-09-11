@@ -422,6 +422,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Actual vs estimated hours comparison
 - Time-based cost calculations
 - **Timesheet Approval Workflow** — formal draft → submitted → approved/rejected lifecycle; submissions at week + project granularity; manager approval panel with Approve/Reject (reason required); rejection reverts entries to draft for correction and resubmission; recall before review; lock icon and status badges (gray/blue/green/red) on TimesheetGrid; mutation guard returns 409 on edits to non-draft entries; role-gated (managers/owners only); notifications for submitted/approved/rejected events; migration T019
+- **AI Time Module (Rule-Based)** — anomaly detection (excessive hours, duplicates, weekend work, over-estimate, missing hours) with severity-coded alerts; daily compliance cron (16:00 weekdays) with escalation to managers after 3+ missed days; weekly review packs (Friday 17:00) with hours-by-user, anomaly counts, compliance %, over-budget tasks; all computed on-the-fly, no AI tokens; automation events for time_entry CRUD and timesheet submission
 - **Benchmark:** MS Project, Wrike, Smartsheet
 
 ### 4.4 Project Templates

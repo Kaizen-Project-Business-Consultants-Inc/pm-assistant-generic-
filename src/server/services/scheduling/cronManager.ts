@@ -21,6 +21,8 @@ export interface CronTasks {
   trialReminderTask: cron.ScheduledTask | null;
   deadlineTask: cron.ScheduledTask | null;
   storageSyncTask: cron.ScheduledTask | null;
+  timesheetComplianceTask: cron.ScheduledTask | null;
+  weeklyReviewTask: cron.ScheduledTask | null;
 }
 
 export function startCronTasks(
@@ -37,6 +39,8 @@ export function startCronTasks(
     trialReminderTask: null,
     deadlineTask: null,
     storageSyncTask: null,
+    timesheetComplianceTask: null,
+    weeklyReviewTask: null,
   };
 
   // Agent-specific jobs: gated by AGENT_ENABLED
@@ -235,6 +239,50 @@ export function startCronTasks(
     });
   });
 
+  // Timesheet compliance reminders — weekdays at 16:00
+  logger.info('[cron] Starting timesheet compliance checker (weekdays at 16:00)');
+  tasks.timesheetComplianceTask = cron.schedule('0 16 * * 1-5', async () => {
+    await forEachTenant(async (tenant) => {
+      const label = tenant?.slug ?? 'default';
+      const start = Date.now();
+      try {
+        const { runTimesheetCompliance } = await import('./timesheetComplianceJob');
+        const count = await runTimesheetCompliance();
+        logger.info(`[cron:timesheet-compliance] ${label} completed`, {
+          cronJob: 'timesheet-compliance', tenant: label, durationMs: Date.now() - start,
+          result: { reminded: count },
+        });
+      } catch (error) {
+        logger.error(`[cron:timesheet-compliance] ${label} FAILED`, {
+          cronJob: 'timesheet-compliance', tenant: label, durationMs: Date.now() - start,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  });
+
+  // Weekly review pack — Fridays at 17:00
+  logger.info('[cron] Starting weekly review pack generator (Fridays at 17:00)');
+  tasks.weeklyReviewTask = cron.schedule('0 17 * * 5', async () => {
+    await forEachTenant(async (tenant) => {
+      const label = tenant?.slug ?? 'default';
+      const start = Date.now();
+      try {
+        const { runWeeklyReviewPack } = await import('./weeklyReviewPackJob');
+        const count = await runWeeklyReviewPack();
+        logger.info(`[cron:weekly-review] ${label} completed`, {
+          cronJob: 'weekly-review', tenant: label, durationMs: Date.now() - start,
+          result: { notified: count },
+        });
+      } catch (error) {
+        logger.error(`[cron:weekly-review] ${label} FAILED`, {
+          cronJob: 'weekly-review', tenant: label, durationMs: Date.now() - start,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  });
+
   return tasks;
 }
 
@@ -248,6 +296,8 @@ export function stopCronTasks(tasks: CronTasks): void {
   if (tasks.trialReminderTask) { tasks.trialReminderTask.stop(); tasks.trialReminderTask = null; }
   if (tasks.deadlineTask) { tasks.deadlineTask.stop(); tasks.deadlineTask = null; }
   if (tasks.storageSyncTask) { tasks.storageSyncTask.stop(); tasks.storageSyncTask = null; }
+  if (tasks.timesheetComplianceTask) { tasks.timesheetComplianceTask.stop(); tasks.timesheetComplianceTask = null; }
+  if (tasks.weeklyReviewTask) { tasks.weeklyReviewTask.stop(); tasks.weeklyReviewTask = null; }
   logger.info('[Agent] Stopped agent scheduler');
 }
 

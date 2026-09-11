@@ -4,6 +4,8 @@ import { Clock, Plus, Trash2, BarChart3, X, Users, User } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import { ActualVsEstimatedChart } from '../timetracking/ActualVsEstimatedChart';
+import { TimeAnomalyPanel } from './TimeAnomalyPanel';
+import { WeeklyReviewPanel } from './WeeklyReviewPanel';
 
 interface TimeEntry {
   id: string;
@@ -270,6 +272,14 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Anomaly and Review panels (entries sub-tab only) */}
+      {subTab === 'entries' && isManagerOrOwner && (
+        <>
+          <TimeAnomalyPanel projectId={projectId} />
+          <WeeklyReviewPanel projectId={projectId} />
+        </>
       )}
 
       {/* Time Entries sub-tab */}

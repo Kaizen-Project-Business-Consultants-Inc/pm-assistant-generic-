@@ -1,8 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { timeEntryService } from '../../services/TimeEntryService';
+import { timeAnomalyService } from '../../services/TimeAnomalyService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import logger from '../../utils/logger';
 
 const submitTimesheetSchema = z.object({
@@ -40,6 +42,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       const user = request.user!;
       const body = createTimeEntrySchema.parse(request.body);
       const entry = await timeEntryService.create({ ...body, userId: user.userId });
+      automationEventBus.emit({ type: 'time_entry.created', entityType: 'time_entry', entityId: entry.id, projectId: body.projectId, userId: user.userId, payload: entry, timestamp: new Date().toISOString() }).catch(() => {});
       return { entry };
     } catch (error) {
       logger.error('Create time entry error', { error });
@@ -105,6 +108,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       const user = request.user!;
       const body = submitTimesheetSchema.parse(request.body);
       const submission = await timeEntryService.submitTimesheet(user.userId, body.projectId, body.weekStart);
+      automationEventBus.emit({ type: 'timesheet.submitted', entityType: 'timesheet', entityId: submission.id, projectId: body.projectId, userId: user.userId, payload: submission, timestamp: new Date().toISOString() }).catch(() => {});
       return { submission };
     } catch (error: any) {
       if (error.statusCode) return reply.status(error.statusCode).send({ error: error.message });
@@ -195,12 +199,70 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // GET /anomalies/:projectId — detect time anomalies
+  fastify.get('/anomalies/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      const { startDate, endDate } = request.query as { startDate?: string; endDate?: string };
+      // Default to last 30 days if no range specified
+      const end = endDate || new Date().toISOString().slice(0, 10);
+      const start = startDate || (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10); })();
+      const anomalies = await timeAnomalyService.detectAnomalies(projectId, start, end);
+      return { anomalies };
+    } catch (error) {
+      logger.error('Get time anomalies error', { error });
+      return reply.status(500).send({ error: 'Failed to detect anomalies' });
+    }
+  });
+
+  // GET /compliance/:projectId — compliance status for a week
+  fastify.get('/compliance/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      const { weekStart } = request.query as { weekStart?: string };
+      // Default to current week's Monday
+      const ws = weekStart || (() => {
+        const d = new Date();
+        const day = d.getDay();
+        d.setDate(d.getDate() - ((day + 6) % 7));
+        return d.toISOString().slice(0, 10);
+      })();
+      const compliance = await timeAnomalyService.getComplianceStatus(projectId, ws);
+      return { compliance, weekStart: ws };
+    } catch (error) {
+      logger.error('Get compliance status error', { error });
+      return reply.status(500).send({ error: 'Failed to get compliance status' });
+    }
+  });
+
+  // GET /weekly-review/:projectId — weekly review pack
+  fastify.get('/weekly-review/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      const { weekStart } = request.query as { weekStart?: string };
+      // Default to current week's Monday
+      const ws = weekStart || (() => {
+        const d = new Date();
+        const day = d.getDay();
+        d.setDate(d.getDate() - ((day + 6) % 7));
+        return d.toISOString().slice(0, 10);
+      })();
+      const review = await timeAnomalyService.generateWeeklyReview(projectId, ws);
+      return { review };
+    } catch (error) {
+      logger.error('Get weekly review error', { error });
+      return reply.status(500).send({ error: 'Failed to generate weekly review' });
+    }
+  });
+
   // PUT /:id — update
   fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const body = updateTimeEntrySchema.parse(request.body);
       const entry = await timeEntryService.update(id, body);
+      const user = request.user!;
+      automationEventBus.emit({ type: 'time_entry.updated', entityType: 'time_entry', entityId: id, projectId: entry?.projectId || '', userId: user.userId, payload: entry, timestamp: new Date().toISOString() }).catch(() => {});
       return { entry };
     } catch (error: any) {
       if (error.statusCode === 409) return reply.status(409).send({ error: error.message });
@@ -213,6 +275,8 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
+      const user = request.user!;
+      automationEventBus.emit({ type: 'time_entry.deleted', entityType: 'time_entry', entityId: id, projectId: '', userId: user.userId, payload: { id }, timestamp: new Date().toISOString() }).catch(() => {});
       await timeEntryService.delete(id);
       return { message: 'Time entry deleted' };
     } catch (error: any) {

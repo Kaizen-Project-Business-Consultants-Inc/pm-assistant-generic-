@@ -2004,6 +2004,32 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   }
 
   // -------------------------------------------------------------------------
+  // Time Anomalies & Compliance
+  // -------------------------------------------------------------------------
+
+  async getTimeAnomalies(projectId: string, startDate?: string, endDate?: string) {
+    const params: Record<string, string> = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    const response = await this.api.get(`/time-entries/anomalies/${projectId}`, { params });
+    return response.data;
+  }
+
+  async getComplianceStatus(projectId: string, weekStart?: string) {
+    const params: Record<string, string> = {};
+    if (weekStart) params.weekStart = weekStart;
+    const response = await this.api.get(`/time-entries/compliance/${projectId}`, { params });
+    return response.data;
+  }
+
+  async getWeeklyReview(projectId: string, weekStart?: string) {
+    const params: Record<string, string> = {};
+    if (weekStart) params.weekStart = weekStart;
+    const response = await this.api.get(`/time-entries/weekly-review/${projectId}`, { params });
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
   // Expenses
   // -------------------------------------------------------------------------
 

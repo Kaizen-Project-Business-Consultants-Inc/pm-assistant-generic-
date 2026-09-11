@@ -1242,6 +1242,37 @@ Project managers and owners see an **Approvals** tab on the Timesheet page.
 3. To approve: click **Approve**. The submitter receives an approval notification.
 4. To reject: click **Reject**, enter a reason (required), and confirm. The submitter receives a high-severity notification with your reason and their entries revert to draft for correction.
 
+### Time Anomalies (Managers/Owners)
+
+Project managers and owners see a **Time Anomalies** panel at the top of the Time tab on the project page. This panel flags suspicious time entry patterns automatically:
+
+- **Excessive Hours** (red) — someone logged more than 10 hours in a single day or 50 hours in a week.
+- **Duplicate Entries** (amber) — the same user has multiple entries for the same task on the same date.
+- **Weekend Work** (blue) — time was logged on a Saturday or Sunday.
+- **Over Estimate** (red) — a task has consumed more than 150% of its estimated hours.
+- **Missing Hours** (blue) — less than 6 hours logged on a weekday.
+
+Click **Dismiss** on any anomaly to hide it for the current session. Anomalies refresh automatically when the date range or entries change.
+
+### Weekly Review (Managers/Owners)
+
+Below the anomalies panel, a **Weekly Review** card summarizes the current week:
+
+- **Total hours** by team member (bar chart).
+- **Anomaly count** and **compliance percentage**.
+- **Top tasks** by hours consumed.
+- **Over-budget tasks** with actual vs estimated comparison.
+
+Use the date picker to view reviews for previous weeks. The review is generated on-demand from existing time data.
+
+### Compliance Reminders
+
+The system automatically checks for missing time entries on weekdays at 4:00 PM:
+
+- If you haven't logged any time for the day, you'll receive a **Time entry reminder** notification.
+- On Thursday and Friday, the system also checks earlier weekdays.
+- If you miss 3 or more consecutive weekdays, your project manager receives an escalation alert.
+
 ---
 
 ## 12. Reports

@@ -38,4 +38,10 @@ export const AUTOMATION_EVENT_TYPES: AutomationEventTypeInfo[] = [
   // Proposal events
   { type: 'proposal.created', entityType: 'proposal', description: 'A reschedule proposal is created' },
   { type: 'proposal.accepted', entityType: 'proposal', description: 'A reschedule proposal is accepted' },
+
+  // Time entry events
+  { type: 'time_entry.created', entityType: 'time_entry', description: 'A time entry is logged' },
+  { type: 'time_entry.updated', entityType: 'time_entry', description: 'A time entry is updated' },
+  { type: 'time_entry.deleted', entityType: 'time_entry', description: 'A time entry is deleted' },
+  { type: 'timesheet.submitted', entityType: 'timesheet', description: 'A timesheet is submitted for approval' },
 ];
