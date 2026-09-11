@@ -3450,9 +3450,19 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
-  async initiateOneDriveAuth(projectId: string) {
-    const response = await this.api.post(`/projects/${projectId}/storage-connectors/onedrive/auth`);
+  async getAvailableProviders(projectId: string) {
+    const response = await this.api.get(`/projects/${projectId}/storage-connectors/providers`);
     return response.data;
+  }
+
+  async initiateStorageAuth(projectId: string, provider: string, extra?: Record<string, string>) {
+    const response = await this.api.post(`/projects/${projectId}/storage-connectors/${provider}/auth`, extra || {});
+    return response.data;
+  }
+
+  /** @deprecated Use initiateStorageAuth instead */
+  async initiateOneDriveAuth(projectId: string) {
+    return this.initiateStorageAuth(projectId, 'onedrive');
   }
 
   async browseConnectorFolder(projectId: string, connectorId: string, folderId?: string) {

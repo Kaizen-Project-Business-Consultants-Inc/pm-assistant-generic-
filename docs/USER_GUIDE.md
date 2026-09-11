@@ -3227,25 +3227,29 @@ Type a natural language question in the AI search field (e.g., "budget constrain
 - **Reprocess** — click the refresh icon to re-run AI analysis (useful after AI improvements)
 - **Delete** — click the trash icon and confirm to permanently remove the document
 
-### Connecting OneDrive (Cloud Storage — BYOS)
+### Connecting Cloud Storage (BYOS)
 
-Bring Your Own Storage: connect your Microsoft OneDrive or SharePoint so Kovarti can analyze your documents without ever storing them. Your files stay in OneDrive — Kovarti only keeps AI-generated metadata and search indexes.
+Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox so Kovarti can analyze your documents without ever storing them. Your files stay in your cloud provider — Kovarti only keeps AI-generated metadata and search indexes.
 
-1. On the Documents tab, click the **Connect OneDrive** button
-2. A popup opens — choose your Microsoft account and authorize read-only access
-3. A folder picker appears — select which folders to sync
-4. Click **Save** — Kovarti indexes supported files (PDF, DOCX, DOC, TXT, CSV, MD under 10MB)
+**Requirements:** Pro, SME, or Enterprise tier. Trial and Basic users see an upgrade prompt instead of the connect button. Per-tier document limits: Pro = 100, SME = 500, Enterprise = unlimited.
+
+1. On the Documents tab, click the **Connect Storage** button
+2. Pick your provider from the grid (only admin-configured providers are available)
+3. For **SharePoint**: enter the site URL first, then sign in
+4. A popup opens — sign in and authorize read-only access
+5. A folder picker appears — select which folders to sync
+6. Click **Save** — Kovarti indexes supported files (PDF, DOCX, DOC, TXT, CSV, MD under 10MB)
 
 **How it works:**
 - During sync, files are temporarily downloaded for AI text extraction, then **immediately deleted**
 - Kovarti stores only the document name, AI classification, summary, tags, and search embeddings
-- When you click **Download**, the file is streamed live from your OneDrive — Kovarti is just a pass-through
-- Your OneDrive is the single source of truth
+- When you click **Download**, the file is streamed live from your provider — Kovarti is just a pass-through
+- Your cloud storage is the single source of truth
 
 **After connecting:**
 - Documents sync automatically every 15 minutes (configurable)
 - New and changed files are re-analyzed with updated AI insights
-- Deleted files in OneDrive are automatically removed from Kovarti's index
+- Deleted files are automatically removed from Kovarti's index
 - The connector status chip shows sync status, last sync time, and any errors
 - Use **Sync now** to trigger an immediate sync
 - **Pause/Resume** to temporarily halt sync

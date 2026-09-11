@@ -4024,30 +4024,51 @@ All endpoints are scoped to a project: `/api/v1/projects/:projectId/documents/`
 
 ### Cloud Storage Connectors (BYOS)
 
-Connect your OneDrive (or SharePoint) account so Kovarti can index and analyze your documents without ever storing them. This is the **Bring Your Own Storage (BYOS)** model: your files stay in OneDrive, and Kovarti only keeps lightweight metadata, AI insights, and search embeddings (~10KB per document).
+Connect your cloud storage (OneDrive, SharePoint, Google Drive, or Dropbox) so Kovarti can index and analyze your documents without ever storing them. This is the **Bring Your Own Storage (BYOS)** model: your files stay in your provider, and Kovarti only keeps lightweight metadata, AI insights, and search embeddings (~10KB per document).
+
+**Supported Providers:**
+
+| Provider | Auth | Delta Sync | Notes |
+|----------|------|------------|-------|
+| OneDrive | OAuth 2.0 + PKCE | Microsoft Graph delta API | Personal & business accounts |
+| SharePoint | OAuth 2.0 + PKCE | Microsoft Graph delta API | Requires site URL; uses same Microsoft app |
+| Google Drive | OAuth 2.0 + PKCE | Changes API with pageToken | Exports Google Docs as DOCX, Sheets as CSV |
+| Dropbox | OAuth 2.0 | list_folder/continue cursor | No PKCE support |
+
+**Tier Requirements:**
+
+| Tier | Access | Document Limit |
+|------|--------|---------------|
+| Trial / Basic | No | 0 |
+| Pro | Yes | 100 per project |
+| SME | Yes | 500 per project |
+| Enterprise | Yes | Unlimited |
 
 **How BYOS Works:**
 
 - During sync, files are temporarily downloaded for text extraction and AI analysis, then **immediately deleted** from Kovarti's servers
 - Kovarti stores only: document name, AI classification, summary, tags, entity links, and search embeddings
-- When you download a document, it is **streamed live from OneDrive** through Kovarti as a pass-through proxy
-- Your OneDrive remains the single source of truth — Kovarti never holds your files
+- When you download a document, it is **streamed live from the provider** through Kovarti as a pass-through proxy
+- Your cloud storage remains the single source of truth — Kovarti never holds your files
 
-**Setting Up OneDrive:**
+**Connecting a Provider:**
 
-1. Go to the Documents tab on any project
-2. Click the **Connect OneDrive** button in the upload area
-3. Sign in with your Microsoft account in the popup (account picker shown)
-4. Select which folders to sync — only those folders are indexed
-5. Documents matching supported types (PDF, DOCX, DOC, TXT, CSV, MD, max 10MB) are processed through the AI pipeline
+1. Go to the Documents tab on any project (requires Pro tier or above)
+2. Click the **Connect Storage** button in the upload area
+3. Pick your provider from the grid (only providers configured by admin are available)
+4. For SharePoint: enter the site URL first, then sign in
+5. Sign in with your account in the popup
+6. Select which folders to sync — only those folders are indexed
+7. Documents matching supported types (PDF, DOCX, DOC, TXT, CSV, MD, max 10MB) are processed through the AI pipeline
 
 **Automatic Sync:**
 
 - Connectors sync every 15 minutes by default (configurable from 15 to 1440 minutes)
 - When specific folders are selected, sync lists those folders directly (fast)
 - New files are temporarily downloaded, AI-processed, then the temp file is deleted
-- Deleted files in OneDrive are automatically removed from Kovarti's index
+- Deleted files are automatically removed from Kovarti's index
 - Modified files are re-processed with updated AI insights
+- Document limit is enforced per sync: once the limit is reached, new files are skipped (updates and deletes still process)
 
 **Connector Status:**
 
@@ -4067,11 +4088,16 @@ Each connected source shows a status chip in the Documents tab:
 - Tokens encrypted at rest with AES-256-GCM
 - Tokens never exposed in API responses
 - OAuth state validated server-side (single-use, 10-minute TTL)
-- Read-only permissions: `Files.Read.All`, `User.Read`, `offline_access`
+- Read-only permissions requested from each provider
+- OneDrive/SharePoint: `Files.Read.All`, `User.Read`, `offline_access`
+- Google Drive: `drive.readonly`, `userinfo.email`, `userinfo.profile`
+- Dropbox: `files.metadata.read`, `files.content.read`, `account_info.read`
 
 **Prerequisites (Admin):**
-- Azure AD app registration with redirect URI `{APP_URL}/api/v1/storage-connectors/onedrive/callback`
-- Environment variables: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `CONNECTOR_ENCRYPTION_KEY` (32+ chars)
+- **OneDrive/SharePoint:** Azure AD app registration with redirect URI `{APP_URL}/api/v1/storage-connectors/onedrive/callback`. Set `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET`.
+- **Google Drive:** Google Cloud OAuth 2.0 credentials with redirect URI `{APP_URL}/api/v1/storage-connectors/google_drive/callback`. Set `GOOGLE_DRIVE_CLIENT_ID` and `GOOGLE_DRIVE_CLIENT_SECRET`.
+- **Dropbox:** Dropbox app with redirect URI `{APP_URL}/api/v1/storage-connectors/dropbox/callback`. Set `DROPBOX_APP_KEY` and `DROPBOX_APP_SECRET`.
+- **All providers:** `CONNECTOR_ENCRYPTION_KEY` (32+ chars) for token encryption at rest.
 
 **Storage Connector API Endpoints:**
 
@@ -4079,11 +4105,12 @@ All endpoints scoped to a project: `/api/v1/projects/:projectId/storage-connecto
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/providers` | List available providers with configured status |
 | GET | `/` | List connectors for the project |
-| POST | `/onedrive/auth` | Initiate OneDrive OAuth flow (returns `authUrl`) |
-| GET | `/onedrive/callback` | OAuth redirect handler (creates connector) |
+| POST | `/:provider/auth` | Initiate OAuth flow for provider (tier-gated: Pro+) |
+| GET | `/:provider/callback` | OAuth redirect handler (creates connector) |
 | GET | `/:id` | Get connector details |
-| GET | `/:id/browse?folderId=` | Browse OneDrive folders |
+| GET | `/:id/browse?folderId=` | Browse provider folders |
 | PUT | `/:id/folders` | Set which folders to sync |
 | POST | `/:id/sync` | Trigger manual sync |
 | PUT | `/:id` | Update settings (displayName, status, syncIntervalMinutes) |

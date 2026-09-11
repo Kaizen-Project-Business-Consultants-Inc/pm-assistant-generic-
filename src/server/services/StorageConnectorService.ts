@@ -7,10 +7,12 @@ import { encryptToken, decryptToken } from '../utils/tokenEncryption';
 import { storageConnectorRepository, type StorageConnector } from '../database/StorageConnectorRepository';
 import { projectDocumentRepository } from '../database/ProjectDocumentRepository';
 import { documentIntelligenceService } from './DocumentIntelligenceService';
-import { oneDriveAdapter } from './integrations/OneDriveAdapter';
+import { getStorageAdapter, getProviderCredentials, getCallbackPath, getProviderLabel, type StorageProvider } from './integrations/storageAdapterRegistry';
+import type { StorageItem, ConnectorConfig } from './integrations/StorageAdapter';
 import { redisService } from './RedisService';
 import { validateMimeType } from '../utils/mimeValidator';
 import { getTenantContext, runWithTenantContext } from '../middleware/requestContext';
+import { userService } from './UserService';
 import logger from '../utils/logger';
 
 const ALLOWED_MIME_TYPES = [
@@ -27,12 +29,20 @@ const MAX_FILES_PER_SYNC = 50;
 const OAUTH_STATE_TTL = 600; // 10 minutes
 const TOKEN_REFRESH_BUFFER = 5 * 60 * 1000; // 5 minutes before expiry
 
-class StorageConnectorService {
-  async initiateOAuthFlow(projectId: string, userId: string): Promise<{ authUrl: string }> {
-    const clientId = config.MICROSOFT_CLIENT_ID;
-    if (!clientId) throw new Error('Microsoft OAuth not configured (MICROSOFT_CLIENT_ID missing)');
+const TIER_DOC_LIMITS: Record<string, number> = {
+  trial: 0,
+  consultant_basic: 0,
+  consultant_pro: 100,
+  sme: 500,
+  enterprise: Infinity,
+};
 
-    // PKCE
+class StorageConnectorService {
+  async initiateOAuthFlow(projectId: string, userId: string, provider: StorageProvider): Promise<{ authUrl: string }> {
+    const creds = getProviderCredentials(provider);
+    if (!creds.clientId) throw new Error(`${getProviderLabel(provider)} integration not configured`);
+
+    // PKCE (Dropbox doesn't support it, but we generate anyway — adapter ignores if not needed)
     const codeVerifier = crypto.randomBytes(32).toString('base64url');
     const codeChallenge = crypto
       .createHash('sha256')
@@ -45,69 +55,72 @@ class StorageConnectorService {
     // Store in Redis with TTL (include tenant context for the unauthenticated callback)
     const tenantCtx = getTenantContext();
     await redisService.set(
-      `oauth:onedrive:${state}`,
+      `oauth:storage:${state}`,
       JSON.stringify({
-        projectId, userId, codeVerifier,
+        projectId, userId, codeVerifier, provider,
         tenantDbName: tenantCtx?.dbName || null,
         tenantOrgId: tenantCtx?.orgId || null,
       }),
       OAUTH_STATE_TTL,
     );
 
-    const redirectUri = `${config.APP_URL}/api/v1/storage-connectors/onedrive/callback`;
-    const scopes = 'Files.Read.All User.Read offline_access';
+    const callbackPath = getCallbackPath(provider);
+    const redirectUri = `${config.APP_URL}/api/v1/storage-connectors/${callbackPath}/callback`;
 
-    const params = new URLSearchParams({
-      client_id: clientId,
-      response_type: 'code',
-      redirect_uri: redirectUri,
-      scope: scopes,
+    const adapter = getStorageAdapter(provider);
+    const authUrl = adapter.buildAuthUrl({
+      clientId: creds.clientId,
+      redirectUri,
       state,
-      code_challenge: codeChallenge,
-      code_challenge_method: 'S256',
-      prompt: 'select_account',
+      codeChallenge,
     });
 
-    return { authUrl: `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}` };
+    return { authUrl };
   }
 
   async handleOAuthCallback(state: string, code: string): Promise<StorageConnector> {
     // Validate state
-    const raw = await redisService.get(`oauth:onedrive:${state}`);
+    const raw = await redisService.get(`oauth:storage:${state}`);
     if (!raw) throw new Error('Invalid or expired OAuth state');
 
-    const { projectId, userId, codeVerifier, tenantDbName, tenantOrgId } = JSON.parse(raw);
+    const { projectId, userId, codeVerifier, provider, tenantDbName, tenantOrgId } = JSON.parse(raw);
 
     // Delete state (single-use)
-    await redisService.del(`oauth:onedrive:${state}`);
+    await redisService.del(`oauth:storage:${state}`);
 
-    const redirectUri = `${config.APP_URL}/api/v1/storage-connectors/onedrive/callback`;
+    const callbackPath = getCallbackPath(provider);
+    const redirectUri = `${config.APP_URL}/api/v1/storage-connectors/${callbackPath}/callback`;
+    const creds = getProviderCredentials(provider);
+    const adapter = getStorageAdapter(provider);
 
-    // Exchange code for tokens (no tenant context needed — external API call)
-    const tokens = await oneDriveAdapter.exchangeCodeForTokens(
+    // Exchange code for tokens
+    const tokens = await adapter.exchangeCode({
       code, redirectUri,
-      config.MICROSOFT_CLIENT_ID, config.MICROSOFT_CLIENT_SECRET,
+      clientId: creds.clientId,
+      clientSecret: creds.clientSecret,
       codeVerifier,
-    );
+    });
 
     // Test connection to get user info for display name
-    const user = await oneDriveAdapter.testConnection(tokens.access_token);
+    const user = await adapter.testConnection(tokens.access_token);
 
     // Encrypt tokens
     const accessTokenEnc = encryptToken(tokens.access_token);
     const refreshTokenEnc = encryptToken(tokens.refresh_token);
     const tokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
+    const label = getProviderLabel(provider);
+
     // Create connector record — needs tenant context for DB write
     const createConnector = async () => storageConnectorRepository.create({
       projectId,
-      provider: 'onedrive',
-      displayName: `OneDrive - ${user.displayName}`,
+      provider,
+      displayName: `${label} - ${user.displayName}`,
       accessTokenEnc,
       refreshTokenEnc,
       tokenExpiresAt,
       createdBy: userId,
-      config: { email: user.mail, syncFolders: [] },
+      config: { email: user.email, syncFolders: [] },
     });
 
     let connector: StorageConnector;
@@ -117,7 +130,7 @@ class StorageConnectorService {
       connector = await createConnector();
     }
 
-    logger.info('OneDrive connector created', { connectorId: connector.id, projectId, user: user.mail });
+    logger.info('Storage connector created', { connectorId: connector.id, projectId, provider, user: user.email });
     return connector;
   }
 
@@ -135,12 +148,15 @@ class StorageConnectorService {
     }
 
     // Refresh
-    const refreshToken = decryptToken(connector.refreshTokenEnc);
-    const tokens = await oneDriveAdapter.refreshAccessToken(
-      refreshToken,
-      config.MICROSOFT_CLIENT_ID,
-      config.MICROSOFT_CLIENT_SECRET,
-    );
+    const refreshTokenVal = decryptToken(connector.refreshTokenEnc);
+    const creds = getProviderCredentials(connector.provider);
+    const adapter = getStorageAdapter(connector.provider);
+
+    const tokens = await adapter.refreshToken({
+      refreshToken: refreshTokenVal,
+      clientId: creds.clientId,
+      clientSecret: creds.clientSecret,
+    });
 
     const accessTokenEnc = encryptToken(tokens.access_token);
     const refreshTokenEnc = encryptToken(tokens.refresh_token);
@@ -152,7 +168,7 @@ class StorageConnectorService {
       tokenExpiresAt,
     });
 
-    logger.debug('OneDrive token refreshed', { connectorId: connector.id });
+    logger.debug('Storage token refreshed', { connectorId: connector.id, provider: connector.provider });
     return tokens.access_token;
   }
 
@@ -161,15 +177,17 @@ class StorageConnectorService {
     if (!connector) throw new Error('Connector not found');
 
     const accessToken = await this.refreshTokenIfNeeded(connector);
-    const items = await oneDriveAdapter.listFolder(accessToken, folderId);
+    const adapter = getStorageAdapter(connector.provider);
+    const connectorConfig = (connector.config || {}) as ConnectorConfig;
+    const items = await adapter.listFolder(accessToken, folderId, connectorConfig);
 
     return items.map(item => ({
       id: item.id,
       name: item.name,
-      isFolder: !!item.folder,
-      childCount: item.folder?.childCount || 0,
+      isFolder: item.isFolder,
+      childCount: item.childCount || 0,
       size: item.size || 0,
-      mimeType: item.file?.mimeType || null,
+      mimeType: item.mimeType || null,
     }));
   }
 
@@ -185,7 +203,7 @@ class StorageConnectorService {
     await storageConnectorRepository.updateDelta(connectorId, null);
   }
 
-  async syncConnector(connectorId: string): Promise<{ synced: number; deleted: number; skipped: number }> {
+  async syncConnector(connectorId: string, docLimit?: number): Promise<{ synced: number; deleted: number; skipped: number }> {
     const connector = await storageConnectorRepository.findById(connectorId);
     if (!connector) throw new Error('Connector not found');
     if (connector.status === 'disconnected') throw new Error('Connector is disconnected');
@@ -199,25 +217,43 @@ class StorageConnectorService {
     }
 
     const syncFolders: string[] = (connector.config as any)?.syncFolders || [];
+    const adapter = getStorageAdapter(connector.provider);
+    const connectorConfig = (connector.config || {}) as ConnectorConfig;
+
+    // Resolve document limit from user tier
+    let effectiveDocLimit = docLimit;
+    if (effectiveDocLimit === undefined) {
+      try {
+        const user = await userService.findById(connector.createdBy);
+        const tier = user?.subscriptionTier || 'trial';
+        effectiveDocLimit = TIER_DOC_LIMITS[tier] ?? 0;
+      } catch {
+        effectiveDocLimit = Infinity; // Fallback: don't block if user lookup fails
+      }
+    }
+
+    let remainingDocs = Infinity;
+    if (effectiveDocLimit !== Infinity) {
+      const currentCount = await projectDocumentRepository.countByProject(connector.projectId);
+      remainingDocs = Math.max(0, effectiveDocLimit - currentCount);
+    }
 
     try {
-      // If specific folders are selected, list them directly (fast).
-      // Otherwise fall back to delta API for full-drive incremental sync.
-      let items: import('./integrations/OneDriveAdapter').DriveItem[];
-      let deltaLink: string | undefined;
+      let items: StorageItem[];
+      let deltaToken: string | undefined;
 
       if (syncFolders.length > 0) {
         // Targeted sync: list files in each selected folder
         const folderResults = await Promise.all(
-          syncFolders.map(fid => oneDriveAdapter.listFolderFiles(accessToken, fid)),
+          syncFolders.map(fid => adapter.listFolderFiles(accessToken, fid, connectorConfig)),
         );
         items = folderResults.flat();
-        deltaLink = undefined; // No delta tracking for folder-specific sync
+        deltaToken = undefined;
       } else {
         // Full drive delta sync
-        const delta = await oneDriveAdapter.getDelta(accessToken, connector.deltaToken || undefined);
-        items = delta.value;
-        deltaLink = delta['@odata.deltaLink'];
+        const delta = await adapter.getDelta(accessToken, connector.deltaToken || undefined, connectorConfig);
+        items = delta.items;
+        deltaToken = delta.deltaToken;
       }
 
       let synced = 0;
@@ -230,11 +266,10 @@ class StorageConnectorService {
           continue;
         }
 
-        // Handle deletions (only from delta API)
+        // Handle deletions
         if (item.deleted) {
           const existing = await projectDocumentRepository.findByExternalId(connectorId, item.id);
           if (existing) {
-            // BYOS: no local file to delete — just clean up metadata + embeddings
             documentIntelligenceService.deleteDocumentEmbeddings(existing.id).catch(() => {});
             await projectDocumentRepository.delete(existing.id);
             deleted++;
@@ -243,10 +278,10 @@ class StorageConnectorService {
         }
 
         // Skip folders
-        if (item.folder) continue;
+        if (item.isFolder) continue;
 
         // Skip unsupported types
-        const mimeType = item.file?.mimeType;
+        const mimeType = item.mimeType;
         if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType)) {
           skipped++;
           continue;
@@ -264,8 +299,14 @@ class StorageConnectorService {
           continue; // unchanged
         }
 
+        // Check document limit (only for new files, not updates)
+        if (!existing && remainingDocs <= 0) {
+          skipped++;
+          continue;
+        }
+
         // Download file
-        const buffer = await oneDriveAdapter.downloadFile(accessToken, item.id);
+        const buffer = await adapter.downloadFile(accessToken, item.id, connectorConfig);
 
         // Validate MIME
         const mimeCheck = validateMimeType(mimeType, buffer);
@@ -282,9 +323,9 @@ class StorageConnectorService {
         const tmpPath = path.join(tmpDir, tmpFilename);
         await fs.writeFile(tmpPath, buffer);
 
-        // Upsert document record (no permanent filename — file lives in OneDrive)
-        const externalPath = item.parentReference?.path
-          ? `${item.parentReference.path}/${item.name}`
+        // Build external path
+        const externalPath = item.parentPath
+          ? `${item.parentPath}/${item.name}`
           : item.name;
 
         const doc = await projectDocumentRepository.upsertFromConnector({
@@ -308,11 +349,12 @@ class StorageConnectorService {
           .finally(() => fs.unlink(tmpPath).catch(() => {}));
 
         synced++;
+        if (!existing) remainingDocs--;
       }
 
       // Update delta token (only when using full-drive delta sync)
-      if (deltaLink) {
-        await storageConnectorRepository.updateDelta(connectorId, deltaLink);
+      if (deltaToken) {
+        await storageConnectorRepository.updateDelta(connectorId, deltaToken);
       }
 
       // Clear error state if was in error
@@ -320,7 +362,7 @@ class StorageConnectorService {
         await storageConnectorRepository.updateStatus(connectorId, 'active');
       }
 
-      logger.info('Connector sync completed', { connectorId, synced, deleted, skipped });
+      logger.info('Connector sync completed', { connectorId, provider: connector.provider, synced, deleted, skipped });
       return { synced, deleted, skipped };
     } catch (err: any) {
       // Track consecutive failures
@@ -336,22 +378,22 @@ class StorageConnectorService {
   }
 
   /**
-   * Stream a file from OneDrive on-demand (BYOS: Kovarti doesn't store the file).
+   * Stream a file from the provider on-demand (BYOS: Kovarti doesn't store the file).
    */
   async streamFileFromProvider(connectorId: string, externalId: string): Promise<Buffer> {
     const connector = await storageConnectorRepository.findById(connectorId);
     if (!connector) throw new Error('Connector not found');
 
     const accessToken = await this.refreshTokenIfNeeded(connector);
-    return oneDriveAdapter.downloadFile(accessToken, externalId);
+    const adapter = getStorageAdapter(connector.provider);
+    const connectorConfig = (connector.config || {}) as ConnectorConfig;
+    return adapter.downloadFile(accessToken, externalId, connectorConfig);
   }
 
   async disconnect(connectorId: string): Promise<void> {
     const connector = await storageConnectorRepository.findById(connectorId);
     if (!connector) throw new Error('Connector not found');
 
-    // Note: Microsoft doesn't have a token revocation endpoint for consumer accounts.
-    // We just delete our stored tokens.
     await storageConnectorRepository.delete(connectorId);
     logger.info('Storage connector disconnected', { connectorId, provider: connector.provider });
   }

@@ -21,8 +21,9 @@ import {
   Cloud,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
-import { OneDriveConnectModal } from '../../components/documents/OneDriveConnectModal';
+import { StorageConnectModal } from '../../components/documents/StorageConnectModal';
 import { StorageConnectorStatus } from '../../components/documents/StorageConnectorStatus';
+import { useAuthStore } from '../../stores/authStore';
 
 interface DocumentsTabProps {
   projectId: string;
@@ -92,8 +93,12 @@ function formatLabel(s: string): string {
   return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+const CONNECTOR_TIERS = ['consultant_pro', 'sme', 'enterprise'];
+
 export function DocumentsTab({ projectId }: DocumentsTabProps) {
   const queryClient = useQueryClient();
+  const user = useAuthStore(s => s.user);
+  const canConnect = user?.subscriptionTier && CONNECTOR_TIERS.includes(user.subscriptionTier);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [typeFilter, setTypeFilter] = useState('');
   const [phaseFilter, setPhaseFilter] = useState('');
@@ -282,12 +287,19 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
           />
         </div>
         <p className="text-xs text-gray-400 mt-2">PDF, DOCX, DOC, TXT, CSV, MD (max 10MB)</p>
-        <button
-          className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-primary-300 dark:border-primary-600 text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
-          onClick={() => setShowConnectModal(true)}
-        >
-          <Cloud className="w-4 h-4" /> Connect OneDrive
-        </button>
+        {canConnect ? (
+          <button
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-primary-300 dark:border-primary-600 text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
+            onClick={() => setShowConnectModal(true)}
+          >
+            <Cloud className="w-4 h-4" /> Connect Storage
+          </button>
+        ) : (
+          <p className="mt-3 text-xs text-gray-400">
+            <Cloud className="w-4 h-4 inline mr-1" />
+            Cloud storage sync requires Pro or higher plan.
+          </p>
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -324,7 +336,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
 
       {/* Connect Storage + OneDrive modal */}
       {showConnectModal && (
-        <OneDriveConnectModal projectId={projectId} onClose={() => setShowConnectModal(false)} />
+        <StorageConnectModal projectId={projectId} onClose={() => setShowConnectModal(false)} />
       )}
 
       {/* Filters row */}

@@ -1,48 +1,71 @@
 import logger from '../../utils/logger';
+import type { StorageAdapter, StorageToken, StorageItem, DeltaResult, ConnectorConfig } from './StorageAdapter';
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 const AUTH_BASE = 'https://login.microsoftonline.com/common/oauth2/v2.0';
 
-export interface OneDriveToken {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
+function driveBase(connectorConfig?: ConnectorConfig): string {
+  if (connectorConfig?.siteId) {
+    return `${GRAPH_BASE}/sites/${connectorConfig.siteId}/drive`;
+  }
+  return `${GRAPH_BASE}/me/drive`;
 }
 
-export interface DriveItem {
-  id: string;
-  name: string;
-  size?: number;
-  file?: { mimeType: string };
-  folder?: { childCount: number };
-  parentReference?: { path: string; id: string };
-  lastModifiedDateTime?: string;
-  deleted?: Record<string, unknown>;
-  eTag?: string;
+function toStorageItem(item: any): StorageItem {
+  return {
+    id: item.id,
+    name: item.name,
+    size: item.size,
+    mimeType: item.file?.mimeType,
+    isFolder: !!item.folder,
+    childCount: item.folder?.childCount,
+    parentPath: item.parentReference?.path,
+    parentId: item.parentReference?.id,
+    lastModifiedDateTime: item.lastModifiedDateTime,
+    deleted: !!item.deleted,
+    eTag: item.eTag,
+  };
 }
 
-export interface DeltaResponse {
-  value: DriveItem[];
-  '@odata.deltaLink'?: string;
-  '@odata.nextLink'?: string;
-}
-
-class OneDriveAdapter {
-  async exchangeCodeForTokens(
-    code: string,
-    redirectUri: string,
-    clientId: string,
-    clientSecret: string,
-    codeVerifier: string,
-  ): Promise<OneDriveToken> {
-    const body = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      code,
-      redirect_uri: redirectUri,
-      grant_type: 'authorization_code',
-      code_verifier: codeVerifier,
+class OneDriveAdapter implements StorageAdapter {
+  buildAuthUrl(params: {
+    clientId: string;
+    redirectUri: string;
+    state: string;
+    codeChallenge?: string;
+  }): string {
+    const query = new URLSearchParams({
+      client_id: params.clientId,
+      response_type: 'code',
+      redirect_uri: params.redirectUri,
+      scope: this.getScopes(),
+      state: params.state,
+      prompt: 'select_account',
     });
+    if (params.codeChallenge) {
+      query.set('code_challenge', params.codeChallenge);
+      query.set('code_challenge_method', 'S256');
+    }
+    return `${AUTH_BASE}/authorize?${query.toString()}`;
+  }
+
+  async exchangeCode(params: {
+    code: string;
+    redirectUri: string;
+    clientId: string;
+    clientSecret: string;
+    codeVerifier?: string;
+  }): Promise<StorageToken> {
+    const body = new URLSearchParams({
+      client_id: params.clientId,
+      client_secret: params.clientSecret,
+      code: params.code,
+      redirect_uri: params.redirectUri,
+      grant_type: 'authorization_code',
+    });
+    if (params.codeVerifier) {
+      body.set('code_verifier', params.codeVerifier);
+    }
 
     const resp = await fetch(`${AUTH_BASE}/token`, {
       method: 'POST',
@@ -56,18 +79,18 @@ class OneDriveAdapter {
       throw new Error(`Token exchange failed: ${resp.status}`);
     }
 
-    return resp.json() as Promise<OneDriveToken>;
+    return resp.json() as Promise<StorageToken>;
   }
 
-  async refreshAccessToken(
-    refreshToken: string,
-    clientId: string,
-    clientSecret: string,
-  ): Promise<OneDriveToken> {
+  async refreshToken(params: {
+    refreshToken: string;
+    clientId: string;
+    clientSecret: string;
+  }): Promise<StorageToken> {
     const body = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: refreshToken,
+      client_id: params.clientId,
+      client_secret: params.clientSecret,
+      refresh_token: params.refreshToken,
       grant_type: 'refresh_token',
     });
 
@@ -83,23 +106,24 @@ class OneDriveAdapter {
       throw new Error(`Token refresh failed: ${resp.status}`);
     }
 
-    return resp.json() as Promise<OneDriveToken>;
+    return resp.json() as Promise<StorageToken>;
   }
 
-  async testConnection(accessToken: string): Promise<{ displayName: string; mail: string }> {
+  async testConnection(accessToken: string): Promise<{ displayName: string; email: string }> {
     const resp = await fetch(`${GRAPH_BASE}/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     if (!resp.ok) throw new Error(`Connection test failed: ${resp.status}`);
     const data = await resp.json();
-    return { displayName: data.displayName, mail: data.mail || data.userPrincipalName };
+    return { displayName: data.displayName, email: data.mail || data.userPrincipalName };
   }
 
-  async listFolder(accessToken: string, folderId?: string): Promise<DriveItem[]> {
+  async listFolder(accessToken: string, folderId?: string, connectorConfig?: ConnectorConfig): Promise<StorageItem[]> {
+    const base = driveBase(connectorConfig);
     const path = folderId
-      ? `${GRAPH_BASE}/me/drive/items/${folderId}/children`
-      : `${GRAPH_BASE}/me/drive/root/children`;
+      ? `${base}/items/${folderId}/children`
+      : `${base}/root/children`;
 
     const resp = await fetch(`${path}?$select=id,name,size,file,folder,parentReference`, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -107,30 +131,31 @@ class OneDriveAdapter {
 
     if (!resp.ok) throw new Error(`List folder failed: ${resp.status}`);
     const data = await resp.json();
-    return data.value as DriveItem[];
+    return (data.value || []).map(toStorageItem);
   }
 
-  async getDelta(accessToken: string, deltaLink?: string): Promise<DeltaResponse> {
-    const url = deltaLink || `${GRAPH_BASE}/me/drive/root/delta?$select=id,name,size,file,folder,parentReference,lastModifiedDateTime,deleted,eTag`;
+  async getDelta(accessToken: string, deltaToken?: string, connectorConfig?: ConnectorConfig): Promise<DeltaResult> {
+    const base = driveBase(connectorConfig);
+    const url = deltaToken || `${base}/root/delta?$select=id,name,size,file,folder,parentReference,lastModifiedDateTime,deleted,eTag`;
 
-    let allItems: DriveItem[] = [];
+    let allItems: StorageItem[] = [];
     let currentUrl: string | undefined = url;
-    let finalDeltaLink: string | undefined;
-    const MAX_PAGES = 50; // Safety cap — don't paginate forever on huge drives
+    let finalDeltaToken: string | undefined;
+    const MAX_PAGES = 50;
     let pages = 0;
 
     while (currentUrl && pages < MAX_PAGES) {
       const resp: Response = await fetch(currentUrl, {
         headers: { Authorization: `Bearer ${accessToken}` },
-        signal: AbortSignal.timeout(30000), // 30s per page
+        signal: AbortSignal.timeout(30000),
       });
 
       if (!resp.ok) throw new Error(`Delta query failed: ${resp.status}`);
       const data: any = await resp.json();
-      allItems = allItems.concat(data.value || []);
+      allItems = allItems.concat((data.value || []).map(toStorageItem));
       currentUrl = data['@odata.nextLink'] as string | undefined;
       if (data['@odata.deltaLink']) {
-        finalDeltaLink = data['@odata.deltaLink'];
+        finalDeltaToken = data['@odata.deltaLink'];
       }
       pages++;
     }
@@ -139,19 +164,13 @@ class OneDriveAdapter {
       logger.warn('Delta pagination capped', { pages, items: allItems.length });
     }
 
-    return {
-      value: allItems,
-      '@odata.deltaLink': finalDeltaLink,
-    };
+    return { items: allItems, deltaToken: finalDeltaToken };
   }
 
-  /**
-   * List all files in a specific folder (non-recursive).
-   * Used as an alternative to delta for targeted folder sync.
-   */
-  async listFolderFiles(accessToken: string, folderId: string): Promise<DriveItem[]> {
-    const url = `${GRAPH_BASE}/me/drive/items/${folderId}/children?$select=id,name,size,file,folder,parentReference,lastModifiedDateTime,eTag&$top=200`;
-    let allItems: DriveItem[] = [];
+  async listFolderFiles(accessToken: string, folderId: string, connectorConfig?: ConnectorConfig): Promise<StorageItem[]> {
+    const base = driveBase(connectorConfig);
+    const url = `${base}/items/${folderId}/children?$select=id,name,size,file,folder,parentReference,lastModifiedDateTime,eTag&$top=200`;
+    let allItems: StorageItem[] = [];
     let currentUrl: string | undefined = url;
 
     while (currentUrl) {
@@ -162,15 +181,16 @@ class OneDriveAdapter {
 
       if (!resp.ok) throw new Error(`List folder files failed: ${resp.status}`);
       const data: any = await resp.json();
-      allItems = allItems.concat(data.value || []);
+      allItems = allItems.concat((data.value || []).map(toStorageItem));
       currentUrl = data['@odata.nextLink'] as string | undefined;
     }
 
     return allItems;
   }
 
-  async downloadFile(accessToken: string, itemId: string): Promise<Buffer> {
-    const resp = await fetch(`${GRAPH_BASE}/me/drive/items/${itemId}/content`, {
+  async downloadFile(accessToken: string, itemId: string, connectorConfig?: ConnectorConfig): Promise<Buffer> {
+    const base = driveBase(connectorConfig);
+    const resp = await fetch(`${base}/items/${itemId}/content`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       redirect: 'follow',
     });
@@ -179,6 +199,10 @@ class OneDriveAdapter {
     const arrayBuffer = await resp.arrayBuffer();
     return Buffer.from(arrayBuffer);
   }
+
+  getScopes(): string {
+    return 'Files.Read.All User.Read offline_access';
+  }
 }
 
-export const oneDriveAdapter = new OneDriveAdapter();
+export const oneDriveAdapter: StorageAdapter = new OneDriveAdapter();

@@ -217,6 +217,14 @@ class ProjectDocumentRepository {
     return (await this.findById(id))!;
   }
 
+  async countByProject(projectId: string): Promise<number> {
+    const rows = await databaseService.query<any>(
+      'SELECT COUNT(*) as cnt FROM project_documents WHERE project_id = ?',
+      [projectId],
+    );
+    return Number(rows[0]?.cnt) || 0;
+  }
+
   async delete(id: string): Promise<void> {
     await databaseService.query('DELETE FROM project_documents WHERE id = ?', [id]);
   }

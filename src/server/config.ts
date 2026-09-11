@@ -131,9 +131,13 @@ const configSchema = z.object({
   UPLOAD_DIR: z.string().default(process.env['HOME'] || process.env['USERPROFILE'] ? `${process.env['HOME'] || process.env['USERPROFILE']}/uploads/pm-assistant` : './uploads/pm-assistant'),
   MAX_UPLOAD_SIZE_MB: z.coerce.number().min(1).max(100).default(10),
 
-  // Storage Connector (OneDrive/SharePoint BYOS)
+  // Storage Connector (BYOS — OneDrive/SharePoint/Google Drive/Dropbox)
   MICROSOFT_CLIENT_ID: z.string().optional().default(''),
   MICROSOFT_CLIENT_SECRET: z.string().optional().default(''),
+  GOOGLE_DRIVE_CLIENT_ID: z.string().optional().default(''),
+  GOOGLE_DRIVE_CLIENT_SECRET: z.string().optional().default(''),
+  DROPBOX_APP_KEY: z.string().optional().default(''),
+  DROPBOX_APP_SECRET: z.string().optional().default(''),
   CONNECTOR_ENCRYPTION_KEY: z.string().optional().default(''),
 }).refine((data) => {
   if (data.JWT_SECRET === data.JWT_REFRESH_SECRET) {
@@ -259,6 +263,10 @@ export function validateConfiguration() {
       MAX_UPLOAD_SIZE_MB: process.env['MAX_UPLOAD_SIZE_MB'],
       MICROSOFT_CLIENT_ID: process.env['MICROSOFT_CLIENT_ID'],
       MICROSOFT_CLIENT_SECRET: process.env['MICROSOFT_CLIENT_SECRET'],
+      GOOGLE_DRIVE_CLIENT_ID: process.env['GOOGLE_DRIVE_CLIENT_ID'],
+      GOOGLE_DRIVE_CLIENT_SECRET: process.env['GOOGLE_DRIVE_CLIENT_SECRET'],
+      DROPBOX_APP_KEY: process.env['DROPBOX_APP_KEY'],
+      DROPBOX_APP_SECRET: process.env['DROPBOX_APP_SECRET'],
       CONNECTOR_ENCRYPTION_KEY: process.env['CONNECTOR_ENCRYPTION_KEY'],
     };
 
