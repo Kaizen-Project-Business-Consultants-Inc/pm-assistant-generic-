@@ -1,7 +1,7 @@
 import { automationRepository } from '../../database/AutomationRepository';
 import { automationExecutionRepository } from '../../database/AutomationExecutionRepository';
 import { automationCooldownRepository } from '../../database/AutomationCooldownRepository';
-import { evaluateConditions } from './conditionEvaluator';
+import { evaluateConditions, evaluateConditionsWithTrace } from './conditionEvaluator';
 import { resolveTemplate } from './templateResolver';
 import { executeAction } from './actionExecutors';
 import { buildContext } from './contextBuilder';
@@ -88,6 +88,9 @@ export class AutomationEventBus {
       recursionDepth: event.recursionDepth ?? 0,
     });
 
+    // Initialize AI outputs container for ai_generate → template chaining
+    if (!context._aiOutputs) context._aiOutputs = {};
+
     // Execute actions in order
     const actions = [...automation.definition.actions].sort((a, b) => a.runOrder - b.runOrder);
     let actionsExecuted = 0;
@@ -133,6 +136,7 @@ export class AutomationEventBus {
 
   async dryRun(automation: AutomationRule, event: AutomationEvent): Promise<{
     conditionsMet: boolean;
+    conditionTrace?: import('./types').ConditionTraceNode;
     actionsWouldRun: { type: string; resolvedParams: Record<string, any> }[];
   }> {
     let context: AutomationContext;
@@ -142,16 +146,21 @@ export class AutomationEventBus {
       context = { event, entity: event.payload };
     }
 
-    const conditionsMet = automation.definition.conditions
-      ? evaluateConditions(automation.definition.conditions, context)
-      : true;
+    let conditionsMet = true;
+    let conditionTrace: import('./types').ConditionTraceNode | undefined;
+
+    if (automation.definition.conditions) {
+      const traceResult = evaluateConditionsWithTrace(automation.definition.conditions, context);
+      conditionsMet = traceResult.passed;
+      conditionTrace = traceResult;
+    }
 
     const actions = [...automation.definition.actions].sort((a, b) => a.runOrder - b.runOrder);
     const actionsWouldRun = conditionsMet
       ? actions.map(a => ({ type: a.type, resolvedParams: resolveTemplate(a.params, context) }))
       : [];
 
-    return { conditionsMet, actionsWouldRun };
+    return { conditionsMet, conditionTrace, actionsWouldRun };
   }
 }
 

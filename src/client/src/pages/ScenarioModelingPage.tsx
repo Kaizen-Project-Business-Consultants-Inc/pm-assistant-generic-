@@ -711,7 +711,7 @@ const WhatIfScenario: React.FC = () => {
   const [pinnedResults, setPinnedResults] = useState<Array<{ label: string; result: ScenarioResult; confidence: number }>>([]);
 
   const { data: projectsData } = useQuery({
-    queryKey: ['projects-list'],
+    queryKey: ['projects'],
     queryFn: () => apiService.getProjects(),
   });
   const projects: Project[] = (projectsData?.projects ?? []).map((p: any) => ({

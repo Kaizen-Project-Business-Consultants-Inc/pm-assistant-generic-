@@ -697,6 +697,48 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 - Migration 106: `admin_reply`, `admin_reply_at`, `admin_reply_by`, `screenshot_data` columns on `feedback` table (control plane DB)
 - **Benchmark:** Canny, UserVoice — most PM tools have no built-in feedback loop; users submit into a black hole
 
+### 5.13 Automation Engine — AI Layer (Phase 2)
+
+Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully degraded when `AI_ENABLED=false`.
+
+#### AI Action Type (`ai_generate`)
+- New action type that invokes Claude during automation execution to generate content (summaries, draft messages, risk descriptions, task instructions, etc.)
+- `prompt` param supports full template variable syntax (`{{task.name}}`, `{{project.status}}`, etc.) — resolved at execution time from the trigger event payload
+- Output stored in `{{ai.outputKey}}` (default key `output`) and available to all subsequent actions in the same execution chain
+- `maxTokens` param: 50–2000 (default 500); capped server-side regardless of input
+- Graceful fallback: if AI is unavailable or the call fails, the action logs a warning and the execution continues with an empty string for the output variable rather than aborting the chain
+- **Benchmark:** No major PM tool exposes an AI generation step as a first-class automation action; Zapier AI Actions is the closest analog
+
+#### Automation Debugger & Insights
+- Per-automation analytics panel accessible from the automation detail view
+- Summary stats: total runs, success rate (%), average duration (ms), failure count, last run timestamp
+- **Error pattern analysis:** top 10 recurring error messages with occurrence counts — surfaces systemic issues (e.g., "recipient not found" appearing on 40% of runs) without requiring log access
+- **Daily run chart:** 30-day bar chart of execution volume, color-coded green (success) / red (failure) per day
+- **Condition trace on dry-run:** each condition node in the evaluation tree shows pass/fail status with the actual value compared against the expected value (e.g., `task.status = "completed" — actual: "in_progress" — FAIL`); nested AND/OR groups rendered as an indented tree
+- **Benchmark:** Zapier's execution history; exceeds it with condition-level trace detail and error pattern aggregation
+
+#### Natural Language Automation Builder
+- "Build with AI" toggle in the automation create/edit form — collapses the manual form and shows a plain-English input field
+- Describe the automation in natural language (e.g., "When a high-priority task is overdue by more than 3 days, notify the project owner and create a follow-up task") — AI returns a structured automation JSON (trigger + conditions + actions) conforming to the engine schema
+- Result pre-fills the manual form fields for review and editing before save; nothing is persisted until the user explicitly saves
+- Input validated client-side (10-character minimum) before sending; server validates and sanitizes the AI-returned JSON against the full automation schema before returning it
+- Disabled (toggle hidden) when `AI_ENABLED=false`; form falls back to manual entry with no degradation
+- **Benchmark:** Monday.com AI automation builder; equivalent capability, native to the PM workflow context
+
+#### AI-Suggested Automations
+- Collapsible "Suggested Automations" section on the project Automations tab, rendered above the existing automation list
+- 5 static suggestion templates selected based on project state analysis (overdue task count, risk severity, sprint activity, team size, completion status):
+  1. **Overdue Escalation** — notify project owner when a task is 3+ days overdue
+  2. **Critical Risk Notify** — send email to risk manager when a new high/critical risk is added
+  3. **Auto-Assign by Role** — assign new tasks to the least-busy matching resource using `role_match` strategy
+  4. **Sprint Summary** — post a Slack message summarizing completed/remaining tasks when a sprint completes
+  5. **Completion Notify** — send email to stakeholders when project status changes to `completed`
+- Each suggestion card shows: title, description, confidence badge (High/Medium), trigger summary, and Apply / Dismiss buttons
+- **Apply** — creates the automation as a draft (disabled) and scrolls to it in the list; user can review and enable
+- **Dismiss** — hides the suggestion for 30 days via a Redis TTL key (`automation:dismissed:{projectId}:{templateId}`); reappears after TTL expires in case project conditions have changed
+- Section hidden when AI is unavailable or all suggestions for the project have been dismissed
+- **Benchmark:** No competing PM tool proactively suggests automation rules based on project state; novel capability
+
 ---
 
 ## Launch Offer & Founders Program
@@ -933,6 +975,10 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 | Automation Engine Frontend UI (full CRUD frontend: Automations tab on project detail; list view with status badges + enable/disable toggles; create/edit form with trigger selector, nested condition builder, per-action-type param fields with labels/placeholders/help text, template variable reference panel; detail view with summary cards, dry-run testing, execution history table) | Done | Enhancement |
 | Dynamic Recipient Resolution (automation actions notify/send_email/escalate resolve recipients at execution time via tokens: assignee, creator, project_owner, trigger_user; also supports raw emails and user UUIDs) | Done | Enhancement |
 | Auto-Assign Action (automation action type with 3 strategies: role_match maps task type to resource roles + picks least busy, least_busy picks fewest active tasks, round_robin distributes evenly; fallback user support; skips pre-assigned tasks) | Done | Enhancement |
+| Automation AI Action — ai_generate (new action type: calls Claude at execution time; prompt supports full template variable resolution; output stored in {{ai.outputKey}} for downstream actions; maxTokens 50–2000; graceful fallback on AI unavailability — chain continues with empty string, no abort) | Done | Enhancement |
+| Automation Debugger & Insights (per-automation analytics: total runs, success rate, avg duration, failure count; top-10 error pattern analysis with occurrence counts; 30-day daily run bar chart (green=success/red=failure); condition trace tree on dry-run — per-node pass/fail with actual vs expected values; nested AND/OR groups rendered as indented tree) | Done | Enhancement |
+| Natural Language Automation Builder (plain-English input in create/edit form; AI returns structured trigger+conditions+actions JSON conforming to engine schema; pre-fills manual form for review before save; nothing persisted until explicit save; disabled when AI_ENABLED=false with no UI degradation) | Done | Enhancement |
+| AI-Suggested Automations (5 static suggestion templates scored against project state: overdue escalation, critical risk notify, auto-assign by role, sprint summary, completion notify; confidence badges; Apply creates disabled draft + scrolls to it; Dismiss stores 30-day Redis TTL per project+template; section hidden when AI unavailable or all suggestions dismissed) | Done | Enhancement |
 | Resource Picker Dropdown (searchable dropdown replacing free-text assignedTo input in table view and Gantt chart; saves userId enabling automation email resolution; shows resource name + role + initials avatar) | Done | Enhancement |
 | Summary Task Highlighting (summary/parent tasks get subtle gray background in both table view and Gantt left panel for visual distinction) | Done | Enhancement |
 | Mjuzi Chat Tenant Isolation (ChatRepository moved from controlPlane to tenant DB routing; conversations now stored per-tenant for proper multi-tenant data isolation) | Done | Security |

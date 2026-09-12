@@ -144,7 +144,7 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
       setRaidCandidates([]);
       setRaidAnalysisId(null);
       queryClient.invalidateQueries({ queryKey: ['risks', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['riskStats', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-risks-stats', projectId] });
     },
   });
 

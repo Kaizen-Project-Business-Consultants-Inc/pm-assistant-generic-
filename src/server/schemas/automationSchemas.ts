@@ -20,7 +20,7 @@ const automationActionSchema = z.object({
   id: z.string().min(1),
   type: z.enum([
     'create_task', 'notify', 'send_email', 'add_risk', 'change_status',
-    'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit', 'auto_assign',
+    'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit', 'auto_assign', 'ai_generate',
   ]),
   params: z.record(z.string(), z.any()),
   runOrder: z.number().int().min(0),

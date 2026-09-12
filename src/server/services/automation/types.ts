@@ -11,7 +11,8 @@ export type ActionType =
   | 'escalate'
   | 'call_webhook'
   | 'log_audit'
-  | 'auto_assign';
+  | 'auto_assign'
+  | 'ai_generate';
 
 export type ConditionOperator =
   | 'equals' | 'not_equals'
@@ -85,6 +86,39 @@ export interface AutomationContext {
   previous?: Record<string, any>;
   project?: Record<string, any>;
   user?: Record<string, any>;
+  _aiOutputs?: Record<string, string>;
+}
+
+export interface ConditionTraceNode {
+  type: 'rule' | 'group';
+  passed: boolean;
+  field?: string;
+  operator?: string;
+  expectedValue?: any;
+  actualValue?: any;
+  logic?: 'and' | 'or';
+  children?: ConditionTraceNode[];
+}
+
+export interface AutomationAnalytics {
+  totalRuns: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  avgDurationMs: number;
+  errorPatterns: { message: string; count: number }[];
+  dailyRuns: { date: string; count: number }[];
+}
+
+export interface AutomationSuggestion {
+  id: string;
+  name: string;
+  description: string;
+  why: string;
+  triggerEventType: string;
+  definition: AutomationDefinition;
+  confidence: number;
+  source: 'static' | 'ai';
 }
 
 export interface AutomationExecution {

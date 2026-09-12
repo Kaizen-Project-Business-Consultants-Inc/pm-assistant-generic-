@@ -172,7 +172,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
   const histogram: HistogramData | null = histogramData?.histogram || null;
 
   const { data: forecastData, isLoading: forecastLoading } = useQuery({
-    queryKey: ['forecast', projectId],
+    queryKey: ['resource-forecast', projectId],
     queryFn: () => apiService.getResourceForecast(projectId, 8),
     enabled: !!projectId && activeSubTab === 'forecast',
   });
@@ -927,7 +927,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
 
 function CapacityForecastSection({ projectId }: { projectId: string }) {
   const { data, isLoading } = useQuery({
-    queryKey: ['resourceForecast', projectId],
+    queryKey: ['resource-forecast', projectId],
     queryFn: () => apiService.getResourceForecast(projectId),
     enabled: !!projectId,
   });

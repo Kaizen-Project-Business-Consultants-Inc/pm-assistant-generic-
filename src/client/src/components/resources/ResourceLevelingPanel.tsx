@@ -120,7 +120,7 @@ export function ResourceLevelingPanel({
     isLoading: histogramLoading,
     isError: histogramError,
   } = useQuery({
-    queryKey: ['resourceHistogram', scheduleId],
+    queryKey: ['histogram', scheduleId],
     queryFn: () => apiService.getResourceHistogram(scheduleId),
   });
 
@@ -151,7 +151,7 @@ export function ResourceLevelingPanel({
     mutationFn: ({ taskId, assignedTo }: { taskId: string; assignedTo: string }) =>
       apiService.updateTask(scheduleId, taskId, { assignedTo }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['resourceHistogram', scheduleId] });
+      queryClient.invalidateQueries({ queryKey: ['histogram', scheduleId] });
     },
   });
 

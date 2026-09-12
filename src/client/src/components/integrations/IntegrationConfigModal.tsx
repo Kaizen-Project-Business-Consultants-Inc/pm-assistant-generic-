@@ -184,7 +184,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
   const [notifyEvents, setNotifyEvents] = useState<string[]>([]);
 
   const { data: projectsData } = useQuery({
-    queryKey: ['projects-list'],
+    queryKey: ['projects'],
     queryFn: () => apiService.getProjects(),
     enabled: provider === 'slack',
   });

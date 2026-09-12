@@ -3977,7 +3977,7 @@ Conditions can be nested into AND/OR groups to express complex logic (e.g., "sta
 
 ### Actions
 
-11 action types are available:
+12 action types are available:
 
 | Action | Description |
 |--------|-------------|
@@ -3992,6 +3992,7 @@ Conditions can be nested into AND/OR groups to express complex logic (e.g., "sta
 | `call_webhook` | POST a JSON payload to an external URL |
 | `log_audit` | Write a structured entry to the audit trail |
 | `auto_assign` | Automatically assign a task to a resource based on strategy |
+| `ai_generate` | Call Claude AI to generate content; output stored and available to subsequent actions via template variables |
 
 ### Auto-Assign Strategies
 
@@ -4066,6 +4067,99 @@ All endpoints are scoped to a project: `/api/v1/projects/:projectId/automations/
 | GET | `/event-types` | List available trigger event types and field catalog |
 | POST | `/trigger` | Manually fire a trigger event (for testing) |
 | GET | `/stats` | Aggregated run counts and error rates across all rules |
+| GET | `/:id/insights` | Per-automation analytics: run counts, success rate, error patterns, daily chart |
+| POST | `/ai-builder` | Generate an automation definition from a plain-English description |
+| GET | `/suggestions` | List AI-suggested automations for the project |
+| POST | `/suggestions/:key/dismiss` | Dismiss a suggestion for 30 days |
+
+### Phase 2: AI-Powered Automation Features
+
+#### AI Action Type (`ai_generate`)
+
+A new action type that calls Claude AI to generate text content during automation execution. The generated output is stored under a named key and is immediately available to any subsequent actions in the same run via template variables.
+
+**Parameters:**
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `prompt` | Yes | — | The prompt sent to Claude. Supports all standard template variables (e.g., `{{task.title}}`, `{{project.name}}`). |
+| `outputKey` | No | `output` | The key under which the result is stored. |
+| `maxTokens` | No | `500` | Token budget for the AI response (50–2000). |
+
+**Referencing the output in subsequent actions:**
+
+Use `{{ai.outputKey}}` in any action that follows. For example, if `outputKey` is `summary`, reference it as `{{ai.summary}}` in a `notify` or `send_email` action body.
+
+When AI is disabled or unavailable, the action falls back gracefully to the literal string `[AI unavailable]` and marks the execution as a soft warning rather than a failure, so the remaining actions in the rule still execute.
+
+---
+
+#### Automation Debugger and Insights
+
+Each automation rule has a dedicated insights dashboard showing execution analytics for the last 30 days.
+
+**Summary metrics (top cards):**
+
+- **Total runs** — total execution count across all statuses
+- **Success rate** — percentage of runs that completed without errors
+- **Average duration** — mean execution time in milliseconds
+- **Failure count** — number of runs that ended in an error state
+
+**Common error patterns:**
+
+A ranked list of the top 10 error messages observed across failed executions, with occurrence counts. Useful for diagnosing misconfigured actions or unexpected data shapes.
+
+**Daily run chart:**
+
+A bar chart showing execution volume per day for the last 30 days, with success and failure counts stacked or distinguished by colour. Surfaces spikes and silent periods at a glance.
+
+**Enhanced dry-run / condition trace:**
+
+When a dry-run is executed, the result now includes a condition trace tree alongside the existing action preview. Each condition node in the tree reports:
+
+- Pass or fail outcome
+- The field that was evaluated
+- The actual value found at execution time
+- The expected value defined in the rule
+
+Nested AND/OR groups show the aggregate result of their children. This makes it straightforward to confirm that conditions behave as intended before enabling a rule.
+
+---
+
+#### Natural Language Automation Builder
+
+Users can describe an automation in plain English and have AI generate a valid, ready-to-use automation definition.
+
+**How to use:**
+
+1. Open the automation form and toggle **AI Builder** on.
+2. Type a description of the desired automation (10–500 characters). Example: *"When a task is marked completed, send an email to the project owner with the task name and completion date."*
+3. Click **Generate**. Claude analyzes the available triggers, conditions, and action types and returns a structured automation definition.
+4. The generated definition pre-fills all form fields — trigger, conditions, actions, and settings — for review and editing before saving.
+
+The builder is a starting point, not a black box. Every field it produces can be adjusted, and the rule is saved only when the user explicitly clicks **Save**. No automation is created automatically from a natural language prompt alone.
+
+---
+
+#### AI-Suggested Automations
+
+The system analyzes the current project state and surfaces relevant automation suggestions in a collapsible **Suggested Automations** section at the top of the automations list.
+
+**Available suggestion templates:**
+
+| Template | Trigger | Action |
+|----------|---------|--------|
+| Overdue task escalation | `task.updated` where due date is in the past and status is not completed | Escalate to project owner |
+| Critical risk notification | `risk.created` where severity is critical | Notify project owner and creator |
+| Auto-assign new tasks | `task.created` where assignee is empty | Auto-assign using role match strategy |
+| Sprint completion summary | `sprint.completed` | Send email summary to project owner |
+| Task completion notification | `task.status_changed` where new status is completed | Notify the task creator |
+
+**Confidence badges** indicate how well each suggestion matches the project's current activity and configuration.
+
+**Applying a suggestion** creates a draft automation pre-populated with the suggested trigger, conditions, and actions. The draft is not active until the user reviews and enables it.
+
+**Dismissing a suggestion** hides it for 30 days via a Redis-backed dismissal record keyed to the project and suggestion template. Dismissed suggestions reappear automatically after 30 days.
 
 ## 59. Document Intelligence
 

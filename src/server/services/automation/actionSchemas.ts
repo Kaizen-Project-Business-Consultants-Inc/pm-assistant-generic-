@@ -58,4 +58,9 @@ export const actionParamSchemas: Record<string, z.ZodType<any>> = {
     strategy: z.enum(['role_match', 'least_busy', 'round_robin']).optional(),
     fallbackUserId: z.string().optional(),
   }),
+  ai_generate: z.object({
+    prompt: z.string().min(1),
+    outputKey: z.string().min(1).default('output'),
+    maxTokens: z.number().int().min(50).max(2000).optional(),
+  }),
 };

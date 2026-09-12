@@ -180,7 +180,7 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
 
   // Use shared analytics query key (same as DashboardPM)
   const { data: analyticsData } = useQuery({
-    queryKey: ['pm-analytics'],
+    queryKey: ['analytics-summary'],
     queryFn: () => apiService.getAnalyticsSummary(),
     staleTime: 120_000,
   });
@@ -334,7 +334,7 @@ export function ActionCenterPM({ projects }: ActionCenterPMProps) {
     staleTime: 30_000,
   });
   const { data: analyticsData } = useQuery({
-    queryKey: ['pm-analytics'],
+    queryKey: ['analytics-summary'],
     queryFn: () => apiService.getAnalyticsSummary(),
     staleTime: 120_000,
   });

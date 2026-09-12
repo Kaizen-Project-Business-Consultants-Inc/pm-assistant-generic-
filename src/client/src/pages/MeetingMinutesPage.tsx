@@ -320,7 +320,7 @@ export const MeetingMinutesPage: React.FC = () => {
       setRaidCandidates([]);
       setRaidAnalysisId(null);
       queryClient.invalidateQueries({ queryKey: ['risks', selectedProjectId] });
-      queryClient.invalidateQueries({ queryKey: ['riskStats', selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-risks-stats', selectedProjectId] });
     },
   });
 

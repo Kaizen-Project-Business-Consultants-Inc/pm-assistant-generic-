@@ -82,7 +82,7 @@ export function ProjectsPM() {
   });
 
   const { data: predictionsData } = useQuery({
-    queryKey: ['pm-predictions'],
+    queryKey: ['dashboard-predictions'],
     queryFn: () => apiService.getDashboardPredictions(),
     staleTime: 120_000,
   });

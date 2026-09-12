@@ -3440,6 +3440,31 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     const response = await this.api.post(`/projects/${projectId}/automations/${id}/test`, data || {});
     return response.data;
   }
+
+  async getAutomationAnalytics(projectId: string, id: string) {
+    const response = await this.api.get(`/projects/${projectId}/automations/${id}/analytics`);
+    return response.data;
+  }
+
+  async generateAutomationFromNL(projectId: string, description: string) {
+    const response = await this.api.post(`/projects/${projectId}/automations/ai-generate`, { description });
+    return response.data;
+  }
+
+  async getAutomationSuggestions(projectId: string) {
+    const response = await this.api.get(`/projects/${projectId}/automations/suggestions`);
+    return response.data;
+  }
+
+  async dismissAutomationSuggestion(projectId: string, suggestionId: string) {
+    const response = await this.api.post(`/projects/${projectId}/automations/suggestions/${suggestionId}/dismiss`);
+    return response.data;
+  }
+
+  async applyAutomationSuggestion(projectId: string, suggestionId: string) {
+    const response = await this.api.post(`/projects/${projectId}/automations/suggestions/${suggestionId}/apply`);
+    return response.data;
+  }
   // -------------------------------------------------------------------------
   // Document Intelligence
   // -------------------------------------------------------------------------

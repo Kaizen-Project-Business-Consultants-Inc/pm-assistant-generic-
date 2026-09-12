@@ -111,7 +111,7 @@ export function ProjectTable({ projects }: Props) {
     mutationFn: (projectId: string) => apiService.updateProjectStatus(projectId, 'active'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pm-projects'] });
-      queryClient.invalidateQueries({ queryKey: ['pm-predictions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-predictions'] });
     },
   });
 

@@ -26,6 +26,9 @@ function resolveToken(token: string, context: AutomationContext): any {
   if (token.startsWith('user.')) {
     return resolvePath(context.user, token.slice(5).split('.'));
   }
+  if (token.startsWith('ai.')) {
+    return resolvePath(context._aiOutputs, token.slice(3).split('.'));
+  }
   // Bare field — look in entity
   return resolvePath(context.entity, token.split('.'));
 }

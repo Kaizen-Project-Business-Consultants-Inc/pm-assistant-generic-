@@ -234,6 +234,25 @@ const executors: Record<ActionType, ActionExecutorFn> = {
     });
   },
 
+  async ai_generate(params, context, _event) {
+    const { claudeService } = await import('../claudeService');
+    const outputKey = params.outputKey || 'output';
+    if (!claudeService.isAvailable()) {
+      if (!context._aiOutputs) context._aiOutputs = {};
+      context._aiOutputs[outputKey] = '[AI unavailable]';
+      logger.info(`[AutomationAction] ai_generate: AI unavailable, set ${outputKey} to fallback`);
+      return;
+    }
+    const result = await claudeService.complete({
+      systemPrompt: 'You are a project management automation assistant. Generate concise, actionable content based on the prompt. Output only the requested content, no markdown formatting or explanations.',
+      userMessage: params.prompt,
+      maxTokens: params.maxTokens || 500,
+    });
+    if (!context._aiOutputs) context._aiOutputs = {};
+    context._aiOutputs[outputKey] = result.content;
+    logger.info(`[AutomationAction] ai_generate: stored ${result.content.length} chars in ai.${outputKey}`);
+  },
+
   async auto_assign(params, context, event) {
     if (event.entityType !== 'task') {
       logger.warn('[AutomationAction] auto_assign only works on tasks');

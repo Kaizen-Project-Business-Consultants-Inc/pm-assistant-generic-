@@ -72,6 +72,23 @@ export class AutomationService {
     return automationExecutionRepository.findByAutomation(automationId, limit, offset);
   }
 
+  async getAnalytics(automationId: string): Promise<import('./types').AutomationAnalytics> {
+    const { summary: summaryRows, errors: errorRows, daily: dailyRows } = await automationExecutionRepository.getAnalyticsData(automationId);
+    const summary = summaryRows[0] || {};
+    const totalRuns = Number(summary.total ?? 0);
+    const successCount = Number(summary.success_count ?? 0);
+    const failureCount = Number(summary.failure_count ?? 0);
+    return {
+      totalRuns,
+      successCount,
+      failureCount,
+      successRate: totalRuns > 0 ? Math.round((successCount / totalRuns) * 100) : 0,
+      avgDurationMs: Math.round(Number(summary.avg_duration ?? 0)),
+      errorPatterns: (errorRows as any[]).map((r: any) => ({ message: r.error_message, count: Number(r.cnt) })),
+      dailyRuns: (dailyRows as any[]).map((r: any) => ({ date: String(r.run_date), count: Number(r.cnt) })),
+    };
+  }
+
   validateDefinition(eventType: string, definition: AutomationDefinition): void {
     const validTypes = AUTOMATION_EVENT_TYPES.map(t => t.type);
     if (!validTypes.includes(eventType)) {
@@ -80,7 +97,7 @@ export class AutomationService {
     if (!definition.actions || !Array.isArray(definition.actions)) {
       throw Object.assign(new Error('Definition must include an actions array'), { statusCode: 400 });
     }
-    const validActions = ['create_task', 'notify', 'send_email', 'add_risk', 'change_status', 'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit', 'auto_assign'];
+    const validActions = ['create_task', 'notify', 'send_email', 'add_risk', 'change_status', 'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit', 'auto_assign', 'ai_generate'];
     for (const action of definition.actions) {
       if (!validActions.includes(action.type)) {
         throw Object.assign(new Error(`Invalid action type: ${action.type}`), { statusCode: 400 });

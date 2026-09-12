@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Zap, ToggleLeft, ToggleRight, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Zap, ToggleLeft, ToggleRight, Pencil, Trash2, Sparkles, ChevronDown, ChevronRight, X, Check } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ConfirmModal } from '../ui/ConfirmModal';
 
@@ -26,6 +26,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [suggestionsOpen, setSuggestionsOpen] = useState(true);
 
   const { data, isLoading } = useQuery({
     queryKey: ['automations', projectId],
@@ -49,6 +50,28 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
     },
   });
 
+  const { data: suggestionsData } = useQuery({
+    queryKey: ['automation-suggestions', projectId],
+    queryFn: () => apiService.getAutomationSuggestions(projectId),
+    enabled: !!projectId,
+  });
+
+  const applyMutation = useMutation({
+    mutationFn: (suggestionId: string) => apiService.applyAutomationSuggestion(projectId, suggestionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['automations', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['automation-suggestions', projectId] });
+    },
+  });
+
+  const dismissMutation = useMutation({
+    mutationFn: (suggestionId: string) => apiService.dismissAutomationSuggestion(projectId, suggestionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['automation-suggestions', projectId] });
+    },
+  });
+
+  const suggestions: any[] = suggestionsData?.suggestions || [];
   const automations: any[] = data?.automations || [];
   const filtered = statusFilter === 'all' ? automations : automations.filter((a: any) => a.status === statusFilter);
 
@@ -174,6 +197,60 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Suggested Automations */}
+      {suggestions.length > 0 && (
+        <div className="border border-purple-200 dark:border-purple-800 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setSuggestionsOpen(!suggestionsOpen)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <span className="text-sm font-medium text-purple-800 dark:text-purple-300">Suggested Automations</span>
+              <span className="text-xs bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full">{suggestions.length}</span>
+            </div>
+            {suggestionsOpen ? <ChevronDown className="w-4 h-4 text-purple-500" /> : <ChevronRight className="w-4 h-4 text-purple-500" />}
+          </button>
+          {suggestionsOpen && (
+            <div className="p-3 space-y-2 bg-white dark:bg-gray-800">
+              {suggestions.map((s: any) => (
+                <div key={s.id} className="flex items-start gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{s.name}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${s.confidence >= 0.8 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : s.confidence >= 0.6 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
+                        {Math.round(s.confidence * 100)}%
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{s.description}</p>
+                    <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 italic">{s.why}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => applyMutation.mutate(s.id)}
+                      disabled={applyMutation.isPending}
+                      className="flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors disabled:opacity-50"
+                      title="Apply as draft"
+                    >
+                      <Check className="w-3 h-3" />
+                      Apply
+                    </button>
+                    <button
+                      onClick={() => dismissMutation.mutate(s.id)}
+                      disabled={dismissMutation.isPending}
+                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      title="Dismiss"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

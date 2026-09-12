@@ -101,13 +101,13 @@ export function DashboardPM() {
   });
 
   const { data: predictions, dataUpdatedAt } = useQuery({
-    queryKey: ['pm-predictions'],
+    queryKey: ['dashboard-predictions'],
     queryFn: () => apiService.getDashboardPredictions(),
     staleTime: 120_000,
   });
 
   const { data: analyticsData } = useQuery({
-    queryKey: ['pm-analytics'],
+    queryKey: ['analytics-summary'],
     queryFn: () => apiService.getAnalyticsSummary(),
     staleTime: 120_000,
   });
@@ -311,8 +311,8 @@ export function DashboardPM() {
             type="button"
             onClick={() => {
               queryClient.invalidateQueries({ queryKey: ['pm-projects'] });
-              queryClient.invalidateQueries({ queryKey: ['pm-predictions'] });
-              queryClient.invalidateQueries({ queryKey: ['pm-analytics'] });
+              queryClient.invalidateQueries({ queryKey: ['dashboard-predictions'] });
+              queryClient.invalidateQueries({ queryKey: ['analytics-summary'] });
             }}
             className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title="Refresh data"

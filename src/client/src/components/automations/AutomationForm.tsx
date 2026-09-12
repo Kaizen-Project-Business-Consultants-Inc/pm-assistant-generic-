@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Trash2, GripVertical, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, GripVertical, Save, Sparkles, Wand2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface AutomationFormProps {
@@ -33,7 +33,7 @@ interface ParamDef {
   label: string;
   placeholder: string;
   help?: string;
-  inputType?: 'text' | 'textarea' | 'select';
+  inputType?: 'text' | 'textarea' | 'select' | 'number';
   options?: { value: string; label: string }[];
   fullWidth?: boolean;
 }
@@ -142,6 +142,15 @@ const ACTION_TYPES: { value: string; label: string; description: string; params:
         { value: 'least_busy', label: 'Least Busy (assign to whoever has the fewest active tasks)' },
         { value: 'round_robin', label: 'Round Robin (distribute tasks evenly across all resources)' },
       ], help: 'Skips if the task already has an assignee' },
+    ],
+  },
+  {
+    value: 'ai_generate', label: 'AI Generate Content',
+    description: 'Uses AI to generate content (e.g., summary, analysis). Output available to subsequent actions via {{ai.outputKey}}.',
+    params: [
+      { key: 'prompt', label: 'AI Prompt', placeholder: 'Summarize the following task for a status report: {{entity.name}} — status: {{entity.status}}, priority: {{entity.priority}}', inputType: 'textarea', help: 'Template variables available. The AI will generate content based on this prompt.', fullWidth: true },
+      { key: 'outputKey', label: 'Output Key', placeholder: 'output', help: 'Reference the result in subsequent actions as {{ai.output}} (or {{ai.yourKey}})' },
+      { key: 'maxTokens', label: 'Max Tokens', placeholder: '500', inputType: 'number' as const, help: 'Maximum response length (50-2000)' },
     ],
   },
 ];
@@ -337,6 +346,14 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
+                ) : param.inputType === 'number' ? (
+                  <input
+                    type="number"
+                    value={action.params[param.key] ?? ''}
+                    onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param.key]: e.target.value ? Number(e.target.value) : undefined } })}
+                    placeholder={param.placeholder}
+                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  />
                 ) : (
                   <input
                     type="text"
@@ -370,6 +387,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
   const [maxRunsPerDay, setMaxRunsPerDay] = useState(50);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [aiMode, setAiMode] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Load event types catalog
   const { data: catalog } = useQuery({
@@ -423,6 +443,24 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
     },
   });
 
+  const aiGenerateMutation = useMutation({
+    mutationFn: (desc: string) => apiService.generateAutomationFromNL(projectId, desc),
+    onSuccess: (data) => {
+      const p = data.preview;
+      setName(p.name);
+      setDescription(p.description || '');
+      setTriggerEventType(p.triggerEventType);
+      if (p.definition?.conditions) setConditions(p.definition.conditions);
+      else setConditions({ logic: 'and', conditions: [] });
+      if (p.definition?.actions) setActions(p.definition.actions);
+      setAiMode(false);
+      setAiError(null);
+    },
+    onError: (err: any) => {
+      setAiError(err.response?.data?.error || err.message || 'AI generation failed');
+    },
+  });
+
   const handleSave = () => {
     if (!name.trim()) { setError('Name is required'); return; }
     if (actions.length === 0) { setError('At least one action is required'); return; }
@@ -463,6 +501,45 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
           {isEdit ? 'Edit Automation' : 'New Automation'}
         </h3>
       </div>
+
+      {/* AI Builder Toggle */}
+      {!isEdit && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => { setAiMode(!aiMode); setAiError(null); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border ${aiMode ? 'bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          >
+            <Wand2 className="w-4 h-4" />
+            {aiMode ? 'Switch to Manual' : 'AI Builder'}
+          </button>
+          {aiMode && <span className="text-xs text-gray-500 dark:text-gray-400">Describe your automation in plain English</span>}
+        </div>
+      )}
+
+      {aiMode && (
+        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-purple-800 dark:text-purple-300">
+            <Sparkles className="w-4 h-4" />
+            Describe your automation
+          </div>
+          <textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder='e.g., "When a task is completed, notify the project owner and add an audit log entry"'
+            rows={3}
+            className="w-full text-sm border border-purple-200 dark:border-purple-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          {aiError && <p className="text-sm text-red-600 dark:text-red-400">{aiError}</p>}
+          <button
+            onClick={() => aiPrompt.trim() && aiGenerateMutation.mutate(aiPrompt.trim())}
+            disabled={aiGenerateMutation.isPending || !aiPrompt.trim()}
+            className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+          >
+            <Sparkles className="w-4 h-4" />
+            {aiGenerateMutation.isPending ? 'Generating...' : 'Generate'}
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 text-sm text-red-700 dark:text-red-300">
@@ -579,6 +656,7 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
                 <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{event.type}}'}</code> — event type</div>
                 <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{previous.status}}'}</code> — previous value</div>
                 <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{event.userId}}'}</code> — who triggered</div>
+                <div><code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{ai.output}}'}</code> — AI generated content</div>
               </div>
             </div>
           </div>

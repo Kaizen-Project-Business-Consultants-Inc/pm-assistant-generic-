@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, Play, ToggleLeft, ToggleRight, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Pencil, Play, ToggleLeft, ToggleRight, Clock, CheckCircle, XCircle, AlertTriangle, BarChart3 } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface AutomationDetailProps {
@@ -30,6 +30,27 @@ function formatDate(d: string | null) {
   return new Date(d).toLocaleString();
 }
 
+function ConditionTraceTree({ node, depth = 0 }: { node: any; depth?: number }) {
+  if (node.type === 'rule') {
+    return (
+      <div className={`flex items-center gap-1.5 text-xs ${depth > 0 ? 'ml-4' : ''}`}>
+        {node.passed ? <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
+        <span className="font-mono text-gray-700 dark:text-gray-300">{node.field} {node.operator} {node.expectedValue !== undefined ? JSON.stringify(node.expectedValue) : ''}</span>
+        <span className="text-gray-400">(actual: {node.actualValue !== undefined ? JSON.stringify(node.actualValue) : 'undefined'})</span>
+      </div>
+    );
+  }
+  return (
+    <div className={`space-y-1 ${depth > 0 ? 'ml-4 pl-2 border-l-2 border-gray-200 dark:border-gray-600' : ''}`}>
+      <div className="flex items-center gap-1.5 text-xs">
+        {node.passed ? <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
+        <span className="font-medium text-gray-600 dark:text-gray-400 uppercase">{node.logic}</span>
+      </div>
+      {node.children?.map((child: any, i: number) => <ConditionTraceTree key={i} node={child} depth={depth + 1} />)}
+    </div>
+  );
+}
+
 export function AutomationDetail({ projectId, automationId, onBack, onEdit }: AutomationDetailProps) {
   const queryClient = useQueryClient();
   const [testResult, setTestResult] = useState<any>(null);
@@ -42,6 +63,12 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
   const { data: execData } = useQuery({
     queryKey: ['automation-executions', automationId],
     queryFn: () => apiService.getAutomationExecutions(projectId, automationId),
+    enabled: !!automationId,
+  });
+
+  const { data: analyticsData } = useQuery({
+    queryKey: ['automation-analytics', automationId],
+    queryFn: () => apiService.getAutomationAnalytics(projectId, automationId),
     enabled: !!automationId,
   });
 
@@ -63,6 +90,7 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
 
   const automation = data?.automation;
   const executions: any[] = execData?.executions || [];
+  const analytics = analyticsData?.analytics;
 
   if (isLoading) {
     return (
@@ -163,7 +191,13 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
           <p className="text-sm text-blue-700 dark:text-blue-400">
             Conditions met: <strong>{testResult.conditionsMet ? 'Yes' : 'No'}</strong>
           </p>
-          {testResult.actionsWouldRun && (
+          {testResult.conditionTrace && (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Condition Trace:</p>
+              <ConditionTraceTree node={testResult.conditionTrace} />
+            </div>
+          )}
+          {testResult.actionsWouldRun && testResult.actionsWouldRun.length > 0 && (
             <div className="mt-2 space-y-1">
               <p className="text-xs text-blue-600 dark:text-blue-400">Actions that would run:</p>
               {testResult.actionsWouldRun.map((a: any, i: number) => (
@@ -171,6 +205,70 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
                   #{i + 1} {a.type}
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Insights / Analytics */}
+      {analytics && analytics.totalRuns > 0 && (
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary-600" />
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Insights</h4>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="text-center">
+              <div className="text-lg font-bold text-gray-900 dark:text-white">{analytics.totalRuns}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Total Runs</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-green-600">{analytics.successRate}%</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Success Rate</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-gray-900 dark:text-white">{analytics.avgDurationMs}ms</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Avg Duration</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-red-600">{analytics.failureCount}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Failures</div>
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <span>Success Rate</span>
+              <span>{analytics.successCount}/{analytics.totalRuns}</span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${analytics.successRate}%` }} />
+            </div>
+          </div>
+          {analytics.dailyRuns?.length > 0 && (
+            <div>
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Daily Runs (Last 30 Days)</div>
+              <div className="flex items-end gap-px h-12">
+                {analytics.dailyRuns.map((d: any) => {
+                  const maxCount = Math.max(...analytics.dailyRuns.map((r: any) => r.count));
+                  const height = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
+                  return (
+                    <div key={d.date} className="flex-1 bg-primary-400 dark:bg-primary-600 rounded-t min-w-[2px]" style={{ height: `${Math.max(height, 4)}%` }} title={`${d.date}: ${d.count} runs`} />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {analytics.errorPatterns?.length > 0 && (
+            <div>
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Common Errors</div>
+              <div className="space-y-1">
+                {analytics.errorPatterns.map((e: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between text-xs bg-red-50 dark:bg-red-900/20 rounded px-2 py-1">
+                    <span className="text-red-700 dark:text-red-300 truncate mr-2 font-mono">{e.message}</span>
+                    <span className="text-red-500 shrink-0">{e.count}x</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

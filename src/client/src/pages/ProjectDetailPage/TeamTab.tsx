@@ -46,7 +46,7 @@ function ResourceAvailabilitySection({ resources }: { resources: any[] }) {
 
 function ResourceOptimizerSection({ projectId }: { projectId: string }) {
   const { data, isLoading, error } = useQuery({
-    queryKey: ['resourceForecast', projectId],
+    queryKey: ['resource-forecast', projectId],
     queryFn: () => apiService.getResourceForecast(projectId),
     enabled: !!projectId,
   });
@@ -78,7 +78,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
 
   const { data: workloadData, isLoading: workloadLoading } = useQuery({
-    queryKey: ['resourceWorkload', projectId],
+    queryKey: ['workload', projectId],
     queryFn: () => apiService.getResourceWorkload(projectId),
     enabled: !!projectId,
   });
@@ -89,13 +89,13 @@ export function TeamTab({ projectId }: { projectId: string }) {
   });
 
   const { data: membersData, isLoading: membersLoading } = useQuery({
-    queryKey: ['projectMembers', projectId],
+    queryKey: ['project-members', projectId],
     queryFn: () => apiService.getProjectMembers(projectId),
     enabled: !!projectId,
   });
 
   const { data: auditData, isLoading: auditLoading } = useQuery({
-    queryKey: ['auditTrail', projectId],
+    queryKey: ['audit-trail', projectId],
     queryFn: () => apiService.getAuditTrail(projectId),
     enabled: !!projectId,
   });
@@ -107,7 +107,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
     mutationFn: (data: { userId?: string; userName: string; email: string; role: string }) =>
       apiService.addProjectMember(projectId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projectMembers', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-members', projectId] });
       setShowAddMember(false);
       setNewMember({ userName: '', email: '', role: 'editor' });
     },
@@ -115,7 +115,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
 
   const removeMemberMutation = useMutation({
     mutationFn: (memberId: string) => apiService.removeProjectMember(projectId, memberId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projectMembers', projectId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project-members', projectId] }),
   });
 
   const workload = workloadData?.workload || [];

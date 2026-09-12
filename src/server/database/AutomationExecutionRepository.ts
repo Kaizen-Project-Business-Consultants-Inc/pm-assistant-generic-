@@ -93,6 +93,34 @@ export class AutomationExecutionRepository extends BaseRepository<AutomationExec
     );
   }
 
+  async getAnalyticsData(automationId: string): Promise<{ summary: any[]; errors: any[]; daily: any[] }> {
+    const [summary, errors, daily] = await Promise.all([
+      this.queryRaw(
+        `SELECT COUNT(*) AS total,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS success_count,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failure_count,
+                AVG(duration_ms) AS avg_duration
+         FROM automation_executions WHERE automation_id = ? AND is_dry_run = 0`,
+        [automationId],
+      ),
+      this.queryRaw(
+        `SELECT error_message, COUNT(*) AS cnt
+         FROM automation_executions
+         WHERE automation_id = ? AND is_dry_run = 0 AND error_message IS NOT NULL
+         GROUP BY error_message ORDER BY cnt DESC LIMIT 10`,
+        [automationId],
+      ),
+      this.queryRaw(
+        `SELECT DATE(created_at) AS run_date, COUNT(*) AS cnt
+         FROM automation_executions
+         WHERE automation_id = ? AND is_dry_run = 0 AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+         GROUP BY DATE(created_at) ORDER BY run_date`,
+        [automationId],
+      ),
+    ]);
+    return { summary, errors, daily };
+  }
+
   async countTodayByAutomation(automationId: string): Promise<number> {
     const rows = await this.queryRaw(
       `SELECT COUNT(*) AS cnt FROM automation_executions WHERE automation_id = ? AND DATE(created_at) = CURDATE() AND is_dry_run = 0`,

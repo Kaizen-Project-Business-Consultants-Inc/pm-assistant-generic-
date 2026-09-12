@@ -1,4 +1,4 @@
-import type { AutomationConditionGroup, ConditionRule, AutomationContext } from './types';
+import type { AutomationConditionGroup, ConditionRule, AutomationContext, ConditionTraceNode } from './types';
 
 function resolvePath(obj: Record<string, any> | undefined, path: string): any {
   if (!obj) return undefined;
@@ -83,4 +83,32 @@ export function evaluateConditions(group: AutomationConditionGroup, context: Aut
   return group.conditions.some(item =>
     isConditionGroup(item) ? evaluateConditions(item, context) : evaluateRule(item, context),
   );
+}
+
+export function evaluateConditionsWithTrace(group: AutomationConditionGroup, context: AutomationContext): ConditionTraceNode {
+  if (!group.conditions || group.conditions.length === 0) {
+    return { type: 'group', passed: true, logic: group.logic, children: [] };
+  }
+
+  const children: ConditionTraceNode[] = group.conditions.map(item => {
+    if (isConditionGroup(item)) {
+      return evaluateConditionsWithTrace(item, context);
+    }
+    const actualValue = getFieldValue(item.field, context);
+    const passed = evaluateRule(item, context);
+    return {
+      type: 'rule' as const,
+      passed,
+      field: item.field,
+      operator: item.operator,
+      expectedValue: item.value,
+      actualValue,
+    };
+  });
+
+  const passed = group.logic === 'and'
+    ? children.every(c => c.passed)
+    : children.some(c => c.passed);
+
+  return { type: 'group', passed, logic: group.logic, children };
 }

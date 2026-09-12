@@ -174,7 +174,7 @@ export function ResourceManagementPage() {
   const histogram: HistogramData | null = histogramData?.histogram || null;
 
   const { data: forecastData, isLoading: forecastLoading } = useQuery({
-    queryKey: ['forecast', selectedProjectId],
+    queryKey: ['resource-forecast', selectedProjectId],
     queryFn: () => apiService.getResourceForecast(selectedProjectId, 8),
     enabled: !!selectedProjectId && !isGlobalWorkload,
   });

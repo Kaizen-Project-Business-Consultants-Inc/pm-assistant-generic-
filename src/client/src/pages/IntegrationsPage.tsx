@@ -115,7 +115,7 @@ export const IntegrationsPage: React.FC = () => {
 
   // Fetch projects (for resolving project names on Slack integrations)
   const { data: projectsData } = useQuery({
-    queryKey: ['projects-list'],
+    queryKey: ['projects'],
     queryFn: () => apiService.getProjects(),
   });
 
