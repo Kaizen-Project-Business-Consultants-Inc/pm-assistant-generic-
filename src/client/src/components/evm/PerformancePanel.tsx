@@ -579,7 +579,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
 
   // Stage 1: metrics (fast — no AI wait)
   const { data: evmData, isLoading: evmLoading, error: evmError } = useQuery({
-    queryKey: ['evmForecast', projectId],
+    queryKey: ['evm', projectId],
     queryFn: () => apiService.getEVMForecast(projectId),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000, // 5 min client cache
