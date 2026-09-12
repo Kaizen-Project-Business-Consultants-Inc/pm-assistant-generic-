@@ -48,7 +48,7 @@ export function getOverflowTabs(m: Methodology): { id: Tab; label: string }[] {
     { id: 'resources', label: 'Resources' },
     { id: 'agent-activity', label: 'Agent Activity' },
     { id: 'automations', label: 'Automations' },
-    { id: 'documents', label: 'Documents' },
+    { id: 'documents', label: 'Doc Intelligence' },
   ];
 
   if (m === 'waterfall') {

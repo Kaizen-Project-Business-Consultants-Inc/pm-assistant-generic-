@@ -23,6 +23,7 @@ export interface CronTasks {
   storageSyncTask: cron.ScheduledTask | null;
   timesheetComplianceTask: cron.ScheduledTask | null;
   weeklyReviewTask: cron.ScheduledTask | null;
+  utilizationCoachingTask: cron.ScheduledTask | null;
 }
 
 export function startCronTasks(
@@ -41,6 +42,7 @@ export function startCronTasks(
     storageSyncTask: null,
     timesheetComplianceTask: null,
     weeklyReviewTask: null,
+    utilizationCoachingTask: null,
   };
 
   // Agent-specific jobs: gated by AGENT_ENABLED
@@ -283,6 +285,28 @@ export function startCronTasks(
     });
   });
 
+  // Utilization coaching — Mondays at 09:00
+  logger.info('[cron] Starting utilization coaching sender (Mondays at 09:00)');
+  tasks.utilizationCoachingTask = cron.schedule('0 9 * * 1', async () => {
+    await forEachTenant(async (tenant) => {
+      const label = tenant?.slug ?? 'default';
+      const start = Date.now();
+      try {
+        const { runUtilizationCoaching } = await import('./utilizationCoachingJob');
+        const count = await runUtilizationCoaching();
+        logger.info(`[cron:utilization-coaching] ${label} completed`, {
+          cronJob: 'utilization-coaching', tenant: label, durationMs: Date.now() - start,
+          result: { coached: count },
+        });
+      } catch (error) {
+        logger.error(`[cron:utilization-coaching] ${label} FAILED`, {
+          cronJob: 'utilization-coaching', tenant: label, durationMs: Date.now() - start,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  });
+
   return tasks;
 }
 
@@ -298,6 +322,7 @@ export function stopCronTasks(tasks: CronTasks): void {
   if (tasks.storageSyncTask) { tasks.storageSyncTask.stop(); tasks.storageSyncTask = null; }
   if (tasks.timesheetComplianceTask) { tasks.timesheetComplianceTask.stop(); tasks.timesheetComplianceTask = null; }
   if (tasks.weeklyReviewTask) { tasks.weeklyReviewTask.stop(); tasks.weeklyReviewTask = null; }
+  if (tasks.utilizationCoachingTask) { tasks.utilizationCoachingTask.stop(); tasks.utilizationCoachingTask = null; }
   logger.info('[Agent] Stopped agent scheduler');
 }
 

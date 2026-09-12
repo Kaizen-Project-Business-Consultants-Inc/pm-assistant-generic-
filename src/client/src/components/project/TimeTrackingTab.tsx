@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Clock, Plus, Trash2, BarChart3, X, Users, User } from 'lucide-react';
+import { Clock, Plus, Trash2, BarChart3, X, Users, User, TrendingDown, TrendingUp, Grid3X3, Sparkles } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import { ActualVsEstimatedChart } from '../timetracking/ActualVsEstimatedChart';
+import { TimeBurndownChart } from '../timetracking/TimeBurndownChart';
+import { TimeTrendChart } from '../timetracking/TimeTrendChart';
+import { UtilizationHeatmap } from '../timetracking/UtilizationHeatmap';
 import { TimeAnomalyPanel } from './TimeAnomalyPanel';
 import { WeeklyReviewPanel } from './WeeklyReviewPanel';
 
@@ -17,15 +20,24 @@ interface TimeEntry {
   description?: string;
   billable: boolean;
   userName?: string;
+  category?: 'meeting' | 'admin' | 'productive';
 }
 
-type SubTab = 'entries' | 'comparison';
+type SubTab = 'entries' | 'comparison' | 'burndown' | 'trends' | 'heatmap';
+
+const CATEGORY_COLORS: Record<string, string> = {
+  meeting: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300',
+  admin: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
+  productive: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
+};
 
 export function TimeTrackingTab({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
   const [subTab, setSubTab] = useState<SubTab>('entries');
   const [showLogForm, setShowLogForm] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
   // Get project members to determine current user's role
   const { data: membersData } = useQuery({
     queryKey: ['project-members', projectId],
@@ -50,6 +62,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
   const [formBillable, setFormBillable] = useState(true);
   const [formScheduleId, setFormScheduleId] = useState('');
   const [formTaskId, setFormTaskId] = useState('');
+  const [suggestionApplied, setSuggestionApplied] = useState(false);
 
   // Schedules for this project
   const { data: schedulesData } = useQuery({
@@ -74,6 +87,37 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
   });
   const tasks: any[] = tasksData?.data || tasksData?.tasks || [];
 
+  // AI suggestion — fetch when form opens
+  const { data: suggestionData } = useQuery({
+    queryKey: ['time-suggestion', projectId, formDate],
+    queryFn: () => apiService.getTimeSuggestion(projectId, formDate),
+    enabled: showLogForm,
+    staleTime: 60_000,
+  });
+  const suggestion = suggestionData?.suggestion || null;
+
+  // Apply suggestion to form (only once, only if fields are at defaults)
+  useEffect(() => {
+    if (suggestion && showLogForm && !suggestionApplied) {
+      if (!formTaskId && suggestion.taskId) {
+        const matchingTask = tasks.find((t: any) => t.id === suggestion.taskId);
+        if (matchingTask) setFormTaskId(suggestion.taskId);
+      }
+      if (!formHours && suggestion.hours) {
+        setFormHours(String(suggestion.hours));
+      }
+      if (!formDescription && suggestion.description) {
+        setFormDescription(suggestion.description);
+      }
+      setSuggestionApplied(true);
+    }
+  }, [suggestion, showLogForm, tasks, formTaskId, formHours, formDescription, suggestionApplied]);
+
+  // Reset suggestion state when form closes
+  useEffect(() => {
+    if (!showLogForm) setSuggestionApplied(false);
+  }, [showLogForm]);
+
   // Time entries for this project — filtered by user when in "mine" mode
   const filterUserId = viewMode === 'mine' ? currentUser?.id : undefined;
   const { data: entriesData, isLoading: entriesLoading } = useQuery({
@@ -81,7 +125,8 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
     queryFn: () => apiService.getProjectTimeEntries(projectId, undefined, undefined, filterUserId),
     enabled: !!projectId,
   });
-  const entries: TimeEntry[] = entriesData?.entries || entriesData?.data || [];
+  const allEntries: TimeEntry[] = entriesData?.entries || entriesData?.data || [];
+  const entries = categoryFilter === 'all' ? allEntries : allEntries.filter(e => e.category === categoryFilter);
 
   // Actual vs estimated for first schedule
   const primaryScheduleId = schedules[0]?.id;
@@ -129,25 +174,54 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
   return (
     <div className="mt-6 space-y-6">
       {/* Sub-tab navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <div className="flex gap-6">
+          <div className="flex gap-4 flex-wrap">
             <button
               onClick={() => setSubTab('entries')}
               className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'entries' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
-              <Clock className="w-4 h-4" /> Time Entries
+              <Clock className="w-4 h-4" /> Entries
             </button>
             <button
               onClick={() => setSubTab('comparison')}
               className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'comparison' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
-              <BarChart3 className="w-4 h-4" /> Actual vs Estimated
+              <BarChart3 className="w-4 h-4" /> Actual vs Est.
+            </button>
+            <button
+              onClick={() => setSubTab('burndown')}
+              className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'burndown' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+            >
+              <TrendingDown className="w-4 h-4" /> Burndown
+            </button>
+            <button
+              onClick={() => setSubTab('trends')}
+              className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'trends' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+            >
+              <TrendingUp className="w-4 h-4" /> Trends
+            </button>
+            <button
+              onClick={() => setSubTab('heatmap')}
+              className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'heatmap' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+            >
+              <Grid3X3 className="w-4 h-4" /> Heatmap
             </button>
           </div>
         </div>
         {subTab === 'entries' && (
           <div className="flex items-center gap-2">
+            {/* Category filter */}
+            <select
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              className="text-xs px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+            >
+              <option value="all">All Categories</option>
+              <option value="productive">Productive</option>
+              <option value="meeting">Meeting</option>
+              <option value="admin">Admin</option>
+            </select>
             {/* My Time / All Time toggle */}
             <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
               <button
@@ -218,7 +292,14 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
       {showLogForm && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-primary-200 dark:border-primary-700 p-5 space-y-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Log Time</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">Log Time</h3>
+              {suggestion && (
+                <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                  <Sparkles className="w-3 h-3" /> AI suggested
+                </span>
+              )}
+            </div>
             <button onClick={() => setShowLogForm(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -268,7 +349,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
               disabled={!formTaskId || !formHours || createMutation.isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
             >
-              {createMutation.isPending ? 'Saving…' : 'Log Entry'}
+              {createMutation.isPending ? 'Saving...' : 'Log Entry'}
             </button>
           </div>
         </div>
@@ -277,7 +358,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
       {/* Anomaly and Review panels (entries sub-tab only) */}
       {subTab === 'entries' && isManagerOrOwner && (
         <>
-          <TimeAnomalyPanel projectId={projectId} />
+          <TimeAnomalyPanel projectId={projectId} isManagerOrOwner={isManagerOrOwner} />
           <WeeklyReviewPanel projectId={projectId} />
         </>
       )}
@@ -301,6 +382,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
                   <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Date</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Task</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">User</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Category</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Hours</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Description</th>
                   <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Billable</th>
@@ -312,9 +394,16 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
                   <tr key={e.id} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{e.taskName || e.taskId}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{e.userName || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{e.userName || '\u2014'}</td>
+                    <td className="px-4 py-3">
+                      {e.category && (
+                        <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${CATEGORY_COLORS[e.category] || ''}`}>
+                          {e.category}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">{e.hours}h</td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-[200px]">{e.description || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-[200px]">{e.description || '\u2014'}</td>
                     <td className="px-4 py-3 text-center">{e.billable ? <span className="text-green-600 text-xs font-medium">Yes</span> : <span className="text-gray-400 text-xs">No</span>}</td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => deleteMutation.mutate(e.id)} className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -344,6 +433,30 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
               <ActualVsEstimatedChart tasks={comparisonTasks} />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Burndown sub-tab */}
+      {subTab === 'burndown' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Burndown Forecast</h3>
+          <TimeBurndownChart projectId={projectId} />
+        </div>
+      )}
+
+      {/* Trends sub-tab */}
+      {subTab === 'trends' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Trend Analysis</h3>
+          <TimeTrendChart projectId={projectId} />
+        </div>
+      )}
+
+      {/* Heatmap sub-tab */}
+      {subTab === 'heatmap' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Team Utilization Heatmap</h3>
+          <UtilizationHeatmap projectId={projectId} />
         </div>
       )}
     </div>

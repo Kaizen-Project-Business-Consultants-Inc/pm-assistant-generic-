@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, ChevronDown, ChevronUp, Users, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
+import { BarChart3, ChevronDown, ChevronUp, Users, AlertTriangle, CheckCircle, TrendingUp, Sparkles } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface WeeklyReview {
@@ -13,6 +13,7 @@ interface WeeklyReview {
   compliancePercent: number;
   topTasks: { taskId: string; taskName: string; hours: number }[];
   overBudgetTasks: { taskId: string; taskName: string; estimatedHours: number; actualHours: number; overBy: number }[];
+  narrative?: string;
 }
 
 function getMonday(): string {
@@ -80,6 +81,14 @@ export function WeeklyReviewPanel({ projectId }: { projectId: string }) {
 
       {expanded && (
         <div className="border-t border-gray-200 dark:border-gray-700 p-5 space-y-5">
+          {/* AI Narrative */}
+          {review.narrative && (
+            <div className="flex items-start gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <Sparkles className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-800 dark:text-blue-200">{review.narrative}</p>
+            </div>
+          )}
+
           {/* Summary cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">

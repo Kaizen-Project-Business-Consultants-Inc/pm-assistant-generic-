@@ -248,7 +248,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
           className="w-full text-sm border rounded-lg pl-10 pr-3 py-2.5 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-          placeholder="Search documents by name, description, or summary..."
+          placeholder="Search by name, description, or AI summary..."
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />
@@ -286,7 +286,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
             maxLength={500}
           />
         </div>
-        <p className="text-xs text-gray-400 mt-2">PDF, DOCX, DOC, TXT, CSV, MD (max 10MB)</p>
+        <p className="text-xs text-gray-400 mt-2">PDF, DOCX, DOC, TXT, CSV, MD (max 10MB) — documents are AI-analyzed for summaries, key points, and entity linking</p>
         {canConnect ? (
           <button
             className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-primary-300 dark:border-primary-600 text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
@@ -389,7 +389,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
           ) : displayList.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <FileText className="w-10 h-10 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No documents yet. Upload one to get started.</p>
+              <p className="text-sm">No documents yet. Upload one for AI analysis.</p>
             </div>
           ) : (
             displayList.map((doc: any) => (

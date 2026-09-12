@@ -2029,6 +2029,38 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  async getBurndownForecast(projectId: string) {
+    const response = await this.api.get(`/time-entries/burndown/${projectId}`);
+    return response.data;
+  }
+
+  async getTrendAnalysis(projectId: string, weeks?: number) {
+    const params: Record<string, string> = {};
+    if (weeks) params.weeks = String(weeks);
+    const response = await this.api.get(`/time-entries/trends/${projectId}`, { params });
+    return response.data;
+  }
+
+  async getUtilizationHeatmap(projectId: string, startDate?: string, endDate?: string) {
+    const params: Record<string, string> = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    const response = await this.api.get(`/time-entries/heatmap/${projectId}`, { params });
+    return response.data;
+  }
+
+  async getTimeSuggestion(projectId: string, date?: string) {
+    const params: Record<string, string> = { projectId };
+    if (date) params.date = date;
+    const response = await this.api.get('/time-entries/suggest', { params });
+    return response.data;
+  }
+
+  async explainAnomaly(anomaly: any, projectId: string) {
+    const response = await this.api.post('/time-entries/anomaly-explain', { anomaly, projectId });
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Expenses
   // -------------------------------------------------------------------------

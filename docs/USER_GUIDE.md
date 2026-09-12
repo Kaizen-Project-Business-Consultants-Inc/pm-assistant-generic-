@@ -1254,16 +1254,64 @@ Project managers and owners see a **Time Anomalies** panel at the top of the Tim
 
 Click **Dismiss** on any anomaly to hide it for the current session. Anomalies refresh automatically when the date range or entries change.
 
+**AI Anomaly Explanations:** Managers/owners see an **Explain** button (with Sparkles icon) on each anomaly. Click it to get an AI-generated root cause analysis and suggested corrective actions displayed inline. The explanation includes a risk level badge (low/medium/high). Click "Explain" again to toggle the explanation. Works without AI enabled (static fallback explanations).
+
 ### Weekly Review (Managers/Owners)
 
 Below the anomalies panel, a **Weekly Review** card summarizes the current week:
 
+- **AI Narrative** — When expanded, a blue callout at the top shows a 2-3 sentence AI-generated summary of the week's time activity, highlighting key insights. Falls back to a template-based summary when AI is disabled.
 - **Total hours** by team member (bar chart).
 - **Anomaly count** and **compliance percentage**.
 - **Top tasks** by hours consumed.
 - **Over-budget tasks** with actual vs estimated comparison.
 
 Use the date picker to view reviews for previous weeks. The review is generated on-demand from existing time data.
+
+### Burndown Forecast
+
+The **Burndown** sub-tab on the Time tab shows a visual projection of project hours consumption:
+
+- **SVG line chart** with three lines: ideal burn (dashed gray), actual cumulative (green/red), and projected extension (dashed).
+- **Summary cards** show budget hours, actual hours, daily burn rate, and projected finish date.
+- If the project is over budget, a red alert banner appears with the overage amount.
+
+### Trend Analysis
+
+The **Trends** sub-tab shows weekly time logging patterns over the last 12 weeks:
+
+- **Bar chart** with one bar per week showing total hours logged.
+- **Rolling 4-week average** displayed as an orange line overlay.
+- **Delta badges** on each bar show week-over-week percentage change.
+- **Summary cards** show velocity trend (increasing/decreasing/stable), average weekly hours, and peak week.
+
+### Team Utilization Heatmap
+
+The **Heatmap** sub-tab visualizes team utilization across time:
+
+- **CSS grid** with rows = team members, columns = dates.
+- **Color coding:** red (<25%), amber (25-74%), green (75-100%), dark red (>100%).
+- **Tooltips** show exact hours and utilization percentage on hover.
+- **Date range picker** lets you adjust the window (default: last 4 weeks).
+- **Per-user summary cards** show average daily hours and utilization %.
+
+### Auto-Categorization
+
+Time entries are automatically categorized based on task name and description:
+
+- **Meeting** (purple pill) — tasks containing "meeting", "standup", "review", "sync", "call", "demo", "retro".
+- **Admin** (amber pill) — tasks containing "admin", "planning", "setup", "onboard", "document", "report".
+- **Productive** (green pill) — everything else.
+
+A **Category filter** dropdown at the top of the entries table lets you filter by category.
+
+### Smart Time Suggestions
+
+When you open the **Log Time** form, the system suggests a task, hours, and description based on your recent time logging patterns:
+
+- Fields are pre-filled only if you haven't already typed something (never overwrites your input).
+- An **"AI suggested"** pill with Sparkles icon appears next to the form title when a suggestion is active.
+- With AI enabled, suggestions are based on pattern analysis. Without AI, the most frequently logged task and average hours are used.
 
 ### Compliance Reminders
 
@@ -1272,6 +1320,14 @@ The system automatically checks for missing time entries on weekdays at 4:00 PM:
 - If you haven't logged any time for the day, you'll receive a **Time entry reminder** notification.
 - On Thursday and Friday, the system also checks earlier weekdays.
 - If you miss 3 or more consecutive weekdays, your project manager receives an escalation alert.
+
+### Utilization Coaching
+
+Every Monday at 9:00 AM, the system analyzes team members' time utilization over the past 2 weeks:
+
+- Members with **<60% utilization** (under-utilized) or **>110% utilization** (over-utilized) receive personalized coaching tips.
+- Tips are delivered as notifications and suggest actionable steps.
+- Each user receives at most one coaching notification per week (Redis dedup with 7-day TTL).
 
 ---
 

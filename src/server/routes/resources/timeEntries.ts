@@ -67,7 +67,11 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     try {
       const { projectId } = request.params as { projectId: string };
       const { startDate, endDate, userId } = request.query as { startDate?: string; endDate?: string; userId?: string };
-      const entries = await timeEntryService.getByProject(projectId, startDate, endDate, userId);
+      const rawEntries = await timeEntryService.getByProject(projectId, startDate, endDate, userId);
+      const entries = rawEntries.map((e: any) => ({
+        ...e,
+        category: timeAnomalyService.categorizeEntry(e.taskName || '', e.description || ''),
+      }));
       return { entries };
     } catch (error) {
       logger.error('Get project time entries error', { error });
@@ -196,6 +200,73 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     } catch (error) {
       logger.error('Get timesheet status error', { error });
       return reply.status(500).send({ error: 'Failed to fetch timesheet status' });
+    }
+  });
+
+  // GET /burndown/:projectId — burndown forecast
+  fastify.get('/burndown/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      const forecast = await timeAnomalyService.getBurndownForecast(projectId);
+      return { forecast };
+    } catch (error) {
+      logger.error('Get burndown forecast error', { error });
+      return reply.status(500).send({ error: 'Failed to get burndown forecast' });
+    }
+  });
+
+  // GET /trends/:projectId — trend analysis
+  fastify.get('/trends/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      const { weeks } = request.query as { weeks?: string };
+      const trends = await timeAnomalyService.getTrendAnalysis(projectId, weeks ? parseInt(weeks, 10) : 12);
+      return { trends };
+    } catch (error) {
+      logger.error('Get trend analysis error', { error });
+      return reply.status(500).send({ error: 'Failed to get trend analysis' });
+    }
+  });
+
+  // GET /heatmap/:projectId — utilization heatmap
+  fastify.get('/heatmap/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      const { startDate, endDate } = request.query as { startDate?: string; endDate?: string };
+      const end = endDate || new Date().toISOString().slice(0, 10);
+      const start = startDate || (() => { const d = new Date(); d.setDate(d.getDate() - 28); return d.toISOString().slice(0, 10); })();
+      const heatmap = await timeAnomalyService.getUtilizationHeatmap(projectId, start, end);
+      return { heatmap };
+    } catch (error) {
+      logger.error('Get utilization heatmap error', { error });
+      return reply.status(500).send({ error: 'Failed to get utilization heatmap' });
+    }
+  });
+
+  // GET /suggest — AI time suggestion
+  fastify.get('/suggest', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const user = request.user!;
+      const { projectId, date } = request.query as { projectId?: string; date?: string };
+      if (!projectId) return reply.status(400).send({ error: 'projectId is required' });
+      const suggestion = await timeAnomalyService.getTimeSuggestion(user.userId, projectId, date || new Date().toISOString().slice(0, 10));
+      return { suggestion };
+    } catch (error) {
+      logger.error('Get time suggestion error', { error });
+      return reply.status(500).send({ error: 'Failed to get time suggestion' });
+    }
+  });
+
+  // POST /anomaly-explain — AI anomaly explanation
+  fastify.post('/anomaly-explain', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { anomaly, projectId } = request.body as { anomaly: any; projectId: string };
+      if (!anomaly || !projectId) return reply.status(400).send({ error: 'anomaly and projectId are required' });
+      const explanation = await timeAnomalyService.explainAnomaly(anomaly, projectId);
+      return { explanation };
+    } catch (error) {
+      logger.error('Explain anomaly error', { error });
+      return reply.status(500).send({ error: 'Failed to explain anomaly' });
     }
   });
 
