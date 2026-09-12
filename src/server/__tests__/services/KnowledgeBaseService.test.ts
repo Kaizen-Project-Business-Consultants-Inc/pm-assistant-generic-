@@ -137,8 +137,8 @@ describe('KnowledgeBaseService', () => {
       expect(chunks[1].id).toContain('-part2');
     });
 
-    it('does not split chunks under 800 words', () => {
-      const content = 'word '.repeat(500).trim();
+    it('does not split chunks under 600 words', () => {
+      const content = 'word '.repeat(400).trim();
       const md = `## Normal\n### Normal Sub\n\n${content}`;
       const chunks = parse(md);
       expect(chunks).toHaveLength(1);

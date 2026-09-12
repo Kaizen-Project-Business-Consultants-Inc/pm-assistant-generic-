@@ -48,7 +48,7 @@ const DOC_SOURCES: Array<{ file: string; name: string }> = [
   { file: 'docs/AI_DESIGN_FEATURES.md', name: 'AI Design' },
 ];
 
-const MAX_CHUNK_WORDS = 800;
+const MAX_CHUNK_WORDS = 600;
 
 // ---------------------------------------------------------------------------
 // KnowledgeBaseService
@@ -272,6 +272,46 @@ export class KnowledgeBaseService {
 
     for (const para of paragraphs) {
       const paraWords = para.split(/\s+/).length;
+
+      // If a single paragraph exceeds maxWords, split it at sentence boundaries
+      if (paraWords > maxWords) {
+        if (current.length > 0) {
+          result.push(current.join('\n\n'));
+          current = [];
+          currentWords = 0;
+        }
+        const sentences = para.split(/(?<=[.!?])\s+/);
+        let sentBuf: string[] = [];
+        let sentWords = 0;
+        for (const sent of sentences) {
+          const sw = sent.split(/\s+/).length;
+          if (sentWords + sw > maxWords && sentBuf.length > 0) {
+            result.push(sentBuf.join(' '));
+            sentBuf = [sent];
+            sentWords = sw;
+          } else {
+            sentBuf.push(sent);
+            sentWords += sw;
+          }
+        }
+        if (sentBuf.length > 0) {
+          result.push(sentBuf.join(' '));
+        }
+        // Hard fallback: if any resulting chunk still exceeds maxWords
+        // (e.g. no sentence-ending punctuation), split by word boundary
+        for (let r = result.length - 1; r >= 0; r--) {
+          const rWords = result[r].split(/\s+/);
+          if (rWords.length > maxWords) {
+            const oversized = result.splice(r, 1)[0];
+            const words = oversized.split(/\s+/);
+            for (let w = 0; w < words.length; w += maxWords) {
+              result.splice(r + (w / maxWords), 0, words.slice(w, w + maxWords).join(' '));
+            }
+          }
+        }
+        continue;
+      }
+
       if (currentWords + paraWords > maxWords && current.length > 0) {
         result.push(current.join('\n\n'));
         current = [para];
