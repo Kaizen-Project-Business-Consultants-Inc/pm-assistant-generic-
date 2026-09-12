@@ -48,7 +48,7 @@ const DOC_SOURCES: Array<{ file: string; name: string }> = [
   { file: 'docs/AI_DESIGN_FEATURES.md', name: 'AI Design' },
 ];
 
-const MAX_CHUNK_WORDS = 1500;
+const MAX_CHUNK_WORDS = 800;
 
 // ---------------------------------------------------------------------------
 // KnowledgeBaseService
