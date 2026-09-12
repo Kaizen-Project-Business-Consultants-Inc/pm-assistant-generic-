@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Clock, Plus, Trash2, BarChart3, X, Users, User, TrendingDown, TrendingUp, Grid3X3, Sparkles } from 'lucide-react';
+import { Clock, Plus, Trash2, BarChart3, X, Users, User, TrendingDown, TrendingUp, Grid3X3, Sparkles, CalendarDays } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import { ActualVsEstimatedChart } from '../timetracking/ActualVsEstimatedChart';
 import { TimeBurndownChart } from '../timetracking/TimeBurndownChart';
 import { TimeTrendChart } from '../timetracking/TimeTrendChart';
 import { UtilizationHeatmap } from '../timetracking/UtilizationHeatmap';
+import { ProjectTimesheetGrid } from '../timetracking/ProjectTimesheetGrid';
 import { TimeAnomalyPanel } from './TimeAnomalyPanel';
 import { WeeklyReviewPanel } from './WeeklyReviewPanel';
 
@@ -23,7 +24,7 @@ interface TimeEntry {
   category?: 'meeting' | 'admin' | 'productive';
 }
 
-type SubTab = 'entries' | 'comparison' | 'burndown' | 'trends' | 'heatmap';
+type SubTab = 'timesheet' | 'entries' | 'comparison' | 'burndown' | 'trends' | 'heatmap';
 
 const CATEGORY_COLORS: Record<string, string> = {
   meeting: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300',
@@ -34,7 +35,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 export function TimeTrackingTab({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
-  const [subTab, setSubTab] = useState<SubTab>('entries');
+  const [subTab, setSubTab] = useState<SubTab>('timesheet');
   const [showLogForm, setShowLogForm] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
@@ -178,6 +179,12 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
         <div className="border-b border-gray-200 dark:border-gray-700">
           <div className="flex gap-4 flex-wrap">
             <button
+              onClick={() => setSubTab('timesheet')}
+              className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'timesheet' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+            >
+              <CalendarDays className="w-4 h-4" /> Timesheet
+            </button>
+            <button
               onClick={() => setSubTab('entries')}
               className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'entries' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
@@ -293,7 +300,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-primary-200 dark:border-primary-700 p-5 space-y-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white">Log Time</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Log Time</h3>
               {suggestion && (
                 <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
                   <Sparkles className="w-3 h-3" /> AI suggested
@@ -354,6 +361,9 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
           </div>
         </div>
       )}
+
+      {/* Timesheet grid sub-tab */}
+      {subTab === 'timesheet' && <ProjectTimesheetGrid projectId={projectId} />}
 
       {/* Anomaly and Review panels (entries sub-tab only) */}
       {subTab === 'entries' && isManagerOrOwner && (
