@@ -12,7 +12,9 @@ export type ActionType =
   | 'call_webhook'
   | 'log_audit'
   | 'auto_assign'
-  | 'ai_generate';
+  | 'ai_generate'
+  | 'apply_lesson'
+  | 'extract_lesson';
 
 export type ConditionOperator =
   | 'equals' | 'not_equals'
@@ -56,6 +58,7 @@ export interface AutomationRule {
   version: number;
   triggerEventType: string;
   triggerEntityType: string | null;
+  scope: 'project' | 'portfolio';
   definition: AutomationDefinition;
   triggerCount: number;
   lastTriggeredAt: string | null;

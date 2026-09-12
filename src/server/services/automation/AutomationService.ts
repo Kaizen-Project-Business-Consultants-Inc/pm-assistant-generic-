@@ -11,6 +11,7 @@ export class AutomationService {
     ownerUserId: string;
     triggerEventType: string;
     triggerEntityType?: string;
+    scope?: 'project' | 'portfolio';
     definition: AutomationDefinition;
     maxRunsPerDay?: number;
     cooldownSeconds?: number;
@@ -32,6 +33,7 @@ export class AutomationService {
     description?: string;
     triggerEventType?: string;
     triggerEntityType?: string;
+    scope?: 'project' | 'portfolio';
     definition?: AutomationDefinition;
     maxRunsPerDay?: number;
     cooldownSeconds?: number;
@@ -97,12 +99,88 @@ export class AutomationService {
     if (!definition.actions || !Array.isArray(definition.actions)) {
       throw Object.assign(new Error('Definition must include an actions array'), { statusCode: 400 });
     }
-    const validActions = ['create_task', 'notify', 'send_email', 'add_risk', 'change_status', 'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit', 'auto_assign', 'ai_generate'];
+    const validActions = ['create_task', 'notify', 'send_email', 'add_risk', 'change_status', 'update_field', 'add_comment', 'escalate', 'call_webhook', 'log_audit', 'auto_assign', 'ai_generate', 'apply_lesson', 'extract_lesson'];
     for (const action of definition.actions) {
       if (!validActions.includes(action.type)) {
         throw Object.assign(new Error(`Invalid action type: ${action.type}`), { statusCode: 400 });
       }
     }
+  }
+
+  async findPortfolioAutomations(): Promise<AutomationRule[]> {
+    return automationRepository.findPortfolioAutomations();
+  }
+
+  async applyGovernancePack(projectId: string, packId: string, ownerUserId: string): Promise<string[]> {
+    const { GOVERNANCE_PACKS } = await import('./governancePacks');
+    const pack = GOVERNANCE_PACKS.find(p => p.id === packId);
+    if (!pack) throw Object.assign(new Error(`Governance pack not found: ${packId}`), { statusCode: 404 });
+
+    const ids: string[] = [];
+    for (const auto of pack.automations) {
+      const rule = await automationRepository.create(projectId, {
+        name: auto.name,
+        description: auto.description,
+        ownerUserId,
+        triggerEventType: auto.triggerEventType,
+        triggerEntityType: auto.triggerEntityType,
+        scope: auto.scope,
+        definition: auto.definition,
+        maxRunsPerDay: auto.maxRunsPerDay ?? 50,
+        cooldownSeconds: auto.cooldownSeconds ?? 0,
+      });
+      ids.push(rule.id);
+    }
+    logger.info(`[AutomationService] Applied governance pack "${pack.name}" to project ${projectId}: ${ids.length} automations created`);
+    return ids;
+  }
+
+  async publishToMarketplace(automationId: string, orgId: string, orgName: string, userId: string): Promise<any> {
+    const rule = await automationRepository.findById(automationId);
+    if (!rule) throw Object.assign(new Error('Automation not found'), { statusCode: 404 });
+    const { automationMarketplaceRepository } = await import('../../database/AutomationMarketplaceRepository');
+    return automationMarketplaceRepository.create({
+      name: rule.name,
+      description: rule.description,
+      category: rule.triggerEntityType,
+      tags: null,
+      triggerEventType: rule.triggerEventType,
+      scope: rule.scope,
+      definition: JSON.stringify(rule.definition),
+      maxRunsPerDay: rule.maxRunsPerDay,
+      cooldownSeconds: rule.cooldownSeconds,
+      publishedByOrgId: orgId,
+      publishedByOrgName: orgName,
+      publishedByUserId: userId,
+    });
+  }
+
+  async importFromMarketplace(marketplaceId: string, projectId: string, userId: string): Promise<AutomationRule> {
+    const { automationMarketplaceRepository } = await import('../../database/AutomationMarketplaceRepository');
+    const entry = await automationMarketplaceRepository.findById(marketplaceId);
+    if (!entry) throw Object.assign(new Error('Marketplace automation not found'), { statusCode: 404 });
+
+    const definition = typeof entry.definition === 'string' ? JSON.parse(entry.definition) : entry.definition;
+    this.validateDefinition(entry.triggerEventType, definition);
+
+    const rule = await automationRepository.create(projectId, {
+      name: entry.name,
+      description: entry.description || undefined,
+      ownerUserId: userId,
+      triggerEventType: entry.triggerEventType,
+      scope: entry.scope as 'project' | 'portfolio',
+      definition,
+      maxRunsPerDay: entry.maxRunsPerDay,
+      cooldownSeconds: entry.cooldownSeconds,
+    });
+
+    await automationMarketplaceRepository.incrementDownloadCount(marketplaceId);
+    return rule;
+  }
+
+  async getGovernancePacks(): Promise<import('./governancePacks').GovernancePack[]> {
+    const { GOVERNANCE_PACKS } = await import('./governancePacks');
+    return GOVERNANCE_PACKS;
   }
 }
 

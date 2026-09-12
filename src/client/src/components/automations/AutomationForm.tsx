@@ -153,6 +153,25 @@ const ACTION_TYPES: { value: string; label: string; description: string; params:
       { key: 'maxTokens', label: 'Max Tokens', placeholder: '500', inputType: 'number' as const, help: 'Maximum response length (50-2000)' },
     ],
   },
+  {
+    value: 'apply_lesson', label: 'Surface Lessons Learned',
+    description: 'Finds relevant lessons learned and sends them as a notification to the selected recipient.',
+    params: [
+      { key: 'recipients', label: 'Send To', placeholder: '', inputType: 'select', options: [
+        { value: 'project_owner', label: 'Project Owner' },
+        { value: 'assignee', label: 'Task Assignee' },
+        { value: 'creator', label: 'Entity Creator' },
+        { value: 'trigger_user', label: 'User Who Triggered the Event' },
+      ], help: 'Who should receive the lesson recommendations' },
+      { key: 'category', label: 'Lesson Category', placeholder: 'e.g. risk, task, sprint (optional)', help: 'Filter lessons by category. Leave blank for all.' },
+      { key: 'limit', label: 'Max Lessons', placeholder: '3', inputType: 'number' as const, help: 'Maximum number of lessons to include (1-10)' },
+    ],
+  },
+  {
+    value: 'extract_lesson', label: 'Extract Lessons Learned',
+    description: 'Triggers AI extraction of lessons learned from the project. No parameters needed.',
+    params: [],
+  },
 ];
 
 const OPERATORS = [
@@ -384,6 +403,7 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
   const [triggerEventType, setTriggerEventType] = useState('task.created');
   const [conditions, setConditions] = useState<ConditionGroup>({ logic: 'and', conditions: [] });
   const [actions, setActions] = useState<ActionDef[]>([]);
+  const [scope, setScope] = useState<'project' | 'portfolio'>('project');
   const [maxRunsPerDay, setMaxRunsPerDay] = useState(50);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -422,6 +442,7 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
       setName(a.name);
       setDescription(a.description || '');
       setTriggerEventType(a.triggerEventType);
+      setScope(a.scope || 'project');
       setMaxRunsPerDay(a.maxRunsPerDay ?? 50);
       setCooldownSeconds(a.cooldownSeconds ?? 0);
       if (a.definition?.conditions) setConditions(a.definition.conditions);
@@ -470,6 +491,7 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
       name: name.trim(),
       description: description.trim() || undefined,
       triggerEventType,
+      scope,
       maxRunsPerDay,
       cooldownSeconds,
       definition: {
@@ -570,6 +592,30 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
             className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
+      </div>
+
+      {/* Scope */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Scope</h4>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setScope('project')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${scope === 'project' ? 'bg-primary-100 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          >
+            This Project
+          </button>
+          <button
+            type="button"
+            onClick={() => setScope('portfolio')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${scope === 'portfolio' ? 'bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          >
+            All Projects (Portfolio)
+          </button>
+        </div>
+        {scope === 'portfolio' && (
+          <p className="text-xs text-purple-600 dark:text-purple-400">This automation will fire for matching events in any project within your organization.</p>
+        )}
       </div>
 
       {/* Trigger */}

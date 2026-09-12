@@ -97,7 +97,26 @@ function makeStaticSuggestions(projectId: string, context: {
     });
   }
 
-  // 5. Audit log on project status change
+  // 5. Surface lessons on risk creation
+  if (context.hasRisks && !context.existingTriggers.has('risk.created')) {
+    suggestions.push({
+      id: makeId('apply-lesson-on-risk', projectId),
+      name: 'Surface Lessons on New Risk',
+      description: 'When a risk is created, find and share relevant lessons learned with the project owner.',
+      why: 'Your project has risks — leverage past lessons to inform risk responses.',
+      triggerEventType: 'risk.created',
+      definition: {
+        actions: [{
+          id: 'a1', type: 'apply_lesson', runOrder: 0,
+          params: { recipients: 'project_owner', category: 'risk', limit: 3, title: 'Lessons for This Risk' },
+        }],
+      },
+      confidence: 0.75,
+      source: 'static',
+    });
+  }
+
+  // 6. Audit log on project status change
   if (!context.existingTriggers.has('project.status_changed')) {
     suggestions.push({
       id: makeId('audit-project-status', projectId),

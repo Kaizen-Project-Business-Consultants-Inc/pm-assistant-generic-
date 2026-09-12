@@ -28,7 +28,17 @@ export class AutomationEventBus {
       return;
     }
 
-    const matching = automations.filter(a => a.projectId === event.projectId);
+    const projectScoped = automations.filter(a => a.projectId === event.projectId && a.scope !== 'portfolio');
+
+    // Also query portfolio-scoped automations (fire for any project)
+    let portfolioScoped: AutomationRule[] = [];
+    try {
+      portfolioScoped = await automationRepository.findActivePortfolioByTrigger(event.type);
+    } catch (err) {
+      logger.error('[AutomationEventBus] Failed to query portfolio automations:', err);
+    }
+
+    const matching = [...projectScoped, ...portfolioScoped];
     if (matching.length === 0) return;
 
     for (const automation of matching) {

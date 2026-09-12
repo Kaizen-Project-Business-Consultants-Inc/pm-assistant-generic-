@@ -63,4 +63,11 @@ export const actionParamSchemas: Record<string, z.ZodType<any>> = {
     outputKey: z.string().min(1).default('output'),
     maxTokens: z.number().int().min(50).max(2000).optional(),
   }),
+  apply_lesson: z.object({
+    recipients: z.union([z.string(), z.array(z.string())]).optional(),
+    category: z.string().optional(),
+    limit: z.number().int().min(1).max(10).optional(),
+    title: z.string().optional(),
+  }),
+  extract_lesson: z.object({}),
 };

@@ -12,6 +12,7 @@ interface AutomationRow {
   version: number;
   trigger_event_type: string;
   trigger_entity_type: string | null;
+  scope: string;
   definition: string;
   trigger_count: number;
   last_triggered_at: string | null;
@@ -39,6 +40,7 @@ function rowToDTO(row: AutomationRow): AutomationRule {
     version: Number(row.version),
     triggerEventType: row.trigger_event_type,
     triggerEntityType: row.trigger_entity_type,
+    scope: (row.scope === 'portfolio' ? 'portfolio' : 'project') as 'project' | 'portfolio',
     definition,
     triggerCount: Number(row.trigger_count),
     lastTriggeredAt: row.last_triggered_at,
@@ -63,16 +65,18 @@ export class AutomationRepository extends BaseRepository<AutomationRule> {
     ownerUserId: string;
     triggerEventType: string;
     triggerEntityType?: string;
+    scope?: 'project' | 'portfolio';
     definition: AutomationDefinition;
     maxRunsPerDay?: number;
     cooldownSeconds?: number;
   }): Promise<AutomationRule> {
     const id = uuidv4();
     await this.queryRaw(
-      `INSERT INTO automations (id, project_id, name, description, owner_user_id, trigger_event_type, trigger_entity_type, definition, max_runs_per_day, cooldown_seconds)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO automations (id, project_id, name, description, owner_user_id, trigger_event_type, trigger_entity_type, scope, definition, max_runs_per_day, cooldown_seconds)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, projectId, data.name, data.description || null, data.ownerUserId,
        data.triggerEventType, data.triggerEntityType || null,
+       data.scope || 'project',
        JSON.stringify(data.definition),
        data.maxRunsPerDay ?? 50, data.cooldownSeconds ?? 0],
     );
@@ -95,11 +99,28 @@ export class AutomationRepository extends BaseRepository<AutomationRule> {
     return this.mapRows(rows);
   }
 
+  async findActivePortfolioByTrigger(eventType: string): Promise<AutomationRule[]> {
+    const rows = await this.queryRaw(
+      `SELECT * FROM automations WHERE scope = 'portfolio' AND trigger_event_type = ? AND status = 'active'`,
+      [eventType],
+    );
+    return this.mapRows(rows);
+  }
+
+  async findPortfolioAutomations(): Promise<AutomationRule[]> {
+    const rows = await this.queryRaw(
+      `SELECT * FROM automations WHERE scope = 'portfolio' ORDER BY created_at DESC`,
+      [],
+    );
+    return this.mapRows(rows);
+  }
+
   async update(id: string, data: {
     name?: string;
     description?: string;
     triggerEventType?: string;
     triggerEntityType?: string;
+    scope?: 'project' | 'portfolio';
     definition?: AutomationDefinition;
     maxRunsPerDay?: number;
     cooldownSeconds?: number;
@@ -110,6 +131,7 @@ export class AutomationRepository extends BaseRepository<AutomationRule> {
     if (data.description !== undefined) { sets.push('description = ?'); params.push(data.description); }
     if (data.triggerEventType !== undefined) { sets.push('trigger_event_type = ?'); params.push(data.triggerEventType); }
     if (data.triggerEntityType !== undefined) { sets.push('trigger_entity_type = ?'); params.push(data.triggerEntityType); }
+    if (data.scope !== undefined) { sets.push('scope = ?'); params.push(data.scope); }
     if (data.definition !== undefined) { sets.push('definition = ?'); params.push(JSON.stringify(data.definition)); }
     if (data.maxRunsPerDay !== undefined) { sets.push('max_runs_per_day = ?'); params.push(data.maxRunsPerDay); }
     if (data.cooldownSeconds !== undefined) { sets.push('cooldown_seconds = ?'); params.push(data.cooldownSeconds); }

@@ -253,6 +253,39 @@ const executors: Record<ActionType, ActionExecutorFn> = {
     logger.info(`[AutomationAction] ai_generate: stored ${result.content.length} chars in ai.${outputKey}`);
   },
 
+  async apply_lesson(params, context, event) {
+    const { lessonsLearnedService } = await import('../lessonsLearned');
+    const { notificationService } = await import('../NotificationService');
+    const category = params.category || event.entityType;
+    const limit = params.limit || 3;
+    const projectType = context.project?.methodology || context.project?.type;
+    const lessons = await lessonsLearnedService.findRelevantLessons(projectType, category, limit);
+    if (lessons.length === 0) {
+      logger.info('[AutomationAction] apply_lesson: no relevant lessons found');
+      return;
+    }
+    const lessonSummary = lessons.map((l: any) => `- ${l.title}: ${l.recommendation || l.description || ''}`).join('\n');
+    const recipients = params.recipients || 'project_owner';
+    const resolved = await resolveRecipients(recipients, context, event);
+    for (const r of resolved) {
+      await notificationService.create({
+        userId: r.userId,
+        type: 'automation',
+        severity: 'low',
+        title: params.title || 'Relevant Lessons Learned',
+        message: `Based on this event, here are relevant lessons:\n${lessonSummary}`,
+        projectId: event.projectId,
+      });
+    }
+    logger.info(`[AutomationAction] apply_lesson: sent ${lessons.length} lessons to ${resolved.length} recipients`);
+  },
+
+  async extract_lesson(_params, _context, event) {
+    const { lessonsLearnedService } = await import('../lessonsLearned');
+    await lessonsLearnedService.extractLessons(event.projectId, event.userId);
+    logger.info(`[AutomationAction] extract_lesson: triggered extraction for project ${event.projectId}`);
+  },
+
   async auto_assign(params, context, event) {
     if (event.entityType !== 'task') {
       logger.warn('[AutomationAction] auto_assign only works on tasks');

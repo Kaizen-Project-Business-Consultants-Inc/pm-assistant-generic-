@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Zap, ToggleLeft, ToggleRight, Pencil, Trash2, Sparkles, ChevronDown, ChevronRight, X, Check } from 'lucide-react';
+import { Plus, Zap, ToggleLeft, ToggleRight, Pencil, Trash2, Sparkles, ChevronDown, ChevronRight, X, Check, ShieldCheck, Store } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ConfirmModal } from '../ui/ConfirmModal';
 
@@ -27,6 +27,8 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [suggestionsOpen, setSuggestionsOpen] = useState(true);
+  const [packsOpen, setPacksOpen] = useState(false);
+  const [showMarketplace, setShowMarketplace] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['automations', projectId],
@@ -71,6 +73,32 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
     },
   });
 
+  const { data: packsData } = useQuery({
+    queryKey: ['governance-packs', projectId],
+    queryFn: () => apiService.getGovernancePacks(projectId),
+    enabled: !!projectId,
+  });
+
+  const applyPackMutation = useMutation({
+    mutationFn: (packId: string) => apiService.applyGovernancePack(projectId, packId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['automations', projectId] });
+    },
+  });
+
+  const { data: marketplaceData } = useQuery({
+    queryKey: ['marketplace-automations', projectId],
+    queryFn: () => apiService.getMarketplaceAutomations(projectId),
+    enabled: showMarketplace,
+  });
+
+  const importMutation = useMutation({
+    mutationFn: (marketplaceId: string) => apiService.importFromMarketplace(projectId, marketplaceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['automations', projectId] });
+    },
+  });
+
   const suggestions: any[] = suggestionsData?.suggestions || [];
   const automations: any[] = data?.automations || [];
   const filtered = statusFilter === 'all' ? automations : automations.filter((a: any) => a.status === statusFilter);
@@ -92,13 +120,22 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Automations</h3>
           <span className="text-sm text-gray-500 dark:text-gray-400">({automations.length})</span>
         </div>
-        <button
-          onClick={onNew}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          New Automation
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowMarketplace(!showMarketplace)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300"
+          >
+            <Store className="w-4 h-4" />
+            Marketplace
+          </button>
+          <button
+            onClick={onNew}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Automation
+          </button>
+        </div>
       </div>
 
       {/* Filter */}
@@ -146,7 +183,12 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                   onClick={() => onSelect(auto.id)}
                 >
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900 dark:text-white">{auto.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900 dark:text-white">{auto.name}</span>
+                      {auto.scope === 'portfolio' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium">Portfolio</span>
+                      )}
+                    </div>
                     {auto.description && (
                       <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{auto.description}</div>
                     )}
@@ -251,6 +293,87 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Governance Packs */}
+      {packsData?.packs?.length > 0 && (
+        <div className="border border-emerald-200 dark:border-emerald-800 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setPacksOpen(!packsOpen)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Governance Packs</span>
+              <span className="text-xs bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full">{packsData.packs.length}</span>
+            </div>
+            {packsOpen ? <ChevronDown className="w-4 h-4 text-emerald-500" /> : <ChevronRight className="w-4 h-4 text-emerald-500" />}
+          </button>
+          {packsOpen && (
+            <div className="p-3 space-y-2 bg-white dark:bg-gray-800">
+              {packsData.packs.map((pack: any) => (
+                <div key={pack.id} className="flex items-start gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{pack.name}</div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{pack.description}</p>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">{pack.automations.length} automations</p>
+                  </div>
+                  <button
+                    onClick={() => applyPackMutation.mutate(pack.id)}
+                    disabled={applyPackMutation.isPending}
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors disabled:opacity-50 shrink-0"
+                  >
+                    <Check className="w-3 h-3" />
+                    Apply
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Marketplace */}
+      {showMarketplace && (
+        <div className="border border-blue-200 dark:border-blue-800 rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 bg-blue-50 dark:bg-blue-900/20">
+            <div className="flex items-center gap-2">
+              <Store className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium text-blue-800 dark:text-blue-300">Automation Marketplace</span>
+            </div>
+            <button onClick={() => setShowMarketplace(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="p-3 space-y-2 bg-white dark:bg-gray-800">
+            {!marketplaceData?.automations?.length ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No automations in the marketplace yet. Publish your automations to share them.</p>
+            ) : (
+              marketplaceData.automations.map((mp: any) => (
+                <div key={mp.id} className="flex items-start gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{mp.name}</span>
+                      <code className="text-[10px] bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">{mp.triggerEventType}</code>
+                    </div>
+                    {mp.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{mp.description}</p>}
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 dark:text-gray-500">
+                      <span>By {mp.publishedByOrgName}</span>
+                      <span>{mp.downloadCount} imports</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => importMutation.mutate(mp.id)}
+                    disabled={importMutation.isPending}
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 shrink-0"
+                  >
+                    Import
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 

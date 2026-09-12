@@ -9,6 +9,7 @@ import { createAutomationSchema, updateAutomationSchema, testAutomationSchema } 
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { GOVERNANCE_PACKS } from '../../services/automation/governancePacks';
 import { parsePagination } from '../../schemas/paginationSchema';
 import type { AutomationEvent } from '../../services/automation/types';
 
@@ -154,6 +155,71 @@ export async function automationRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { projectId: string; id: string };
     const analytics = await automationService.getAnalytics(id);
     return { analytics };
+  });
+
+  // GET /projects/:projectId/automations/portfolio
+  fastify.get('/:projectId/automations/portfolio', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+  }, async () => {
+    const automations = await automationService.findPortfolioAutomations();
+    return { automations };
+  });
+
+  // GET /projects/:projectId/automations/governance-packs
+  fastify.get('/:projectId/automations/governance-packs', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+  }, async () => {
+    return { packs: GOVERNANCE_PACKS };
+  });
+
+  // POST /projects/:projectId/automations/governance-packs/:packId/apply
+  fastify.post('/:projectId/automations/governance-packs/:packId/apply', {
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+  }, async (request, reply) => {
+    const { projectId, packId } = request.params as { projectId: string; packId: string };
+    const user = request.user!;
+    const ids = await automationService.applyGovernancePack(projectId, packId, user.userId);
+    return reply.status(201).send({ automationIds: ids, message: `Applied ${ids.length} automations from governance pack` });
+  });
+
+  // GET /projects/:projectId/automations/marketplace
+  fastify.get('/:projectId/automations/marketplace', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+  }, async (request) => {
+    const { limit, offset } = parsePagination(request.query as any);
+    const { category } = request.query as { category?: string };
+    const { automationMarketplaceRepository } = await import('../../database/AutomationMarketplaceRepository');
+    const { rows, total } = await automationMarketplaceRepository.findAll(limit, offset, category);
+    return { automations: rows, total, limit, offset };
+  });
+
+  // POST /projects/:projectId/automations/:id/publish
+  fastify.post('/:projectId/automations/:id/publish', {
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+  }, async (request, reply) => {
+    const { id } = request.params as { projectId: string; id: string };
+    const user = request.user!;
+    // Resolve org info from user record
+    const { organizationRepository } = await import('../../database/OrganizationRepository');
+    let orgId = 'unknown';
+    let orgName = 'Unknown Organization';
+    const org = await organizationRepository.findByUserId(user.userId);
+    if (org) {
+      orgId = org.id;
+      orgName = org.name;
+    }
+    const entry = await automationService.publishToMarketplace(id, orgId, orgName, user.userId);
+    return reply.status(201).send({ marketplaceEntry: entry, message: 'Automation published to marketplace' });
+  });
+
+  // POST /projects/:projectId/automations/marketplace/:marketplaceId/import
+  fastify.post('/:projectId/automations/marketplace/:marketplaceId/import', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+  }, async (request, reply) => {
+    const { projectId, marketplaceId } = request.params as { projectId: string; marketplaceId: string };
+    const user = request.user!;
+    const automation = await automationService.importFromMarketplace(marketplaceId, projectId, user.userId);
+    return reply.status(201).send({ automation, message: 'Automation imported as draft' });
   });
 
   // POST /projects/:projectId/automations/:id/test (dry-run)

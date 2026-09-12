@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, Play, ToggleLeft, ToggleRight, Clock, CheckCircle, XCircle, AlertTriangle, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Pencil, Play, ToggleLeft, ToggleRight, Clock, CheckCircle, XCircle, AlertTriangle, BarChart3, Share2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface AutomationDetailProps {
@@ -88,6 +88,10 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
     onSuccess: (data) => setTestResult(data.dryRun),
   });
 
+  const publishMutation = useMutation({
+    mutationFn: () => apiService.publishToMarketplace(projectId, automationId),
+  });
+
   const automation = data?.automation;
   const executions: any[] = execData?.executions || [];
   const analytics = analyticsData?.analytics;
@@ -122,7 +126,12 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
             <ArrowLeft className="w-5 h-5 text-gray-500" />
           </button>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{automation.name}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{automation.name}</h3>
+              {automation.scope === 'portfolio' && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium">Portfolio</span>
+              )}
+            </div>
             {automation.description && (
               <p className="text-sm text-gray-500 dark:text-gray-400">{automation.description}</p>
             )}
@@ -149,6 +158,15 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
             )}
           </button>
           <button
+            onClick={() => publishMutation.mutate()}
+            disabled={publishMutation.isPending || publishMutation.isSuccess}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 disabled:opacity-50"
+            title="Publish to marketplace"
+          >
+            <Share2 className="w-4 h-4" />
+            {publishMutation.isSuccess ? 'Published' : publishMutation.isPending ? 'Publishing...' : 'Publish'}
+          </button>
+          <button
             onClick={onEdit}
             className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
           >
@@ -159,12 +177,20 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
           <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">Status</div>
           <div className="mt-1">
             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[automation.status] || ''}`}>
               {automation.status.charAt(0).toUpperCase() + automation.status.slice(1)}
+            </span>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+          <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">Scope</div>
+          <div className="mt-1">
+            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${automation.scope === 'portfolio' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'}`}>
+              {automation.scope === 'portfolio' ? 'Portfolio' : 'Project'}
             </span>
           </div>
         </div>

@@ -3465,6 +3465,37 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     const response = await this.api.post(`/projects/${projectId}/automations/suggestions/${suggestionId}/apply`);
     return response.data;
   }
+
+  async getPortfolioAutomations(projectId: string) {
+    const response = await this.api.get(`/projects/${projectId}/automations/portfolio`);
+    return response.data;
+  }
+
+  async getGovernancePacks(projectId: string) {
+    const response = await this.api.get(`/projects/${projectId}/automations/governance-packs`);
+    return response.data;
+  }
+
+  async applyGovernancePack(projectId: string, packId: string) {
+    const response = await this.api.post(`/projects/${projectId}/automations/governance-packs/${packId}/apply`);
+    return response.data;
+  }
+
+  async getMarketplaceAutomations(projectId: string, limit = 50, offset = 0, category?: string) {
+    const response = await this.api.get(`/projects/${projectId}/automations/marketplace`, { params: { limit, offset, category } });
+    return response.data;
+  }
+
+  async publishToMarketplace(projectId: string, automationId: string) {
+    const response = await this.api.post(`/projects/${projectId}/automations/${automationId}/publish`);
+    return response.data;
+  }
+
+  async importFromMarketplace(projectId: string, marketplaceId: string) {
+    const response = await this.api.post(`/projects/${projectId}/automations/marketplace/${marketplaceId}/import`);
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Document Intelligence
   // -------------------------------------------------------------------------
