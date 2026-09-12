@@ -66,7 +66,7 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 1. Go to the login page (`/login`) and enter your username and password.
 2. Click **Sign In**. You will be redirected to the **Dashboard**.
 3. If your session expires, you will be returned to the login page automatically.
-4. Use **Forgot Password** if you need to reset your credentials.
+4. Use **Forgot Password** if you need to reset your credentials. A reset link is emailed to you (expires after 24 hours). Clicking the link and setting a new password automatically verifies your email address, so you will not be prompted to verify it again after a reset. If the reset link has expired or is invalid, the page shows a **"Request a new reset link"** button so you can request a fresh one without navigating away.
 
 ### First Login — Onboarding Wizard
 
@@ -2269,20 +2269,23 @@ Paid plan users (Consultant Basic, Consultant Pro, SME, and Enterprise) can invi
 3. Enter the invitee's email address and select which project(s) they should have access to.
 4. Click **Send Invite**. The invitee receives an email with a link to create their free viewer account (link expires in 7 days).
 
-**Resending an invite:** If an invite expires or the recipient missed the email, go to the **Resources** page. Resources with a **Pending** or **Expired** status badge will show a **Resend** link. Clicking it sends a fresh invite email with a new 7-day link. If the person already has an account, the invite link will direct them to sign in instead of register, and the invite is accepted automatically after login.
+**Resending an invite:** If an invite expires or the recipient missed the email, go to the **Resources** page. Resources with a **Pending** or **Expired** status badge will show a **Resend** link. Clicking it generates a new 7-day token and sends a fresh invite email. Accepted and revoked invites cannot be resent.
+
+**Existing users:** If the invitee already has an account, clicking the invite link redirects them to the login page (not the registration page). After signing in, the invite is automatically accepted — no separate confirmation step is needed.
 
 **What viewers can do:**
 
 - View any project they have been explicitly invited to (read-only).
-- Update RAID items (risks, actions, issues, decisions, assumptions, dependencies) that are assigned to them.
+- Update RAID items (risks, actions, issues, decisions, assumptions, dependencies) that are assigned to them as owner — including changing status, editing fields, posting updates, and editing or deleting their own updates.
 
 **What viewers cannot do:**
 
+- Create, cancel, or reverse RAID items.
 - Create or edit projects, tasks, schedules, or resources.
 - Access projects they have not been invited to.
 - Invite other users.
 
-Viewer accounts do not count against your paid seat count and cannot be upgraded to full seats from the viewer invitation flow.
+Viewer accounts do not count against your paid seat count and cannot be upgraded to full seats from the viewer invitation flow. Viewers never consume a seat regardless of how many RAID items they manage.
 
 Destructive actions throughout the application (deleting integrations, change requests, intake forms, report templates, goals, lessons, API keys, and webhooks) use a consistent styled confirmation modal instead of the browser's native dialog, providing a cleaner experience that respects the application's design and dark mode.
 
@@ -2708,6 +2711,8 @@ Click the **Import** button in the RAID toolbar to bulk-load items from a CSV or
 Imported items are tagged with **source: Import** and appear in the RAID log immediately. Maximum 200 rows per import.
 
 **All team members** can raise RAID items — open identification of risks, issues, actions, assumptions, dependencies, and decisions is encouraged per PMI/PRINCE2 governance best practice.
+
+> **Viewer accounts:** Viewers cannot create, cancel, or reverse RAID items. However, if a viewer is listed as the **assigned owner** of a RAID item, they can update its status, edit its fields, post updates, and edit or delete their own updates on that item. This lets external stakeholders (e.g., a vendor who owns a risk) manage their assigned items without needing a paid seat.
 
 ### Triage Workflow
 

@@ -1333,7 +1333,7 @@ All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the
 - **Task highlight on creation** — When Mjuzi creates a task, the new task is automatically selected, scrolled into view, and highlighted with a yellow flash for 3 seconds so the user can immediately see where it was placed.
 - **Delete cleanup** — When Mjuzi deletes a task that is currently selected, the selection is automatically cleared to prevent stale UI state.
 - **Tenant-scoped conversations** — Chat conversations are stored in the tenant database (not the shared control plane), ensuring proper multi-tenant data isolation.
-- **Knowledge Base search** — Mjuzi has a `search_knowledge_base` tool that searches embedded product documentation via RAG (Retrieval-Augmented Generation). When users ask how-to questions ("how do I create a subtask?", "where is the Gantt chart?"), Mjuzi searches the indexed documentation instead of guessing. Documentation from USER_GUIDE.md, PRODUCT_MANUAL.md, WORLD_CLASS_FEATURES.md, ADMIN_MANUAL.md, and AI_DESIGN_FEATURES.md is chunked by section heading, embedded via OpenAI text-embedding-3-small, and stored in the `knowledge_base_chunks` table with vector embeddings in the `embeddings` table. Admins can trigger a reindex via `POST /api/v1/admin/knowledge-base/reindex` after doc changes.
+- **Knowledge Base search** — Mjuzi has a `search_knowledge_base` tool that searches embedded product documentation via RAG (Retrieval-Augmented Generation). When users ask how-to questions ("how do I create a subtask?", "where is the Gantt chart?"), Mjuzi searches the indexed documentation instead of guessing. Documentation from USER_GUIDE.md, PRODUCT_MANUAL.md, WORLD_CLASS_FEATURES.md, ADMIN_MANUAL.md, and AI_DESIGN_FEATURES.md is chunked by section heading (max 800 words per chunk to stay within OpenAI's 8192-token embedding limit), embedded via OpenAI text-embedding-3-small, and stored in the `knowledge_base_chunks` table with vector embeddings in the `embeddings` table. Admins can trigger a reindex via `POST /api/v1/admin/knowledge-base/reindex` after doc changes.
 
 ### AI Reports
 
@@ -1814,7 +1814,7 @@ The `WebhookService` allows registering outbound webhook endpoints that fire on 
 - **JWT tokens**: issued on login, stored in HttpOnly cookies with configurable expiration
 - **Password hashing**: bcrypt with configurable salt rounds
 - **Registration**: username, email, password, full name
-- **Password reset**: token-based email flow via `EmailService`
+- **Password reset**: token-based email flow via `EmailService`. Successfully completing a reset (clicking the link and setting a new password) auto-sets `email_verified = true`, so users are never stranded by an email-verification gate after a reset. If the reset token is expired or invalid, the ResetPassword page shows a **"Request a new reset link"** prompt instead of a dead-end error.
 - **Session management**: refresh token rotation
 - **OAuth 2.1**: PKCE-based authorization for MCP HTTP transport (per-user access from Claude Desktop/Web)
 
@@ -1987,12 +1987,16 @@ Paid subscribers (Consultant, SME, and Enterprise tiers) can invite external cli
 
 **What viewers can do:**
 - View any project they have been explicitly invited to (project name, status, progress, milestones, budget summary)
-- Update RAID items where they are listed as the owner (status transitions only — the `viewer` user role restricts write access to owned RAID items exclusively)
+- Update RAID items (risks, issues, actions, decisions, assumptions, dependencies) where they are listed as the assigned owner — including status transitions, inline field edits, posting updates, and editing/deleting their own updates
+- Add comments and updates on their assigned RAID items
 
 **What viewers cannot do:**
+- Create, cancel, or reverse RAID items
 - Create or delete projects, tasks, or any other entities
 - Access projects they have not been invited to
 - Access administrative settings, reports, API keys, or billing
+
+Viewers remain free and do not consume a paid seat regardless of RAID activity. This lets external stakeholders (e.g., risk owners, vendors) manage the items assigned to them without requiring an upgraded account.
 
 **Invite flow:**
 1. A paid user navigates to **Settings → Viewer Invites** (or the project's Members tab).
@@ -2000,10 +2004,10 @@ Paid subscribers (Consultant, SME, and Enterprise tiers) can invite external cli
 3. The system checks the inviting user's remaining invite quota. If the quota is exhausted, the invite is blocked with a clear upgrade prompt.
 4. An invitation email is sent to the invitee (7-day expiry). If the email does not match an existing account, a viewer account is auto-provisioned on first acceptance.
 5. The invitee clicks the link and sees the registration page with messaging that says **"You've been invited to join this organization"** (not "invited as a viewer"). They complete registration (password only — no billing) and land on a read-only project view.
-6. If the invitee already has an account, the registration page shows **"An account with this email already exists"** with a **"Sign in to accept the invitation"** link. After signing in, the invite is automatically accepted.
+6. If the invitee already has an account, they are redirected to the login page instead of the registration page. After logging in with `?invite=TOKEN` in the URL, the invite is automatically accepted — no separate accept step required.
 7. The inviting user can revoke access at any time from their invite management panel.
 
-**Resend invite:** On the **Resources** page, resources with Pending or Expired invite status show a **Resend** link next to the status badge. Clicking it generates a new token, resets the 7-day expiry window, and sends a fresh invite email. Resend is rate-limited to 20 per minute per user. Accepted and revoked invites cannot be resent.
+**Resend invite:** On the **Resources** page, resources with Pending or Expired invite status show a **Resend** link next to the status badge. Clicking it generates a new token, resets the 7-day expiry window, and sends a fresh invite email. Resend is rate-limited to 20 per minute per user. Accepted and revoked invites cannot be resent. API: `POST /api/v1/invites/:id/resend`.
 
 **Role:** Invited viewers receive the `viewer` system role. This role has read scope only, plus the ability to update RAID items they own (see Section 45 for RAID role-based permissions).
 
@@ -3156,6 +3160,9 @@ Click **Generate Report** to produce the report with the selected filters applie
 | `finance_officer` | No | No | No | No | No | No | No | No |
 | `executive` | No | No | No | No | No | No | No | No |
 | `qa` / `tester` / `devops` / `claude_sme` | No | No | No | No | No | No | No | No |
+| `viewer` | No | No | No | No | No | No | No | No |
+
+`viewer` note: Viewers cannot create, cancel, or reverse RAID items. However, viewers who are listed as the **assigned owner** of a RAID item can update its status, edit inline fields, post updates, and edit/delete their own updates on that item.
 
 Reverse (decision reversal) is restricted to `admin` only regardless of project membership role.
 
