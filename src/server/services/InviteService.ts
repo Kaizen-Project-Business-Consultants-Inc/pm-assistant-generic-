@@ -197,7 +197,9 @@ export class InviteService {
     const inviter = await userService.findById(userId);
     emailService.sendViewerInviteEmail(
       invite.email, org.name, inviter?.fullName || 'Team member', invite.projectId, newToken,
-    ).catch(err => {
+    ).then(() => {
+      logger.info('Resend invite email sent successfully', { email: invite.email, inviteId });
+    }).catch(err => {
       logger.error('Failed to send resend invite email', { email: invite.email, error: err });
     });
   }
