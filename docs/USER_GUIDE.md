@@ -3336,6 +3336,57 @@ On the **Automations** list page, a **Suggested Automations** section appears be
 
 Suggestions refresh automatically when you load the page. They are specific to the project you are viewing and are not shared across projects.
 
+### Portfolio-Scope Automations
+
+By default, an automation watches only the project it belongs to. If you want a single rule to fire across **all projects in your organisation**, set the scope to **Portfolio** when creating or editing the automation.
+
+- The scope toggle appears in the automation form below the rule name.
+- Portfolio-scoped automations are shown with a purple **Portfolio** badge in the automation list.
+- Requires manager role or above. Viewers and editors can see portfolio automations but cannot create or edit them.
+
+### Governance Packs
+
+Governance Packs are ready-made automation bundles for common PM processes. Instead of building rules from scratch, you can apply a pack and get several draft automations at once.
+
+**To apply a pack:**
+
+1. Open the **Automations** tab and expand the **Governance Packs** section.
+2. Choose the pack that matches your workflow:
+   - **Change Control** — notifications and audit trails for change requests.
+   - **Risk Management** — alerts and escalations for critical and high risks.
+   - **Quality Assurance** — milestone, sprint, and task completion tracking.
+   - **Budget Oversight** — notifications for large time entries and project status changes.
+3. Click **Apply Pack**. The automations are created as drafts.
+4. Review each draft in the list, adjust settings if needed, then enable the ones you want.
+
+Packs are idempotent — applying the same pack a second time will not create duplicates.
+
+### Automation Marketplace
+
+The Marketplace lets you share polished automations with other teams in your organisation and import automations that others have shared.
+
+**Publishing an automation:**
+
+1. Open the automation detail view and click **Publish to Marketplace**.
+2. Confirm the name and description. The automation is listed in the Marketplace for all tenants to browse.
+
+**Importing from the Marketplace:**
+
+1. On the Automations tab, click **Browse Marketplace**.
+2. Find an automation you want and click **Import**. A draft copy is added to your project.
+3. Review the imported rule, customise it for your project, and enable it.
+
+Download counts are shown on each listing so you can see which automations are popular.
+
+### Lessons Learned Actions
+
+Two action types connect automations to the Lessons Learned module:
+
+- **Apply Lesson** — when the automation fires, the system finds relevant lessons from your organisation's knowledge base and sends them as a notification to the recipients you choose. Useful for surfacing past learnings at the moment a similar situation arises (e.g., a new risk is created).
+- **Extract Lesson** — triggers an AI-powered lesson extraction for the project based on the event that fired. The extracted lesson is created as a candidate for review in the Lessons Learned section.
+
+Both actions are configured the same way as other action types in the automation form.
+
 ---
 
 ## 40. Document Intelligence

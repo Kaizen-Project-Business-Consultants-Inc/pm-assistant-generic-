@@ -4161,6 +4161,79 @@ The system analyzes the current project state and surfaces relevant automation s
 
 **Dismissing a suggestion** hides it for 30 days via a Redis-backed dismissal record keyed to the project and suggestion template. Dismissed suggestions reappear automatically after 30 days.
 
+### Phase 3: Cross-Project Automations, Governance Packs, Marketplace & Lessons Integration
+
+#### Cross-Project (Portfolio) Automations
+
+Automations now support a `scope` field: `project` (default, existing behaviour) or `portfolio`. A portfolio-scoped automation belongs to one project but fires for matching trigger events across **any** project in the tenant.
+
+- **Scope toggle** — the create/edit form includes a Scope selector. Choosing **Portfolio** turns the automation purple in the list and adds a "Portfolio" badge next to the rule name.
+- **Scope card** — the automation detail view shows the scope prominently so it is always clear whether a rule is project-local or tenant-wide.
+- **Use case:** a single "Escalate critical risks" rule can watch all projects for critical risk creation rather than requiring one copy per project.
+- **Authorization:** only users with the `manager` role or above can create or edit portfolio-scoped automations.
+
+#### Governance Packs
+
+Pre-built automation bundles that encode common PM governance patterns. Applied from a collapsible **Governance Packs** section in the automations list. Applying a pack creates all automations in the pack as **drafts** (disabled) so the user can review and adjust before enabling.
+
+Four packs are available:
+
+| Pack | Automations included |
+|------|---------------------|
+| **Change Control** (3) | Notify on CR created; escalate CR rejected (portfolio); audit CR approved |
+| **Risk Management** (3) | Notify on critical risk created; escalate high risks (portfolio); audit risk status changes |
+| **Quality Assurance** (3) | Notify on milestone completion; escalate incomplete sprint; audit task completion |
+| **Budget Oversight** (2) | Notify on time entries > 8 h; audit project status changes |
+
+**Applying a pack** requires the `manager` role or above. Packs are idempotent — applying the same pack twice does not create duplicates.
+
+#### Automation Marketplace
+
+A tenant-to-tenant sharing layer that lets any user publish a well-crafted automation and import community automations into their own project.
+
+- **Publishing** — from the automation detail view, click **Publish to Marketplace**. The automation definition (trigger, conditions, actions, name, description) is copied to the control-plane `automation_marketplace` table, attributed to the publishing tenant and user.
+- **Browsing** — in the automations list, click **Browse Marketplace** to open the marketplace panel. Automations are listed with name, description, author, download count, and star rating.
+- **Importing** — click **Import** on any marketplace listing. A draft automation is created in the current project pre-populated with the marketplace definition. The download count increments.
+- **Download count** — tracked on the `automation_marketplace` table; displayed in the marketplace panel and in the publishing user's detail view.
+
+#### Lessons Learned Action Types
+
+Two new action types extend the automation engine's integration with the Lessons Learned module:
+
+| Action | Description |
+|--------|-------------|
+| `apply_lesson` | Finds lessons relevant to the trigger event context and sends a notification containing the lesson summaries to the specified recipients |
+| `extract_lesson` | Triggers AI lesson extraction for the project based on the trigger event, creating a new lesson candidate for review |
+
+**`apply_lesson` parameters:**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `recipients` | Yes | Dynamic tokens or email addresses to receive the lesson notification |
+| `maxLessons` | No (default 3) | Maximum number of relevant lessons to include |
+
+**`extract_lesson` parameters:**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `category` | No | Force the extracted lesson into a specific category (e.g., `risk`, `quality`) |
+
+A sixth AI suggestion template is added: **Surface Lessons on New Risk** — when a risk is created, apply relevant lessons from the knowledge base to the risk owner.
+
+### Updated Action Count
+
+The engine now supports **14 action types**: the original 12 (create_task, notify, send_email, add_risk, change_status, update_field, add_comment, escalate, call_webhook, log_audit, auto_assign, ai_generate) plus `apply_lesson` and `extract_lesson`.
+
+### Additional API Endpoints (Phase 3)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/governance-packs` | List available governance packs |
+| POST | `/governance-packs/:packId/apply` | Apply a governance pack (creates draft automations) |
+| POST | `/:id/publish` | Publish an automation to the marketplace |
+| GET | `/marketplace` | Browse marketplace listings |
+| POST | `/marketplace/:listingId/import` | Import a marketplace automation as a draft |
+
 ## 59. Document Intelligence
 
 An AI-powered document management system that ingests, classifies, summarizes, and enables intelligent search across project documents.

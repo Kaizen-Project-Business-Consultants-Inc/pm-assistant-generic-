@@ -741,6 +741,42 @@ Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully 
 
 ---
 
+### 5.14 Automation Engine — Phase 3 (Cross-Project, Governance, Marketplace, Lessons)
+
+#### Cross-Project (Portfolio) Automations
+- New `scope` field on automations: `'project'` (default) | `'portfolio'`
+- Portfolio-scoped automations fire for matching trigger events in **any** project within the tenant — one rule covers the entire portfolio
+- UI: scope toggle in create/edit form; purple "Portfolio" badge in automation list; scope summary card in detail view
+- Authorization gated to `manager` role and above for portfolio scope
+- **Benchmark:** No major PM tool offers tenant-wide event-driven automation scope; Zapier Tables comes closest but requires cross-workspace configuration
+
+#### Governance Packs
+- 4 pre-built automation bundles encoding standard PM governance patterns, applied in one click
+- **Change Control** (3 automations): notify on CR created, escalate CR rejected (portfolio-scoped), audit CR approved
+- **Risk Management** (3 automations): notify on critical risk, escalate high risks (portfolio-scoped), audit risk status changes
+- **Quality Assurance** (3 automations): notify on milestone completion, escalate incomplete sprint, audit task completion
+- **Budget Oversight** (2 automations): notify on large time entries (> 8 h), audit project status changes
+- Applied as **drafts** — manager reviews and enables; idempotent (no duplicate creation on re-apply)
+- UI: collapsible "Governance Packs" section in the automations list
+- **Benchmark:** Monday.com has no governance bundles; this is a novel capability for SME/Enterprise PM
+
+#### Automation Marketplace
+- Tenant-to-tenant automation sharing via control-plane `automation_marketplace` table
+- **Publish** from detail view — copies trigger/conditions/actions + metadata (name, description, author)
+- **Browse** from list view — shows download count, author attribution, and star rating
+- **Import** creates a local draft pre-populated from marketplace definition; download count increments atomically
+- **Benchmark:** Zapier has a template library; this is the PM-native equivalent with native project context
+
+#### Lessons Learned Action Types
+- Two new action types: `apply_lesson` (finds relevant lessons and notifies recipients) and `extract_lesson` (triggers AI lesson extraction for the project)
+- `apply_lesson`: `recipients` (dynamic tokens or emails) + `maxLessons` (default 3)
+- `extract_lesson`: optional `category` to force classification of the extracted lesson
+- Sixth AI suggestion template: **Surface Lessons on New Risk** — auto-surfaces relevant past lessons when a new risk is created
+- Total action types: **14** (up from 12)
+- **Benchmark:** No PM automation platform integrates lessons-learned surfacing as a first-class action type; novel capability
+
+---
+
 ## Launch Offer & Founders Program
 
 ### Specs
