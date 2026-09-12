@@ -67,7 +67,7 @@ export function AgentProposalsWidget({ agentIds }: AgentProposalsWidgetProps) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 text-primary-500" />
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Agent Proposals</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Agent Proposals</h3>
         </div>
         <Link
           to="/agent"

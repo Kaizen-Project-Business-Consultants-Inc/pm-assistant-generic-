@@ -104,9 +104,9 @@ function PrioritiesList({ projects }: { projects: Array<{ id: string; name: stri
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-1.5 mb-3">
         <CalendarClock className="w-3.5 h-3.5 text-gray-400" />
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
           Today's Priorities
-        </p>
+        </h4>
       </div>
 
       {rows.length === 0 ? (
@@ -237,9 +237,9 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-1.5 mb-3">
         <Zap className="w-3.5 h-3.5 text-primary-500" />
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
           AI Next Best Actions
-        </p>
+        </h4>
       </div>
 
       {sorted.length === 0 ? (

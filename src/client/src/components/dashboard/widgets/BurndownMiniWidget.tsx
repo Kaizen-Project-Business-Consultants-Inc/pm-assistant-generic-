@@ -25,7 +25,7 @@ export function BurndownMiniWidget() {
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
         <div className="flex items-center gap-2 mb-3">
           <TrendingDown className="w-4 h-4 text-primary-500" />
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Project Progress</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Project Progress</h3>
         </div>
         <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-4">No active projects</p>
       </div>
@@ -40,7 +40,7 @@ export function BurndownMiniWidget() {
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
       <div className="flex items-center gap-2 mb-3">
         <TrendingDown className="w-4 h-4 text-primary-500" />
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Project Progress</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Project Progress</h3>
       </div>
 
       <div className="space-y-2 max-h-[240px] overflow-y-auto">

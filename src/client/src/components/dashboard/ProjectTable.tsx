@@ -186,7 +186,7 @@ export function ProjectTable({ projects }: Props) {
     const active = sortable !== undefined && sortKey === sortable;
     return (
       <th
-        className={`px-3 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap ${col ?? ''} ${sortable ? 'cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200' : ''}`}
+        className={`px-3 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap ${col ?? ''} ${sortable ? 'cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200' : ''}`}
         onClick={sortable ? () => handleSort(sortable) : undefined}
       >
         <span className="inline-flex items-center gap-1">

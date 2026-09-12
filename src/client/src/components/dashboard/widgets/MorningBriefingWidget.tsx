@@ -48,7 +48,7 @@ export function MorningBriefingWidget({ scope }: Props) {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center gap-2">
           <Sun className="w-4 h-4 text-amber-500" />
-          <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">Morning Briefing</span>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Morning Briefing</h3>
         </div>
         <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">No briefing data available.</p>
       </div>
@@ -76,7 +76,7 @@ export function MorningBriefingWidget({ scope }: Props) {
       >
         <div className="flex items-center gap-2">
           <Sun className="w-4 h-4 text-amber-500" />
-          <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">Morning Briefing</span>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Morning Briefing</h3>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 dark:text-gray-400">{today}</span>
@@ -89,7 +89,7 @@ export function MorningBriefingWidget({ scope }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-700">
           {/* ON FIRE */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wide mb-2">On Fire</h3>
+            <h3 className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide mb-2">On Fire</h3>
             {overdueCount === 0 && criticalRisks === 0 ? (
               <p className="text-xs text-gray-400 dark:text-gray-500">Nothing on fire today</p>
             ) : (
@@ -119,7 +119,7 @@ export function MorningBriefingWidget({ scope }: Props) {
 
           {/* NEEDS YOUR DECISION */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-2">Needs Your Decision</h3>
+            <h3 className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-2">Needs Your Decision</h3>
             <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
               {pendingCRs > 0 && (
                 <li>
@@ -150,7 +150,7 @@ export function MorningBriefingWidget({ scope }: Props) {
 
           {/* DUE SOON */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">Due Soon</h3>
+            <h3 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">Due Soon</h3>
             {dueTodayCount === 0 && dueWeekCount === 0 && milestoneCount === 0 ? (
               <p className="text-xs text-gray-400 dark:text-gray-500">Nothing due soon</p>
             ) : (
@@ -176,7 +176,7 @@ export function MorningBriefingWidget({ scope }: Props) {
 
           {/* PORTFOLIO PULSE */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wide mb-2">Portfolio Pulse</h3>
+            <h3 className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide mb-2">Portfolio Pulse</h3>
             <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
               <li>
                 <span className="text-green-600 dark:text-green-400 font-medium">{health.green}</span> green

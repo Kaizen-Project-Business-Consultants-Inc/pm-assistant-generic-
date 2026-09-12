@@ -65,7 +65,7 @@ export function StandupSummaryWidget({ projects }: Props) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <button onClick={toggle} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <ClipboardList className="w-4 h-4 text-indigo-500" />
-          <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">Standup Summary</span>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Standup Summary</h3>
           {collapsed ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronUp className="w-4 h-4 text-gray-400" />}
         </button>
         <div className="flex items-center gap-2">
@@ -167,7 +167,7 @@ function Section({ icon: Icon, title, color, items, render }: {
     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
       <div className="flex items-center gap-1.5 mb-2">
         <Icon className={`w-3.5 h-3.5 ${colorMap[color] || 'text-gray-500'}`} />
-        <h4 className={`text-xs font-bold uppercase tracking-wide ${colorMap[color] || 'text-gray-500'}`}>
+        <h4 className={`text-xs font-semibold uppercase tracking-wide ${colorMap[color] || 'text-gray-500'}`}>
           {title} ({items.length})
         </h4>
       </div>

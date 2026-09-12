@@ -107,7 +107,7 @@ export function HealthTrendsWidget({ projects }: HealthTrendsWidgetProps) {
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
       <div className="flex items-center gap-2 mb-3">
         <Activity className="w-4 h-4 text-primary-500" />
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Health Trends</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Health Trends</h3>
       </div>
 
       {activeProjects.length === 0 ? (
