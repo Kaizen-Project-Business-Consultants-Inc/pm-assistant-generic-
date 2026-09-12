@@ -79,6 +79,11 @@ export const ResetPasswordPage: React.FC = () => {
             {error && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
                 <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-2">
+                  <Link to="/forgot-password" className="underline font-medium hover:text-red-800 dark:hover:text-red-300">
+                    Request a new reset link
+                  </Link>
+                </p>
               </div>
             )}
 

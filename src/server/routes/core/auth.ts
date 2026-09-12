@@ -608,6 +608,10 @@ export async function authRoutes(fastify: FastifyInstance) {
         passwordResetToken: null,
         passwordResetExpires: null,
         tokenVersion: (user.tokenVersion ?? 0) + 1,
+        // Clicking a reset link from email proves ownership — auto-verify
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
       });
 
       return { message: 'Password reset successful. You can now log in with your new password.' };
