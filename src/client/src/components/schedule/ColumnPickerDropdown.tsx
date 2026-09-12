@@ -144,19 +144,21 @@ export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleG
             );
           })}
           {(onResetOrder || onResetVisibility) && (
-            <div className="border-t border-gray-200 dark:border-gray-600 mt-1 pt-1.5 px-3 pb-1 flex items-center gap-3">
+            <div className="border-t border-gray-200 dark:border-gray-600 mt-1 pt-2 px-3 pb-2 flex items-center gap-3">
               {onResetVisibility && (
                 <button
-                  className="text-xs text-primary-600 hover:text-primary-700"
-                  onClick={onResetVisibility}
+                  type="button"
+                  className="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 underline"
+                  onClick={(e) => { e.stopPropagation(); onResetVisibility(); }}
                 >
                   Reset visibility
                 </button>
               )}
               {onResetOrder && (
                 <button
-                  className="text-xs text-primary-600 hover:text-primary-700"
-                  onClick={onResetOrder}
+                  type="button"
+                  className="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 underline"
+                  onClick={(e) => { e.stopPropagation(); onResetOrder(); }}
                 >
                   Reset order
                 </button>
