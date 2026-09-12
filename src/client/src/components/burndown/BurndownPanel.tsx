@@ -74,7 +74,7 @@ export function BurndownPanel({ scheduleId }: BurndownPanelProps) {
 
       {/* Burndown Chart */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Burndown / Burnup</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Burndown / Burnup</h3>
         <BurndownChart
           dataPoints={burndownData?.dataPoints || []}
           totalScope={totalScope}
@@ -83,7 +83,7 @@ export function BurndownPanel({ scheduleId }: BurndownPanelProps) {
 
       {/* Velocity Chart */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-1.5">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-1.5">
           <BarChart3 className="w-4 h-4 text-primary-500" /> Velocity Trend
         </h3>
         <VelocityChart

@@ -368,7 +368,7 @@ function EmptyState({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center">
       <BarChart3 className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
         Earned-value tracking isn't set up yet
       </h3>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
@@ -660,7 +660,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
       {/* ================================================================= */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary-500" />
             Project Performance (EVM)
           </h2>
@@ -745,7 +745,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
       {/* ================================================================= */}
       {historicalWeekly.length >= 2 && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
             Performance Trend
             <span className="font-normal text-gray-400 dark:text-gray-500 text-sm ml-2">
               CPI & SPI over time
@@ -807,7 +807,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
       {/* ================================================================= */}
       {Array.isArray(sCurvePoints) && sCurvePoints.length > 0 && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">S-Curve</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">S-Curve</h3>
           <SCurveChart data={sCurvePoints} />
         </div>
       )}

@@ -29,7 +29,7 @@ export function PrioritiesStripWidget() {
   return (
     <div className="card p-0 overflow-hidden">
       <div className="px-4 pt-3 pb-2">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
           Today's Priorities
         </h3>
       </div>

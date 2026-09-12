@@ -98,7 +98,7 @@ export function SprintsTab({ projectId }: { projectId: string }) {
     <div className="mt-6 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3 flex-wrap">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Sprint Planning</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Sprint Planning</h3>
           {/* Active sprint progress bar */}
           {activeSprint && activeProgress != null && (
             <div className="flex items-center gap-2">

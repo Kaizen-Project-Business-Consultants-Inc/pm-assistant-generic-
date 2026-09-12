@@ -50,7 +50,7 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Settings</h1>
+      <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Settings</h1>
 
       <div className="flex space-x-1 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto">
         {tabs.map((tab) => (

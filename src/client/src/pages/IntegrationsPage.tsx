@@ -206,7 +206,7 @@ export const IntegrationsPage: React.FC = () => {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <Plug className="h-7 w-7 text-primary-600 dark:text-primary-400" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
             External Integrations
           </h1>
         </div>

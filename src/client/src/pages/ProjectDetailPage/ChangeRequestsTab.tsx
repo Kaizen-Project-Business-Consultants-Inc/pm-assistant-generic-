@@ -47,7 +47,7 @@ export function ChangeRequestsTab({ projectId }: { projectId: string }) {
   return (
     <div className="mt-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Change Requests</h3>
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white">Change Requests</h3>
         <button
           onClick={() => setView('workflow')}
           className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800"

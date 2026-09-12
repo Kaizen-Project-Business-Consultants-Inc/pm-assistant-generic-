@@ -152,7 +152,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Inbox className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Backlog</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Backlog</h3>
           <span className="text-sm text-gray-500 dark:text-gray-400">
             {tasks.length} unassigned task{tasks.length !== 1 ? 's' : ''}
           </span>

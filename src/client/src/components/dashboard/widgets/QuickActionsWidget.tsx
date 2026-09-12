@@ -31,7 +31,7 @@ export function QuickActionsWidget() {
 
   return (
     <div className="card">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
         Quick Actions
       </h3>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">

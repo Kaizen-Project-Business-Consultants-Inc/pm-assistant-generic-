@@ -103,7 +103,7 @@ export function TimesheetPage() {
       {showLogForm && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-primary-200 dark:border-primary-700 p-5 space-y-4 shadow-sm dark:shadow-gray-900/30">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Log Time Entry</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Log Time Entry</h3>
             <button onClick={() => setShowLogForm(false)} className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300" aria-label="Close time log form"><X className="w-4 h-4" /></button>
           </div>
           <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-4'} gap-3`}>
@@ -232,7 +232,7 @@ export function TimesheetPage() {
 
           {selectedScheduleId && comparisonData?.tasks && (
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Actual vs Estimated Hours</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Actual vs Estimated Hours</h3>
               <ActualVsEstimatedChart tasks={comparisonData.tasks} />
             </div>
           )}
@@ -247,7 +247,7 @@ export function TimesheetPage() {
 
       {tab === 'approvals' && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Pending Timesheet Approvals</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Pending Timesheet Approvals</h3>
           <TimesheetApprovalPanel />
         </div>
       )}

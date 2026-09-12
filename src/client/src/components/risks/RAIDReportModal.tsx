@@ -145,7 +145,7 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-primary-500" />
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">RAID Report — {projectName}</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">RAID Report — {projectName}</h2>
           </div>
           <div className="flex items-center gap-2">
             {html && !isSample && (

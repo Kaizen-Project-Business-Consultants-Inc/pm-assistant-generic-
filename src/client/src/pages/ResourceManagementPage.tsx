@@ -982,11 +982,11 @@ export function ResourceManagementPage() {
       {activeTab === 'requests' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Resource Requests</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Resource Requests</h3>
             <ResourceRequestList projectId={selectedProjectId || undefined} />
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Pending Approvals</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Pending Approvals</h3>
             <ResourceRequestApprovalPanel />
           </div>
         </div>

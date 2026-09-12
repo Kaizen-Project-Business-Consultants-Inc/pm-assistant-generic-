@@ -62,7 +62,7 @@ export function SetupChecklist({ project, onNavigate }: SetupChecklistProps) {
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <Rocket className="w-5 h-5 text-primary-600" />
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white">Get Started</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Get Started</h3>
           <span className="text-xs text-gray-500 dark:text-gray-400">{completedCount}/{items.length} complete</span>
         </div>
         <button onClick={() => setDismissed(true)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">

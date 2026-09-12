@@ -53,7 +53,7 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
                 {resource.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{resource.name}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{resource.name}</h3>
                 <p className="text-sm text-gray-500">{resource.role}</p>
                 <p className="text-xs text-gray-400">{resource.email}</p>
               </div>
