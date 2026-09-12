@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Trash2, GripVertical, Save, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, GripVertical, Save, Sparkles, Wand2, Clock } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface AutomationFormProps {
@@ -27,6 +27,25 @@ interface ConditionGroup {
   logic: 'and' | 'or';
   conditions: (ConditionRule | ConditionGroup)[];
 }
+
+interface ScheduleConfig {
+  type: string;
+  intervalMinutes?: number;
+  time?: string;
+  dayOfWeek?: number;
+  dayOfMonth?: number;
+  expression?: string;
+}
+
+const SCHEDULE_TRIGGER_TYPES = ['schedule.interval', 'schedule.daily', 'schedule.weekly', 'schedule.monthly', 'schedule.cron'];
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const COMMON_TIMEZONES = [
+  'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'America/Toronto', 'America/Vancouver', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
+  'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Kolkata', 'Australia/Sydney', 'Pacific/Auckland',
+];
 
 interface ParamDef {
   key: string;
@@ -406,10 +425,14 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
   const [scope, setScope] = useState<'project' | 'portfolio'>('project');
   const [maxRunsPerDay, setMaxRunsPerDay] = useState(50);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(null);
+  const [timezone, setTimezone] = useState('UTC');
   const [error, setError] = useState<string | null>(null);
   const [aiMode, setAiMode] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiError, setAiError] = useState<string | null>(null);
+
+  const isScheduled = SCHEDULE_TRIGGER_TYPES.includes(triggerEventType);
 
   // Load event types catalog
   const { data: catalog } = useQuery({
@@ -420,6 +443,13 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
 
   const eventTypes: any[] = catalog?.eventTypes || [];
   const fieldCatalog: Record<string, any[]> = catalog?.fieldCatalog || {};
+
+  // Group event types: event-driven vs schedule-driven
+  const { eventDrivenTypes, scheduleDrivenTypes } = useMemo(() => {
+    const eventDriven = eventTypes.filter((e: any) => !SCHEDULE_TRIGGER_TYPES.includes(e.type));
+    const scheduled = eventTypes.filter((e: any) => SCHEDULE_TRIGGER_TYPES.includes(e.type));
+    return { eventDrivenTypes: eventDriven, scheduleDrivenTypes: scheduled };
+  }, [eventTypes]);
 
   // Derive entity type from selected trigger
   const selectedEvent = eventTypes.find((e: any) => e.type === triggerEventType);
@@ -447,6 +477,8 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
       setCooldownSeconds(a.cooldownSeconds ?? 0);
       if (a.definition?.conditions) setConditions(a.definition.conditions);
       if (a.definition?.actions) setActions(a.definition.actions);
+      if (a.scheduleConfig) setScheduleConfig(a.scheduleConfig);
+      if (a.timezone) setTimezone(a.timezone);
     }
   }, [existing]);
 
@@ -487,6 +519,8 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
     if (actions.length === 0) { setError('At least one action is required'); return; }
     setError(null);
 
+    if (isScheduled && !scheduleConfig) { setError('Schedule configuration is required for scheduled triggers'); return; }
+
     const payload: Record<string, unknown> = {
       name: name.trim(),
       description: description.trim() || undefined,
@@ -494,6 +528,8 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
       scope,
       maxRunsPerDay,
       cooldownSeconds,
+      scheduleConfig: isScheduled ? scheduleConfig : null,
+      timezone: isScheduled ? timezone : undefined,
       definition: {
         conditions: conditions.conditions.length > 0 ? conditions : undefined,
         actions: actions.map((a, i) => ({ ...a, runOrder: i })),
@@ -625,17 +661,161 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Type *</label>
           <select
             value={triggerEventType}
-            onChange={(e) => setTriggerEventType(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setTriggerEventType(val);
+              if (SCHEDULE_TRIGGER_TYPES.includes(val)) {
+                const schedType = val.replace('schedule.', '');
+                setScheduleConfig(
+                  schedType === 'interval' ? { type: 'interval', intervalMinutes: 30 }
+                  : schedType === 'daily' ? { type: 'daily', time: '09:00' }
+                  : schedType === 'weekly' ? { type: 'weekly', dayOfWeek: 1, time: '09:00' }
+                  : schedType === 'monthly' ? { type: 'monthly', dayOfMonth: 1, time: '09:00' }
+                  : { type: 'cron', expression: '0 9 * * 1-5' }
+                );
+              } else {
+                setScheduleConfig(null);
+              }
+            }}
             className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
-            {eventTypes.map((et: any) => (
-              <option key={et.type} value={et.type}>
-                {et.type} — {et.description}
-              </option>
-            ))}
+            {eventDrivenTypes.length > 0 && (
+              <optgroup label="Event-Driven">
+                {eventDrivenTypes.map((et: any) => (
+                  <option key={et.type} value={et.type}>
+                    {et.type} — {et.description}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {scheduleDrivenTypes.length > 0 && (
+              <optgroup label="Scheduled (Time-Based)">
+                {scheduleDrivenTypes.map((et: any) => (
+                  <option key={et.type} value={et.type}>
+                    {et.type} — {et.description}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
       </div>
+
+      {/* Schedule Configuration */}
+      {isScheduled && scheduleConfig && (
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-primary-600" />
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Schedule Configuration</h4>
+          </div>
+
+          {scheduleConfig.type === 'interval' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Run every (minutes)</label>
+              <input
+                type="number"
+                min={1} max={1440}
+                value={scheduleConfig.intervalMinutes ?? 30}
+                onChange={(e) => setScheduleConfig({ ...scheduleConfig, intervalMinutes: Math.max(1, Math.min(1440, parseInt(e.target.value) || 1)) })}
+                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">1 = every minute, 60 = every hour, 1440 = once daily</p>
+            </div>
+          )}
+
+          {scheduleConfig.type === 'daily' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
+              <input
+                type="time"
+                value={scheduleConfig.time ?? '09:00'}
+                onChange={(e) => setScheduleConfig({ ...scheduleConfig, time: e.target.value })}
+                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
+            </div>
+          )}
+
+          {scheduleConfig.type === 'weekly' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Week</label>
+                <select
+                  value={scheduleConfig.dayOfWeek ?? 1}
+                  onChange={(e) => setScheduleConfig({ ...scheduleConfig, dayOfWeek: parseInt(e.target.value) })}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                >
+                  {DAY_NAMES.map((name, idx) => (
+                    <option key={idx} value={idx}>{name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
+                <input
+                  type="time"
+                  value={scheduleConfig.time ?? '09:00'}
+                  onChange={(e) => setScheduleConfig({ ...scheduleConfig, time: e.target.value })}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+          )}
+
+          {scheduleConfig.type === 'monthly' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Month</label>
+                <input
+                  type="number"
+                  min={1} max={31}
+                  value={scheduleConfig.dayOfMonth ?? 1}
+                  onChange={(e) => setScheduleConfig({ ...scheduleConfig, dayOfMonth: Math.max(1, Math.min(31, parseInt(e.target.value) || 1)) })}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
+                <input
+                  type="time"
+                  value={scheduleConfig.time ?? '09:00'}
+                  onChange={(e) => setScheduleConfig({ ...scheduleConfig, time: e.target.value })}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+          )}
+
+          {scheduleConfig.type === 'cron' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cron Expression</label>
+              <input
+                type="text"
+                value={scheduleConfig.expression ?? ''}
+                onChange={(e) => setScheduleConfig({ ...scheduleConfig, expression: e.target.value })}
+                placeholder="0 9 * * 1-5"
+                className="w-full text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                5-field format: minute hour day-of-month month day-of-week. Example: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">0 9 * * 1-5</code> = weekdays at 9:00 AM
+              </p>
+            </div>
+          )}
+
+          {/* Timezone */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timezone</label>
+            <select
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            >
+              {COMMON_TIMEZONES.map((tz) => (
+                <option key={tz} value={tz}>{tz}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Conditions */}
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">

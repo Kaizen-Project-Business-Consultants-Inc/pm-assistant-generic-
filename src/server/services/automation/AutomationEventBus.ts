@@ -144,6 +144,14 @@ export class AutomationEventBus {
     logger.info(`[AutomationEventBus] Automation ${automation.id} executed: ${actionsExecuted} OK, ${actionsFailed} failed, ${durationMs}ms`);
   }
 
+  /**
+   * Run a specific scheduled automation directly (called by the scheduled runner).
+   * Bypasses the emit → query cycle since the runner already knows which automation is due.
+   */
+  async runScheduled(automation: AutomationRule, event: AutomationEvent): Promise<void> {
+    return this.processAutomation(automation, event);
+  }
+
   async dryRun(automation: AutomationRule, event: AutomationEvent): Promise<{
     conditionsMet: boolean;
     conditionTrace?: import('./types').ConditionTraceNode;

@@ -1,8 +1,11 @@
 import { automationRepository } from '../../database/AutomationRepository';
 import { automationExecutionRepository } from '../../database/AutomationExecutionRepository';
 import { AUTOMATION_EVENT_TYPES } from './eventTypes';
-import type { AutomationRule, AutomationDefinition, AutomationStatus, AutomationExecution } from './types';
+import { computeNextRun } from './computeNextRun';
+import type { AutomationRule, AutomationDefinition, AutomationStatus, AutomationExecution, ScheduleConfig } from './types';
 import logger from '../../utils/logger';
+
+const SCHEDULE_EVENT_TYPES = ['schedule.interval', 'schedule.daily', 'schedule.weekly', 'schedule.monthly', 'schedule.cron'];
 
 export class AutomationService {
   async create(projectId: string, data: {
@@ -13,10 +16,15 @@ export class AutomationService {
     triggerEntityType?: string;
     scope?: 'project' | 'portfolio';
     definition: AutomationDefinition;
+    scheduleConfig?: ScheduleConfig | null;
+    timezone?: string;
     maxRunsPerDay?: number;
     cooldownSeconds?: number;
   }): Promise<AutomationRule> {
     this.validateDefinition(data.triggerEventType, data.definition);
+    if (SCHEDULE_EVENT_TYPES.includes(data.triggerEventType) && data.scheduleConfig) {
+      this.validateScheduleConfig(data.triggerEventType, data.scheduleConfig);
+    }
     return automationRepository.create(projectId, data);
   }
 
@@ -35,16 +43,37 @@ export class AutomationService {
     triggerEntityType?: string;
     scope?: 'project' | 'portfolio';
     definition?: AutomationDefinition;
+    scheduleConfig?: ScheduleConfig | null;
+    timezone?: string;
     maxRunsPerDay?: number;
     cooldownSeconds?: number;
   }): Promise<AutomationRule> {
+    const existing = await automationRepository.findById(id);
+    if (!existing) throw Object.assign(new Error('Automation not found'), { statusCode: 404 });
+
     if (data.triggerEventType || data.definition) {
-      const existing = await automationRepository.findById(id);
-      if (!existing) throw Object.assign(new Error('Automation not found'), { statusCode: 404 });
       const eventType = data.triggerEventType ?? existing.triggerEventType;
       const definition = data.definition ?? existing.definition;
       this.validateDefinition(eventType, definition);
     }
+
+    const eventType = data.triggerEventType ?? existing.triggerEventType;
+    if (SCHEDULE_EVENT_TYPES.includes(eventType) && data.scheduleConfig) {
+      this.validateScheduleConfig(eventType, data.scheduleConfig);
+    }
+
+    // Recompute next_run_at if schedule config or trigger type changed on an active automation
+    if (existing.status === 'active' && (data.scheduleConfig !== undefined || data.triggerEventType !== undefined || data.timezone !== undefined)) {
+      const config = data.scheduleConfig !== undefined ? data.scheduleConfig : existing.scheduleConfig;
+      const tz = data.timezone !== undefined ? (data.timezone || 'UTC') : (existing.timezone || 'UTC');
+      if (config && SCHEDULE_EVENT_TYPES.includes(eventType)) {
+        const nextRun = computeNextRun(config, tz);
+        (data as any).nextRunAt = nextRun;
+      } else {
+        (data as any).nextRunAt = null;
+      }
+    }
+
     return automationRepository.update(id, data);
   }
 
@@ -60,12 +89,22 @@ export class AutomationService {
       throw Object.assign(new Error('Cannot enable an automation with no actions'), { statusCode: 400 });
     }
     await automationRepository.updateStatus(id, 'active');
+
+    // Compute next_run_at for scheduled automations
+    if (rule.scheduleConfig && SCHEDULE_EVENT_TYPES.includes(rule.triggerEventType)) {
+      const nextRun = computeNextRun(rule.scheduleConfig, rule.timezone || 'UTC');
+      if (nextRun) {
+        await automationRepository.update(id, { nextRunAt: nextRun } as any);
+      }
+    }
+
     logger.info(`[AutomationService] Enabled automation ${id} (${rule.name})`);
     return (await automationRepository.findById(id))!;
   }
 
   async disable(id: string): Promise<AutomationRule> {
     await automationRepository.updateStatus(id, 'disabled');
+    await automationRepository.clearNextRunAt(id);
     logger.info(`[AutomationService] Disabled automation ${id}`);
     return (await automationRepository.findById(id))!;
   }
@@ -89,6 +128,17 @@ export class AutomationService {
       errorPatterns: (errorRows as any[]).map((r: any) => ({ message: r.error_message, count: Number(r.cnt) })),
       dailyRuns: (dailyRows as any[]).map((r: any) => ({ date: String(r.run_date), count: Number(r.cnt) })),
     };
+  }
+
+  validateScheduleConfig(eventType: string, config: ScheduleConfig): void {
+    const expectedType = eventType.replace('schedule.', '');
+    if (config.type !== expectedType) {
+      throw Object.assign(new Error(`Schedule config type "${config.type}" does not match trigger "${eventType}"`), { statusCode: 400 });
+    }
+    const nextRun = computeNextRun(config);
+    if (!nextRun) {
+      throw Object.assign(new Error('Invalid schedule configuration — could not compute next run time'), { statusCode: 400 });
+    }
   }
 
   validateDefinition(eventType: string, definition: AutomationDefinition): void {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, Play, ToggleLeft, ToggleRight, Clock, CheckCircle, XCircle, AlertTriangle, BarChart3, Share2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Play, ToggleLeft, ToggleRight, Clock, CheckCircle, XCircle, AlertTriangle, BarChart3, Share2, Timer } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface AutomationDetailProps {
@@ -209,6 +209,41 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
           <div className="mt-1 text-sm text-gray-700 dark:text-gray-300">{formatDate(automation.lastTriggeredAt)}</div>
         </div>
       </div>
+
+      {/* Schedule Info */}
+      {automation.scheduleConfig && (
+        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Timer className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300">Schedule</h4>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">Type</div>
+              <div className="font-medium text-gray-900 dark:text-white capitalize">{automation.scheduleConfig.type}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">Timezone</div>
+              <div className="font-medium text-gray-900 dark:text-white">{automation.timezone || 'UTC'}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">Next Run</div>
+              <div className="font-medium text-gray-900 dark:text-white">{formatDate(automation.nextRunAt)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">Last Run</div>
+              <div className="font-medium text-gray-900 dark:text-white">{formatDate(automation.lastRunAt)}</div>
+            </div>
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            {automation.scheduleConfig.type === 'interval' && `Runs every ${automation.scheduleConfig.intervalMinutes} minutes`}
+            {automation.scheduleConfig.type === 'daily' && `Runs daily at ${automation.scheduleConfig.time}`}
+            {automation.scheduleConfig.type === 'weekly' && `Runs weekly on ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][automation.scheduleConfig.dayOfWeek] ?? 'Monday'} at ${automation.scheduleConfig.time}`}
+            {automation.scheduleConfig.type === 'monthly' && `Runs monthly on day ${automation.scheduleConfig.dayOfMonth} at ${automation.scheduleConfig.time}`}
+            {automation.scheduleConfig.type === 'cron' && `Cron: ${automation.scheduleConfig.expression}`}
+          </div>
+        </div>
+      )}
 
       {/* Dry Run Result */}
       {testResult && (

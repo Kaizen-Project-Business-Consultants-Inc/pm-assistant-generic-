@@ -1,5 +1,41 @@
 export type AutomationStatus = 'draft' | 'active' | 'paused' | 'disabled' | 'error';
 
+export type ScheduleType = 'interval' | 'daily' | 'weekly' | 'monthly' | 'cron';
+
+export interface ScheduleConfigInterval {
+  type: 'interval';
+  intervalMinutes: number;
+}
+
+export interface ScheduleConfigDaily {
+  type: 'daily';
+  time: string; // HH:mm
+}
+
+export interface ScheduleConfigWeekly {
+  type: 'weekly';
+  dayOfWeek: number; // 0=Sun...6=Sat
+  time: string;
+}
+
+export interface ScheduleConfigMonthly {
+  type: 'monthly';
+  dayOfMonth: number; // 1-31
+  time: string;
+}
+
+export interface ScheduleConfigCron {
+  type: 'cron';
+  expression: string; // 5-field cron expression
+}
+
+export type ScheduleConfig =
+  | ScheduleConfigInterval
+  | ScheduleConfigDaily
+  | ScheduleConfigWeekly
+  | ScheduleConfigMonthly
+  | ScheduleConfigCron;
+
 export type ActionType =
   | 'create_task'
   | 'notify'
@@ -60,6 +96,10 @@ export interface AutomationRule {
   triggerEntityType: string | null;
   scope: 'project' | 'portfolio';
   definition: AutomationDefinition;
+  scheduleConfig: ScheduleConfig | null;
+  timezone: string | null;
+  nextRunAt: string | null;
+  lastRunAt: string | null;
   triggerCount: number;
   lastTriggeredAt: string | null;
   lastError: string | null;

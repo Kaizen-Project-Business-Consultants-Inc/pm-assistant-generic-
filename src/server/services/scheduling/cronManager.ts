@@ -24,6 +24,7 @@ export interface CronTasks {
   timesheetComplianceTask: cron.ScheduledTask | null;
   weeklyReviewTask: cron.ScheduledTask | null;
   utilizationCoachingTask: cron.ScheduledTask | null;
+  scheduledAutomationTask: cron.ScheduledTask | null;
 }
 
 export function startCronTasks(
@@ -43,6 +44,7 @@ export function startCronTasks(
     timesheetComplianceTask: null,
     weeklyReviewTask: null,
     utilizationCoachingTask: null,
+    scheduledAutomationTask: null,
   };
 
   // Agent-specific jobs: gated by AGENT_ENABLED
@@ -307,6 +309,30 @@ export function startCronTasks(
     });
   });
 
+  // Scheduled automation runner — every minute
+  logger.info('[cron] Starting scheduled automation runner (every minute)');
+  tasks.scheduledAutomationTask = cron.schedule('* * * * *', async () => {
+    await forEachTenant(async (tenant) => {
+      const label = tenant?.slug ?? 'default';
+      const start = Date.now();
+      try {
+        const { runDueScheduledAutomations } = await import('../automation/scheduledAutomationRunner');
+        const count = await runDueScheduledAutomations();
+        if (count > 0) {
+          logger.info(`[cron:scheduled-automations] ${label} completed`, {
+            cronJob: 'scheduled-automations', tenant: label, durationMs: Date.now() - start,
+            result: { executed: count },
+          });
+        }
+      } catch (error) {
+        logger.error(`[cron:scheduled-automations] ${label} FAILED`, {
+          cronJob: 'scheduled-automations', tenant: label, durationMs: Date.now() - start,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  });
+
   return tasks;
 }
 
@@ -323,6 +349,7 @@ export function stopCronTasks(tasks: CronTasks): void {
   if (tasks.timesheetComplianceTask) { tasks.timesheetComplianceTask.stop(); tasks.timesheetComplianceTask = null; }
   if (tasks.weeklyReviewTask) { tasks.weeklyReviewTask.stop(); tasks.weeklyReviewTask = null; }
   if (tasks.utilizationCoachingTask) { tasks.utilizationCoachingTask.stop(); tasks.utilizationCoachingTask = null; }
+  if (tasks.scheduledAutomationTask) { tasks.scheduledAutomationTask.stop(); tasks.scheduledAutomationTask = null; }
   logger.info('[Agent] Stopped agent scheduler');
 }
 

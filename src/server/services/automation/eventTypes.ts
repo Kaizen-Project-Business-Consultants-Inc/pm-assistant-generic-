@@ -44,4 +44,11 @@ export const AUTOMATION_EVENT_TYPES: AutomationEventTypeInfo[] = [
   { type: 'time_entry.updated', entityType: 'time_entry', description: 'A time entry is updated' },
   { type: 'time_entry.deleted', entityType: 'time_entry', description: 'A time entry is deleted' },
   { type: 'timesheet.submitted', entityType: 'timesheet', description: 'A timesheet is submitted for approval' },
+
+  // Schedule-based triggers (time-driven, not event-driven)
+  { type: 'schedule.interval', entityType: 'schedule', description: 'Runs at a recurring interval (every N minutes)' },
+  { type: 'schedule.daily', entityType: 'schedule', description: 'Runs once daily at a specific time' },
+  { type: 'schedule.weekly', entityType: 'schedule', description: 'Runs once weekly on a specific day and time' },
+  { type: 'schedule.monthly', entityType: 'schedule', description: 'Runs once monthly on a specific day and time' },
+  { type: 'schedule.cron', entityType: 'schedule', description: 'Runs on a custom cron expression' },
 ];

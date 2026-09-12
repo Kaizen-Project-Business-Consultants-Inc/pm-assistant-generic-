@@ -4234,6 +4234,58 @@ The engine now supports **14 action types**: the original 12 (create_task, notif
 | GET | `/marketplace` | Browse marketplace listings |
 | POST | `/marketplace/:listingId/import` | Import a marketplace automation as a draft |
 
+### Phase 4: Scheduled Triggers
+
+Phases 1–3 built an event-driven automation engine that reacts to things that happen. Phase 4 adds **time-based (scheduled) triggers** so automations can run on a recurring schedule — for example, "send a weekly status summary every Monday at 9 AM" or "check for overdue tasks every 30 minutes."
+
+#### Schedule Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| Interval | Every N minutes (1–1440) | Every 30 minutes |
+| Daily | Once per day at a specific time | Daily at 09:00 |
+| Weekly | Once per week on a specific day/time | Mondays at 09:00 |
+| Monthly | Once per month on a specific day/time | 1st of each month at 09:00 |
+| Custom Cron | Standard 5-field cron expression | `0 9 * * 1-5` (weekdays at 9 AM) |
+
+#### Timezone Support
+
+Each scheduled automation can be configured with a timezone (e.g., `America/New_York`, `Europe/London`). Defaults to UTC.
+
+#### Execution Model
+
+A cron job runs **every minute**, queries all active automations where `next_run_at <= NOW()`, and executes each through the existing pipeline (conditions, actions, cooldowns, execution logging). After execution, `next_run_at` is recomputed from the current time.
+
+**Missed runs:** If the server was down, the automation fires once on restart — it does not fire once per missed interval.
+
+#### Lifecycle
+
+- **Create** — scheduled automations start in `draft` status with no `next_run_at`.
+- **Enable** — `next_run_at` is computed from the current time and schedule config.
+- **Disable** — `next_run_at` is cleared; the automation stops firing.
+- **Edit** — if the schedule config or timezone changes on an active automation, `next_run_at` is recomputed automatically.
+
+#### 5 New Trigger Event Types
+
+| Event Type | Description |
+|------------|-------------|
+| `schedule.interval` | Fires at a recurring interval |
+| `schedule.daily` | Fires once daily at a specific time |
+| `schedule.weekly` | Fires once weekly on a specific day |
+| `schedule.monthly` | Fires once monthly on a specific day |
+| `schedule.cron` | Fires on a custom cron expression |
+
+#### Frontend
+
+- **Trigger dropdown** — event types are grouped into "Event-Driven" and "Scheduled (Time-Based)" optgroups.
+- **Schedule configuration panel** — appears when a schedule trigger is selected. Provides inputs for interval, time, day, and cron expression, plus a timezone selector.
+- **Automation list** — shows a clock icon with the schedule frequency and next run time for scheduled automations.
+- **Automation detail** — displays a Schedule info card with type, timezone, next run, and last run.
+
+#### Migration
+
+`T039_automation_scheduled_triggers.sql` adds `schedule_config` (JSON), `timezone`, `next_run_at`, and `last_run_at` columns to the `automations` table, plus an index on `(status, next_run_at)`.
+
 ## 59. Document Intelligence
 
 An AI-powered document management system that ingests, classifies, summarizes, and enables intelligent search across project documents.

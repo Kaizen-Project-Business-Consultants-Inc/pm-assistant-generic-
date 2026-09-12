@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Zap, ToggleLeft, ToggleRight, Pencil, Trash2, Sparkles, ChevronDown, ChevronRight, X, Check, ShieldCheck, Store } from 'lucide-react';
+import { Plus, Zap, ToggleLeft, ToggleRight, Pencil, Trash2, Sparkles, ChevronDown, ChevronRight, X, Check, ShieldCheck, Store, Clock } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ConfirmModal } from '../ui/ConfirmModal';
 
@@ -20,6 +20,34 @@ const STATUS_COLORS: Record<string, string> = {
 
 function statusLabel(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatScheduleFrequency(auto: any): string | null {
+  if (!auto.scheduleConfig) return null;
+  const cfg = auto.scheduleConfig;
+  switch (cfg.type) {
+    case 'interval': return `Every ${cfg.intervalMinutes}m`;
+    case 'daily': return `Daily at ${cfg.time}`;
+    case 'weekly': {
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return `${days[cfg.dayOfWeek] ?? 'Mon'} at ${cfg.time}`;
+    }
+    case 'monthly': return `Day ${cfg.dayOfMonth} at ${cfg.time}`;
+    case 'cron': return `Cron: ${cfg.expression}`;
+    default: return null;
+  }
+}
+
+function formatRelativeDate(d: string | null): string {
+  if (!d) return '-';
+  const date = new Date(d);
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const absDiffMs = Math.abs(diffMs);
+  if (absDiffMs < 60_000) return diffMs > 0 ? 'in <1m' : '<1m ago';
+  if (absDiffMs < 3600_000) { const m = Math.round(absDiffMs / 60_000); return diffMs > 0 ? `in ${m}m` : `${m}m ago`; }
+  if (absDiffMs < 86400_000) { const h = Math.round(absDiffMs / 3600_000); return diffMs > 0 ? `in ${h}h` : `${h}h ago`; }
+  return date.toLocaleDateString();
 }
 
 export function AutomationList({ projectId, onSelect, onNew, onEdit }: AutomationListProps) {
@@ -197,6 +225,17 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                     <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-300">
                       {auto.triggerEventType}
                     </code>
+                    {auto.scheduleConfig && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Clock className="w-3 h-3 text-blue-500" />
+                        <span className="text-[10px] text-blue-600 dark:text-blue-400">{formatScheduleFrequency(auto)}</span>
+                        {auto.nextRunAt && (
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500" title={`Next: ${new Date(auto.nextRunAt).toLocaleString()}`}>
+                            (next: {formatRelativeDate(auto.nextRunAt)})
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[auto.status] || STATUS_COLORS.draft}`}>

@@ -775,6 +775,16 @@ Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully 
 - Total action types: **14** (up from 12)
 - **Benchmark:** No PM automation platform integrates lessons-learned surfacing as a first-class action type; novel capability
 
+### 5.15 Automation Engine — Phase 4 (Scheduled Triggers)
+- **5 schedule types:** Interval (1–1440 min), Daily, Weekly, Monthly, Custom Cron (5-field expression)
+- **Timezone support:** Per-automation timezone config (15 common zones + UTC default)
+- **Every-minute cron runner:** Queries `automations WHERE next_run_at <= NOW()`, executes through full pipeline (conditions, actions, cooldowns, logging)
+- **Missed-run recovery:** Fires once on restart, not once per missed interval — `next_run_at` recomputed from "now"
+- **Lifecycle:** Enable computes `next_run_at`, disable clears it, edit recomputes on active automations
+- **Frontend:** Optgroup trigger dropdown (Event-Driven / Scheduled), schedule config panel, clock+frequency badges in list, schedule info card in detail
+- **Migration:** `T039` adds `schedule_config` JSON, `timezone`, `next_run_at`, `last_run_at` + index
+- **Benchmark:** Monday.com has scheduled automations; this implementation matches with native cron support, timezone awareness, and full integration with conditions/actions/cooldowns/execution logging — no separate "scheduled workflow" system
+
 ---
 
 ## Launch Offer & Founders Program

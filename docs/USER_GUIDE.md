@@ -3387,6 +3387,34 @@ Two action types connect automations to the Lessons Learned module:
 
 Both actions are configured the same way as other action types in the automation form.
 
+### Scheduled (Time-Based) Automations
+
+In addition to event-driven triggers (e.g., "when a task is completed"), you can create **scheduled automations** that run on a recurring time-based schedule.
+
+**Creating a scheduled automation:**
+
+1. Click **New Automation**.
+2. In the **Event Type** dropdown, scroll to the **Scheduled (Time-Based)** group.
+3. Choose a schedule type:
+   - **Interval** — runs every N minutes (e.g., every 30 minutes)
+   - **Daily** — runs once daily at a specific time
+   - **Weekly** — runs once per week on a specific day and time
+   - **Monthly** — runs once per month on a specific day and time
+   - **Custom Cron** — for advanced users, enter a 5-field cron expression (e.g., `0 9 * * 1-5` for weekdays at 9 AM)
+4. Configure the **Schedule** panel that appears — set the interval, time, day, and timezone.
+5. Add your conditions and actions as usual.
+6. Save and **Enable** the automation.
+
+**How it works:**
+- When you enable a scheduled automation, the system computes when it should next run.
+- A background job checks every minute for automations that are due and executes them.
+- After each run, the next run time is recalculated.
+- If the server was restarted, missed automations fire once (not once per missed interval).
+
+**Timezone:** Each scheduled automation uses its own timezone setting (defaults to UTC). Choose from common timezones like America/New_York, Europe/London, etc.
+
+**Identifying scheduled automations:** In the automation list, scheduled automations show a clock icon with their frequency (e.g., "Every 30m", "Mon at 09:00") and when the next run is due. The detail view shows a dedicated Schedule card with full schedule information.
+
 ---
 
 ## 40. Document Intelligence
