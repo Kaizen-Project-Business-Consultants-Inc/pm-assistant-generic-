@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, Filter, X, Download } from 'lucide-react';
 import { ColumnPickerDropdown } from '../../../components/schedule/ColumnPickerDropdown';
-import { COLUMN_DEFS } from '../../../components/schedule/tableColumns';
+import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS } from '../../../components/schedule/tableColumns';
 import type { ColumnState } from '../../../hooks/useColumnState';
 
 interface ScheduleToolbarProps {
@@ -87,6 +87,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
         onToggleGroup={columnState.toggleGroup}
         onMoveColumn={columnState.moveColumn}
         columnOrder={columnState.columnOrder}
+        onResetVisibility={() => columnState.setVisibleKeys(new Set(DEFAULT_VISIBLE_KEYS))}
         onResetOrder={() => columnState.setColumnOrder([])}
       />
 

@@ -20,9 +20,10 @@ interface ColumnPickerDropdownProps {
   onMoveColumn?: (key: ColumnKey, direction: 'left' | 'right') => void;
   columnOrder?: ColumnKey[];
   onResetOrder?: () => void;
+  onResetVisibility?: () => void;
 }
 
-export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleGroup, onMoveColumn, columnOrder, onResetOrder }: ColumnPickerDropdownProps) {
+export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleGroup, onMoveColumn, columnOrder, onResetOrder, onResetVisibility }: ColumnPickerDropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -142,14 +143,24 @@ export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleG
               </div>
             );
           })}
-          {onResetOrder && (
-            <div className="border-t border-gray-200 dark:border-gray-600 mt-1 pt-1.5 px-3 pb-1">
-              <button
-                className="text-xs text-primary-600 hover:text-primary-700"
-                onClick={onResetOrder}
-              >
-                Reset column order
-              </button>
+          {(onResetOrder || onResetVisibility) && (
+            <div className="border-t border-gray-200 dark:border-gray-600 mt-1 pt-1.5 px-3 pb-1 flex items-center gap-3">
+              {onResetVisibility && (
+                <button
+                  className="text-xs text-primary-600 hover:text-primary-700"
+                  onClick={onResetVisibility}
+                >
+                  Reset visibility
+                </button>
+              )}
+              {onResetOrder && (
+                <button
+                  className="text-xs text-primary-600 hover:text-primary-700"
+                  onClick={onResetOrder}
+                >
+                  Reset order
+                </button>
+              )}
             </div>
           )}
         </div>
