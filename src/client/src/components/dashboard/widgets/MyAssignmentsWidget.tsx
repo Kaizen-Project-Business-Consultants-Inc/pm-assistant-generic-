@@ -66,10 +66,10 @@ function Section({ title, icon: Icon, items, linkFn, count }: {
     <div>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 w-full text-left text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 py-1"
+        className="flex items-center gap-1.5 w-full text-left text-xs font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 py-1"
       >
-        <Chevron className="w-4 h-4 shrink-0" />
-        <Icon className="w-4 h-4 shrink-0" />
+        <Chevron className="w-3.5 h-3.5 shrink-0" />
+        <Icon className="w-3.5 h-3.5 shrink-0" />
         {title} ({count})
       </button>
       {open && (
@@ -80,7 +80,7 @@ function Section({ title, icon: Icon, items, linkFn, count }: {
           {items.map(item => {
             const due = formatDueDate(item.dueDate);
             return (
-              <li key={item.id} className="flex items-center gap-2 text-sm py-0.5">
+              <li key={item.id} className="flex items-center gap-1.5 text-xs py-0.5">
                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${PRIORITY_DOTS[item.priority] || 'bg-gray-400'}`} />
                 <Link
                   to={linkFn(item)}
@@ -88,11 +88,11 @@ function Section({ title, icon: Icon, items, linkFn, count }: {
                 >
                   {item.name}
                 </Link>
-                <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-600'}`}>
+                <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium ${STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-600'}`}>
                   {item.status.replace(/_/g, ' ')}
                 </span>
                 {due.text && (
-                  <span className={`shrink-0 text-xs ${due.overdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                  <span className={`shrink-0 text-[10px] ${due.overdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
                     {due.text}
                   </span>
                 )}
@@ -124,7 +124,7 @@ export function MyAssignmentsWidget() {
   const total = data.tasks.length + data.raidItems.length + data.actionItems.length;
   if (total === 0) {
     return (
-      <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
+      <p className="text-xs text-gray-500 dark:text-gray-400 py-4 text-center">
         No items assigned to you.
       </p>
     );
