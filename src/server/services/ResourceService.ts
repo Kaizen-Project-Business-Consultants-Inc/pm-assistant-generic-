@@ -64,8 +64,13 @@ export interface ResourceWorkload {
 export class ResourceService {
   // --- Auto-link resource to user by email ---
 
-  private async autoLinkUser(resourceId: string, email: string | undefined): Promise<void> {
-    if (!email) return;
+  private async autoLinkUser(resourceId: string, email: string | undefined, clearIfNoMatch = false): Promise<void> {
+    if (!email) {
+      if (clearIfNoMatch) {
+        try { await databaseService.query('UPDATE resources SET user_id = NULL WHERE id = ?', [resourceId]); } catch {}
+      }
+      return;
+    }
     const ctx = getRequestContext();
     if (!ctx?.organizationId) return;
     try {
@@ -75,6 +80,8 @@ export class ResourceService {
       );
       if (user) {
         await databaseService.query('UPDATE resources SET user_id = ? WHERE id = ?', [user.id, resourceId]);
+      } else if (clearIfNoMatch) {
+        await databaseService.query('UPDATE resources SET user_id = NULL WHERE id = ?', [resourceId]);
       }
     } catch {
       // Fire-and-forget — don't break resource CRUD if linking fails
@@ -114,9 +121,9 @@ export class ResourceService {
 
     const updated = (await resourceRepository.findById(id))!;
 
-    // Re-link user if email changed
+    // Re-link user if email changed — clear user_id if new email doesn't match any user
     if (data.email && data.email !== existing.email) {
-      this.autoLinkUser(id, data.email).catch(() => {});
+      this.autoLinkUser(id, data.email, true).catch(() => {});
     }
 
     auditLedgerService.append({
