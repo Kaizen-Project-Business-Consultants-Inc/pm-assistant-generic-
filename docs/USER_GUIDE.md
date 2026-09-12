@@ -3470,7 +3470,7 @@ Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox s
 
 **Requirements:** Pro, SME, or Enterprise tier. Trial and Basic users see an upgrade prompt instead of the connect button. Per-tier document limits: Pro = 100, SME = 500, Enterprise = unlimited.
 
-1. On the Documents tab, click the **Connect Storage** button
+1. On the Doc Intelligence tab, click the **Connect Storage** button
 2. Pick your provider from the grid (only admin-configured providers are available)
 3. For **SharePoint**: enter the site URL first, then sign in
 4. For **OneDrive**: choose **My OneDrive** (your own storage) or **Shared Folder Link** (paste a sharing URL from a coworker)

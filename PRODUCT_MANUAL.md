@@ -4302,7 +4302,7 @@ An AI-powered document management system that ingests, classifies, summarizes, a
 
 ### Upload & Processing
 
-- **Upload area:** Drag-and-drop or file picker on the Documents tab (accessible via the overflow/More menu on project detail)
+- **Upload area:** Drag-and-drop or file picker on the Doc Intelligence tab (accessible via the overflow/More menu on project detail)
 - **Supported formats:** PDF, DOCX, DOC, TXT, CSV, MD (max 10MB per file)
 - **Multiple file upload:** Hold Ctrl/Cmd to select multiple files
 - **Optional description:** Enter a short description before uploading to help identify the document later
@@ -4321,7 +4321,7 @@ An AI-powered document management system that ingests, classifies, summarizes, a
 
 Four features for quickly finding documents:
 
-1. **Search bar** — Prominent search at the top of the Documents tab. Searches across filename, description, and AI summary.
+1. **Search bar** — Prominent search at the top of the Doc Intelligence tab. Searches across filename, description, and AI summary.
 2. **Folders** — Assign documents to custom folders (e.g., "Vendor Docs", "Contracts"). Folder filter dropdown appears when folders exist. Type a new folder name or pick an existing one from the autocomplete list.
 3. **Pins (Favourites)** — Click the star icon to pin frequently-accessed documents. Pinned documents always appear at the top of the list.
 4. **Description** — Add a short description (up to 500 chars) to any document. Descriptions are shown in the list view and are searchable.
@@ -4394,7 +4394,7 @@ Connect your cloud storage (OneDrive, SharePoint, Google Drive, or Dropbox) so K
 
 **Connecting a Provider:**
 
-1. Go to the Documents tab on any project (requires Pro tier or above)
+1. Go to the Doc Intelligence tab on any project (requires Pro tier or above)
 2. Click the **Connect Storage** button in the upload area
 3. Pick your provider from the grid (only providers configured by admin are available)
 4. For SharePoint: enter the site URL first, then sign in
@@ -4414,7 +4414,7 @@ Connect your cloud storage (OneDrive, SharePoint, Google Drive, or Dropbox) so K
 
 **Connector Status:**
 
-Each connected source shows a status chip in the Documents tab:
+Each connected source shows a status chip in the Doc Intelligence tab:
 - **Active** (green): Syncing normally
 - **Paused** (yellow): User paused sync, can be resumed
 - **Error** (red): Sync failed 3+ consecutive times, shows error message
@@ -4457,3 +4457,41 @@ All endpoints scoped to a project: `/api/v1/projects/:projectId/storage-connecto
 | POST | `/:id/sync` | Trigger manual sync |
 | PUT | `/:id` | Update settings (displayName, status, syncIntervalMinutes) |
 | DELETE | `/:id` | Disconnect and remove connector |
+
+## 60. UI Consistency Standards
+
+### Typography Scale
+
+The application follows a standardized typography scale enforced across all pages and components:
+
+| Semantic Level | Element | Classes |
+|---|---|---|
+| Page title | `h1` | `text-xl font-bold text-gray-900 dark:text-white` |
+| Modal/panel title | `h2` | `text-lg font-semibold text-gray-900 dark:text-white` |
+| Card/section heading | `h3` | `text-sm font-semibold text-gray-900 dark:text-gray-100` |
+| Sub-section divider | `h4` | `text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide` |
+| Widget title (dashboard) | `h3` | `text-sm font-semibold text-gray-900 dark:text-gray-100` |
+| Table header | `th` | `text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider` |
+
+All heading weights use `font-semibold` (not `font-bold`) for consistency. The only exception is stat/KPI values which use `font-bold` or `font-extrabold` for emphasis.
+
+### React Query Cache Key Conventions
+
+All React Query cache keys follow a standardized naming convention so that `invalidateQueries` calls correctly refresh data across all components that share the same data:
+
+| Data | Standard Key |
+|---|---|
+| EVM forecast | `['evm', projectId]` |
+| Meeting history | `['meetingHistory', projectId]` |
+| Risk stats | `['project-risks-stats', projectId]` |
+| Audit trail | `['audit-trail', projectId]` |
+| Project members | `['project-members', projectId]` |
+| Resource forecast | `['resource-forecast', projectId]` |
+| Resource workload | `['workload', projectId]` |
+| Resource histogram | `['histogram', scheduleId]` |
+| Dashboard predictions | `['dashboard-predictions']` |
+| Analytics summary | `['analytics-summary']` |
+| Projects list | `['projects']` |
+| Project risks | `['project-risks', projectId]` |
+
+When adding new queries, follow the kebab-case convention for multi-word keys and always ensure the same key is used in both `useQuery` and `invalidateQueries` calls.
