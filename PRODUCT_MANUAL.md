@@ -1998,9 +1998,12 @@ Paid subscribers (Consultant, SME, and Enterprise tiers) can invite external cli
 1. A paid user navigates to **Settings → Viewer Invites** (or the project's Members tab).
 2. They enter the invitee's email address and select one or more projects to share.
 3. The system checks the inviting user's remaining invite quota. If the quota is exhausted, the invite is blocked with a clear upgrade prompt.
-4. An invitation email is sent to the invitee. If the email does not match an existing account, a viewer account is auto-provisioned on first acceptance.
+4. An invitation email is sent to the invitee (7-day expiry). If the email does not match an existing account, a viewer account is auto-provisioned on first acceptance.
 5. The invitee clicks the link and sees the registration page with messaging that says **"You've been invited to join this organization"** (not "invited as a viewer"). They complete registration (password only — no billing) and land on a read-only project view.
-6. The inviting user can revoke access at any time from their invite management panel.
+6. If the invitee already has an account, the registration page shows **"An account with this email already exists"** with a **"Sign in to accept the invitation"** link. After signing in, the invite is automatically accepted.
+7. The inviting user can revoke access at any time from their invite management panel.
+
+**Resend invite:** On the **Resources** page, resources with Pending or Expired invite status show a **Resend** link next to the status badge. Clicking it generates a new token, resets the 7-day expiry window, and sends a fresh invite email. Resend is rate-limited to 20 per minute per user. Accepted and revoked invites cannot be resent.
 
 **Role:** Invited viewers receive the `viewer` system role. This role has read scope only, plus the ability to update RAID items they own (see Section 45 for RAID role-based permissions).
 

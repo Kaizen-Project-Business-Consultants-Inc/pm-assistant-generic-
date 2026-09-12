@@ -2267,7 +2267,9 @@ Paid plan users (Consultant Basic, Consultant Pro, SME, and Enterprise) can invi
 1. Go to **Settings → Team & Viewers**.
 2. Click **Invite Viewer**.
 3. Enter the invitee's email address and select which project(s) they should have access to.
-4. Click **Send Invite**. The invitee receives an email with a link to create their free viewer account.
+4. Click **Send Invite**. The invitee receives an email with a link to create their free viewer account (link expires in 7 days).
+
+**Resending an invite:** If an invite expires or the recipient missed the email, go to the **Resources** page. Resources with a **Pending** or **Expired** status badge will show a **Resend** link. Clicking it sends a fresh invite email with a new 7-day link. If the person already has an account, the invite link will direct them to sign in instead of register, and the invite is accepted automatically after login.
 
 **What viewers can do:**
 
