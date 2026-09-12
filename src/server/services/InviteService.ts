@@ -174,6 +174,34 @@ export class InviteService {
     await inviteTokenRepository.revoke(id);
   }
 
+  async resendInvite(inviteId: string, userId: string): Promise<void> {
+    const invite = await inviteTokenRepository.findById(inviteId);
+    if (!invite) throw new Error('Invite not found');
+
+    // Verify caller belongs to the same org
+    const org = await organizationRepository.findByUserId(userId);
+    if (!org || org.id !== invite.organizationId) {
+      throw new Error('Not authorized to resend this invite');
+    }
+
+    // Only allow resend for pending invites (expired invites still have status='pending' in DB)
+    if (invite.status === 'accepted') throw new Error('Invite has already been accepted');
+    if (invite.status === 'revoked') throw new Error('Invite has been revoked');
+
+    // Generate new token and reset expiry
+    const newToken = crypto.randomBytes(32).toString('hex');
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    await inviteTokenRepository.resetToken(inviteId, newToken, newExpiresAt);
+
+    // Send the invite email
+    const inviter = await userService.findById(userId);
+    emailService.sendViewerInviteEmail(
+      invite.email, org.name, inviter?.fullName || 'Team member', invite.projectId, newToken,
+    ).catch(err => {
+      logger.error('Failed to send resend invite email', { email: invite.email, error: err });
+    });
+  }
+
   async validateToken(token: string): Promise<{ valid: boolean; email?: string; orgName?: string; projectId?: string | null }> {
     const invite = await inviteTokenRepository.findByToken(token);
     if (!invite) return { valid: false };

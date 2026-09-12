@@ -194,7 +194,7 @@ export function ResourceManagementPage() {
     queryFn: () => apiService.listInvites(),
   });
   const inviteStatusMap = useMemo(() => {
-    const map: Record<string, 'pending' | 'accepted' | 'expired' | 'revoked'> = {};
+    const map: Record<string, { status: 'pending' | 'accepted' | 'expired' | 'revoked'; inviteId: string }> = {};
     const invites = invitesData?.invites || [];
     for (const inv of invites) {
       const email = inv.email.toLowerCase();
@@ -202,8 +202,8 @@ export function ResourceManagementPage() {
       if (status === 'pending' && new Date(inv.expiresAt) < new Date()) status = 'expired';
       // Keep the most relevant status per email (pending > expired > accepted > revoked)
       const priority: Record<string, number> = { pending: 0, expired: 1, accepted: 2, revoked: 3 };
-      if (!map[email] || (priority[status] ?? 9) < (priority[map[email]] ?? 9)) {
-        map[email] = status;
+      if (!map[email] || (priority[status] ?? 9) < (priority[map[email].status] ?? 9)) {
+        map[email] = { status, inviteId: inv.id };
       }
     }
     return map;
@@ -240,6 +240,22 @@ export function ResourceManagementPage() {
       setBulkDeleteConfirm(false);
     },
   });
+
+  const [resendingInviteId, setResendingInviteId] = useState<string | null>(null);
+  const resendInviteMutation = useMutation({
+    mutationFn: (inviteId: string) => apiService.resendInvite(inviteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invites'] });
+      setResourceWarning(null);
+      setResendSuccess('Invite resent successfully');
+      setTimeout(() => setResendSuccess(null), 4000);
+    },
+    onError: (err: any) => {
+      setResourceWarning(err?.response?.data?.error || 'Failed to resend invite');
+    },
+    onSettled: () => setResendingInviteId(null),
+  });
+  const [resendSuccess, setResendSuccess] = useState<string | null>(null);
 
   function resetForm() {
     setShowResourceForm(false);
@@ -348,6 +364,12 @@ export function ResourceManagementPage() {
           <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
           <p className="text-sm text-amber-800 dark:text-amber-300 flex-1">{resourceWarning}</p>
           <button onClick={() => setResourceWarning(null)} className="text-amber-500 hover:text-amber-700 dark:hover:text-amber-200"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+      {resendSuccess && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-4 flex items-start gap-2">
+          <p className="text-sm text-green-800 dark:text-green-300 flex-1">{resendSuccess}</p>
+          <button onClick={() => setResendSuccess(null)} className="text-green-500 hover:text-green-700 dark:hover:text-green-200"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -603,14 +625,30 @@ export function ResourceManagementPage() {
                       <td className="px-4 py-3 text-center">
                         {r.userId ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Confirmed</span>
-                        ) : r.email ? (
-                          inviteStatusMap[r.email.toLowerCase()] === 'pending' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">Pending</span>
-                          ) : inviteStatusMap[r.email.toLowerCase()] === 'expired' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Expired</span>
-                          ) : (
-                            <span className="text-gray-300 dark:text-gray-600">--</span>
-                          )
+                        ) : r.email && inviteStatusMap[r.email.toLowerCase()] ? (
+                          (() => {
+                            const inv = inviteStatusMap[r.email.toLowerCase()];
+                            const isResending = resendingInviteId === inv.inviteId;
+                            return (
+                              <div className="inline-flex items-center gap-1.5">
+                                {inv.status === 'pending' ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">Pending</span>
+                                ) : inv.status === 'expired' ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Expired</span>
+                                ) : null}
+                                {(inv.status === 'pending' || inv.status === 'expired') && (
+                                  <button
+                                    onClick={() => { setResendingInviteId(inv.inviteId); resendInviteMutation.mutate(inv.inviteId); }}
+                                    disabled={isResending}
+                                    className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium disabled:opacity-50"
+                                    title="Resend invite email"
+                                  >
+                                    {isResending ? 'Sending...' : 'Resend'}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()
                         ) : (
                           <span className="text-gray-300 dark:text-gray-600">--</span>
                         )}

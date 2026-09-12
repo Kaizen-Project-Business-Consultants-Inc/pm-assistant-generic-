@@ -82,6 +82,13 @@ class InviteTokenRepository {
     );
   }
 
+  async resetToken(id: string, newToken: string, newExpiresAt: Date): Promise<void> {
+    await databaseService.queryControlPlane(
+      `UPDATE invite_tokens SET token = ?, expires_at = ?, status = 'pending' WHERE id = ?`,
+      [newToken, newExpiresAt, id],
+    );
+  }
+
   async findPendingByEmailAndOrg(email: string, organizationId: string): Promise<InviteToken | null> {
     const rows = await databaseService.queryControlPlane(
       `SELECT * FROM invite_tokens WHERE LOWER(email) = LOWER(?) AND organization_id = ? AND status = 'pending' AND expires_at > NOW() LIMIT 1`,

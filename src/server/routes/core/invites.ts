@@ -94,6 +94,36 @@ export async function inviteRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // POST /api/v1/invites/:id/resend — resend invite email with new token
+  fastify.post('/:id/resend', {
+    preHandler: [authMiddleware, requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const rl = await rateLimiter.checkAsync(`invite:resend:${request.user!.userId}`, 20, 60_000);
+      if (!rl.allowed) {
+        return reply.status(429).send({ error: 'Too many resend requests. Please try again later.' });
+      }
+
+      const parsed = idParamSchema.safeParse(request.params);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'Invalid invite ID format' });
+      }
+
+      await inviteService.resendInvite(parsed.data.id, request.user!.userId);
+      return { success: true };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to resend invite';
+      if (msg.includes('Not authorized')) {
+        return reply.status(403).send({ error: msg });
+      }
+      if (msg.includes('already been accepted') || msg.includes('been revoked')) {
+        return reply.status(400).send({ error: msg });
+      }
+      logger.error('Resend invite error', { error });
+      return reply.status(400).send({ error: msg });
+    }
+  });
+
   // DELETE /api/v1/invites/:id — revoke invite
   fastify.delete('/:id', {
     preHandler: [authMiddleware, requireScope('write')],

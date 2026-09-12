@@ -3214,6 +3214,11 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  async resendInvite(id: string) {
+    const response = await this.api.post(`/invites/${id}/resend`);
+    return response.data;
+  }
+
   // --- Feedback ---
   async getAdminFeedback(params?: string) {
     const response = await this.api.get(`/feedback${params ? `?${params}` : ''}`);
