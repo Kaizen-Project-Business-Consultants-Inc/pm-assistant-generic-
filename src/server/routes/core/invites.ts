@@ -94,6 +94,24 @@ export async function inviteRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // POST /api/v1/invites/accept — accept invite for existing user (auth required)
+  fastify.post('/accept', {
+    preHandler: [authMiddleware, requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const body = z.object({ token: z.string().min(1).max(128).regex(/^[a-f0-9]+$/) }).parse(request.body);
+      const result = await inviteService.acceptInvite(body.token, request.user!.userId);
+      return { success: true, organizationId: result.organizationId };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to accept invite';
+      if (msg.includes('Invalid or expired')) {
+        return reply.status(400).send({ error: msg });
+      }
+      logger.error('Accept invite error', { error });
+      return reply.status(400).send({ error: msg });
+    }
+  });
+
   // POST /api/v1/invites/:id/resend — resend invite email with new token
   fastify.post('/:id/resend', {
     preHandler: [authMiddleware, requireScope('write')],

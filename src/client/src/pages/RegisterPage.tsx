@@ -41,6 +41,7 @@ export const RegisterPage: React.FC = () => {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showLoginLink, setShowLoginLink] = useState(false);
   const [seatCount, setSeatCount] = useState(3);
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -109,8 +110,14 @@ export const RegisterPage: React.FC = () => {
       setSuccessMessage(result.message || 'Registration successful. Please check your email to verify your account.');
       setSuccess(true);
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setError(axiosError.response?.data?.message || 'Registration failed. Please try again.');
+      const axiosError = err as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosError.response?.status === 409 && inviteToken) {
+        setError(`An account with this email already exists. Please sign in to accept the invitation.`);
+        setShowLoginLink(true);
+      } else {
+        setError(axiosError.response?.data?.message || 'Registration failed. Please try again.');
+        setShowLoginLink(false);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -214,6 +221,11 @@ export const RegisterPage: React.FC = () => {
             {error && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
                 <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                {showLoginLink && inviteToken && (
+                  <Link to={`/login?invite=${inviteToken}`} className="inline-block mt-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">
+                    Sign in to accept the invitation
+                  </Link>
+                )}
               </div>
             )}
 

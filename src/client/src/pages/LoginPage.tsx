@@ -51,6 +51,17 @@ export const LoginPage: React.FC = () => {
         sessionStorage.setItem('pm-first-login', 'true');
       }
       setUser(response.user);
+
+      // Accept pending invite if login came from invite link
+      const inviteToken = searchParams.get('invite');
+      if (inviteToken) {
+        try {
+          await apiService.acceptInvite(inviteToken);
+        } catch {
+          // Invite may already be accepted or expired — don't block login
+        }
+      }
+
       navigate(response.user?.fullName ? '/dashboard' : '/onboarding');
     } catch (err: unknown) {
       const axiosError = err as { response?: { status?: number; data?: { message?: string; requiresVerification?: boolean } } };
