@@ -82,32 +82,61 @@ export async function meetingActionItemRoutes(fastify: FastifyInstance) {
     return item;
   });
 
+  // Viewer scope bypass helper — viewers can modify action items assigned to them
+  const viewerScopeBypass = async (request: FastifyRequest, reply: FastifyReply) => {
+    const role = request.user?.role;
+    if (role === 'viewer') {
+      await requireScope('read')(request, reply);
+    } else {
+      await requireScope('write')(request, reply);
+    }
+  };
+
+  // Viewer ownership guard — must be the assignee
+  const viewerOwnershipGuard = async (request: FastifyRequest, reply: FastifyReply) => {
+    if (request.user?.role !== 'viewer') return;
+    const { id } = request.params as { id: string };
+    const item = await meetingActionItemService.getItem(id);
+    if (!item) { reply.status(404).send({ error: 'Action item not found' }); return; }
+    if (item.assigneeUserId !== request.user.userId) {
+      reply.status(403).send({ error: 'Viewers can only modify action items assigned to them' });
+    }
+  };
+
   // PUT /:id — update
-  fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  fastify.put('/:id', { preHandler: [viewerScopeBypass] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
+    await viewerOwnershipGuard(request, reply);
+    if (reply.sent) return;
     const parsed = updateSchema.parse(request.body);
     return meetingActionItemService.updateItem(id, parsed, user.userId);
   });
 
   // POST /:id/complete — complete
-  fastify.post('/:id/complete', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  fastify.post('/:id/complete', { preHandler: [viewerScopeBypass] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
+    await viewerOwnershipGuard(request, reply);
+    if (reply.sent) return;
     return meetingActionItemService.completeItem(id, user.userId);
   });
 
   // POST /:id/reopen — reopen
-  fastify.post('/:id/reopen', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  fastify.post('/:id/reopen', { preHandler: [viewerScopeBypass] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
+    await viewerOwnershipGuard(request, reply);
+    if (reply.sent) return;
     return meetingActionItemService.reopenItem(id, user.userId);
   });
 
   // POST /:id/cancel — cancel
-  fastify.post('/:id/cancel', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  fastify.post('/:id/cancel', { preHandler: [viewerScopeBypass] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
+    await viewerOwnershipGuard(request, reply);
+    if (reply.sent) return;
     return meetingActionItemService.cancelItem(id, user.userId);
   });
 }

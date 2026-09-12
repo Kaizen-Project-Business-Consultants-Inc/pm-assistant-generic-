@@ -1284,6 +1284,16 @@ export class ScheduleService {
     // Delete the scenario schedule
     await this.delete(scenarioId);
   }
+
+  async isTaskAssignedToUser(taskId: string, userId: string): Promise<boolean> {
+    const rows = await databaseService.query<{ cnt: number }>(
+      `SELECT COUNT(*) as cnt FROM tasks t
+       JOIN resources r ON t.assigned_to = r.id
+       WHERE t.id = ? AND r.user_id = ?`,
+      [taskId, userId],
+    );
+    return (rows[0]?.cnt ?? 0) > 0;
+  }
 }
 
 export const scheduleService = new ScheduleService();

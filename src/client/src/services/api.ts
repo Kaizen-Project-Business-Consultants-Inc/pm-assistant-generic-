@@ -3280,6 +3280,11 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  async getMyAssignments() {
+    const response = await this.api.get('/dashboard/my-assignments');
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Project Groups
   // -------------------------------------------------------------------------

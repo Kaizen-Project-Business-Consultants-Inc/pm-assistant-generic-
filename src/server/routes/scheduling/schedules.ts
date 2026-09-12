@@ -210,13 +210,36 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Viewers can update tasks assigned to them (via resource linkage)
   fastify.put('/:scheduleId/tasks/:taskId', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        const role = request.user?.role;
+        if (role === 'viewer') {
+          await requireScope('read')(request, reply);
+          if (reply.sent) return;
+          await requireProjectAccess('viewer')(request, reply);
+        } else {
+          await requireScope('write')(request, reply);
+          if (reply.sent) return;
+          await requireProjectAccess('editor')(request, reply);
+        }
+      },
+    ],
     schema: { description: 'Update a task', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { taskId } = request.params as { taskId: string };
       const data = updateTaskSchema.parse(request.body);
+
+      // Viewer ownership check: must be assigned to this task
+      const userId = request.user!.userId;
+      if (request.user!.role === 'viewer') {
+        const assigned = await scheduleService.isTaskAssignedToUser(taskId, userId);
+        if (!assigned) {
+          return reply.status(403).send({ error: 'Viewers can only update tasks assigned to them' });
+        }
+      }
 
       // Capture old end date before update for cascade detection
       const oldTask = await scheduleService.findTaskById(taskId);
@@ -446,13 +469,36 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Viewers can comment on tasks assigned to them
   fastify.post('/:scheduleId/tasks/:taskId/comments', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        const role = request.user?.role;
+        if (role === 'viewer') {
+          await requireScope('read')(request, reply);
+          if (reply.sent) return;
+          await requireProjectAccess('viewer')(request, reply);
+        } else {
+          await requireScope('write')(request, reply);
+          if (reply.sent) return;
+          await requireProjectAccess('editor')(request, reply);
+        }
+      },
+    ],
     schema: { description: 'Add a comment to a task', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { taskId } = request.params as { taskId: string };
+
+      // Viewer ownership check: must be assigned to this task
+      if (user.role === 'viewer') {
+        const assigned = await scheduleService.isTaskAssignedToUser(taskId, user.userId);
+        if (!assigned) {
+          return reply.status(403).send({ error: 'Viewers can only comment on tasks assigned to them' });
+        }
+      }
+
       const { text } = (request.body as { text: string });
       if (!text || !text.trim()) {
         return reply.status(400).send({ error: 'Comment text is required' });

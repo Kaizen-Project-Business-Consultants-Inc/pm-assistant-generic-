@@ -191,4 +191,53 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
 
     return { byStatus: statusMap, byCategory: categoryMap, recentPending: pending };
   });
+
+  // GET /my-assignments — tasks, RAID items, and action items assigned to current user
+  fastify.get('/my-assignments', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user!;
+    if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
+
+    const [tasks, raidItems, actionItems] = await Promise.all([
+      databaseService.query<any>(
+        `SELECT t.id, t.name, t.status, t.priority, t.end_date AS dueDate,
+                s.project_id AS projectId, p.name AS projectName
+         FROM tasks t
+         JOIN resources r ON t.assigned_to = r.id
+         JOIN schedules s ON t.schedule_id = s.id
+         JOIN projects p ON s.project_id = p.id
+         WHERE r.user_id = ?
+           AND t.status NOT IN ('completed','done','cancelled')
+         ORDER BY t.end_date ASC
+         LIMIT 20`,
+        [user.userId],
+      ),
+      databaseService.query<any>(
+        `SELECT ri.id, ri.title AS name, ri.item_type AS itemType, ri.status,
+                ri.priority, ri.due_date AS dueDate,
+                ri.project_id AS projectId, p.name AS projectName
+         FROM project_risks ri
+         JOIN projects p ON ri.project_id = p.id
+         WHERE ri.owner_id = ?
+           AND ri.status NOT IN ('closed','resolved','cancelled','mitigated')
+         ORDER BY ri.due_date ASC
+         LIMIT 20`,
+        [user.userId],
+      ),
+      databaseService.query<any>(
+        `SELECT ai.id, ai.description AS name, ai.status, ai.priority,
+                ai.due_date AS dueDate, ai.meeting_id AS meetingId,
+                m.project_id AS projectId, p.name AS projectName
+         FROM meeting_action_items ai
+         JOIN meetings m ON ai.meeting_id = m.id
+         JOIN projects p ON m.project_id = p.id
+         WHERE ai.assignee_user_id = ?
+           AND ai.status NOT IN ('completed','cancelled')
+         ORDER BY ai.due_date ASC
+         LIMIT 20`,
+        [user.userId],
+      ),
+    ]);
+
+    return { tasks, raidItems, actionItems };
+  });
 }

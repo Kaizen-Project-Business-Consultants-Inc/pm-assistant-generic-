@@ -4,16 +4,49 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { validateMimeType } from '../../utils/mimeValidator';
 import { config } from '../../config';
+import { scheduleService } from '../../services/ScheduleService';
+import { riskService } from '../../services/RiskService';
 import logger from '../../utils/logger';
+
+async function canViewerUploadToEntity(entityType: string, entityId: string, userId: string): Promise<boolean> {
+  if (entityType === 'task') {
+    return scheduleService.isTaskAssignedToUser(entityId, userId);
+  }
+  if (entityType === 'risk') {
+    const item = await riskService.findById(entityId);
+    return item?.ownerId === userId;
+  }
+  return false; // fail-closed for all other entity types
+}
 
 export async function fileAttachmentRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST /:entityType/:entityId — multipart upload
-  fastify.post('/:entityType/:entityId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // Viewers can upload attachments to tasks/RAID items assigned to them
+  fastify.post('/:entityType/:entityId', {
+    preHandler: [
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        const role = request.user?.role;
+        if (role === 'viewer') {
+          await requireScope('read')(request, reply);
+        } else {
+          await requireScope('write')(request, reply);
+        }
+      },
+    ],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { entityType, entityId } = request.params as { entityType: string; entityId: string };
+
+      // Viewer ownership check
+      if (user.role === 'viewer') {
+        const allowed = await canViewerUploadToEntity(entityType, entityId, user.userId);
+        if (!allowed) {
+          return reply.status(403).send({ error: 'Viewers can only upload attachments to items assigned to them' });
+        }
+      }
       const file = await request.file();
       if (!file) return reply.status(400).send({ error: 'No file uploaded' });
 
