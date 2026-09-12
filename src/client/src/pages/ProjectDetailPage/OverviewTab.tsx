@@ -105,7 +105,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     .slice(0, 5);
 
   const { data: raidStats } = useQuery({
-    queryKey: ['raidStats', project.id],
+    queryKey: ['project-risks-stats', project.id],
     queryFn: () => apiService.getRiskStats(project.id),
     enabled: !!project.id,
     staleTime: 60_000,
@@ -120,7 +120,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
   const activeSprint = (sprintData?.data || sprintData?.sprints || []).find((s: any) => s.status === 'active');
 
   const { data: auditData } = useQuery({
-    queryKey: ['auditTrail', project.id, 'overview'],
+    queryKey: ['audit-trail', project.id, 'overview'],
     queryFn: () => apiService.getAuditTrail(project.id, 50),
     enabled: !!project.id,
     staleTime: 60_000,
@@ -151,7 +151,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
   const attachments: any[] = attachmentsData?.attachments || attachmentsData?.data || (Array.isArray(attachmentsData) ? attachmentsData : []);
 
   const { data: meetingData } = useQuery({
-    queryKey: ['meeting-history', project.id, 'overview'],
+    queryKey: ['meetingHistory', project.id, 'overview'],
     queryFn: () => apiService.getMeetingHistory(project.id),
     enabled: !!project.id,
     staleTime: 300_000,
@@ -168,7 +168,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
   const healthHistory: Array<{ healthScore: number; recordedAt: string }> = healthHistoryData?.history || healthHistoryData || [];
 
   const { data: evmData } = useQuery({
-    queryKey: ['evm-overview', project.id],
+    queryKey: ['evm', project.id],
     queryFn: () => apiService.getEVMForecast(project.id),
     enabled: !!project.id,
     staleTime: 300_000,

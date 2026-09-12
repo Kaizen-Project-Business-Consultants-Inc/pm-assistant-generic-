@@ -387,7 +387,7 @@ function EVMSCurveSection({ projectId }: { projectId: string }) {
 
 function RiskAssessmentSection({ projectId }: { projectId: string }) {
   const { data, isLoading, error } = useQuery({
-    queryKey: ['projectRisks', projectId],
+    queryKey: ['project-risks', projectId],
     queryFn: () => apiService.getProjectRisks(projectId),
     enabled: !!projectId,
   });

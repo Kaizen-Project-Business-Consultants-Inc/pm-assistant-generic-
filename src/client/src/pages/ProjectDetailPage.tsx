@@ -234,7 +234,7 @@ export function ProjectDetailPage() {
   useEffect(() => {
     if (id) {
       queryClient.prefetchQuery({
-        queryKey: ['evmForecast', id],
+        queryKey: ['evm', id],
         queryFn: () => apiService.getEVMForecast(id),
         staleTime: 5 * 60 * 1000,
       });
