@@ -2646,6 +2646,14 @@ The unified dashboard supports toggling widget sections on/off and drag-and-drop
 
 Available sections: Morning Briefing, KPI Tiles, Portfolio Intelligence, Projects Table, Action Center, Issues Trend, Sprint Velocity, Milestones, Budget Watch, Activity Feed, Standup Summary.
 
+**Morning Briefing** is the top widget with 4 quadrants:
+- **On Fire** — Overdue tasks and critical/high risks. Each item shows the project name and links to the schedule or RAID tab.
+- **Pending Approvals** — Pending change requests and agent proposals. Hidden for viewer-role users.
+- **Due Soon** — Tasks due today/this week and upcoming milestones, sorted by urgency.
+- **RAID Watch** — Blocked tasks (predecessor overdue), overdue meeting action items, and open issues.
+
+All items are clickable and navigate to the relevant project tab. Max 5 items per quadrant with "+N more" overflow. The widget flashes amber on your first daily visit (24h cooldown) and is collapsible.
+
 Opt-in sections (disabled by default): Sprint Snapshot, Goals Progress, Team Workload, Change Requests.
 
 ### Change Requests Widget
