@@ -104,15 +104,17 @@ When a user has a pending or expired login token, an **Unlock** button appears i
 
 Project membership is enforced on all project-scoped API routes. Only members of a project can access its data. Non-members receive a `404 Not Found` response (to prevent information leakage).
 
-| Project Role | Read | Write (tasks, comments, time) | Admin (delete, manage members) |
-|---|---|---|---|
-| **owner** | Yes | Yes | Yes |
-| **manager** | Yes | Yes | No |
-| **editor** | Yes | Yes (tasks, comments, time only) | No |
-| **viewer** | Yes | No | No |
-| **Non-member** | 404 | 404 | 404 |
+| Project Role | Read | Write (create/edit) | Delete own items | Delete others' items | Admin (manage members) |
+|---|---|---|---|---|---|
+| **owner** | Yes | Yes | Yes | Yes | Yes |
+| **manager** | Yes | Yes | Yes | Yes | No |
+| **editor** | Yes | Yes | Yes | No | No |
+| **viewer** | Yes | Time entries on assigned tasks only | No | No | No |
+| **Non-member** | 404 | 404 | 404 | 404 | 404 |
 
 **Global role bypasses:** Users with the `admin` or `pmo` global role can access all projects without membership. Users with the `executive` role have read-only access to all projects.
+
+**Viewer time logging:** Viewers can log time entries on tasks assigned to them and edit their own time entries. They cannot delete time entries or write to any other project data.
 
 > **Important:** Project roles (owner/manager/editor/viewer) are separate from global user roles (admin/executive/project_manager/team_member/etc.). A user needs both: a global role with sufficient scope *and* a project role with sufficient access.
 

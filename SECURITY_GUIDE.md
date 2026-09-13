@@ -126,15 +126,17 @@ fastify.get('/:scheduleId/tasks', {
 owner  >  manager  >  editor  >  viewer
 ```
 
-| Project Role | Read | Write (create/edit) | Delete (tasks, schedules, etc.) | Manage Members / Delete Project |
-|---|---|---|---|---|
-| **owner** | Yes | Yes | Yes | Yes |
-| **manager** | Yes | Yes | Yes | No (members no, delete project no) |
-| **editor** | Yes | Yes (tasks, comments, time) | Yes (tasks, comments, time) | No |
-| **viewer** | Yes | No | No | No |
-| **Non-member** | No | No | No | No |
+| Project Role | Read | Write (create/edit) | Delete own items | Delete others' items | Manage Members / Delete Project |
+|---|---|---|---|---|---|
+| **owner** | Yes | Yes | Yes | Yes | Yes |
+| **manager** | Yes | Yes | Yes | Yes | No (members no, delete project no) |
+| **editor** | Yes | Yes | Yes | No | No |
+| **viewer** | Yes | Time entries on assigned tasks only | No | No | No |
+| **Non-member** | No | No | No | No | No |
 
-**Note:** Delete operations on project-level entities (tasks, schedules, baselines, sprints, resources, expenses, etc.) require `requireScope('write')` + appropriate `requireProjectAccess` level (typically `manager` or `editor`). Only project deletion requires `requireProjectAccess('owner')`. System-level operations (kill switches, agent policies, feedback management) remain `requireScope('admin')`.
+**Note:** Delete operations on project-level entities (tasks, schedules, baselines, sprints, resources, expenses, meetings, documents, etc.) require `requireScope('write')` + appropriate `requireProjectAccess` level. Editors can delete items they created; deleting another user's items requires `manager`. Only project deletion requires `requireProjectAccess('owner')`. Document deletion always requires `manager`. System-level operations (kill switches, agent policies, feedback management) remain `requireScope('admin')`.
+
+**Viewer write bypass:** The `viewerWriteBypass` middleware (`src/server/middleware/viewerWriteBypass.ts`) allows viewers to log time on tasks assigned to them and edit their own time entries. Ownership verification is performed in the route handler after the middleware grants access.
 
 ### Global Role Bypasses
 
@@ -149,11 +151,19 @@ owner  >  manager  >  editor  >  viewer
 - **404 for non-members** — prevents information leakage. An attacker cannot distinguish "project exists but I have no access" from "project does not exist."
 - **403 for insufficient role** — returned only to confirmed members who lack the required project role.
 - **Project ID extraction** — the middleware resolves the project from `params.projectId`, `params.scheduleId` (via DB lookup), `params.id` (on `/api/v1/projects` routes), or `request.body.projectId`.
+- **Handler-level checks** — for routes where `projectId` must be resolved from an entity lookup (e.g., `PUT /:id`, `DELETE /:id`), the `checkEntityProjectAccess` utility (`src/server/middleware/checkEntityProjectAccess.ts`) performs the same authorization checks inside the handler after the entity is fetched. This supports owner-vs-others role differentiation (e.g., editor can delete own expense, manager needed for others').
 - **Auto-owner on creation** — when a project is created, the creator is automatically added as `owner` in `project_members`.
 
 ### Protected Routes
 
-The middleware is applied to all project-scoped routes across schedules, sprints, approval workflows, resources, RAID/risk items, project member management, portal links, and project CRUD endpoints. Routes without a project context (e.g., `GET /projects` list) are not affected — the middleware skips when no projectId can be extracted.
+The middleware is applied to all project-scoped routes across:
+
+- **Core:** projects, schedules, sprints, project members, portal links
+- **Resources:** expenses, time entries, custom fields, resource assignments
+- **Collaboration:** meetings, RAID/risk items, approval workflows, document intelligence
+- **Reporting:** status reports, report schedules
+
+Routes without a project context (e.g., `GET /projects` list, `GET /timesheet` for the current user) are not affected — the middleware skips when no projectId can be extracted.
 
 ---
 
