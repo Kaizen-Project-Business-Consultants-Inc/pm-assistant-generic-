@@ -37,10 +37,10 @@ const priorityTypeLabels: Record<string, string> = {
 };
 
 const priorityTypePillCls: Record<string, string> = {
-  'overdue':   'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-  'due-today': 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
-  'due-week':  'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-  'milestone': 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+  'overdue':   'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  'due-today': 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+  'due-week':  'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  'milestone': 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
 };
 
 function PrioritiesList({ projects }: { projects: Array<{ id: string; name: string }> }) {
@@ -103,14 +103,14 @@ function PrioritiesList({ projects }: { projects: Array<{ id: string; name: stri
   return (
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-1.5 mb-3">
-        <CalendarClock className="w-3.5 h-3.5 text-gray-400" />
-        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <CalendarClock className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
+        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
           Today's Priorities
         </h4>
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 py-6 text-center">No urgent deadlines</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">No urgent deadlines</p>
       ) : (
         <ul className="space-y-2">
           {rows.slice(0, 5).map(row => (
@@ -125,17 +125,17 @@ function PrioritiesList({ projects }: { projects: Array<{ id: string; name: stri
               >
                 <span className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${
                   row.isOverdue ? 'bg-red-500' : row.type === 'due-today' ? 'bg-orange-500' : 'bg-blue-400'
-                }`} />
+                }`} aria-hidden="true" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-900 dark:text-gray-100 truncate">{row.title}</p>
+                  <p className="text-sm text-gray-900 dark:text-gray-100 truncate">{row.title}</p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${priorityTypePillCls[row.type]}`}>
+                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${priorityTypePillCls[row.type]}`}>
                       {priorityTypeLabels[row.type]}
                     </span>
                     {row.projectName && (
-                      <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{row.projectName}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{row.projectName}</span>
                     )}
-                    <span className={`text-[10px] font-medium ${row.isOverdue ? 'text-red-500' : 'text-gray-400'}`}>
+                    <span className={`text-xs font-medium ${row.isOverdue ? 'text-red-600' : 'text-gray-500'}`}>
                       {row.dueLabel}
                     </span>
                   </div>
@@ -236,14 +236,14 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
   return (
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-1.5 mb-3">
-        <Zap className="w-3.5 h-3.5 text-primary-500" />
-        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <Zap className="w-3.5 h-3.5 text-primary-500" aria-hidden="true" />
+        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
           AI Next Best Actions
         </h4>
       </div>
 
       {sorted.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 py-6 text-center">No actions needed right now</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">No actions needed right now</p>
       ) : (
         <ul className="space-y-2">
           {sorted.map(item => {
@@ -257,19 +257,19 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
                   className="w-full text-left flex items-center gap-2.5 border border-gray-100 dark:border-gray-700 rounded-lg px-2.5 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                 >
                   <div className={`w-6 h-6 rounded-md ${cfg.bg} flex items-center justify-center flex-shrink-0`}>
-                    <Icon className={`w-3.5 h-3.5 ${cfg.color}`} />
+                    <Icon className={`w-3.5 h-3.5 ${cfg.color}`} aria-hidden="true" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-900 dark:text-white truncate">{item.description}</p>
+                    <p className="text-sm text-gray-900 dark:text-white truncate">{item.description}</p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${cfg.badge}`}>{item.type}</span>
+                      <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${cfg.badge}`}>{item.type}</span>
                       {item.confidenceScore != null && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
                           {item.confidenceScore}%
                         </span>
                       )}
                       {item.riskLevel && (
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                           item.riskLevel === 'critical' ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
                           : item.riskLevel === 'high' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300'
                           : item.riskLevel === 'medium' ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
@@ -279,7 +279,7 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
                         </span>
                       )}
                       {item.healthScore != null && (
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                           item.healthScore < 40 ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
                           : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
                         }`}>
@@ -287,14 +287,14 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
                         </span>
                       )}
                       {item.time && (
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
-                          <Clock className="w-2.5 h-2.5" />
+                        <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
+                          <Clock className="w-2.5 h-2.5" aria-hidden="true" />
                           {item.time}
                         </span>
                       )}
                     </div>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" aria-hidden="true" />
                 </button>
               </li>
             );
@@ -354,7 +354,7 @@ export function ActionCenterPM({ projects }: ActionCenterPMProps) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-gray-400" />
+          <AlertCircle className="w-4 h-4 text-gray-400" aria-hidden="true" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Action Center</h3>
         </div>
         <Link
@@ -366,7 +366,7 @@ export function ActionCenterPM({ projects }: ActionCenterPMProps) {
       </div>
 
       {leftEmpty && rightEmpty ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 py-6 text-center">
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">
           No urgent items or actions right now
         </p>
       ) : (

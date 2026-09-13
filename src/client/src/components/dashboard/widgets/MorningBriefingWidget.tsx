@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Sun, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sun, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { Link } from 'react-router-dom';
 
@@ -47,10 +47,10 @@ export function MorningBriefingWidget({ scope }: Props) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center gap-2">
-          <Sun className="w-4 h-4 text-amber-500" />
+          <Sun className="w-4 h-4 text-amber-500" aria-hidden="true" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Morning Briefing</h3>
         </div>
-        <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">No briefing data available.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">No briefing data available.</p>
       </div>
     );
   }
@@ -75,12 +75,12 @@ export function MorningBriefingWidget({ scope }: Props) {
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <Sun className="w-4 h-4 text-amber-500" />
+          <Sun className="w-4 h-4 text-amber-500" aria-hidden="true" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Morning Briefing</h3>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 dark:text-gray-400">{today}</span>
-          {collapsed ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronUp className="w-4 h-4 text-gray-400" />}
+          {collapsed ? <ChevronDown className="w-4 h-4 text-gray-400" aria-hidden="true" /> : <ChevronUp className="w-4 h-4 text-gray-400" aria-hidden="true" />}
         </div>
       </button>
 
@@ -89,9 +89,9 @@ export function MorningBriefingWidget({ scope }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-700">
           {/* ON FIRE */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide mb-2">On Fire</h3>
+            <h3 className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide mb-2">On Fire</h3>
             {overdueCount === 0 && criticalRisks === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500">Nothing on fire today</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Nothing on fire today</p>
             ) : (
               <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
                 {overdueCount > 0 && (
@@ -119,7 +119,7 @@ export function MorningBriefingWidget({ scope }: Props) {
 
           {/* NEEDS YOUR DECISION */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-2">Needs Your Decision</h3>
+            <h3 className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-2">Needs Your Decision</h3>
             <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
               {pendingCRs > 0 && (
                 <li>
@@ -143,16 +143,16 @@ export function MorningBriefingWidget({ scope }: Props) {
                 </li>
               )}
               {pendingCRs === 0 && pendingProposals === 0 && unreadTotal === 0 && (
-                <li className="text-xs text-gray-400 dark:text-gray-500">All clear!</li>
+                <li className="text-sm text-gray-500 dark:text-gray-400">All clear!</li>
               )}
             </ul>
           </div>
 
           {/* DUE SOON */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">Due Soon</h3>
+            <h3 className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-2">Due Soon</h3>
             {dueTodayCount === 0 && dueWeekCount === 0 && milestoneCount === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500">Nothing due soon</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Nothing due soon</p>
             ) : (
               <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
                 {dueTodayCount > 0 && (
@@ -176,14 +176,21 @@ export function MorningBriefingWidget({ scope }: Props) {
 
           {/* PORTFOLIO PULSE */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide mb-2">Portfolio Pulse</h3>
+            <h3 className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-2">Portfolio Pulse</h3>
             <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
-              <li>
-                <span className="text-green-600 dark:text-green-400 font-medium">{health.green}</span> green
-                {' · '}
-                <span className="text-amber-600 dark:text-amber-400 font-medium">{health.amber}</span> amber
-                {' · '}
-                <span className="text-red-600 dark:text-red-400 font-medium">{health.red}</span> red
+              <li className="flex items-center gap-3 flex-wrap">
+                <span className="inline-flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-700 dark:text-green-400" aria-hidden="true" />
+                  <span className="text-green-700 dark:text-green-400 font-medium">{health.green}</span> green
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                  <span className="text-amber-700 dark:text-amber-400 font-medium">{health.amber}</span> amber
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <XCircle className="w-3.5 h-3.5 text-red-700 dark:text-red-400" aria-hidden="true" />
+                  <span className="text-red-700 dark:text-red-400 font-medium">{health.red}</span> red
+                </span>
               </li>
               {health.changes?.slice(0, 2).map((c: any, i: number) => (
                 <li key={i} className="text-xs text-gray-500 dark:text-gray-400">
