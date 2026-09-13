@@ -224,7 +224,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
         [user.userId, user.userId],
       ),
       databaseService.query<any>(
-        `SELECT ri.id, ri.title AS name, ri.item_type AS itemType, ri.status,
+        `SELECT ri.id, ri.title AS name, ri.type AS itemType, ri.status,
                 ri.priority, ri.due_date AS dueDate,
                 ri.project_id AS projectId, p.name AS projectName
          FROM project_risks ri
