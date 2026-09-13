@@ -446,7 +446,7 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - **Bar length** represents task duration (start to end date).
 - **Bar color** indicates status (blue for in progress, green for completed, gray for pending).
 - **Progress fill** shows completion percentage within each bar.
-- **Resizable panel splitter**: Drag the vertical bar between the task table and the Gantt timeline to resize the panels. Your chosen width is remembered per schedule. Drag right to reveal more columns, drag left to give more room to the timeline.
+- **Resizable panel splitter**: Drag the vertical bar between the task table and the Gantt timeline to resize the panels. The default split is 45% table / 55% timeline, adapting to your screen width. Your chosen width is remembered per schedule. Drag right to reveal more columns, drag left to give more room to the timeline.
 - **Left panel columns**: #, Task Name, Pred, Succ, Start, End, Duration, Est Days, Work, %, Priority, Assigned, Status. By default only 6 essentials are visible (Pred, Start, End, Duration, %, Status) plus the always-shown # and Task Name. Toggle additional columns on via the Columns picker.
 - **Resizable columns**: Drag the right border of any column header to resize it. This includes the **Task Name** column, which has a 250px default width. All resize handles show a small dot indicator. Widths are saved per schedule in localStorage. Double-click a resize handle to auto-fit the column to its content (capped at 400px). The left panel scrolls horizontally when more columns are enabled, so the Task Name is never squeezed to zero.
 - **Column show/hide**: Click the **Columns** button in the toolbar to open a dropdown. Toggle any column on/off (except Row # and Task Name which are always visible). Click **Reset to default** to restore the default 6-column set. Visibility persists per schedule in localStorage.
@@ -1777,7 +1777,7 @@ Templates let you save and reuse project structures.
 ### Saving a Template
 
 1. Open a project with a well-defined schedule.
-2. Click **Save as Template**.
+2. Click the **Actions** dropdown (top-right of the project header) and select **Save as Template**.
 3. Enter a template name and description.
 4. The template captures the full task hierarchy, dependencies, durations, and structure (but not specific dates or assignments).
 

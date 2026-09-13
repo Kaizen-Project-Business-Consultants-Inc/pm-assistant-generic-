@@ -30,11 +30,13 @@ When a project has more than one schedule, a **pill/tab strip** renders at the t
 
 #### Schedule Toolbar
 
-The Gantt toolbar is a compact single row:
+In **Gantt mode**, the GanttToolbar is the sole toolbar — the outer ScheduleToolbar is hidden to avoid duplication. The GanttToolbar is a compact single row:
 
 ```
-[Search] [Filters] | [Columns] [Critical Path] | [⋯]
+[Schedule Name] [Task Count] [Critical Path] [Expand/Collapse] | [Zoom D|W|M|Q|Y] [Fit] [Undo|Redo] | [Search] [Filters] [Add] [Delete] [Columns] [Export] [Overalloc] [Minimap] [Views] [⋯] [Table|Split|Gantt]
 ```
+
+In **Table**, **Kanban**, and **Calendar** modes, the ScheduleToolbar is shown instead (with search, filters, column picker, and CSV export).
 
 When **Critical Path** is enabled, a styled banner appears below the toolbar showing total project duration (days) and the number of critical tasks.
 
@@ -2294,7 +2296,7 @@ Several pages received targeted responsive fixes to avoid overflow and cramped l
 - **Agent Proposals Page** — Proposal history stat cards use the same `grid-cols-2 sm:grid-cols-4` pattern.
 - **Goals Page** — The new/edit goal modal form grid changes from a fixed `grid-cols-3` to `grid-cols-1 sm:grid-cols-3`, stacking fields vertically on mobile.
 - **Resource Management Page** — The tab bar uses `overflow-x-auto` with `min-w-max` tabs for horizontal scroll instead of wrapping; tab labels display shortened names on mobile; the resource table container switches from `overflow-hidden` to `overflow-x-auto` so wide tables scroll cleanly.
-- **Project Detail Page** — Action buttons condense on mobile (Save as Template button hidden on small screens); tab navigation changes from `flex-wrap` to `overflow-x-auto` horizontal scroll with `min-w-max` tab items.
+- **Project Detail Page** — Action buttons consolidated into a single **Actions** dropdown (Save as Template, Export CSV/XML/PDF, Print); tab navigation changes from `flex-wrap` to `overflow-x-auto` horizontal scroll with `min-w-max` tab items.
 - **Portfolio Page** — Project Comparison, CPI/SPI, and Resource Utilization tables get `min-w-[600–700px]` so wide data tables scroll horizontally instead of compressing columns.
 
 ### Mobile-Responsive Gantt (Touch Gestures)

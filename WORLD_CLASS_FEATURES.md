@@ -93,7 +93,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Five zoom levels: Day (32px/day), Week (10px/day), Month (3.2px/day), Quarter (1.2px/day), Year (0.27px/day)
 - Two-tier timescale header (upper tier: coarser unit, lower tier: finer unit)
 - Segmented zoom control in toolbar (D | W | M | Q | Y)
-- Draggable splitter between task table and timeline (width persists per schedule)
+- Draggable splitter between task table and timeline (defaults to 45% of container width, persists per schedule)
 - 13 columns in left panel: #, Task Name, Pred, Succ (read-only successor), Start, End, Duration, Est Days, Work, %, Priority, Assigned, Status
 - **Default visible columns**: 6 essentials (Pred, Start, End, Duration, %, Status) plus always-visible # and Task Name; all others (Succ, Est Days, Work, Priority, Assigned) hidden by default to keep Task Name readable without horizontal scroll pressure
 - **Task Name is resizable** at 250px default (previously flex-only); all column resize handles show a visible dot indicator; double-click any handle to auto-fit; left panel uses `overflow-x: auto` for horizontal scrolling when columns are added
