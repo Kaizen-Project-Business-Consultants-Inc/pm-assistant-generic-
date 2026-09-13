@@ -9,9 +9,9 @@ import {
   daysBetween,
   formatShortDate,
   avatarColor,
-  avatarInitials,
   healthColor,
 } from './types';
+import { getInitials } from '../../ui/Avatar';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -299,7 +299,7 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
           }}
           title={assigneeName}
         >
-          {avatarInitials(assigneeName)}
+          {getInitials(assigneeName)}
         </div>
       )}
 

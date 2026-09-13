@@ -87,6 +87,9 @@ export function GanttChart({
   taskRiskMap,
   onInlineInsert,
   onInlineInsertBefore,
+  showCriticalPath: showCriticalPathProp,
+  onCriticalPathChange,
+  scheduleOverflowMenu,
 }: {
   tasks: GanttTask[];
   scheduleName?: string;
@@ -145,6 +148,12 @@ export function GanttChart({
   onInlineInsert?: (name: string, afterTaskId: string, parentTaskId?: string) => void;
   /** Called when user creates a task via inline insert-before (name + position) */
   onInlineInsertBefore?: (name: string, beforeTaskId: string, parentTaskId?: string) => void;
+  /** Critical path toggle state (from ScheduleTab when toolbar is hidden) */
+  showCriticalPath?: boolean;
+  /** Critical path toggle handler */
+  onCriticalPathChange?: (value: boolean) => void;
+  /** Schedule overflow menu ReactNode (baselines, scenarios, import, etc.) */
+  scheduleOverflowMenu?: React.ReactNode;
 }) {
   const criticalSet = useMemo(() => new Set(criticalPathTaskIds || []), [criticalPathTaskIds]);
   const baselineMap = useMemo(() => {
@@ -173,12 +182,28 @@ export function GanttChart({
   }, [zoom, scheduleId]);
 
   // Draggable splitter: table panel width
+  const ganttContainerRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState<number>(() => {
-    if (!scheduleId) return TABLE_DEFAULT_W;
-    const stored = localStorage.getItem(`gantt-table-w:${scheduleId}`);
-    return stored ? Math.max(TABLE_MIN_W, Math.min(TABLE_MAX_W, Number(stored))) : TABLE_DEFAULT_W;
+    if (scheduleId) {
+      const stored = localStorage.getItem(`gantt-table-w:${scheduleId}`);
+      if (stored) return Math.max(TABLE_MIN_W, Math.min(TABLE_MAX_W, Number(stored)));
+    }
+    return TABLE_DEFAULT_W;
   });
   const [splitterDrag, setSplitterDrag] = useState<{ startX: number; startW: number } | null>(null);
+
+  // Responsive default: if no stored value, measure container and use 45%
+  const hasAppliedResponsiveDefault = useRef(false);
+  useEffect(() => {
+    if (hasAppliedResponsiveDefault.current) return;
+    if (scheduleId && localStorage.getItem(`gantt-table-w:${scheduleId}`)) return;
+    if (!ganttContainerRef.current) return;
+    hasAppliedResponsiveDefault.current = true;
+    const containerWidth = ganttContainerRef.current.offsetWidth;
+    if (containerWidth > 0) {
+      setTableWidth(Math.max(TABLE_MIN_W, Math.min(TABLE_MAX_W, Math.round(containerWidth * 0.45))));
+    }
+  }, [scheduleId]);
 
   useEffect(() => {
     if (scheduleId) localStorage.setItem(`gantt-table-w:${scheduleId}`, String(tableWidth));
@@ -2231,7 +2256,7 @@ export function GanttChart({
   }, [tasks.length, inlineInsert]);
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+    <div ref={ganttContainerRef} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
       {/* Schedule title bar */}
       <GanttToolbar
         scheduleName={scheduleName}
@@ -2279,6 +2304,9 @@ export function GanttChart({
         setPanelMode={setPanelMode}
         sortField={sortField}
         sortDirection={sortDirection}
+        showCriticalPath={showCriticalPathProp}
+        onCriticalPathChange={onCriticalPathChange}
+        overflowMenu={scheduleOverflowMenu}
       />
 
       {/* Filter panel */}

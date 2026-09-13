@@ -8,6 +8,7 @@ import { apiService } from '../../services/api';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { SUPPORT_EMAIL, roleLabel } from '../../constants/branding';
 import { ConnectionStatus } from './ConnectionStatus';
+import { getInitials } from '../ui/Avatar';
 import CommandPalette from './CommandPalette';
 import { FeedbackModal } from '../feedback/FeedbackModal';
 
@@ -175,14 +176,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
     logout();
   };
 
-  const userInitials = user?.fullName
-    ? user.fullName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : '??';
+  const userInitials = user?.fullName ? getInitials(user.fullName) : '??';
 
   return (
     <header className="sticky top-0 z-30 flex items-center h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 sm:px-4 lg:px-6">

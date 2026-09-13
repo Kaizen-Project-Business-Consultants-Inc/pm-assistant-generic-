@@ -62,6 +62,9 @@ interface GanttToolbarProps {
   setPanelMode: (mode: PanelMode) => void;
   sortField: string | null;
   sortDirection: 'asc' | 'desc' | null;
+  showCriticalPath?: boolean;
+  onCriticalPathChange?: (value: boolean) => void;
+  overflowMenu?: React.ReactNode;
 }
 
 export const GanttToolbar = React.memo(function GanttToolbar({
@@ -110,6 +113,9 @@ export const GanttToolbar = React.memo(function GanttToolbar({
   setPanelMode,
   sortField,
   sortDirection,
+  showCriticalPath,
+  onCriticalPathChange,
+  overflowMenu,
 }: GanttToolbarProps) {
   const [showColPicker, setShowColPicker] = useState(false);
   const colPickerRef = useRef<HTMLDivElement>(null);
@@ -134,12 +140,23 @@ export const GanttToolbar = React.memo(function GanttToolbar({
     <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <div className="w-1.5 h-4 rounded-full bg-primary-500" />
-        <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+        <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate max-w-[200px]" title={scheduleName}>
           {scheduleName}
         </span>
-        <span className="text-xs text-gray-400 ml-2">
+        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
           {rowCount !== baseRowCount ? `${rowCount} / ${baseRowCount}` : rowCount} tasks
         </span>
+        {onCriticalPathChange && (
+          <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer ml-2">
+            <input
+              type="checkbox"
+              checked={!!showCriticalPath}
+              onChange={(e) => onCriticalPathChange(e.target.checked)}
+              className="accent-red-600 w-3.5 h-3.5"
+            />
+            Critical Path
+          </label>
+        )}
         {parentTaskCount > 0 && (
           <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-500 ml-2">
             <button
@@ -399,6 +416,8 @@ export const GanttToolbar = React.memo(function GanttToolbar({
             onLoadView={handleLoadView}
           />
         )}
+        {/* Schedule overflow menu (baselines, scenarios, import, etc.) */}
+        {overflowMenu}
         {/* Panel mode toggle */}
         <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden print:hidden">
           <button

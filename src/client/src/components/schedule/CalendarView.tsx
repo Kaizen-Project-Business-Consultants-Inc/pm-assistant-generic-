@@ -224,7 +224,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
                 <div className="space-y-0.5">
                   {dayTasks.slice(0, 3).map(task => renderTaskPill(task, day))}
                   {dayTasks.length > 3 && (
-                    <span className="text-xs text-gray-400 dark:text-gray-500 pl-1">+{dayTasks.length - 3} more</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-500 pl-1">+{dayTasks.length - 3} more</span>
                   )}
                 </div>
               </div>
@@ -261,7 +261,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
             >
               {/* Day header */}
               <div className="text-center mb-2">
-                <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">{DAYS[day.getDay()]}</div>
+                <div className="text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase">{DAYS[day.getDay()]}</div>
                 <div className={`text-lg font-bold mx-auto w-8 h-8 flex items-center justify-center rounded-full ${
                   isToday ? 'bg-primary-600 text-white' : 'text-gray-700 dark:text-gray-200'
                 }`}>

@@ -406,24 +406,25 @@ export function ProjectDetailPage() {
                 Edit
               </button>
             )}
-            <button
-              onClick={() => setShowSaveTemplate(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 hover:bg-primary-100 dark:hover:bg-primary-900/40 rounded-lg transition-colors"
-            >
-              <Save className="w-3.5 h-3.5" />
-              Save as Template
-            </button>
             <div className="relative" ref={exportMenuRef}>
               <button
                 onClick={() => setShowExportMenu(v => !v)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
                 <Download className="w-3.5 h-3.5" />
-                Export
+                Actions
                 <ChevronDown className="w-3 h-3" />
               </button>
               {showExportMenu && (
                 <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
+                  <button
+                    onClick={() => { setShowExportMenu(false); setShowSaveTemplate(true); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    Save as Template
+                  </button>
+                  <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
                   <button
                     onClick={() => { apiService.exportProjectCSV(id!); setShowExportMenu(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

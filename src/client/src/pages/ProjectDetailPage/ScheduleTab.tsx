@@ -942,6 +942,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     <>
       {/* Row 1: Toolbar + Quick filter pills (merged) */}
       <div className="flex items-center gap-2 flex-wrap mb-1">
+        {viewMode !== 'gantt' && (
         <ScheduleToolbar
           viewMode={viewMode}
           tasksCount={tasks.length}
@@ -953,49 +954,12 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           columnState={columnState}
           showCriticalPath={showCriticalPath}
           onCriticalPathChange={setShowCriticalPath}
-          overflowMenu={
-            <ScheduleOverflowMenu
-              schedule={schedule}
-              projectId={projectId}
-              baselines={baselines}
-              selectedBaselineId={selectedBaselineId}
-              setSelectedBaselineId={setSelectedBaselineId}
-              showComparison={showComparison}
-              setShowComparison={setShowComparison}
-              createBaselineMutation={createBaselineMutation}
-              scenarios={scenarios}
-              selectedScenarioId={selectedScenarioId}
-              setSelectedScenarioId={setSelectedScenarioId}
-              showScenarioCompare={showScenarioCompare}
-              setShowScenarioCompare={setShowScenarioCompare}
-              setShowImportModal={setShowImportModal}
-              setShowReschedulePanel={setShowReschedulePanel}
-              levelingBusy={levelingBusy}
-              onLevelResources={async () => {
-                setLevelingBusy(true);
-                try {
-                  const res = await apiService.levelResources(schedule.id);
-                  const adjustments = res?.result?.adjustedTasks || res?.adjustedTasks || [];
-                  setLevelingResult(adjustments.length === 0 ? [] : adjustments);
-                } catch {
-                  setLevelingResult([]);
-                } finally {
-                  setLevelingBusy(false);
-                }
-              }}
-              exportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
-              queryClient={queryClient}
-              onDeleteSchedule={() => setShowDeleteConfirm(true)}
-              onCreateScenario={() => {
-                setScenarioName(`Scenario ${new Date().toLocaleDateString()}`);
-                setShowScenarioPrompt(true);
-              }}
-            />
-          }
+          overflowMenu={null}
           onExportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
           filteredCount={filteredTasks.length}
           totalCount={tasks.length}
         />
+        )}
         {tasks.length > 0 && (
           <QuickFilterPills
             activeFilter={quickFilter}
@@ -1094,6 +1058,47 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           nonWorkingDates={nonWorkingDates}
           onDuplicateTasks={handleDuplicateTasks}
           taskRiskMap={taskRiskMap}
+          showCriticalPath={showCriticalPath}
+          onCriticalPathChange={setShowCriticalPath}
+          scheduleOverflowMenu={
+            <ScheduleOverflowMenu
+              schedule={schedule}
+              projectId={projectId}
+              baselines={baselines}
+              selectedBaselineId={selectedBaselineId}
+              setSelectedBaselineId={setSelectedBaselineId}
+              showComparison={showComparison}
+              setShowComparison={setShowComparison}
+              createBaselineMutation={createBaselineMutation}
+              scenarios={scenarios}
+              selectedScenarioId={selectedScenarioId}
+              setSelectedScenarioId={setSelectedScenarioId}
+              showScenarioCompare={showScenarioCompare}
+              setShowScenarioCompare={setShowScenarioCompare}
+              setShowImportModal={setShowImportModal}
+              setShowReschedulePanel={setShowReschedulePanel}
+              levelingBusy={levelingBusy}
+              onLevelResources={async () => {
+                setLevelingBusy(true);
+                try {
+                  const res = await apiService.levelResources(schedule.id);
+                  const adjustments = res?.result?.adjustedTasks || res?.adjustedTasks || [];
+                  setLevelingResult(adjustments.length === 0 ? [] : adjustments);
+                } catch {
+                  setLevelingResult([]);
+                } finally {
+                  setLevelingBusy(false);
+                }
+              }}
+              exportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
+              queryClient={queryClient}
+              onDeleteSchedule={() => setShowDeleteConfirm(true)}
+              onCreateScenario={() => {
+                setScenarioName(`Scenario ${new Date().toLocaleDateString()}`);
+                setShowScenarioPrompt(true);
+              }}
+            />
+          }
         />
       )}
       {viewMode === 'kanban' && (

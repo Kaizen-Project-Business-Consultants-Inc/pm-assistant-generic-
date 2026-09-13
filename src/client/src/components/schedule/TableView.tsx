@@ -572,36 +572,36 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'name': return task.name || '';
       case 'status': return task.status?.replace('_', ' ') || '';
       case 'priority': return task.priority || 'medium';
-      case 'startDate': return task.startDate ? new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
-      case 'endDate': return task.endDate ? new Date(task.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
+      case 'startDate': return task.startDate ? new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '\u2014';
+      case 'endDate': return task.endDate ? new Date(task.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '\u2014';
       case 'progressPercentage': return `${task.progressPercentage ?? 0}%`;
-      case 'assignedTo': return task.assignedTo || '-';
+      case 'assignedTo': return task.assignedTo || '\u2014';
       case 'duration': {
         if (task.startDate && task.endDate) {
           const diff = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000);
-          return diff > 0 ? `${diff}d` : '-';
+          return diff > 0 ? `${diff}d` : '\u2014';
         }
-        return task.estimatedDays != null ? `${task.estimatedDays}d` : '-';
+        return task.estimatedDays != null ? `${task.estimatedDays}d` : '\u2014';
       }
       case 'dependency': return getTaskFieldValue(task, 'dependency');
       case 'successor': {
         const succs = successorMap.get(task.id);
-        if (!succs || succs.length === 0) return '-';
+        if (!succs || succs.length === 0) return '\u2014';
         return succs.map(s => {
           const succRowNum = rowNumMap.get(s.successorId);
           return succRowNum ? String(succRowNum) : '';
-        }).filter(Boolean).join(',') || '-';
+        }).filter(Boolean).join(',') || '\u2014';
       }
-      case 'notes': return task.description || '-';
-      case 'budgetAllocated': return (task as any).budgetAllocated != null ? `$${Number((task as any).budgetAllocated).toLocaleString()}` : '-';
-      case 'actualCost': return (task as any).actualCost != null ? `$${Number((task as any).actualCost).toLocaleString()}` : '-';
-      case 'actualStartDate': return (task as any).actualStartDate ? formatDate((task as any).actualStartDate) : '-';
-      case 'actualEndDate': return (task as any).actualEndDate ? formatDate((task as any).actualEndDate) : '-';
-      case 'baselineDuration': return (task as any).baselineDurationDays != null ? `${Number((task as any).baselineDurationDays)}d` : '-';
-      case 'baselineCost': return (task as any).baselineCost != null ? `$${Number((task as any).baselineCost).toLocaleString()}` : '-';
-      case 'wbs': return wbsMap.get(task.id) || '-';
-      case 'rowNum': return String(rowNumMap.get(task.id) || '-');
-      default: return '-';
+      case 'notes': return task.description || '\u2014';
+      case 'budgetAllocated': return (task as any).budgetAllocated != null ? `$${Number((task as any).budgetAllocated).toLocaleString()}` : '\u2014';
+      case 'actualCost': return (task as any).actualCost != null ? `$${Number((task as any).actualCost).toLocaleString()}` : '\u2014';
+      case 'actualStartDate': return (task as any).actualStartDate ? formatDate((task as any).actualStartDate) : '\u2014';
+      case 'actualEndDate': return (task as any).actualEndDate ? formatDate((task as any).actualEndDate) : '\u2014';
+      case 'baselineDuration': return (task as any).baselineDurationDays != null ? `${Number((task as any).baselineDurationDays)}d` : '\u2014';
+      case 'baselineCost': return (task as any).baselineCost != null ? `$${Number((task as any).baselineCost).toLocaleString()}` : '\u2014';
+      case 'wbs': return wbsMap.get(task.id) || '\u2014';
+      case 'rowNum': return String(rowNumMap.get(task.id) || '\u2014');
+      default: return '\u2014';
     }
   }, [wbsMap, rowNumMap, getTaskFieldValue, successorMap]);
 
@@ -1100,13 +1100,13 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   };
 
   const formatCpmDate = (offset: number | undefined): string => {
-    if (offset === undefined) return '-';
+    if (offset === undefined) return '\u2014';
     if (scheduleStartDate) return addDaysToDate(scheduleStartDate, offset);
     return `Day ${offset}`;
   };
 
   const renderVarianceBadge = (days: number | undefined): React.ReactNode => {
-    if (days === undefined || days === null) return '-';
+    if (days === undefined || days === null) return '\u2014';
     if (days === 0) return <span className="text-xs text-gray-500 dark:text-gray-400">0d</span>;
     const color = days > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400';
     const prefix = days > 0 ? '+' : '';
@@ -1339,7 +1339,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 onClose={cancelEditing}
               />
             ) : (
-              resourceNameMap.get(task.assignedTo || '') || task.assignedTo || '-'
+              resourceNameMap.get(task.assignedTo || '') || task.assignedTo || '\u2014'
             )}
             {renderSaveIndicator(task.id, 'assignedTo')}
             {renderHoverPencil(task.id, 'assignedTo')}
@@ -1368,7 +1368,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 placeholder="days"
               />
             ) : (
-              days != null ? `${days}d` : '-'
+              days != null ? `${days}d` : '\u2014'
             )}
             {renderSaveIndicator(task.id, 'duration')}
             {renderHoverPencil(task.id, 'duration')}
@@ -1388,13 +1388,13 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'totalFloat':
         return (
           <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
-            {cpm ? `${cpm.totalFloat}d` : '-'}
+            {cpm ? `${cpm.totalFloat}d` : '\u2014'}
           </td>
         );
       case 'freeFloat':
         return (
           <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
-            {cpm ? `${cpm.freeFloat}d` : '-'}
+            {cpm ? `${cpm.freeFloat}d` : '\u2014'}
           </td>
         );
 
@@ -1405,14 +1405,14 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               cpm.isCritical
                 ? <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400">Yes</span>
                 : <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">No</span>
-            ) : '-'}
+            ) : '\u2014'}
           </td>
         );
 
       case 'baselineStart':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{(task as any).baselineStartDate ? formatDate((task as any).baselineStartDate) : baseline?.baselineStart ? formatDate(baseline.baselineStart) : '-'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{(task as any).baselineStartDate ? formatDate((task as any).baselineStartDate) : baseline?.baselineStart ? formatDate(baseline.baselineStart) : '\u2014'}</td>;
       case 'baselineEnd':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{(task as any).baselineFinishDate ? formatDate((task as any).baselineFinishDate) : baseline?.baselineEnd ? formatDate(baseline.baselineEnd) : '-'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{(task as any).baselineFinishDate ? formatDate((task as any).baselineFinishDate) : baseline?.baselineEnd ? formatDate(baseline.baselineEnd) : '\u2014'}</td>;
       case 'startVariance':
         return <td key={col.key} className="px-3 py-2">{renderVarianceBadge(baseline?.startVarianceDays)}</td>;
       case 'endVariance':
@@ -1437,16 +1437,16 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 onKeyDown={e => handleKeyDown(e, task.id, adField)}
                 onBlur={() => saveEdit(task.id, adField, editValue)}
               />
-            ) : adVal ? formatDate(adVal) : '-'}
+            ) : adVal ? formatDate(adVal) : '\u2014'}
           </td>
         );
       }
 
       case 'baselineDuration':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 text-right font-mono">{(task as any).baselineDurationDays != null ? `${Number((task as any).baselineDurationDays)}d` : '-'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 text-right font-mono">{(task as any).baselineDurationDays != null ? `${Number((task as any).baselineDurationDays)}d` : '\u2014'}</td>;
 
       case 'baselineCost':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 text-right font-mono">{(task as any).baselineCost != null ? `$${Number((task as any).baselineCost).toLocaleString()}` : '-'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 text-right font-mono">{(task as any).baselineCost != null ? `$${Number((task as any).baselineCost).toLocaleString()}` : '\u2014'}</td>;
 
       case 'dependency': {
         const hasDepError = depError?.taskId === task.id;
@@ -1471,7 +1471,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             ) : (() => {
               const deps = task.dependencies || [];
               if (deps.length === 0 && !task.dependency) {
-                return <span className="text-gray-400 dark:text-gray-500">-</span>;
+                return <span className="text-gray-400 dark:text-gray-500">{'\u2014'}</span>;
               }
               const items = deps.length > 0 ? deps : (task.dependency ? [{ dependencyId: task.dependency, dependencyType: task.dependencyType || 'FS', lagDays: task.dependencyLagDays || 0 }] : []);
               let worstHealth: 'satisfied' | 'in_progress' | 'at_risk' = 'satisfied';
@@ -1509,7 +1509,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'successor': {
         const succs = successorMap.get(task.id);
         if (!succs || succs.length === 0) {
-          return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center">-</td>;
+          return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center">{'\u2014'}</td>;
         }
         const succLabels = succs.map(s => {
           const succRowNum = rowNumMap.get(s.successorId);
@@ -1528,7 +1528,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       }
 
       case 'rowNum':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center w-12">{rowNumMap.get(task.id) || '-'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center w-12">{rowNumMap.get(task.id) || '\u2014'}</td>;
 
       case 'notes': {
         const notesField: EditableField = 'notes';
@@ -1545,7 +1545,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             }}
             style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}
           >
-            <span className="truncate block">{notesText || '-'}</span>
+            <span className="truncate block">{notesText || '\u2014'}</span>
             {renderSaveIndicator(task.id, notesField)}
             {renderHoverPencil(task.id, notesField)}
           </td>
@@ -1553,7 +1553,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       }
 
       case 'wbs':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono">{wbsMap.get(task.id) || '-'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono">{wbsMap.get(task.id) || '\u2014'}</td>;
 
       case 'resource':
         return (
@@ -1572,7 +1572,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'actualCost': {
         const budgetField = col.key as EditableField;
         const val = (task as any)[col.key];
-        const formatted = val != null ? `$${Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '-';
+        const formatted = val != null ? `$${Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '\u2014';
         return (
           <td key={col.key}
             className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 text-right font-mono w-28 ${editableCellClass(task.id, budgetField, task)}`}
@@ -1598,7 +1598,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'budgetVariance': {
         const budget = (task as any).budgetAllocated;
         const actual = (task as any).actualCost;
-        if (budget == null && actual == null) return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 text-right">-</td>;
+        if (budget == null && actual == null) return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 text-right">{'\u2014'}</td>;
         const variance = (budget ?? 0) - (actual ?? 0);
         const color = variance < 0 ? 'text-red-600 dark:text-red-400' : variance > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-500';
         return <td key={col.key} className={`px-3 py-2 text-xs font-mono text-right ${color}`}>{variance >= 0 ? '+' : ''}${Math.abs(variance).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>;
@@ -1654,13 +1654,13 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 onKeyDown={e => handleKeyDown(e, task.id, 'constraintDate' as EditableField)}
                 onBlur={() => saveEdit(task.id, 'constraintDate' as EditableField, editValue)}
               />
-            ) : cd ? new Date(cd + 'T00:00').toLocaleDateString() : (needsDate ? '-' : '')}
+            ) : cd ? new Date(cd + 'T00:00').toLocaleDateString() : (needsDate ? '\u2014' : '')}
           </td>
         );
       }
 
       default:
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">-</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">{'\u2014'}</td>;
     }
   };
 
