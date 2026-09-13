@@ -1398,7 +1398,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
   }, [open]);
 
   const itemClass = 'w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2';
-  const groupLabel = 'px-3 pt-2 pb-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider';
+  const groupLabel = 'px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider';
   const divider = 'border-t border-gray-100 dark:border-gray-700 my-1';
 
   return (
@@ -1525,7 +1525,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
             Level Resources
           </button>
           <div className="px-3 py-1.5 flex items-center gap-2">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">% Mode:</span>
+            <span className="text-xs font-semibold text-gray-400 uppercase">% Mode:</span>
             <select
               value={props.schedule.progressMode || 'duration'}
               onChange={async (e) => {
@@ -1549,7 +1549,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
             onClick={() => setShowShortcuts(!showShortcuts)}
             className={itemClass}
           >
-            <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] font-bold border border-gray-300 dark:border-gray-600 rounded">?</span>
+            <span className="w-3.5 h-3.5 flex items-center justify-center text-xs font-bold border border-gray-300 dark:border-gray-600 rounded">?</span>
             Keyboard Shortcuts
           </button>
           {showShortcuts && (
@@ -1566,7 +1566,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
               ].map(([key, desc]) => (
                 <div key={key} className="flex items-center justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{desc}</span>
-                  <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono text-[10px]">{key}</kbd>
+                  <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono text-xs">{key}</kbd>
                 </div>
               ))}
             </div>

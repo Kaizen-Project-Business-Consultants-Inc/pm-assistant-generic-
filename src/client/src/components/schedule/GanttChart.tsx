@@ -2580,7 +2580,7 @@ export function GanttChart({
                   className="absolute top-0 flex items-center border-l border-gray-300 dark:border-gray-500 overflow-hidden"
                   style={{ left: band.left, width: band.width, height: 26 }}
                 >
-                  <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide px-1.5 truncate">
+                  <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide px-1.5 truncate">
                     {band.label}
                   </span>
                 </div>
@@ -2592,7 +2592,7 @@ export function GanttChart({
                   className="absolute flex items-center border-l border-gray-200 dark:border-gray-600 overflow-hidden"
                   style={{ left: band.left, width: band.width, height: 26, top: timescale.upper.length > 0 ? 26 : 0 }}
                 >
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400 px-1 truncate">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 px-1 truncate">
                     {band.label}
                   </span>
                 </div>

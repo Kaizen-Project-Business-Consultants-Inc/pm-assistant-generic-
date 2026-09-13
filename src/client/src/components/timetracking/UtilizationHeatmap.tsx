@@ -127,7 +127,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
                         <span className="text-[9px] font-medium text-gray-700 dark:text-gray-200">{hours.toFixed(0)}</span>
                       )}
                       {/* Tooltip */}
-                      <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-[10px] rounded whitespace-nowrap z-10 pointer-events-none">
+                      <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-10 pointer-events-none">
                         {hours.toFixed(1)}h — {util}%
                       </div>
                     </div>
@@ -138,7 +138,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-3 mt-3 text-[10px] text-gray-500">
+          <div className="flex items-center gap-3 mt-3 text-xs text-gray-500">
             <span>Legend:</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-200 dark:bg-red-900/40" /> &lt;25%</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-200 dark:bg-amber-900/40" /> 25-74%</span>

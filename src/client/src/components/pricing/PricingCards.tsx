@@ -547,7 +547,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
                 <th scope="col" className="text-left py-3 pr-6 font-semibold text-white">Feature</th>
                 <th scope="col" className="text-center py-3 px-3 font-semibold text-gray-400 w-20">
                   Trial
-                  <div className="text-[10px] font-normal text-gray-500">14 days</div>
+                  <div className="text-xs font-normal text-gray-500">14 days</div>
                 </th>
                 <th scope="col" className="text-center py-3 px-3 font-semibold text-white w-20">Basic</th>
                 <th scope="col" className="text-center py-3 px-3 font-semibold text-primary-400 w-20">Pro</th>

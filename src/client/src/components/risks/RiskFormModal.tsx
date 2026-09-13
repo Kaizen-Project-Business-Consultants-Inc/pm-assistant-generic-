@@ -442,7 +442,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{lesson.recommendation}</p>
                       )}
                       {lesson.projectName && (
-                        <p className="text-[10px] text-gray-400 mt-0.5">From: {lesson.projectName}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">From: {lesson.projectName}</p>
                       )}
                     </div>
                   ))}
@@ -857,7 +857,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{memberName(u.userId)}</span>
-                        <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0">
+                        <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
                           {formatTimestamp(u.createdAt)}
                           {u.updatedAt !== u.createdAt && <span className="italic ml-1">(edited)</span>}
                         </span>

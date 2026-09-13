@@ -429,7 +429,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {formSkills.map((s, i) => (
                     <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-50 dark:bg-primary-900/30 text-xs text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700">
-                      {s.name} <span className="text-[10px] opacity-70">({PROFICIENCY_LABELS[s.level] || s.level})</span>
+                      {s.name} <span className="text-xs opacity-70">({PROFICIENCY_LABELS[s.level] || s.level})</span>
                       <button type="button" onClick={() => removeSkill(i)} className="ml-0.5 text-primary-400 hover:text-red-500"><X className="w-3 h-3" /></button>
                     </span>
                   ))}
@@ -551,12 +551,12 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1 max-w-[200px]">
                           {(r.skills || []).slice(0, 4).map((s, i) => (
-                            <span key={i} className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300" title={`${s.name} (${PROFICIENCY_LABELS[s.level] || s.level})`}>
+                            <span key={i} className="inline-block px-1.5 py-0.5 rounded text-xs bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300" title={`${s.name} (${PROFICIENCY_LABELS[s.level] || s.level})`}>
                               {s.name}
                               <span className="ml-0.5 opacity-60">{s.level}</span>
                             </span>
                           ))}
-                          {(r.skills || []).length > 4 && <span className="text-[10px] text-gray-400">+{(r.skills || []).length - 4}</span>}
+                          {(r.skills || []).length > 4 && <span className="text-xs text-gray-400">+{(r.skills || []).length - 4}</span>}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.email}</td>

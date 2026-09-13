@@ -120,7 +120,7 @@ export function LessonsPanel({ projectId, category }: LessonsPanelProps) {
                 </p>
               )}
               {lesson.projectName && (
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">From: {lesson.projectName}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">From: {lesson.projectName}</p>
               )}
             </div>
           ))}

@@ -68,12 +68,12 @@ export function FlowMetricsWidget({ scheduleId }: FlowMetricsWidgetProps) {
         <div className="text-center">
           <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium">Avg Lead Time</div>
           <div className={`text-xl font-bold ${timeColor(metrics.avgLeadTimeDays)}`}>{metrics.avgLeadTimeDays}d</div>
-          <div className="text-[10px] text-gray-400">created to done</div>
+          <div className="text-xs text-gray-400">created to done</div>
         </div>
         <div className="text-center">
           <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium">Avg Cycle Time</div>
           <div className={`text-xl font-bold ${timeColor(metrics.avgCycleTimeDays)}`}>{metrics.avgCycleTimeDays}d</div>
-          <div className="text-[10px] text-gray-400">started to done</div>
+          <div className="text-xs text-gray-400">started to done</div>
         </div>
         <div className="text-center">
           <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium">Median Lead</div>
@@ -91,7 +91,7 @@ export function FlowMetricsWidget({ scheduleId }: FlowMetricsWidgetProps) {
         <div className="space-y-1.5">
           {metrics.distribution.map((b: any) => (
             <div key={b.bucket} className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 w-16 text-right flex-shrink-0">{b.bucket}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 w-16 text-right flex-shrink-0">{b.bucket}</span>
               <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-700 rounded-sm overflow-hidden">
                 <div
                   className="h-full rounded-sm transition-all"
@@ -106,7 +106,7 @@ export function FlowMetricsWidget({ scheduleId }: FlowMetricsWidgetProps) {
                   }}
                 />
               </div>
-              <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 w-6">{b.count}</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300 w-6">{b.count}</span>
             </div>
           ))}
         </div>

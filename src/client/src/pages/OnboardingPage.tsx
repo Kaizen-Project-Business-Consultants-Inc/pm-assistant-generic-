@@ -369,7 +369,7 @@ export const OnboardingPage: React.FC = () => {
                           }`}
                         >
                           <span className={`text-sm font-medium block ${selected ? 'text-primary-700 dark:text-primary-300' : 'text-gray-600 dark:text-gray-300'}`}>{m.label}</span>
-                          <span className="text-[10px] text-gray-400 mt-0.5 block">{m.description}</span>
+                          <span className="text-xs text-gray-400 mt-0.5 block">{m.description}</span>
                         </button>
                       );
                     })}

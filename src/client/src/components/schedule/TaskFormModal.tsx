@@ -168,7 +168,7 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
                       <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
                       <div className="text-gray-400 dark:text-gray-500 truncate">{r.role}</div>
                     </div>
-                    {selected && <span className="text-primary-600 text-[10px] font-medium">Current</span>}
+                    {selected && <span className="text-primary-600 text-xs font-medium">Current</span>}
                   </button>
                 );
               })
@@ -602,7 +602,7 @@ export function TaskFormModal({
                 )}
               </div>
               {estimationHint && (
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">{estimationHint}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-tight">{estimationHint}</p>
               )}
             </div>
           </div>
@@ -851,7 +851,7 @@ export function TaskFormModal({
             </div>
           </div>
           {form.effortDriven && (
-            <p className="text-[10px] text-gray-400 -mt-2">Duration auto-adjusts when resources are assigned. Work stays constant.</p>
+            <p className="text-xs text-gray-400 -mt-2">Duration auto-adjusts when resources are assigned. Work stays constant.</p>
           )}
 
           {/* Constraint */}
@@ -1071,7 +1071,7 @@ function RecurrenceSection({
                 key={d.key}
                 type="button"
                 onClick={() => toggleDay(d.key)}
-                className={`px-1.5 py-0.5 text-[10px] rounded font-medium transition-colors ${
+                className={`px-1.5 py-0.5 text-xs rounded font-medium transition-colors ${
                   selectedDays.includes(d.key)
                     ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'

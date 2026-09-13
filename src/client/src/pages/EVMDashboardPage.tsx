@@ -573,14 +573,14 @@ export function EVMDashboardPage() {
                     <span className="w-20 text-gray-500 dark:text-gray-400 text-right shrink-0">Complete</span>
                     <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden relative">
                       <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${Math.min(pctComplete, 100)}%` }} />
-                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700 dark:text-gray-200">{Math.round(pctComplete)}%</span>
+                      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-gray-200">{Math.round(pctComplete)}%</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 text-xs">
                     <span className="w-20 text-gray-500 dark:text-gray-400 text-right shrink-0">Spent</span>
                     <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden relative">
                       <div className={`h-full rounded-full transition-all ${pctSpent > pctComplete ? 'bg-red-400' : 'bg-green-400'}`} style={{ width: `${Math.min(pctSpent, 100)}%` }} />
-                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700 dark:text-gray-200">{Math.round(pctSpent)}%</span>
+                      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-gray-200">{Math.round(pctSpent)}%</span>
                     </div>
                   </div>
                 </div>
@@ -621,7 +621,7 @@ export function EVMDashboardPage() {
                         <span className="text-xl font-bold" style={{ color: indexColor(m.CPI) }}>{m.CPI.toFixed(2)}</span>
                         {cpiDelta !== null && <span className={`text-xs font-semibold ${deltaColor(cpiDelta)}`}>{deltaLabel(cpiDelta)}</span>}
                       </div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 text-center">Cost Performance</div>
+                      <div className="text-xs text-gray-400 mt-0.5 text-center">Cost Performance</div>
                     </div>
                   </EVMMetricTooltip>
                   {/* SPI with gauge */}
@@ -633,7 +633,7 @@ export function EVMDashboardPage() {
                         <span className="text-xl font-bold" style={{ color: indexColor(m.SPI) }}>{m.SPI.toFixed(2)}</span>
                         {spiDelta !== null && <span className={`text-xs font-semibold ${deltaColor(spiDelta)}`}>{deltaLabel(spiDelta)}</span>}
                       </div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 text-center">Schedule Performance</div>
+                      <div className="text-xs text-gray-400 mt-0.5 text-center">Schedule Performance</div>
                     </div>
                   </EVMMetricTooltip>
                   {/* CV */}
@@ -641,7 +641,7 @@ export function EVMDashboardPage() {
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
                       <div className="text-xs text-gray-500 uppercase font-semibold">CV</div>
                       <div className="text-2xl font-bold" style={{ color: CV >= 0 ? '#22c55e' : '#ef4444' }}>{formatCurrency(CV)}</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5">Cost Variance</div>
+                      <div className="text-xs text-gray-400 mt-0.5">Cost Variance</div>
                     </div>
                   </EVMMetricTooltip>
                   {/* SV */}
@@ -649,7 +649,7 @@ export function EVMDashboardPage() {
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
                       <div className="text-xs text-gray-500 uppercase font-semibold">SV</div>
                       <div className="text-2xl font-bold" style={{ color: SV >= 0 ? '#22c55e' : '#ef4444' }}>{formatCurrency(SV)}</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5">Schedule Variance</div>
+                      <div className="text-xs text-gray-400 mt-0.5">Schedule Variance</div>
                     </div>
                   </EVMMetricTooltip>
                   {/* EV, PV, AC, BAC */}
@@ -663,7 +663,7 @@ export function EVMDashboardPage() {
                       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
                         <div className="text-xs text-gray-500 uppercase font-semibold">{kpi.label}</div>
                         <div className="text-2xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">{kpi.sub}</div>
                       </div>
                     </EVMMetricTooltip>
                   ))}
@@ -684,7 +684,7 @@ export function EVMDashboardPage() {
                           {kpi.warn && <AlertTriangle className="w-3.5 h-3.5 text-red-500" />}
                         </div>
                         <div className={`text-xl font-bold mt-1 ${kpi.warn ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{kpi.value}</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">{kpi.sub}</div>
                       </div>
                     </EVMMetricTooltip>
                   ))}
@@ -713,7 +713,7 @@ export function EVMDashboardPage() {
                 <div className="flex items-center gap-2">
                   {/* Period / Cumulative toggle */}
                   {cumulativeTrend && (
-                    <div className="flex rounded-md border border-gray-200 dark:border-gray-600 text-[10px] font-medium overflow-hidden">
+                    <div className="flex rounded-md border border-gray-200 dark:border-gray-600 text-xs font-medium overflow-hidden">
                       <button
                         onClick={() => setTrendMode('period')}
                         className={`px-2 py-0.5 ${trendMode === 'period' ? 'bg-primary-500 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
@@ -738,7 +738,7 @@ export function EVMDashboardPage() {
               {/* Threshold config popover */}
               {thresholdOpen && (
                 <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <div className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Threshold Reference Lines</div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase mb-2">Threshold Reference Lines</div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                     {([
                       { key: 'cpiAmber' as const, label: 'CPI Amber', color: '#f59e0b' },
@@ -863,7 +863,7 @@ export function EVMDashboardPage() {
                       <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-gray-300 dark:bg-gray-500 inline-block" /> Baseline (1.0)</span>
                       {annotations.length > 0 && (
                         <span className="flex items-center gap-1 ml-2">
-                          <span className="text-[10px]">▲▼</span> Crossover points
+                          <span className="text-xs">▲▼</span> Crossover points
                         </span>
                       )}
                     </div>
@@ -1018,12 +1018,12 @@ export function EVMDashboardPage() {
                         <div>
                           <div className="text-xs text-gray-500">Earned Schedule (ES)</div>
                           <div className="text-lg font-bold text-gray-900 dark:text-white">{es.es.toFixed(1)} wks</div>
-                          <div className="text-[10px] text-gray-400">Planned time to earn current EV</div>
+                          <div className="text-xs text-gray-400">Planned time to earn current EV</div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Actual Time (AT)</div>
                           <div className="text-lg font-bold text-gray-900 dark:text-white">{es.at.toFixed(1)} wks</div>
-                          <div className="text-[10px] text-gray-400">Elapsed since project start</div>
+                          <div className="text-xs text-gray-400">Elapsed since project start</div>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
@@ -1032,12 +1032,12 @@ export function EVMDashboardPage() {
                           <div className={`text-lg font-bold ${es.svt >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {es.svt >= 0 ? '+' : ''}{es.svt.toFixed(1)} wks
                           </div>
-                          <div className="text-[10px] text-gray-400">{es.svt >= 0 ? 'Ahead of schedule' : 'Behind schedule'}</div>
+                          <div className="text-xs text-gray-400">{es.svt >= 0 ? 'Ahead of schedule' : 'Behind schedule'}</div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">SPI(t) — Schedule Performance (time)</div>
                           <div className="text-lg font-bold" style={{ color: indexColor(es.spit) }}>{es.spit.toFixed(2)}</div>
-                          <div className="text-[10px] text-gray-400">{es.spit >= 1 ? 'Earning value faster than planned' : 'Earning value slower than planned'}</div>
+                          <div className="text-xs text-gray-400">{es.spit >= 1 ? 'Earning value faster than planned' : 'Earning value slower than planned'}</div>
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 italic">
@@ -1089,7 +1089,7 @@ export function EVMDashboardPage() {
                         onChange={(e) => setWhatIfCPI(parseFloat(e.target.value))}
                         className="w-full accent-primary-500"
                       />
-                      <div className="flex justify-between text-[10px] text-gray-400">
+                      <div className="flex justify-between text-xs text-gray-400">
                         <span>0.50</span><span>1.00</span><span>1.50</span>
                       </div>
                     </div>
@@ -1106,7 +1106,7 @@ export function EVMDashboardPage() {
                         onChange={(e) => setWhatIfBudgetAdd(parseFloat(e.target.value))}
                         className="w-full accent-primary-500"
                       />
-                      <div className="flex justify-between text-[10px] text-gray-400">
+                      <div className="flex justify-between text-xs text-gray-400">
                         <span>-{formatCurrency(m.BAC * 0.3)}</span><span>0</span><span>+{formatCurrency(m.BAC * 0.5)}</span>
                       </div>
                     </div>
@@ -1122,12 +1122,12 @@ export function EVMDashboardPage() {
                       const changed = Math.abs(s.sim - s.current) > 0.01;
                       return (
                         <div key={s.label} className={`rounded-lg border p-3 ${s.warn ? 'border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}>
-                          <div className="text-[10px] text-gray-500 uppercase font-semibold">{s.label}</div>
+                          <div className="text-xs text-gray-500 uppercase font-semibold">{s.label}</div>
                           <div className={`text-lg font-bold ${s.warn ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
                             {s.isIndex ? s.sim.toFixed(2) : formatCurrency(s.sim)}
                           </div>
                           {changed && (
-                            <div className="text-[10px] text-gray-400">
+                            <div className="text-xs text-gray-400">
                               was {s.isIndex ? s.current.toFixed(2) : formatCurrency(s.current)}
                               <span className={`ml-1 font-semibold ${(s.label.includes('VAC') ? s.sim > s.current : s.sim < s.current) ? 'text-green-500' : 'text-red-500'}`}>
                                 ({s.sim > s.current ? '+' : ''}{s.isIndex ? (s.sim - s.current).toFixed(2) : formatCurrency(s.sim - s.current)})
@@ -1211,7 +1211,7 @@ export function EVMDashboardPage() {
                 <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3">
                   <div className="text-xs text-gray-500">AI-Adjusted EAC</div>
                   <div className="text-lg font-bold text-purple-700">{formatCurrency(result.aiPredictions.aiAdjustedEAC)}</div>
-                  <div className="text-[10px] text-gray-400">
+                  <div className="text-xs text-gray-400">
                     Range: {formatCurrency(result.aiPredictions.eacConfidenceRange.low)} — {formatCurrency(result.aiPredictions.eacConfidenceRange.high)}
                   </div>
                 </div>
@@ -1240,7 +1240,7 @@ export function EVMDashboardPage() {
                   <div className="space-y-2">
                     {result.aiPredictions.correctiveActions.map((ca, i) => (
                       <div key={i} className="bg-white/80 dark:bg-gray-800/80 rounded-lg px-3 py-2 text-sm flex items-start gap-3">
-                        <span className={`shrink-0 mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase text-white ${ca.priority === 'critical' ? 'bg-red-500' : ca.priority === 'high' ? 'bg-amber-500' : 'bg-blue-500'}`}>{ca.priority}</span>
+                        <span className={`shrink-0 mt-0.5 px-1.5 py-0.5 rounded text-xs font-bold uppercase text-white ${ca.priority === 'critical' ? 'bg-red-500' : ca.priority === 'high' ? 'bg-amber-500' : 'bg-blue-500'}`}>{ca.priority}</span>
                         <div>
                           <div className="font-medium text-gray-900 dark:text-white">{ca.action}</div>
                           <div className="text-xs text-gray-500">Effort: {ca.effort} &middot; Impact: {ca.estimatedImpact}</div>

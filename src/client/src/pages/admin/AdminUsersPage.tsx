@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
-import { tierBadgeClass } from '../../constants/branding';
+import { tierBadgeClass, roleLabel } from '../../constants/branding';
 import { AdminPageWrapper } from './AdminPageWrapper';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import {
@@ -341,7 +341,7 @@ export function AdminUsersPage() {
             >
               <option value="">All roles</option>
               {roles.map(r => (
-                <option key={r} value={r}>{r.replace('_', ' ')}</option>
+                <option key={r} value={r}>{roleLabel(r)}</option>
               ))}
             </select>
 
@@ -485,7 +485,7 @@ export function AdminUsersPage() {
                       </td>
                       <td className="py-3 pr-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${roleColor}`}>
-                          {u.role.replace('_', ' ')}
+                          {roleLabel(u.role)}
                         </span>
                       </td>
                       <td className="py-3 pr-3">

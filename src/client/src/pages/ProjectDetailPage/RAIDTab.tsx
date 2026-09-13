@@ -300,7 +300,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   const SortHeader = ({ field, children, className = '' }: { field: SortField; children: React.ReactNode; className?: string }) => (
     <button
       onClick={() => handleSort(field)}
-      className={`flex items-center gap-0.5 text-[10px] font-medium uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200 ${className}`}
+      className={`flex items-center gap-0.5 text-xs font-medium uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200 ${className}`}
     >
       {children}
       {sortField === field ? (
@@ -376,7 +376,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
         {/* Severity distribution bar */}
         {risks.length > 0 && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/30">
-            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Severity</span>
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Severity</span>
             <div className="flex h-5 w-32 rounded overflow-hidden">
               {severityDist.critical > 0 && <div className="bg-red-500" style={{ width: `${(severityDist.critical / risks.length) * 100}%` }} title={`Critical: ${severityDist.critical}`} />}
               {severityDist.high > 0 && <div className="bg-orange-500" style={{ width: `${(severityDist.high / risks.length) * 100}%` }} title={`High: ${severityDist.high}`} />}
@@ -450,7 +450,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
               <button
                 key={v}
                 onClick={() => setViewMode(v)}
-                className={`px-2.5 py-1 text-[10px] font-medium capitalize ${viewMode === v ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                className={`px-2.5 py-1 text-xs font-medium capitalize ${viewMode === v ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
               >
                 {v === 'matrix' ? 'Risk Matrix' : v}
               </button>
@@ -531,11 +531,11 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
               <option value="agent">Agent</option>
             </select>
             {activeFilterCount > 0 && (
-              <button onClick={clearFilters} className="inline-flex items-center gap-1 px-2 py-1 text-[10px] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+              <button onClick={clearFilters} className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                 <X className="w-3 h-3" /> Clear all
               </button>
             )}
-            <span className="text-[10px] text-gray-400 ml-auto">{risks.length} items</span>
+            <span className="text-xs text-gray-400 ml-auto">{risks.length} items</span>
           </div>
         )}
       </div>
@@ -640,7 +640,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                     </p>
                     {risk.triggered && <span className="text-amber-500 flex-shrink-0" title="Triggered">⚡</span>}
                     {due && (
-                      <span className={`flex items-center gap-0.5 text-[10px] font-medium flex-shrink-0 ${due.color}`}>
+                      <span className={`flex items-center gap-0.5 text-xs font-medium flex-shrink-0 ${due.color}`}>
                         {due.icon && <AlertTriangle className="w-3 h-3" />}
                         {due.label}
                       </span>
@@ -648,12 +648,12 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                   </div>
 
                   {/* Type badge */}
-                  <span onClick={() => setSelectedRaidId(risk.id)} className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize w-fit ${typeBadgeColor(risk.type)}`}>
+                  <span onClick={() => setSelectedRaidId(risk.id)} className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize w-fit ${typeBadgeColor(risk.type)}`}>
                     {risk.type}
                   </span>
 
                   {/* Severity */}
-                  <span onClick={() => setSelectedRaidId(risk.id)} className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize w-fit ${severityColor(risk.severity)}`}>
+                  <span onClick={() => setSelectedRaidId(risk.id)} className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize w-fit ${severityColor(risk.severity)}`}>
                     {risk.severity}
                   </span>
 
@@ -665,7 +665,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                         value={risk.status}
                         onChange={e => handleInlineStatus(risk.id, e.target.value)}
                         onBlur={() => setInlineStatusId(null)}
-                        className="text-[10px] rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-1 py-0.5 w-full"
+                        className="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-1 py-0.5 w-full"
                       >
                         {validStatuses.map(s => (
                           <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
@@ -674,7 +674,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                     ) : (
                       <button
                         onClick={() => !isTerminal && setInlineStatusId(risk.id)}
-                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize w-fit ${statusColor(risk.status)} ${!isTerminal ? 'cursor-pointer hover:ring-2 hover:ring-primary-300' : ''}`}
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize w-fit ${statusColor(risk.status)} ${!isTerminal ? 'cursor-pointer hover:ring-2 hover:ring-primary-300' : ''}`}
                       >
                         {risk.status.replace(/_/g, ' ')}
                       </button>
@@ -692,7 +692,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                   </span>
 
                   {/* Date */}
-                  <span onClick={() => setSelectedRaidId(risk.id)} className="text-[10px] text-gray-400 dark:text-gray-500">
+                  <span onClick={() => setSelectedRaidId(risk.id)} className="text-xs text-gray-400 dark:text-gray-500">
                     {formatDate(risk.createdAt)}
                   </span>
                 </div>
@@ -717,13 +717,13 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                       <div className="min-w-0">
                         <p className={`text-sm font-medium text-gray-900 dark:text-white truncate ${isTerminal ? 'line-through' : ''}`}>{risk.title}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-mono text-gray-400">{risk.recordId}</span>
-                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full capitalize ${severityColor(risk.severity)}`}>{risk.severity}</span>
-                          {due && <span className={`text-[10px] font-medium ${due.color}`}>{due.label}</span>}
+                          <span className="text-xs font-mono text-gray-400">{risk.recordId}</span>
+                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full capitalize ${severityColor(risk.severity)}`}>{risk.severity}</span>
+                          {due && <span className={`text-xs font-medium ${due.color}`}>{due.label}</span>}
                         </div>
                       </div>
                     </div>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize flex-shrink-0 ${statusColor(risk.status)}`}>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize flex-shrink-0 ${statusColor(risk.status)}`}>
                       {risk.status.replace(/_/g, ' ')}
                     </span>
                   </div>
@@ -752,7 +752,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${statusColor(status)}`}>
                   {status.replace(/_/g, ' ')}
                 </span>
-                <span className="text-[10px] text-gray-400">{boardGroups[status].length}</span>
+                <span className="text-xs text-gray-400">{boardGroups[status].length}</span>
               </div>
               <div className="p-2 space-y-2 flex-1 min-h-[60px]">
                 {boardGroups[status].map((risk: any) => {
@@ -767,13 +767,13 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                     >
                       <div className="flex items-center gap-1.5 mb-1">
                         <div className={`w-1.5 h-4 rounded-full ${typeIndicatorColor(risk.type)}`} />
-                        <span className="text-[10px] font-mono text-gray-400">{risk.recordId}</span>
+                        <span className="text-xs font-mono text-gray-400">{risk.recordId}</span>
                         <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full capitalize ml-auto ${severityColor(risk.severity)}`}>{risk.severity}</span>
                       </div>
                       <p className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">{risk.title}</p>
                       <div className="flex items-center gap-2 mt-1.5">
                         {memberName(risk.ownerId) && (
-                          <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{memberName(risk.ownerId)}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{memberName(risk.ownerId)}</span>
                         )}
                         {due && <span className={`text-[9px] font-medium ml-auto ${due.color}`}>{due.label}</span>}
                       </div>
@@ -794,14 +794,14 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                 <tr>
                   <th className="w-12" />
                   {MATRIX_LABELS.map(i => (
-                    <th key={i} className="text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 py-1 w-16">Impact {i}</th>
+                    <th key={i} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-1 w-16">Impact {i}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {[...MATRIX_LABELS].reverse().map(p => (
                   <tr key={p}>
-                    <td className="text-[10px] font-medium text-gray-500 dark:text-gray-400 pr-2 text-right">P{p}</td>
+                    <td className="text-xs font-medium text-gray-500 dark:text-gray-400 pr-2 text-right">P{p}</td>
                     {MATRIX_LABELS.map(i => {
                       const key = `${p}-${i}`;
                       const items = matrixData[key] || [];
@@ -831,7 +831,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
               </tbody>
             </table>
           </div>
-          <p className="text-[10px] text-gray-400 text-center mt-2">Click a cell to view its risks. Only items of type "Risk" with probability and impact values appear here.</p>
+          <p className="text-xs text-gray-400 text-center mt-2">Click a cell to view its risks. Only items of type "Risk" with probability and impact values appear here.</p>
         </div>
       )}
 

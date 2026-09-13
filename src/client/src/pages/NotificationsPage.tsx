@@ -219,7 +219,7 @@ export function NotificationsPage() {
             className={`rounded-xl border p-3 text-center transition-colors ${filterSeverity === sev ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/30 dark:border-primary-600' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
           >
             <div className={`text-lg font-bold ${severityTextColors[sev]}`}>{countBySeverity[sev]}</div>
-            <div className="text-[10px] text-gray-500 uppercase font-semibold capitalize">{sev}</div>
+            <div className="text-xs text-gray-500 uppercase font-semibold capitalize">{sev}</div>
           </button>
         ))}
       </div>
@@ -296,7 +296,7 @@ export function NotificationsPage() {
                       {n.title}
                     </p>
                     <div className="flex items-center gap-1 shrink-0">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold capitalize ${severityBadge[n.severity]}`}>{n.severity}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-bold capitalize ${severityBadge[n.severity]}`}>{n.severity}</span>
                       {!n.read && (
                         <button
                           onClick={(e) => {
@@ -315,9 +315,9 @@ export function NotificationsPage() {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">{n.message}</p>
                   <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-[10px] text-gray-400">{timeAgo(n.createdAt)}</span>
-                    <span className="text-[10px] text-gray-400 capitalize">{typeLabels[n.type] || n.type}</span>
-                    {n.projectName && <span className="text-[10px] text-primary-500">{n.projectName}</span>}
+                    <span className="text-xs text-gray-400">{timeAgo(n.createdAt)}</span>
+                    <span className="text-xs text-gray-400 capitalize">{typeLabels[n.type] || n.type}</span>
+                    {n.projectName && <span className="text-xs text-primary-500">{n.projectName}</span>}
                   </div>
                 </div>
               </div>

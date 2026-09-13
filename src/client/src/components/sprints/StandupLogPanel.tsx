@@ -261,19 +261,19 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
 
               {entry.yesterday && (
                 <div className="mb-2">
-                  <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Yesterday</span>
+                  <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Yesterday</span>
                   <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mt-0.5">{entry.yesterday}</p>
                 </div>
               )}
               {entry.today && (
                 <div className="mb-2">
-                  <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Today</span>
+                  <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Today</span>
                   <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mt-0.5">{entry.today}</p>
                 </div>
               )}
               {entry.blockers && entry.blockers.length > 0 && (
                 <div>
-                  <span className="text-[10px] font-bold text-red-500 uppercase tracking-wide">Blockers</span>
+                  <span className="text-xs font-bold text-red-500 uppercase tracking-wide">Blockers</span>
                   <ul className="mt-0.5 space-y-0.5">
                     {entry.blockers.map((b, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-sm text-red-600 dark:text-red-400">

@@ -77,7 +77,7 @@ function DonutChart({ categories, total, currency }: { categories: { category: s
           />
         ))}
         <text x="80" y="76" textAnchor="middle" className="text-sm font-bold fill-gray-700 dark:fill-gray-200">{formatCurrency(total, currency)}</text>
-        <text x="80" y="92" textAnchor="middle" className="text-[10px] fill-gray-400">total</text>
+        <text x="80" y="92" textAnchor="middle" className="text-xs fill-gray-400">total</text>
       </svg>
       <div className="space-y-1">
         {slices.map((s) => (
@@ -263,7 +263,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
             >
               <DollarSign className="w-4 h-4" /> Expenses
               {expenses.length > 0 && (
-                <span className="text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full px-1.5">{expenses.length}</span>
+                <span className="text-xs font-bold bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full px-1.5">{expenses.length}</span>
               )}
             </button>
           </div>
@@ -339,13 +339,13 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                       const label = new Date(m.month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
                       return (
                         <div key={m.month} className="flex-1 flex flex-col items-center gap-1 relative z-10">
-                          <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">{formatCurrency(m.total, currency)}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{formatCurrency(m.total, currency)}</span>
                           <div
                             className="w-full rounded-t bg-primary-500 dark:bg-primary-400 transition-all"
                             style={{ height: `${h}%` }}
                             title={`${label}: ${formatCurrency(m.total, currency)}`}
                           />
-                          <span className="text-[10px] text-gray-400 dark:text-gray-500">{label}</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">{label}</span>
                         </div>
                       );
                     })}
@@ -363,7 +363,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                     </svg>
                   )}
                   {cumulativeMonthly.length >= 2 && (
-                    <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-400 dark:text-gray-500">
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
                       <span className="flex items-center gap-1"><span className="w-3 h-2 bg-primary-500 dark:bg-primary-400 rounded-sm" /> Monthly</span>
                       <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-amber-500 inline-block" /> Cumulative</span>
                     </div>

@@ -219,7 +219,7 @@ export function TimesheetGrid() {
                               </div>
                             </td>
                             <td className="text-center py-2 px-2">
-                              <span className={`inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full ${badge.classes}`}>
+                              <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${badge.classes}`}>
                                 {badge.label}
                               </span>
                             </td>

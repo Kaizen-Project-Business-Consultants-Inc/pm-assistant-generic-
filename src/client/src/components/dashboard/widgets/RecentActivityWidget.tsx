@@ -72,7 +72,7 @@ export function RecentActivityWidget() {
               <Clock className="w-3 h-3 mt-0.5 text-gray-400 dark:text-gray-500 shrink-0" />
               <div className="min-w-0">
                 <p className="truncate">{n.title || n.message}</p>
-                <p className="text-gray-400 dark:text-gray-500 text-[10px] mt-0.5">
+                <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5">
                   {new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                 </p>
               </div>

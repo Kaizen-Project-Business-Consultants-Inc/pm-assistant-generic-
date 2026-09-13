@@ -63,14 +63,14 @@ export const TableToolbar = React.memo(function TableToolbar({
         <div className="flex items-center gap-1">
           <button
             onClick={onCollapseAll}
-            className="px-2 py-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            className="px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
             title="Collapse all summary tasks"
           >
             Collapse All
           </button>
           <button
             onClick={onExpandAll}
-            className="px-2 py-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            className="px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
             title="Expand all summary tasks"
           >
             Expand All

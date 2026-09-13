@@ -134,7 +134,7 @@ export function SavedViewsDropdown({ scheduleId, currentColumns, currentSortFiel
           {views.length > 0 && (
             <div className="px-1 mb-1">
               <div className="px-2 py-1">
-                <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Saved Views</span>
+                <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Saved Views</span>
               </div>
               {views.map(view => (
                 <div
@@ -150,7 +150,7 @@ export function SavedViewsDropdown({ scheduleId, currentColumns, currentSortFiel
                   >
                     {view.name}
                   </button>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">{view.columns.length} cols</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">{view.columns.length} cols</span>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDelete(view.id); }}
                     className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-100 transition-opacity"

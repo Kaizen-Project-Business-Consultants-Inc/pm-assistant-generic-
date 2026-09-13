@@ -214,7 +214,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900 dark:text-white">{auto.name}</span>
                       {auto.scope === 'portfolio' && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium">Portfolio</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium">Portfolio</span>
                       )}
                     </div>
                     {auto.description && (
@@ -228,9 +228,9 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                     {auto.scheduleConfig && (
                       <div className="flex items-center gap-1 mt-0.5">
                         <Clock className="w-3 h-3 text-blue-500" />
-                        <span className="text-[10px] text-blue-600 dark:text-blue-400">{formatScheduleFrequency(auto)}</span>
+                        <span className="text-xs text-blue-600 dark:text-blue-400">{formatScheduleFrequency(auto)}</span>
                         {auto.nextRunAt && (
-                          <span className="text-[10px] text-gray-400 dark:text-gray-500" title={`Next: ${new Date(auto.nextRunAt).toLocaleString()}`}>
+                          <span className="text-xs text-gray-400 dark:text-gray-500" title={`Next: ${new Date(auto.nextRunAt).toLocaleString()}`}>
                             (next: {formatRelativeDate(auto.nextRunAt)})
                           </span>
                         )}
@@ -394,7 +394,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-900 dark:text-white">{mp.name}</span>
-                      <code className="text-[10px] bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">{mp.triggerEventType}</code>
+                      <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">{mp.triggerEventType}</code>
                     </div>
                     {mp.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{mp.description}</p>}
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 dark:text-gray-500">

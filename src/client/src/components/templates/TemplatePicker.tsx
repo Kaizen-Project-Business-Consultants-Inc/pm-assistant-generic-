@@ -630,7 +630,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                           {fileParsed.headers.map((h, i) => (
                             <th key={i} className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
                               {h}
-                              {columnMap[i] && <span className="ml-1 text-blue-500 text-[10px]">({columnMap[i]})</span>}
+                              {columnMap[i] && <span className="ml-1 text-blue-500 text-xs">({columnMap[i]})</span>}
                             </th>
                           ))}
                         </tr>
@@ -775,13 +775,13 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                     <div key={t.id} className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow">
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.name}</h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{t.description}</p>
-                      <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-400">
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                         <span>{t.taskCount} tasks</span>
                         <span>{t.estimatedDays} days</span>
                         <span className="flex items-center gap-0.5"><Download className="w-3 h-3" />{t.downloadCount}</span>
                       </div>
                       <div className="flex items-center justify-between mt-3">
-                        <span className="text-[10px] text-gray-400 truncate max-w-[140px]">by {t.publishedByOrgName}</span>
+                        <span className="text-xs text-gray-400 truncate max-w-[140px]">by {t.publishedByOrgName}</span>
                         <button
                           onClick={() => importMutation.mutate(t.id)}
                           disabled={importMutation.isPending}

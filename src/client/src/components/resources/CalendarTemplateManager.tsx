@@ -156,7 +156,7 @@ export function CalendarTemplateManager() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-900 dark:text-white">{t.name}</span>
-                  {t.isDefault && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 font-medium">Default</span>}
+                  {t.isDefault && <span className="text-xs px-1.5 py-0.5 rounded bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 font-medium">Default</span>}
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {t.workingDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')} — {t.hoursPerDay}h/day ({t.workingDays.length * t.hoursPerDay}h/week)

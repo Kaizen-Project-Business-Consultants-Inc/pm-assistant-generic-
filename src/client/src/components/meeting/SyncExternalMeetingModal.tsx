@@ -245,7 +245,7 @@ export const SyncExternalMeetingModal: React.FC<SyncExternalMeetingModalProps> =
               rows={4}
             />
             {actionItemsText.trim() && (
-              <p className="text-[10px] text-gray-400 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 {parseActionItems(actionItemsText).length} action item(s) detected
               </p>
             )}

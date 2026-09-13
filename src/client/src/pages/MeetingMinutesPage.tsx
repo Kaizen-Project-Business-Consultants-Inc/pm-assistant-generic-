@@ -494,7 +494,7 @@ export const MeetingMinutesPage: React.FC = () => {
                   onClick={() => { setSyncError(null); setSyncModalOpen(true); }}
                   disabled={!selectedProjectId}
                   title="Import meeting from Read.ai, Otter.ai, or any external source"
-                  className="px-3 py-1.5 text-[10px] font-medium text-primary-600 dark:text-primary-400 border border-primary-300 dark:border-primary-700 rounded-full hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 border border-primary-300 dark:border-primary-700 rounded-full hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Upload className="w-3 h-3 inline mr-1 -mt-0.5" />
                   Import Meeting
@@ -816,7 +816,7 @@ export const MeetingMinutesPage: React.FC = () => {
                             {formatDate(entry.createdAt)}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0 text-[10px] font-medium">
+                        <div className="flex items-center gap-2 flex-shrink-0 text-xs font-medium">
                           {counts.R > 0 && (
                             <span className="flex items-center gap-0.5 text-red-600 dark:text-red-400" title="Risks">
                               <AlertTriangle className="w-3 h-3" /> {counts.R}

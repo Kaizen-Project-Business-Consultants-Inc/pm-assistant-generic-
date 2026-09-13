@@ -114,7 +114,7 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
                   <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
                   <div className="text-gray-400 dark:text-gray-500 truncate">{r.role}</div>
                 </div>
-                {isSelected && <span className="text-primary-600 text-[10px] font-medium">Current</span>}
+                {isSelected && <span className="text-primary-600 text-xs font-medium">Current</span>}
               </button>
             );
           })

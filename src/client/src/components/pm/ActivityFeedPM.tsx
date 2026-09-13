@@ -163,7 +163,7 @@ export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
         <div className="space-y-3">
           {grouped.map(group => (
             <div key={group.label}>
-              <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-2 mb-1">
+              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-2 mb-1">
                 {group.label}
               </p>
               <ul className="space-y-1">
@@ -182,7 +182,7 @@ export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
                           {n.title || n.message || 'Notification'}
                         </p>
                         {n.created_at && (
-                          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{timeAgo(n.created_at)}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{timeAgo(n.created_at)}</p>
                         )}
                       </div>
                     </li>

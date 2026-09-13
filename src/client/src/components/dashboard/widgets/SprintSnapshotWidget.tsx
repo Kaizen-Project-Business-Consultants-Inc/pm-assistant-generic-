@@ -127,7 +127,7 @@ export function SprintSnapshotWidget({ projects }: Props) {
                   <div className="text-right flex-shrink-0">
                     <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{done}/{total}</span>
                     {velocity.length > 0 && (
-                      <p className="text-[10px] text-gray-400">vel: {velocity.join(', ')}</p>
+                      <p className="text-xs text-gray-400">vel: {velocity.join(', ')}</p>
                     )}
                   </div>
                 </div>

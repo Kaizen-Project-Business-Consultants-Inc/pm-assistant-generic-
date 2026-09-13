@@ -87,7 +87,7 @@ export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDue
             className={`inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-medium rounded-l-full border border-r-0 whitespace-nowrap transition-colors ${pillClass(isDueActive, false, false)}`}
           >
             Due
-            <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full ${badgeClass(isDueActive, false, false)}`}>
+            <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-semibold rounded-full ${badgeClass(isDueActive, false, false)}`}>
               {counts.due}
             </span>
           </button>
@@ -129,7 +129,7 @@ export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDue
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border whitespace-nowrap transition-colors ${pillClass(isActive, hasDangerTint, hasWarningTint)}`}
             >
               {pill.label}
-              <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full ${badgeClass(isActive, hasDangerTint, hasWarningTint)}`}>
+              <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-semibold rounded-full ${badgeClass(isActive, hasDangerTint, hasWarningTint)}`}>
                 {count}
               </span>
             </button>

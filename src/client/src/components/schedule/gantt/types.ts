@@ -226,7 +226,7 @@ export const GANTT_COLUMNS: GanttColDef[] = [
 ];
 
 /** Default visible columns -- show only essential columns so the name column isn't squeezed */
-export const DEFAULT_VISIBLE_COLS = new Set(['pred', 'start', 'end', 'dur', 'pct', 'assigned', 'status']);
+export const DEFAULT_VISIBLE_COLS = new Set(['start', 'end', 'dur', 'pct', 'assigned', 'status']);
 
 /** Default column order */
 export const DEFAULT_COL_ORDER = GANTT_COLUMNS.map(c => c.key);

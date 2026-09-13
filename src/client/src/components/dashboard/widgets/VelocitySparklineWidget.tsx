@@ -70,7 +70,7 @@ function SprintDelta({ current, previous }: { current: number; previous: number 
   if (diff === 0) return null;
   const positive = diff > 0;
   return (
-    <span className={`text-[10px] font-medium ${positive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+    <span className={`text-xs font-medium ${positive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
       {positive ? '+' : ''}{pct}%
     </span>
   );
@@ -81,7 +81,7 @@ function CommitmentRatio({ velocity, commitment }: { velocity: number; commitmen
   const ratio = Math.round((velocity / commitment) * 100);
   const color = ratio >= 90 ? 'text-green-600 dark:text-green-400' : ratio >= 70 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${color}`} title={`Delivered ${velocity} of ${commitment} committed`}>
+    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${color}`} title={`Delivered ${velocity} of ${commitment} committed`}>
       <Target className="w-2.5 h-2.5" />
       {ratio}%
     </span>
@@ -140,7 +140,7 @@ export function VelocitySparklineWidget({ projects }: VelocitySparklineWidgetPro
       <div className="flex items-center gap-2 mb-3">
         <Zap className="w-4 h-4 text-indigo-500" />
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Sprint Velocity</h3>
-        <span className="text-[10px] text-gray-400 dark:text-gray-500">pts/sprint</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">pts/sprint</span>
       </div>
 
       {projectsWithData.length === 0 ? (

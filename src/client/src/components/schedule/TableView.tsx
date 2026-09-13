@@ -1498,7 +1498,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               );
             })()}
             {hasDepError && (
-              <div className="text-[10px] text-red-500 mt-0.5">{depError!.message}</div>
+              <div className="text-xs text-red-500 mt-0.5">{depError!.message}</div>
             )}
             {renderSaveIndicator(task.id, 'dependency')}
             {!hasDepError && renderHoverPencil(task.id, 'dependency')}
@@ -1774,12 +1774,12 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                       <div className="flex items-center gap-1">
                         {canDragRows ? (
                           <span
-                            className="cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 flex-shrink-0 select-none w-5 text-center text-[10px] font-medium"
+                            className="cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 flex-shrink-0 select-none w-5 text-center text-xs font-medium"
                             title="Drag to reorder"
                             onMouseDown={(e) => handleGripMouseDown(e, task, rowIdx)}
                           >{rowIdx + 1}</span>
                         ) : (
-                          <span className="w-5 text-center text-[10px] font-medium text-gray-400 dark:text-gray-500">{rowIdx + 1}</span>
+                          <span className="w-5 text-center text-xs font-medium text-gray-400 dark:text-gray-500">{rowIdx + 1}</span>
                         )}
                         <input
                           type="checkbox"
@@ -1837,7 +1837,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               const renderInlineInsertRow = (afterTaskId: string) => (
                 <tr key={`inline-insert-${afterTaskId}`} className="border-b border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20">
                   <td className="px-2 py-2">
-                    <span className="w-5 text-center text-[10px] font-medium text-green-400 dark:text-green-600">+</span>
+                    <span className="w-5 text-center text-xs font-medium text-green-400 dark:text-green-600">+</span>
                   </td>
                   {visibleColumns.map((col, ci) => (
                     <td key={col.key} className="px-3 py-2" style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}>
@@ -1905,7 +1905,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                           <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 capitalize">
                             {groupKey.replace(/_/g, ' ')}
                           </span>
-                          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+                          <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
                             {groupTasks.length} task{groupTasks.length !== 1 ? 's' : ''}
                           </span>
                         </div>
@@ -1946,7 +1946,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               return (
                 <tr key={emptyRowKey} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                   <td className="px-2 py-2">
-                    <span className="w-5 text-center text-[10px] font-medium text-gray-300 dark:text-gray-600">{visibleSorted.length + i + 1}</span>
+                    <span className="w-5 text-center text-xs font-medium text-gray-300 dark:text-gray-600">{visibleSorted.length + i + 1}</span>
                   </td>
                   {visibleColumns.map((col, ci) => (
                     <td key={col.key} className="px-3 py-2" style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}>

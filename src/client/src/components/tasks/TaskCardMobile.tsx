@@ -133,7 +133,7 @@ export const TaskCardMobile: React.FC<TaskCardMobileProps> = ({ task, onStatusCy
 
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           {task.priority && (
-            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${priorityStyles[task.priority] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
+            <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-semibold uppercase ${priorityStyles[task.priority] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
               {task.priority}
             </span>
           )}

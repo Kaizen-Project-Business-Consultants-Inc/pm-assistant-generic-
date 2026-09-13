@@ -6,7 +6,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { apiService } from '../../services/api';
 import { NotificationBell } from '../notifications/NotificationBell';
-import { SUPPORT_EMAIL } from '../../constants/branding';
+import { SUPPORT_EMAIL, roleLabel } from '../../constants/branding';
 import { ConnectionStatus } from './ConnectionStatus';
 import CommandPalette from './CommandPalette';
 import { FeedbackModal } from '../feedback/FeedbackModal';
@@ -305,8 +305,8 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate leading-tight">
                 {user?.fullName || 'User'}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate leading-tight capitalize">
-                {user?.role || 'Member'}
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate leading-tight">
+                {user?.role ? roleLabel(user.role) : 'Member'}
               </p>
             </div>
           </button>

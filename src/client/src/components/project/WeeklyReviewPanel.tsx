@@ -95,28 +95,28 @@ export function WeeklyReviewPanel({ projectId }: { projectId: string }) {
               <Users className="w-4 h-4 text-primary-500" />
               <div>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{review.hoursByUser.length}</p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Contributors</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Contributors</p>
               </div>
             </div>
             <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <BarChart3 className="w-4 h-4 text-blue-500" />
               <div>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{review.totalHours.toFixed(1)}h</p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total Hours</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Total Hours</p>
               </div>
             </div>
             <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <AlertTriangle className="w-4 h-4 text-amber-500" />
               <div>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{review.anomalyCount}</p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Anomalies</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Anomalies</p>
               </div>
             </div>
             <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <CheckCircle className="w-4 h-4 text-green-500" />
               <div>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{review.compliancePercent}%</p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Compliance</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Compliance</p>
               </div>
             </div>
           </div>

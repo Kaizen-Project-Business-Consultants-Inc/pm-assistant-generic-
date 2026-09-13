@@ -95,7 +95,7 @@ export function AgentProposalsWidget({ agentIds }: AgentProposalsWidgetProps) {
                 <span className="text-[11px] text-gray-500 dark:text-gray-400">{agentDisplayName(p.agent_id)}</span>
                 <div className="flex items-center gap-3">
                   <ConfidenceBar score={p.confidence_score} />
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
+                  <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
                     <Clock className="w-3 h-3" />
                     {timeAgo(p.created_at)}
                   </span>

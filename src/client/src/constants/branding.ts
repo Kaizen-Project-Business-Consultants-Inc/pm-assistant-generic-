@@ -24,6 +24,28 @@ export function tierLabel(tier: string): string {
   return TIER_LABELS[tier] || tier;
 }
 
+// ── Role helpers ────────────────────────────────────────────────────
+export const USER_ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  executive: 'Executive',
+  pmo: 'PMO',
+  project_manager: 'Project Manager',
+  team_lead: 'Team Lead',
+  team_member: 'Team Member',
+  viewer: 'Viewer',
+  client_stakeholder: 'Client Stakeholder',
+  external_auditor: 'External Auditor',
+  resource_manager: 'Resource Manager',
+  finance: 'Finance',
+  qa_lead: 'QA Lead',
+  scrum_master: 'Scrum Master',
+  business_analyst: 'Business Analyst',
+};
+
+export function roleLabel(role: string): string {
+  return USER_ROLE_LABELS[role] || role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 // ── Tier badge colors (admin pages) ──────────────────────────────────
 export function tierBadgeClass(tier: string): string {
   switch (tier) {

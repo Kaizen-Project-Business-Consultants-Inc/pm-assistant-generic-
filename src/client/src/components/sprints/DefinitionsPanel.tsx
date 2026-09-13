@@ -152,7 +152,7 @@ function DefinitionEditor({
 
             {unusedSuggestions.length > 0 && criteria.length === 0 && (
               <div className="mt-2">
-                <span className="text-[10px] text-gray-400 uppercase tracking-wide">Suggestions</span>
+                <span className="text-xs text-gray-400 uppercase tracking-wide">Suggestions</span>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {unusedSuggestions.map((s) => (
                     <button

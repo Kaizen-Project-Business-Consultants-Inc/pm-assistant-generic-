@@ -74,7 +74,7 @@ export const ScenarioComparison = React.memo(function ScenarioComparison({ data,
                     {d.durationDelta != null ? `${d.durationDelta > 0 ? '+' : ''}${d.durationDelta}d` : '—'}
                   </td>
                   <td className="text-center px-2 py-1.5">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                       d.status === 'modified' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
                       d.status === 'added' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
                       'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'

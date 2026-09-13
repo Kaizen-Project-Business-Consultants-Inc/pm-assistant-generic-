@@ -187,7 +187,7 @@ export function MeetingToRaidModal({ isOpen, onClose, onImport, candidates, impo
                       <div className="flex gap-2">
                         <button
                           onClick={() => allSelected ? deselectAllInGroup(items) : selectAllInGroup(items)}
-                          className="text-[10px] text-gray-500 dark:text-gray-400 hover:underline"
+                          className="text-xs text-gray-500 dark:text-gray-400 hover:underline"
                         >
                           {allSelected ? 'Deselect All' : 'Select All'}
                         </button>
@@ -229,12 +229,12 @@ export function MeetingToRaidModal({ isOpen, onClose, onImport, candidates, impo
                                   />
 
                                   {/* Type badge */}
-                                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                                     {c.type}
                                   </span>
 
                                   {c.duplicate && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
                                       <AlertTriangle className="w-3 h-3" />
                                       Already exists &mdash; {c.duplicate.currentStatus.replace(/_/g, ' ')}
                                     </span>
@@ -246,7 +246,7 @@ export function MeetingToRaidModal({ isOpen, onClose, onImport, candidates, impo
                                   <select
                                     value={eff.severity}
                                     onChange={e => updateEdit(idx, 'severity', e.target.value)}
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium border-0 cursor-pointer ${severityColor(eff.severity)}`}
+                                    className={`px-2 py-0.5 rounded-full text-xs font-medium border-0 cursor-pointer ${severityColor(eff.severity)}`}
                                   >
                                     {SEVERITIES.map(s => (
                                       <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -257,7 +257,7 @@ export function MeetingToRaidModal({ isOpen, onClose, onImport, candidates, impo
                                     <select
                                       value={eff.category}
                                       onChange={e => updateEdit(idx, 'category', e.target.value)}
-                                      className="px-2 py-0.5 rounded text-[10px] font-medium border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 cursor-pointer capitalize"
+                                      className="px-2 py-0.5 rounded text-xs font-medium border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 cursor-pointer capitalize"
                                     >
                                       {CATEGORIES.map(cat => (
                                         <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
@@ -276,7 +276,7 @@ export function MeetingToRaidModal({ isOpen, onClose, onImport, candidates, impo
                                       onClick={() => setExpandedIdx(isExpanded ? null : idx)}
                                       className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1"
                                     >
-                                      <span className="text-[10px]">Details</span>
+                                      <span className="text-xs">Details</span>
                                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                     </button>
                                   )}

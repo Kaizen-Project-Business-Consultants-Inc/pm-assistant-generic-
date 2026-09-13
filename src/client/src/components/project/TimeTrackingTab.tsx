@@ -302,7 +302,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Log Time</h3>
               {suggestion && (
-                <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
                   <Sparkles className="w-3 h-3" /> AI suggested
                 </span>
               )}
@@ -407,7 +407,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{e.userName || '\u2014'}</td>
                     <td className="px-4 py-3">
                       {e.category && (
-                        <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${CATEGORY_COLORS[e.category] || ''}`}>
+                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${CATEGORY_COLORS[e.category] || ''}`}>
                           {e.category}
                         </span>
                       )}

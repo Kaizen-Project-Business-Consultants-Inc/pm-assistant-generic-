@@ -70,7 +70,7 @@ export const ReportTile: React.FC<ReportTileProps> = ({ report, disabled, loadin
         </div>
         <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{report.description}</p>
         {disabled && (
-          <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">Select a project first</p>
+          <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">Select a project first</p>
         )}
       </div>
     </button>

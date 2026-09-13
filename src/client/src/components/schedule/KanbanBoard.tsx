@@ -225,7 +225,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
           <span className="text-xs text-gray-400">{tasks.length} tasks</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Swimlane</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Swimlane</span>
           <select
             value={swimlane}
             onChange={(e) => setSwimlane(e.target.value as SwimlaneSetting)}
@@ -257,7 +257,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                 {/* Swimlane label */}
                 <div className="w-32 flex-shrink-0 pt-1">
                   <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 capitalize">{laneKey.replace(/_/g, ' ')}</span>
-                  <span className="block text-[10px] text-gray-400 dark:text-gray-500">{laneTasks.length} tasks</span>
+                  <span className="block text-xs text-gray-400 dark:text-gray-500">{laneTasks.length} tasks</span>
                 </div>
                 {/* Mini columns */}
                 {COLUMNS.map(col => {
@@ -271,7 +271,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                       onDrop={(e) => handleDrop(e, col.id)}
                     >
                       {columnTasks.length === 0 ? (
-                        <div className="text-center py-4 text-[10px] text-gray-300 dark:text-gray-600">—</div>
+                        <div className="text-center py-4 text-xs text-gray-300 dark:text-gray-600">—</div>
                       ) : (
                         <div className="space-y-1.5">
                           {columnTasks.map(task => (
@@ -380,7 +380,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                       {((subtaskCounts[task.id] || 0) > 0 || (dependencyCounts[task.id] || 0) > 0) && (
                         <div className="flex items-center gap-2 mt-1.5">
                           {subtaskCounts[task.id] > 0 && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-gray-400 dark:text-gray-500" title={`${subtaskCounts[task.id]} subtask${subtaskCounts[task.id] > 1 ? 's' : ''}`}>
+                            <span className="flex items-center gap-0.5 text-xs text-gray-400 dark:text-gray-500" title={`${subtaskCounts[task.id]} subtask${subtaskCounts[task.id] > 1 ? 's' : ''}`}>
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h8m-8 6h16" />
                               </svg>
@@ -388,7 +388,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                             </span>
                           )}
                           {dependencyCounts[task.id] > 0 && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-gray-400 dark:text-gray-500" title={`${dependencyCounts[task.id]} dependenc${dependencyCounts[task.id] > 1 ? 'ies' : 'y'}`}>
+                            <span className="flex items-center gap-0.5 text-xs text-gray-400 dark:text-gray-500" title={`${dependencyCounts[task.id]} dependenc${dependencyCounts[task.id] > 1 ? 'ies' : 'y'}`}>
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                               </svg>

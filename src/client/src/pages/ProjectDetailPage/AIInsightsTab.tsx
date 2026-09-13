@@ -210,7 +210,7 @@ function TaskSlipPredictionSection({ projectId }: { projectId: string }) {
               <div key={task.taskId} className="p-2.5 rounded-lg border border-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-medium text-gray-900 dark:text-white truncate flex-1">{task.taskName}</span>
-                  <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-medium ${severityColor(task.severity)}`}>
+                  <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${severityColor(task.severity)}`}>
                     {task.slipProbability}%
                   </span>
                 </div>
@@ -218,14 +218,14 @@ function TaskSlipPredictionSection({ projectId }: { projectId: string }) {
                   <div className={`h-1.5 rounded-full ${barColor(task.slipProbability)}`} style={{ width: `${task.slipProbability}%` }} />
                 </div>
                 {task.reasons.length > 0 && (
-                  <ul className="text-[10px] text-gray-500 dark:text-gray-400 space-y-0.5">
+                  <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
                     {task.reasons.map((r: string, i: number) => (
                       <li key={i}>• {r}</li>
                     ))}
                   </ul>
                 )}
                 {task.suggestedAction && (
-                  <p className="text-[10px] text-primary-600 dark:text-primary-400 mt-1 font-medium">{task.suggestedAction}</p>
+                  <p className="text-xs text-primary-600 dark:text-primary-400 mt-1 font-medium">{task.suggestedAction}</p>
                 )}
               </div>
             ))}
@@ -263,7 +263,7 @@ function ScopeCreepSection({ projectId }: { projectId: string }) {
       ) : !data?.hasBaseline ? (
         <div className="text-center py-4">
           <p className="text-xs text-gray-400 dark:text-gray-500">Create a baseline to enable scope creep detection.</p>
-          <p className="text-[10px] text-gray-300 mt-1">Go to Schedule → Baselines to create one.</p>
+          <p className="text-xs text-gray-300 mt-1">Go to Schedule → Baselines to create one.</p>
         </div>
       ) : (
         <>
@@ -275,23 +275,23 @@ function ScopeCreepSection({ projectId }: { projectId: string }) {
           <div className="grid grid-cols-2 gap-2 mb-3">
             <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-2.5 text-center">
               <div className="text-lg font-bold text-gray-900 dark:text-white">{data.indicators?.taskCountDelta ?? 0}</div>
-              <div className="text-[10px] text-gray-500 dark:text-gray-400">New Tasks</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">New Tasks</div>
             </div>
             <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-2.5 text-center">
               <div className="text-lg font-bold text-gray-900 dark:text-white">+{data.indicators?.estimateIncreaseDays ?? 0}d</div>
-              <div className="text-[10px] text-gray-500 dark:text-gray-400">Estimate Growth</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Estimate Growth</div>
             </div>
             <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-2.5 text-center">
               <div className="text-lg font-bold text-gray-900 dark:text-white">{data.indicators?.changeRequestCount ?? 0}</div>
-              <div className="text-[10px] text-gray-500 dark:text-gray-400">Open Change Requests</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Open Change Requests</div>
             </div>
             <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-2.5 text-center">
               <div className="text-lg font-bold text-gray-900 dark:text-white">{data.baselineComparison?.summary?.scheduleHealthPct ?? 100}%</div>
-              <div className="text-[10px] text-gray-500 dark:text-gray-400">Schedule Health</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Schedule Health</div>
             </div>
           </div>
           {data.baselineComparison?.summary && (
-            <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
               <span>{data.baselineComparison.summary.tasksSlipped} slipped</span>
               <span>{data.baselineComparison.summary.tasksAhead} ahead</span>
               <span>{data.baselineComparison.summary.tasksOnTrack} on track</span>

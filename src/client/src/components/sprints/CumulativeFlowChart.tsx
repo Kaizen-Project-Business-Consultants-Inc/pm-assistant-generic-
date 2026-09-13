@@ -144,7 +144,7 @@ export function CumulativeFlowChart({ sprintId }: CumulativeFlowChartProps) {
         {[...statusOrder].reverse().map((s) => (
           <div key={s} className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: STATUS_COLORS[s], opacity: 0.7 }} />
-            <span className="text-[10px] text-gray-500 dark:text-gray-400">{STATUS_LABELS[s]}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{STATUS_LABELS[s]}</span>
           </div>
         ))}
       </div>

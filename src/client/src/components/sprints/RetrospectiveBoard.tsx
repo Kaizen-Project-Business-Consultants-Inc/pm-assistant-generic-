@@ -158,7 +158,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: Retrospe
                           <button
                             onClick={() => convertMutation.mutate(item.id)}
                             disabled={convertMutation.isPending}
-                            className="inline-flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                            className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
                             tabIndex={0}
                             role="button"
                             aria-label="Convert to task"
@@ -170,7 +170,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: Retrospe
                         )}
 
                         {item.convertedTaskId && (
-                          <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">Converted</span>
+                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">Converted</span>
                         )}
 
                         <button

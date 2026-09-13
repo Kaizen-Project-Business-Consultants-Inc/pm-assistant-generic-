@@ -65,22 +65,22 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 text-center">
                   <Clock className="w-4 h-4 mx-auto text-blue-500 mb-1" />
                   <p className="text-lg font-bold text-gray-900 dark:text-white">{resource.capacityHoursPerWeek}h</p>
-                  <p className="text-[10px] text-gray-500">Capacity/Week</p>
+                  <p className="text-xs text-gray-500">Capacity/Week</p>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 text-center">
                   <Briefcase className="w-4 h-4 mx-auto text-purple-500 mb-1" />
                   <p className="text-lg font-bold text-gray-900 dark:text-white">{summary.activeAssignments}</p>
-                  <p className="text-[10px] text-gray-500">Assignments</p>
+                  <p className="text-xs text-gray-500">Assignments</p>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 text-center">
                   <TrendingUp className="w-4 h-4 mx-auto text-green-500 mb-1" />
                   <p className={`text-lg font-bold ${summary.utilization > 100 ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{summary.utilization}%</p>
-                  <p className="text-[10px] text-gray-500">Utilization</p>
+                  <p className="text-xs text-gray-500">Utilization</p>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 text-center">
                   <User className="w-4 h-4 mx-auto text-amber-500 mb-1" />
                   <p className="text-lg font-bold text-gray-900 dark:text-white">{resource.costRateHourly != null ? `$${resource.costRateHourly}` : '--'}</p>
-                  <p className="text-[10px] text-gray-500">Rate/Hour</p>
+                  <p className="text-xs text-gray-500">Rate/Hour</p>
                 </div>
               </div>
             )}
@@ -92,7 +92,7 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
                 <div className="flex flex-wrap gap-1.5">
                   {resource.skills.map((s: { name: string; level: number }, i: number) => (
                     <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700">
-                      {s.name} <span className="text-[10px] opacity-70">({PROFICIENCY_LABELS[s.level] || s.level})</span>
+                      {s.name} <span className="text-xs opacity-70">({PROFICIENCY_LABELS[s.level] || s.level})</span>
                     </span>
                   ))}
                 </div>

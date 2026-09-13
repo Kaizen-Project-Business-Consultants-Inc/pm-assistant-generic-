@@ -616,7 +616,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                     Select Columns
                     {expandedColumnPickers.has(section.id) ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     {section.columns.length > 0 && (
-                      <span className="ml-1 px-1.5 py-0.5 bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded-full text-[10px] font-semibold">
+                      <span className="ml-1 px-1.5 py-0.5 bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded-full text-xs font-semibold">
                         {section.columns.length}
                       </span>
                     )}
@@ -655,7 +655,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                     </div>
                   )}
                   {!expandedColumnPickers.has(section.id) && section.columns.length === 0 && (
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">All columns shown by default. Click to pick specific columns.</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">All columns shown by default. Click to pick specific columns.</p>
                   )}
                 </div>
               )}

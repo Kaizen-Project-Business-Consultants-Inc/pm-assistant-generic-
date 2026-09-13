@@ -261,7 +261,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
           </svg>
           Filter
           {activeFilterCount > 0 && (
-            <span className="ml-0.5 px-1.5 py-0 text-[10px] font-bold bg-primary-600 text-white rounded-full">{activeFilterCount}</span>
+            <span className="ml-0.5 px-1.5 py-0 text-xs font-bold bg-primary-600 text-white rounded-full">{activeFilterCount}</span>
           )}
         </button>
         {onAddTask && (
@@ -375,7 +375,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
           </svg>
           Conflicts
           {showOverallocation && overallocatedCount > 0 && (
-            <span className="ml-0.5 px-1.5 py-0.5 text-[10px] font-bold bg-amber-200 text-amber-800 rounded-full">{overallocatedCount}</span>
+            <span className="ml-0.5 px-1.5 py-0.5 text-xs font-bold bg-amber-200 text-amber-800 rounded-full">{overallocatedCount}</span>
           )}
         </button>
         {/* Minimap toggle */}

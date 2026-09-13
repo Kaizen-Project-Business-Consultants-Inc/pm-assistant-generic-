@@ -92,11 +92,11 @@ function Section({ title, icon: Icon, items, linkFn, count }: {
                   {item.status.replace(/_/g, ' ')}
                 </span>
                 {due.text && (
-                  <span className={`shrink-0 text-[10px] ${due.overdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                  <span className={`shrink-0 text-xs ${due.overdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
                     {due.text}
                   </span>
                 )}
-                <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[100px]">
+                <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500 truncate max-w-[100px]">
                   {item.projectName}
                 </span>
               </li>

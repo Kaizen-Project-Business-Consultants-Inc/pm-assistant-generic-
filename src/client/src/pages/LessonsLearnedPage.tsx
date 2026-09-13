@@ -136,7 +136,7 @@ function statusBadge(status?: string) {
   };
   if (!status) return null;
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase border ${colors[status] || ''}`}>
+    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase border ${colors[status] || ''}`}>
       {status}
     </span>
   );
@@ -161,7 +161,7 @@ function severityBadge(severity?: string | null) {
     low: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400',
   };
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${colors[severity] || ''}`}>
+    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold uppercase ${colors[severity] || ''}`}>
       {severity}
     </span>
   );
@@ -619,19 +619,19 @@ export const LessonsLearnedPage: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <div className="rounded-lg bg-gray-50 dark:bg-gray-700 p-2.5 text-center">
                   <p className="text-base font-bold text-gray-900 dark:text-white">{report.totalLessons}</p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">Total</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Total</p>
                 </div>
                 <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 p-2.5 text-center">
                   <p className="text-base font-bold text-amber-700 dark:text-amber-300">{report.elevated}</p>
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 uppercase">Elevated</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 uppercase">Elevated</p>
                 </div>
                 <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-2.5 text-center">
                   <p className="text-base font-bold text-red-700 dark:text-red-300">{(report.bySeverity?.critical || 0) + (report.bySeverity?.high || 0)}</p>
-                  <p className="text-[10px] text-red-600 dark:text-red-400 uppercase">High/Critical</p>
+                  <p className="text-xs text-red-600 dark:text-red-400 uppercase">High/Critical</p>
                 </div>
                 <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-2.5 text-center">
                   <p className="text-base font-bold text-green-700 dark:text-green-300">{report.byImpact?.positive || 0}</p>
-                  <p className="text-[10px] text-green-600 dark:text-green-400 uppercase">Positive</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 uppercase">Positive</p>
                 </div>
               </div>
               {report.trendingCategories?.length > 0 && (
@@ -759,7 +759,7 @@ export const LessonsLearnedPage: React.FC = () => {
                       )}
                       {statusBadge(lesson.status)}
                       {severityBadge(lesson.severity)}
-                      <span className="hidden sm:inline-block rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-2 py-0.5 text-[10px] font-medium">
+                      <span className="hidden sm:inline-block rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-2 py-0.5 text-xs font-medium">
                         {lesson.category}
                       </span>
                     </div>
@@ -785,7 +785,7 @@ export const LessonsLearnedPage: React.FC = () => {
                             {lesson.projectName && <span>Project: {lesson.projectName}</span>}
                             {(lesson.appliedCount ?? 0) > 0 && <span>Applied {lesson.appliedCount}x</span>}
                             {lesson.effectivenessRating != null && <span>Effectiveness: {lesson.effectivenessRating}%</span>}
-                            <span className="sm:hidden rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-2 py-0.5 text-[10px] font-medium">
+                            <span className="sm:hidden rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-2 py-0.5 text-xs font-medium">
                               {lesson.category}
                             </span>
                             {impactBadge(lesson.impact)}

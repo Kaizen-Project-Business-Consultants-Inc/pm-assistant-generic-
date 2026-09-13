@@ -206,7 +206,7 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Type filters */}
                   <div>
-                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Types</span>
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Types</span>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {TYPE_OPTIONS.map(opt => (
                         <label key={opt.value} className={checkboxLabelClass}>
@@ -224,7 +224,7 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
 
                   {/* Severity filters */}
                   <div>
-                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Severities</span>
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Severities</span>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {SEVERITY_OPTIONS.map(sev => (
                         <label key={sev} className={checkboxLabelClass}>
@@ -242,7 +242,7 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
 
                   {/* Owner filter */}
                   <div>
-                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Owner</span>
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Owner</span>
                     <select
                       value={filters.owners[0] || ''}
                       onChange={e => setFilters(prev => ({ ...prev, owners: e.target.value ? [e.target.value] : [] }))}

@@ -93,7 +93,7 @@ export function ResourceQuickAssign({ taskId, assignments, onUpdate }: ResourceQ
         return (
           <div
             key={a.resourceId}
-            className="group flex items-center gap-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full pl-1 pr-0.5 py-0 text-[10px] font-medium max-w-[72px] shrink-0"
+            className="group flex items-center gap-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full pl-1 pr-0.5 py-0 text-xs font-medium max-w-[72px] shrink-0"
             title={`${res?.name || a.resourceId} (${a.allocationPct}%)`}
           >
             <span className="truncate">{getInitials(name)}</span>

@@ -150,7 +150,7 @@ export function TimeAnomalyPanel({ projectId, isManagerOrOwner = false }: { proj
                     <span className="text-xs font-medium uppercase tracking-wide opacity-75">
                       {TYPE_LABELS[anomaly.type]}
                     </span>
-                    <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded uppercase ${SEVERITY_BADGE[anomaly.severity]}`}>
+                    <span className={`px-1.5 py-0.5 text-xs font-bold rounded uppercase ${SEVERITY_BADGE[anomaly.severity]}`}>
                       {anomaly.severity}
                     </span>
                   </div>
@@ -185,14 +185,14 @@ export function TimeAnomalyPanel({ projectId, isManagerOrOwner = false }: { proj
                   <div className="flex items-center gap-2 mb-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-purple-500" />
                     <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">AI Analysis</span>
-                    <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded uppercase ${RISK_BADGE[explanations[anomaly.id].riskLevel]}`}>
+                    <span className={`px-1.5 py-0.5 text-xs font-bold rounded uppercase ${RISK_BADGE[explanations[anomaly.id].riskLevel]}`}>
                       {explanations[anomaly.id].riskLevel} risk
                     </span>
                   </div>
                   <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{explanations[anomaly.id].rootCause}</p>
                   {explanations[anomaly.id].suggestedActions.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Suggested Actions</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Suggested Actions</p>
                       <ul className="space-y-0.5">
                         {explanations[anomaly.id].suggestedActions.map((action, i) => (
                           <li key={i} className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1.5">

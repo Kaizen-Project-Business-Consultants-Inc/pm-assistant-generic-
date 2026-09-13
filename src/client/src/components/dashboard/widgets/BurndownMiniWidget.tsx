@@ -52,7 +52,7 @@ export function BurndownMiniWidget() {
             <div key={p.id}>
               <div className="flex items-center justify-between mb-0.5">
                 <span className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-[160px]">{p.name}</span>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 ml-2 shrink-0">{pct}%</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 shrink-0">{pct}%</span>
               </div>
               <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-700">
                 <div

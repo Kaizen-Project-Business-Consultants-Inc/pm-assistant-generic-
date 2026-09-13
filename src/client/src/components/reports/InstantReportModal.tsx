@@ -47,7 +47,7 @@ export const InstantReportModal: React.FC<InstantReportModalProps> = ({ title, h
         <div className="flex items-start justify-between p-5 border-b border-gray-200 dark:border-gray-700">
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">{title}</h2>
-            <span className="inline-block mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+            <span className="inline-block mt-1 rounded-full px-2 py-0.5 text-xs font-bold uppercase bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
               Instant Report
             </span>
           </div>

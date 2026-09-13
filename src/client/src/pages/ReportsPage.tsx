@@ -772,7 +772,7 @@ export const ReportsPage: React.FC = () => {
           <div className="flex flex-wrap items-end gap-3">
             {/* Type dropdown */}
             <div className="min-w-[160px]">
-              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
                 <Filter className="w-3 h-3 inline mr-1" />
                 Type
               </label>
@@ -792,7 +792,7 @@ export const ReportsPage: React.FC = () => {
 
             {/* Search */}
             <div className="min-w-[180px] flex-1 max-w-[260px]">
-              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
                 <Search className="w-3 h-3 inline mr-1" />
                 Search
               </label>
@@ -811,7 +811,7 @@ export const ReportsPage: React.FC = () => {
 
             {/* Date From */}
             <div className="min-w-[140px]">
-              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
                 <Calendar className="w-3 h-3 inline mr-1" />
                 From
               </label>
@@ -825,7 +825,7 @@ export const ReportsPage: React.FC = () => {
 
             {/* Date To */}
             <div className="min-w-[140px]">
-              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
                 To
               </label>
               <input
@@ -908,7 +908,7 @@ export const ReportsPage: React.FC = () => {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${badgeColor}`}>
+                            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${badgeColor}`}>
                               {typeLabel}
                             </span>
                           </td>

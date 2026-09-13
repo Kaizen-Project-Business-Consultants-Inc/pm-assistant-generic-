@@ -434,7 +434,7 @@ export function ResourceLevelingPanel({
                       {sug.suggestedResource}
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold text-white ${
                         sug.matchScore >= 70 ? 'bg-green-500' : sug.matchScore >= 40 ? 'bg-amber-500' : 'bg-gray-400'
                       }`}>
                         {sug.matchScore}%

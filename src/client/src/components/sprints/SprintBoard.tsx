@@ -160,14 +160,14 @@ const SprintCard = memo(function SprintCard({
           </span>
         )}
         {ac && (
-          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ac.checked === ac.total ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>
+          <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${ac.checked === ac.total ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>
             {ac.checked}/{ac.total} AC
           </span>
         )}
         {dodReady && (
           <span
             title={`DoD: ${dodReady.checked}/${dodReady.total}`}
-            className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+            className={`inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full ${
               dodReady.ready
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                 : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
@@ -382,7 +382,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                   </div>
                 )}
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">{group.label}</span>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500">{group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">{group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}</span>
               </div>
             </div>
           )}
@@ -416,7 +416,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                         {col.label}
                       </span>
                       {colPoints > 0 && (
-                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{colPoints} pts</span>
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{colPoints} pts</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1">

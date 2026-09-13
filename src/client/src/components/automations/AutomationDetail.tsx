@@ -129,7 +129,7 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{automation.name}</h3>
               {automation.scope === 'portfolio' && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium">Portfolio</span>
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium">Portfolio</span>
               )}
             </div>
             {automation.description && (

@@ -140,7 +140,7 @@ export function TeamWorkloadWidget({ projects }: Props) {
               </div>
             )}
             {overallocatedCount === 0 && (
-              <span className="text-green-600 dark:text-green-400 text-[10px] font-medium">All balanced</span>
+              <span className="text-green-600 dark:text-green-400 text-xs font-medium">All balanced</span>
             )}
           </div>
         </div>
@@ -186,10 +186,10 @@ export function TeamWorkloadWidget({ projects }: Props) {
                   {(multiProject || r.capacity != null) && (
                     <div className="flex items-center gap-2 mt-0.5">
                       {multiProject && (
-                        <span className="text-[10px] text-amber-500 dark:text-amber-400">{r.projectCount} projects</span>
+                        <span className="text-xs text-amber-500 dark:text-amber-400">{r.projectCount} projects</span>
                       )}
                       {r.capacity != null && r.capacity > 0 && (
-                        <span className="text-[10px] text-gray-400">{r.capacity}h/wk capacity</span>
+                        <span className="text-xs text-gray-400">{r.capacity}h/wk capacity</span>
                       )}
                     </div>
                   )}

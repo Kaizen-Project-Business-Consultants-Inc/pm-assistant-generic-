@@ -490,7 +490,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
             )}
           </div>
           {completionForecast && (
-            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               {completionForecast.date
                 ? <>Est. completion: <span className={`font-medium ${end && completionForecast.date > end ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>{completionForecast.label}</span></>
                 : <span className="text-green-600 dark:text-green-400 font-medium">{completionForecast.label}</span>
@@ -591,7 +591,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
             <p className={`text-2xl font-bold ${cpiSpiColor(cpi)}`}>
               {cpi !== null ? cpi.toFixed(2) : '—'}
             </p>
-            <p className="text-[10px] text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-400 mt-0.5">
               {cpi !== null ? (cpi >= 1.0 ? 'Under budget' : 'Over budget') : ''}
             </p>
           </div>
@@ -600,7 +600,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
             <p className={`text-2xl font-bold ${cpiSpiColor(spi)}`}>
               {spi !== null ? spi.toFixed(2) : '—'}
             </p>
-            <p className="text-[10px] text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-400 mt-0.5">
               {spi !== null ? (spi >= 1.0 ? 'Ahead of schedule' : 'Behind schedule') : ''}
             </p>
           </div>
@@ -673,7 +673,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               }`} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-gray-900 dark:text-white truncate">{t.name}</p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   {daysLeft === 0 ? 'Due today' : daysLeft === 1 ? 'Due tomorrow' : `${daysLeft} days left`}
                   {t.assigneeName && ` · ${t.assigneeName}`}
                 </p>
@@ -706,7 +706,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               onKeyDown={item.value > 0 ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab?.('raid'); } } : undefined}
             >
               <p className={`text-xl font-bold ${item.text}`}>{item.value}</p>
-              <p className={`text-[10px] ${item.sub}`}>{item.label}</p>
+              <p className={`text-xs ${item.sub}`}>{item.label}</p>
             </div>
           ))}
         </div>
@@ -790,7 +790,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               <p className="text-xs text-gray-800 dark:text-gray-200 truncate">
                 {a.action || a.description || a.summary || a.message || 'Activity'}
               </p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500">
+              <p className="text-xs text-gray-400 dark:text-gray-500">
                 {a.userName || a.user || ''}{a.userName || a.user ? ' · ' : ''}
                 {new Date(a.createdAt || a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
               </p>
@@ -824,7 +824,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-gray-900 dark:text-white truncate">{t.name}</p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   Waiting on: {blockerNames.join(', ')}
                 </p>
               </div>
@@ -845,7 +845,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               <p className="text-xs text-gray-800 dark:text-gray-200 truncate">
                 {a.action || a.description || a.summary || a.message || 'Comment'}
               </p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500">
+              <p className="text-xs text-gray-400 dark:text-gray-500">
                 {a.userName || a.user || ''}{a.userName || a.user ? ' · ' : ''}
                 {new Date(a.createdAt || a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
               </p>
@@ -878,7 +878,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
                 />
               </div>
               {g.targetDate && (
-                <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                <p className="text-xs text-gray-400 dark:text-gray-500">
                   Target: {new Date(g.targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </p>
               )}
@@ -909,7 +909,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               <Paperclip className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-gray-900 dark:text-white truncate">{name}</p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   {size ? `${(size / 1024).toFixed(0)} KB · ` : ''}
                   {date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
                 </p>
@@ -942,7 +942,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         )}
         {(latestMeeting.actionItems || latestMeeting.actions) && (
           <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium mb-1.5">Action Items</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium mb-1.5">Action Items</p>
             <div className="space-y-1">
               {(latestMeeting.actionItems || latestMeeting.actions || []).slice(0, 3).map((item: any, idx: number) => (
                 <div key={idx} className="flex items-start gap-1.5">
@@ -957,7 +957,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         )}
         {(latestMeeting.decisions || []).length > 0 && (
           <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium mb-1.5">Decisions</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium mb-1.5">Decisions</p>
             <div className="space-y-1">
               {latestMeeting.decisions.slice(0, 2).map((d: any, idx: number) => (
                 <p key={idx} className="text-xs text-gray-700 dark:text-gray-300 truncate">
@@ -1023,7 +1023,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
                   <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{lesson.title}</p>
                   {lesson.recommendation && <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{lesson.recommendation}</p>}
                 </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-medium shrink-0">{lesson.category}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-medium shrink-0">{lesson.category}</span>
               </div>
             ))}
           </div>
@@ -1133,18 +1133,18 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               )}
               {memberWorkload.length > 0 && memberWorkload.some(w => w.count > 0) && (
                 <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider font-medium">Active Tasks</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider font-medium">Active Tasks</p>
                   <div className="space-y-1.5">
                     {memberWorkload.map((w) => (
                       <div key={w.name} className="flex items-center gap-2">
-                        <span className="text-[10px] text-gray-500 dark:text-gray-400 w-12 truncate">{w.name}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 w-12 truncate">{w.name}</span>
                         <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
                           <div
                             className="h-full bg-primary-400 dark:bg-primary-500 rounded-full transition-all duration-500"
                             style={{ width: `${w.pct}%` }}
                           />
                         </div>
-                        <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 w-4 text-right">{w.count}</span>
+                        <span className="text-xs font-medium text-gray-600 dark:text-gray-300 w-4 text-right">{w.count}</span>
                       </div>
                     ))}
                   </div>
@@ -1160,7 +1160,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         <div className="flex justify-end">
           <button
             onClick={resetCardOrder}
-            className="text-[10px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             Reset card order
           </button>

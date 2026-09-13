@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { AdminPageWrapper } from './AdminPageWrapper';
+import { roleLabel } from '../../constants/branding';
 import {
   AlertTriangle,
   AlertCircle,
@@ -438,7 +439,7 @@ export function AdminOperationsPage() {
                           const pct = data.summary.totalUsers > 0 ? (r.count / data.summary.totalUsers) * 100 : 0;
                           return (
                             <div key={r.role} className="flex items-center gap-3">
-                              <span className="text-sm text-gray-700 dark:text-gray-300 w-36 capitalize">{r.role.replace(/_/g, ' ')}</span>
+                              <span className="text-sm text-gray-700 dark:text-gray-300 w-36">{roleLabel(r.role)}</span>
                               <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div className="h-full bg-purple-400 dark:bg-purple-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                               </div>

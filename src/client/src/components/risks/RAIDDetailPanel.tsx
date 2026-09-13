@@ -568,7 +568,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                           {memberName(u.userId)}
                         </span>
-                        <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0">
+                        <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
                           {formatTimestamp(u.createdAt)}
                           {u.updatedAt !== u.createdAt && <span className="italic ml-1">(edited)</span>}
                         </span>
@@ -629,7 +629,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
                         {a.fieldName && (
                           <span className="text-xs text-gray-400 capitalize">{a.fieldName}</span>
                         )}
-                        <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0">
+                        <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
                           {formatTimestamp(a.createdAt)}
                         </span>
                       </div>

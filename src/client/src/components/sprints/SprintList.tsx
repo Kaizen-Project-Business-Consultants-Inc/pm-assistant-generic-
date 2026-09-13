@@ -68,7 +68,7 @@ function VelocitySparkline({ sprints }: { sprints: Sprint[] }) {
           <circle key={i} cx={(i / (vals.length - 1)) * w} cy={h - ((v - min) / range) * (h - 4) - 2} r="2" fill="#6366f1" />
         ))}
       </svg>
-      <span className="text-[10px] text-gray-400 dark:text-gray-500 whitespace-nowrap">velocity</span>
+      <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">velocity</span>
     </div>
   );
 }

@@ -101,12 +101,12 @@ export function GoalsWidget() {
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate min-w-0">{g.title}</p>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded capitalize ${STATUS_STYLES[g.status] || STATUS_STYLES.on_track}`}>
+                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded capitalize ${STATUS_STYLES[g.status] || STATUS_STYLES.on_track}`}>
                       {statusLabel}
                     </span>
                     {g.dueDate && (
-                      <span className="text-[10px] text-gray-400">
-                        {new Date(g.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      <span className="text-xs text-gray-400">
+                        {new Date(g.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     )}
                   </div>
@@ -118,7 +118,7 @@ export function GoalsWidget() {
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400 w-7 text-right">{pct}%</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 w-7 text-right">{pct}%</span>
                 </div>
               </div>
             );

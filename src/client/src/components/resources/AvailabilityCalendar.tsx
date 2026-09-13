@@ -165,15 +165,15 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 flex items-end gap-3 flex-wrap">
           <div>
-            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">From</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">From</label>
             <input type="date" value={formData.dateFrom} onChange={e => setFormData(p => ({ ...p, dateFrom: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1" required />
           </div>
           <div>
-            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">To</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">To</label>
             <input type="date" value={formData.dateTo} onChange={e => setFormData(p => ({ ...p, dateTo: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1" required />
           </div>
           <div>
-            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">Type</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Type</label>
             <select value={formData.type} onChange={e => setFormData(p => ({ ...p, type: e.target.value as any }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1">
               <option value="vacation">Vacation</option>
               <option value="holiday">Holiday</option>
@@ -183,12 +183,12 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
           </div>
           {formData.type === 'reduced' && (
             <div>
-              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">Hours/day</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Hours/day</label>
               <input type="number" min="0" max="24" step="0.5" value={formData.hoursAvailable} onChange={e => setFormData(p => ({ ...p, hoursAvailable: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1 w-16" />
             </div>
           )}
           <div>
-            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">Note</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Note</label>
             <input type="text" value={formData.note} onChange={e => setFormData(p => ({ ...p, note: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1 w-32" placeholder="Optional" />
           </div>
           <button type="submit" disabled={createMutation.isPending} className="text-xs px-3 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50">
@@ -200,7 +200,7 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
       {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} className="bg-gray-50 dark:bg-gray-700 text-center text-[10px] font-semibold text-gray-500 dark:text-gray-400 py-1">{d}</div>
+          <div key={d} className="bg-gray-50 dark:bg-gray-700 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 py-1">{d}</div>
         ))}
         {calendarDays.map(({ date, inMonth }, i) => {
           const dateStr = date.toISOString().slice(0, 10);
@@ -214,7 +214,7 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
               className={`bg-white dark:bg-gray-800 p-1 min-h-[36px] ${!inMonth ? 'opacity-30' : ''}`}
               title={entry ? `${typeColors[entry.type].label}${entry.note ? `: ${entry.note}` : ''}` : undefined}
             >
-              <div className={`text-[10px] text-center rounded-full w-5 h-5 flex items-center justify-center mx-auto ${
+              <div className={`text-xs text-center rounded-full w-5 h-5 flex items-center justify-center mx-auto ${
                 isToday ? 'bg-primary-600 text-white font-bold' : 'text-gray-600 dark:text-gray-300'
               }`}>
                 {date.getDate()}
@@ -232,12 +232,12 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
       {/* Entries list */}
       {entries.length > 0 && (
         <div className="mt-3 space-y-1">
-          <h4 className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase">Scheduled Blocks</h4>
+          <h4 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">Scheduled Blocks</h4>
           {entries.map(e => {
             const colors = typeColors[e.type];
             return (
               <div key={e.id} className="flex items-center gap-2 text-xs">
-                <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${colors.bg} ${colors.text}`}>
+                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${colors.bg} ${colors.text}`}>
                   {colors.label}
                 </span>
                 <span className="text-gray-600 dark:text-gray-400">
@@ -264,7 +264,7 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
         {Object.entries(typeColors).map(([key, c]) => (
           <div key={key} className="flex items-center gap-1">
             <div className={`w-3 h-2 rounded ${c.bg}`} />
-            <span className="text-[10px] text-gray-500 dark:text-gray-400">{c.label}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{c.label}</span>
           </div>
         ))}
       </div>

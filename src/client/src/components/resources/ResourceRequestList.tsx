@@ -121,10 +121,10 @@ export function ResourceRequestList({ projectId }: { projectId?: string }) {
                     {rr.skillsRequired && rr.skillsRequired.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {rr.skillsRequired.slice(0, 3).map(s => (
-                          <span key={s} className="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">{s}</span>
+                          <span key={s} className="px-1.5 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">{s}</span>
                         ))}
                         {rr.skillsRequired.length > 3 && (
-                          <span className="text-[10px] text-gray-400">+{rr.skillsRequired.length - 3}</span>
+                          <span className="text-xs text-gray-400">+{rr.skillsRequired.length - 3}</span>
                         )}
                       </div>
                     )}
@@ -142,7 +142,7 @@ export function ResourceRequestList({ projectId }: { projectId?: string }) {
                       {rr.status}
                     </span>
                     {rr.reviewerComment && (
-                      <p className="text-[10px] text-gray-400 mt-0.5 max-w-[200px] truncate" title={rr.reviewerComment}>{rr.reviewerComment}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 max-w-[200px] truncate" title={rr.reviewerComment}>{rr.reviewerComment}</p>
                     )}
                   </td>
                   <td className="px-4 py-3">

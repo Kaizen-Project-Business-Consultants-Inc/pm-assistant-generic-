@@ -44,11 +44,11 @@ export function CapacityCard({ sprintId }: CapacityCardProps) {
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="text-center p-2 rounded-lg bg-primary-50 dark:bg-primary-900/20">
           <p className="text-2xl font-bold text-primary-700 dark:text-primary-300">{recommendedVelocity}</p>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400">Recommended pts</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Recommended pts</p>
         </div>
         <div className="text-center p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
           <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">{avgVelocity || '--'}</p>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400">Avg velocity</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Avg velocity</p>
         </div>
       </div>
 

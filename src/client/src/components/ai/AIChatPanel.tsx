@@ -197,7 +197,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
                     <div className="truncate text-xs font-medium text-gray-700 dark:text-gray-200">
                       {conv.title}
                     </div>
-                    <div className="text-[10px] text-gray-400 dark:text-gray-500">
+                    <div className="text-xs text-gray-400 dark:text-gray-500">
                       {formatDate(conv.updatedAt)}
                     </div>
                   </div>

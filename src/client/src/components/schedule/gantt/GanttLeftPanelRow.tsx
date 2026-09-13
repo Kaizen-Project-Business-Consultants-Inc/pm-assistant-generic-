@@ -347,7 +347,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
                   placeholder="e.g. 3FS"
                 />
                 {depErrorMsg && (
-                  <div className="absolute z-30 top-full left-0 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 text-[10px] px-1.5 py-0.5 rounded shadow whitespace-nowrap">
+                  <div className="absolute z-30 top-full left-0 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 text-xs px-1.5 py-0.5 rounded shadow whitespace-nowrap">
                     {depErrorMsg}
                   </div>
                 )}

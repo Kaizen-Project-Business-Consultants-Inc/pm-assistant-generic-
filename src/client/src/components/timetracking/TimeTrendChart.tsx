@@ -104,7 +104,7 @@ export function TimeTrendChart({ projectId }: { projectId: string }) {
           <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Peak Week</p>
             <p className="text-lg font-bold text-gray-900 dark:text-white">{trends.peakWeek.hours.toFixed(1)}h</p>
-            <p className="text-[10px] text-gray-400">{new Date(trends.peakWeek.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+            <p className="text-xs text-gray-400">{new Date(trends.peakWeek.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
           </div>
         )}
       </div>
@@ -117,7 +117,7 @@ export function TimeTrendChart({ projectId }: { projectId: string }) {
             {chart.yTicks.map(v => (
               <g key={v}>
                 <line x1={chart.pad.left} y1={chart.scaleY(v)} x2={chart.W - chart.pad.right} y2={chart.scaleY(v)} stroke="currentColor" className="text-gray-200 dark:text-gray-700" strokeWidth="0.5" />
-                <text x={chart.pad.left - 8} y={chart.scaleY(v) + 4} textAnchor="end" className="fill-gray-400 text-[10px]">{v}h</text>
+                <text x={chart.pad.left - 8} y={chart.scaleY(v) + 4} textAnchor="end" className="fill-gray-400 text-xs">{v}h</text>
               </g>
             ))}
 
@@ -160,9 +160,9 @@ export function TimeTrendChart({ projectId }: { projectId: string }) {
             {/* Legend */}
             <g transform={`translate(${chart.pad.left + 10}, ${chart.pad.top + 6})`}>
               <rect x="0" y="-4" width="12" height="8" rx="2" className="fill-primary-400" opacity="0.8" />
-              <text x="16" y="4" className="fill-gray-500 text-[10px]">Weekly Hours</text>
+              <text x="16" y="4" className="fill-gray-500 text-xs">Weekly Hours</text>
               <line x1="100" y1="0" x2="116" y2="0" stroke="#f59e0b" strokeWidth="2" />
-              <text x="120" y="4" className="fill-gray-500 text-[10px]">4-wk Avg</text>
+              <text x="120" y="4" className="fill-gray-500 text-xs">4-wk Avg</text>
             </g>
           </svg>
         </div>

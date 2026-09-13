@@ -18,7 +18,7 @@ export const GanttFilterPanel = React.memo(function GanttFilterPanel({
     <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex items-center gap-3 flex-wrap">
       {/* Status multi-select */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase">Status</span>
+        <span className="text-xs font-semibold text-gray-400 uppercase">Status</span>
         {['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled'].map(s => (
           <label key={s} className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
             <input
@@ -38,7 +38,7 @@ export const GanttFilterPanel = React.memo(function GanttFilterPanel({
       <div className="h-4 w-px bg-gray-300 dark:bg-gray-500" />
       {/* Priority multi-select */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase">Priority</span>
+        <span className="text-xs font-semibold text-gray-400 uppercase">Priority</span>
         {['low', 'medium', 'high', 'urgent'].map(p => (
           <label key={p} className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
             <input
@@ -59,7 +59,7 @@ export const GanttFilterPanel = React.memo(function GanttFilterPanel({
       <div className="h-4 w-px bg-gray-300 dark:bg-gray-500" />
       {/* Assignee text */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase">Assignee</span>
+        <span className="text-xs font-semibold text-gray-400 uppercase">Assignee</span>
         <input
           type="text"
           aria-label="Filter by assignee"
@@ -72,7 +72,7 @@ export const GanttFilterPanel = React.memo(function GanttFilterPanel({
       <div className="h-4 w-px bg-gray-300 dark:bg-gray-500" />
       {/* Date range */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase">Start</span>
+        <span className="text-xs font-semibold text-gray-400 uppercase">Start</span>
         <input
           type="date"
           aria-label="Start after"
@@ -94,7 +94,7 @@ export const GanttFilterPanel = React.memo(function GanttFilterPanel({
       <div className="h-4 w-px bg-gray-300 dark:bg-gray-500" />
       {/* Progress range */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase">Progress</span>
+        <span className="text-xs font-semibold text-gray-400 uppercase">Progress</span>
         <input
           type="number"
           min="0"

@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
-import { tierBadgeClass } from '../constants/branding';
+import { tierBadgeClass, roleLabel } from '../constants/branding';
 import {
   Users,
   Activity,
@@ -202,7 +202,7 @@ function UsersTab() {
                       ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200'
                   }`}>
-                    {u.role}
+                    {roleLabel(u.role)}
                   </span>
                 </td>
                 <td className="py-3 pr-4 text-gray-600 dark:text-gray-300">{fmt(u.created_at)}</td>

@@ -14,10 +14,18 @@ interface ScheduleSummaryBarProps {
 }
 
 export const ScheduleSummaryBar = React.memo(function ScheduleSummaryBar({ stats }: ScheduleSummaryBarProps) {
+  if (stats.total === 0) {
+    return (
+      <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 text-xs mb-1">
+        <span className="text-gray-500 dark:text-gray-400">No tasks yet</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 text-xs mb-1 flex-wrap">
       <span className="text-gray-500 dark:text-gray-400">
-        <span className="font-semibold text-gray-700 dark:text-gray-200">{stats.total}</span> tasks
+        <span className="font-semibold text-gray-700 dark:text-gray-200">{stats.total}</span> task{stats.total !== 1 ? 's' : ''}
       </span>
       <span className="w-px h-3 bg-gray-200 dark:bg-gray-600" />
       <span className="text-green-600 dark:text-green-400">

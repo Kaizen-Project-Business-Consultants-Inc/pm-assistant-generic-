@@ -41,7 +41,7 @@ export function PresenceIndicator(props: PresenceIndicatorProps) {
               className="w-7 h-7 rounded-full bg-primary-100 dark:bg-primary-900/40 border-2 border-white dark:border-gray-800 flex items-center justify-center"
               title={`${user.username} is ${label}`}
             >
-              <span className="text-[10px] font-semibold text-primary-700 dark:text-primary-300">
+              <span className="text-xs font-semibold text-primary-700 dark:text-primary-300">
                 {getInitials(user.username)}
               </span>
             </div>
@@ -51,13 +51,13 @@ export function PresenceIndicator(props: PresenceIndicatorProps) {
               className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 border-2 border-white dark:border-gray-900 flex items-center justify-center"
               title={`${users.length - maxVisible} more ${label}`}
             >
-              <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                 +{users.length - maxVisible}
               </span>
             </div>
           )}
         </div>
-        <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1.5 whitespace-nowrap">{label}</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500 ml-1.5 whitespace-nowrap">{label}</span>
       </div>
     );
   }

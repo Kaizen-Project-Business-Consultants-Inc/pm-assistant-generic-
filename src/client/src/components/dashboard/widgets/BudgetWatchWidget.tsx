@@ -57,7 +57,7 @@ export function BudgetWatchWidget({ projects }: Props) {
               <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">Portfolio Total</span>
               <div className="flex items-center gap-2">
                 {overBudgetCount > 0 && (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                  <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400">
                     {overBudgetCount} over
                   </span>
                 )}
@@ -72,7 +72,7 @@ export function BudgetWatchWidget({ projects }: Props) {
                 style={{ width: `${Math.min(portfolioUtilPct, 100)}%` }}
               />
             </div>
-            <p className="text-[10px] text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-400 mt-0.5">
               {formatDollar(totalSpent)} of {formatDollar(totalAllocated)} allocated
             </p>
           </div>
@@ -116,7 +116,7 @@ export function BudgetWatchWidget({ projects }: Props) {
                     {formatDollar(p.budgetSpent ?? 0)} / {formatDollar(p.budgetAllocated!)}
                   </p>
                   {p.progressPct > 0 && (
-                    <p className="text-[10px] text-blue-500 dark:text-blue-400">
+                    <p className="text-xs text-blue-500 dark:text-blue-400">
                       {p.progressPct}% done
                     </p>
                   )}

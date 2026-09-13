@@ -261,7 +261,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
             >
               {/* Day header */}
               <div className="text-center mb-2">
-                <div className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase">{DAYS[day.getDay()]}</div>
+                <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">{DAYS[day.getDay()]}</div>
                 <div className={`text-lg font-bold mx-auto w-8 h-8 flex items-center justify-center rounded-full ${
                   isToday ? 'bg-primary-600 text-white' : 'text-gray-700 dark:text-gray-200'
                 }`}>
@@ -272,7 +272,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
               <div className="space-y-1">
                 {dayTasks.map(task => renderTaskPill(task, day, true))}
                 {dayTasks.length === 0 && (
-                  <div className="text-center text-[10px] text-gray-300 dark:text-gray-600 py-4">—</div>
+                  <div className="text-center text-xs text-gray-300 dark:text-gray-600 py-4">—</div>
                 )}
               </div>
             </div>
@@ -334,13 +334,13 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
                     <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{task.name}</div>
                     <div className="flex items-center gap-2 mt-0.5">
                       {task.priority && (
-                        <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase">{task.priority}</span>
+                        <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">{task.priority}</span>
                       )}
                       {task.assignedTo && (
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500">{task.assignedTo}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">{task.assignedTo}</span>
                       )}
                       {task.startDate && task.endDate && (
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
                           {new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(task.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                       )}

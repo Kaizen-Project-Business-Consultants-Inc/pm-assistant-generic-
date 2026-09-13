@@ -318,7 +318,7 @@ export function PortfolioPage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{item.projectName}</h3>
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${sc.bg} ${sc.text}`}>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${sc.bg} ${sc.text}`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
                               {item.status.replace('_', ' ')}
                             </span>
@@ -461,7 +461,7 @@ function PortfolioResourcesView() {
                     <td className="px-4 py-2">
                       <div className="flex flex-wrap gap-1">
                         {c.projects.map(p => (
-                          <span key={p.projectId} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                          <span key={p.projectId} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                             {p.projectName} ({p.averageUtilization}%)
                           </span>
                         ))}
@@ -774,7 +774,7 @@ function ProjectComparisonMatrix({ projects, onProjectClick }: { projects: Portf
                   </td>
                   <td className="px-3 py-2 text-center text-xs text-gray-600 dark:text-gray-400">{p.completedTasks}/{p.totalTasks}</td>
                   <td className="px-3 py-2 text-center">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${sc.bg} ${sc.text}`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${sc.bg} ${sc.text}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
                       {p.status.replace('_', ' ')}
                     </span>

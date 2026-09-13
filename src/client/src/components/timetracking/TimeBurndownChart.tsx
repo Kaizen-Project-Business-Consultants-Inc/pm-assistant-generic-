@@ -134,13 +134,13 @@ export function TimeBurndownChart({ projectId }: { projectId: string }) {
             {chart.yTicks.map(v => (
               <g key={v}>
                 <line x1={chart.pad.left} y1={chart.scaleY(v)} x2={chart.W - chart.pad.right} y2={chart.scaleY(v)} stroke="currentColor" className="text-gray-200 dark:text-gray-700" strokeWidth="0.5" />
-                <text x={chart.pad.left - 8} y={chart.scaleY(v) + 4} textAnchor="end" className="fill-gray-400 text-[10px]">{v}h</text>
+                <text x={chart.pad.left - 8} y={chart.scaleY(v) + 4} textAnchor="end" className="fill-gray-400 text-xs">{v}h</text>
               </g>
             ))}
 
             {/* X-axis labels */}
             {chart.xLabels.map(({ t, label }) => (
-              <text key={t} x={chart.scaleX(t)} y={chart.H - 10} textAnchor="middle" className="fill-gray-400 text-[10px]">{label}</text>
+              <text key={t} x={chart.scaleX(t)} y={chart.H - 10} textAnchor="middle" className="fill-gray-400 text-xs">{label}</text>
             ))}
 
             {/* Budget line (horizontal) */}
@@ -162,13 +162,13 @@ export function TimeBurndownChart({ projectId }: { projectId: string }) {
             {/* Legend */}
             <g transform={`translate(${chart.pad.left + 10}, ${chart.pad.top + 10})`}>
               <line x1="0" y1="0" x2="16" y2="0" stroke="#22c55e" strokeWidth="2.5" />
-              <text x="20" y="4" className="fill-gray-500 text-[10px]">Actual</text>
+              <text x="20" y="4" className="fill-gray-500 text-xs">Actual</text>
               <line x1="70" y1="0" x2="86" y2="0" stroke="#9ca3af" strokeWidth="1.5" strokeDasharray="6,4" />
-              <text x="90" y="4" className="fill-gray-500 text-[10px]">Ideal</text>
+              <text x="90" y="4" className="fill-gray-500 text-xs">Ideal</text>
               {forecast.budgetHours > 0 && (
                 <>
                   <line x1="130" y1="0" x2="146" y2="0" stroke="#ef4444" strokeWidth="1" strokeDasharray="6,4" />
-                  <text x="150" y="4" className="fill-gray-500 text-[10px]">Budget</text>
+                  <text x="150" y="4" className="fill-gray-500 text-xs">Budget</text>
                 </>
               )}
             </g>
