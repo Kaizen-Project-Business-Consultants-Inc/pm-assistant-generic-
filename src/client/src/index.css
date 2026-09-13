@@ -123,9 +123,11 @@
     outline: 2px solid theme('colors.primary.500');
     outline-offset: 2px;
   }
-  /* Suppress default for elements that handle their own focus styles */
-  [class*="focus:ring"]:focus-visible,
-  [class*="focus-visible:ring"]:focus-visible {
+  /* Suppress default for elements that supply their own focus ring (width > 0) */
+  [class*="focus:ring-2"]:focus-visible,
+  [class*="focus:ring-4"]:focus-visible,
+  [class*="focus-visible:ring-2"]:focus-visible,
+  [class*="focus-visible:ring-4"]:focus-visible {
     outline: none;
   }
 }
@@ -139,6 +141,7 @@
     margin: -1px;
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
     white-space: nowrap;
     border: 0;
   }

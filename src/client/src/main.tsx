@@ -16,12 +16,14 @@ registerSW({
       'position:fixed;bottom:24px;right:24px;z-index:99999;display:flex;align-items:center;gap:12px;' +
       'background:#1e293b;color:#f1f5f9;padding:12px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);' +
       'font-family:system-ui,sans-serif;font-size:13px;animation:slideUp .3s ease-out';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
     toast.innerHTML =
       '<span>A new version is available</span>' +
       '<button id="sw-update-btn" style="background:#3b82f6;color:#fff;border:none;padding:6px 14px;border-radius:6px;' +
       'font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Reload</button>' +
       '<button id="sw-dismiss-btn" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;' +
-      'padding:2px 4px;line-height:1" title="Dismiss">&times;</button>';
+      'padding:2px 4px;line-height:1" aria-label="Dismiss update notification">&times;</button>';
     document.body.appendChild(toast);
     document.getElementById('sw-update-btn')!.onclick = () => window.location.reload();
     document.getElementById('sw-dismiss-btn')!.onclick = () => toast.remove();
