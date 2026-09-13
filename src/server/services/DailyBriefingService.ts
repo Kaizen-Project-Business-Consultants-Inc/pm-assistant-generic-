@@ -28,8 +28,8 @@ export interface DailyBriefing {
 class DailyBriefingService {
   async getDailyBriefing(userId: string, userRole: string, scope?: string): Promise<DailyBriefing> {
     const global = isGlobalScope(userRole, scope);
-    const projectFilter = global ? '' : 'AND p.created_by = ?';
-    const projectParams = global ? [] : [userId];
+    const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
+    const memberParams = global ? [] : [userId];
 
     const [
       proposals,
@@ -47,17 +47,19 @@ class DailyBriefingService {
       databaseService.query<any>(
         `SELECT COUNT(*) AS cnt FROM agent_proposals ap
          JOIN projects p ON ap.project_id = p.id
-         WHERE ap.status = 'pending' ${projectFilter}`,
-        [...projectParams]
+         ${memberJoin}
+         WHERE ap.status = 'pending'`,
+        [...memberParams]
       ),
       // Pending change requests
       databaseService.query<any>(
         `SELECT cr.id, cr.title, p.name AS projectName, cr.priority
          FROM change_requests cr
          JOIN projects p ON cr.project_id = p.id
-         WHERE cr.status IN ('pending', 'in_review') ${projectFilter}
+         ${memberJoin}
+         WHERE cr.status IN ('pending', 'in_review')
          ORDER BY cr.created_at DESC LIMIT 10`,
-        [...projectParams]
+        [...memberParams]
       ),
       // Unread notifications (control plane table)
       databaseService.queryControlPlane<any>(
@@ -72,11 +74,11 @@ class DailyBriefingService {
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
+         ${memberJoin}
          WHERE t.end_date = CURDATE()
            AND t.status NOT IN ('completed', 'done', 'cancelled')
-           ${projectFilter}
          ORDER BY t.priority DESC LIMIT 20`,
-        [...projectParams]
+        [...memberParams]
       ),
       // Tasks due this week (next 7 days, excluding today)
       databaseService.query<any>(
@@ -85,11 +87,11 @@ class DailyBriefingService {
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
+         ${memberJoin}
          WHERE t.end_date BETWEEN DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
            AND t.status NOT IN ('completed', 'done', 'cancelled')
-           ${projectFilter}
          ORDER BY t.end_date ASC LIMIT 20`,
-        [...projectParams]
+        [...memberParams]
       ),
       // Overdue tasks
       databaseService.query<any>(
@@ -98,32 +100,32 @@ class DailyBriefingService {
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
+         ${memberJoin}
          WHERE t.end_date < CURDATE()
            AND t.status NOT IN ('completed', 'done', 'cancelled')
-           ${projectFilter}
          ORDER BY overdueDays DESC LIMIT 10`,
-        [...projectParams]
+        [...memberParams]
       ),
       // Recent high risks (last 24h)
       databaseService.query<any>(
         `SELECT pr.id, pr.title, p.name AS projectName, pr.severity, pr.type
          FROM project_risks pr
          JOIN projects p ON pr.project_id = p.id
+         ${memberJoin}
          WHERE pr.severity IN ('critical', 'high')
            AND pr.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-           ${projectFilter}
          ORDER BY pr.created_at DESC LIMIT 10`,
-        [...projectParams]
+        [...memberParams]
       ),
       // Project health history (latest 2 snapshots per project)
       databaseService.query<any>(
         `SELECT ph.project_id, p.name AS projectName, ph.health_score, ph.recorded_at
          FROM project_health_history ph
          JOIN projects p ON ph.project_id = p.id
+         ${memberJoin}
          WHERE ph.recorded_at >= DATE_SUB(CURDATE(), INTERVAL 2 DAY)
-           ${projectFilter}
          ORDER BY ph.project_id, ph.recorded_at DESC`,
-        [...projectParams]
+        [...memberParams]
       ),
       // Budget alerts (>85% utilization)
       databaseService.query<any>(
@@ -131,11 +133,11 @@ class DailyBriefingService {
                 p.budget_spent AS spent,
                 ROUND((p.budget_spent / p.budget_allocated) * 100, 1) AS utilization
          FROM projects p
+         ${memberJoin}
          WHERE p.budget_allocated > 0
            AND (p.budget_spent / p.budget_allocated) > 0.85
-           ${projectFilter.replace('AND p.created_by', 'AND p.created_by')}
          ORDER BY utilization DESC LIMIT 10`,
-        [...projectParams]
+        [...memberParams]
       ),
       // Upcoming milestones (next 7 days)
       databaseService.query<any>(
@@ -144,12 +146,12 @@ class DailyBriefingService {
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
+         ${memberJoin}
          WHERE t.is_milestone = 1
            AND t.end_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
            AND t.status NOT IN ('completed', 'done', 'cancelled')
-           ${projectFilter}
          ORDER BY t.end_date ASC LIMIT 10`,
-        [...projectParams]
+        [...memberParams]
       ),
     ]);
 
