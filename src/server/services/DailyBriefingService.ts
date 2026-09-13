@@ -252,9 +252,10 @@ class DailyBriefingService {
          ${memberJoin}
          WHERE pr.type = 'issue'
            AND pr.status NOT IN ('resolved', 'closed', 'cancelled', 'mitigated')
+           ${isRestricted ? 'AND pr.owner_id = ?' : ''}
          ORDER BY FIELD(pr.severity, 'critical', 'high', 'medium', 'low'), pr.created_at DESC
          LIMIT 10`,
-        [...memberParams]
+        [...memberParams, ...(isRestricted ? [userId] : [])]
       ),
     ]);
 
