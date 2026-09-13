@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Plus, Trash2, Calendar } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { toLocalDate } from '../../utils/dateUtils';
 
 interface AvailabilityEntry {
   id: string;
@@ -101,7 +102,7 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
   }, [currentMonth]);
 
   const getEntryForDate = (date: Date): AvailabilityEntry | undefined => {
-    const dateStr = date.toISOString().slice(0, 10);
+    const dateStr = toLocalDate(date);
     return entries.find(e => dateStr >= e.dateFrom && dateStr <= e.dateTo);
   };
 
@@ -134,7 +135,7 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
     });
   };
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDate();
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
@@ -203,7 +204,7 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
           <div key={d} className="bg-gray-50 dark:bg-gray-700 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 py-1">{d}</div>
         ))}
         {calendarDays.map(({ date, inMonth }, i) => {
-          const dateStr = date.toISOString().slice(0, 10);
+          const dateStr = toLocalDate(date);
           const entry = getEntryForDate(date);
           const isToday = dateStr === today;
           const colors = entry ? typeColors[entry.type] : null;

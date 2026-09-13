@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart3, ChevronDown, ChevronUp, Users, AlertTriangle, CheckCircle, TrendingUp, Sparkles } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { toLocalDate } from '../../utils/dateUtils';
 
 interface WeeklyReview {
   projectId: string;
@@ -20,7 +21,7 @@ function getMonday(): string {
   const d = new Date();
   const day = d.getDay();
   d.setDate(d.getDate() - ((day + 6) % 7));
-  return d.toISOString().slice(0, 10);
+  return toLocalDate(d);
 }
 
 export function WeeklyReviewPanel({ projectId }: { projectId: string }) {

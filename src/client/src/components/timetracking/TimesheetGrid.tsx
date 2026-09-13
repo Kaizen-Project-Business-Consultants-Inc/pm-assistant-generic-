@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Trash2, Send, Undo2, Lock, AlertCircle } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { toLocalDate } from '../../utils/dateUtils';
 import { ConfirmModal } from '../ui/ConfirmModal';
 
 function getMonday(date: Date): Date {
@@ -41,7 +42,7 @@ export function TimesheetGrid() {
   const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState(() => {
     const monday = getMonday(new Date());
-    return monday.toISOString().slice(0, 10);
+    return toLocalDate(monday);
   });
 
   const { data, isLoading } = useQuery({
@@ -87,7 +88,7 @@ export function TimesheetGrid() {
   const navigateWeek = (offset: number) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + offset * 7);
-    setWeekStart(d.toISOString().slice(0, 10));
+    setWeekStart(toLocalDate(d));
   };
 
   // Determine aggregate status for the banner

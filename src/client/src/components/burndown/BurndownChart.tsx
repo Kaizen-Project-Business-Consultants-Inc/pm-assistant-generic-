@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { toLocalDate } from '../../utils/dateUtils';
 
 interface BurndownDataPoint {
   date: string;
@@ -25,7 +26,7 @@ export function BurndownChart({ dataPoints, totalScope, height = 300 }: Burndown
     if (dataPoints.length === 0) return { idealLine: '', actualLine: '', completedLine: '', todayX: 0, xLabels: [], yLabels: [], padding, plotWidth, plotHeight };
 
     const maxVal = totalScope;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDate();
     let todayX = -1;
 
     const scaleX = (i: number) => padding.left + (i / Math.max(1, dataPoints.length - 1)) * plotWidth;

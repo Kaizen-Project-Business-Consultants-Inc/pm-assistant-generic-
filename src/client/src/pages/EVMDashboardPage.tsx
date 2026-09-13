@@ -6,6 +6,7 @@ import { EVMMetricTooltip } from '../components/evm/EVMMetricTooltip';
 import type { MetricValues } from '../components/evm/EVMMetricTooltip';
 import { SCurveChart } from '../components/evm/SCurveChart';
 import { AgileEVMSection } from '../components/evm/AgileEVMSection';
+import { toLocalDate } from '../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -236,7 +237,7 @@ function ForecastBarChart({ comparisons, bac, managementReserve = 0 }: { compari
 function computeEarnedSchedule(sCurveData: SCurveDataPoint[], currentEV: number): { es: number; at: number; svt: number; spit: number } | null {
   if (!sCurveData || sCurveData.length < 2) return null;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDate();
   const startDate = new Date(sCurveData[0].date).getTime();
   const DAY_MS = 86400000;
 
@@ -441,7 +442,7 @@ export function EVMDashboardPage() {
       const projectName = projects.find(p => p.id === selectedProjectId)?.name || 'EVM Report';
       const opt = {
         margin: [10, 10, 10, 10] as [number, number, number, number],
-        filename: `EVM_Report_${projectName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`,
+        filename: `EVM_Report_${projectName.replace(/\s+/g, '_')}_${toLocalDate()}.pdf`,
         image: { type: 'jpeg' as const, quality: 0.95 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'mm' as const, format: 'a3' as const, orientation: 'landscape' as const },

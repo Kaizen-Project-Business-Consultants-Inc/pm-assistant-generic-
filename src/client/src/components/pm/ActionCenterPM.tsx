@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
+import { toLocalDate } from '../../utils/dateUtils';
 
 interface ActionCenterPMProps {
   projects: Array<{ id: string; name: string }>;
@@ -60,11 +61,11 @@ function PrioritiesList({ projects }: { projects: Array<{ id: string; name: stri
 
   const rows: PriorityRow[] = [];
   const nameMap = new Map(projects.map(p => [p.id, p.name]));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDate();
   const endOfWeek = (() => {
     const d = new Date();
     d.setDate(d.getDate() + (7 - d.getDay()));
-    return d.toISOString().slice(0, 10);
+    return toLocalDate(d);
   })();
 
   // Overdue tasks

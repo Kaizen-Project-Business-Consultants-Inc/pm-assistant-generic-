@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, User, Users } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { toLocalDate } from '../../utils/dateUtils';
 
 function getMonday(date: Date): Date {
   const d = new Date(date);
@@ -29,7 +30,7 @@ function getDays(weekStart: string): string[] {
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
     d.setDate(d.getDate() + i);
-    days.push(d.toISOString().slice(0, 10));
+    days.push(toLocalDate(d));
   }
   return days;
 }
@@ -41,10 +42,10 @@ interface UserGroup {
 }
 
 export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
-  const [weekStart, setWeekStart] = useState(() => getMonday(new Date()).toISOString().slice(0, 10));
+  const [weekStart, setWeekStart] = useState(() => toLocalDate(getMonday(new Date())));
 
   const days = useMemo(() => getDays(weekStart), [weekStart]);
-  const endDate = useMemo(() => getSunday(new Date(weekStart + 'T00:00:00')).toISOString().slice(0, 10), [weekStart]);
+  const endDate = useMemo(() => toLocalDate(getSunday(new Date(weekStart + 'T00:00:00'))), [weekStart]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['project-time-entries', projectId, weekStart, endDate, undefined],
@@ -75,7 +76,7 @@ export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
   const navigateWeek = (offset: number) => {
     const d = new Date(weekStart + 'T00:00:00');
     d.setDate(d.getDate() + offset * 7);
-    setWeekStart(d.toISOString().slice(0, 10));
+    setWeekStart(toLocalDate(d));
   };
 
   const weekTotal = entries.reduce((s: number, e: any) => s + (e.hours || 0), 0);

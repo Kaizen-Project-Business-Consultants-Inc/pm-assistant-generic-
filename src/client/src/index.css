@@ -163,9 +163,6 @@
 
 
 /* High contrast mode */
-.high-contrast {
-  --tw-text-opacity: 1;
-}
 .high-contrast body {
   color: #000;
   background: #fff;
@@ -175,12 +172,12 @@
   border-width: 2px;
   border-color: #000;
 }
-.high-contrast .dark body {
+.high-contrast.dark body {
   color: #fff;
   background: #000;
 }
-.high-contrast .dark .card,
-.high-contrast .dark .rounded-xl {
+.high-contrast.dark .card,
+.high-contrast.dark .rounded-xl {
   border-color: #fff;
 }
 .high-contrast button:focus,
@@ -188,8 +185,8 @@
   outline: 3px solid #000;
   outline-offset: 2px;
 }
-.high-contrast .dark button:focus,
-.high-contrast .dark a:focus {
+.high-contrast.dark button:focus,
+.high-contrast.dark a:focus {
   outline-color: #fff;
 }
 
@@ -200,9 +197,7 @@
 }
 /* Boost muted text contrast — dark mode */
 .high-contrast.dark [class*="text-gray-400"],
-.high-contrast.dark [class*="text-gray-500"],
-.high-contrast .dark [class*="text-gray-400"],
-.high-contrast .dark [class*="text-gray-500"] {
+.high-contrast.dark [class*="text-gray-500"] {
   color: #d1d5db; /* gray-300, WCAG AA on dark backgrounds */
 }
 
@@ -213,9 +208,7 @@
 }
 /* Boost border contrast — dark mode */
 .high-contrast.dark [class*="border-gray-600"],
-.high-contrast.dark [class*="border-gray-700"],
-.high-contrast .dark [class*="border-gray-600"],
-.high-contrast .dark [class*="border-gray-700"] {
+.high-contrast.dark [class*="border-gray-700"] {
   border-color: #9ca3af; /* gray-400 */
 }
 
@@ -223,8 +216,7 @@
 .high-contrast ::placeholder {
   color: #374151;
 }
-.high-contrast.dark ::placeholder,
-.high-contrast .dark ::placeholder {
+.high-contrast.dark ::placeholder {
   color: #d1d5db;
 }
 

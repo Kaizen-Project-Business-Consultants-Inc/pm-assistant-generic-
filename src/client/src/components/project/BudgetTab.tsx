@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DollarSign, Plus, Trash2, X, TrendingUp, AlertTriangle, PieChart, Search, Download } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { toLocalDate } from '../../utils/dateUtils';
 
 const EXPENSE_CATEGORIES = [
   'labor', 'materials', 'software', 'hardware', 'travel',
@@ -124,7 +125,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
   const queryClient = useQueryClient();
   const [subTab, setSubTab] = useState<SubTab>('overview');
   const [showForm, setShowForm] = useState(false);
-  const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [formDate, setFormDate] = useState(() => toLocalDate());
   const [formAmount, setFormAmount] = useState('');
   const [formCategory, setFormCategory] = useState<string>('other');
   const [formVendor, setFormVendor] = useState('');
@@ -229,7 +230,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
   const handleExportCSV = () => {
     const headers = ['Date', 'Category', 'Amount', 'Vendor', 'Description'];
     const rows = filteredExpenses.map(e => [
-      new Date(e.date).toISOString().slice(0, 10),
+      toLocalDate(new Date(e.date)),
       e.category || '',
       (e.amount || 0).toFixed(2),
       e.vendor || '',

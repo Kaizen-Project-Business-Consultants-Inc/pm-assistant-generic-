@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Grid3X3 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { toLocalDate } from '../../utils/dateUtils';
 
 interface HeatmapCell {
   userId: string;
@@ -29,9 +30,9 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 28);
-    return d.toISOString().slice(0, 10);
+    return toLocalDate(d);
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(() => toLocalDate());
 
   const { data, isLoading } = useQuery({
     queryKey: ['time-heatmap', projectId, startDate, endDate],

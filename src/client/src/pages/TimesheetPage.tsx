@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, BarChart3, Plus, ChevronLeft, ChevronRight, X, ClipboardCheck } from 'lucide-react';
 import { apiService } from '../services/api';
+import { toLocalDate } from '../utils/dateUtils';
 import { TimesheetGrid } from '../components/timetracking/TimesheetGrid';
 import { TimesheetApprovalPanel } from '../components/timetracking/TimesheetApprovalPanel';
 import { ActualVsEstimatedChart } from '../components/timetracking/ActualVsEstimatedChart';
@@ -20,7 +21,7 @@ export function TimesheetPage() {
   const [logProjectId, setLogProjectId] = useState('');
   const [logScheduleId, setLogScheduleId] = useState('');
   const [logTaskId, setLogTaskId] = useState('');
-  const [logDate, setLogDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [logDate, setLogDate] = useState(() => toLocalDate());
   const [logHours, setLogHours] = useState('');
   const [logDescription, setLogDescription] = useState('');
 
@@ -261,7 +262,7 @@ function MobileTimesheetView() {
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     d.setDate(diff);
-    return d.toISOString().slice(0, 10);
+    return toLocalDate(d);
   });
 
   const { data, isLoading } = useQuery({
@@ -275,7 +276,7 @@ function MobileTimesheetView() {
   const navigateWeek = (offset: number) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + offset * 7);
-    setWeekStart(d.toISOString().slice(0, 10));
+    setWeekStart(toLocalDate(d));
   };
 
   // Group entries by day

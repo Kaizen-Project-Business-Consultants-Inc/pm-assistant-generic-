@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
+import { toLocalDate } from '../../utils/dateUtils';
 import { Shield, CheckCircle, XCircle, Clock, Activity } from 'lucide-react';
 
 interface AuditEntry {
@@ -32,7 +33,7 @@ export function ComplianceReport({ projectId }: { projectId: string }) {
   const since = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - days);
-    return d.toISOString().slice(0, 10);
+    return toLocalDate(d);
   }, [days]);
 
   const { data: auditData, isLoading: loadingAudit } = useQuery({

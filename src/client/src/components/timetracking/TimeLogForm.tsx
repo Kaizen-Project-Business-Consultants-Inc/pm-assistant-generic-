@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, Plus } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { toLocalDate } from '../../utils/dateUtils';
 
 interface TimeLogFormProps {
   taskId: string;
@@ -13,7 +14,7 @@ export function TimeLogForm({ taskId, scheduleId, projectId }: TimeLogFormProps)
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [form, setForm] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: toLocalDate(),
     hours: '',
     description: '',
     billable: true,
@@ -29,7 +30,7 @@ export function TimeLogForm({ taskId, scheduleId, projectId }: TimeLogFormProps)
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-entries'] });
-      setForm({ date: new Date().toISOString().slice(0, 10), hours: '', description: '', billable: true });
+      setForm({ date: toLocalDate(), hours: '', description: '', billable: true });
       setExpanded(false);
     },
   });

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, Plus, Trash2, BarChart3, X, Users, User, TrendingDown, TrendingUp, Grid3X3, Sparkles, CalendarDays } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { toLocalDate } from '../../utils/dateUtils';
 import { useAuthStore } from '../../stores/authStore';
 import { ActualVsEstimatedChart } from '../timetracking/ActualVsEstimatedChart';
 import { TimeBurndownChart } from '../timetracking/TimeBurndownChart';
@@ -57,7 +58,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
       setViewMode(isManagerOrOwner ? 'all' : 'mine');
     }
   }, [membersData, isManagerOrOwner]);
-  const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [formDate, setFormDate] = useState(() => toLocalDate());
   const [formHours, setFormHours] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formBillable, setFormBillable] = useState(true);
