@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { apiService } from '../../../services/api';
 import {
   type GanttTask,
   HEADER_H,
@@ -83,6 +85,23 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
   hasOnTaskUpdate,
   riskLevel,
 }: GanttTimelineBarProps) {
+  // Resource name lookup (shared cache with GanttLeftPanelRow)
+  const { data: resourceData } = useQuery({
+    queryKey: ['resources'],
+    queryFn: () => apiService.getResources(),
+    staleTime: 60_000,
+  });
+  const resourceNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of (resourceData?.resources || []) as { id: string; name: string; userId?: string | null }[]) {
+      if (r.userId) map.set(r.userId, r.name);
+      map.set(r.id, r.name);
+    }
+    return map;
+  }, [resourceData]);
+
+  const assigneeName = task.assignedTo ? (resourceNameMap.get(task.assignedTo) || task.assignedTo) : '';
+
   const start = toDate(task.startDate);
   const end = toDate(task.endDate);
   if (!start || !end) return null;
@@ -272,15 +291,15 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
             right: 2,
             width: 18,
             height: 18,
-            backgroundColor: avatarColor(task.assignedTo),
+            backgroundColor: avatarColor(assigneeName),
             fontSize: 9,
             fontWeight: 700,
             color: '#fff',
             lineHeight: 1,
           }}
-          title={task.assignedTo}
+          title={assigneeName}
         >
-          {avatarInitials(task.assignedTo)}
+          {avatarInitials(assigneeName)}
         </div>
       )}
 
@@ -358,9 +377,9 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
           {daysBetween(start, end)}d &middot; {pct}% complete
           {floatDays > 0 && <span className="text-yellow-400"> &middot; Float: {floatDays}d</span>}
         </div>
-        {task.assignedTo && (
+        {assigneeName && (
           <div className="text-gray-300">
-            Assigned: {task.assignedTo}
+            Assigned: {assigneeName}
           </div>
         )}
         {task.dependencies && task.dependencies.length > 0 && (() => {

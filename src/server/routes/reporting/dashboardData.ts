@@ -20,8 +20,11 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const { scope } = request.query as { scope?: string };
     const global = isGlobalScope(user.role, scope);
 
+    const isViewer = user.role === 'viewer';
     const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
+    const viewerJoin = isViewer ? 'JOIN resources r ON t.assigned_to = r.id AND r.user_id = ?' : '';
     const params = global ? [] : [user.userId];
+    if (isViewer) params.push(user.userId);
 
     const rows = await databaseService.query<any>(
       `SELECT t.id, t.name, s.project_id AS projectId, p.name AS projectName,
@@ -31,6 +34,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
        JOIN schedules s ON t.schedule_id = s.id
        JOIN projects p ON s.project_id = p.id
        ${memberJoin}
+       ${viewerJoin}
        WHERE t.status NOT IN ('completed','done','cancelled') AND t.end_date < NOW()
        ORDER BY overdueDays DESC
        LIMIT 50`,
@@ -117,8 +121,12 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const global = isGlobalScope(user.role, scope);
     const limit = Math.min(Math.max(parseInt(limitParam || '10', 10) || 10, 1), 50);
 
+    const isViewer = user.role === 'viewer';
     const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
-    const params = global ? [limit] : [user.userId, limit];
+    const viewerJoin = isViewer ? 'JOIN resources r ON t.assigned_to = r.id AND r.user_id = ?' : '';
+    const params: (string | number)[] = global ? [] : [user.userId];
+    if (isViewer) params.push(user.userId);
+    params.push(limit);
 
     const rows = await databaseService.query<any>(
       `SELECT t.id, t.name, s.project_id AS projectId, p.name AS projectName,
@@ -128,6 +136,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
        JOIN schedules s ON t.schedule_id = s.id
        JOIN projects p ON s.project_id = p.id
        ${memberJoin}
+       ${viewerJoin}
        WHERE t.is_milestone = 1
          AND t.status NOT IN ('completed','done','cancelled')
          AND t.end_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
