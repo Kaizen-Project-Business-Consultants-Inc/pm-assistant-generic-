@@ -124,6 +124,7 @@ export default {
         'slide-in-right': 'slide-in-right 0.3s ease-out',
         'slide-in-left': 'slide-in-left 0.3s ease-out',
         'slide-up': 'slide-up 0.3s ease-out',
+        'briefing-flash': 'briefing-flash 2s ease-in-out',
       },
       keyframes: {
         'ai-pulse': {
@@ -150,6 +151,15 @@ export default {
         'slide-up': {
           '0%': { transform: 'translateY(10px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        'briefing-flash': {
+          '0%': { boxShadow: '0 0 0 0 rgba(251, 191, 36, 0)' },
+          '15%': { boxShadow: '0 0 12px 4px rgba(251, 191, 36, 0.5)' },
+          '30%': { boxShadow: '0 0 0 0 rgba(251, 191, 36, 0)' },
+          '45%': { boxShadow: '0 0 12px 4px rgba(251, 191, 36, 0.4)' },
+          '60%': { boxShadow: '0 0 0 0 rgba(251, 191, 36, 0)' },
+          '75%': { boxShadow: '0 0 10px 3px rgba(251, 191, 36, 0.3)' },
+          '100%': { boxShadow: '0 0 0 0 rgba(251, 191, 36, 0)' },
         },
       },
       width: {

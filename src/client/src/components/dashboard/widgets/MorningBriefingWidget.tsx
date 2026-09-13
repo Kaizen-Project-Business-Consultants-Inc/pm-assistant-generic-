@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Sun, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { Link } from 'react-router-dom';
+
+const FLASH_KEY = 'briefing-last-flash';
+const FLASH_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 interface Props {
   scope?: 'portfolio';
@@ -12,6 +15,25 @@ export function MorningBriefingWidget({ scope }: Props) {
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('briefing-collapsed') === 'true'; } catch { return false; }
   });
+
+  // Flash once per 24 hours on first load
+  const [shouldFlash, setShouldFlash] = useState(false);
+  const flashChecked = useRef(false);
+  useEffect(() => {
+    if (flashChecked.current) return;
+    flashChecked.current = true;
+    try {
+      const lastFlash = localStorage.getItem(FLASH_KEY);
+      const now = Date.now();
+      if (!lastFlash || now - Number(lastFlash) >= FLASH_INTERVAL_MS) {
+        setShouldFlash(true);
+        localStorage.setItem(FLASH_KEY, String(now));
+        // Remove flash class after animation completes
+        const timer = setTimeout(() => setShouldFlash(false), 2000);
+        return () => clearTimeout(timer);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   const { data: briefing, isLoading } = useQuery({
     queryKey: ['daily-briefing', scope],
@@ -48,7 +70,7 @@ export function MorningBriefingWidget({ scope }: Props) {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center gap-2">
           <Sun className="w-4 h-4 text-amber-500" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Morning Briefing</h3>
+          <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Morning Briefing</h3>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">No briefing data available.</p>
       </div>
@@ -68,7 +90,7 @@ export function MorningBriefingWidget({ scope }: Props) {
   const budgetAlerts = briefing.budgetAlerts ?? [];
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden${shouldFlash ? ' animate-briefing-flash motion-reduce:animate-none' : ''}`}>
       {/* Header */}
       <button
         onClick={toggle}
@@ -76,7 +98,7 @@ export function MorningBriefingWidget({ scope }: Props) {
       >
         <div className="flex items-center gap-2">
           <Sun className="w-4 h-4 text-amber-500" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Morning Briefing</h3>
+          <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Morning Briefing</h3>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 dark:text-gray-400">{today}</span>
@@ -89,7 +111,7 @@ export function MorningBriefingWidget({ scope }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-700">
           {/* ON FIRE */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide mb-2" title="Overdue tasks and critical risks that need immediate attention">On Fire</h3>
+            <h3 className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wide mb-2" title="Overdue tasks and critical risks that need immediate attention">On Fire</h3>
             {overdueCount === 0 && criticalRisks === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">Nothing on fire today</p>
             ) : (
@@ -119,7 +141,7 @@ export function MorningBriefingWidget({ scope }: Props) {
 
           {/* NEEDS YOUR DECISION */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-2" title="Pending approvals, proposals, and unread notifications requiring action">Needs Your Decision</h3>
+            <h3 className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-2" title="Pending approvals, proposals, and unread notifications requiring action">Needs Your Decision</h3>
             <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
               {pendingCRs > 0 && (
                 <li>
@@ -150,7 +172,7 @@ export function MorningBriefingWidget({ scope }: Props) {
 
           {/* DUE SOON */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-2" title="Tasks and milestones due today or this week">Due Soon</h3>
+            <h3 className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-2" title="Tasks and milestones due today or this week">Due Soon</h3>
             {dueTodayCount === 0 && dueWeekCount === 0 && milestoneCount === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">Nothing due soon</p>
             ) : (
@@ -176,7 +198,7 @@ export function MorningBriefingWidget({ scope }: Props) {
 
           {/* PORTFOLIO PULSE */}
           <div className="bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-2" title="Project health summary — green (on track), amber (at risk), red (off track)">Portfolio Pulse</h3>
+            <h3 className="text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-wide mb-2" title="Project health summary — green (on track), amber (at risk), red (off track)">Portfolio Pulse</h3>
             <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
               <li className="flex items-center gap-3 flex-wrap">
                 <span className="inline-flex items-center gap-1">
