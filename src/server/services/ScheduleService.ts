@@ -9,6 +9,9 @@ import { deadLetterService } from './DeadLetterService';
 import { notificationService } from './NotificationService';
 import { getRequestContext } from '../middleware/requestContext';
 import { taskAssignmentService } from './TaskAssignmentService';
+import { resourceService } from './ResourceService';
+import { userService } from './UserService';
+import { projectMemberRepository } from '../database/ProjectMemberRepository';
 
 export interface Schedule {
   id: string;
@@ -648,6 +651,11 @@ export class ScheduleService {
       }).catch(err => logger.error('[Notification] task_assigned error:', err));
     }
 
+    // Auto-add assignee to project team (fire-and-forget)
+    if (data.assignedTo && schedule?.projectId) {
+      this.autoAddAssigneeToTeam(data.assignedTo, schedule.projectId).catch(() => {});
+    }
+
     return task;
   }
 
@@ -869,6 +877,11 @@ export class ScheduleService {
         linkType: 'task',
         linkId: id,
       }).catch(err => logger.error('[Notification] task_assigned error:', err));
+    }
+
+    // Auto-add new assignee to project team (fire-and-forget)
+    if (data.assignedTo && data.assignedTo !== oldTask.assignedTo && schedule?.projectId) {
+      this.autoAddAssigneeToTeam(data.assignedTo, schedule.projectId).catch(() => {});
     }
 
     // Notify on task completion
@@ -1283,6 +1296,29 @@ export class ScheduleService {
 
     // Delete the scenario schedule
     await this.delete(scenarioId);
+  }
+
+  /**
+   * When a task is assigned to a resource that has a linked userId,
+   * auto-add that user as a viewer project member if not already on the team.
+   */
+  private async autoAddAssigneeToTeam(resourceId: string, projectId: string): Promise<void> {
+    try {
+      const resource = await resourceService.findResourceById(resourceId);
+      if (!resource?.userId) return;
+      const already = await projectMemberRepository.hasAccess(projectId, resource.userId);
+      if (already) return;
+      const user = await userService.findById(resource.userId);
+      await projectMemberRepository.insert(projectId, {
+        userId: resource.userId,
+        userName: user?.username || resource.name,
+        email: user?.email || resource.email || '',
+        role: 'viewer',
+      });
+      logger.info('[AutoTeam] Added assignee to project team', { resourceId, userId: resource.userId, projectId });
+    } catch (err) {
+      logger.warn('[AutoTeam] Failed to auto-add assignee to team', { resourceId, projectId, error: err });
+    }
   }
 
   async isTaskAssignedToUser(taskId: string, userId: string): Promise<boolean> {

@@ -20,9 +20,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const { scope } = request.query as { scope?: string };
     const global = isGlobalScope(user.role, scope);
 
-    const where = global
-      ? `t.status NOT IN ('completed','done','cancelled') AND t.end_date < NOW()`
-      : `t.status NOT IN ('completed','done','cancelled') AND t.end_date < NOW() AND p.created_by = ?`;
+    const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
     const params = global ? [] : [user.userId];
 
     const rows = await databaseService.query<any>(
@@ -32,7 +30,8 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
        FROM tasks t
        JOIN schedules s ON t.schedule_id = s.id
        JOIN projects p ON s.project_id = p.id
-       WHERE ${where}
+       ${memberJoin}
+       WHERE t.status NOT IN ('completed','done','cancelled') AND t.end_date < NOW()
        ORDER BY overdueDays DESC
        LIMIT 50`,
       params
@@ -50,7 +49,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const global = isGlobalScope(user.role, scope);
     const numWeeks = Math.min(Math.max(parseInt(weeksParam || '8', 10) || 8, 1), 52);
 
-    const scopeFilter = global ? '' : 'AND p.created_by = ?';
+    const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
     const params = global ? [] : [user.userId];
 
     // Use YEARWEEK as stable key for matching
@@ -59,7 +58,8 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
        FROM tasks t
        JOIN schedules s ON t.schedule_id = s.id
        JOIN projects p ON s.project_id = p.id
-       WHERE t.created_at >= DATE_SUB(CURDATE(), INTERVAL ? WEEK) ${scopeFilter}
+       ${memberJoin}
+       WHERE t.created_at >= DATE_SUB(CURDATE(), INTERVAL ? WEEK)
        GROUP BY yw`,
       [numWeeks, ...params]
     );
@@ -69,8 +69,9 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
        FROM tasks t
        JOIN schedules s ON t.schedule_id = s.id
        JOIN projects p ON s.project_id = p.id
+       ${memberJoin}
        WHERE t.status IN ('completed','done')
-         AND t.updated_at >= DATE_SUB(CURDATE(), INTERVAL ? WEEK) ${scopeFilter}
+         AND t.updated_at >= DATE_SUB(CURDATE(), INTERVAL ? WEEK)
        GROUP BY yw`,
       [numWeeks, ...params]
     );
@@ -116,7 +117,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const global = isGlobalScope(user.role, scope);
     const limit = Math.min(Math.max(parseInt(limitParam || '10', 10) || 10, 1), 50);
 
-    const scopeFilter = global ? '' : 'AND p.created_by = ?';
+    const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
     const params = global ? [limit] : [user.userId, limit];
 
     const rows = await databaseService.query<any>(
@@ -126,10 +127,10 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
        FROM tasks t
        JOIN schedules s ON t.schedule_id = s.id
        JOIN projects p ON s.project_id = p.id
+       ${memberJoin}
        WHERE t.is_milestone = 1
          AND t.status NOT IN ('completed','done','cancelled')
          AND t.end_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-         ${scopeFilter}
        ORDER BY t.end_date ASC
        LIMIT ?`,
       params
@@ -146,7 +147,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const { scope } = request.query as { scope?: string };
     const global = isGlobalScope(user.role, scope);
 
-    const scopeFilter = global ? '' : 'AND p.created_by = ?';
+    const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
     const params = global ? [] : [user.userId];
 
     const [byStatus, byCategory, recentPending] = await Promise.all([
@@ -154,7 +155,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
         `SELECT cr.status, COUNT(*) AS cnt
          FROM change_requests cr
          JOIN projects p ON cr.project_id = p.id
-         WHERE 1=1 ${scopeFilter}
+         ${memberJoin}
          GROUP BY cr.status`,
         params,
       ),
@@ -162,7 +163,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
         `SELECT cr.category, COUNT(*) AS cnt
          FROM change_requests cr
          JOIN projects p ON cr.project_id = p.id
-         WHERE 1=1 ${scopeFilter}
+         ${memberJoin}
          GROUP BY cr.category`,
         params,
       ),
@@ -171,7 +172,8 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
                 p.name AS projectName, p.id AS projectId
          FROM change_requests cr
          JOIN projects p ON cr.project_id = p.id
-         WHERE cr.status IN ('pending','in_review') ${scopeFilter}
+         ${memberJoin}
+         WHERE cr.status IN ('pending','in_review')
          ORDER BY cr.created_at ASC
          LIMIT 5`,
         params,
