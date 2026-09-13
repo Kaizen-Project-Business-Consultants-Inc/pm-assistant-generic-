@@ -48,8 +48,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   // GET /resources - List resources (paginated, optional group filter)
   // Trial users get sample resource data with an upgrade prompt.
   fastify.get('/', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
-    // Trial users get sample resources
-    if (request.user!.role !== 'admin') {
+    // Trial users get sample resources (skip for viewers — they're invited, not trialing)
+    if (request.user!.role !== 'admin' && request.user!.role !== 'viewer') {
       const user = await userService.findById(request.user!.userId);
       if (user && user.subscriptionTier === 'trial') {
         return { resources: generateSampleResources(), total: 4, sample: true };
