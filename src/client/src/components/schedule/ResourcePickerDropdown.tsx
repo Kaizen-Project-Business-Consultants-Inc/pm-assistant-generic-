@@ -104,7 +104,7 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
                 className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${isSelected ? 'bg-primary-50 dark:bg-primary-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSelect(r.userId || r.id, r.name);
+                  onSelect(r.id, r.name);
                 }}
               >
                 <div className="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 flex items-center justify-center text-[8px] font-bold shrink-0">
