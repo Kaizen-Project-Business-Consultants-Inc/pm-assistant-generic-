@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { fileAttachmentService } from '../../services/FileAttachmentService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
 import { validateMimeType } from '../../utils/mimeValidator';
 import { config } from '../../config';
 import { scheduleService } from '../../services/ScheduleService';
@@ -33,6 +34,7 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
         } else {
           await requireScope('write')(request, reply);
         }
+        if (reply.sent) return;
       },
     ],
   }, async (request: FastifyRequest, reply: FastifyReply) => {

@@ -90,6 +90,7 @@ export async function meetingActionItemRoutes(fastify: FastifyInstance) {
     } else {
       await requireScope('write')(request, reply);
     }
+    if (reply.sent) return;
   };
 
   // Viewer ownership guard — must be the assignee

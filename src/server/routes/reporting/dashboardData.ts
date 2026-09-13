@@ -207,11 +207,12 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
          JOIN resources r ON t.assigned_to = r.id
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
+         JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
          WHERE r.user_id = ?
            AND t.status NOT IN ('completed','done','cancelled')
          ORDER BY t.end_date ASC
          LIMIT 20`,
-        [user.userId],
+        [user.userId, user.userId],
       ),
       databaseService.query<any>(
         `SELECT ri.id, ri.title AS name, ri.item_type AS itemType, ri.status,
@@ -219,11 +220,12 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
                 ri.project_id AS projectId, p.name AS projectName
          FROM project_risks ri
          JOIN projects p ON ri.project_id = p.id
+         JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
          WHERE ri.owner_id = ?
            AND ri.status NOT IN ('closed','resolved','cancelled','mitigated')
          ORDER BY ri.due_date ASC
          LIMIT 20`,
-        [user.userId],
+        [user.userId, user.userId],
       ),
       databaseService.query<any>(
         `SELECT ai.id, ai.description AS name, ai.status, ai.priority,
@@ -232,11 +234,12 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
          FROM meeting_action_items ai
          JOIN meetings m ON ai.meeting_id = m.id
          JOIN projects p ON m.project_id = p.id
+         JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
          WHERE ai.assignee_user_id = ?
            AND ai.status NOT IN ('completed','cancelled')
          ORDER BY ai.due_date ASC
          LIMIT 20`,
-        [user.userId],
+        [user.userId, user.userId],
       ),
     ]);
 

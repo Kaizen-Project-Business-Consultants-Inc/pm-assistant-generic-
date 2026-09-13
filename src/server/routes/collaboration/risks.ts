@@ -5,6 +5,7 @@ import { riskService } from '../../services/RiskService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
@@ -184,21 +185,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
   // PUT /api/v1/projects/:projectId/risks/:riskId — Update RAID item
   // Viewers can update RAID items assigned to them (owner_id); all other write roles use standard scope check
   fastify.put('/:projectId/risks/:riskId', {
-    preHandler: [
-      async (request: FastifyRequest, reply: FastifyReply) => {
-        const role = request.user?.role;
-        if (role === 'viewer') {
-          // Viewer only needs read scope (which they have) + viewer-level project access
-          await requireScope('read')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('viewer')(request, reply);
-        } else {
-          await requireScope('write')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('editor')(request, reply);
-        }
-      },
-    ],
+    preHandler: [viewerWriteBypass()],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, riskId } = request.params as { projectId: string; riskId: string };
@@ -288,20 +275,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
   // POST /api/v1/projects/:projectId/risks/:riskId/comments — Add comment
   // Viewers can comment on RAID items assigned to them
   fastify.post('/:projectId/risks/:riskId/comments', {
-    preHandler: [
-      async (request: FastifyRequest, reply: FastifyReply) => {
-        const role = request.user?.role;
-        if (role === 'viewer') {
-          await requireScope('read')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('viewer')(request, reply);
-        } else {
-          await requireScope('write')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('editor')(request, reply);
-        }
-      },
-    ],
+    preHandler: [viewerWriteBypass()],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, riskId } = request.params as { projectId: string; riskId: string };
@@ -345,20 +319,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // Viewers can add updates on RAID items assigned to them
   fastify.post('/:projectId/risks/:riskId/updates', {
-    preHandler: [
-      async (request: FastifyRequest, reply: FastifyReply) => {
-        const role = request.user?.role;
-        if (role === 'viewer') {
-          await requireScope('read')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('viewer')(request, reply);
-        } else {
-          await requireScope('write')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('editor')(request, reply);
-        }
-      },
-    ],
+    preHandler: [viewerWriteBypass()],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, riskId } = request.params as { projectId: string; riskId: string };
@@ -383,20 +344,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // PUT /api/v1/projects/:projectId/risks/:riskId/updates/:updateId — Edit own update
   fastify.put('/:projectId/risks/:riskId/updates/:updateId', {
-    preHandler: [
-      async (request: FastifyRequest, reply: FastifyReply) => {
-        const role = request.user?.role;
-        if (role === 'viewer') {
-          await requireScope('read')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('viewer')(request, reply);
-        } else {
-          await requireScope('write')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('editor')(request, reply);
-        }
-      },
-    ],
+    preHandler: [viewerWriteBypass()],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { updateId } = request.params as { projectId: string; riskId: string; updateId: string };
@@ -415,20 +363,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/v1/projects/:projectId/risks/:riskId/updates/:updateId — Delete own update
   fastify.delete('/:projectId/risks/:riskId/updates/:updateId', {
-    preHandler: [
-      async (request: FastifyRequest, reply: FastifyReply) => {
-        const role = request.user?.role;
-        if (role === 'viewer') {
-          await requireScope('read')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('viewer')(request, reply);
-        } else {
-          await requireScope('write')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('editor')(request, reply);
-        }
-      },
-    ],
+    preHandler: [viewerWriteBypass()],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { updateId } = request.params as { projectId: string; riskId: string; updateId: string };

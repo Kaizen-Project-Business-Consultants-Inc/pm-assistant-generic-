@@ -15,6 +15,7 @@ import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { notificationService } from '../../services/NotificationService';
 import { userService } from '../../services/UserService';
+import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
 import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
@@ -212,20 +213,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
 
   // Viewers can update tasks assigned to them (via resource linkage)
   fastify.put('/:scheduleId/tasks/:taskId', {
-    preHandler: [
-      async (request: FastifyRequest, reply: FastifyReply) => {
-        const role = request.user?.role;
-        if (role === 'viewer') {
-          await requireScope('read')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('viewer')(request, reply);
-        } else {
-          await requireScope('write')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('editor')(request, reply);
-        }
-      },
-    ],
+    preHandler: [viewerWriteBypass()],
     schema: { description: 'Update a task', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -471,20 +459,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
 
   // Viewers can comment on tasks assigned to them
   fastify.post('/:scheduleId/tasks/:taskId/comments', {
-    preHandler: [
-      async (request: FastifyRequest, reply: FastifyReply) => {
-        const role = request.user?.role;
-        if (role === 'viewer') {
-          await requireScope('read')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('viewer')(request, reply);
-        } else {
-          await requireScope('write')(request, reply);
-          if (reply.sent) return;
-          await requireProjectAccess('editor')(request, reply);
-        }
-      },
-    ],
+    preHandler: [viewerWriteBypass()],
     schema: { description: 'Add a comment to a task', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
