@@ -2265,10 +2265,15 @@ The application is designed for WCAG 2.2 Level AA compliance:
 
 - **Skip to content** -- A hidden "Skip to main content" link appears when you press Tab on any page, letting you bypass the sidebar navigation.
 - **Live announcements** -- When you save a task, upload a file, start a sprint, submit a timesheet, or perform other key actions, the result is announced to your screen reader (e.g., "Task updated", "File uploaded successfully").
-- **Data tables** -- Schedule grids, portfolio tables, and timesheet grids announce column headers and sort state so you can navigate them with a screen reader's table commands.
+- **Data tables** -- Schedule grids, portfolio tables, and timesheet grids announce column headers and sort state so you can navigate them with a screen reader's table commands. The Gantt task table uses proper ARIA grid roles (`role="grid"`, `role="row"`, `role="columnheader"`).
 - **Modals** -- Dialogs trap both keyboard focus and virtual cursor. Background content is marked `inert` while a dialog is open. Press Escape to close any dialog.
 - **Status indicators** -- Color-coded dots (severity, health, connection status) are paired with hidden text labels so screen readers announce the meaning, not just the color.
-- **Keyboard navigation** -- All drag-and-drop interactions (widget reorder, column reorder, Gantt bar dates) have keyboard alternatives (Move Up/Down buttons, Move Left/Right buttons, inline date editing).
+- **Keyboard navigation** -- All drag-and-drop interactions (widget reorder, column reorder, Gantt bar dates, Gantt row reorder) have keyboard alternatives. Use **Alt+ArrowUp/Down** to reorder Gantt rows, Move Up/Down buttons for widgets, Move Left/Right for columns, or inline date editing for Gantt bars.
+- **Focus visibility** -- All Gantt inline editors (name, dates, duration, progress, priority, status) show a visible focus ring when active. No focus indicator is suppressed.
+- **Toast announcements** -- Success/error toasts (RAID imports, undo actions) use `role="alert"` so screen readers announce them immediately.
+- **Form errors** -- Error messages on login, registration, forgot password, and reset password forms are programmatically linked to the relevant input fields via `aria-describedby`.
+- **High contrast** -- The app responds to your OS high-contrast preference (`prefers-contrast: more`) automatically, boosting text and border contrast without needing to toggle the in-app setting.
+- **Target sizes** -- Interactive elements (buttons, dismiss icons) meet the WCAG 2.5.8 minimum 24×24px target size.
 
 **Deep linking:** You can link directly to any Settings tab using a `?tab=` query parameter, e.g., `/settings?tab=notifications` or `/settings?tab=danger`. The default tab (Profile) omits the parameter for a clean URL.
 

@@ -2659,12 +2659,14 @@ The application targets WCAG 2.2 Level AA. A comprehensive 20-finding audit (Ser
 
 **Structural semantics:**
 - Data grids use `role="grid"`, `scope="col"`, `aria-sort`, and `<caption>` (TableView, ProjectTable, PortfolioPage, TimesheetGrid)
+- Gantt task table uses `role="grid"` on the container, `role="row"` on header and data rows, and `role="columnheader"` on header cells
 - Settings page tabs use a proper ARIA tablist pattern (`role="tablist"/"tab"`, `aria-selected`, `aria-controls`, roving tabindex)
 - Login page has correct heading hierarchy (`<h1>`), `<main>` wrapper, `autoComplete` attributes, `aria-invalid` on error, and focus management on state transitions
+- Project detail page maintains proper heading hierarchy: `<h1>` for the project name, a visually-hidden `<h2>` for the active tab name, and `<h3>` for section headings within each tab
 
 **Focus management:**
 - Global `:focus-visible` ring (2px primary-500) on all interactive elements
-- Inline editors (Gantt, TableView) use `focus-visible:ring-2` instead of suppressing focus indication
+- Inline editors (Gantt, TableView) use `focus:ring-2 focus:ring-primary-400` instead of suppressing focus indication — all 10 Gantt cell editor types (name, dependency, start/end dates, duration, estimated days/hours, progress, priority select, status select) have visible focus rings
 - Focus-ring suppression CSS narrowed to only match elements with explicit ring widths (`ring-2`/`ring-4`)
 - Modal focus trapping via `useModal` hook with expanded `FOCUSABLE` selector (includes `summary`, `[contenteditable]`, `iframe`, `audio/video[controls]`) and filtering of hidden/disabled elements
 - Focus restoration on modal close; unmount-while-open cleanup prevents focus landing on `<body>`
@@ -2687,18 +2689,35 @@ The application targets WCAG 2.2 Level AA. A comprehensive 20-finding audit (Ser
 - Dashboard widget reorder has Move Up/Down buttons (keyboard alternative to drag)
 - Column reorder has Move Left/Right buttons in the column picker
 - Gantt bar dates are editable via inline table cells (keyboard alternative to drag-to-resize)
+- Gantt row reorder via **Alt+ArrowUp/Down** — moves the active task up or down in the list without requiring mouse drag
 - Keyboard shortcuts can be disabled via the Accessibility settings toggle
 
-**Service worker update toast:**
-- Uses `role="status"` and `aria-live="polite"` for screen reader announcement
-- Dismiss button has `aria-label="Dismiss update notification"` instead of bare `×` character
+**Toast and notification accessibility:**
+- RAID import toasts (MeetingDetailPanel, MeetingMinutesPage) and undo toasts (ScheduleTab) use `role="alert"` for screen reader announcement
+- Service worker update toast uses `role="status"` and `aria-live="polite"`
+- Notification dismiss buttons meet the 24×24px minimum target size (WCAG 2.5.8)
+
+**Form error association:**
+- Login, Register, Forgot Password, and Reset Password forms use `aria-describedby` to programmatically link error messages to the relevant form inputs
+- Error containers have unique `id` attributes and `role="alert"` for immediate screen reader announcement
+
+**Toolbar labelling:**
+- Schedule tab view controls use `role="toolbar"` with `aria-label="Schedule view controls"` and `role="group"` with `aria-label="View mode"` on the mode switcher
 
 ### System-Level High-Contrast Mode
 
-In addition to the user preference toggle, `index.css` includes CSS overrides that activate when the browser or OS reports `prefers-contrast: more`. These overrides use attribute selectors (to avoid Tailwind PostCSS conflicts) and boost:
-- Muted text colors (Tailwind `gray-400`/`gray-500`) to `gray-700` in light mode and `gray-300` in dark mode
-- Border colors (`gray-200`/`gray-300`) to `gray-500` in light mode; (`gray-600`/`gray-700`) to `gray-400` in dark mode
-- Placeholder text to match the boosted muted-text levels
+Two independent high-contrast mechanisms ensure coverage for all users:
+
+1. **User preference toggle** (`.high-contrast` class): Applied via the Accessibility settings toggle, stored server-side.
+2. **OS-level media query** (`@media (prefers-contrast: more)`): Activates automatically when the browser or OS requests higher contrast — no toggle needed.
+
+Both paths apply identical overrides:
+- Body text/background forced to pure black/white (or white/black in dark mode)
+- Cards and rounded containers get 2px borders
+- Focus outlines thickened to 3px solid
+- Muted text colors (`gray-400`/`gray-500`) boosted to `gray-700` (light) / `gray-300` (dark) for WCAG AA contrast
+- Border colors (`gray-200`/`gray-300`) boosted to `gray-500` (light); (`gray-600`/`gray-700`) to `gray-400` (dark)
+- Placeholder text boosted to match muted-text levels
 
 ### Reduced Motion Hook
 
