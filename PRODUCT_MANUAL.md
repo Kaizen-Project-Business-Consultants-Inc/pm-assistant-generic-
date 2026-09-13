@@ -2644,13 +2644,54 @@ The frontend supports **English (en)**, **French (fr)**, and **Spanish (es)**. T
 
 ### Accessibility Preferences
 Users can configure accessibility settings from **Settings → Accessibility**:
-- **High Contrast**: Increases border widths and color contrast for improved readability
-- **Font Size** (12–24px): Adjusts the base font size across the entire application via CSS custom property `--app-font-size`
-- **Reduced Motion**: Disables all CSS animations and transitions
-- **Text Simplification** (off/mild/strong): AI-powered simplification of narratives and reports
-- **AI Narration**: Toggle dashboard narrative summaries on/off
+- **High Contrast**: Increases border widths and color contrast for improved readability. Works correctly in both light and dark mode — compound CSS selectors ensure the four states (light, dark, light+HC, dark+HC) all produce valid contrast.
+- **Font Size** (12–32px, 75%–200%): Adjusts the base font size as a **percentage multiplier** of the browser's configured default (not a fixed pixel override). A user with their browser set to 20px who selects 125% in the app gets 25px. The slider extends to 200% to satisfy WCAG 1.4.4. Labels show both px and percentage.
+- **Reduced Motion**: Disables all CSS animations and transitions. Applied both via the user toggle and automatically via `@media (prefers-reduced-motion: reduce)`.
+- **Text Simplification** (off/mild/strong): Preference is stored and settable but the AI simplification consumer is not yet implemented (known tech debt).
+- **AI Narration**: Toggle dashboard narrative summaries on/off. The narrative container has `aria-live="polite"` so screen readers announce updates.
+- **Keyboard Shortcuts**: Toggle single-key shortcuts (? for help, g+d for dashboard, etc.) on/off. When disabled, all document-level keyboard shortcuts are suppressed. This satisfies WCAG 2.1.4 (Character Key Shortcuts).
 
-Preferences are stored server-side in the `accessibility_preferences` JSON column (migration 034) and cached in localStorage. The `AccessibilityProvider` React context applies CSS classes (`high-contrast`, `reduce-motion`) to the document root.
+Preferences are stored server-side in the `accessibility_preferences` JSON column (migration 034) and cached in localStorage. The `AccessibilityProvider` React context applies CSS classes (`high-contrast`, `reduce-motion`) to the document root. All toggle switches have proper `aria-labelledby` linkage to their visible labels.
+
+### WCAG 2.2 AA Compliance
+
+The application targets WCAG 2.2 Level AA. A comprehensive 20-finding audit (Series W) was conducted and all findings have been addressed:
+
+**Structural semantics:**
+- Data grids use `role="grid"`, `scope="col"`, `aria-sort`, and `<caption>` (TableView, ProjectTable, PortfolioPage, TimesheetGrid)
+- Settings page tabs use a proper ARIA tablist pattern (`role="tablist"/"tab"`, `aria-selected`, `aria-controls`, roving tabindex)
+- Login page has correct heading hierarchy (`<h1>`), `<main>` wrapper, `autoComplete` attributes, `aria-invalid` on error, and focus management on state transitions
+
+**Focus management:**
+- Global `:focus-visible` ring (2px primary-500) on all interactive elements
+- Inline editors (Gantt, TableView) use `focus-visible:ring-2` instead of suppressing focus indication
+- Focus-ring suppression CSS narrowed to only match elements with explicit ring widths (`ring-2`/`ring-4`)
+- Modal focus trapping via `useModal` hook with expanded `FOCUSABLE` selector (includes `summary`, `[contenteditable]`, `iframe`, `audio/video[controls]`) and filtering of hidden/disabled elements
+- Focus restoration on modal close; unmount-while-open cleanup prevents focus landing on `<body>`
+
+**Screen reader support:**
+- Skip-to-content link (first in DOM, targets `#main-content`)
+- Landmarks: `role="banner"`, `<main id="main-content">`, `<aside aria-label="AI Assistant panel">`
+- Live region `#sr-announcements` with `announce()` utility wired to 23 user actions (task CRUD, RAID saves, file uploads, sprint actions, timesheet operations, AI responses, query results)
+- Color-only status indicators (severity dots, health dots, connection status) paired with `sr-only` text labels
+- Icon-only buttons labelled with `aria-label` throughout schedule toolbar and page chrome
+- `.sr-only` class uses both `clip` and `clip-path: inset(50%)` for broad browser support
+
+**Modal accessibility:**
+- `AccessibleModal` renders via `createPortal(document.body)` so `inert` on `#main-content` doesn't affect the modal itself
+- App content marked `inert` + `aria-hidden="true"` while any modal is open (prevents virtual cursor browsing behind dialogs)
+- Document-level Escape listener as defense-in-depth alongside the dialog's own `onKeyDown`
+- `ariaLabel` is a required prop on `AccessibleModal`
+
+**Keyboard alternatives:**
+- Dashboard widget reorder has Move Up/Down buttons (keyboard alternative to drag)
+- Column reorder has Move Left/Right buttons in the column picker
+- Gantt bar dates are editable via inline table cells (keyboard alternative to drag-to-resize)
+- Keyboard shortcuts can be disabled via the Accessibility settings toggle
+
+**Service worker update toast:**
+- Uses `role="status"` and `aria-live="polite"` for screen reader announcement
+- Dismiss button has `aria-label="Dismiss update notification"` instead of bare `×` character
 
 ### System-Level High-Contrast Mode
 

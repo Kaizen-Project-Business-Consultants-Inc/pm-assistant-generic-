@@ -375,12 +375,18 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - English, French, and Spanish translations
 - Locale selection in user settings; active locale managed via `localeStore` and `useTranslation` hook
 
-### Accessibility + Adaptive UI
-- User-configurable accessibility preferences (high contrast, font size 12-24px, reduced motion, text simplification level)
+### Accessibility + Adaptive UI (WCAG 2.2 AA)
+- User-configurable accessibility preferences (high contrast, font size 75%–200%, reduced motion, keyboard shortcuts toggle, text simplification level, AI narration)
+- Font size expressed as % multiplier of browser default (not fixed px override), slider extends to 200% per WCAG 1.4.4
 - Server-persisted preferences via `accessibility_preferences` JSON column (migration 034)
 - CSS custom properties applied via AccessibilityProvider React context
-- Settings page "Accessibility" tab with toggles and sliders
-- AI text simplification (mild/strong) via Claude-powered rewriting
+- All toggle switches have `aria-labelledby` linkage; Settings page uses proper ARIA tablist
+- Data grids have `role="grid"`, `scope="col"`, `aria-sort`, and `<caption>` for screen reader table navigation
+- Live region `announce()` utility wired to 23 user actions (task CRUD, file uploads, sprint actions, AI responses, etc.)
+- Modal focus trapping with `inert` on background content, `createPortal` rendering, and document-level Escape
+- Color-only indicators paired with `sr-only` text labels; icon-only buttons labelled with `aria-label`
+- Keyboard alternatives for drag interactions (widget reorder, column reorder, Gantt date editing)
+- Skip-to-content link, proper landmarks, heading hierarchy on auth pages
 - Flesch-Kincaid reading level analysis (algorithmic, no LLM required)
 - ReadingLevelBadge component for visual reading difficulty indicators
 

@@ -2246,7 +2246,29 @@ Navigate to **Settings** to configure:
 - **Language** -- Select your preferred display language (English, French, or Spanish). The change applies instantly without a page reload.
 - **Time Zone** -- Set your IANA timezone (e.g., `America/Toronto`). All dates in the application are displayed in this timezone.
 
-All eight Settings tabs (Profile, Team, Notifications, Display, Accessibility, API Keys, Webhooks, Danger Zone) fully support dark mode — toggle tracks, form panels, badges, code blocks, and the danger zone section all switch correctly when dark theme is active.
+All eight Settings tabs (Profile, Team, Notifications, Display, Accessibility, API Keys, Webhooks, Danger Zone) fully support dark mode — toggle tracks, form panels, badges, code blocks, and the danger zone section all switch correctly when dark theme is active. The Settings tabs use a proper ARIA tablist pattern for screen reader navigation.
+
+### Accessibility Settings
+
+Open **Settings → Accessibility** to configure:
+
+- **High Contrast** -- Increases border widths and color contrast. Works in both light and dark mode.
+- **Reduced Motion** -- Disables all CSS animations and transitions. Also respects the OS-level `prefers-reduced-motion` media query automatically.
+- **Font Size** (75%–200%) -- Adjusts font size as a percentage of your browser's default. Unlike a fixed pixel value, this multiplies your browser setting — if your browser is set to 20px and you choose 125%, you get 25px. The range extends to 200% per WCAG guidelines.
+- **Keyboard Shortcuts** -- Toggle single-key shortcuts (? for help, g+d for dashboard) on or off. Useful for users with motor disabilities or voice input software that may accidentally trigger single-key bindings.
+- **Text Simplification** (Off / Mild / Strong) -- Setting is stored but the AI simplification feature is not yet active.
+- **AI Narration** -- Toggle dashboard narrative summaries on or off. When enabled, AI-generated summaries appear on the dashboard and are announced to screen readers.
+
+### Screen Reader Support
+
+The application is designed for WCAG 2.2 Level AA compliance:
+
+- **Skip to content** -- A hidden "Skip to main content" link appears when you press Tab on any page, letting you bypass the sidebar navigation.
+- **Live announcements** -- When you save a task, upload a file, start a sprint, submit a timesheet, or perform other key actions, the result is announced to your screen reader (e.g., "Task updated", "File uploaded successfully").
+- **Data tables** -- Schedule grids, portfolio tables, and timesheet grids announce column headers and sort state so you can navigate them with a screen reader's table commands.
+- **Modals** -- Dialogs trap both keyboard focus and virtual cursor. Background content is marked `inert` while a dialog is open. Press Escape to close any dialog.
+- **Status indicators** -- Color-coded dots (severity, health, connection status) are paired with hidden text labels so screen readers announce the meaning, not just the color.
+- **Keyboard navigation** -- All drag-and-drop interactions (widget reorder, column reorder, Gantt bar dates) have keyboard alternatives (Move Up/Down buttons, Move Left/Right buttons, inline date editing).
 
 **Deep linking:** You can link directly to any Settings tab using a `?tab=` query parameter, e.g., `/settings?tab=notifications` or `/settings?tab=danger`. The default tab (Profile) omits the parameter for a clean URL.
 
