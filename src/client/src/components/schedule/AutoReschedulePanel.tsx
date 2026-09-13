@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { X, AlertTriangle, Loader2, CheckCircle2, XCircle, Pencil, Flag, Lock } from 'lucide-react';
 import { severityColor } from '../../utils/severityColors';
+import { announce } from '../../utils/announce';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -121,6 +122,7 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
         reason: c.reason,
       }));
       setProposal({ ...raw, changes });
+      announce(`Reschedule proposal generated with ${changes.length} changes`);
     },
   });
 
@@ -129,6 +131,7 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
     mutationFn: (proposalId: string) => apiService.acceptRescheduleProposal(proposalId),
     onSuccess: () => {
       setAccepted(true);
+      announce('Reschedule proposal accepted');
     },
   });
 
@@ -139,6 +142,7 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
     onSuccess: () => {
       setRejected(true);
       setShowRejectFeedback(false);
+      announce('Reschedule proposal rejected');
     },
   });
 

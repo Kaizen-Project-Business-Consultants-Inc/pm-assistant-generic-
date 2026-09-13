@@ -891,6 +891,16 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   }, [dropdownFilteredTasks, quickFilter, taskRiskMap, user?.id, dueWeeks]);
 
   const hasActiveFilters = !!(searchQuery || filterStatus || filterPriority || filterAssignee || quickFilter !== 'all');
+
+  // Announce filter result count to screen readers
+  const prevFilteredRef = useRef(filteredTasks.length);
+  useEffect(() => {
+    if (hasActiveFilters && filteredTasks.length !== prevFilteredRef.current) {
+      announce(`${filteredTasks.length} of ${tasks.length} tasks shown`);
+    }
+    prevFilteredRef.current = filteredTasks.length;
+  }, [filteredTasks.length, tasks.length, hasActiveFilters]);
+
   const clearAllFilters = useCallback(() => {
     setSearchQuery('');
     setFilterStatus('');

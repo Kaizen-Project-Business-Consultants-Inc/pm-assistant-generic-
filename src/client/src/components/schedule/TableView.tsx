@@ -7,6 +7,7 @@ import type { SavedView } from './SavedViewsDropdown';
 import type { ColumnKey, ColumnDef } from './tableColumns';
 import { useColumnDragReorder } from '../../hooks/useColumnDragReorder';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { announce } from '../../utils/announce';
 import { ResourceQuickAssign } from './ResourceQuickAssign';
 import { ResourcePickerDropdown } from './ResourcePickerDropdown';
 import { TableToolbar } from './table/TableToolbar';
@@ -717,6 +718,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     setTimeout(() => {
       setSavingCell(null);
       setSavedCell({ taskId, field });
+      announce(`${field} saved`);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
     }, 300);

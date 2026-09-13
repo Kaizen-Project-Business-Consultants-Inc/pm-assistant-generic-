@@ -92,15 +92,20 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
       />
 
       {viewMode === 'gantt' && (
-        <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showCriticalPath}
-            onChange={(e) => onCriticalPathChange(e.target.checked)}
-            className="accent-red-600 w-3.5 h-3.5"
-          />
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showCriticalPath}
+          onClick={() => onCriticalPathChange(!showCriticalPath)}
+          className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md transition-colors ${
+            showCriticalPath
+              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'
+              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+          }`}
+        >
+          <span className={`w-2 h-2 rounded-full ${showCriticalPath ? 'bg-primary-500' : 'bg-gray-400 dark:bg-gray-500'}`} />
           Critical Path
-        </label>
+        </button>
       )}
 
       {/* Overflow menu (gantt only) */}

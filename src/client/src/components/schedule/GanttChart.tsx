@@ -42,6 +42,7 @@ import { GanttMinimap } from './gantt/GanttMinimap';
 import { GanttFilterPanel } from './gantt/GanttFilterPanel';
 import { GanttBulkActionBar } from './gantt/GanttBulkActionBar';
 import { GanttToolbar } from './gantt/GanttToolbar';
+import { announce } from '../../utils/announce';
 import type { PanelMode } from './gantt/GanttToolbar';
 import { GanttLeftPanelHeader } from './gantt/GanttLeftPanelHeader';
 import { GanttLeftPanelRow } from './gantt/GanttLeftPanelRow';
@@ -1233,6 +1234,7 @@ export function GanttChart({
     setTimeout(() => {
       setSavingCell(null);
       setSavedCell({ taskId, field });
+      announce(`${field} saved`);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
     }, 300);
