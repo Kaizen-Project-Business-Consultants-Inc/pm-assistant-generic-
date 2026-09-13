@@ -335,6 +335,9 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
       dependency: 'open',
     };
 
+    // Auto-link owner_id from owner_name if not explicitly set
+    const ownerId = data.ownerId || (data.ownerName ? await this.resolveOwnerId(data.ownerName) : null);
+
     await databaseService.query(
       `INSERT INTO project_risks (id, project_id, type, title, description, category, severity,
         probability, impact, status, trigger_condition, mitigation_plan, response_plan, owner_id,
@@ -358,7 +361,7 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
         data.triggerCondition || null,
         data.mitigationPlan || null,
         data.responsePlan || null,
-        data.ownerId || null,
+        ownerId,
         data.source || 'manual',
         data.sourceAgentId || null,
         data.aiConfidence ?? null,
@@ -389,6 +392,12 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
   }
 
   async update(id: string, data: Record<string, any>): Promise<ProjectRisk | null> {
+    // Auto-link owner_id from owner_name if ownerName is being set but ownerId is not
+    if (data.ownerName && !data.ownerId) {
+      const resolvedId = await this.resolveOwnerId(data.ownerName);
+      if (resolvedId) data.ownerId = resolvedId;
+    }
+
     const upd = this.buildUpdate(data, COLUMN_MAP, (key, val) => {
       if (key === 'linkedTaskIds' || key === 'linkedRaidIds' || key === 'stakeholdersConsulted') {
         return val ? JSON.stringify(val) : null;
@@ -519,6 +528,45 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
 
   async deleteUpdate(id: string): Promise<void> {
     await databaseService.query(`DELETE FROM raid_updates WHERE id = ?`, [id]);
+  }
+
+  /**
+   * Resolve owner_name to a user_id by matching against resource names.
+   * Handles multi-person names like "Marsha Turner / Claudia Andrews" by
+   * matching the first name that corresponds to a system user.
+   */
+  private async resolveOwnerId(ownerName: string): Promise<string | null> {
+    // Split on common separators: "/", "&", ","
+    const names = ownerName.split(/[\/&,]/).map(n => n.replace(/\(.*?\)/g, '').trim()).filter(Boolean);
+    if (names.length === 0) return null;
+
+    const placeholders = names.map(() => '?').join(',');
+    const rows = await databaseService.query<any>(
+      `SELECT user_id FROM resources WHERE user_id IS NOT NULL AND name IN (${placeholders}) LIMIT 1`,
+      names,
+    );
+    return rows.length > 0 ? rows[0].user_id : null;
+  }
+
+  /**
+   * Backfill owner_id for all RAID items that have owner_name but no owner_id.
+   * Runs once on startup or on-demand.
+   */
+  async backfillOwnerIds(): Promise<number> {
+    const rows = await databaseService.query<any>(
+      `SELECT pr.id, pr.owner_name FROM project_risks pr
+       WHERE pr.owner_name IS NOT NULL AND pr.owner_name != '' AND pr.owner_id IS NULL`,
+      [],
+    );
+    let linked = 0;
+    for (const row of rows) {
+      const userId = await this.resolveOwnerId(row.owner_name);
+      if (userId) {
+        await databaseService.query(`UPDATE project_risks SET owner_id = ? WHERE id = ?`, [userId, row.id]);
+        linked++;
+      }
+    }
+    return linked;
   }
 }
 
