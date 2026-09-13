@@ -1,6 +1,7 @@
 import { databaseService } from '../database/connection';
 
 const globalRoles = ['admin', 'executive', 'pmo'];
+const managerRoles = ['admin', 'pmo', 'executive', 'project_manager', 'scrum_master'];
 
 function isGlobalScope(userRole: string, scope?: string): boolean {
   return globalRoles.includes(userRole) || scope === 'portfolio';
@@ -12,8 +13,10 @@ export interface RaidWatchItem {
   label: string;
   projectId: string;
   projectName: string;
+  projectCode: string;
   detail: string;
   linkTab: 'raid' | 'schedule';
+  resourceName?: string;
 }
 
 export interface BriefingTask {
@@ -21,8 +24,11 @@ export interface BriefingTask {
   name: string;
   projectId: string;
   projectName: string;
+  projectCode: string;
   scheduleId: string;
+  sortOrder: number;
   priority: string;
+  resourceName?: string;
 }
 
 export interface BriefingOverdueTask extends BriefingTask {
@@ -36,24 +42,32 @@ export interface BriefingDueTask extends BriefingTask {
 
 export interface DailyBriefing {
   generatedAt: string;
+  userRole: string;
   actionItems: {
     pendingProposals: number;
-    pendingChangeRequests: Array<{ id: string; title: string; projectName: string; projectId: string; priority: string }>;
+    pendingChangeRequests: Array<{ id: string; title: string; projectName: string; projectId: string; projectCode: string; priority: string }>;
     unreadNotifications: { total: number; critical: number; high: number };
   };
   tasksDueToday: BriefingTask[];
   tasksDueThisWeek: BriefingDueTask[];
   overdueTasks: BriefingOverdueTask[];
-  recentHighRisks: Array<{ id: string; title: string; projectId: string; projectName: string; severity: string; type: string }>;
-  upcomingMilestones: Array<{ id: string; name: string; projectId: string; projectName: string; scheduleId: string; dueDate: string; daysUntil: number }>;
+  recentHighRisks: Array<{ id: string; title: string; projectId: string; projectName: string; projectCode: string; severity: string; type: string }>;
+  upcomingMilestones: Array<{ id: string; name: string; projectId: string; projectName: string; projectCode: string; scheduleId: string; dueDate: string; daysUntil: number }>;
   raidWatch: RaidWatchItem[];
 }
+
+// Subquery to exclude parent/summary tasks (tasks that have children)
+const NOT_PARENT = `AND t.id NOT IN (SELECT DISTINCT parent_task_id FROM tasks WHERE parent_task_id IS NOT NULL)`;
 
 class DailyBriefingService {
   async getDailyBriefing(userId: string, userRole: string, scope?: string): Promise<DailyBriefing> {
     const global = isGlobalScope(userRole, scope);
     const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
     const memberParams = global ? [] : [userId];
+    const showResource = managerRoles.includes(userRole);
+
+    const resourceSelect = showResource ? ', r.name AS resourceName' : '';
+    const resourceJoin = showResource ? 'LEFT JOIN resources r ON t.assigned_to = r.id' : '';
 
     const [
       proposals,
@@ -78,7 +92,8 @@ class DailyBriefingService {
       ),
       // Pending change requests
       databaseService.query<any>(
-        `SELECT cr.id, cr.title, p.name AS projectName, p.id AS projectId, cr.priority
+        `SELECT cr.id, cr.title, p.name AS projectName, p.id AS projectId,
+                COALESCE(p.project_code, '') AS projectCode, cr.priority
          FROM change_requests cr
          JOIN projects p ON cr.project_id = p.id
          ${memberJoin}
@@ -93,48 +108,64 @@ class DailyBriefingService {
          GROUP BY severity`,
         [userId]
       ),
-      // Tasks due today
+      // Tasks due today (leaf tasks only)
       databaseService.query<any>(
-        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId, s.id AS scheduleId, t.priority
+        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId,
+                COALESCE(p.project_code, '') AS projectCode,
+                s.id AS scheduleId, t.sort_order AS sortOrder, t.priority
+                ${resourceSelect}
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
+         ${resourceJoin}
          ${memberJoin}
          WHERE t.end_date = CURDATE()
            AND t.status NOT IN ('completed', 'done', 'cancelled')
+           ${NOT_PARENT}
          ORDER BY t.priority DESC LIMIT 20`,
         [...memberParams]
       ),
-      // Tasks due this week (next 7 days, excluding today)
+      // Tasks due this week (next 7 days, excluding today, leaf tasks only)
       databaseService.query<any>(
-        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId, s.id AS scheduleId,
-                t.end_date AS dueDate, t.priority,
+        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId,
+                COALESCE(p.project_code, '') AS projectCode,
+                s.id AS scheduleId, t.sort_order AS sortOrder, t.priority,
+                t.end_date AS dueDate,
                 DATEDIFF(t.end_date, CURDATE()) AS daysUntil
+                ${resourceSelect}
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
+         ${resourceJoin}
          ${memberJoin}
          WHERE t.end_date BETWEEN DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
            AND t.status NOT IN ('completed', 'done', 'cancelled')
+           ${NOT_PARENT}
          ORDER BY t.end_date ASC LIMIT 20`,
         [...memberParams]
       ),
-      // Overdue tasks
+      // Overdue tasks (leaf tasks only)
       databaseService.query<any>(
-        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId, s.id AS scheduleId, t.priority,
+        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId,
+                COALESCE(p.project_code, '') AS projectCode,
+                s.id AS scheduleId, t.sort_order AS sortOrder, t.priority,
                 DATEDIFF(CURDATE(), t.end_date) AS overdueDays
+                ${resourceSelect}
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
+         ${resourceJoin}
          ${memberJoin}
          WHERE t.end_date < CURDATE()
            AND t.status NOT IN ('completed', 'done', 'cancelled')
+           ${NOT_PARENT}
          ORDER BY overdueDays DESC LIMIT 10`,
         [...memberParams]
       ),
       // Recent high risks (last 24h)
       databaseService.query<any>(
-        `SELECT pr.id, pr.title, p.name AS projectName, p.id AS projectId, pr.severity, pr.type
+        `SELECT pr.id, pr.title, p.name AS projectName, p.id AS projectId,
+                COALESCE(p.project_code, '') AS projectCode, pr.severity, pr.type
          FROM project_risks pr
          JOIN projects p ON pr.project_id = p.id
          ${memberJoin}
@@ -145,7 +176,9 @@ class DailyBriefingService {
       ),
       // Upcoming milestones (next 7 days)
       databaseService.query<any>(
-        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId, s.id AS scheduleId,
+        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId,
+                COALESCE(p.project_code, '') AS projectCode,
+                s.id AS scheduleId,
                 t.end_date AS dueDate,
                 DATEDIFF(t.end_date, CURDATE()) AS daysUntil
          FROM tasks t
@@ -161,7 +194,9 @@ class DailyBriefingService {
       // RAID Watch: Overdue meeting action items
       databaseService.query<any>(
         `SELECT mai.id, mai.description, mai.due_date, p.id AS projectId, p.name AS projectName,
-                DATEDIFF(CURDATE(), mai.due_date) AS overdueDays
+                COALESCE(p.project_code, '') AS projectCode,
+                DATEDIFF(CURDATE(), mai.due_date) AS overdueDays,
+                mai.assignee_name AS resourceName
          FROM meeting_action_items mai
          JOIN projects p ON mai.project_id = p.id
          ${memberJoin}
@@ -170,26 +205,32 @@ class DailyBriefingService {
          ORDER BY mai.due_date ASC LIMIT 10`,
         [...memberParams]
       ),
-      // RAID Watch: Blocked tasks (FS predecessor not completed)
+      // RAID Watch: Blocked tasks (FS predecessor not completed, leaf tasks only)
       databaseService.query<any>(
-        `SELECT t.id, t.name, p.id AS projectId, p.name AS projectName, s.id AS scheduleId,
+        `SELECT t.id, t.name, p.id AS projectId, p.name AS projectName,
+                COALESCE(p.project_code, '') AS projectCode,
+                s.id AS scheduleId, t.sort_order AS sortOrder,
                 pred.name AS blockedByName
+                ${resourceSelect}
          FROM task_dependencies td
          JOIN tasks t ON td.task_id = t.id
          JOIN tasks pred ON td.dependency_id = pred.id
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
+         ${resourceJoin}
          ${memberJoin}
          WHERE td.dependency_type = 'FS'
            AND pred.status NOT IN ('completed', 'done', 'cancelled')
            AND t.status NOT IN ('completed', 'done', 'cancelled')
            AND pred.end_date < CURDATE()
+           ${NOT_PARENT}
          ORDER BY pred.end_date ASC LIMIT 10`,
         [...memberParams]
       ),
       // RAID Watch: Open issues (unresolved risks of type 'issue')
       databaseService.query<any>(
-        `SELECT pr.id, pr.title, pr.severity, p.id AS projectId, p.name AS projectName
+        `SELECT pr.id, pr.title, pr.severity, p.id AS projectId, p.name AS projectName,
+                COALESCE(p.project_code, '') AS projectCode
          FROM project_risks pr
          JOIN projects p ON pr.project_id = p.id
          ${memberJoin}
@@ -218,8 +259,10 @@ class DailyBriefingService {
         label: item.description?.substring(0, 80) || 'Action item',
         projectId: item.projectId,
         projectName: item.projectName,
+        projectCode: item.projectCode,
         detail: `${item.overdueDays}d overdue`,
         linkTab: 'raid',
+        resourceName: showResource ? (item.resourceName || undefined) : undefined,
       });
     }
 
@@ -230,8 +273,10 @@ class DailyBriefingService {
         label: item.name,
         projectId: item.projectId,
         projectName: item.projectName,
+        projectCode: item.projectCode,
         detail: `blocked by: ${item.blockedByName}`,
         linkTab: 'schedule',
+        resourceName: showResource ? (item.resourceName || undefined) : undefined,
       });
     }
 
@@ -242,6 +287,7 @@ class DailyBriefingService {
         label: item.title,
         projectId: item.projectId,
         projectName: item.projectName,
+        projectCode: item.projectCode,
         detail: `${item.severity} issue`,
         linkTab: 'raid',
       });
@@ -249,6 +295,7 @@ class DailyBriefingService {
 
     return {
       generatedAt: new Date().toISOString(),
+      userRole,
       actionItems: {
         pendingProposals: Number(proposals[0]?.cnt ?? 0),
         pendingChangeRequests: changeRequests,

@@ -37,6 +37,7 @@ export interface Project {
   archivedAt?: string;
   groupId?: string;
   isDemo?: boolean;
+  projectCode?: string;
 }
 
 export interface CreateProjectData {

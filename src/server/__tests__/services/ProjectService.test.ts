@@ -102,6 +102,7 @@ describe('ProjectService', () => {
   describe('create', () => {
     it('creates project after policy check', async () => {
       mockQuery
+        .mockResolvedValueOnce([]) // generateProjectCode
         .mockResolvedValueOnce([]) // INSERT
         .mockResolvedValueOnce([sampleRow]); // findById
 

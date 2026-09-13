@@ -9,13 +9,29 @@ const FLASH_KEY = 'briefing-last-flash';
 const FLASH_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const MAX_ITEMS = 5;
 
+// Global roles that see the resource (assigned person) column
+const MANAGER_ROLES = ['admin', 'pmo', 'executive', 'project_manager', 'scrum_master'];
+
 interface Props {
   scope?: 'portfolio';
+}
+
+interface DisplayItem {
+  id: string;
+  projectCode: string;
+  projectName: string;
+  rowNum?: number;
+  label: string;
+  detail: string;
+  resourceName?: string;
+  link: string;
+  sort: number;
 }
 
 export function MorningBriefingWidget({ scope }: Props) {
   const user = useAuthStore(s => s.user);
   const isViewer = user?.role === 'viewer';
+  const showResource = MANAGER_ROLES.includes(user?.role ?? '');
 
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('briefing-collapsed') === 'true'; } catch { return false; }
@@ -93,46 +109,55 @@ export function MorningBriefingWidget({ scope }: Props) {
   const milestones = briefing.upcomingMilestones ?? [];
   const raidWatch = briefing.raidWatch ?? [];
 
-  // Combine on-fire items: overdue tasks + critical/high risks
-  const onFireItems = [
+  // On Fire: overdue tasks + critical/high risks
+  const onFireItems: DisplayItem[] = [
     ...(briefing.overdueTasks ?? []).map((t: any) => ({
       id: t.id,
+      projectCode: t.projectCode || '',
       projectName: t.projectName,
+      rowNum: t.sortOrder != null ? t.sortOrder + 1 : undefined,
       label: t.name,
       detail: `${t.overdueDays}d overdue`,
+      resourceName: t.resourceName,
       link: `/project/${t.projectId}?tab=schedule`,
       sort: t.overdueDays,
     })),
     ...criticalRisks.map((r: any) => ({
       id: r.id,
+      projectCode: r.projectCode || '',
       projectName: r.projectName,
       label: r.title,
-      detail: 'critical risk (new)',
+      detail: 'critical risk',
       link: `/project/${r.projectId}?tab=raid`,
       sort: 999,
     })),
     ...highRisks.map((r: any) => ({
       id: r.id,
+      projectCode: r.projectCode || '',
       projectName: r.projectName,
       label: r.title,
-      detail: 'high risk (new)',
+      detail: 'high risk',
       link: `/project/${r.projectId}?tab=raid`,
       sort: 998,
     })),
   ].sort((a, b) => b.sort - a.sort);
 
-  // Combine due-soon items: today + this week + milestones
-  const dueSoonItems = [
+  // Due Soon: today + this week + milestones
+  const dueSoonItems: DisplayItem[] = [
     ...dueTodayTasks.map((t: any) => ({
       id: t.id,
+      projectCode: t.projectCode || '',
       projectName: t.projectName,
+      rowNum: t.sortOrder != null ? t.sortOrder + 1 : undefined,
       label: t.name,
       detail: 'due today',
+      resourceName: t.resourceName,
       link: `/project/${t.projectId}?tab=schedule`,
       sort: 0,
     })),
     ...milestones.map((m: any) => ({
       id: `ms-${m.id}`,
+      projectCode: m.projectCode || '',
       projectName: m.projectName,
       label: `Milestone: ${m.name}`,
       detail: m.daysUntil === 0 ? 'today' : `in ${m.daysUntil}d`,
@@ -141,18 +166,22 @@ export function MorningBriefingWidget({ scope }: Props) {
     })),
     ...dueWeekTasks.map((t: any) => ({
       id: t.id,
+      projectCode: t.projectCode || '',
       projectName: t.projectName,
+      rowNum: t.sortOrder != null ? t.sortOrder + 1 : undefined,
       label: t.name,
       detail: `in ${t.daysUntil}d`,
+      resourceName: t.resourceName,
       link: `/project/${t.projectId}?tab=schedule`,
       sort: t.daysUntil ?? 1,
     })),
   ].sort((a, b) => a.sort - b.sort);
 
-  // Pending approvals items
-  const approvalItems = [
+  // Pending Approvals
+  const approvalItems: DisplayItem[] = [
     ...pendingCRs.map((cr: any) => ({
       id: cr.id,
+      projectCode: cr.projectCode || '',
       projectName: cr.projectName,
       label: cr.title,
       detail: `${cr.priority} CR`,
@@ -161,6 +190,7 @@ export function MorningBriefingWidget({ scope }: Props) {
     })),
     ...(pendingProposals > 0 ? [{
       id: 'proposals',
+      projectCode: '',
       projectName: '',
       label: `${pendingProposals} agent proposal${pendingProposals !== 1 ? 's' : ''}`,
       detail: 'awaiting review',
@@ -169,6 +199,7 @@ export function MorningBriefingWidget({ scope }: Props) {
     }] : []),
     ...(unreadTotal > 0 ? [{
       id: 'notifications',
+      projectCode: '',
       projectName: '',
       label: `${unreadTotal} unread notification${unreadTotal !== 1 ? 's' : ''}`,
       detail: unreadCritical > 0 ? `${unreadCritical} critical` : '',
@@ -177,31 +208,46 @@ export function MorningBriefingWidget({ scope }: Props) {
     }] : []),
   ];
 
-  // RAID Watch items
-  const raidItems = (raidWatch as any[]).map((item: any) => ({
+  // RAID Watch
+  const raidItems: DisplayItem[] = (raidWatch as any[]).map((item: any) => ({
     id: item.id,
+    projectCode: item.projectCode || '',
     projectName: item.projectName,
+    rowNum: item.type === 'blocked_task' && item.sortOrder != null ? item.sortOrder + 1 : undefined,
     label: item.label,
     detail: item.detail,
+    resourceName: item.resourceName,
     link: `/project/${item.projectId}?tab=${item.linkTab}`,
     sort: item.type === 'blocked_task' ? 0 : item.type === 'action_item' ? 1 : 2,
-  })).sort((a: any, b: any) => a.sort - b.sort);
+  })).sort((a: DisplayItem, b: DisplayItem) => a.sort - b.sort);
 
-  const renderItems = (items: Array<{ id: string; projectName: string; label: string; detail: string; link: string }>, max: number, moreLabel: string) => {
+  const renderItems = (items: DisplayItem[], max: number, moreLabel: string) => {
     const shown = items.slice(0, max);
     const remaining = items.length - max;
     return (
       <>
         {shown.map(item => (
           <li key={item.id}>
-            <Link to={item.link} className="group flex gap-1 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
-              {item.projectName && (
-                <span className="font-bold text-gray-900 dark:text-gray-100 shrink-0">{item.projectName}</span>
+            <Link to={item.link} className="group flex items-baseline gap-1.5 text-sm hover:text-gray-900 dark:hover:text-white">
+              {/* Project code + name */}
+              {(item.projectCode || item.projectName) && (
+                <span className="font-bold text-gray-900 dark:text-gray-100 shrink-0">
+                  {item.projectCode || item.projectName}
+                </span>
               )}
-              {item.projectName && <span className="text-gray-400 dark:text-gray-500 shrink-0">&mdash;</span>}
-              <span className="truncate">{item.label}</span>
+              {/* Row number */}
+              {item.rowNum != null && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">#{item.rowNum}</span>
+              )}
+              {/* Task/item name */}
+              <span className="text-gray-700 dark:text-gray-300 truncate">{item.label}</span>
+              {/* Detail (overdue days, etc.) */}
               {item.detail && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 self-center">({item.detail})</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">({item.detail})</span>
+              )}
+              {/* Resource name — managers only */}
+              {showResource && item.resourceName && (
+                <span className="text-xs text-primary-700 dark:text-primary-400 shrink-0">[{item.resourceName}]</span>
               )}
             </Link>
           </li>

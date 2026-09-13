@@ -33,6 +33,7 @@ function rowToProject(row: any): Project {
     archivedAt: row.archived_at ? String(row.archived_at) : undefined,
     groupId: row.group_id ?? undefined,
     isDemo: row.is_demo === 1 || row.is_demo === true,
+    projectCode: row.project_code ?? undefined,
   };
 }
 
@@ -125,14 +126,16 @@ export class ProjectRepository extends BaseRepository<Project> {
 
   async create(data: CreateProjectData): Promise<Project> {
     const id = uuidv4();
+    const projectCode = await this.generateProjectCode();
     await this.queryRaw(
-      `INSERT INTO projects (id, name, description, category, project_type, status, priority,
+      `INSERT INTO projects (id, name, project_code, description, category, project_type, status, priority,
         budget_allocated, budget_spent, currency, location, location_lat, location_lon,
         start_date, end_date, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.name,
+        projectCode,
         data.description || null,
         data.category || null,
         data.projectType || 'other',
@@ -150,6 +153,15 @@ export class ProjectRepository extends BaseRepository<Project> {
       ],
     );
     return (await this.findById(id))!;
+  }
+
+  private async generateProjectCode(): Promise<string> {
+    const rows = await this.queryRaw(
+      `SELECT project_code FROM projects WHERE project_code LIKE 'PRJ-%' ORDER BY CAST(SUBSTRING(project_code, 5) AS UNSIGNED) DESC LIMIT 1`,
+      [],
+    );
+    const lastNum = rows.length > 0 ? parseInt(rows[0].project_code.replace('PRJ-', ''), 10) : 0;
+    return `PRJ-${String(lastNum + 1).padStart(3, '0')}`;
   }
 
   async update(id: string, data: Record<string, any>): Promise<Project | null> {

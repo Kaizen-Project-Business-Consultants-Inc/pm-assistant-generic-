@@ -67,6 +67,7 @@ describe('ProjectRepository', () => {
 
   it('create inserts and returns project', async () => {
     mockQuery
+      .mockResolvedValueOnce([]) // generateProjectCode (no existing codes)
       .mockResolvedValueOnce([]) // INSERT
       .mockResolvedValueOnce([sampleRow]); // findById
     const project = await repo.create({
