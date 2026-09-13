@@ -226,6 +226,40 @@ No help/support link exists anywhere in the authenticated app — not in sidebar
 ### Next action
 - [ ] **Re-check slow query log** — review `/var/log/mysql/mariadb-slow.log` after a few days of real traffic (target: ~July 22-23)
 
+---
+
+## 8. SME Billing Model Review — TODO
+
+**Added:** September 12, 2026
+
+### Question
+Is per-seat pricing the right model for SME when only PMs (write-role users) consume seats and viewers are free? With viewer assignment-based permissions shipped, most team members can be free viewers.
+
+### Current State
+- SME: $33/seat/mo, 3-seat minimum ($99/mo floor)
+- Seats consumed by: owner, manager, editor roles
+- Viewers: free, no seat consumption, can update assigned items
+
+### Options to Evaluate
+1. **Keep 3-seat minimum** — revenue floor, simple to explain
+2. **Drop to 1-seat minimum** — lower entry barrier (but $33/mo is close to Pro at $29/mo, blurs tier distinction)
+3. **Reframe as platform fee + per-seat** — e.g. $49 base + $20/additional PM seat (clearer value prop)
+4. **Per-project pricing** — charge by active projects instead of users
+5. **Hybrid** — base fee includes N seats, overage per-seat
+
+### Decision Criteria
+- Does the pricing match how customers actually use the tool? (PM-centric, viewers are passive)
+- Is the 3-seat minimum a barrier for solo PMs managing teams of viewers?
+- How does it compare to competitors (Monday, Asana, Wrike)?
+- Revenue impact of each option
+
+### Action
+- [ ] Review competitor pricing models for PM tools
+- [ ] Analyze expected SME customer profile (how many PMs vs viewers per org?)
+- [ ] Decide on model and update pricing page, Stripe products, and registration flow
+
+---
+
 ### Future opportunities (not urgent)
 - **Reduce index chunk** (257KB raw / 71KB gz) — audit what's bundled in the app shell, lazy-load more
 - **Brotli compression** — ~20% smaller than gzip; use build-time pre-compression to avoid CPU cost

@@ -632,9 +632,12 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     setEditValue(getTaskFieldValue(task, field));
   }, [getTaskFieldValue]);
 
+  // Dropdown fields open immediately on first click (no select-first requirement)
+  const IMMEDIATE_EDIT_FIELDS = new Set<EditableField>(['assignedTo', 'status', 'priority']);
   const handleCellClick = useCallback((taskId: string, field: EditableField, task: GanttTask) => {
     if (editingCell?.taskId === taskId && editingCell.field === field) return;
-    if (activeTaskId === taskId) {
+    if (activeTaskId === taskId || IMMEDIATE_EDIT_FIELDS.has(field)) {
+      if (activeTaskId !== taskId) onTaskSelect?.(task);
       startEditing(taskId, field, task);
     } else {
       onTaskSelect?.(task);

@@ -1120,13 +1120,16 @@ export function GanttChart({
     setDepError(null);
   }, [onTaskUpdate, drag, getTaskFieldValue]);
 
-  /** Click-to-select, click-again-to-edit: first click selects the row, second click enters inline edit */
+  /** Click-to-select, click-again-to-edit: first click selects the row, second click enters inline edit.
+   *  Dropdown fields (assignedTo, status, priority) open immediately on first click. */
+  const IMMEDIATE_EDIT_FIELDS = new Set<EditableField>(['assignedTo', 'status', 'priority']);
   const handleCellClick = useCallback((e: React.MouseEvent, taskId: string, field: EditableField, task: GanttTask) => {
     if (!onTaskUpdate) return;
     // Let Ctrl+click and Shift+click bubble up to the row for multi-select
     if (e.ctrlKey || e.metaKey || e.shiftKey) return;
     e.stopPropagation();
-    if (activeTaskId === taskId) {
+    if (activeTaskId === taskId || IMMEDIATE_EDIT_FIELDS.has(field)) {
+      if (activeTaskId !== taskId) onTaskSelect?.(task);
       startEditing(taskId, field, task);
     } else {
       onTaskSelect?.(task);
