@@ -82,13 +82,12 @@ describe('getPrimaryTabs', () => {
 });
 
 describe('getOverflowTabs', () => {
-  it('all methodologies include Time, Files, Performance, AI Insights, Resources, Agent Activity', () => {
+  it('all methodologies include Time, Files, Insights, Resources, Agent Activity', () => {
     for (const m of ['waterfall', 'agile', 'hybrid'] as const) {
       const ids = getOverflowTabs(m).map(t => t.id);
       expect(ids).toContain('time');
       expect(ids).toContain('files');
-      expect(ids).toContain('performance');
-      expect(ids).toContain('ai-insights');
+      expect(ids).toContain('insights');
       expect(ids).toContain('resources');
       expect(ids).toContain('agent-activity');
     }
