@@ -233,7 +233,8 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const oldTask = await scheduleService.findTaskById(taskId);
       if (!oldTask) return reply.status(404).send({ error: 'Not found', message: 'Task not found' });
 
-      const oldEndDate = oldTask.endDate ? new Date(oldTask.endDate) : null;
+      // Capture old end date string (YYYY-MM-DD) before update for cascade detection
+      const oldEndStr = oldTask.endDate ? new Date(oldTask.endDate).toISOString().slice(0, 10) : null;
 
       // Only include fields that were actually sent — avoid setting unsent fields to null
       const updatePayload: Record<string, unknown> = {};
@@ -247,9 +248,9 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
 
       // Auto-scheduling: cascade date changes to downstream tasks
       let cascadedChanges = null;
-      const newEndDate = data.endDate ? new Date(data.endDate) : null;
-      if (oldEndDate && newEndDate && oldEndDate.getTime() !== newEndDate.getTime()) {
-        const result = await scheduleService.cascadeReschedule(taskId, oldEndDate, newEndDate);
+      const newEndStr = task.endDate ? new Date(task.endDate).toISOString().slice(0, 10) : null;
+      if (oldEndStr && newEndStr && oldEndStr !== newEndStr) {
+        const result = await scheduleService.cascadeReschedule(taskId, new Date(oldEndStr), new Date(newEndStr));
         if (result.affectedTasks.length > 0) {
           cascadedChanges = result;
         }

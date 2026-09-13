@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Trash2, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Save, Trash2, Sparkles, ChevronDown } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import type { GanttTask } from './GanttChart';
 import { TaskActivityPanel } from './TaskActivityPanel';
 import { TimeLogForm } from '../timetracking/TimeLogForm';
@@ -74,13 +75,124 @@ interface TaskFormModalProps {
 }
 
 // ---------------------------------------------------------------------------
+// Assigned To — resource picker for the form
+// ---------------------------------------------------------------------------
+
+function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const { data } = useQuery({
+    queryKey: ['resources'],
+    queryFn: () => apiService.getResources(),
+    staleTime: 60_000,
+  });
+  const resources: { id: string; name: string; role: string; userId?: string | null }[] = data?.resources || [];
+
+  const current = value ? resources.find(r => r.userId === value || r.id === value) : null;
+
+  const filtered = resources.filter(r =>
+    search === '' ||
+    r.name.toLowerCase().includes(search.toLowerCase()) ||
+    r.role.toLowerCase().includes(search.toLowerCase())
+  );
+
+  useEffect(() => {
+    if (open) searchRef.current?.focus();
+  }, [open]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Assigned To</label>
+      <button
+        type="button"
+        className="input w-full text-left flex items-center justify-between gap-2"
+        onClick={() => setOpen(!open)}
+      >
+        <span className={current ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}>
+          {current ? current.name : 'Select resource...'}
+        </span>
+        <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden">
+          <div className="p-1.5">
+            <input
+              ref={searchRef}
+              type="text"
+              className="w-full text-xs px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:border-primary-400"
+              placeholder="Search resources..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape') setOpen(false); }}
+            />
+          </div>
+          {current && (
+            <button
+              type="button"
+              className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border-b border-gray-100 dark:border-gray-700"
+              onClick={() => { onChange(''); setOpen(false); setSearch(''); }}
+            >
+              Clear assignment
+            </button>
+          )}
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-gray-400 text-center">
+                {resources.length === 0 ? 'No resources — add them in Resources' : 'No matches'}
+              </div>
+            ) : (
+              filtered.slice(0, 30).map(r => {
+                const selected = current?.id === r.id;
+                return (
+                  <button
+                    type="button"
+                    key={r.id}
+                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${selected ? 'bg-primary-50 dark:bg-primary-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                    onClick={() => { onChange(r.userId || r.id); setOpen(false); setSearch(''); }}
+                  >
+                    <div className="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 flex items-center justify-center text-[8px] font-bold shrink-0">
+                      {r.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
+                      <div className="text-gray-400 dark:text-gray-500 truncate">{r.role}</div>
+                    </div>
+                    {selected && <span className="text-primary-600 text-[10px] font-medium">Current</span>}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function toInputDate(s?: string): string {
   if (!s) return '';
+  // Extract YYYY-MM-DD directly to avoid UTC timezone shift
+  const match = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) return match[1];
   try {
-    return new Date(s).toISOString().slice(0, 10);
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   } catch {
     return '';
   }
@@ -495,18 +607,11 @@ export function TaskFormModal({
             </div>
           </div>
 
-          {/* Assigned To (primary) */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Assigned To</label>
-            <input
-              type="text"
-              name="assignedTo"
-              value={form.assignedTo}
-              onChange={handleChange}
-              placeholder="Primary assignee"
-              className="input w-full"
-            />
-          </div>
+          {/* Assigned To (primary) — resource picker dropdown */}
+          <AssignedToPicker
+            value={form.assignedTo}
+            onChange={(resourceId) => setForm(f => ({ ...f, assignedTo: resourceId }))}
+          />
 
           {/* Multi-Resource Assignments */}
           <div>

@@ -23,6 +23,9 @@ function isSameDay(a: Date, b: Date): boolean {
 }
 
 function toDateOnly(s: string): Date {
+  // Parse YYYY-MM-DD as local date to avoid UTC timezone shift
+  const parts = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (parts) return new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
   const d = new Date(s);
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }

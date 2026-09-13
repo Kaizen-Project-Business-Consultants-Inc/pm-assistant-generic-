@@ -60,6 +60,12 @@ export const DAY_MS = 86_400_000;
 
 export function toDate(s?: string): Date | null {
   if (!s) return null;
+  // Parse YYYY-MM-DD as local date to avoid UTC timezone shift (off-by-one day)
+  const parts = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (parts) {
+    const d = new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
