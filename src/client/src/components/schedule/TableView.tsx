@@ -1133,7 +1133,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               <input
                 ref={el => { inputRef.current = el; }}
                 type="text"
-                className="w-full text-sm border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 font-medium text-gray-900 dark:text-white"
+                className="w-full text-sm border-0 bg-transparent px-0 py-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset font-medium text-gray-900 dark:text-white"
                 value={editValue}
                 onChange={e => setEditValue(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, task.id, 'name')}

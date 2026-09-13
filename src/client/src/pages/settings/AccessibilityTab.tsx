@@ -28,7 +28,7 @@ export const AccessibilityTab: React.FC = () => {
         <div className="space-y-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">High Contrast</p>
+              <p id="label-high-contrast" className="text-sm font-medium text-gray-900 dark:text-gray-100">High Contrast</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Increases contrast for better readability</p>
             </div>
             <button
@@ -39,13 +39,14 @@ export const AccessibilityTab: React.FC = () => {
               }`}
               role="switch"
               aria-checked={prefs.highContrast}
+              aria-labelledby="label-high-contrast"
             >
               <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${prefs.highContrast ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Reduced Motion</p>
+              <p id="label-reduced-motion" className="text-sm font-medium text-gray-900 dark:text-gray-100">Reduced Motion</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Minimizes animations and transitions</p>
             </div>
             <button
@@ -56,6 +57,7 @@ export const AccessibilityTab: React.FC = () => {
               }`}
               role="switch"
               aria-checked={prefs.reducedMotion}
+              aria-labelledby="label-reduced-motion"
             >
               <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${prefs.reducedMotion ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
@@ -106,7 +108,7 @@ export const AccessibilityTab: React.FC = () => {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">AI Narration</h2>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Enable Dashboard Narratives</p>
+            <p id="label-narration" className="text-sm font-medium text-gray-900 dark:text-gray-100">Enable Dashboard Narratives</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Show AI-generated plain-language summaries on dashboards</p>
           </div>
           <button
@@ -117,6 +119,7 @@ export const AccessibilityTab: React.FC = () => {
             }`}
             role="switch"
             aria-checked={prefs.narrationEnabled}
+            aria-labelledby="label-narration"
           >
             <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${prefs.narrationEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
           </button>

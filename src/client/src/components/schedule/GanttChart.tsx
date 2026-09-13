@@ -2353,7 +2353,7 @@ export function GanttChart({
                       type="text"
                       autoFocus
                       placeholder="Type task name and press Enter…"
-                      className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none"
+                      className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset"
                       onKeyDown={(e) => {
                         const input = e.currentTarget;
                         if (e.key === 'Enter' && input.value.trim()) {
@@ -2457,7 +2457,7 @@ export function GanttChart({
                       type="text"
                       autoFocus
                       placeholder="Type task name and press Enter…"
-                      className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none"
+                      className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset"
                       onKeyDown={(e) => {
                         const input = e.currentTarget;
                         if (e.key === 'Enter' && input.value.trim()) {
@@ -2525,7 +2525,7 @@ export function GanttChart({
                 <input
                   type="text"
                   placeholder={i === 0 ? 'Type a task name…' : ''}
-                  className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-gray-500"
+                  className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset focus:placeholder-gray-400 dark:focus:placeholder-gray-500"
                   onKeyDown={(e) => {
                     const input = e.currentTarget;
                     if (e.key === 'Enter' && input.value.trim()) {

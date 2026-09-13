@@ -71,12 +71,12 @@ export default {
         },
         // Semantic tokens (retuned)
         ai: {
-          primary: '#0d9488',
-          'primary-hover': '#0f766e',
-          surface: '#f0fdfa',
-          border: '#99f6e4',
-          muted: '#5eead4',
-          text: '#115e59',
+          primary: '#7c3aed',
+          'primary-hover': '#6d28d9',
+          surface: '#f5f3ff',
+          border: '#c4b5fd',
+          muted: '#a78bfa',
+          text: '#4c1d95',
         },
         confidence: {
           high: '#059669',
@@ -88,6 +88,13 @@ export default {
           high: '#ea580c',
           medium: '#d97706',
           low: '#059669',
+        },
+        status: {
+          complete: '#059669',
+          active: '#2563eb',
+          'not-started': '#6b7280',
+          cancelled: '#9ca3af',
+          overdue: '#dc2626',
         },
         sidebar: {
           bg: '#1c1917',
