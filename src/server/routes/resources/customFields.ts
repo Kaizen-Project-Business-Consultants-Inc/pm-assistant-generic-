@@ -1,8 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { customFieldService } from '../../services/CustomFieldService';
+import { customFieldRepository } from '../../database/CustomFieldRepository';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAccess';
 import logger from '../../utils/logger';
 
 export async function customFieldRoutes(fastify: FastifyInstance) {
@@ -38,10 +40,17 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // PUT /:id — update field
+  // PUT /:id — update field (editor minimum, handler-level check)
   fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = request.user!;
       const { id } = request.params as { id: string };
+      const existing = await customFieldRepository.findById(id);
+      if (!existing) return reply.status(404).send({ error: 'Custom field not found' });
+
+      const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, 'editor', reply);
+      if (!allowed) return;
+
       const body = request.body as { fieldLabel?: string; fieldType?: string; options?: string[]; isRequired?: boolean; sortOrder?: number };
       const field = await customFieldService.updateField(id, body);
       return { field };
@@ -51,10 +60,17 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // DELETE /:id
+  // DELETE /:id (manager minimum, handler-level check)
   fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = request.user!;
       const { id } = request.params as { id: string };
+      const existing = await customFieldRepository.findById(id);
+      if (!existing) return reply.status(404).send({ error: 'Custom field not found' });
+
+      const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, 'manager', reply);
+      if (!allowed) return;
+
       await customFieldService.deleteField(id);
       return { message: 'Custom field deleted' };
     } catch (error) {
@@ -78,14 +94,28 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // POST /values/:entityType/:entityId — bulk upsert values
+  // POST /values/:entityType/:entityId — bulk upsert values (editor minimum)
   fastify.post('/values/:entityType/:entityId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = request.user!;
       const { entityId } = request.params as { entityType: string; entityId: string };
-      const { values } = request.body as {
+      const body = request.body as {
+        projectId?: string;
         values: Array<{ fieldId: string; text?: string; number?: number; date?: string; boolean?: boolean }>;
       };
-      await customFieldService.bulkSetValues(entityId, values);
+
+      // Resolve projectId: prefer body, fall back to first field's project
+      let projectId = body.projectId;
+      if (!projectId && body.values.length > 0) {
+        const field = await customFieldRepository.findById(body.values[0].fieldId);
+        projectId = field?.projectId;
+      }
+      if (projectId) {
+        const allowed = await checkEntityProjectAccess(projectId, user.userId, user.role, 'editor', reply);
+        if (!allowed) return;
+      }
+
+      await customFieldService.bulkSetValues(entityId, body.values);
       return { message: 'Values saved' };
     } catch (error) {
       logger.error('Bulk set values error', { error });

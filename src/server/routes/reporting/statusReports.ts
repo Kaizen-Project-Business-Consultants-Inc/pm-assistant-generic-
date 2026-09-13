@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requirePaidTier } from '../../middleware/requireTier';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAccess';
 import { projectStatusReportService } from '../../services/ProjectStatusReportService';
 import { reportScheduleService } from '../../services/ReportScheduleService';
 import { userService } from '../../services/UserService';
@@ -35,7 +37,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
   // Generate a status report (background mode via WebSocket)
   // Trial users get a sample report synchronously (no AI tokens consumed).
   fastify.post('/generate', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
@@ -149,7 +151,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
 
   // Create a recurring schedule
   fastify.post('/schedule', {
-    preHandler: [requireScope('write'), requirePaidTier],
+    preHandler: [requireScope('write'), requirePaidTier, requireProjectAccess('editor')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
@@ -175,7 +177,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
 
   // List schedules for a project
   fastify.get('/schedules/:projectId', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -197,7 +199,15 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
 
       const schedule = await reportScheduleService.getById(id);
       if (!schedule) return reply.status(404).send({ error: 'Schedule not found' });
-      if (schedule.createdBy !== userId && request.user!.role !== 'admin') {
+
+      // Extract projectId from templateId pattern "status-report::<projectId>"
+      const projectId = schedule.templateId?.split('::')[1];
+      if (projectId) {
+        const allowed = await checkEntityProjectAccess(projectId, userId, request.user!.role, 'editor', reply);
+        if (!allowed) return;
+      }
+
+      if (schedule.createdBy !== userId && request.user!.role !== 'admin' && request.user!.role !== 'pmo') {
         return reply.status(403).send({ error: 'Not authorized to delete this schedule' });
       }
 

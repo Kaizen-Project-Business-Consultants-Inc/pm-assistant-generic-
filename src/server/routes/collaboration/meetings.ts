@@ -2,9 +2,12 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAccess';
 import { meetingService } from '../../services/MeetingService';
 import { meetingIntelligenceService } from '../../services/MeetingIntelligenceService';
 import { meetingActionItemService } from '../../services/MeetingActionItemService';
+import { meetingRepository } from '../../database/MeetingRepository';
 import { emailService } from '../../services/EmailService';
 
 const agendaItemSchema = z.object({
@@ -42,25 +45,33 @@ export async function meetingRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET / — list meetings for a project
-  fastify.get('/', { preHandler: [requireScope('read')] }, async (request: FastifyRequest) => {
+  fastify.get('/', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { projectId, status, type, from, to } = request.query as {
       projectId?: string; status?: string; type?: string; from?: string; to?: string;
     };
-    if (!projectId) throw new Error('projectId query parameter is required');
+    if (!projectId) return reply.status(400).send({ error: 'projectId query parameter is required' });
+
+    const allowed = await checkEntityProjectAccess(projectId, request.user!.userId, request.user!.role, 'viewer', reply);
+    if (!allowed) return;
+
     const meetings = await meetingService.getMeetings(projectId, { status, type, from, to });
     return { meetings };
   });
 
   // GET /upcoming — upcoming meetings for a project
-  fastify.get('/upcoming', { preHandler: [requireScope('read')] }, async (request: FastifyRequest) => {
+  fastify.get('/upcoming', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { projectId } = request.query as { projectId?: string };
-    if (!projectId) throw new Error('projectId query parameter is required');
+    if (!projectId) return reply.status(400).send({ error: 'projectId query parameter is required' });
+
+    const allowed = await checkEntityProjectAccess(projectId, request.user!.userId, request.user!.role, 'viewer', reply);
+    if (!allowed) return;
+
     const meetings = await meetingService.getUpcoming(projectId);
     return { meetings };
   });
 
   // POST / — create a meeting
-  fastify.post('/', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const parsed = createSchema.parse(request.body);
     const meeting = await meetingService.createMeeting(parsed.projectId, parsed, user.userId);
@@ -72,60 +83,102 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     const result = await meetingService.getMeeting(id);
     if (!result) return reply.status(404).send({ error: 'Meeting not found' });
+
+    const allowed = await checkEntityProjectAccess(result.meeting.projectId, request.user!.userId, request.user!.role, 'viewer', reply);
+    if (!allowed) return;
+
     return result;
   });
 
-  // PUT /:id — update meeting
-  fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  // PUT /:id — update meeting (editor)
+  fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
+    const meeting = await meetingRepository.findById(id);
+    if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
+
+    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'editor', reply);
+    if (!allowed) return;
+
     const parsed = updateSchema.parse(request.body);
     return meetingService.updateMeeting(id, parsed, user.userId);
   });
 
-  // DELETE /:id — delete meeting
+  // DELETE /:id — delete meeting (editor for own, manager for others)
   fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
+    const meeting = await meetingRepository.findById(id);
+    if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
+
+    const isOwner = meeting.createdBy === user.userId;
+    const minRole = isOwner ? 'editor' : 'manager';
+    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, minRole as any, reply);
+    if (!allowed) return;
+
     await meetingService.deleteMeeting(id, user.userId);
     return reply.status(204).send();
   });
 
-  // POST /:id/complete — mark meeting complete
-  fastify.post('/:id/complete', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  // POST /:id/complete — mark meeting complete (editor)
+  fastify.post('/:id/complete', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
+    const meeting = await meetingRepository.findById(id);
+    if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
+
+    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'editor', reply);
+    if (!allowed) return;
+
     return meetingService.completeMeeting(id, user.userId);
   });
 
-  // POST /:id/cancel — cancel meeting
-  fastify.post('/:id/cancel', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  // POST /:id/cancel — cancel meeting (editor)
+  fastify.post('/:id/cancel', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
+    const meeting = await meetingRepository.findById(id);
+    if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
+
+    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'editor', reply);
+    if (!allowed) return;
+
     return meetingService.cancelMeeting(id, user.userId);
   });
 
-  // POST /:id/link-analysis — link an existing analysis to this meeting
-  fastify.post('/:id/link-analysis', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  // POST /:id/link-analysis — link an existing analysis to this meeting (editor)
+  fastify.post('/:id/link-analysis', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
+    const meeting = await meetingRepository.findById(id);
+    if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
+
+    const allowed = await checkEntityProjectAccess(meeting.projectId, request.user!.userId, request.user!.role, 'editor', reply);
+    if (!allowed) return;
+
     const { analysisId } = (request.body as { analysisId?: string }) || {};
-    if (!analysisId) throw new Error('analysisId is required');
+    if (!analysisId) return reply.status(400).send({ error: 'analysisId is required' });
     await meetingService.linkAnalysis(id, analysisId);
     return { success: true };
   });
 
-  // POST /:id/import-actions — import AI action items from linked analysis
-  fastify.post('/:id/import-actions', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  // POST /:id/import-actions — import AI action items from linked analysis (editor)
+  fastify.post('/:id/import-actions', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
+    const meeting = await meetingRepository.findById(id);
+    if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
+
+    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'editor', reply);
+    if (!allowed) return;
+
     const { analysisId } = (request.body as { analysisId?: string }) || {};
-    if (!analysisId) throw new Error('analysisId is required');
+    if (!analysisId) return reply.status(400).send({ error: 'analysisId is required' });
     const imported = await meetingService.importActionItemsFromAnalysis(id, analysisId, user.userId);
     return { imported };
   });
 
-  // POST /sync-external — import a meeting from an external source (Read.ai, Otter.ai, etc.)
-  fastify.post('/sync-external', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // POST /sync-external — import a meeting from an external source
+  fastify.post('/sync-external', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const syncSchema = z.object({
       projectId: z.string().min(1),
@@ -145,7 +198,6 @@ export async function meetingRoutes(fastify: FastifyInstance) {
 
     const parsed = syncSchema.parse(request.body);
 
-    // Create the meeting record (completed, ad_hoc)
     const meeting = await meetingService.createMeeting(parsed.projectId, {
       title: parsed.title,
       meetingType: 'ad_hoc',
@@ -156,10 +208,8 @@ export async function meetingRoutes(fastify: FastifyInstance) {
       notes: parsed.summary,
     }, user.userId);
 
-    // Mark as completed
     await meetingService.completeMeeting(meeting.id, user.userId);
 
-    // Create action items
     const createdItems = [];
     if (parsed.actionItems && parsed.actionItems.length > 0) {
       for (const ai of parsed.actionItems) {
@@ -179,7 +229,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     });
   });
 
-  // POST /:id/send-minutes — email formatted meeting minutes to recipients
+  // POST /:id/send-minutes — email formatted meeting minutes (editor)
   fastify.post('/:id/send-minutes', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
@@ -193,7 +243,6 @@ export async function meetingRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'Maximum 50 recipients allowed' });
       }
 
-      // Validate emails
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       for (const email of body.recipientEmails) {
         if (!emailRegex.test(email)) {
@@ -203,6 +252,9 @@ export async function meetingRoutes(fastify: FastifyInstance) {
 
       const meetingData = await meetingService.getMeeting(id);
       if (!meetingData) return reply.status(404).send({ error: 'Meeting not found' });
+
+      const allowed = await checkEntityProjectAccess(meetingData.meeting.projectId, request.user!.userId, request.user!.role, 'editor', reply);
+      if (!allowed) return;
 
       const analysis = await meetingIntelligenceService.getAnalysis(body.analysisId);
       if (!analysis) return reply.status(404).send({ error: 'Analysis not found' });

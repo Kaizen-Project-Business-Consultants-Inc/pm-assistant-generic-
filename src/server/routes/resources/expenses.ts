@@ -1,8 +1,11 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { expenseService } from '../../services/ExpenseService';
+import { expenseRepository } from '../../database/ExpenseRepository';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAccess';
 
 const EXPENSE_CATEGORIES = ['labor', 'materials', 'software', 'hardware', 'travel', 'contractors', 'training', 'consulting', 'licenses', 'other'] as const;
 
@@ -27,7 +30,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST / — create expense
-  fastify.post('/', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const body = createExpenseSchema.parse(request.body);
@@ -40,7 +43,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
   });
 
   // GET /project/:projectId — list expenses
-  fastify.get('/project/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/project/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
       const { startDate, endDate } = request.query as { startDate?: string; endDate?: string };
@@ -52,7 +55,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
   });
 
   // GET /project/:projectId/summary — category breakdown
-  fastify.get('/project/:projectId/summary', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/project/:projectId/summary', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
       const categories = await expenseService.getSummaryByCategory(projectId);
@@ -63,13 +66,21 @@ export async function expenseRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // PUT /:id — update expense
+  // PUT /:id — update expense (editor for own, manager for others)
   fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = request.user!;
       const { id } = request.params as { id: string };
+      const existing = await expenseRepository.findById(id);
+      if (!existing) return reply.status(404).send({ error: 'Expense not found' });
+
+      const isOwner = existing.createdBy === user.userId;
+      const minRole = isOwner ? 'editor' : 'manager';
+      const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
+      if (!allowed) return;
+
       const body = updateExpenseSchema.parse(request.body);
       const expense = await expenseService.update(id, body);
-      if (!expense) return reply.status(404).send({ error: 'Expense not found' });
       return { expense };
     } catch (error: any) {
       if (error.name === 'ZodError') return reply.status(400).send({ error: 'Invalid data', details: error.errors });
@@ -77,12 +88,20 @@ export async function expenseRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // DELETE /:id — delete expense
+  // DELETE /:id — delete expense (editor for own, manager for others)
   fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = request.user!;
       const { id } = request.params as { id: string };
-      const deleted = await expenseService.delete(id);
-      if (!deleted) return reply.status(404).send({ error: 'Expense not found' });
+      const existing = await expenseRepository.findById(id);
+      if (!existing) return reply.status(404).send({ error: 'Expense not found' });
+
+      const isOwner = existing.createdBy === user.userId;
+      const minRole = isOwner ? 'editor' : 'manager';
+      const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
+      if (!allowed) return;
+
+      await expenseService.delete(id);
       return { message: 'Expense deleted' };
     } catch {
       return reply.status(500).send({ error: 'Failed to delete expense' });

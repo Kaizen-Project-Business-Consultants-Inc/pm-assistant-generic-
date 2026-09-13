@@ -2,8 +2,13 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { timeEntryService } from '../../services/TimeEntryService';
 import { timeAnomalyService } from '../../services/TimeAnomalyService';
+import { timeEntryRepository } from '../../database/TimeEntryRepository';
+import { timesheetSubmissionRepository } from '../../database/TimesheetSubmissionRepository';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
+import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAccess';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import logger from '../../utils/logger';
 
@@ -36,8 +41,8 @@ const updateTimeEntrySchema = z.object({
 export async function timeEntryRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
-  // POST / — log entry
-  fastify.post('/', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // POST / — log entry (viewers can log time on assigned tasks)
+  fastify.post('/', { preHandler: [viewerWriteBypass()] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const body = createTimeEntrySchema.parse(request.body);
@@ -62,8 +67,8 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // GET /project/:projectId — entries for a project (optionally filtered by userId)
-  fastify.get('/project/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // GET /project/:projectId — entries for a project
+  fastify.get('/project/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
       const { startDate, endDate, userId } = request.query as { startDate?: string; endDate?: string; userId?: string };
@@ -95,7 +100,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   });
 
   // GET /actual-vs-estimated/:scheduleId
-  fastify.get('/actual-vs-estimated/:scheduleId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/actual-vs-estimated/:scheduleId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
       const data = await timeEntryService.getActualVsEstimated(scheduleId);
@@ -106,8 +111,8 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // POST /submit — submit timesheet for approval
-  fastify.post('/submit', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // POST /submit — submit timesheet for approval (any member can submit their own)
+  fastify.post('/submit', { preHandler: [requireScope('write'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const body = submitTimesheetSchema.parse(request.body);
@@ -121,11 +126,18 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // POST /recall/:submissionId — recall submitted timesheet
+  // POST /recall/:submissionId — recall submitted timesheet (own submission, viewer level)
   fastify.post('/recall/:submissionId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { submissionId } = request.params as { submissionId: string };
+
+      const sub = await timesheetSubmissionRepository.findById(submissionId);
+      if (!sub) return reply.status(404).send({ error: 'Submission not found' });
+
+      const allowed = await checkEntityProjectAccess(sub.projectId, user.userId, user.role, 'viewer', reply);
+      if (!allowed) return;
+
       await timeEntryService.recallTimesheet(submissionId, user.userId);
       return { message: 'Timesheet recalled' };
     } catch (error: any) {
@@ -160,11 +172,18 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // POST /approve/:submissionId — approve submission
+  // POST /approve/:submissionId — approve submission (manager level)
   fastify.post('/approve/:submissionId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { submissionId } = request.params as { submissionId: string };
+
+      const sub = await timesheetSubmissionRepository.findById(submissionId);
+      if (!sub) return reply.status(404).send({ error: 'Submission not found' });
+
+      const allowed = await checkEntityProjectAccess(sub.projectId, user.userId, user.role, 'manager', reply);
+      if (!allowed) return;
+
       await timeEntryService.approveTimesheet(submissionId, user.userId);
       return { message: 'Timesheet approved' };
     } catch (error: any) {
@@ -174,11 +193,18 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // POST /reject/:submissionId — reject submission
+  // POST /reject/:submissionId — reject submission (manager level)
   fastify.post('/reject/:submissionId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { submissionId } = request.params as { submissionId: string };
+
+      const sub = await timesheetSubmissionRepository.findById(submissionId);
+      if (!sub) return reply.status(404).send({ error: 'Submission not found' });
+
+      const allowed = await checkEntityProjectAccess(sub.projectId, user.userId, user.role, 'manager', reply);
+      if (!allowed) return;
+
       const body = rejectTimesheetSchema.parse(request.body);
       await timeEntryService.rejectTimesheet(submissionId, user.userId, body.reason);
       return { message: 'Timesheet rejected' };
@@ -204,7 +230,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   });
 
   // GET /burndown/:projectId — burndown forecast
-  fastify.get('/burndown/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/burndown/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
       const forecast = await timeAnomalyService.getBurndownForecast(projectId);
@@ -216,7 +242,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   });
 
   // GET /trends/:projectId — trend analysis
-  fastify.get('/trends/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/trends/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
       const { weeks } = request.query as { weeks?: string };
@@ -229,7 +255,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   });
 
   // GET /heatmap/:projectId — utilization heatmap
-  fastify.get('/heatmap/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/heatmap/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
       const { startDate, endDate } = request.query as { startDate?: string; endDate?: string };
@@ -249,6 +275,10 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       const user = request.user!;
       const { projectId, date } = request.query as { projectId?: string; date?: string };
       if (!projectId) return reply.status(400).send({ error: 'projectId is required' });
+
+      const allowed = await checkEntityProjectAccess(projectId, user.userId, user.role, 'viewer', reply);
+      if (!allowed) return;
+
       const suggestion = await timeAnomalyService.getTimeSuggestion(user.userId, projectId, date || new Date().toISOString().slice(0, 10));
       return { suggestion };
     } catch (error) {
@@ -262,6 +292,10 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     try {
       const { anomaly, projectId } = request.body as { anomaly: any; projectId: string };
       if (!anomaly || !projectId) return reply.status(400).send({ error: 'anomaly and projectId are required' });
+
+      const allowed = await checkEntityProjectAccess(projectId, request.user!.userId, request.user!.role, 'viewer', reply);
+      if (!allowed) return;
+
       const explanation = await timeAnomalyService.explainAnomaly(anomaly, projectId);
       return { explanation };
     } catch (error) {
@@ -271,11 +305,10 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   });
 
   // GET /anomalies/:projectId — detect time anomalies
-  fastify.get('/anomalies/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/anomalies/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
       const { startDate, endDate } = request.query as { startDate?: string; endDate?: string };
-      // Default to last 30 days if no range specified
       const end = endDate || new Date().toISOString().slice(0, 10);
       const start = startDate || (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10); })();
       const anomalies = await timeAnomalyService.detectAnomalies(projectId, start, end);
@@ -287,11 +320,10 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   });
 
   // GET /compliance/:projectId — compliance status for a week
-  fastify.get('/compliance/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/compliance/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
       const { weekStart } = request.query as { weekStart?: string };
-      // Default to current week's Monday
       const ws = weekStart || (() => {
         const d = new Date();
         const day = d.getDay();
@@ -307,11 +339,10 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   });
 
   // GET /weekly-review/:projectId — weekly review pack
-  fastify.get('/weekly-review/:projectId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/weekly-review/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
       const { weekStart } = request.query as { weekStart?: string };
-      // Default to current week's Monday
       const ws = weekStart || (() => {
         const d = new Date();
         const day = d.getDay();
@@ -326,13 +357,23 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // PUT /:id — update
+  // PUT /:id — update (viewer can edit own entries, others need editor)
   fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = request.user!;
       const { id } = request.params as { id: string };
+
+      const existing = await timeEntryRepository.findById(id);
+      if (!existing) return reply.status(404).send({ error: 'Time entry not found' });
+
+      // Viewers can only edit their own entries
+      const isOwner = existing.userId === user.userId;
+      const minRole = isOwner ? 'viewer' : 'editor';
+      const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
+      if (!allowed) return;
+
       const body = updateTimeEntrySchema.parse(request.body);
       const entry = await timeEntryService.update(id, body);
-      const user = request.user!;
       automationEventBus.emit({ type: 'time_entry.updated', entityType: 'time_entry', entityId: id, projectId: entry?.projectId || '', userId: user.userId, payload: entry, timestamp: new Date().toISOString() }).catch(() => {});
       return { entry };
     } catch (error: any) {
@@ -342,12 +383,21 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // DELETE /:id
+  // DELETE /:id (editor for own, manager for others — viewers cannot delete)
   fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { id } = request.params as { id: string };
       const user = request.user!;
-      automationEventBus.emit({ type: 'time_entry.deleted', entityType: 'time_entry', entityId: id, projectId: '', userId: user.userId, payload: { id }, timestamp: new Date().toISOString() }).catch(() => {});
+      const { id } = request.params as { id: string };
+
+      const existing = await timeEntryRepository.findById(id);
+      if (!existing) return reply.status(404).send({ error: 'Time entry not found' });
+
+      const isOwner = existing.userId === user.userId;
+      const minRole = isOwner ? 'editor' : 'manager';
+      const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
+      if (!allowed) return;
+
+      automationEventBus.emit({ type: 'time_entry.deleted', entityType: 'time_entry', entityId: id, projectId: existing.projectId, userId: user.userId, payload: { id }, timestamp: new Date().toISOString() }).catch(() => {});
       await timeEntryService.delete(id);
       return { message: 'Time entry deleted' };
     } catch (error: any) {

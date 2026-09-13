@@ -5,6 +5,7 @@ import fsPromises from 'fs/promises';
 import path from 'path';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { validateMimeType } from '../../utils/mimeValidator';
 import { projectDocumentRepository } from '../../database/ProjectDocumentRepository';
 import { documentEntityLinkRepository } from '../../database/DocumentEntityLinkRepository';
@@ -28,7 +29,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST /:projectId/documents/upload — multipart file upload
-  fastify.post('/:projectId/documents/upload', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:projectId/documents/upload', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { projectId } = request.params as { projectId: string };
@@ -83,7 +84,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:projectId/documents — list documents with filters
-  fastify.get('/:projectId/documents', { preHandler: [requireScope('read')] }, async (request: FastifyRequest) => {
+  fastify.get('/:projectId/documents', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest) => {
     const { projectId } = request.params as { projectId: string };
     const query = request.query as {
       documentType?: string;
@@ -103,14 +104,14 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:projectId/documents/folders — list distinct folder names
-  fastify.get('/:projectId/documents/folders', { preHandler: [requireScope('read')] }, async (request: FastifyRequest) => {
+  fastify.get('/:projectId/documents/folders', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest) => {
     const { projectId } = request.params as { projectId: string };
     const folders = await projectDocumentRepository.getDistinctFolders(projectId);
     return { folders };
   });
 
   // PATCH /:projectId/documents/:documentId — update description, folder, pin status
-  fastify.patch('/:projectId/documents/:documentId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.patch('/:projectId/documents/:documentId', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { documentId } = request.params as { projectId: string; documentId: string };
     const body = request.body as { description?: string | null; folder?: string | null; isPinned?: boolean };
 
@@ -128,7 +129,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:projectId/documents/search — semantic search with text fallback
-  fastify.get('/:projectId/documents/search', { preHandler: [requireScope('read')] }, async (request: FastifyRequest) => {
+  fastify.get('/:projectId/documents/search', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest) => {
     const { projectId } = request.params as { projectId: string };
     const { q, topK } = request.query as { q?: string; topK?: string };
 
@@ -155,7 +156,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:projectId/documents/:documentId — full document with insights + linked entities
-  fastify.get('/:projectId/documents/:documentId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:projectId/documents/:documentId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { documentId } = request.params as { projectId: string; documentId: string };
 
     const document = await projectDocumentRepository.findById(documentId);
@@ -167,7 +168,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:projectId/documents/:documentId/download — stream file back to client
-  fastify.get('/:projectId/documents/:documentId/download', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:projectId/documents/:documentId/download', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { projectId, documentId } = request.params as { projectId: string; documentId: string };
 
     const document = await projectDocumentRepository.findById(documentId);
@@ -207,7 +208,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:projectId/documents/:documentId — remove document + embeddings + entity links
-  fastify.delete('/:projectId/documents/:documentId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:projectId/documents/:documentId', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { projectId, documentId } = request.params as { projectId: string; documentId: string };
 
     const document = await projectDocumentRepository.findById(documentId);
@@ -233,7 +234,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:projectId/documents/:documentId/reprocess — re-run AI processing
-  fastify.post('/:projectId/documents/:documentId/reprocess', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:projectId/documents/:documentId/reprocess', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { projectId, documentId } = request.params as { projectId: string; documentId: string };
 
