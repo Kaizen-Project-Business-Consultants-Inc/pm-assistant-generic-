@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Kanban, Settings, Users, ShieldCheck } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { Avatar } from '../ui/Avatar';
 
 interface BoardTask {
   id: string;
@@ -48,30 +49,6 @@ const priorityBadge: Record<string, { bg: string; text: string; darkBg: string; 
   low: { bg: 'bg-green-100', text: 'text-green-700', darkBg: 'dark:bg-green-900/30', darkText: 'dark:text-green-300' },
 };
 
-const AVATAR_COLORS = [
-  { bg: 'bg-blue-500', text: 'text-white' },
-  { bg: 'bg-emerald-500', text: 'text-white' },
-  { bg: 'bg-purple-500', text: 'text-white' },
-  { bg: 'bg-amber-500', text: 'text-white' },
-  { bg: 'bg-rose-500', text: 'text-white' },
-  { bg: 'bg-cyan-500', text: 'text-white' },
-  { bg: 'bg-indigo-500', text: 'text-white' },
-  { bg: 'bg-pink-500', text: 'text-white' },
-];
-
-function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-function getAvatarColor(name: string) {
-  return AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length];
-}
-
-function getInitials(name: string): string {
-  return name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
-}
 
 function getPoints(task: BoardTask): number {
   return task.story_points ?? task.storyPoints ?? 0;
@@ -108,7 +85,7 @@ const SprintCard = memo(function SprintCard({
 }: SprintCardProps) {
   const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
   const points = getPoints(task);
-  const avatarColor = task.assignedTo ? getAvatarColor(task.assignedTo) : null;
+
   const ac = getAcCount(task.acceptanceCriteria);
 
   return (
@@ -178,11 +155,9 @@ const SprintCard = memo(function SprintCard({
           </span>
         )}
       </div>
-      {task.assignedTo && avatarColor && (
+      {task.assignedTo && (
         <div className="mt-2 flex items-center gap-1.5">
-          <div className={`w-5 h-5 rounded-full ${avatarColor.bg} ${avatarColor.text} flex items-center justify-center text-[8px] font-bold`}>
-            {getInitials(task.assignedTo)}
-          </div>
+          <Avatar name={task.assignedTo} size="xs" />
           <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{task.assignedTo}</span>
         </div>
       )}
@@ -377,9 +352,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
             <div className="px-4 py-2 bg-gray-100 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
               <div className="flex items-center gap-2">
                 {group.key !== '__unassigned' && (
-                  <div className={`w-5 h-5 rounded-full ${getAvatarColor(group.label).bg} ${getAvatarColor(group.label).text} flex items-center justify-center text-[8px] font-bold`}>
-                    {getInitials(group.label)}
-                  </div>
+                  <Avatar name={group.label} size="xs" />
                 )}
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">{group.label}</span>
                 <span className="text-xs text-gray-400 dark:text-gray-500">{group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}</span>

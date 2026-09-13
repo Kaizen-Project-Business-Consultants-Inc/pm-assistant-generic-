@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { Avatar } from '../ui/Avatar';
 
 interface Resource {
   id: string;
@@ -15,10 +16,6 @@ interface ResourcePickerDropdownProps {
   onSelect: (userId: string, resourceName: string) => void;
   onClear: () => void;
   onClose: () => void;
-}
-
-function getInitials(name: string): string {
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
 export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: ResourcePickerDropdownProps) {
@@ -107,9 +104,7 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
                   onSelect(r.id, r.name);
                 }}
               >
-                <div className="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 flex items-center justify-center text-[8px] font-bold shrink-0">
-                  {getInitials(r.name)}
-                </div>
+                <Avatar name={r.name} size="xs" />
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
                   <div className="text-gray-400 dark:text-gray-500 truncate">{r.role}</div>

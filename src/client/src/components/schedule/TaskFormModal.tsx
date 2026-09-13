@@ -3,6 +3,7 @@ import { X, Save, Trash2, Sparkles, ChevronDown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { GanttTask } from './GanttChart';
 import { TaskActivityPanel } from './TaskActivityPanel';
+import { Avatar } from '../ui/Avatar';
 import { TimeLogForm } from '../timetracking/TimeLogForm';
 import { CustomFieldsSection } from '../customfields/CustomFieldsSection';
 import { AttachmentPanel } from '../attachments/AttachmentPanel';
@@ -161,9 +162,7 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
                     className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${selected ? 'bg-primary-50 dark:bg-primary-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
                     onClick={() => { onChange(r.id); setOpen(false); setSearch(''); }}
                   >
-                    <div className="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 flex items-center justify-center text-[8px] font-bold shrink-0">
-                      {r.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
-                    </div>
+                    <Avatar name={r.name} size="xs" />
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
                       <div className="text-gray-400 dark:text-gray-500 truncate">{r.role}</div>

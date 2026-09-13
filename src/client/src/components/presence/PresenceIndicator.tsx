@@ -1,3 +1,5 @@
+import { getInitials } from '../ui/Avatar';
+
 interface PresenceUser {
   userId: string;
   username: string;
@@ -17,15 +19,6 @@ interface PresenceChipProps {
 }
 
 type PresenceIndicatorProps = PresenceAvatarsProps | PresenceChipProps;
-
-function getInitials(username: string): string {
-  return username
-    .split(/[\s._-]+/)
-    .map(p => p[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2) || '?';
-}
 
 export function PresenceIndicator(props: PresenceIndicatorProps) {
   if (props.users.length === 0) return null;

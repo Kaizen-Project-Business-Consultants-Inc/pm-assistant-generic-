@@ -30,6 +30,7 @@ import {
   X,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { Avatar } from '../../components/ui/Avatar';
 import { ProjectBriefCard } from '../../components/project/ProjectBriefCard';
 import { CustomFieldsSection } from '../../components/customfields/CustomFieldsSection';
 import { CustomFieldManager } from '../../components/customfields/CustomFieldManager';
@@ -1110,15 +1111,9 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
             <div className="space-y-3">
               {visibleMembers.map((m: any, idx: number) => {
                 const name = m.user?.name || m.name || m.email || 'Unknown';
-                const initials = name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
-                const colors = [
-                  'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-teal-500',
-                ];
                 return (
                   <div key={m.id || idx} className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium ${colors[idx % colors.length]}`}>
-                      {initials}
-                    </div>
+                    <Avatar name={name} size="lg" />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{name}</p>
                     </div>

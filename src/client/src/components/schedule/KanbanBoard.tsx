@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { Avatar } from '../ui/Avatar';
 
 export interface KanbanTask {
   id: string;
@@ -49,14 +50,6 @@ const priorityBadge: Record<string, { bg: string; text: string }> = {
   low: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300' },
 };
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 function formatDate(s?: string): string {
   if (!s) return '';
@@ -417,9 +410,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                       {/* Assignee */}
                       {task.assignedTo && (
                         <div className="mt-2 flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[8px] font-bold">
-                            {getInitials(task.assignedTo)}
-                          </div>
+                          <Avatar name={task.assignedTo} size="xs" />
                           <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{task.assignedTo}</span>
                         </div>
                       )}

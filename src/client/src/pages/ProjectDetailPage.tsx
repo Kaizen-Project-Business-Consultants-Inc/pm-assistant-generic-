@@ -31,7 +31,7 @@ import { PresenceIndicator } from '../components/presence/PresenceIndicator';
 
 // Lazy-loaded tab components
 const OverviewTab = lazy(() => import('./ProjectDetailPage/OverviewTab').then(m => ({ default: m.OverviewTab })));
-const AIInsightsTab = lazy(() => import('./ProjectDetailPage/AIInsightsTab').then(m => ({ default: m.AIInsightsTab })));
+const InsightsTab = lazy(() => import('./ProjectDetailPage/InsightsTab').then(m => ({ default: m.InsightsTab })));
 const ScenariosTab = lazy(() => import('./ProjectDetailPage/ScenariosTab').then(m => ({ default: m.ScenariosTab })));
 const AgentActivityTab = lazy(() => import('./ProjectDetailPage/AgentActivityTab').then(m => ({ default: m.AgentActivityTab })));
 const RAIDTab = lazy(() => import('./ProjectDetailPage/RAIDTab').then(m => ({ default: m.RAIDTab })));
@@ -39,7 +39,6 @@ const ScheduleTab = lazy(() => import('./ProjectDetailPage/ScheduleTab').then(m 
 const ChangeRequestsTab = lazy(() => import('./ProjectDetailPage/ChangeRequestsTab').then(m => ({ default: m.ChangeRequestsTab })));
 const SprintsTab = lazy(() => import('./ProjectDetailPage/SprintsTab').then(m => ({ default: m.SprintsTab })));
 const TeamTab = lazy(() => import('./ProjectDetailPage/TeamTab').then(m => ({ default: m.TeamTab })));
-const PerformancePanel = lazy(() => import('../components/evm/PerformancePanel').then(m => ({ default: m.PerformancePanel })));
 const ResourcesTab = lazy(() => import('../components/project/ResourcesTab').then(m => ({ default: m.ResourcesTab })));
 const BacklogView = lazy(() => import('../components/backlog/BacklogView').then(m => ({ default: m.BacklogView })));
 const TimeTrackingTab = lazy(() => import('../components/project/TimeTrackingTab').then(m => ({ default: m.TimeTrackingTab })));
@@ -48,7 +47,7 @@ const AttachmentPanel = lazy(() => import('../components/attachments/AttachmentP
 const AutomationsTab = lazy(() => import('./ProjectDetailPage/AutomationsTab').then(m => ({ default: m.AutomationsTab })));
 const DocumentsTab = lazy(() => import('./ProjectDetailPage/DocumentsTab').then(m => ({ default: m.DocumentsTab })));
 
-type Tab = 'overview' | 'schedule' | 'raid' | 'ai-insights' | 'performance' | 'scenarios' | 'team' | 'agent-activity' | 'change-requests' | 'sprints' | 'backlog' | 'resources' | 'time' | 'files' | 'budget' | 'automations' | 'documents';
+type Tab = 'overview' | 'schedule' | 'raid' | 'ai-insights' | 'performance' | 'insights' | 'scenarios' | 'team' | 'agent-activity' | 'change-requests' | 'sprints' | 'backlog' | 'resources' | 'time' | 'files' | 'budget' | 'automations' | 'documents';
 
 
 const statusStyles: Record<string, { label: string; color: string }> = {
@@ -78,7 +77,7 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const validTabs: Tab[] = ['overview', 'schedule', 'raid', 'ai-insights', 'performance', 'scenarios', 'team', 'agent-activity', 'change-requests', 'sprints', 'backlog', 'resources', 'time', 'files', 'budget', 'automations', 'documents'];
+  const validTabs: Tab[] = ['overview', 'schedule', 'raid', 'insights', 'ai-insights', 'performance', 'scenarios', 'team', 'agent-activity', 'change-requests', 'sprints', 'backlog', 'resources', 'time', 'files', 'budget', 'automations', 'documents'];
   const tabParam = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTabState] = useState<Tab>(tabParam && validTabs.includes(tabParam) ? tabParam : 'overview');
   const setActiveTab = (tab: Tab) => {
@@ -639,8 +638,7 @@ export function ProjectDetailPage() {
         {activeTab === 'overview' && <OverviewTab project={project} onNavigateToTab={(tab) => setActiveTab(tab as Tab)} canEdit={canEditStatus} presenceEditors={presenceEditors} currentUserId={user?.id} />}
         {activeTab === 'raid' && <RAIDTab projectId={id!} projectName={project.name} />}
         {activeTab === 'schedule' && <ScheduleTab projectId={id!} projectName={project.name} projectStartDate={project.startDate || project.start_date} defaultViewMode={getDefaultViewMode(methodology)} />}
-        {activeTab === 'ai-insights' && <AIInsightsTab projectId={id!} />}
-        {activeTab === 'performance' && <PerformancePanel projectId={id!} onNavigate={(tab) => setActiveTab(tab as Tab)} />}
+        {(activeTab === 'insights' || activeTab === 'ai-insights' || activeTab === 'performance') && <InsightsTab projectId={id!} onNavigate={(tab) => setActiveTab(tab as Tab)} />}
         {activeTab === 'scenarios' && <ScenariosTab projectId={id!} />}
         {activeTab === 'team' && <TeamTab projectId={id!} />}
         {activeTab === 'agent-activity' && <AgentActivityTab projectId={id!} />}

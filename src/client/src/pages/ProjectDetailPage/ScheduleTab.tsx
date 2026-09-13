@@ -935,94 +935,97 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
 
   return (
     <>
-      <ScheduleToolbar
-        viewMode={viewMode}
-        tasksCount={tasks.length}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onToggleFilters={() => setShowFilters(!showFilters)}
-        hasActiveFilters={hasActiveFilters}
-        activeFilterCount={[filterStatus, filterPriority, filterAssignee].filter(Boolean).length}
-        columnState={columnState}
-        showCriticalPath={showCriticalPath}
-        onCriticalPathChange={setShowCriticalPath}
-        overflowMenu={
-          <ScheduleOverflowMenu
-            schedule={schedule}
-            projectId={projectId}
-            baselines={baselines}
-            selectedBaselineId={selectedBaselineId}
-            setSelectedBaselineId={setSelectedBaselineId}
-            showComparison={showComparison}
-            setShowComparison={setShowComparison}
-            createBaselineMutation={createBaselineMutation}
-            scenarios={scenarios}
-            selectedScenarioId={selectedScenarioId}
-            setSelectedScenarioId={setSelectedScenarioId}
-            showScenarioCompare={showScenarioCompare}
-            setShowScenarioCompare={setShowScenarioCompare}
-            setShowImportModal={setShowImportModal}
-            setShowReschedulePanel={setShowReschedulePanel}
-            levelingBusy={levelingBusy}
-            onLevelResources={async () => {
-              setLevelingBusy(true);
-              try {
-                const res = await apiService.levelResources(schedule.id);
-                const adjustments = res?.result?.adjustedTasks || res?.adjustedTasks || [];
-                setLevelingResult(adjustments.length === 0 ? [] : adjustments);
-              } catch {
-                setLevelingResult([]);
-              } finally {
-                setLevelingBusy(false);
-              }
-            }}
-            exportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
-            queryClient={queryClient}
-            onDeleteSchedule={() => setShowDeleteConfirm(true)}
-            onCreateScenario={() => {
-              setScenarioName(`Scenario ${new Date().toLocaleDateString()}`);
-              setShowScenarioPrompt(true);
-            }}
-          />
-        }
-        onExportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
-        filteredCount={filteredTasks.length}
-        totalCount={tasks.length}
-      />
-
-      {/* Quick filter pills */}
-      {tasks.length > 0 && (
-        <QuickFilterPills
-          activeFilter={quickFilter}
-          onFilterChange={handleQuickFilterChange}
-          dueWeeks={dueWeeks}
-          onDueWeeksChange={handleDueWeeksChange}
-          counts={quickFilterCounts}
-          thresholds={riskThresholds}
-          onThresholdsChange={handleThresholdsChange}
-        />
-      )}
-
-      {/* Expanded filter dropdowns (shown when toggled) */}
-      {showFilters && tasks.length > 0 && (
-        <ScheduleFilterBar
-          filterStatus={filterStatus}
-          filterPriority={filterPriority}
-          filterAssignee={filterAssignee}
-          onFilterStatusChange={setFilterStatus}
-          onFilterPriorityChange={setFilterPriority}
-          onFilterAssigneeChange={setFilterAssignee}
-          uniqueStatuses={uniqueStatuses}
-          uniquePriorities={uniquePriorities}
-          uniqueAssignees={uniqueAssignees}
+      {/* Row 1: Toolbar + Quick filter pills (merged) */}
+      <div className="flex items-center gap-2 flex-wrap mb-1">
+        <ScheduleToolbar
+          viewMode={viewMode}
+          tasksCount={tasks.length}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onToggleFilters={() => setShowFilters(!showFilters)}
           hasActiveFilters={hasActiveFilters}
-          onClearAll={clearAllFilters}
+          activeFilterCount={[filterStatus, filterPriority, filterAssignee].filter(Boolean).length}
+          columnState={columnState}
+          showCriticalPath={showCriticalPath}
+          onCriticalPathChange={setShowCriticalPath}
+          overflowMenu={
+            <ScheduleOverflowMenu
+              schedule={schedule}
+              projectId={projectId}
+              baselines={baselines}
+              selectedBaselineId={selectedBaselineId}
+              setSelectedBaselineId={setSelectedBaselineId}
+              showComparison={showComparison}
+              setShowComparison={setShowComparison}
+              createBaselineMutation={createBaselineMutation}
+              scenarios={scenarios}
+              selectedScenarioId={selectedScenarioId}
+              setSelectedScenarioId={setSelectedScenarioId}
+              showScenarioCompare={showScenarioCompare}
+              setShowScenarioCompare={setShowScenarioCompare}
+              setShowImportModal={setShowImportModal}
+              setShowReschedulePanel={setShowReschedulePanel}
+              levelingBusy={levelingBusy}
+              onLevelResources={async () => {
+                setLevelingBusy(true);
+                try {
+                  const res = await apiService.levelResources(schedule.id);
+                  const adjustments = res?.result?.adjustedTasks || res?.adjustedTasks || [];
+                  setLevelingResult(adjustments.length === 0 ? [] : adjustments);
+                } catch {
+                  setLevelingResult([]);
+                } finally {
+                  setLevelingBusy(false);
+                }
+              }}
+              exportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
+              queryClient={queryClient}
+              onDeleteSchedule={() => setShowDeleteConfirm(true)}
+              onCreateScenario={() => {
+                setScenarioName(`Scenario ${new Date().toLocaleDateString()}`);
+                setShowScenarioPrompt(true);
+              }}
+            />
+          }
+          onExportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
+          filteredCount={filteredTasks.length}
+          totalCount={tasks.length}
         />
-      )}
+        {tasks.length > 0 && (
+          <QuickFilterPills
+            activeFilter={quickFilter}
+            onFilterChange={handleQuickFilterChange}
+            dueWeeks={dueWeeks}
+            onDueWeeksChange={handleDueWeeksChange}
+            counts={quickFilterCounts}
+            thresholds={riskThresholds}
+            onThresholdsChange={handleThresholdsChange}
+          />
+        )}
+      </div>
 
-      {/* Schedule Summary Bar */}
-      {filteredTasks.length > 0 && (
-        <ScheduleSummaryBar stats={taskStats} />
+      {/* Row 2: Filters + Summary (merged) */}
+      {tasks.length > 0 && (showFilters || filteredTasks.length > 0) && (
+        <div className="flex items-center gap-3 flex-wrap mb-1">
+          {showFilters && (
+            <ScheduleFilterBar
+              filterStatus={filterStatus}
+              filterPriority={filterPriority}
+              filterAssignee={filterAssignee}
+              onFilterStatusChange={setFilterStatus}
+              onFilterPriorityChange={setFilterPriority}
+              onFilterAssigneeChange={setFilterAssignee}
+              uniqueStatuses={uniqueStatuses}
+              uniquePriorities={uniquePriorities}
+              uniqueAssignees={uniqueAssignees}
+              hasActiveFilters={hasActiveFilters}
+              onClearAll={clearAllFilters}
+            />
+          )}
+          {filteredTasks.length > 0 && (
+            <ScheduleSummaryBar stats={taskStats} />
+          )}
+        </div>
       )}
 
       {showCriticalPath && cpmData && (

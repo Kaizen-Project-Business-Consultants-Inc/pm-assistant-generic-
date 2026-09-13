@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { Avatar, getInitials } from '../ui/Avatar';
 
 interface TaskAssignment {
   id: string;
@@ -21,10 +22,6 @@ interface ResourceQuickAssignProps {
   taskId: string;
   assignments: TaskAssignment[];
   onUpdate: (taskId: string, data: Record<string, unknown>) => void;
-}
-
-function getInitials(name: string): string {
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
 export function ResourceQuickAssign({ taskId, assignments, onUpdate }: ResourceQuickAssignProps) {
@@ -144,9 +141,7 @@ export function ResourceQuickAssign({ taskId, assignments, onUpdate }: ResourceQ
                   className="w-full text-left px-3 py-1.5 text-xs hover:bg-primary-50 dark:hover:bg-primary-900/30 flex items-center gap-2 transition-colors"
                   onClick={(e) => { e.stopPropagation(); handleAdd(r.id); }}
                 >
-                  <div className="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 flex items-center justify-center text-[8px] font-bold shrink-0">
-                    {getInitials(r.name)}
-                  </div>
+                  <Avatar name={r.name} size="xs" />
                   <div className="min-w-0">
                     <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
                     <div className="text-gray-400 dark:text-gray-500 truncate">{r.role}</div>

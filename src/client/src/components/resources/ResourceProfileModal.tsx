@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X, User, Briefcase, Clock, TrendingUp } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { UtilizationTrendChart } from './UtilizationTrendChart';
+import { getInitials, getAvatarColor } from '../ui/Avatar';
 
 interface ResourceProfileModalProps {
   resourceId: string;
@@ -49,8 +50,8 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
           <div className="p-5 space-y-5">
             {/* Header */}
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 flex items-center justify-center text-lg font-bold flex-shrink-0">
-                {resource.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+              <div className={`w-14 h-14 rounded-full ${getAvatarColor(resource.name)} text-white flex items-center justify-center text-lg font-bold flex-shrink-0`}>
+                {getInitials(resource.name)}
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{resource.name}</h3>

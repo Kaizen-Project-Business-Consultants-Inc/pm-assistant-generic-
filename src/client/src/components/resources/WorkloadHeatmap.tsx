@@ -1,3 +1,4 @@
+import { Avatar } from '../ui/Avatar';
 // WorkloadHeatmap component
 
 interface WeeklyUtilization {
@@ -57,15 +58,6 @@ function formatWeek(dateStr: string): string {
   }
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
   const weeks = workload.length > 0 ? workload[0].weeks : [];
 
@@ -104,9 +96,7 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                   <tr key={rw.resourceId} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-700/50">
                     <td className="px-3 py-2 sticky left-0 bg-white dark:bg-gray-800">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 flex items-center justify-center text-[8px] font-bold">
-                          {getInitials(rw.resourceName)}
-                        </div>
+                        <Avatar name={rw.resourceName} size="sm" />
                         <div>
                           <div className="font-medium text-gray-900 dark:text-white">{rw.resourceName}</div>
                           <div className="text-xs text-gray-400 dark:text-gray-500">{rw.role}</div>
@@ -187,9 +177,7 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
         <div className="divide-y divide-gray-100 dark:divide-gray-700">
           {resources.map((res) => (
             <div key={res.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
-              <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                {getInitials(res.name)}
-              </div>
+              <Avatar name={res.name} size="lg" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-900 dark:text-white">{res.name}</span>

@@ -29,7 +29,7 @@ export const ScheduleFilterBar = React.memo(function ScheduleFilterBar({
   onClearAll,
 }: ScheduleFilterBarProps) {
   return (
-    <div className="flex items-center gap-2 flex-wrap mb-1">
+    <div className="flex items-center gap-2 flex-wrap">
       <select
         value={filterStatus}
         onChange={(e) => onFilterStatusChange(e.target.value)}

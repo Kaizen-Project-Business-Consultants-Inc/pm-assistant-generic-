@@ -1,6 +1,6 @@
 export type Methodology = 'waterfall' | 'agile' | 'hybrid';
 
-type Tab = 'overview' | 'schedule' | 'raid' | 'ai-insights' | 'performance' | 'scenarios' | 'team' | 'agent-activity' | 'change-requests' | 'sprints' | 'backlog' | 'resources' | 'time' | 'files' | 'budget' | 'automations' | 'documents';
+type Tab = 'overview' | 'schedule' | 'raid' | 'ai-insights' | 'performance' | 'insights' | 'scenarios' | 'team' | 'agent-activity' | 'change-requests' | 'sprints' | 'backlog' | 'resources' | 'time' | 'files' | 'budget' | 'automations' | 'documents';
 
 export function getDefaultViewMode(m: Methodology): string {
   return m === 'agile' ? 'kanban' : 'gantt';
@@ -43,8 +43,7 @@ export function getOverflowTabs(m: Methodology): { id: Tab; label: string }[] {
   const allOverflow: { id: Tab; label: string }[] = [
     { id: 'time', label: 'Time' },
     { id: 'files', label: 'Files' },
-    { id: 'performance', label: 'Performance' },
-    { id: 'ai-insights', label: 'AI Insights' },
+    { id: 'insights', label: 'Insights' },
     { id: 'resources', label: 'Resources' },
     { id: 'agent-activity', label: 'Agent Activity' },
     { id: 'automations', label: 'Automations' },

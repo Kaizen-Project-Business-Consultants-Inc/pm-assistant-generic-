@@ -38,7 +38,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
   totalCount,
 }: ScheduleToolbarProps) {
   return (
-    <div className="flex items-center gap-2 mb-2">
+    <div className="flex items-center gap-2">
       {/* Search — hidden in Gantt mode (GanttChart has its own Ctrl+F search) */}
       {tasksCount > 0 && viewMode !== 'gantt' && (
         <div className="relative">

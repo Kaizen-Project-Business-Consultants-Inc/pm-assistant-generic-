@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
 import { MessageSquare, Activity, Send, Trash2 } from 'lucide-react';
+import { Avatar } from '../ui/Avatar';
 
 interface TaskActivityPanelProps {
   scheduleId: string;
@@ -40,15 +41,6 @@ function formatValue(field: string | undefined, value: string | undefined): stri
   return value;
 }
 
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps) {
   const [tab, setTab] = useState<'comments' | 'activity'>('comments');
@@ -213,9 +205,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
                         idx === mentionIndex ? 'bg-primary-50 dark:bg-primary-900/30' : ''
                       }`}
                     >
-                      <span className="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-800 text-primary-600 dark:text-primary-300 flex items-center justify-center text-[8px] font-bold flex-shrink-0">
-                        {getInitials(user.name)}
-                      </span>
+                      <Avatar name={user.name} size="xs" />
                       <span className="font-medium text-gray-700 dark:text-gray-200">{user.name}</span>
                       <span className="text-gray-400">@{user.username}</span>
                     </button>
@@ -257,9 +247,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
             )}
             {comments.map((comment: any) => (
               <div key={comment.id} className="flex gap-2 group">
-                <div className="w-6 h-6 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[8px] font-bold flex-shrink-0 mt-0.5">
-                  {getInitials(comment.userName || 'U')}
-                </div>
+                <Avatar name={comment.userName || 'U'} size="sm" className="mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
