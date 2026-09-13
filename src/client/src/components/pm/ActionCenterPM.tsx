@@ -1,156 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle,
   AlertTriangle,
   CheckCircle,
   Search,
   ArrowRight,
-  Clock,
   Zap,
-  CalendarClock,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
-import { toLocalDate } from '../../utils/dateUtils';
 
 interface ActionCenterPMProps {
   projects: Array<{ id: string; name: string }>;
 }
-
-// ─── Priorities — deadline-driven (left column) ─────────────────────────────
-
-interface PriorityRow {
-  id: string;
-  type: 'overdue' | 'due-today' | 'due-week' | 'milestone';
-  title: string;
-  projectName: string;
-  projectId?: string;
-  dueLabel: string;
-  isOverdue: boolean;
-}
-
-const priorityTypeLabels: Record<string, string> = {
-  'overdue': 'Overdue',
-  'due-today': 'Due Today',
-  'due-week': 'Due This Week',
-  'milestone': 'Milestone',
-};
-
-const priorityTypePillCls: Record<string, string> = {
-  'overdue':   'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  'due-today': 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  'due-week':  'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  'milestone': 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-};
-
-function PrioritiesList({ projects }: { projects: Array<{ id: string; name: string }> }) {
-  const navigate = useNavigate();
-
-  const { data: overdueData } = useQuery({
-    queryKey: ['pm-dashboard-overdue'],
-    queryFn: () => apiService.getDashboardOverdueTasks(),
-    staleTime: 120_000,
-  });
-
-  const { data: milestonesData } = useQuery({
-    queryKey: ['pm-dashboard-milestones'],
-    queryFn: () => apiService.getDashboardMilestones(undefined, 5),
-    staleTime: 120_000,
-  });
-
-  const rows: PriorityRow[] = [];
-  const nameMap = new Map(projects.map(p => [p.id, p.name]));
-  const today = toLocalDate();
-  const endOfWeek = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() + (7 - d.getDay()));
-    return toLocalDate(d);
-  })();
-
-  // Overdue tasks
-  const overdueTasks: any[] = overdueData?.tasks || [];
-  for (const t of overdueTasks.slice(0, 5)) {
-    rows.push({
-      id: `overdue-${t.id}`,
-      type: 'overdue',
-      title: t.name || 'Untitled task',
-      projectName: t.projectName || nameMap.get(t.projectId) || '',
-      projectId: t.projectId,
-      dueLabel: t.overdueDays ? `${t.overdueDays}d overdue` : 'Overdue',
-      isOverdue: true,
-    });
-  }
-
-  // Upcoming milestones
-  const milestones: any[] = milestonesData?.milestones || milestonesData?.data || [];
-  for (const m of milestones.slice(0, 3)) {
-    const dueDate = m.dueDate || m.end_date || '';
-    const dueDateStr = dueDate ? String(dueDate).slice(0, 10) : '';
-    const isDueToday = dueDateStr === today;
-    const isDueThisWeek = dueDateStr > today && dueDateStr <= endOfWeek;
-
-    rows.push({
-      id: `milestone-${m.id}`,
-      type: isDueToday ? 'due-today' : isDueThisWeek ? 'due-week' : 'milestone',
-      title: m.name || m.title || 'Milestone',
-      projectName: m.projectName || nameMap.get(m.projectId) || '',
-      projectId: m.projectId,
-      dueLabel: dueDateStr || 'Upcoming',
-      isOverdue: false,
-    });
-  }
-
-  return (
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-1.5 mb-3">
-        <CalendarClock className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
-        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-          Today's Priorities
-        </h4>
-      </div>
-
-      {rows.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">No urgent deadlines</p>
-      ) : (
-        <ul className="space-y-2">
-          {rows.slice(0, 5).map(row => (
-            <li key={row.id}>
-              <button
-                type="button"
-                onClick={() => row.projectId
-                  ? navigate(`/project/${row.projectId}?tab=schedule`)
-                  : navigate('/kpi/overdue')
-                }
-                className="w-full text-left flex items-start gap-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 py-1.5 transition-colors"
-              >
-                <span className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${
-                  row.isOverdue ? 'bg-red-500' : row.type === 'due-today' ? 'bg-orange-500' : 'bg-blue-400'
-                }`} aria-hidden="true" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 dark:text-gray-100 truncate">{row.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${priorityTypePillCls[row.type]}`}>
-                      {priorityTypeLabels[row.type]}
-                    </span>
-                    {row.projectName && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{row.projectName}</span>
-                    )}
-                    <span className={`text-xs font-medium ${row.isOverdue ? 'text-red-600' : 'text-gray-500'}`}>
-                      {row.dueLabel}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-// ─── AI Next Best Actions — decision-driven (right column) ───────────────────
 
 interface ActionItem {
   id: string;
@@ -170,8 +32,15 @@ const TYPE_CONFIG = {
   Investigate: { icon: AlertTriangle, color: 'text-red-600 dark:text-red-400',    bg: 'bg-red-50 dark:bg-red-900/30',    badge: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' },
 };
 
-function AINextBestActions({ notifications }: { notifications: any[] }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function ActionCenterPM({ projects: _projects }: ActionCenterPMProps) {
   const navigate = useNavigate();
+
+  const { data: notifData } = useQuery({
+    queryKey: ['pm-notifications'],
+    queryFn: () => apiService.getNotifications(20),
+    staleTime: 30_000,
+  });
 
   const { data: proposalsData } = useQuery({
     queryKey: ['pm-proposals-action'],
@@ -179,13 +48,13 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
     staleTime: 30_000,
   });
 
-  // Use shared analytics query key (same as DashboardPM)
   const { data: analyticsData } = useQuery({
     queryKey: ['analytics-summary'],
     queryFn: () => apiService.getAnalyticsSummary(),
     staleTime: 120_000,
   });
 
+  const notifications: any[] = notifData?.data || notifData?.notifications || [];
   const actions: ActionItem[] = [];
 
   // Pending agent proposals → Approve
@@ -206,7 +75,7 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
     });
   }
 
-  // Critical/high notifications → Investigate (no duplicates with left column)
+  // Critical/high notifications → Investigate
   for (const n of notifications.filter((n: any) => !n.read_at && (n.severity === 'critical' || n.severity === 'high')).slice(0, 3)) {
     actions.push({
       id: `notif-${n.id}`,
@@ -235,16 +104,14 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
   const sorted = actions.sort((a, b) => a.priority - b.priority).slice(0, 5);
 
   return (
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-1.5 mb-3">
-        <Zap className="w-3.5 h-3.5 text-primary-500" aria-hidden="true" />
-        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-          AI Next Best Actions
-        </h4>
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Zap className="w-4 h-4 text-primary-500" aria-hidden="true" />
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">AI Suggestions</h3>
       </div>
 
       {sorted.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">No actions needed right now</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">No actions needed right now</p>
       ) : (
         <ul className="space-y-2">
           {sorted.map(item => {
@@ -284,14 +151,11 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
                           item.healthScore < 40 ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
                           : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
                         }`}>
-                          Health: {item.healthScore}
+                          Health: {item.healthScore}%
                         </span>
                       )}
                       {item.time && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
-                          <Clock className="w-2.5 h-2.5" aria-hidden="true" />
-                          {item.time}
-                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{item.time}</span>
                       )}
                     </div>
                   </div>
@@ -301,81 +165,6 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
             );
           })}
         </ul>
-      )}
-    </div>
-  );
-}
-
-// ─── Main component ───────────────────────────────────────────────────────────
-
-export function ActionCenterPM({ projects }: ActionCenterPMProps) {
-  // Single notifications query shared between columns (D8)
-  const { data: notifData } = useQuery({
-    queryKey: ['pm-notifications'],
-    queryFn: () => apiService.getNotifications(20),
-    staleTime: 30_000,
-  });
-
-  // Check if left column has data (overdue tasks or milestones)
-  const { data: overdueData } = useQuery({
-    queryKey: ['pm-dashboard-overdue'],
-    queryFn: () => apiService.getDashboardOverdueTasks(),
-    staleTime: 120_000,
-  });
-  const { data: milestonesData } = useQuery({
-    queryKey: ['pm-dashboard-milestones'],
-    queryFn: () => apiService.getDashboardMilestones(undefined, 5),
-    staleTime: 120_000,
-  });
-
-  // Check if right column has data (proposals, notifications, low-health)
-  const { data: proposalsData } = useQuery({
-    queryKey: ['pm-proposals-action'],
-    queryFn: () => apiService.getAgentProposals({ status: 'pending', limit: 10 }),
-    staleTime: 30_000,
-  });
-  const { data: analyticsData } = useQuery({
-    queryKey: ['analytics-summary'],
-    queryFn: () => apiService.getAnalyticsSummary(),
-    staleTime: 120_000,
-  });
-
-  const notifications: any[] = notifData?.data || notifData?.notifications || [];
-
-  const leftEmpty = ((overdueData?.tasks || []).length === 0) &&
-    ((milestonesData?.milestones || milestonesData?.data || []).length === 0);
-  const proposals = proposalsData?.data || proposalsData?.proposals || [];
-  const urgentNotifs = notifications.filter((n: any) => !n.read_at && (n.severity === 'critical' || n.severity === 'high'));
-  const summary = analyticsData?.data || analyticsData;
-  const lowHealth = (summary?.projectBreakdown || []).filter((p: any) => (p.healthScore ?? 100) < 60);
-  const rightEmpty = proposals.length === 0 && urgentNotifs.length === 0 && lowHealth.length === 0;
-
-  return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-gray-500" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Action Center</h3>
-        </div>
-        <Link
-          to="/notifications"
-          className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 flex items-center gap-1"
-        >
-          View All <ArrowRight className="w-3 h-3" />
-        </Link>
-      </div>
-
-      {leftEmpty && rightEmpty ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">
-          No urgent items or actions right now
-        </p>
-      ) : (
-        <div className="flex gap-4">
-          <PrioritiesList projects={projects} />
-          <div className="w-px bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
-          <AINextBestActions notifications={notifications} />
-        </div>
       )}
     </div>
   );

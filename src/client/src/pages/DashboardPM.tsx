@@ -39,7 +39,7 @@ const PM_WIDGETS: WidgetDef[] = [
   { id: 'kpi',           label: 'KPI Tiles',              group: 'Overview', defaultOn: true,  size: 'full' },
   { id: 'projects',      label: 'Projects Table',         group: 'Overview', defaultOn: true,  size: 'full' },
   { id: 'briefing',      label: 'Morning Briefing',       group: 'Overview', defaultOn: true,  size: 'full' },
-  { id: 'action',        label: 'Action Center',          group: 'Overview', defaultOn: true,  size: 'full' },
+  { id: 'action',        label: 'AI Suggestions',          group: 'AI',       defaultOn: true,  size: 'full' },
   // Below the fold — opt-in via Customize dropdown
   { id: 'intel',         label: 'Portfolio Intelligence',  group: 'AI',       defaultOn: false, size: 'full' },
   { id: 'trend',         label: 'Issues Trend',           group: 'Charts',   defaultOn: false, size: 'full' },
