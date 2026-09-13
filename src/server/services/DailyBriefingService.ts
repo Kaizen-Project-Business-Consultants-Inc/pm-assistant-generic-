@@ -2,6 +2,8 @@ import { databaseService } from '../database/connection';
 
 const globalRoles = ['admin', 'executive', 'pmo'];
 const managerRoles = ['admin', 'pmo', 'executive', 'project_manager', 'scrum_master'];
+// Roles that only see tasks assigned to them (not all project tasks)
+const restrictedRoles = ['viewer', 'team_member'];
 
 function isGlobalScope(userRole: string, scope?: string): boolean {
   return globalRoles.includes(userRole) || scope === 'portfolio';
@@ -65,9 +67,17 @@ class DailyBriefingService {
     const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
     const memberParams = global ? [] : [userId];
     const showResource = managerRoles.includes(userRole);
+    const isRestricted = restrictedRoles.includes(userRole);
 
     const resourceSelect = showResource ? ', r.name AS resourceName' : '';
     const resourceJoin = showResource ? 'LEFT JOIN resources r ON t.assigned_to = r.id' : '';
+
+    // Restricted roles only see tasks assigned to them (via resource linked to their user)
+    const assignedJoin = isRestricted ? 'JOIN resources assigned_r ON t.assigned_to = assigned_r.id AND assigned_r.user_id = ?' : '';
+    const assignedParams = isRestricted ? [userId] : [];
+    // For action items, restrict by assignee_user_id
+    const actionAssignedFilter = isRestricted ? 'AND mai.assignee_user_id = ?' : '';
+    const actionAssignedParams = isRestricted ? [userId] : [];
 
     const [
       proposals,
@@ -118,12 +128,13 @@ class DailyBriefingService {
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
          ${resourceJoin}
+         ${assignedJoin}
          ${memberJoin}
          WHERE t.end_date = CURDATE()
            AND t.status NOT IN ('completed', 'done', 'cancelled')
            ${NOT_PARENT}
          ORDER BY t.priority DESC LIMIT 20`,
-        [...memberParams]
+        [...assignedParams, ...memberParams]
       ),
       // Tasks due this week (next 7 days, excluding today, leaf tasks only)
       databaseService.query<any>(
@@ -137,12 +148,13 @@ class DailyBriefingService {
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
          ${resourceJoin}
+         ${assignedJoin}
          ${memberJoin}
          WHERE t.end_date BETWEEN DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
            AND t.status NOT IN ('completed', 'done', 'cancelled')
            ${NOT_PARENT}
          ORDER BY t.end_date ASC LIMIT 20`,
-        [...memberParams]
+        [...assignedParams, ...memberParams]
       ),
       // Overdue tasks (leaf tasks only)
       databaseService.query<any>(
@@ -155,12 +167,13 @@ class DailyBriefingService {
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
          ${resourceJoin}
+         ${assignedJoin}
          ${memberJoin}
          WHERE t.end_date < CURDATE()
            AND t.status NOT IN ('completed', 'done', 'cancelled')
            ${NOT_PARENT}
          ORDER BY overdueDays DESC LIMIT 10`,
-        [...memberParams]
+        [...assignedParams, ...memberParams]
       ),
       // Recent high risks (last 24h)
       databaseService.query<any>(
@@ -184,12 +197,13 @@ class DailyBriefingService {
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
+         ${assignedJoin}
          ${memberJoin}
          WHERE t.is_milestone = 1
            AND t.end_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
            AND t.status NOT IN ('completed', 'done', 'cancelled')
          ORDER BY t.end_date ASC LIMIT 10`,
-        [...memberParams]
+        [...assignedParams, ...memberParams]
       ),
       // RAID Watch: Overdue meeting action items
       databaseService.query<any>(
@@ -202,8 +216,9 @@ class DailyBriefingService {
          ${memberJoin}
          WHERE mai.due_date < CURDATE()
            AND mai.status NOT IN ('completed', 'cancelled')
+           ${actionAssignedFilter}
          ORDER BY mai.due_date ASC LIMIT 10`,
-        [...memberParams]
+        [...memberParams, ...actionAssignedParams]
       ),
       // RAID Watch: Blocked tasks (FS predecessor not completed, leaf tasks only)
       databaseService.query<any>(
@@ -218,6 +233,7 @@ class DailyBriefingService {
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
          ${resourceJoin}
+         ${assignedJoin}
          ${memberJoin}
          WHERE td.dependency_type = 'FS'
            AND pred.status NOT IN ('completed', 'done', 'cancelled')
@@ -225,7 +241,7 @@ class DailyBriefingService {
            AND pred.end_date < CURDATE()
            ${NOT_PARENT}
          ORDER BY pred.end_date ASC LIMIT 10`,
-        [...memberParams]
+        [...assignedParams, ...memberParams]
       ),
       // RAID Watch: Open issues (unresolved risks of type 'issue')
       databaseService.query<any>(
