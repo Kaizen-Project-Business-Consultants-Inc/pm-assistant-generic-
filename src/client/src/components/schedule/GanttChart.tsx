@@ -1285,6 +1285,22 @@ export function GanttChart({
       const isCheckbox = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox';
       if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') && !(isCheckbox && e.key === 'Tab')) return;
 
+      // W12: Keyboard reorder — Alt+ArrowUp/Down moves active row
+      if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && activeTaskId && onTaskReorder && !editingCell) {
+        e.preventDefault();
+        const rowIdx = rows.findIndex(r => r.task.id === activeTaskId);
+        if (rowIdx === -1) return;
+        const targetIdx = e.key === 'ArrowUp' ? rowIdx - 1 : rowIdx + 1;
+        if (targetIdx < 0 || targetIdx >= rows.length) return;
+        const allTasks = rows.map(r => r.task);
+        const moved = [...allTasks];
+        const [item] = moved.splice(rowIdx, 1);
+        moved.splice(targetIdx, 0, item);
+        const updates = moved.map((t, i) => ({ taskId: t.id, sortOrder: (i + 1) * 10 }));
+        onTaskReorder(updates);
+        return;
+      }
+
       // Copy/paste: cell-level when focused, row-level otherwise
       if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'v')) {
         if (focusedCell) {
@@ -1462,7 +1478,7 @@ export function GanttChart({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [focusedCell, editingCell, rows, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds]);
+  }, [focusedCell, editingCell, rows, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder]);
 
   // When editing ends, restore focus to that cell
   useEffect(() => {
@@ -2310,6 +2326,8 @@ export function GanttChart({
         {panelMode !== 'gantt' && (
         <div
           ref={leftPanelRef}
+          role="grid"
+          aria-label="Task list"
           className="flex-shrink-0 overflow-y-auto overflow-x-auto scrollbar-hide"
           style={{ width: panelMode === 'table' ? '100%' : tableWidth }}
         >

@@ -219,7 +219,7 @@ export const RegisterPage: React.FC = () => {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
+              <div id="register-error" className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
                 <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
                 {showLoginLink && inviteToken && (
                   <Link to={`/login?invite=${inviteToken}`} className="inline-block mt-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">
@@ -241,7 +241,7 @@ export const RegisterPage: React.FC = () => {
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Email</label>
               <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                className="input" placeholder="john@example.com" readOnly={!!inviteEmail} />
+                className="input" placeholder="john@example.com" readOnly={!!inviteEmail} aria-describedby={error ? 'register-error' : undefined} />
             </div>
 
             {!isPlanSignup && (
@@ -266,7 +266,7 @@ export const RegisterPage: React.FC = () => {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Password</label>
               <div className="relative">
                 <input id="password" type={showPassword ? 'text' : 'password'} required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)}
-                  className="input pr-10" placeholder="Min. 8 characters" minLength={8} />
+                  className="input pr-10" placeholder="Min. 8 characters" minLength={8} aria-describedby={error ? 'register-error' : undefined} />
                 <button type="button" onClick={() => setShowPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}>

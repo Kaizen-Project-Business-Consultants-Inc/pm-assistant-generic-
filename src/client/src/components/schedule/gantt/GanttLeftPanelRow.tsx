@@ -216,6 +216,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
 
   return (
     <div
+      role="row"
       data-task-id={task.id}
       className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer ${isParent ? 'font-semibold bg-gray-100/80 dark:bg-gray-700/40' : ''} ${!isParent && rowIdx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} ${isActive ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-inset ring-primary-200 dark:ring-primary-700' : ''} ${rowDragTargetHere ? 'border-t-2 border-t-blue-500' : ''} ${isRowDragSource ? 'opacity-40' : ''}`}
       style={shouldVirtualize ? { height: ROW_H, position: 'absolute', top: rowIdx * ROW_H, left: 0, right: 0, minWidth: minRowWidth } : { height: ROW_H, minWidth: minRowWidth }}
@@ -259,7 +260,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         {isEditingField(editingField, 'name') ? (
           <input
             ref={el => { inputRef.current = el; }}
-            className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-1"
+            className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-1"
             value={editValue}
             onChange={e => onEditValueChange(e.target.value)}
             onBlur={() => onSaveEdit(task.id, 'name', editValue)}
@@ -339,7 +340,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
               <div>
                 <input
                   ref={el => { inputRef.current = el; }}
-                  className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center font-mono"
+                  className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5 text-center font-mono"
                   value={editValue}
                   onChange={e => onEditValueChange(e.target.value)}
                   onBlur={() => onSaveEdit(task.id, 'dependency', editValue)}
@@ -413,7 +414,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
               <input
                 ref={el => { inputRef.current = el; }}
                 type="date"
-                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5"
+                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5"
                 value={editValue}
                 onChange={e => onDateChange(task.id, 'startDate', e.target.value)}
                 onBlur={() => onCancelEditing()}
@@ -436,7 +437,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
               <input
                 ref={el => { inputRef.current = el; }}
                 type="date"
-                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5"
+                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5"
                 value={editValue}
                 onChange={e => onDateChange(task.id, 'endDate', e.target.value)}
                 onBlur={() => onCancelEditing()}
@@ -458,7 +459,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             {isEditingField(editingField, 'duration') ? (
               <input
                 ref={el => { inputRef.current = el; }}
-                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center"
+                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5 text-center"
                 value={editValue}
                 onChange={e => onEditValueChange(e.target.value)}
                 onBlur={() => onSaveEdit(task.id, 'duration', editValue)}
@@ -483,7 +484,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
                 ref={el => { inputRef.current = el; }}
                 type="number"
                 min="0"
-                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center"
+                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5 text-center"
                 value={editValue}
                 onChange={e => onEditValueChange(e.target.value)}
                 onBlur={() => onSaveEdit(task.id, 'estimatedDays', editValue)}
@@ -508,7 +509,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
                 type="number"
                 min="0"
                 step="0.5"
-                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center"
+                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5 text-center"
                 value={editValue}
                 onChange={e => onEditValueChange(e.target.value)}
                 onBlur={() => onSaveEdit(task.id, 'estimatedDurationHours', editValue)}
@@ -533,7 +534,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
                 type="number"
                 min="0"
                 max="100"
-                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none px-0.5 text-center"
+                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5 text-center"
                 value={editValue}
                 onChange={e => onEditValueChange(e.target.value)}
                 onBlur={() => onSaveEdit(task.id, 'progressPercentage', editValue)}
@@ -555,7 +556,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             {isEditingField(editingField, 'priority') ? (
               <select
                 ref={el => { inputRef.current = el; }}
-                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none"
+                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset"
                 value={editValue}
                 onChange={e => onSelectChange(task.id, 'priority', e.target.value)}
                 onBlur={() => onCancelEditing()}
@@ -646,7 +647,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             {isEditingField(editingField, 'status') ? (
               <select
                 ref={el => { inputRef.current = el; }}
-                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none"
+                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset"
                 value={editValue}
                 onChange={e => onSelectChange(task.id, 'status', e.target.value)}
                 onBlur={() => onCancelEditing()}

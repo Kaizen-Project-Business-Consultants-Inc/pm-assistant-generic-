@@ -77,7 +77,7 @@ export const ResetPasswordPage: React.FC = () => {
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
+              <div id="reset-error" className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
                 <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
                 <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-2">
                   <Link to="/forgot-password" className="underline font-medium hover:text-red-800 dark:hover:text-red-300">
@@ -90,7 +90,7 @@ export const ResetPasswordPage: React.FC = () => {
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">New Password</label>
               <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                className="input" placeholder="Min. 6 characters" minLength={6} />
+                className="input" placeholder="Min. 6 characters" minLength={6} aria-describedby={error ? 'reset-error' : undefined} />
             </div>
 
             <div>

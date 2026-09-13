@@ -425,14 +425,14 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
 
       {/* Send to RAID success toast */}
       {sendToRaidMutation.isSuccess && (
-        <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-xs text-green-700 dark:text-green-300 shadow-lg">
+        <div role="alert" className="fixed bottom-4 right-4 z-50 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-xs text-green-700 dark:text-green-300 shadow-lg">
           {(sendToRaidMutation.data as any)?.data?.imported || 0} items imported to RAID log
         </div>
       )}
 
       {/* Send to RAID error toast */}
       {sendToRaidMutation.isError && (
-        <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-300 shadow-lg">
+        <div role="alert" className="fixed bottom-4 right-4 z-50 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-300 shadow-lg">
           Failed to import items to RAID log
         </div>
       )}

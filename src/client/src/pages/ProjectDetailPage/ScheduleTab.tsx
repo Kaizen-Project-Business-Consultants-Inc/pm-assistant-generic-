@@ -174,8 +174,8 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
   return (
     <div className="space-y-4">
       {/* View Toggle + Schedule Selector */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5">
+      <div className="flex items-center gap-2 flex-wrap" role="toolbar" aria-label="Schedule view controls">
+        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5" role="group" aria-label="View mode">
           {([
             { mode: 'gantt' as const, icon: GanttChartSquare, label: 'Gantt' },
             { mode: 'kanban' as const, icon: Kanban, label: 'Kanban' },
@@ -1256,7 +1256,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
 
       {/* Undo toast */}
       {undoToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 dark:bg-gray-700 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg animate-in slide-in-from-bottom-4 fade-in duration-200">
+        <div role="alert" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 dark:bg-gray-700 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg animate-in slide-in-from-bottom-4 fade-in duration-200">
           <span>{undoToast}</span>
           <button
             onClick={undo}

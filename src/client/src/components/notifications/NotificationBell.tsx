@@ -371,10 +371,10 @@ export function NotificationBell() {
                             e.stopPropagation();
                             dismissNotification(notification.id);
                           }}
-                          className="flex-shrink-0 p-0.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
+                          className="flex-shrink-0 p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
                           aria-label="Dismiss notification"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">

@@ -237,3 +237,21 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* W1: OS-level high contrast — mirrors .high-contrast toggle rules */
+@media (prefers-contrast: more) {
+  body { color: #000; background: #fff; }
+  .card, .rounded-xl { border-width: 2px; border-color: #000; }
+  button:focus, a:focus { outline: 3px solid #000; outline-offset: 2px; }
+  [class*="text-gray-400"], [class*="text-gray-500"] { color: #374151; }
+  [class*="border-gray-200"], [class*="border-gray-300"] { border-color: #6b7280; }
+  ::placeholder { color: #374151; }
+}
+@media (prefers-contrast: more) {
+  .dark body { color: #fff; background: #000; }
+  .dark .card, .dark .rounded-xl { border-color: #fff; }
+  .dark button:focus, .dark a:focus { outline-color: #fff; }
+  .dark [class*="text-gray-400"], .dark [class*="text-gray-500"] { color: #d1d5db; }
+  .dark [class*="border-gray-600"], .dark [class*="border-gray-700"] { border-color: #9ca3af; }
+  .dark ::placeholder { color: #d1d5db; }
+}

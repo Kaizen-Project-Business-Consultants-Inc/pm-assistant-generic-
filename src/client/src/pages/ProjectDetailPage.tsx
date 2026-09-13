@@ -635,6 +635,7 @@ export function ProjectDetailPage() {
       {activeTab === 'overview' && <SetupChecklist project={project} onNavigate={(tab) => setActiveTab(tab as Tab)} />}
 
       {/* Tab Content */}
+      <h2 className="sr-only">{[...getPrimaryTabs(methodology), ...getOverflowTabs(methodology)].find(t => t.id === activeTab)?.label ?? activeTab}</h2>
       <Suspense fallback={<SectionSpinner />}>
         {activeTab === 'overview' && <OverviewTab project={project} onNavigateToTab={(tab) => setActiveTab(tab as Tab)} canEdit={canEditStatus} presenceEditors={presenceEditors} currentUserId={user?.id} />}
         {activeTab === 'raid' && <RAIDTab projectId={id!} projectName={project.name} />}

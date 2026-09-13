@@ -61,7 +61,7 @@ export const ForgotPasswordPage: React.FC = () => {
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
+              <div id="forgot-error" className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
                 <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
               </div>
             )}
@@ -69,7 +69,7 @@ export const ForgotPasswordPage: React.FC = () => {
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Email</label>
               <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                className="input" placeholder="Enter your email address" />
+                className="input" placeholder="Enter your email address" aria-describedby={error ? 'forgot-error' : undefined} />
             </div>
 
             <button type="submit" disabled={isLoading}

@@ -61,6 +61,7 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
 
   return (
     <div
+      role="row"
       className="sticky top-0 z-10 flex items-center bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
       style={{ height: HEADER_H, minWidth: minRowWidth }}
     >
@@ -80,6 +81,7 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
         return (
           <div
             key={col.key}
+            role="columnheader"
             draggable={colIsDraggable}
             onDragStart={(e) => ganttColDrag.handleDragStart(e, col.key)}
             onDragOver={(e) => ganttColDrag.handleDragOver(e, col.key)}
