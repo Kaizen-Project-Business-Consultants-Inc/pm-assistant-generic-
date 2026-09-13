@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { File, Image, FileText, Trash2, Download, Clock, UploadCloud } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { AttachmentVersionHistory } from './AttachmentVersionHistory';
+import { announce } from '../../utils/announce';
 import { ConfirmModal } from '../ui/ConfirmModal';
 
 interface AttachmentPanelProps {
@@ -45,12 +46,18 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => apiService.uploadAttachment(entityType, entityId, file),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['attachments', entityType, entityId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attachments', entityType, entityId] });
+      announce('File uploaded successfully');
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiService.deleteAttachment(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['attachments', entityType, entityId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attachments', entityType, entityId] });
+      announce('File deleted');
+    },
   });
 
   const handleFiles = useCallback((files: FileList | null) => {

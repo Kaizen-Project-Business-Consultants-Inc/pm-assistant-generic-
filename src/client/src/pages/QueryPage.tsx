@@ -7,6 +7,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { apiService } from '../services/api';
+import { announce } from '../utils/announce';
 import { QueryInput } from '../components/query/QueryInput';
 import { DynamicChart } from '../components/query/DynamicChart';
 import { renderMarkdown } from '../utils/renderMarkdown';
@@ -85,6 +86,10 @@ export const QueryPage: React.FC = () => {
     onSuccess: (data: any) => {
       setIsSample(data?.sample || false);
       setResult(data?.result || data);
+      announce('Query results ready');
+    },
+    onError: () => {
+      announce('Query failed');
     },
   });
 

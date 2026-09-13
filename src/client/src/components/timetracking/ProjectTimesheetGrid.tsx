@@ -103,15 +103,16 @@ export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
           <table className="w-full text-sm">
+            <caption className="sr-only">Project timesheet by team member</caption>
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase min-w-[200px]">Team Member / Task</th>
+                <th scope="col" className="text-left py-2.5 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase min-w-[200px]">Team Member / Task</th>
                 {days.map(d => (
-                  <th key={d} className="text-center py-2.5 px-2 text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[80px]">
+                  <th scope="col" key={d} className="text-center py-2.5 px-2 text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[80px]">
                     {formatDay(d)}
                   </th>
                 ))}
-                <th className="text-center py-2.5 px-2 text-xs font-medium text-gray-500 dark:text-gray-400">Total</th>
+                <th scope="col" className="text-center py-2.5 px-2 text-xs font-medium text-gray-500 dark:text-gray-400">Total</th>
               </tr>
             </thead>
             <tbody>

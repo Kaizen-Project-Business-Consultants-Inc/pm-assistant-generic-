@@ -4,6 +4,7 @@ import { Pencil, FileText, Bold, Italic, Heading2, List, Link2, Code } from 'luc
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 import { renderMarkdown } from '../../utils/renderMarkdown';
+import { announce } from '../../utils/announce';
 import { analyzeReadingLevel } from '../../utils/readingLevel';
 import { sendWsMessage, useConnectionState } from '../../hooks/useWebSocket';
 import { PresenceIndicator } from '../presence/PresenceIndicator';
@@ -133,13 +134,16 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
       if (newUpdatedAt) updatedAtRef.current = newUpdatedAt;
       sessionStorage.removeItem(STORAGE_KEY);
       setSaveStatus('saved');
+      announce('Changes saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
     },
     onError: (err: any) => {
       if (err?.response?.status === 409) {
         setSaveStatus('conflict');
+        announce('Save conflict: another user edited this description');
       } else {
         setSaveStatus('error');
+        announce('Error saving changes');
         setTimeout(() => setSaveStatus('idle'), 5000);
       }
     },

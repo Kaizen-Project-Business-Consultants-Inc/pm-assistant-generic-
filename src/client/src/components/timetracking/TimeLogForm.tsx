@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, Plus } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { announce } from '../../utils/announce';
 import { toLocalDate } from '../../utils/dateUtils';
 
 interface TimeLogFormProps {
@@ -32,6 +33,7 @@ export function TimeLogForm({ taskId, scheduleId, projectId }: TimeLogFormProps)
       queryClient.invalidateQueries({ queryKey: ['time-entries'] });
       setForm({ date: toLocalDate(), hours: '', description: '', billable: true });
       setExpanded(false);
+      announce('Time entry saved');
     },
   });
 

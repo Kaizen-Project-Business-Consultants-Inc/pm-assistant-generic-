@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Trash2, Send, Undo2, Lock, AlertCircle } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { announce } from '../../utils/announce';
 import { toLocalDate } from '../../utils/dateUtils';
 import { ConfirmModal } from '../ui/ConfirmModal';
 
@@ -52,17 +53,26 @@ export function TimesheetGrid() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiService.deleteTimeEntry(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['timesheet-status', weekStart] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['timesheet-status', weekStart] });
+      announce('Time entry deleted');
+    },
   });
 
   const submitMutation = useMutation({
     mutationFn: (projectId: string) => apiService.submitTimesheet(projectId, weekStart),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['timesheet-status', weekStart] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['timesheet-status', weekStart] });
+      announce('Timesheet submitted');
+    },
   });
 
   const recallMutation = useMutation({
     mutationFn: (submissionId: string) => apiService.recallTimesheet(submissionId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['timesheet-status', weekStart] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['timesheet-status', weekStart] });
+      announce('Timesheet recalled');
+    },
   });
 
   const [deleteConfirmIds, setDeleteConfirmIds] = useState<string[] | null>(null);
@@ -138,16 +148,17 @@ export function TimesheetGrid() {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
+            <caption className="sr-only">Weekly timesheet entries</caption>
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Task</th>
-                <th className="text-center py-2 px-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                <th scope="col" className="text-left py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Task</th>
+                <th scope="col" className="text-center py-2 px-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
                 {days.map(d => (
-                  <th key={d} className="text-center py-2 px-2 text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[80px]">
+                  <th scope="col" key={d} className="text-center py-2 px-2 text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[80px]">
                     {formatDay(d)}
                   </th>
                 ))}
-                <th className="text-center py-2 px-2 text-xs font-medium text-gray-500 dark:text-gray-400">Total</th>
+                <th scope="col" className="text-center py-2 px-2 text-xs font-medium text-gray-500 dark:text-gray-400">Total</th>
               </tr>
             </thead>
             <tbody>

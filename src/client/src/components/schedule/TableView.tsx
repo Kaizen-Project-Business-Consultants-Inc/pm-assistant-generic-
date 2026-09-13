@@ -1735,7 +1735,8 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         style={{ maxHeight: 'calc(100vh - 280px)' }}
         onScroll={useVirtualization ? (e) => setScrollTop((e.target as HTMLDivElement).scrollTop) : undefined}
       >
-        <table className="text-sm" style={{ minWidth: '100%' }}>
+        <table className="text-sm" role="grid" style={{ minWidth: '100%' }}>
+          <caption className="sr-only">Project schedule tasks</caption>
           <thead>
             <TableHeaderRow
               visibleColumns={visibleColumns}

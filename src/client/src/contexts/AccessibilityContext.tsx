@@ -8,6 +8,7 @@ export interface AccessibilityPreferences {
   reducedMotion: boolean;
   simplificationLevel: 'off' | 'mild' | 'strong';
   narrationEnabled: boolean;
+  keyboardShortcutsEnabled: boolean;
 }
 
 const DEFAULT_PREFS: AccessibilityPreferences = {
@@ -16,6 +17,7 @@ const DEFAULT_PREFS: AccessibilityPreferences = {
   reducedMotion: false,
   simplificationLevel: 'off',
   narrationEnabled: false,
+  keyboardShortcutsEnabled: true,
 };
 
 interface AccessibilityContextValue {
@@ -38,7 +40,10 @@ const LOCAL_STORAGE_KEY = 'pm-accessibility-prefs';
 
 function applyToDocument(prefs: AccessibilityPreferences) {
   const root = document.documentElement;
-  root.style.setProperty('--app-font-size', `${prefs.fontSize}px`);
+  // Express as percentage so it multiplies the browser's configured default
+  // instead of overriding it with a fixed px value (WCAG 1.4.4 / 1.4.12)
+  const percentage = (prefs.fontSize / 16) * 100;
+  root.style.setProperty('--app-font-size', `${percentage}%`);
 
   if (prefs.highContrast) {
     root.classList.add('high-contrast');

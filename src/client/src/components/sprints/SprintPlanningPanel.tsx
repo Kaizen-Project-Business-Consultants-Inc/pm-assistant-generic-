@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Play, CheckCircle2, Target, GripVertical, Search } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { announce } from '../../utils/announce';
 import { LessonsPanel } from '../lessons/LessonsPanel';
 
 interface Task {
@@ -154,12 +155,18 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
 
   const startSprintMutation = useMutation({
     mutationFn: () => apiService.startSprint(sprintId),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      announce('Sprint started');
+    },
   });
 
   const completeSprintMutation = useMutation({
     mutationFn: () => apiService.completeSprint(sprintId),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      announce('Sprint completed');
+    },
   });
 
   const [createForm, setCreateForm] = useState({

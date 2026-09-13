@@ -445,12 +445,13 @@ function PortfolioResourcesView() {
           </div>
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
             <table className="w-full text-sm">
+              <caption className="sr-only">Cross-project resource contention</caption>
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-700">
-                  <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Resource</th>
-                  <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Role</th>
-                  <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Projects</th>
-                  <th className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Combined</th>
+                  <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Resource</th>
+                  <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Role</th>
+                  <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Projects</th>
+                  <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Combined</th>
                 </tr>
               </thead>
               <tbody>
@@ -487,14 +488,15 @@ function PortfolioResourcesView() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[600px]">
+            <caption className="sr-only">Resource utilization</caption>
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-700">
-                <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Resource</th>
-                <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Role</th>
-                <th className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">$/hr</th>
-                <th className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300"># Projects</th>
-                <th className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Utilization</th>
-                <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Projects</th>
+                <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Resource</th>
+                <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Role</th>
+                <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">$/hr</th>
+                <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300"># Projects</th>
+                <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Utilization</th>
+                <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Projects</th>
               </tr>
             </thead>
             <tbody>
@@ -604,17 +606,18 @@ function CPISPIComparison({ projects, onProjectClick }: { projects: PortfolioAna
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[600px]">
+          <caption className="sr-only">CPI and SPI comparison across projects</caption>
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-700">
-              <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Project</th>
-              <th className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer select-none" onClick={() => toggleSort('cpi')}>
+              <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Project</th>
+              <th scope="col" aria-sort={sortKey === 'cpi' ? (sortAsc ? 'ascending' : 'descending') : 'none'} className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer select-none" onClick={() => toggleSort('cpi')}>
                 <span className="inline-flex items-center gap-1">CPI {sortKey === 'cpi' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}</span>
               </th>
-              <th className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer select-none" onClick={() => toggleSort('spi')}>
+              <th scope="col" aria-sort={sortKey === 'spi' ? (sortAsc ? 'ascending' : 'descending') : 'none'} className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer select-none" onClick={() => toggleSort('spi')}>
                 <span className="inline-flex items-center gap-1">SPI {sortKey === 'spi' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}</span>
               </th>
-              <th className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">CPI Trend</th>
-              <th className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">SPI Trend</th>
+              <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">CPI Trend</th>
+              <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">SPI Trend</th>
             </tr>
           </thead>
           <tbody>
@@ -649,12 +652,13 @@ function BurndownTrends({ projects }: { projects: PortfolioAnalyticsProject[] })
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
+          <caption className="sr-only">Burndown trends across projects</caption>
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-700">
-              <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Project</th>
-              <th className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Burndown</th>
-              <th className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Complete</th>
-              <th className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Variance</th>
+              <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Project</th>
+              <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Burndown</th>
+              <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Complete</th>
+              <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Variance</th>
             </tr>
           </thead>
           <tbody>
@@ -713,7 +717,7 @@ function ProjectComparisonMatrix({ projects, onProjectClick }: { projects: Portf
   }, [projects, sortKey, sortAsc]);
 
   const SortHeader = ({ label, k }: { label: string; k: ComparisonSortKey }) => (
-    <th className="text-center px-3 py-2 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort(k)}>
+    <th scope="col" aria-sort={sortKey === k ? (sortAsc ? 'ascending' : 'descending') : 'none'} className="text-center px-3 py-2 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort(k)}>
       <span className="inline-flex items-center gap-1">{label} {sortKey === k && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}</span>
     </th>
   );
@@ -733,16 +737,17 @@ function ProjectComparisonMatrix({ projects, onProjectClick }: { projects: Portf
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[700px]">
+          <caption className="sr-only">Project comparison</caption>
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-700">
-              <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Project</th>
+              <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Project</th>
               <SortHeader label="Health" k="health" />
               <SortHeader label="CPI" k="cpi" />
               <SortHeader label="SPI" k="spi" />
               <SortHeader label="Budget %" k="budget" />
               <SortHeader label="Progress" k="progress" />
               <SortHeader label="Tasks" k="tasks" />
-              <th className="text-center px-3 py-2 font-semibold text-gray-600 dark:text-gray-300">Status</th>
+              <th scope="col" className="text-center px-3 py-2 font-semibold text-gray-600 dark:text-gray-300">Status</th>
             </tr>
           </thead>
           <tbody>

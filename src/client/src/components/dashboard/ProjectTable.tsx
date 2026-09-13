@@ -186,6 +186,8 @@ export function ProjectTable({ projects }: Props) {
     const active = sortable !== undefined && sortKey === sortable;
     return (
       <th
+        scope="col"
+        aria-sort={sortable ? (active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
         className={`px-3 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap ${col ?? ''} ${sortable ? 'cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200' : ''}`}
         onClick={sortable ? () => handleSort(sortable) : undefined}
       >
@@ -217,6 +219,7 @@ export function ProjectTable({ projects }: Props) {
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
+        <caption className="sr-only">Projects overview</caption>
         <thead className="bg-gray-50 dark:bg-gray-900">
           <tr>
             <Th label="Name" sortable="name" />
@@ -229,7 +232,7 @@ export function ProjectTable({ projects }: Props) {
             <Th label="Spent" sortable="budgetPct" col="hidden md:table-cell" />
             <Th label="End Date" sortable="endDate" col="hidden sm:table-cell" />
             <Th label="Days Left" sortable="daysRemaining" />
-            <th className="px-3 py-2.5 w-10" />
+            <Th label="" col="w-10" />
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50 dark:divide-gray-700">

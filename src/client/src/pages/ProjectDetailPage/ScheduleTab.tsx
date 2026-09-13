@@ -41,6 +41,7 @@ import { ResourceLevelingModal } from './schedule-tab/ResourceLevelingModal';
 import { QuickFilterPills, type QuickFilterType } from './schedule-tab/QuickFilterPills';
 import { buildTaskRiskMap, DEFAULT_RISK_THRESHOLDS, type RiskThresholds } from '../../utils/taskRiskAssessment';
 import { useAuthStore } from '../../stores/authStore';
+import { announce } from '../../utils/announce';
 
 
 export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt' }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string }) {
@@ -547,6 +548,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       setShowAddForm(false);
       setActiveTaskId(null);
+      announce('Task created');
     },
   });
 
@@ -588,10 +590,12 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       setEditingTask(null);
+      announce('Task updated');
     },
     onError: (error: any) => {
       const msg = error?.response?.data?.message || error?.message || 'Failed to update task';
       console.error('Task update failed:', msg);
+      announce('Error: ' + msg);
     },
   });
 
@@ -604,6 +608,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       setEditingTask(null);
       setActiveTaskId(null);
+      announce('Task deleted');
     },
   });
 
@@ -1263,6 +1268,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           <button
             onClick={() => { setUndoToast(null); clearTimeout(toastTimerRef.current); }}
             className="text-gray-400 hover:text-gray-200 ml-1"
+            aria-label="Dismiss notification"
           >
             ✕
           </button>
@@ -1410,6 +1416,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
         onClick={() => setOpen(v => !v)}
         className="w-7 h-7 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-md transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
         title="More actions"
+        aria-label="More actions"
       >
         <MoreVertical className="w-4 h-4" />
       </button>

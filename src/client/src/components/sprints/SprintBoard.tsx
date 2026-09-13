@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Kanban, Settings, Users, ShieldCheck } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { announce } from '../../utils/announce';
 import { Avatar } from '../ui/Avatar';
 
 interface BoardTask {
@@ -245,8 +246,9 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
       if (!scheduleId) return Promise.reject(new Error('No scheduleId available'));
       return apiService.updateTask(scheduleId, taskId, { status });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['sprintBoard', sprintId] });
+      announce(`Task moved to ${variables.status}`);
     },
   });
 

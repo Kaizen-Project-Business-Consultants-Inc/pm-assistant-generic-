@@ -5,6 +5,7 @@ import {
   ArrowUpDown, AlertTriangle, FileText, Upload,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { announce } from '../../utils/announce';
 import { severityColor } from '../../utils/severityColors';
 import { RiskFormModal } from '../../components/risks/RiskFormModal';
 import { AIScanReviewModal } from '../../components/risks/AIScanReviewModal';
@@ -106,7 +107,10 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   const updateMutation = useMutation({
     mutationFn: ({ raidId, data }: { raidId: string; data: Record<string, any> }) =>
       apiService.updateRiskItem(projectId, raidId, data),
-    onSuccess: invalidateRaid,
+    onSuccess: () => {
+      invalidateRaid();
+      announce('RAID item updated');
+    },
   });
 
   // Sorting
@@ -844,7 +848,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
       <RiskFormModal
         isOpen={showForm}
         onClose={() => setShowForm(false)}
-        onSaved={() => { invalidateRaid(); if (selectedRaidId) { queryClient.invalidateQueries({ queryKey: ['raid-item', selectedRaidId] }); } }}
+        onSaved={() => { invalidateRaid(); if (selectedRaidId) { queryClient.invalidateQueries({ queryKey: ['raid-item', selectedRaidId] }); } announce('RAID item saved'); }}
         projectId={projectId}
         editRisk={editRisk}
         defaultType={defaultType}

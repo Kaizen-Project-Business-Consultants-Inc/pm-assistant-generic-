@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 :root {
-  --app-font-size: 16px;
+  --app-font-size: 100%;
 }
 
 @layer base {

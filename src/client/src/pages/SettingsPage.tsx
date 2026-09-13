@@ -52,31 +52,45 @@ export const SettingsPage: React.FC = () => {
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Settings</h1>
 
-      <div className="flex space-x-1 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === tab.id
-                ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
+      <div
+        role="tablist"
+        aria-label="Settings"
+        className="flex space-x-1 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto"
+      >
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`settings-panel-${tab.id}`}
+              id={`settings-tab-${tab.id}`}
+              tabIndex={isActive ? 0 : -1}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                isActive
+                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {activeTab === 'profile' && <ProfileTab />}
-      {activeTab === 'team' && canManageTeam && <TeamTab />}
-      {activeTab === 'notifications' && <NotificationsTab />}
-      {activeTab === 'display' && <DisplayTab />}
-      {activeTab === 'accessibility' && <AccessibilityTab />}
-      {activeTab === 'api-keys' && <ApiKeysTab />}
-      {activeTab === 'webhooks' && <WebhooksTab />}
-      {activeTab === 'danger' && <DangerZoneTab />}
+      <div id={`settings-panel-${activeTab}`} role="tabpanel" aria-labelledby={`settings-tab-${activeTab}`}>
+        {activeTab === 'profile' && <ProfileTab />}
+        {activeTab === 'team' && canManageTeam && <TeamTab />}
+        {activeTab === 'notifications' && <NotificationsTab />}
+        {activeTab === 'display' && <DisplayTab />}
+        {activeTab === 'accessibility' && <AccessibilityTab />}
+        {activeTab === 'api-keys' && <ApiKeysTab />}
+        {activeTab === 'webhooks' && <WebhooksTab />}
+        {activeTab === 'danger' && <DangerZoneTab />}
+      </div>
     </div>
   );
 };

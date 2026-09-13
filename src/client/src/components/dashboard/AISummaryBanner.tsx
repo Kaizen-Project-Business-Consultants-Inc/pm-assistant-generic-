@@ -228,7 +228,7 @@ export function AISummaryBanner() {
           {narrativeLoading ? (
             <div className="h-4 w-3/4 bg-gray-100 dark:bg-gray-700 rounded animate-pulse" />
           ) : narrativeData?.narrative ? (
-            <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+            <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed" aria-live="polite" aria-atomic="true">
               {narrativeData.narrative}
             </p>
           ) : null}

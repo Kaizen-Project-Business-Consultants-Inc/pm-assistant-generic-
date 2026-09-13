@@ -15,6 +15,7 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useViewPreferences, ViewPreferences } from '../../hooks/useViewPreferences';
 import { useThemeStore } from '../../stores/themeStore';
+import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -45,6 +46,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const breakpoint = useBreakpoint();
   const navigate = useNavigate();
   const { aiPanelContext } = useUIStore();
+  const { prefs: accessibilityPrefs } = useAccessibility();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const pendingGo = useRef(false);
 
@@ -95,6 +97,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     let goTimer: ReturnType<typeof setTimeout> | null = null;
 
     function handleKeyDown(e: KeyboardEvent) {
+      if (!accessibilityPrefs.keyboardShortcutsEnabled) return;
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable) return;
 
@@ -129,7 +132,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       document.removeEventListener('keydown', handleKeyDown);
       if (goTimer) clearTimeout(goTimer);
     };
-  }, [navigate]);
+  }, [navigate, accessibilityPrefs.keyboardShortcutsEnabled]);
 
   const handleSidebarToggle = useCallback(() => {
     setSidebarCollapsed((prev) => !prev);

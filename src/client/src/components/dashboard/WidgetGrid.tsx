@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { GripVertical, Maximize2, Columns2, LayoutGrid } from 'lucide-react';
+import { useState, useCallback, type ReactNode } from 'react';
+import { GripVertical, ChevronUp, ChevronDown, Maximize2, Columns2, LayoutGrid } from 'lucide-react';
 import type { WidgetDef } from './WidgetRegistry';
 
 type WidgetSize = 'full' | 'half' | 'third';
@@ -104,6 +104,15 @@ export function WidgetGrid({ widgets, enabledIds, widgetOrder, onReorder, render
     }
   });
 
+  // Keyboard-accessible move: swap widget at fromIdx with the one at toIdx
+  const moveWidget = useCallback((fromIdx: number, toIdx: number) => {
+    if (toIdx < 0 || toIdx >= orderedIds.length) return;
+    const newOrder = [...orderedIds];
+    const [moved] = newOrder.splice(fromIdx, 1);
+    newOrder.splice(toIdx, 0, moved);
+    onReorder(newOrder);
+  }, [orderedIds, onReorder]);
+
   const renderDraggable = (id: string, flatIdx: number) => {
     const size = getSize(id);
     const SizeIcon = SIZE_ICONS[size];
@@ -117,8 +126,26 @@ export function WidgetGrid({ widgets, enabledIds, widgetOrder, onReorder, render
         onDragEnd={handleDragEnd}
         className={`group relative transition-all ${dragIdx === flatIdx ? 'opacity-40' : ''} ${overIdx === flatIdx && dragIdx !== flatIdx ? 'ring-2 ring-primary-400 ring-offset-2 rounded-xl' : ''}`}
       >
-        <div className="absolute left-0 top-0 bottom-0 w-6 flex items-center justify-center z-10 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
-          <GripVertical className="w-4 h-4 text-gray-300 dark:text-gray-600" />
+        <div className="absolute left-0 top-0 bottom-0 w-6 flex flex-col items-center justify-center z-10 gap-0.5">
+          <button
+            aria-label="Move widget up"
+            disabled={flatIdx === 0}
+            onClick={() => moveWidget(flatIdx, flatIdx - 1)}
+            className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:invisible"
+          >
+            <ChevronUp className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+          </button>
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" aria-hidden="true">
+            <GripVertical className="w-4 h-4 text-gray-300 dark:text-gray-600" />
+          </div>
+          <button
+            aria-label="Move widget down"
+            disabled={flatIdx === orderedIds.length - 1}
+            onClick={() => moveWidget(flatIdx, flatIdx + 1)}
+            className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:invisible"
+          >
+            <ChevronDown className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+          </button>
         </div>
         {onResize && (
           <button

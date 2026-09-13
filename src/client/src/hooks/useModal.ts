@@ -1,6 +1,18 @@
 import { useEffect, useRef, useCallback } from 'react';
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex], summary, [contenteditable], iframe, audio[controls], video[controls]';
+
+/** Query focusable elements and filter out hidden/disabled ones. */
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => {
+    if (el.hidden || el.closest('[hidden]')) return false;
+    if ((el as HTMLButtonElement).disabled) return false;
+    if (el.getAttribute('tabindex') === '-1') return false;
+    // offsetParent is null for display:none or visibility:hidden ancestors
+    if (el.offsetParent === null && el.style.position !== 'fixed') return false;
+    return true;
+  });
+}
 
 /**
  * Manages modal accessibility: focus trap, Escape-to-close, focus restoration.
@@ -18,11 +30,18 @@ export function useModal(isOpen: boolean, onClose: () => void) {
       const timer = setTimeout(() => {
         const dialog = dialogRef.current;
         if (!dialog) return;
-        const first = dialog.querySelector<HTMLElement>(FOCUSABLE);
+        const first = getFocusableElements(dialog)[0];
         if (first) first.focus();
         else dialog.focus();
       }, 50);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        // Restore focus if component unmounts while modal is open
+        const trigger = triggerRef.current as HTMLElement | null;
+        if (trigger && typeof trigger.focus === 'function') {
+          trigger.focus();
+        }
+      };
     } else {
       // Restore focus to the trigger element
       const trigger = triggerRef.current as HTMLElement | null;
@@ -32,6 +51,35 @@ export function useModal(isOpen: boolean, onClose: () => void) {
       triggerRef.current = null;
     }
   }, [isOpen]);
+
+  // Gap A: Mark main content inert so screen readers cannot browse behind the dialog
+  useEffect(() => {
+    if (!isOpen) return;
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+      mainContent.setAttribute('inert', '');
+      mainContent.setAttribute('aria-hidden', 'true');
+    }
+    return () => {
+      if (mainContent) {
+        mainContent.removeAttribute('inert');
+        mainContent.removeAttribute('aria-hidden');
+      }
+    };
+  }, [isOpen]);
+
+  // Gap B: Document-level Escape listener (defense in depth — works even if focus escapes the dialog)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
 
   // Escape key and focus trap
   const handleKeyDown = useCallback(
@@ -47,7 +95,7 @@ export function useModal(isOpen: boolean, onClose: () => void) {
       const dialog = dialogRef.current;
       if (!dialog) return;
 
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
+      const focusable = getFocusableElements(dialog);
       if (focusable.length === 0) return;
 
       const first = focusable[0];

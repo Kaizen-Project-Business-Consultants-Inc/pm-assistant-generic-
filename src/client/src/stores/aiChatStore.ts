@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { apiService } from '../services/api';
 import { queryClient } from '../main';
+import { announce } from '../utils/announce';
 
 export interface ChatMessage {
   id: string;
@@ -203,6 +204,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
       // Refresh conversation list in background
       get().loadConversations().catch(() => { /* Background refresh — non-critical */ });
 
+      announce('AI response received');
       setLoading(false);
     } catch (error) {
       const errData = error && typeof error === 'object' && 'response' in error
@@ -228,6 +230,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
       }));
 
       setError(error instanceof Error ? error.message : 'Unknown error');
+      announce('AI request failed');
     }
   },
 

@@ -46,7 +46,7 @@ export const TableHeaderRow = React.memo(function TableHeaderRow({
 }: TableHeaderRowProps) {
   return (
     <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      <th className="w-16 px-2 py-2.5">
+      <th className="w-16 px-2 py-2.5" scope="col">
         <div className="flex items-center gap-1">
           <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 w-5 text-center">#</span>
           <input
@@ -65,6 +65,8 @@ export const TableHeaderRow = React.memo(function TableHeaderRow({
           onDragOver={(e) => colDrag.handleDragOver(e, col.key)}
           onDrop={(e) => colDrag.handleDrop(e, col.key)}
           onDragEnd={colDrag.handleDragEnd}
+          scope="col"
+          aria-sort={col.sortable ? (sortField === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
           className={`px-3 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide select-none relative group/th hover:bg-gray-100 dark:hover:bg-gray-700 ${colDrag.isDraggable(col.key) ? 'cursor-grab active:cursor-grabbing' : ''} ${colDrag.dragColKey === col.key ? 'opacity-40' : ''} ${colDrag.overColKey === col.key && colDrag.dragColKey !== col.key ? 'ring-2 ring-inset ring-primary-400' : ''}`}
           style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : { minWidth: col.key === 'name' ? 200 : 100 }}
         >
@@ -116,7 +118,7 @@ export const TableHeaderRow = React.memo(function TableHeaderRow({
           </div>
         </th>
       ))}
-      <th className="w-10" />
+      <th className="w-10" scope="col" />
     </tr>
   );
 });

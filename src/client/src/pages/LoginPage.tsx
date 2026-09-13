@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Mail } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
@@ -23,6 +23,14 @@ export const LoginPage: React.FC = () => {
   const { setUser, setError: setAuthError } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const verificationRef = useRef<HTMLDivElement>(null);
+
+  // W11c: Move focus to verification view when state changes
+  useEffect(() => {
+    if (awaitingVerification && verificationRef.current) {
+      verificationRef.current.focus();
+    }
+  }, [awaitingVerification]);
 
   useEffect(() => {
     const errorParam = searchParams.get('error');
@@ -87,13 +95,13 @@ export const LoginPage: React.FC = () => {
 
   if (awaitingVerification) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 py-12 px-4 sm:px-6 lg:px-8">
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
+          <div ref={verificationRef} tabIndex={-1} role="status" className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 text-center" aria-live="polite">
             <div className="mx-auto w-16 h-16 bg-primary-100 dark:bg-primary-900/40 rounded-full flex items-center justify-center mb-6">
               <Mail className="w-8 h-8 text-primary-600 dark:text-primary-400" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Check your email</h2>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Check your email</h1>
             <p className="text-gray-500 dark:text-gray-400 mb-6">
               We sent a login confirmation link to your email address. Click the link to complete sign-in.
             </p>
@@ -108,12 +116,12 @@ export const LoginPage: React.FC = () => {
             </button>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 py-12 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
@@ -132,7 +140,7 @@ export const LoginPage: React.FC = () => {
                 />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Kovarti PM</h2>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kovarti PM</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Sign in to your account
             </p>
@@ -140,7 +148,7 @@ export const LoginPage: React.FC = () => {
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
+              <div id="login-error" className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3" role="alert">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <svg
@@ -180,6 +188,8 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setUsername(e.target.value)}
                 className="input"
                 placeholder="Enter your username or email"
+                aria-invalid={!!error}
+                {...(error ? { 'aria-describedby': 'login-error' } : {})}
               />
             </div>
 
@@ -203,6 +213,8 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="input pr-10"
                   placeholder="Enter your password"
+                  aria-invalid={!!error}
+                  {...(error ? { 'aria-describedby': 'login-error' } : {})}
                 />
                 <button
                   type="button"
@@ -248,6 +260,6 @@ export const LoginPage: React.FC = () => {
           </form>
         </div>
       </div>
-    </div>
+    </main>
   );
 };

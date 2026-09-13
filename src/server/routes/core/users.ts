@@ -40,6 +40,7 @@ const accessibilityPrefsSchema = z.object({
   reducedMotion: z.boolean().optional(),
   simplificationLevel: z.enum(['off', 'mild', 'strong']).optional(),
   narrationEnabled: z.boolean().optional(),
+  keyboardShortcutsEnabled: z.boolean().optional(),
 });
 
 const userPrefsSchema = z.object({

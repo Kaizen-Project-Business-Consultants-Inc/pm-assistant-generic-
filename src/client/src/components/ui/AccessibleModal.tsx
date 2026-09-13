@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useModal } from '../../hooks/useModal';
 
 interface AccessibleModalProps {
@@ -26,7 +27,7 @@ export const AccessibleModal: React.FC<AccessibleModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
@@ -41,6 +42,7 @@ export const AccessibleModal: React.FC<AccessibleModalProps> = ({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
