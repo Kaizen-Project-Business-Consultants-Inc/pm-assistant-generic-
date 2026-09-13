@@ -753,7 +753,7 @@ function ProjectComparisonMatrix({ projects, onProjectClick }: { projects: Portf
                   <td className="px-4 py-2 font-medium text-gray-900 dark:text-white truncate max-w-[200px]">{p.projectName}</td>
                   <td className="px-3 py-2 text-center">
                     <span className="inline-flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${healthDotColor(p.healthScore)}`} />
+                      <span className={`w-2 h-2 rounded-full ${healthDotColor(p.healthScore)}`} aria-hidden="true" />
                       <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{p.healthScore !== null ? p.healthScore : '—'}</span>
                     </span>
                   </td>

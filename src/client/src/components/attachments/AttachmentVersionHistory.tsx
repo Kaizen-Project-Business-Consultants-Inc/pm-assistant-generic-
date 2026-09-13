@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Upload, Download } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { useModal } from '../../hooks/useModal';
 
 interface AttachmentVersionHistoryProps {
   attachmentId: string;
@@ -14,6 +15,7 @@ function formatSize(bytes: number): string {
 }
 
 export function AttachmentVersionHistory({ attachmentId, onClose }: AttachmentVersionHistoryProps) {
+  const { dialogRef, handleKeyDown } = useModal(true, onClose);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -50,7 +52,7 @@ export function AttachmentVersionHistory({ attachmentId, onClose }: AttachmentVe
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
-      <div className="relative w-full max-w-md mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-h-[80vh] flex flex-col" role="dialog" aria-modal="true">
+      <div ref={dialogRef} onKeyDown={handleKeyDown} tabIndex={-1} className="relative w-full max-w-md mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-h-[80vh] flex flex-col" role="dialog" aria-modal="true" aria-label="Version History">
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Version History</h3>
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">

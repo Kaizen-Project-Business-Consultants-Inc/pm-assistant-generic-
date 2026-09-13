@@ -104,10 +104,13 @@ function impactDot(impact: string) {
     neutral: 'bg-gray-400',
   };
   return (
-    <span
-      className={`inline-block w-2 h-2 rounded-full ${colors[impact] || 'bg-gray-400'}`}
-      title={impact}
-    />
+    <span className="inline-flex items-center gap-1" title={impact}>
+      <span
+        className={`inline-block w-2 h-2 rounded-full ${colors[impact] || 'bg-gray-400'}`}
+        aria-hidden="true"
+      />
+      <span className="sr-only">{impact}</span>
+    </span>
   );
 }
 

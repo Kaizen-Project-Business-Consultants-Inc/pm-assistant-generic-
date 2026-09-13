@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckSquare, Square, ChevronDown, ChevronUp, Bot } from 'lucide-react';
 import { useModal } from '../../hooks/useModal';
+import { severityColor } from '../../utils/severityColors';
 
 interface AIScanCandidate {
   title: string;
@@ -28,13 +29,6 @@ const CATEGORIES = [
   'schedule', 'budget', 'resource', 'technical',
   'regulatory', 'stakeholder', 'weather', 'dependency', 'other',
 ] as const;
-
-const severityColor = (s: string) => {
-  if (s === 'critical') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-  if (s === 'high') return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
-  if (s === 'medium') return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-  return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-};
 
 export function AIScanReviewModal({ isOpen, onClose, onImport, candidates, importing, aiPowered }: AIScanReviewModalProps) {
   const [selected, setSelected] = useState<Set<number>>(new Set());

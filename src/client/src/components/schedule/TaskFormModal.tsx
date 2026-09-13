@@ -10,6 +10,7 @@ import { AttachmentPanel } from '../attachments/AttachmentPanel';
 import { TaskChecklistPanel } from '../sprints/TaskChecklistPanel';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { apiService } from '../../services/api';
+import { useModal } from '../../hooks/useModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -214,6 +215,7 @@ export function TaskFormModal({
   initialStartDate,
   initialEndDate,
 }: TaskFormModalProps) {
+  const { dialogRef, handleKeyDown: handleModalKeyDown } = useModal(true, onClose);
   const isEdit = !!task;
   const isSummary = !!task?.isSummary;
 
@@ -363,7 +365,8 @@ export function TaskFormModal({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col max-h-[90vh]" role="dialog" aria-modal="true" aria-labelledby="task-form-title">
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+      <div ref={dialogRef} onKeyDown={handleModalKeyDown} tabIndex={-1} className="relative w-full max-w-lg mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col max-h-[90vh]" role="dialog" aria-modal="true" aria-labelledby="task-form-title">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 id="task-form-title" className="text-base font-bold text-gray-900 dark:text-gray-100">

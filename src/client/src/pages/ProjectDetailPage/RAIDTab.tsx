@@ -5,6 +5,7 @@ import {
   ArrowUpDown, AlertTriangle, FileText, Upload,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { severityColor } from '../../utils/severityColors';
 import { RiskFormModal } from '../../components/risks/RiskFormModal';
 import { AIScanReviewModal } from '../../components/risks/AIScanReviewModal';
 import { RAIDDetailPanel } from '../../components/risks/RAIDDetailPanel';
@@ -228,13 +229,6 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   };
 
   // Style helpers
-  const severityColor = (s: string) => {
-    if (s === 'critical') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-    if (s === 'high') return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
-    if (s === 'medium') return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-    return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-  };
-
   const statusColor = (s: string) => {
     if (s === 'open') return 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400';
     if (s === 'monitoring') return 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400';
@@ -384,10 +378,10 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
               {severityDist.low > 0 && <div className="bg-green-400" style={{ width: `${(severityDist.low / risks.length) * 100}%` }} title={`Low: ${severityDist.low}`} />}
             </div>
             <div className="flex gap-1.5 text-[9px] text-gray-500 dark:text-gray-400">
-              {severityDist.critical > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-red-500" />{severityDist.critical}</span>}
-              {severityDist.high > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-orange-500" />{severityDist.high}</span>}
-              {severityDist.medium > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-yellow-400" />{severityDist.medium}</span>}
-              {severityDist.low > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-green-400" />{severityDist.low}</span>}
+              {severityDist.critical > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-red-500" aria-hidden="true" /><span className="sr-only">Critical:</span>{severityDist.critical}</span>}
+              {severityDist.high > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-orange-500" aria-hidden="true" /><span className="sr-only">High:</span>{severityDist.high}</span>}
+              {severityDist.medium > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-yellow-400" aria-hidden="true" /><span className="sr-only">Medium:</span>{severityDist.medium}</span>}
+              {severityDist.low > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-green-400" aria-hidden="true" /><span className="sr-only">Low:</span>{severityDist.low}</span>}
             </div>
           </div>
         )}

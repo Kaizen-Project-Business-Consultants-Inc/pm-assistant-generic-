@@ -579,7 +579,8 @@ export function ProjectDetailPage() {
             {projectLessons.map((lesson: any) => (
               <div key={lesson.id} className="px-3 py-2 rounded-md bg-white dark:bg-gray-800 border border-amber-100 dark:border-amber-900/30">
                 <div className="flex items-start gap-2">
-                  <span className={`mt-0.5 flex-shrink-0 w-2 h-2 rounded-full ${lesson.impact === 'negative' ? 'bg-red-400' : lesson.impact === 'positive' ? 'bg-green-400' : 'bg-gray-400'}`} />
+                  <span className={`mt-0.5 flex-shrink-0 w-2 h-2 rounded-full ${lesson.impact === 'negative' ? 'bg-red-400' : lesson.impact === 'positive' ? 'bg-green-400' : 'bg-gray-400'}`} aria-hidden="true" title={lesson.impact} />
+                  <span className="sr-only">{lesson.impact} impact:</span>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{lesson.title}</p>
                     {lesson.recommendation && (

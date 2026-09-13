@@ -1360,7 +1360,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               <input
                 autoFocus
                 type="text"
-                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 text-gray-600 dark:text-gray-300"
+                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 focus-visible:border-b focus-visible:border-primary-500 text-gray-600 dark:text-gray-300"
                 value={editValue}
                 onChange={e => setEditValue(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, task.id, 'duration')}
@@ -1431,7 +1431,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               <input
                 ref={el => { inputRef.current = el; }}
                 type="date"
-                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 dark:text-gray-100"
+                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 focus-visible:border-b focus-visible:border-primary-500 dark:text-gray-100"
                 value={editValue}
                 onChange={e => setEditValue(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, task.id, adField)}
@@ -1584,7 +1584,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 type="number"
                 min="0"
                 step="0.01"
-                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 text-right font-mono text-gray-700 dark:text-gray-300"
+                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 focus-visible:border-b focus-visible:border-primary-500 text-right font-mono text-gray-700 dark:text-gray-300"
                 value={editValue}
                 onChange={e => setEditValue(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, task.id, budgetField)}
@@ -1614,7 +1614,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             {isEditing(task.id, 'constraintType' as EditableField) ? (
               <select
                 ref={el => { inputRef.current = el as any; }}
-                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0"
+                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 focus-visible:border-b focus-visible:border-primary-500"
                 value={editValue}
                 onChange={e => { setEditValue(e.target.value); saveEdit(task.id, 'constraintType' as EditableField, e.target.value); }}
                 onBlur={() => saveEdit(task.id, 'constraintType' as EditableField, editValue)}
@@ -1648,7 +1648,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               <input
                 ref={el => { inputRef.current = el; }}
                 type="date"
-                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0"
+                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus:outline-none focus:ring-0 focus-visible:border-b focus-visible:border-primary-500"
                 value={editValue}
                 onChange={e => setEditValue(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, task.id, 'constraintDate' as EditableField)}
@@ -1846,7 +1846,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                           type="text"
                           autoFocus
                           placeholder="Type task name and press Enter…"
-                          className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none"
+                          className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus-visible:border-b focus-visible:border-primary-500"
                           onKeyDown={(e) => {
                             const input = e.currentTarget;
                             if (e.key === 'Enter' && input.value.trim()) {

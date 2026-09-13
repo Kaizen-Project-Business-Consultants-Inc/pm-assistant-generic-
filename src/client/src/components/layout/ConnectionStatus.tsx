@@ -24,9 +24,12 @@ export function ConnectionStatus() {
     }>
       <span className={`block w-2 h-2 rounded-full ${
         state === 'connected' ? 'bg-green-500' :
-        state === 'connecting' ? 'bg-amber-500 animate-pulse' :
+        state === 'connecting' ? 'bg-amber-500 animate-pulse motion-reduce:animate-none' :
         'bg-red-500'
-      }`} />
+      }`} aria-hidden="true" />
+      <span className="sr-only">
+        {state === 'connected' ? 'Connected' : state === 'connecting' ? 'Reconnecting' : 'Disconnected'}
+      </span>
       {state === 'disconnected' && (
         <button
           onClick={reconnectNow}

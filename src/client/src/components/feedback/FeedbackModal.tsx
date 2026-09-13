@@ -35,7 +35,7 @@ function StarRating({ value, onChange, size = 'md' }: { value: number; onChange:
           onMouseEnter={() => setHover(star)}
           onMouseLeave={() => setHover(0)}
           onClick={() => onChange(star)}
-          className="focus:outline-none"
+          className="focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 rounded"
           aria-label={`Rate ${star} out of 5 stars`}
         >
           <Star
