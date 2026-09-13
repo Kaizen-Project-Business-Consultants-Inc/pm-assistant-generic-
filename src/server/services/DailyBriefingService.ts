@@ -6,23 +6,47 @@ function isGlobalScope(userRole: string, scope?: string): boolean {
   return globalRoles.includes(userRole) || scope === 'portfolio';
 }
 
+export interface RaidWatchItem {
+  id: string;
+  type: 'action_item' | 'blocked_task' | 'open_issue';
+  label: string;
+  projectId: string;
+  projectName: string;
+  detail: string;
+  linkTab: 'raid' | 'schedule';
+}
+
+export interface BriefingTask {
+  id: string;
+  name: string;
+  projectId: string;
+  projectName: string;
+  scheduleId: string;
+  priority: string;
+}
+
+export interface BriefingOverdueTask extends BriefingTask {
+  overdueDays: number;
+}
+
+export interface BriefingDueTask extends BriefingTask {
+  dueDate: string;
+  daysUntil: number;
+}
+
 export interface DailyBriefing {
   generatedAt: string;
   actionItems: {
     pendingProposals: number;
-    pendingChangeRequests: Array<{ id: string; title: string; projectName: string; priority: string }>;
+    pendingChangeRequests: Array<{ id: string; title: string; projectName: string; projectId: string; priority: string }>;
     unreadNotifications: { total: number; critical: number; high: number };
   };
-  tasksDueToday: Array<{ id: string; name: string; projectName: string; priority: string }>;
-  tasksDueThisWeek: Array<{ id: string; name: string; projectName: string; dueDate: string; daysUntil: number }>;
-  overdueTasks: Array<{ id: string; name: string; projectName: string; priority: string; overdueDays: number }>;
-  recentHighRisks: Array<{ id: string; title: string; projectName: string; severity: string; type: string }>;
-  projectHealth: {
-    green: number; amber: number; red: number;
-    changes: Array<{ projectName: string; from: number; to: number; direction: 'up' | 'down' }>;
-  };
-  budgetAlerts: Array<{ projectName: string; allocated: number; spent: number; utilization: number }>;
-  upcomingMilestones: Array<{ id: string; name: string; projectName: string; dueDate: string; daysUntil: number }>;
+  tasksDueToday: BriefingTask[];
+  tasksDueThisWeek: BriefingDueTask[];
+  overdueTasks: BriefingOverdueTask[];
+  recentHighRisks: Array<{ id: string; title: string; projectId: string; projectName: string; severity: string; type: string }>;
+  upcomingMilestones: Array<{ id: string; name: string; projectId: string; projectName: string; scheduleId: string; dueDate: string; daysUntil: number }>;
+  raidWatch: RaidWatchItem[];
 }
 
 class DailyBriefingService {
@@ -39,9 +63,10 @@ class DailyBriefingService {
       dueThisWeek,
       overdue,
       risks,
-      healthHistory,
-      budgetAlerts,
       milestones,
+      overdueActions,
+      blockedTasks,
+      openIssues,
     ] = await Promise.all([
       // Pending proposals
       databaseService.query<any>(
@@ -53,7 +78,7 @@ class DailyBriefingService {
       ),
       // Pending change requests
       databaseService.query<any>(
-        `SELECT cr.id, cr.title, p.name AS projectName, cr.priority
+        `SELECT cr.id, cr.title, p.name AS projectName, p.id AS projectId, cr.priority
          FROM change_requests cr
          JOIN projects p ON cr.project_id = p.id
          ${memberJoin}
@@ -70,7 +95,7 @@ class DailyBriefingService {
       ),
       // Tasks due today
       databaseService.query<any>(
-        `SELECT t.id, t.name, p.name AS projectName, t.priority
+        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId, s.id AS scheduleId, t.priority
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
          JOIN projects p ON s.project_id = p.id
@@ -82,7 +107,8 @@ class DailyBriefingService {
       ),
       // Tasks due this week (next 7 days, excluding today)
       databaseService.query<any>(
-        `SELECT t.id, t.name, p.name AS projectName, t.end_date AS dueDate,
+        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId, s.id AS scheduleId,
+                t.end_date AS dueDate, t.priority,
                 DATEDIFF(t.end_date, CURDATE()) AS daysUntil
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
@@ -95,7 +121,7 @@ class DailyBriefingService {
       ),
       // Overdue tasks
       databaseService.query<any>(
-        `SELECT t.id, t.name, p.name AS projectName, t.priority,
+        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId, s.id AS scheduleId, t.priority,
                 DATEDIFF(CURDATE(), t.end_date) AS overdueDays
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
@@ -108,7 +134,7 @@ class DailyBriefingService {
       ),
       // Recent high risks (last 24h)
       databaseService.query<any>(
-        `SELECT pr.id, pr.title, p.name AS projectName, pr.severity, pr.type
+        `SELECT pr.id, pr.title, p.name AS projectName, p.id AS projectId, pr.severity, pr.type
          FROM project_risks pr
          JOIN projects p ON pr.project_id = p.id
          ${memberJoin}
@@ -117,31 +143,10 @@ class DailyBriefingService {
          ORDER BY pr.created_at DESC LIMIT 10`,
         [...memberParams]
       ),
-      // Project health history (latest 2 snapshots per project)
-      databaseService.query<any>(
-        `SELECT ph.project_id, p.name AS projectName, ph.health_score, ph.recorded_at
-         FROM project_health_history ph
-         JOIN projects p ON ph.project_id = p.id
-         ${memberJoin}
-         WHERE ph.recorded_at >= DATE_SUB(CURDATE(), INTERVAL 2 DAY)
-         ORDER BY ph.project_id, ph.recorded_at DESC`,
-        [...memberParams]
-      ),
-      // Budget alerts (>85% utilization)
-      databaseService.query<any>(
-        `SELECT p.name AS projectName, p.budget_allocated AS allocated,
-                p.budget_spent AS spent,
-                ROUND((p.budget_spent / p.budget_allocated) * 100, 1) AS utilization
-         FROM projects p
-         ${memberJoin}
-         WHERE p.budget_allocated > 0
-           AND (p.budget_spent / p.budget_allocated) > 0.85
-         ORDER BY utilization DESC LIMIT 10`,
-        [...memberParams]
-      ),
       // Upcoming milestones (next 7 days)
       databaseService.query<any>(
-        `SELECT t.id, t.name, p.name AS projectName, t.end_date AS dueDate,
+        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId, s.id AS scheduleId,
+                t.end_date AS dueDate,
                 DATEDIFF(t.end_date, CURDATE()) AS daysUntil
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
@@ -153,6 +158,47 @@ class DailyBriefingService {
          ORDER BY t.end_date ASC LIMIT 10`,
         [...memberParams]
       ),
+      // RAID Watch: Overdue meeting action items
+      databaseService.query<any>(
+        `SELECT mai.id, mai.description, mai.due_date, p.id AS projectId, p.name AS projectName,
+                DATEDIFF(CURDATE(), mai.due_date) AS overdueDays
+         FROM meeting_action_items mai
+         JOIN projects p ON mai.project_id = p.id
+         ${memberJoin}
+         WHERE mai.due_date < CURDATE()
+           AND mai.status NOT IN ('completed', 'cancelled')
+         ORDER BY mai.due_date ASC LIMIT 10`,
+        [...memberParams]
+      ),
+      // RAID Watch: Blocked tasks (FS predecessor not completed)
+      databaseService.query<any>(
+        `SELECT t.id, t.name, p.id AS projectId, p.name AS projectName, s.id AS scheduleId,
+                pred.name AS blockedByName
+         FROM task_dependencies td
+         JOIN tasks t ON td.task_id = t.id
+         JOIN tasks pred ON td.dependency_id = pred.id
+         JOIN schedules s ON t.schedule_id = s.id
+         JOIN projects p ON s.project_id = p.id
+         ${memberJoin}
+         WHERE td.dependency_type = 'FS'
+           AND pred.status NOT IN ('completed', 'done', 'cancelled')
+           AND t.status NOT IN ('completed', 'done', 'cancelled')
+           AND pred.end_date < CURDATE()
+         ORDER BY pred.end_date ASC LIMIT 10`,
+        [...memberParams]
+      ),
+      // RAID Watch: Open issues (unresolved risks of type 'issue')
+      databaseService.query<any>(
+        `SELECT pr.id, pr.title, pr.severity, p.id AS projectId, p.name AS projectName
+         FROM project_risks pr
+         JOIN projects p ON pr.project_id = p.id
+         ${memberJoin}
+         WHERE pr.type = 'issue'
+           AND pr.status NOT IN ('resolved', 'closed', 'cancelled', 'mitigated')
+         ORDER BY FIELD(pr.severity, 'critical', 'high', 'medium', 'low'), pr.created_at DESC
+         LIMIT 10`,
+        [...memberParams]
+      ),
     ]);
 
     // Process notifications
@@ -162,36 +208,43 @@ class DailyBriefingService {
     }
     const totalNotif = Array.from(notifMap.values()).reduce((a, b) => a + b, 0);
 
-    // Process health history into green/amber/red + changes
-    const healthByProject = new Map<string, { name: string; scores: number[] }>();
-    for (const row of healthHistory) {
-      const key = row.project_id;
-      if (!healthByProject.has(key)) {
-        healthByProject.set(key, { name: row.projectName, scores: [] });
-      }
-      const entry = healthByProject.get(key)!;
-      if (entry.scores.length < 2) {
-        entry.scores.push(Number(row.health_score));
-      }
+    // Build RAID Watch items
+    const raidWatch: RaidWatchItem[] = [];
+
+    for (const item of overdueActions) {
+      raidWatch.push({
+        id: item.id,
+        type: 'action_item',
+        label: item.description?.substring(0, 80) || 'Action item',
+        projectId: item.projectId,
+        projectName: item.projectName,
+        detail: `${item.overdueDays}d overdue`,
+        linkTab: 'raid',
+      });
     }
 
-    let green = 0, amber = 0, red = 0;
-    const changes: DailyBriefing['projectHealth']['changes'] = [];
+    for (const item of blockedTasks) {
+      raidWatch.push({
+        id: item.id,
+        type: 'blocked_task',
+        label: item.name,
+        projectId: item.projectId,
+        projectName: item.projectName,
+        detail: `blocked by: ${item.blockedByName}`,
+        linkTab: 'schedule',
+      });
+    }
 
-    for (const [, { name, scores }] of healthByProject) {
-      const latest = scores[0] ?? 0;
-      if (latest >= 75) green++;
-      else if (latest >= 50) amber++;
-      else red++;
-
-      if (scores.length === 2 && scores[0] !== scores[1]) {
-        changes.push({
-          projectName: name,
-          from: scores[1],
-          to: scores[0],
-          direction: scores[0] > scores[1] ? 'up' : 'down',
-        });
-      }
+    for (const item of openIssues) {
+      raidWatch.push({
+        id: item.id,
+        type: 'open_issue',
+        label: item.title,
+        projectId: item.projectId,
+        projectName: item.projectName,
+        detail: `${item.severity} issue`,
+        linkTab: 'raid',
+      });
     }
 
     return {
@@ -209,9 +262,8 @@ class DailyBriefingService {
       tasksDueThisWeek: dueThisWeek,
       overdueTasks: overdue,
       recentHighRisks: risks,
-      projectHealth: { green, amber, red, changes },
-      budgetAlerts,
       upcomingMilestones: milestones,
+      raidWatch,
     };
   }
 }
