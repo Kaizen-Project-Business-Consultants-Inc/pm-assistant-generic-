@@ -48,7 +48,7 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
   rejected: <XCircle className="w-4 h-4 text-red-500" />,
   returned: <RotateCcw className="w-4 h-4 text-yellow-500" />,
   submitted: <GitPullRequest className="w-4 h-4 text-blue-500" />,
-  withdrawn: <X className="w-4 h-4 text-gray-400" />,
+  withdrawn: <X className="w-4 h-4 text-gray-500" />,
 };
 
 function statusLabel(status: string): string {
@@ -199,7 +199,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
               {canEdit && onEdit && (
                 <button
                   onClick={() => onEdit(crId)}
-                  className="p-2 text-gray-400 hover:text-primary-600 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="p-2 text-gray-500 hover:text-primary-600 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                   title="Edit change request"
                   aria-label="Edit change request"
                 >
@@ -209,7 +209,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
               {canDelete && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="p-2 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="p-2 text-gray-500 hover:text-red-600 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                   title="Delete change request"
                   aria-label="Delete change request"
                 >
@@ -237,7 +237,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
         )}
 
         {/* Meta */}
-        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
+        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-500">
           <span>Requested by: {cr.requestedByName || cr.requestedBy || '-'}</span>
           <span>Created: {new Date(cr.createdAt).toLocaleString()}</span>
           {cr.updatedAt && <span>Updated: {new Date(cr.updatedAt).toLocaleString()}</span>}
@@ -267,7 +267,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
               {approvalHistory.map((entry: any, idx: number) => (
                 <div key={idx} className="flex items-start gap-3 relative">
                   <div className="relative z-10 mt-0.5 flex-shrink-0">
-                    {ACTION_ICONS[entry.action] || <Clock className="w-4 h-4 text-gray-400" />}
+                    {ACTION_ICONS[entry.action] || <Clock className="w-4 h-4 text-gray-500" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -289,7 +289,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
                     {entry.comment && (
                       <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5">{entry.comment}</p>
                     )}
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
                       {new Date(entry.actedAt).toLocaleString()}
                     </p>
                   </div>

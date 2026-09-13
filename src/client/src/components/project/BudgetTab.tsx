@@ -85,7 +85,7 @@ function DonutChart({ categories, total, currency }: { categories: { category: s
           <div key={s.category} className="flex items-center gap-2 text-xs">
             <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: s.color }} />
             <span className="text-gray-700 dark:text-gray-300">{capitalize(s.category)}</span>
-            <span className="text-gray-400 dark:text-gray-500 ml-auto">{formatCurrency(s.total, currency)}</span>
+            <span className="text-gray-500 dark:text-gray-500 ml-auto">{formatCurrency(s.total, currency)}</span>
           </div>
         ))}
       </div>
@@ -319,7 +319,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                 <PieChart className="w-4 h-4 text-primary-500" /> Cost Breakdown by Category
               </h3>
               {categories.length === 0 ? (
-                <p className="text-sm text-gray-400 dark:text-gray-500 py-8 text-center">No expenses recorded yet</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500 py-8 text-center">No expenses recorded yet</p>
               ) : (
                 <DonutChart categories={categories} total={totalExpenses} currency={currency} />
               )}
@@ -331,7 +331,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                 <TrendingUp className="w-4 h-4 text-primary-500" /> Monthly Spend Trend
               </h3>
               {monthly.length === 0 ? (
-                <p className="text-sm text-gray-400 dark:text-gray-500 py-8 text-center">No expense data to chart</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500 py-8 text-center">No expense data to chart</p>
               ) : (
                 <div className="relative">
                   <div className="flex items-end gap-2 h-40">
@@ -346,7 +346,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                             style={{ height: `${h}%` }}
                             title={`${label}: ${formatCurrency(m.total, currency)}`}
                           />
-                          <span className="text-xs text-gray-400 dark:text-gray-500">{label}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-500">{label}</span>
                         </div>
                       );
                     })}
@@ -364,7 +364,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                     </svg>
                   )}
                   {cumulativeMonthly.length >= 2 && (
-                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-500">
                       <span className="flex items-center gap-1"><span className="w-3 h-2 bg-primary-500 dark:bg-primary-400 rounded-sm" /> Monthly</span>
                       <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-amber-500 inline-block" /> Cumulative</span>
                     </div>
@@ -384,7 +384,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-primary-200 dark:border-primary-700 p-5 space-y-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white">New Expense</h3>
-                <button onClick={() => setShowForm(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" aria-label="Close expense form"><X className="w-4 h-4" /></button>
+                <button onClick={() => setShowForm(false)} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-200" aria-label="Close expense form"><X className="w-4 h-4" /></button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div>
@@ -425,7 +425,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
           {/* Search/filter bar */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
                 type="text"
                 value={expenseSearch}
@@ -443,7 +443,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
               {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{capitalize(c)}</option>)}
             </select>
             {(expenseSearch || expenseCategoryFilter !== 'all') && (
-              <span className="text-xs text-gray-400 dark:text-gray-500">{filteredExpenses.length} of {expenses.length}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-500">{filteredExpenses.length} of {expenses.length}</span>
             )}
           </div>
 
@@ -454,7 +454,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                 <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
               </div>
             ) : filteredExpenses.length === 0 ? (
-              <div className="text-center py-16 text-gray-400 dark:text-gray-500">
+              <div className="text-center py-16 text-gray-500 dark:text-gray-500">
                 <DollarSign className="w-10 h-10 mx-auto mb-3 opacity-40" />
                 <p>{expenses.length === 0 ? 'No expenses recorded yet.' : 'No matching expenses.'}</p>
               </div>
@@ -484,7 +484,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{e.vendor || '—'}</td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-[200px]">{e.description || '—'}</td>
                       <td className="px-4 py-3 text-right">
-                        <button onClick={() => deleteMutation.mutate(e.id)} className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete expense"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => deleteMutation.mutate(e.id)} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete expense"><Trash2 className="w-3.5 h-3.5" /></button>
                       </td>
                     </tr>
                   ))}
@@ -507,7 +507,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                 <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
               </div>
             ) : filteredExpenses.length === 0 ? (
-              <div className="text-center py-16 text-gray-400 dark:text-gray-500">
+              <div className="text-center py-16 text-gray-500 dark:text-gray-500">
                 <DollarSign className="w-10 h-10 mx-auto mb-3 opacity-40" />
                 <p>{expenses.length === 0 ? 'No expenses recorded yet.' : 'No matching expenses.'}</p>
               </div>
@@ -521,11 +521,11 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                     </span>
                     <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(e.amount, currency)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
                     <span>{new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                     <span>{e.vendor || ''}</span>
                   </div>
-                  {e.description && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">{e.description}</p>}
+                  {e.description && <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 truncate">{e.description}</p>}
                   <button onClick={() => deleteMutation.mutate(e.id)} className="mt-1 text-xs text-red-500 hover:text-red-700">Delete</button>
                 </div>
               ))

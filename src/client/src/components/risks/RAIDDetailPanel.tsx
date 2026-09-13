@@ -555,7 +555,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
           <div>
             <h3 ref={updatesRef} className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Updates</h3>
             {updates.length === 0 ? (
-              <p className="text-xs text-gray-400">No updates yet</p>
+              <p className="text-xs text-gray-500">No updates yet</p>
             ) : (
               <div className="space-y-3">
                 {updates.map((u: any) => (
@@ -568,20 +568,20 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                           {memberName(u.userId)}
                         </span>
-                        <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
+                        <span className="text-xs text-gray-500 ml-auto flex-shrink-0">
                           {formatTimestamp(u.createdAt)}
                           {u.updatedAt !== u.createdAt && <span className="italic ml-1">(edited)</span>}
                         </span>
                         <button
                           onClick={() => { setEditingUpdateId(u.id); setEditingUpdateText(u.text); }}
-                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-500"
+                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-500"
                           title="Edit update"
                         >
                           <Pencil className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => handleDeleteUpdate(u.id)}
-                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500"
+                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-red-500"
                           title="Delete update"
                         >
                           <Trash2 className="w-3 h-3" />
@@ -613,13 +613,13 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Activity</h3>
             {activity.length === 0 ? (
-              <p className="text-xs text-gray-400">No activity yet</p>
+              <p className="text-xs text-gray-500">No activity yet</p>
             ) : (
               <div className="space-y-3">
                 {activity.map((a: any) => (
                   <div key={a.id} className="flex gap-3">
                     <div className="flex-shrink-0 mt-1">
-                      <Clock className="w-3.5 h-3.5 text-gray-400" />
+                      <Clock className="w-3.5 h-3.5 text-gray-500" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -627,9 +627,9 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
                           {ACTIVITY_LABELS[a.actionType] || a.actionType}
                         </span>
                         {a.fieldName && (
-                          <span className="text-xs text-gray-400 capitalize">{a.fieldName}</span>
+                          <span className="text-xs text-gray-500 capitalize">{a.fieldName}</span>
                         )}
-                        <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
+                        <span className="text-xs text-gray-500 ml-auto flex-shrink-0">
                           {formatTimestamp(a.createdAt)}
                         </span>
                       </div>

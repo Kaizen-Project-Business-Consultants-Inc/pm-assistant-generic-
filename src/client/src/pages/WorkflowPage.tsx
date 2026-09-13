@@ -411,7 +411,7 @@ export function WorkflowPage() {
               <div className="w-6 h-6 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
             </div>
           ) : definitions.length === 0 ? (
-            <div className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">No workflows defined yet.</div>
+            <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-500">No workflows defined yet.</div>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
               {definitions.map((def) => (
@@ -430,16 +430,16 @@ export function WorkflowPage() {
                       </button>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className={`text-sm font-medium ${def.isEnabled ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                          <span className={`text-sm font-medium ${def.isEnabled ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-500'}`}>
                             {def.name}
                           </span>
-                          <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">v{def.version}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">v{def.version}</span>
                           {!def.isEnabled && (
-                            <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">Disabled</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">Disabled</span>
                           )}
                         </div>
                         {def.description && (
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{def.description}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">{def.description}</p>
                         )}
                       </div>
                     </div>
@@ -467,24 +467,24 @@ export function WorkflowPage() {
           <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <Clock className="w-4 h-4 text-gray-500 dark:text-gray-500" />
                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Execution History</h3>
               </div>
             </div>
             {executions.length === 0 ? (
-              <div className="text-center py-6 text-xs text-gray-400 dark:text-gray-500">No workflow executions yet.</div>
+              <div className="text-center py-6 text-xs text-gray-500 dark:text-gray-500">No workflow executions yet.</div>
             ) : (
               <div className="divide-y divide-gray-50">
                 {executions.map((exec: any) => (
                   <div key={exec.id} className="px-4 py-2 text-xs flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
                     onClick={() => setViewExecId(viewExecId === exec.id ? null : exec.id)}>
                     <div className="flex-shrink-0">
-                      {viewExecId === exec.id ? <ChevronDown className="w-3 h-3 text-gray-400 dark:text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500" />}
+                      {viewExecId === exec.id ? <ChevronDown className="w-3 h-3 text-gray-500 dark:text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500 dark:text-gray-500" />}
                     </div>
                     <Zap className="w-3 h-3 text-yellow-500 flex-shrink-0" />
                     <div className="flex-1">
                       <span className="font-medium text-gray-700 dark:text-gray-200">{exec.workflowId}</span>
-                      <span className="text-gray-400 dark:text-gray-500"> — {exec.entityType}:{exec.entityId}</span>
+                      <span className="text-gray-500 dark:text-gray-500"> — {exec.entityType}:{exec.entityId}</span>
                     </div>
                     <span className={`px-1.5 py-0.5 rounded text-xs capitalize ${
                       exec.status === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
@@ -506,9 +506,9 @@ export function WorkflowPage() {
           {viewExecId && execDetail?.execution && (
             <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
               <div className="flex items-center gap-2 mb-3">
-                <Eye className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <Eye className="w-4 h-4 text-gray-500 dark:text-gray-500" />
                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Execution Detail</h4>
-                <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">{viewExecId}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-500 font-mono">{viewExecId}</span>
               </div>
               <ExecutionDetail
                 execution={execDetail.execution}

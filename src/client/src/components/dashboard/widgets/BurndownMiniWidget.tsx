@@ -27,7 +27,7 @@ export function BurndownMiniWidget() {
           <TrendingDown className="w-4 h-4 text-primary-500" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Project Progress</h3>
         </div>
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-4">No active projects</p>
+        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-4">No active projects</p>
       </div>
     );
   }

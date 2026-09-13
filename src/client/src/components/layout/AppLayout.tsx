@@ -225,7 +225,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 </div>
                 <button
                   onClick={handleAiPanelToggle}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
                   aria-label="Close AI panel"
                 >
                   <X className="w-4 h-4" />

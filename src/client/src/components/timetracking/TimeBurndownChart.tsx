@@ -88,7 +88,7 @@ export function TimeBurndownChart({ projectId }: { projectId: string }) {
 
   if (!forecast || forecast.dataPoints.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-400">
+      <div className="text-center py-16 text-gray-500">
         <TrendingDown className="w-10 h-10 mx-auto mb-3 opacity-40" />
         <p>No time entries yet. Log time to see the burndown chart.</p>
       </div>

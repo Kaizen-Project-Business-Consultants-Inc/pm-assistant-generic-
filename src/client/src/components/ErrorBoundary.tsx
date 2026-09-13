@@ -45,7 +45,7 @@ export class ErrorBoundary extends React.Component<
                 An unexpected error occurred. Please reload the page to continue.
               </p>
               {this.state.error && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 rounded p-2 mb-6 font-mono break-all">
+                <p className="text-xs text-gray-500 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 rounded p-2 mb-6 font-mono break-all">
                   {this.state.error.message}
                 </p>
               )}
@@ -110,7 +110,7 @@ export class RouteErrorBoundary extends React.Component<
                 Something went wrong loading this section. You can try again or navigate to another page.
               </p>
               {this.state.error && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 rounded p-2 mb-4 font-mono break-all">
+                <p className="text-xs text-gray-500 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 rounded p-2 mb-4 font-mono break-all">
                   {this.state.error.message}
                 </p>
               )}
@@ -128,7 +128,7 @@ export class RouteErrorBoundary extends React.Component<
                   Go Back
                 </button>
               </div>
-              <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
+              <p className="mt-4 text-xs text-gray-500 dark:text-gray-500">
                 <a
                   href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Bug Report: ' + (this.state.error?.message || 'Unknown error'))}&body=${encodeURIComponent(`An error occurred.\n\nError: ${this.state.error?.message || 'Unknown'}\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}
                   className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"

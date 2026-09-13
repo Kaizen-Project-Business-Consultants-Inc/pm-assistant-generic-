@@ -281,7 +281,7 @@ export function ResourceLevelingPanel({
             <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
               Proposed Delay Adjustments
             </h3>
-            <span className="text-xs text-gray-400 dark:text-gray-500">
+            <span className="text-xs text-gray-500 dark:text-gray-500">
               {levelingResult.adjustments.length} task
               {levelingResult.adjustments.length !== 1 ? 's' : ''} affected
             </span>
@@ -326,7 +326,7 @@ export function ResourceLevelingPanel({
                       {formatDate(adj.originalEnd)}
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <ArrowRight className="w-3.5 h-3.5 text-gray-400 inline-block" />
+                      <ArrowRight className="w-3.5 h-3.5 text-gray-500 inline-block" />
                     </td>
                     <td className="px-3 py-2 text-primary-600 dark:text-primary-400 font-medium whitespace-nowrap">
                       {formatDate(adj.newStart)}
@@ -396,7 +396,7 @@ export function ResourceLevelingPanel({
             <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
               Reassignment Suggestions
             </h3>
-            <span className="text-xs text-gray-400 dark:text-gray-500">
+            <span className="text-xs text-gray-500 dark:text-gray-500">
               {levelingResult.reassignmentSuggestions.length} task
               {levelingResult.reassignmentSuggestions.length !== 1 ? 's' : ''} can be reassigned
             </span>
@@ -428,7 +428,7 @@ export function ResourceLevelingPanel({
                       {sug.currentResource}
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <ArrowRight className="w-3.5 h-3.5 text-gray-400 inline-block" />
+                      <ArrowRight className="w-3.5 h-3.5 text-gray-500 inline-block" />
                     </td>
                     <td className="px-3 py-2 text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
                       {sug.suggestedResource}

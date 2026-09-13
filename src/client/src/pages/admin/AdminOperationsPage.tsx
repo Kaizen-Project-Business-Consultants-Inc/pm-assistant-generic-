@@ -150,7 +150,7 @@ function GaugeCard({ label, value, max, unit, percent }: { label: string; value:
           <p className={`text-lg font-bold mt-0.5 ${colors.text}`}>
             {value}{unit && <span className="text-sm font-normal ml-0.5">{unit}</span>}
           </p>
-          {max && <p className="text-xs text-gray-400 dark:text-gray-500">of {max}</p>}
+          {max && <p className="text-xs text-gray-500 dark:text-gray-500">of {max}</p>}
         </div>
       </div>
     </div>
@@ -259,9 +259,9 @@ export function AdminOperationsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">AI Budget</p>
                     <p className="text-xl font-bold text-gray-900 dark:text-white">${data.system.ai.costThisMonth.toFixed(2)}</p>
-                    <p className="text-xs text-gray-400">{data.system.ai.budgetUsedPercent.toFixed(0)}% of ${data.system.ai.monthlyBudget.toFixed(0)}</p>
+                    <p className="text-xs text-gray-500">{data.system.ai.budgetUsedPercent.toFixed(0)}% of ${data.system.ai.monthlyBudget.toFixed(0)}</p>
                   </div>
-                  {expandedPanel === 'ai' ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                  {expandedPanel === 'ai' ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
                 </div>
               </button>
               {/* Tenants */}
@@ -272,7 +272,7 @@ export function AdminOperationsPage() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">Tenants</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">{data.summary.totalTenants}</p>
                   </div>
-                  {expandedPanel === 'tenants' ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                  {expandedPanel === 'tenants' ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
                 </div>
               </button>
               {/* Total Users */}
@@ -283,7 +283,7 @@ export function AdminOperationsPage() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">Total Users</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">{data.summary.totalUsers}</p>
                   </div>
-                  {expandedPanel === 'users' ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                  {expandedPanel === 'users' ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
                 </div>
               </button>
               {/* Headroom */}
@@ -294,7 +294,7 @@ export function AdminOperationsPage() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">Headroom</p>
                     <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">~{data.summary.estimatedHeadroom} <span className="text-sm font-normal">users</span></p>
                   </div>
-                  {expandedPanel === 'headroom' ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                  {expandedPanel === 'headroom' ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
                 </div>
               </button>
             </div>
@@ -350,7 +350,7 @@ export function AdminOperationsPage() {
                             );
                           })}
                         </div>
-                        <div className="flex justify-between text-xs text-gray-400 mt-1">
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
                           <span>{data.drilldown.aiDailyUsage[0]?.date.slice(5)}</span>
                           <span>{data.drilldown.aiDailyUsage[data.drilldown.aiDailyUsage.length - 1]?.date.slice(5)}</span>
                         </div>
@@ -444,7 +444,7 @@ export function AdminOperationsPage() {
                                 <div className="h-full bg-purple-400 dark:bg-purple-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                               </div>
                               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 w-10 text-right">{r.count}</span>
-                              <span className="text-xs text-gray-400 w-12 text-right">{pct.toFixed(0)}%</span>
+                              <span className="text-xs text-gray-500 w-12 text-right">{pct.toFixed(0)}%</span>
                             </div>
                           );
                         })}
@@ -594,8 +594,8 @@ export function AdminOperationsPage() {
               {[
                 { label: 'Logins (24h)', value: data.security.recentLogins24h, color: 'border-l-emerald-500', icon: CheckCircle, iconColor: 'text-emerald-500' },
                 { label: 'Active API Keys', value: `${data.security.activeApiKeys}/${data.security.totalApiKeys}`, color: 'border-l-blue-500', icon: Shield, iconColor: 'text-blue-500' },
-                { label: 'Deactivated', value: data.security.deactivatedAccounts, color: data.security.deactivatedAccounts > 0 ? 'border-l-amber-500' : 'border-l-gray-300', icon: XCircle, iconColor: data.security.deactivatedAccounts > 0 ? 'text-amber-500' : 'text-gray-400' },
-                { label: 'Never Logged In', value: data.security.usersNeverLoggedIn, color: data.security.usersNeverLoggedIn > 0 ? 'border-l-amber-500' : 'border-l-gray-300', icon: AlertOctagon, iconColor: data.security.usersNeverLoggedIn > 0 ? 'text-amber-500' : 'text-gray-400' },
+                { label: 'Deactivated', value: data.security.deactivatedAccounts, color: data.security.deactivatedAccounts > 0 ? 'border-l-amber-500' : 'border-l-gray-300', icon: XCircle, iconColor: data.security.deactivatedAccounts > 0 ? 'text-amber-500' : 'text-gray-500' },
+                { label: 'Never Logged In', value: data.security.usersNeverLoggedIn, color: data.security.usersNeverLoggedIn > 0 ? 'border-l-amber-500' : 'border-l-gray-300', icon: AlertOctagon, iconColor: data.security.usersNeverLoggedIn > 0 ? 'text-amber-500' : 'text-gray-500' },
               ].map(s => (
                 <div key={s.label} className={`bg-white dark:bg-gray-800 rounded-xl border-l-4 ${s.color} border border-gray-200 dark:border-gray-700 p-3 shadow-sm`}>
                   <div className="flex items-center gap-2 mb-1">
@@ -625,7 +625,7 @@ export function AdminOperationsPage() {
                 </thead>
                 <tbody>
                   {data.cronJobs.map(job => {
-                    const statusColor = job.status === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : job.status === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-gray-400';
+                    const statusColor = job.status === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : job.status === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-gray-500';
                     const statusBg = job.status === 'ok' ? 'bg-emerald-100 dark:bg-emerald-900/40' : job.status === 'failed' ? 'bg-red-100 dark:bg-red-900/40' : 'bg-gray-100 dark:bg-gray-700';
                     return (
                       <tr key={job.name} className="border-b border-gray-100 dark:border-gray-700/50">
@@ -651,7 +651,7 @@ export function AdminOperationsPage() {
             <div className="mb-6">
               <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3 flex items-center gap-2">
                 <Database className="w-4 h-4" /> Database Growth
-                <span className="text-xs font-normal text-gray-400 ml-auto">
+                <span className="text-xs font-normal text-gray-500 ml-auto">
                   Total: {data.dbGrowth.reduce((s, t) => s + t.sizeMB, 0).toFixed(1)} MB across {data.dbGrowth.length} tables
                 </span>
               </h2>
@@ -689,7 +689,7 @@ export function AdminOperationsPage() {
               </div>
               <div className={`bg-white dark:bg-gray-800 rounded-xl border-l-4 ${data.emailStats.failedThisMonth > 0 ? 'border-l-red-500' : 'border-l-gray-300'} border border-gray-200 dark:border-gray-700 p-3 shadow-sm`}>
                 <div className="flex items-center gap-2 mb-1">
-                  <XCircle className={`w-4 h-4 ${data.emailStats.failedThisMonth > 0 ? 'text-red-500' : 'text-gray-400'}`} />
+                  <XCircle className={`w-4 h-4 ${data.emailStats.failedThisMonth > 0 ? 'text-red-500' : 'text-gray-500'}`} />
                   <p className="text-xs text-gray-500 dark:text-gray-400">Failed</p>
                 </div>
                 <p className="text-xl font-bold text-gray-900 dark:text-white">{data.emailStats.failedThisMonth}</p>
@@ -766,7 +766,7 @@ export function AdminOperationsPage() {
                         <div className="h-full bg-violet-400 dark:bg-violet-500 rounded transition-all" style={{ width: `${pct}%` }} />
                       </div>
                       <span className="text-xs font-medium text-gray-700 dark:text-gray-300 w-12 text-right">{a.totalRuns}</span>
-                      <span className="text-xs text-gray-400 w-28 text-right">{a.lastRun ? new Date(a.lastRun).toLocaleDateString() : '--'}</span>
+                      <span className="text-xs text-gray-500 w-28 text-right">{a.lastRun ? new Date(a.lastRun).toLocaleDateString() : '--'}</span>
                     </div>
                   );
                 })}

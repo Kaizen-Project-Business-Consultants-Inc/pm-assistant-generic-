@@ -28,11 +28,11 @@ export function ResourceUtilizationWidget() {
       <div className="flex items-center gap-2 mb-3">
         <Users className="w-4 h-4 text-primary-500" />
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Resources</h3>
-        <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">{activeResources.length} active</span>
+        <span className="ml-auto text-xs text-gray-500 dark:text-gray-500">{activeResources.length} active</span>
       </div>
 
       {activeResources.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-4">No resources configured</p>
+        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-4">No resources configured</p>
       ) : (
         <div className="space-y-2 max-h-[240px] overflow-y-auto">
           {activeResources.slice(0, 8).map((r: any) => (
@@ -42,7 +42,7 @@ export function ResourceUtilizationWidget() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{r.name}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{r.role || 'No role'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 truncate">{r.role || 'No role'}</p>
               </div>
               <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{r.capacityHoursPerWeek || 40}h/wk</span>
             </div>

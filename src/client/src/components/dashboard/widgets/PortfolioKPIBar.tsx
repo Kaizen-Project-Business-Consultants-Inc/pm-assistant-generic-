@@ -28,7 +28,7 @@ const colorMap = {
   green: 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400',
   yellow: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
   red: 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400',
-  gray: 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500',
+  gray: 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-500',
 };
 
 const dotColor = {
@@ -59,7 +59,7 @@ export function PortfolioKPIBar({ scope }: PortfolioKPIBarProps = {}) {
   if (analyticsLoading || predictionsLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+        <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
       </div>
     );
   }
@@ -88,7 +88,7 @@ export function PortfolioKPIBar({ scope }: PortfolioKPIBarProps = {}) {
                 ? <TrendingUp className="w-4 h-4 text-green-500" />
                 : <TrendingDown className="w-4 h-4 text-red-500" />
             )}
-            {tile.trend === 'stable' && <Minus className="w-4 h-4 text-gray-400" />}
+            {tile.trend === 'stable' && <Minus className="w-4 h-4 text-gray-500" />}
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{tile.label}</p>
         </div>

@@ -99,14 +99,14 @@ export function LessonsPanel({ projectId, category }: LessonsPanelProps) {
                 <div className="flex items-center gap-0.5 flex-shrink-0">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleHelpful(lesson.id); }}
-                    className="p-0.5 rounded text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+                    className="p-0.5 rounded text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
                     title="Helpful"
                   >
                     <ThumbsUp className="w-3 h-3" />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDismiss(lesson.id); }}
-                    className="p-0.5 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                    className="p-0.5 rounded text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                     title="Not relevant"
                   >
                     <X className="w-3 h-3" />
@@ -120,7 +120,7 @@ export function LessonsPanel({ projectId, category }: LessonsPanelProps) {
                 </p>
               )}
               {lesson.projectName && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">From: {lesson.projectName}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">From: {lesson.projectName}</p>
               )}
             </div>
           ))}

@@ -76,7 +76,7 @@ function KPICard({ icon: Icon, label, value, sub, color }: {
       <div className="min-w-0">
         <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{label}</p>
         <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{value}</p>
-        {sub && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{sub}</p>}
+        {sub && <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">{sub}</p>}
       </div>
     </div>
   );
@@ -147,7 +147,7 @@ function StatusDonutChart({ projects }: { projects: Project[] }) {
           <div key={seg.status} className="flex items-center gap-2 text-sm">
             <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
             <span className="text-gray-700 dark:text-gray-200">{STATUS_LABELS[seg.status] || seg.status}</span>
-            <span className="text-gray-400 dark:text-gray-500 ml-auto font-medium">{seg.count}</span>
+            <span className="text-gray-500 dark:text-gray-500 ml-auto font-medium">{seg.count}</span>
           </div>
         ))}
       </div>
@@ -167,7 +167,7 @@ function BudgetBarChart({ projects }: { projects: Project[] }) {
   }, [projects]);
 
   if (items.length === 0) {
-    return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">No projects with budget data</p>;
+    return <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-8">No projects with budget data</p>;
   }
 
   const maxVal = Math.max(...items.map((p) => p.budgetAllocated || 0));
@@ -375,7 +375,7 @@ function ResourceUtilizationChart({ portfolioItems }: { portfolioItems: Portfoli
   }, [portfolioItems]);
 
   if (resources.length === 0) {
-    return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">No resource data available</p>;
+    return <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-8">No resource data available</p>;
   }
 
   const maxVal = Math.max(1, ...resources.map((r) => r.count));
@@ -558,7 +558,7 @@ export const AnalyticsPage: React.FC = () => {
       )}
 
       {activeTab === 'compliance' && projects.length === 0 && (
-        <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">No projects available for compliance view</p>
+        <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-8">No projects available for compliance view</p>
       )}
 
       {activeTab === 'overview' && <>
@@ -601,7 +601,7 @@ export const AnalyticsPage: React.FC = () => {
           {projects.length > 0 ? (
             <StatusDonutChart projects={projects} />
           ) : (
-            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">No project data</p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-8">No project data</p>
           )}
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm dark:shadow-gray-900/30 border border-gray-200 dark:border-gray-700 p-5">
@@ -631,7 +631,7 @@ export const AnalyticsPage: React.FC = () => {
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">At-Risk Projects</h2>
           </div>
           {atRiskProjects.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">No at-risk projects detected</p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-6">No at-risk projects detected</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -669,7 +669,7 @@ export const AnalyticsPage: React.FC = () => {
                               {budgetPct}%
                             </span>
                           ) : (
-                            <span className="text-gray-400 dark:text-gray-500">--</span>
+                            <span className="text-gray-500 dark:text-gray-500">--</span>
                           )}
                         </td>
                       </tr>
@@ -688,7 +688,7 @@ export const AnalyticsPage: React.FC = () => {
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Upcoming Deadlines (7 Days)</h2>
           </div>
           {upcomingDeadlines.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">No tasks due in the next 7 days</p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-6">No tasks due in the next 7 days</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

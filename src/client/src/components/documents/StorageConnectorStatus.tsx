@@ -37,7 +37,7 @@ export function StorageConnectorStatus({ connector, onSync, onTogglePause, onDis
           </span>
         </div>
         {connector.lastSyncAt && (
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-500">
             Last sync: {new Date(connector.lastSyncAt).toLocaleString()}
           </p>
         )}

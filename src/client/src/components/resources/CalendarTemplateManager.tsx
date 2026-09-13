@@ -104,7 +104,7 @@ export function CalendarTemplateManager() {
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-primary-200 dark:border-primary-700 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-900 dark:text-white">{editingId ? 'Edit Template' : 'New Template'}</span>
-            <button onClick={resetForm} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+            <button onClick={resetForm} className="text-gray-500 hover:text-gray-600"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
@@ -148,7 +148,7 @@ export function CalendarTemplateManager() {
       {isLoading ? (
         <div className="py-8 text-center"><div className="w-6 h-6 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto" /></div>
       ) : templates.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-4">No calendar templates yet.</p>
+        <p className="text-sm text-gray-500 text-center py-4">No calendar templates yet.</p>
       ) : (
         <div className="space-y-2">
           {templates.map(t => (
@@ -163,8 +163,8 @@ export function CalendarTemplateManager() {
                 </p>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => openEdit(t)} className="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit template"><Edit2 className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setDeleteConfirmId(t.id)} className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete template"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => openEdit(t)} className="p-1.5 rounded text-gray-500 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit template"><Edit2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setDeleteConfirmId(t.id)} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete template"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           ))}

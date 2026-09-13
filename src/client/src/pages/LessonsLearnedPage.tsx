@@ -149,8 +149,8 @@ function sourceIcon(sourceType?: string) {
   switch (sourceType) {
     case 'ai_extracted': return <span title="AI Extracted"><Sparkles className="w-3 h-3 text-purple-500" /></span>;
     case 'agent': return <span title="Agent Generated"><Bot className="w-3 h-3 text-indigo-500" /></span>;
-    case 'seeded': return <span title="Auto-seeded"><Database className="w-3 h-3 text-gray-400" /></span>;
-    case 'manual': return <span title="Manual Entry"><User className="w-3 h-3 text-gray-400" /></span>;
+    case 'seeded': return <span title="Auto-seeded"><Database className="w-3 h-3 text-gray-500" /></span>;
+    case 'manual': return <span title="Manual Entry"><User className="w-3 h-3 text-gray-500" /></span>;
     default: return null;
   }
 }
@@ -216,7 +216,7 @@ const AddLessonModal: React.FC<{
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-1.5 rounded-lg text-gray-500 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -242,7 +242,7 @@ const AddLessonModal: React.FC<{
               <select value={form.category} onChange={(e) => update('category', e.target.value)} className="input w-full appearance-none pr-8">
                 {CATEGORIES.filter((c) => c !== 'All').map((c) => (<option key={c} value={c}>{c}</option>))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500" />
             </div>
           </div>
           <div>
@@ -270,7 +270,7 @@ const AddLessonModal: React.FC<{
               <select value={form.severity} onChange={(e) => update('severity', e.target.value)} className="input w-full appearance-none pr-8">
                 {SEVERITY_OPTIONS.map((s) => (<option key={s} value={s}>{s ? s.charAt(0).toUpperCase() + s.slice(1) : 'None'}</option>))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500" />
             </div>
           </div>
           <div>
@@ -280,7 +280,7 @@ const AddLessonModal: React.FC<{
                 <option value="">None</option>
                 {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500" />
             </div>
           </div>
           <div className="pt-2">
@@ -473,7 +473,7 @@ export const LessonsLearnedPage: React.FC = () => {
               <option value="">Select a project...</option>
               {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500" />
           </div>
           {/* Compact inline stats — only when project selected */}
           {selectedProjectId && (
@@ -516,7 +516,7 @@ export const LessonsLearnedPage: React.FC = () => {
                     disabled={seedMutation.isPending}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
                   >
-                    <Database className="w-4 h-4 text-gray-400" />
+                    <Database className="w-4 h-4 text-gray-500" />
                     Seed Knowledge Base
                   </button>
                   <button
@@ -524,7 +524,7 @@ export const LessonsLearnedPage: React.FC = () => {
                     disabled={detectPatternsMutation.isPending}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
                   >
-                    <RefreshCw className="w-4 h-4 text-gray-400" />
+                    <RefreshCw className="w-4 h-4 text-gray-500" />
                     Detect Patterns
                   </button>
                   <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
@@ -532,7 +532,7 @@ export const LessonsLearnedPage: React.FC = () => {
                     onClick={() => { setShowPMOReport(!showPMOReport); setShowActionsMenu(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
-                    <BarChart3 className="w-4 h-4 text-gray-400" />
+                    <BarChart3 className="w-4 h-4 text-gray-500" />
                     {showPMOReport ? 'Hide' : 'Show'} PMO Report
                   </button>
                   {patterns.length > 0 && (
@@ -540,7 +540,7 @@ export const LessonsLearnedPage: React.FC = () => {
                       onClick={() => { setShowPatterns(!showPatterns); setShowActionsMenu(false); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
-                      <TrendingUp className="w-4 h-4 text-gray-400" />
+                      <TrendingUp className="w-4 h-4 text-gray-500" />
                       {showPatterns ? 'Hide' : 'Show'} Patterns
                     </button>
                   )}
@@ -609,7 +609,7 @@ export const LessonsLearnedPage: React.FC = () => {
               <BarChart3 className="w-4 h-4 text-indigo-500" />
               PMO Lessons Report
             </h3>
-            <button onClick={() => setShowPMOReport(false)} className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button onClick={() => setShowPMOReport(false)} className="p-1 rounded text-gray-500 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -645,7 +645,7 @@ export const LessonsLearnedPage: React.FC = () => {
                       <div key={t.category} className="flex items-center justify-between text-xs">
                         <span className="text-gray-600 dark:text-gray-300">{t.category}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-400 dark:text-gray-500">{t.count}</span>
+                          <span className="text-gray-500 dark:text-gray-500">{t.count}</span>
                           <span className="font-semibold text-indigo-600 dark:text-indigo-400">+{t.recentCount}</span>
                         </div>
                       </div>
@@ -664,7 +664,7 @@ export const LessonsLearnedPage: React.FC = () => {
                       <div key={l.id} className="flex items-center gap-2 text-xs rounded-md bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800 px-3 py-1.5">
                         {severityBadge(l.severity)}
                         <span className="text-gray-900 dark:text-white font-medium truncate">{l.title}</span>
-                        <span className="text-gray-400 dark:text-gray-500 ml-auto whitespace-nowrap">{l.projectName}</span>
+                        <span className="text-gray-500 dark:text-gray-500 ml-auto whitespace-nowrap">{l.projectName}</span>
                       </div>
                     ))}
                   </div>
@@ -672,7 +672,7 @@ export const LessonsLearnedPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <p className="text-xs text-gray-400 dark:text-gray-500 italic">No report data available</p>
+            <p className="text-xs text-gray-500 dark:text-gray-500 italic">No report data available</p>
           )}
         </div>
       )}
@@ -685,7 +685,7 @@ export const LessonsLearnedPage: React.FC = () => {
               <TrendingUp className="w-4 h-4 text-amber-500" />
               Detected Patterns
             </h2>
-            <button onClick={() => setShowPatterns(false)} className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button onClick={() => setShowPatterns(false)} className="p-1 rounded text-gray-500 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -698,20 +698,20 @@ export const LessonsLearnedPage: React.FC = () => {
       {/* Filter bar + lessons list */}
       {selectedProjectId && <div>
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <Search className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+          <Search className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
           <div className="relative">
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input appearance-none pr-7 text-xs py-1.5">
               {STATUS_FILTERS.map((s) => (<option key={s} value={s}>{s === 'All' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
           </div>
           <div className="relative">
             <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="input appearance-none pr-7 text-xs py-1.5">
               {CATEGORIES.map((c) => (<option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
           </div>
-          <span className="text-xs text-gray-400 dark:text-gray-500">{filteredLessons.length} lessons</span>
+          <span className="text-xs text-gray-500 dark:text-gray-500">{filteredLessons.length} lessons</span>
           {hasActiveFilters && (
             <button
               onClick={() => { setFilterCategory('All'); setFilterStatus('All'); }}
@@ -752,7 +752,7 @@ export const LessonsLearnedPage: React.FC = () => {
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLesson(lesson.id); } }}
                   >
-                    <ChevronRight className={`w-3.5 h-3.5 text-gray-400 flex-shrink-0 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
+                    <ChevronRight className={`w-3.5 h-3.5 text-gray-500 flex-shrink-0 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
                     {impactDot(lesson.impact)}
                     {sourceIcon(lesson.sourceType)}
                     <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{lesson.title}</h3>
@@ -784,7 +784,7 @@ export const LessonsLearnedPage: React.FC = () => {
                           </p>
                         )}
                         <div className="flex items-center justify-between pt-1">
-                          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+                          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
                             {lesson.projectName && <span>Project: {lesson.projectName}</span>}
                             {(lesson.appliedCount ?? 0) > 0 && <span>Applied {lesson.appliedCount}x</span>}
                             {lesson.effectivenessRating != null && <span>Effectiveness: {lesson.effectivenessRating}%</span>}
@@ -808,12 +808,12 @@ export const LessonsLearnedPage: React.FC = () => {
                             )}
                             {lesson.status === 'approved' && (
                               <button onClick={(e) => { e.stopPropagation(); statusMutation.mutate({ id: lesson.id, status: 'archived' }); }}
-                                className="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700" title="Archive">
+                                className="p-1.5 rounded text-gray-500 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700" title="Archive">
                                 <Archive className="w-3.5 h-3.5" />
                               </button>
                             )}
-                            <button onClick={(e) => { e.stopPropagation(); setEditingLesson(lesson); }} className="p-1.5 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(lesson.id); }} className="p-1.5 rounded text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setEditingLesson(lesson); }} className="p-1.5 rounded text-gray-500 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(lesson.id); }} className="p-1.5 rounded text-gray-500 dark:text-gray-500 hover:text-red-600 hover:bg-red-50" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </div>
                       </div>

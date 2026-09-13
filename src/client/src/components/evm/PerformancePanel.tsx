@@ -76,7 +76,7 @@ function computeTrend(values: number[]): 'up' | 'flat' | 'down' {
 function TrendArrow({ direction }: { direction: 'up' | 'flat' | 'down' }) {
   if (direction === 'up') return <span className="text-green-500 text-sm" title="Improving">↑</span>;
   if (direction === 'down') return <span className="text-red-500 text-sm" title="Declining">↓</span>;
-  return <span className="text-gray-400 text-sm" title="Stable">→</span>;
+  return <span className="text-gray-500 text-sm" title="Stable">→</span>;
 }
 
 function tooltipBorderColor(health: 'green' | 'amber' | 'red'): string {
@@ -252,10 +252,10 @@ function InputCard({ label, fullName, value, subtitle, colorClass, tooltip }: {
     >
       {showTooltip && <MetricTooltip {...tooltip} />}
       <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-        {label} <span className="normal-case text-gray-400 dark:text-gray-500">({fullName})</span>
+        {label} <span className="normal-case text-gray-500 dark:text-gray-500">({fullName})</span>
       </div>
       <div className={`text-xl font-bold ${colorClass}`}>{value}</div>
-      <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{subtitle}</div>
+      <div className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">{subtitle}</div>
     </div>
   );
 }
@@ -293,7 +293,7 @@ function IndexGauge({ label, abbreviation, value, variance, varianceLabel, varia
       )}
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-          {abbreviation} <span className="font-normal text-gray-400 dark:text-gray-500 text-xs">({label})</span>
+          {abbreviation} <span className="font-normal text-gray-500 dark:text-gray-500 text-xs">({label})</span>
         </h4>
         <span className={`text-2xl font-bold ${indexColor(value)} flex items-center gap-1`}>
           {value.toFixed(2)}
@@ -312,7 +312,7 @@ function IndexGauge({ label, abbreviation, value, variance, varianceLabel, varia
       </div>
 
       {/* Scale labels */}
-      <div className="flex justify-between text-xs text-gray-400 mb-3">
+      <div className="flex justify-between text-xs text-gray-500 mb-3">
         <span>0.50</span>
         <span>1.00</span>
         <span>1.50</span>
@@ -321,7 +321,7 @@ function IndexGauge({ label, abbreviation, value, variance, varianceLabel, varia
       {/* Variance */}
       <div className="flex items-center gap-2 mb-1">
         <span className="text-xs text-gray-500 dark:text-gray-400">
-          {varianceLabel} <span className="text-gray-400 dark:text-gray-500">({varianceFullName})</span>:
+          {varianceLabel} <span className="text-gray-500 dark:text-gray-500">({varianceFullName})</span>:
         </span>
         <span className={`text-sm font-semibold ${variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
           {variance >= 0 ? '+' : ''}{formatDollar(variance)}
@@ -391,7 +391,7 @@ function EmptyState({ onNavigate }: { onNavigate?: (tab: string) => void }) {
           </button>
         ))}
       </div>
-      <p className="text-xs text-gray-400 dark:text-gray-500 mt-6">
+      <p className="text-xs text-gray-500 dark:text-gray-500 mt-6">
         Once budget, schedule, and actuals are in place, this panel will show CPI, SPI, forecasts, and AI-driven insights.
       </p>
     </div>
@@ -493,7 +493,7 @@ function AIAnalysisSection({ aiPredictions, bac }: { aiPredictions: any; bac: nu
                 <div className="text-sm font-semibold text-gray-900 dark:text-white">
                   {formatDollar(eacConfidenceRange.low)} — {formatDollar(eacConfidenceRange.high)}
                 </div>
-                <div className="text-xs text-gray-400 dark:text-gray-500">
+                <div className="text-xs text-gray-500 dark:text-gray-500">
                   Expected final cost range
                 </div>
               </div>
@@ -506,7 +506,7 @@ function AIAnalysisSection({ aiPredictions, bac }: { aiPredictions: any; bac: nu
                 <div className={`text-lg font-bold ${overrunProbability > 50 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                   {Math.round(overrunProbability)}%
                 </div>
-                <div className="text-xs text-gray-400 dark:text-gray-500">
+                <div className="text-xs text-gray-500 dark:text-gray-500">
                   {overrunProbability > 70 ? 'High risk of exceeding budget' : overrunProbability > 50 ? 'Moderate risk' : 'Budget target is likely achievable'}
                 </div>
               </div>
@@ -747,7 +747,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
             Performance Trend
-            <span className="font-normal text-gray-400 dark:text-gray-500 text-sm ml-2">
+            <span className="font-normal text-gray-500 dark:text-gray-500 text-sm ml-2">
               CPI & SPI over time
             </span>
           </h3>
@@ -765,7 +765,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-            EAC <span className="font-normal text-gray-400 dark:text-gray-500 text-sm">(Estimate at Completion)</span>
+            EAC <span className="font-normal text-gray-500 dark:text-gray-500 text-sm">(Estimate at Completion)</span>
           </h3>
           {/* Segmented control */}
           <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-600 p-0.5 bg-gray-100 dark:bg-gray-700">
@@ -796,7 +796,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
               </div>
             )}
           </div>
-          <div className="text-xs text-gray-400 dark:text-gray-500 italic">
+          <div className="text-xs text-gray-500 dark:text-gray-500 italic">
             {selectedMethod.formula}
           </div>
         </div>
@@ -828,7 +828,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
             <tr>
               <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-white">
-                EAC <span className="font-normal text-gray-400 text-xs">(Estimate at Completion)</span>
+                EAC <span className="font-normal text-gray-500 text-xs">(Estimate at Completion)</span>
               </td>
               <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs">{selectedMethod.formula}</td>
               <td className="px-4 py-2.5 text-right font-semibold text-gray-900 dark:text-white">
@@ -840,7 +840,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
             </tr>
             <tr>
               <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-white">
-                ETC <span className="font-normal text-gray-400 text-xs">(Estimate to Complete)</span>
+                ETC <span className="font-normal text-gray-500 text-xs">(Estimate to Complete)</span>
               </td>
               <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs">EAC - AC</td>
               <td className="px-4 py-2.5 text-right font-semibold text-gray-900 dark:text-white">
@@ -852,7 +852,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
             </tr>
             <tr>
               <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-white">
-                VAC <span className="font-normal text-gray-400 text-xs">(Variance at Completion)</span>
+                VAC <span className="font-normal text-gray-500 text-xs">(Variance at Completion)</span>
               </td>
               <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs">BAC - EAC</td>
               <td className={`px-4 py-2.5 text-right font-semibold ${
@@ -866,7 +866,7 @@ export function PerformancePanel({ projectId, onNavigate }: {
             </tr>
             <tr>
               <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-white">
-                TCPI <span className="font-normal text-gray-400 text-xs">(To-Complete Performance Index)</span>
+                TCPI <span className="font-normal text-gray-500 text-xs">(To-Complete Performance Index)</span>
               </td>
               <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs">(BAC - EV) / (BAC - AC)</td>
               <td className={`px-4 py-2.5 text-right font-semibold ${

@@ -256,7 +256,7 @@ export const OnboardingPage: React.FC = () => {
       {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
         <div key={s} className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
-            s < step ? 'bg-primary-600 text-white' : s === step ? 'bg-primary-600 text-white ring-2 ring-primary-400/50 ring-offset-2 ring-offset-gray-800' : 'bg-gray-700 text-gray-400'
+            s < step ? 'bg-primary-600 text-white' : s === step ? 'bg-primary-600 text-white ring-2 ring-primary-400/50 ring-offset-2 ring-offset-gray-800' : 'bg-gray-700 text-gray-500'
           }`}>
             {s < step ? <CheckCircle className="w-4 h-4" /> : s}
           </div>
@@ -313,12 +313,12 @@ export const OnboardingPage: React.FC = () => {
                   <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Username</label>
                   <input id="username" type="text" required autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
                     className="input" placeholder="johndoe" minLength={3} pattern="[a-zA-Z0-9_]+" />
-                  <p className="text-xs text-gray-400 mt-1">Letters, numbers, and underscores only</p>
+                  <p className="text-xs text-gray-500 mt-1">Letters, numbers, and underscores only</p>
                 </div>
 
                 <div>
                   <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                    Organization Name {!isSme && <span className="text-gray-400 font-normal">(optional)</span>}
+                    Organization Name {!isSme && <span className="text-gray-500 font-normal">(optional)</span>}
                   </label>
                   <input id="organizationName" type="text" required={isSme} autoComplete="organization" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)}
                     className="input" placeholder="Your company name" />
@@ -343,7 +343,7 @@ export const OnboardingPage: React.FC = () => {
                               : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                           }`}
                         >
-                          <Icon className={`w-5 h-5 ${selected ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400'}`} />
+                          <Icon className={`w-5 h-5 ${selected ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500'}`} />
                           <span className={`text-xs font-medium ${selected ? 'text-primary-700 dark:text-primary-300' : 'text-gray-600 dark:text-gray-300'}`}>{role.label}</span>
                         </button>
                       );
@@ -369,7 +369,7 @@ export const OnboardingPage: React.FC = () => {
                           }`}
                         >
                           <span className={`text-sm font-medium block ${selected ? 'text-primary-700 dark:text-primary-300' : 'text-gray-600 dark:text-gray-300'}`}>{m.label}</span>
-                          <span className="text-xs text-gray-400 mt-0.5 block">{m.description}</span>
+                          <span className="text-xs text-gray-500 mt-0.5 block">{m.description}</span>
                         </button>
                       );
                     })}
@@ -407,7 +407,7 @@ export const OnboardingPage: React.FC = () => {
               {seatInfo && (
                 <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-gray-400" />
+                    <Building2 className="w-4 h-4 text-gray-500" />
                     <span className="text-sm text-gray-600 dark:text-gray-300">
                       <span className="font-medium">{seatInfo.paidSeats}</span> seats total
                     </span>
@@ -460,16 +460,16 @@ export const OnboardingPage: React.FC = () => {
                   {pendingInvites.map((invite) => (
                     <div key={invite.email} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <Mail className="w-4 h-4 text-gray-500 flex-shrink-0" />
                         <span className="text-sm text-gray-700 dark:text-gray-200 truncate">{invite.email}</span>
-                        <span className="text-xs text-gray-400 flex-shrink-0">
+                        <span className="text-xs text-gray-500 flex-shrink-0">
                           {TEAM_ROLE_OPTIONS.find(r => r.value === invite.role)?.label || invite.role}
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveInvite(invite.email)}
-                        className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 ml-2"
+                        className="text-gray-500 hover:text-red-500 transition-colors flex-shrink-0 ml-2"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -479,7 +479,7 @@ export const OnboardingPage: React.FC = () => {
               )}
 
               {pendingInvites.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4 mb-4">
+                <p className="text-sm text-gray-500 text-center py-4 mb-4">
                   Add team member emails above, then send all invites at once.
                 </p>
               )}
@@ -555,7 +555,7 @@ export const OnboardingPage: React.FC = () => {
                             {tmpl.name}
                           </span>
                           {tmpl.description && (
-                            <span className="text-xs text-gray-400 mt-1 block line-clamp-2">{tmpl.description}</span>
+                            <span className="text-xs text-gray-500 mt-1 block line-clamp-2">{tmpl.description}</span>
                           )}
                         </button>
                       );

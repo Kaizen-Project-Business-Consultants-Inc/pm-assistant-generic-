@@ -61,11 +61,11 @@ function Sparkline({ data, width = 120, height = 24 }: { data: number[]; width?:
 }
 
 function TrendArrow({ current, previous }: { current: number; previous: number | null }) {
-  if (previous === null) return <Minus className="w-3.5 h-3.5 text-gray-400" />;
+  if (previous === null) return <Minus className="w-3.5 h-3.5 text-gray-500" />;
   const diff = current - previous;
   if (diff > 3) return <TrendingUp className="w-3.5 h-3.5 text-green-500" />;
   if (diff < -3) return <TrendingDown className="w-3.5 h-3.5 text-red-500" />;
-  return <Minus className="w-3.5 h-3.5 text-gray-400" />;
+  return <Minus className="w-3.5 h-3.5 text-gray-500" />;
 }
 
 function ScoreBadge({ score }: { score: number }) {
@@ -111,7 +111,7 @@ export function HealthTrendsWidget({ projects }: HealthTrendsWidgetProps) {
       </div>
 
       {activeProjects.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-6">No active projects</p>
+        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-6">No active projects</p>
       ) : (
         <div className="space-y-2">
           {activeProjects.map((project, idx) => {

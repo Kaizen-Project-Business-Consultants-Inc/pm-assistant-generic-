@@ -96,7 +96,7 @@ export function PieChart({ data }: PieChartProps) {
 
   if (segments.length === 0) {
     return (
-      <div className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
+      <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-500">
         No chart data available.
       </div>
     );
@@ -185,7 +185,7 @@ export function PieChart({ data }: PieChartProps) {
             <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
               <span className="w-2.5 h-2.5 rounded-sm inline-block flex-shrink-0" style={{ backgroundColor: seg.color }} />
               <span>{seg.label}</span>
-              <span className="text-gray-400 dark:text-gray-500">({seg.pct}%)</span>
+              <span className="text-gray-500 dark:text-gray-500">({seg.pct}%)</span>
             </div>
           ))}
         </div>
@@ -203,7 +203,7 @@ export function PieChart({ data }: PieChartProps) {
             >
               <span className="w-2.5 h-2.5 rounded-sm inline-block flex-shrink-0" style={{ backgroundColor: seg.color }} />
               <span>{seg.label}</span>
-              <span className="text-gray-400">{seg.pct}%</span>
+              <span className="text-gray-500">{seg.pct}%</span>
             </div>
           ))}
         </div>

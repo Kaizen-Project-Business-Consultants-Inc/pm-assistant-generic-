@@ -406,15 +406,15 @@ export function KPIDrillInPage() {
           },
           {
             key: 'scheduleHealth', label: 'Schedule', sortable: true,
-            render: (r: any) => r.scheduleHealth != null ? <span className="text-sm">{r.scheduleHealth}%</span> : <span className="text-gray-400">-</span>,
+            render: (r: any) => r.scheduleHealth != null ? <span className="text-sm">{r.scheduleHealth}%</span> : <span className="text-gray-500">-</span>,
           },
           {
             key: 'budgetHealth', label: 'Budget', sortable: true,
-            render: (r: any) => r.budgetHealth != null ? <span className="text-sm">{r.budgetHealth}%</span> : <span className="text-gray-400">-</span>,
+            render: (r: any) => r.budgetHealth != null ? <span className="text-sm">{r.budgetHealth}%</span> : <span className="text-gray-500">-</span>,
           },
           {
             key: 'riskHealth', label: 'Risk', sortable: true,
-            render: (r: any) => r.riskHealth != null ? <span className="text-sm">{r.riskHealth}%</span> : <span className="text-gray-400">-</span>,
+            render: (r: any) => r.riskHealth != null ? <span className="text-sm">{r.riskHealth}%</span> : <span className="text-gray-500">-</span>,
           },
           {
             key: 'sparklineData', label: '30-Day Trend', sortable: false,
@@ -570,7 +570,7 @@ export function KPIDrillInPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
         </div>
       ) : (
         <>

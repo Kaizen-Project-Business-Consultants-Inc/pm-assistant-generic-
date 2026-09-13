@@ -77,7 +77,7 @@ export function ChangeRequestForm({ projectId, crId, onClose, onSaved }: ChangeR
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {crId ? 'Edit Change Request' : 'New Change Request'}
           </h3>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>

@@ -54,16 +54,16 @@ export function CapacityCard({ sprintId }: CapacityCardProps) {
 
       <div className="space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
         <div className="flex items-center gap-2">
-          <Users className="w-3.5 h-3.5 text-gray-400" />
+          <Users className="w-3.5 h-3.5 text-gray-500" />
           <span>{teamSize} team member{teamSize !== 1 ? 's' : ''}</span>
           {velocityPerMember > 0 && (
-            <span className="text-gray-400">({velocityPerMember} pts/person)</span>
+            <span className="text-gray-500">({velocityPerMember} pts/person)</span>
           )}
         </div>
         <div className={`flex items-center gap-2 px-2 py-1 rounded ${cfg.bg}`}>
           <ConfIcon className={`w-3.5 h-3.5 ${cfg.color}`} />
           <span>{cfg.label}</span>
-          <span className="text-gray-400">({sprintCount} sprint{sprintCount !== 1 ? 's' : ''} of data)</span>
+          <span className="text-gray-500">({sprintCount} sprint{sprintCount !== 1 ? 's' : ''} of data)</span>
         </div>
       </div>
     </div>

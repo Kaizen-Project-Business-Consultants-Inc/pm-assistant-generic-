@@ -144,7 +144,7 @@ export function ViewerInvitePanel() {
                     <button
                       onClick={() => revokeMutation.mutate(invite.id)}
                       disabled={revokeMutation.isPending}
-                      className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                      className="p-1 text-gray-500 hover:text-red-500 transition-colors"
                       title="Revoke invite"
                     >
                       <Trash2 className="w-4 h-4" />

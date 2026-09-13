@@ -104,13 +104,13 @@ export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Bell className="w-4 h-4 text-gray-400" />
+          <Bell className="w-4 h-4 text-gray-500" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Activity</h3>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleMarkAllRead}
-            className="inline-flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
             title="Mark all read"
           >
             <CheckCheck className="w-3 h-3" />
@@ -156,14 +156,14 @@ export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-6">
+        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-6">
           {activeFilter === 'All' ? 'No recent activity' : `No ${activeFilter.toLowerCase()} activity`}
         </p>
       ) : (
         <div className="space-y-3">
           {grouped.map(group => (
             <div key={group.label}>
-              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-2 mb-1">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase tracking-wider px-2 mb-1">
                 {group.label}
               </p>
               <ul className="space-y-1">
@@ -182,7 +182,7 @@ export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
                           {n.title || n.message || 'Notification'}
                         </p>
                         {n.created_at && (
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{timeAgo(n.created_at)}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">{timeAgo(n.created_at)}</p>
                         )}
                       </div>
                     </li>

@@ -324,7 +324,7 @@ export function AdminUsersPage() {
           {/* Search & filter bar */}
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
                 type="text"
                 value={searchText}
@@ -481,7 +481,7 @@ export function AdminUsersPage() {
                       <td className="py-3 pr-3">
                         <div className="font-medium text-gray-900 dark:text-white">{u.full_name}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{u.email}</div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">@{u.username}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-500">@{u.username}</div>
                       </td>
                       <td className="py-3 pr-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${roleColor}`}>
@@ -513,7 +513,7 @@ export function AdminUsersPage() {
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${tierColor}`}>
                               {u.subscription_tier || 'trial'}
                             </span>
-                            <Pencil className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100" />
+                            <Pencil className="w-3 h-3 text-gray-500 opacity-0 group-hover:opacity-100" />
                           </button>
                         )}
                       </td>
@@ -523,14 +523,14 @@ export function AdminUsersPage() {
                             {u.subscription_status.replace('_', ' ')}
                           </span>
                         ) : (
-                          <span className="text-gray-400 dark:text-gray-500 text-xs italic">none</span>
+                          <span className="text-gray-500 dark:text-gray-500 text-xs italic">none</span>
                         )}
                       </td>
                       <td className="py-3 pr-3 text-gray-600 dark:text-gray-300 whitespace-nowrap text-xs">
                         {fmt(u.subscription_period_end)}
                       </td>
                       <td className="py-3 pr-3 text-gray-600 dark:text-gray-300 text-xs">
-                        {u.organization_name || <span className="text-gray-400 dark:text-gray-500 italic">none</span>}
+                        {u.organization_name || <span className="text-gray-500 dark:text-gray-500 italic">none</span>}
                       </td>
                       <td className="py-3 pr-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">{fmt(u.created_at)}</td>
                       <td className="py-3 pr-3">
@@ -555,7 +555,7 @@ export function AdminUsersPage() {
                           <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                             <div className={`h-full rounded-full transition-all ${usageBarColor}`} style={{ width: `${Math.min(usagePct, 100)}%` }} />
                           </div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                          <div className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
                             of {formatTokens(effectiveBudget)}
                           </div>
                         </div>
@@ -575,7 +575,7 @@ export function AdminUsersPage() {
                             <button onClick={() => handleBudgetSave(u.id)} className="text-emerald-600 hover:text-emerald-700" title="Save" aria-label="Save">
                               <Check className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => setEditingBudgetId(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Cancel" aria-label="Cancel">
+                            <button onClick={() => setEditingBudgetId(null)} className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" title="Cancel" aria-label="Cancel">
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -588,7 +588,7 @@ export function AdminUsersPage() {
                             {u.ai_monthly_token_budget != null ? (
                               <span className="font-mono">{u.ai_monthly_token_budget.toLocaleString()}</span>
                             ) : (
-                              <span className="text-gray-400 dark:text-gray-500 italic">tier default</span>
+                              <span className="text-gray-500 dark:text-gray-500 italic">tier default</span>
                             )}
                             <Pencil className="w-3 h-3 opacity-50" />
                           </button>
@@ -614,9 +614,9 @@ export function AdminUsersPage() {
                           {active ? (
                             <ToggleRight className="w-6 h-6 text-green-500" />
                           ) : (
-                            <ToggleLeft className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                            <ToggleLeft className="w-6 h-6 text-gray-500 dark:text-gray-500" />
                           )}
-                          <span className={active ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}>
+                          <span className={active ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-500'}>
                             {active ? 'Active' : 'Inactive'}
                           </span>
                         </button>
@@ -673,13 +673,13 @@ export function AdminUsersPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Subscription History &mdash; {historyUserName}</h3>
-              <button onClick={() => setHistoryUserId(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+              <button onClick={() => setHistoryUserId(null)} className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-200">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4">
               {historyLoading && <p className="text-sm text-gray-500 dark:text-gray-400">Loading subscription history…</p>}
-              {historyData?.events?.length === 0 && <p className="text-sm text-gray-400 dark:text-gray-500">No subscription events found.</p>}
+              {historyData?.events?.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-500">No subscription events found.</p>}
               {historyData?.events?.map((ev: SubscriptionEvent) => (
                 <div key={ev.id} className="flex items-start gap-3 py-2 border-b border-gray-100 dark:border-gray-700/50 last:border-0">
                   <div className="flex-shrink-0 mt-0.5 w-2 h-2 rounded-full bg-primary-500" />
@@ -694,7 +694,7 @@ export function AdminUsersPage() {
                       <p className="text-xs text-gray-500 dark:text-gray-400">${(ev.amount_cents / 100).toFixed(2)}</p>
                     )}
                   </div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{fmt(ev.created_at)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-500 whitespace-nowrap">{fmt(ev.created_at)}</span>
                 </div>
               ))}
             </div>

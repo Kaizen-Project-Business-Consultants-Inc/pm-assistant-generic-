@@ -157,7 +157,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
       >
         <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Share Your Feedback</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -177,7 +177,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
           {/* Feature Ratings */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Rate specific features <span className="text-gray-400 text-xs font-normal">(optional)</span>
+              Rate specific features <span className="text-gray-500 text-xs font-normal">(optional)</span>
             </label>
             <div className="space-y-3">
               {FEATURE_AREAS.map((area) => (
@@ -225,7 +225,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
           {/* Screenshot */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Screenshot <span className="text-gray-400 text-xs font-normal">(optional — paste or upload)</span>
+              Screenshot <span className="text-gray-500 text-xs font-normal">(optional — paste or upload)</span>
             </label>
             {screenshotData ? (
               <div className="relative inline-block">

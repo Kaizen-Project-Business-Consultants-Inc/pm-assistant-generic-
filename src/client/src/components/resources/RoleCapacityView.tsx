@@ -51,7 +51,7 @@ export function RoleCapacityView() {
 
   if (roles.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center text-gray-400">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center text-gray-500">
         <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
         <p>No active resources with assignments found.</p>
       </div>
@@ -64,7 +64,7 @@ export function RoleCapacityView() {
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Capacity Planning by Role</h3>
-        <span className="text-xs text-gray-400 dark:text-gray-500">12-week capacity vs demand by role</span>
+        <span className="text-xs text-gray-500 dark:text-gray-500">12-week capacity vs demand by role</span>
       </div>
 
       <div className="overflow-x-auto">
@@ -77,7 +77,7 @@ export function RoleCapacityView() {
               <th className="px-2 py-2 font-semibold text-gray-600 dark:text-gray-400 text-center w-12">#</th>
               <th className="px-2 py-2 font-semibold text-gray-600 dark:text-gray-400 text-center w-16">Cap/Wk</th>
               {weekHeaders.map((w, i) => (
-                <th key={i} className="px-1 py-2 font-medium text-gray-400 dark:text-gray-500 text-center min-w-[56px]">
+                <th key={i} className="px-1 py-2 font-medium text-gray-500 dark:text-gray-500 text-center min-w-[56px]">
                   {formatWeek(w)}
                 </th>
               ))}

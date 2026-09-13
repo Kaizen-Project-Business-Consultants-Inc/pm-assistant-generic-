@@ -50,7 +50,7 @@ export function FolderPicker({ projectId, connectorId, onSave, onCancel }: Folde
         />
       </div>
       {selectedFolders.size === 0 && (
-        <p className="text-xs text-gray-400">No folders selected — all files will be synced.</p>
+        <p className="text-xs text-gray-500">No folders selected — all files will be synced.</p>
       )}
       <div className="flex justify-end gap-2">
         <button
@@ -95,15 +95,15 @@ function FolderLevel({
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-2 pl-4">
-        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-        <span className="text-xs text-gray-400">Loading...</span>
+        <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+        <span className="text-xs text-gray-500">Loading...</span>
       </div>
     );
   }
 
   if (folders.length === 0) {
     return (
-      <p className="text-xs text-gray-400 py-1" style={{ paddingLeft: `${depth * 20 + 8}px` }}>
+      <p className="text-xs text-gray-500 py-1" style={{ paddingLeft: `${depth * 20 + 8}px` }}>
         No subfolders
       </p>
     );
@@ -122,7 +122,7 @@ function FolderLevel({
               style={{ paddingLeft: `${depth * 20 + 4}px` }}
             >
               <button
-                className="p-0.5 text-gray-400 hover:text-gray-600"
+                className="p-0.5 text-gray-500 hover:text-gray-600"
                 onClick={() => onToggleExpand(folder.id)}
               >
                 {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
@@ -142,7 +142,7 @@ function FolderLevel({
                 {folder.name}
               </span>
               {folder.childCount > 0 && (
-                <span className="text-xs text-gray-400 ml-1">({folder.childCount})</span>
+                <span className="text-xs text-gray-500 ml-1">({folder.childCount})</span>
               )}
             </div>
             {isExpanded && (

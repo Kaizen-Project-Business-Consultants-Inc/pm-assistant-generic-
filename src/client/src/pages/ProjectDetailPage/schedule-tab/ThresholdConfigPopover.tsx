@@ -43,7 +43,7 @@ export function ThresholdConfigPopover({ thresholds, onChange }: ThresholdConfig
         className={`flex items-center justify-center w-7 h-7 rounded-md border transition-colors ${
           open
             ? 'border-primary-300 bg-primary-50 dark:bg-primary-900/20 text-primary-600'
-            : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+            : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
         }`}
         title="Risk threshold settings"
         aria-label="Risk threshold settings"

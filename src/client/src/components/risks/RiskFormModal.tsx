@@ -356,7 +356,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             {editRisk ? 'Edit' : 'Add'} {typeLabel}
-            {editRisk?.recordId && <span className="ml-2 text-sm font-mono text-gray-400">{editRisk.recordId}</span>}
+            {editRisk?.recordId && <span className="ml-2 text-sm font-mono text-gray-500">{editRisk.recordId}</span>}
           </h2>
           <button onClick={onClose} aria-label="Close" className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
             <X className="w-5 h-5 text-gray-500" />
@@ -442,7 +442,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{lesson.recommendation}</p>
                       )}
                       {lesson.projectName && (
-                        <p className="text-xs text-gray-400 mt-0.5">From: {lesson.projectName}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">From: {lesson.projectName}</p>
                       )}
                     </div>
                   ))}
@@ -846,7 +846,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Updates</h3>
             {updates.length === 0 ? (
-              <p className="text-xs text-gray-400 mb-3">No updates yet</p>
+              <p className="text-xs text-gray-500 mb-3">No updates yet</p>
             ) : (
               <div className="space-y-3 mb-3 max-h-48 overflow-y-auto">
                 {updates.map((u: any) => (
@@ -857,14 +857,14 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{memberName(u.userId)}</span>
-                        <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
+                        <span className="text-xs text-gray-500 ml-auto flex-shrink-0">
                           {formatTimestamp(u.createdAt)}
                           {u.updatedAt !== u.createdAt && <span className="italic ml-1">(edited)</span>}
                         </span>
                         <button
                           type="button"
                           onClick={() => { setEditingUpdateId(u.id); setEditingUpdateText(u.text); }}
-                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-500"
+                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-500"
                           title="Edit update"
                         >
                           <Pencil className="w-3 h-3" />
@@ -872,7 +872,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                         <button
                           type="button"
                           onClick={() => handleDeleteUpdate(u.id)}
-                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500"
+                          className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-red-500"
                           title="Delete update"
                         >
                           <Trash2 className="w-3 h-3" />

@@ -53,7 +53,7 @@ export function RebalanceSuggestions({ suggestions }: RebalanceSuggestionsProps)
           />
         </svg>
         <p className="text-sm text-gray-500 dark:text-gray-400">No rebalance suggestions available.</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
           AI will generate suggestions when resource imbalances are detected.
         </p>
       </div>
@@ -73,7 +73,7 @@ export function RebalanceSuggestions({ suggestions }: RebalanceSuggestionsProps)
           <path d="M10 1a6 6 0 00-3.815 10.631C7.237 12.5 8 13.443 8 14.456v.044a2 2 0 002 2h0a2 2 0 002-2v-.044c0-1.013.762-1.957 1.815-2.825A6 6 0 0010 1zM8.5 18a1.5 1.5 0 003 0h-3z" />
         </svg>
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">AI Rebalance Suggestions</h3>
-        <span className="text-xs text-gray-400 dark:text-gray-500">{suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-500">{suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}</span>
       </div>
 
       {suggestions.map((suggestion) => {
@@ -95,7 +95,7 @@ export function RebalanceSuggestions({ suggestions }: RebalanceSuggestionsProps)
 
               {/* Confidence indicator */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400 dark:text-gray-500">Confidence</span>
+                <span className="text-xs text-gray-500 dark:text-gray-500">Confidence</span>
                 <div className="relative w-20 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
                   <div
                     className={`absolute inset-y-0 left-0 rounded-full transition-all ${confColor}`}
@@ -123,7 +123,7 @@ export function RebalanceSuggestions({ suggestions }: RebalanceSuggestionsProps)
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 20 20"
                   fill="currentColor"
-                  className="h-3.5 w-3.5 text-gray-400"
+                  className="h-3.5 w-3.5 text-gray-500"
                 >
                   <path
                     fillRule="evenodd"

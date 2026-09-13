@@ -67,7 +67,7 @@ export function NetworkDiagramView({ scheduleId }: NetworkDiagramViewProps) {
 
   if (error || nodes.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-400 dark:text-gray-500 text-sm">
+      <div className="text-center py-12 text-gray-500 dark:text-gray-500 text-sm">
         {error ? 'Failed to load network diagram' : 'No tasks with dependencies to display'}
       </div>
     );
@@ -90,7 +90,7 @@ export function NetworkDiagramView({ scheduleId }: NetworkDiagramViewProps) {
         <button onClick={fitToScreen} className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700" title="Fit to Screen">
           <Maximize2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
         </button>
-        <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">{Math.round(zoom * 100)}%</span>
+        <span className="text-xs text-gray-500 dark:text-gray-500 ml-2">{Math.round(zoom * 100)}%</span>
 
         {/* Legend */}
         <div className="flex items-center gap-4 ml-auto text-xs">

@@ -117,7 +117,7 @@ export function SprintBurnupChart({ sprintId }: SprintBurnupChartProps) {
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center">
         <TrendingUp className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
         <p className="text-sm text-gray-500 dark:text-gray-400">No burnup data available</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Burnup data will appear once the sprint is started and tasks are tracked.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Burnup data will appear once the sprint is started and tasks are tracked.</p>
       </div>
     );
   }
@@ -132,19 +132,19 @@ export function SprintBurnupChart({ sprintId }: SprintBurnupChartProps) {
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3 px-4 pt-4">
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium">Scope</div>
+          <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-500 font-medium">Scope</div>
           <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{burndown.totalPoints}</div>
-          <div className="text-xs text-gray-400 dark:text-gray-500">points</div>
+          <div className="text-xs text-gray-500 dark:text-gray-500">points</div>
         </div>
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium">Completed</div>
+          <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-500 font-medium">Completed</div>
           <div className="text-lg font-bold text-green-600 dark:text-green-400">{burndown.pointsCompleted ?? 0}</div>
-          <div className="text-xs text-gray-400 dark:text-gray-500">points</div>
+          <div className="text-xs text-gray-500 dark:text-gray-500">points</div>
         </div>
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium">Remaining</div>
+          <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-500 font-medium">Remaining</div>
           <div className="text-lg font-bold text-amber-600 dark:text-amber-400">{burndown.pointsRemaining ?? burndown.totalPoints}</div>
-          <div className="text-xs text-gray-400 dark:text-gray-500">points</div>
+          <div className="text-xs text-gray-500 dark:text-gray-500">points</div>
         </div>
       </div>
 

@@ -52,7 +52,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
 
   if (!heatmap || heatmap.users.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-400">
+      <div className="text-center py-16 text-gray-500">
         <Grid3X3 className="w-10 h-10 mx-auto mb-3 opacity-40" />
         <p>No time entries to display. Log time to see the utilization heatmap.</p>
       </div>
@@ -102,7 +102,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
               const d = new Date(date);
               const isWeekend = d.getDay() === 0 || d.getDay() === 6;
               return (
-                <div key={date} className={`text-center text-[9px] text-gray-400 p-1 ${isWeekend ? 'opacity-50' : ''}`}>
+                <div key={date} className={`text-center text-[9px] text-gray-500 p-1 ${isWeekend ? 'opacity-50' : ''}`}>
                   {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </div>
               );

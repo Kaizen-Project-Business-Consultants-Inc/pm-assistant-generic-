@@ -101,7 +101,7 @@ export const AccessibilityTab: React.FC = () => {
           onChange={(e) => handleFontSize(Number(e.target.value))}
           className="w-full max-w-sm accent-primary-600"
         />
-        <div className="relative text-xs text-gray-400 max-w-sm mt-1 h-4">
+        <div className="relative text-xs text-gray-500 max-w-sm mt-1 h-4">
           <span className="absolute left-[0%]">75%</span>
           <span className="absolute left-[20%] -translate-x-1/2">100%</span>
           <span className="absolute left-[60%] -translate-x-1/2">150%</span>

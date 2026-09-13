@@ -55,7 +55,7 @@ export function TimesheetApprovalPanel() {
 
   if (submissions.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-400 dark:text-gray-500">
+      <div className="text-center py-12 text-gray-500 dark:text-gray-500">
         <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
         <p className="text-sm">No timesheets pending approval</p>
       </div>
@@ -74,7 +74,7 @@ export function TimesheetApprovalPanel() {
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(expandedId === sub.id ? null : sub.id); } }}
           >
             <div className="flex items-center gap-3 min-w-0">
-              {expandedId === sub.id ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />}
+              {expandedId === sub.id ? <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />}
               <div className="min-w-0">
                 <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                   {sub.userName || sub.userId}

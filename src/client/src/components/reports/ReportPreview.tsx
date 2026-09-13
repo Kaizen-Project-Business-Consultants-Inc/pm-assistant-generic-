@@ -295,7 +295,7 @@ function PieChartSvg({ data }: { data: ChartDataPoint[] }) {
           <div key={i} className="flex items-center gap-2 text-xs">
             <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: slice.color }} />
             <span className="text-gray-700 dark:text-gray-200">{slice.label}</span>
-            <span className="text-gray-400 dark:text-gray-500 ml-auto pl-3">
+            <span className="text-gray-500 dark:text-gray-500 ml-auto pl-3">
               {slice.value} ({Math.round(slice.percent * 100)}%)
             </span>
           </div>
@@ -346,7 +346,7 @@ function SectionRenderer({ section }: { section: ReportSectionData }) {
 
       {/* Fallback if data is missing */}
       {!section.data.kpis && !section.data.table && !section.data.chartData && (
-        <p className="text-sm text-gray-400 dark:text-gray-500 italic">No data available for this section.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-500 italic">No data available for this section.</p>
       )}
     </div>
   );
@@ -460,7 +460,7 @@ export function ReportPreview({ templateId, onClose }: ReportPreviewProps) {
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-1.5 text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             aria-label="Go back"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -520,7 +520,7 @@ export function ReportPreview({ templateId, onClose }: ReportPreviewProps) {
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin mb-4" />
           <p className="text-sm text-gray-500 dark:text-gray-400">Generating report…</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">This may take a moment while data is aggregated.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">This may take a moment while data is aggregated.</p>
         </div>
       )}
 
@@ -555,7 +555,7 @@ export function ReportPreview({ templateId, onClose }: ReportPreviewProps) {
 
       {/* Print footer */}
       <div className="hidden print:block mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
-        <p className="text-xs text-gray-400 dark:text-gray-500">Kovarti PM - Custom Report</p>
+        <p className="text-xs text-gray-500 dark:text-gray-500">Kovarti PM - Custom Report</p>
       </div>
 
       {/* Print-friendly styles */}

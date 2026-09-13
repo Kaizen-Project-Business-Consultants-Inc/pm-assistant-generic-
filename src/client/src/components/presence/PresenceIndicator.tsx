@@ -50,7 +50,7 @@ export function PresenceIndicator(props: PresenceIndicatorProps) {
             </div>
           )}
         </div>
-        <span className="text-xs text-gray-400 dark:text-gray-500 ml-1.5 whitespace-nowrap">{label}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-500 ml-1.5 whitespace-nowrap">{label}</span>
       </div>
     );
   }

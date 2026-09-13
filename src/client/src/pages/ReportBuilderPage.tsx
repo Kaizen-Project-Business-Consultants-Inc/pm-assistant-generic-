@@ -194,7 +194,7 @@ export const ReportBuilderPage: React.FC = () => {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">{template.description}</p>
               )}
 
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+              <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">
                 Created {new Date(template.createdAt).toLocaleDateString()}
                 {template.sections && ` \u00b7 ${template.sections.length} section${template.sections.length !== 1 ? 's' : ''}`}
               </p>
@@ -216,7 +216,7 @@ export const ReportBuilderPage: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setScheduleTemplate({ id: template.id, name: template.name })}
-                    className="flex items-center justify-center p-1.5 text-gray-400 dark:text-gray-500 hover:text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
+                    className="flex items-center justify-center p-1.5 text-gray-500 dark:text-gray-500 hover:text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
                     title="Schedule delivery"
                     aria-label="Schedule delivery"
                   >
@@ -225,7 +225,7 @@ export const ReportBuilderPage: React.FC = () => {
                   <button
                     onClick={() => handleDelete(template.id)}
                     disabled={deleteMutation.isPending}
-                    className="flex items-center justify-center p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="flex items-center justify-center p-1.5 text-gray-500 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     aria-label="Delete template"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

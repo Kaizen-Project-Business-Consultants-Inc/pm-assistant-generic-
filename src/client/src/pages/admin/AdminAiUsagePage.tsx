@@ -88,7 +88,7 @@ function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType
 }
 
 function MiniBarChart({ data, valueKey = 'cost', label = 'Cost' }: { data: any[]; valueKey?: string; label?: string }) {
-  if (data.length === 0) return <p className="text-sm text-gray-400 py-8 text-center">No data</p>;
+  if (data.length === 0) return <p className="text-sm text-gray-500 py-8 text-center">No data</p>;
   const maxVal = Math.max(...data.map(d => Number(d[valueKey])), 0.0001);
 
   return (
@@ -245,7 +245,7 @@ function UsageAnalyticsTab() {
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Agent Usage</h3>
             {data.agentUsage.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">No agent activity in this period.</p>
+              <p className="text-sm text-gray-500 py-4 text-center">No agent activity in this period.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -276,12 +276,12 @@ function UsageAnalyticsTab() {
           {data.agentPatterns.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6 shadow-sm">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Sequential Agent Patterns</h3>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Agents triggered within 30 minutes of each other on the same project</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">Agents triggered within 30 minutes of each other on the same project</p>
               <div className="space-y-2">
                 {data.agentPatterns.map((p, i) => (
                   <div key={i} className="flex items-center gap-2 text-sm">
                     <span className="font-medium text-gray-900 dark:text-white">{agentLabel(p.first_agent)}</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                    <ArrowRight className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
                     <span className="font-medium text-gray-900 dark:text-white">{agentLabel(p.second_agent)}</span>
                     <span className="ml-auto text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{Number(p.frequency)}x</span>
                   </div>
@@ -294,7 +294,7 @@ function UsageAnalyticsTab() {
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Top Features by Usage</h3>
             {data.featureUsage.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">No feature usage in this period.</p>
+              <p className="text-sm text-gray-500 py-4 text-center">No feature usage in this period.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">

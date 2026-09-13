@@ -73,7 +73,7 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
   });
 
   if (isLoading) {
-    return <div className="text-center py-12 text-gray-400 dark:text-gray-500">Loading submission…</div>;
+    return <div className="text-center py-12 text-gray-500 dark:text-gray-500">Loading submission…</div>;
   }
 
   if (!submission) {
@@ -156,7 +156,7 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
           Submitted Values
         </h2>
         {formFields.length === 0 && Object.keys(submittedValues).length === 0 ? (
-          <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-4">No data submitted.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-4">No data submitted.</p>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {formFields.map((field: any) => (
@@ -320,7 +320,7 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Review Notes</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300">{submission.review_notes}</p>
           {submission.reviewed_by_name && (
-            <p className="text-xs text-gray-400 dark:text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-500">
               Reviewed by {submission.reviewed_by_name}
               {submission.reviewed_at &&
                 ` on ${new Date(submission.reviewed_at).toLocaleDateString()}`}

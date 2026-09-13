@@ -39,7 +39,7 @@ const statusIcon: Record<string, JSX.Element> = {
   failed: <XCircle className="w-4 h-4 text-red-500" />,
   running: <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />,
   waiting: <Clock className="w-4 h-4 text-amber-500" />,
-  skipped: <SkipForward className="w-4 h-4 text-gray-400" />,
+  skipped: <SkipForward className="w-4 h-4 text-gray-500" />,
   pending: <Circle className="w-4 h-4 text-gray-300" />,
 };
 
@@ -114,7 +114,7 @@ export function ExecutionDetail({ execution, nodes, onResume }: ExecutionDetailP
                 </div>
 
                 {ne.startedAt && (
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                  <div className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
                     {new Date(ne.startedAt).toLocaleString()}
                   </div>
                 )}

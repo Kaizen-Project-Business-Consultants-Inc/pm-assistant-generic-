@@ -61,7 +61,7 @@ export function WelcomeModal() {
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Create a Project</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">Start from a template or build from scratch</p>
             </div>
-            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-primary-600 transition-colors flex-shrink-0" />
+            <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-primary-600 transition-colors flex-shrink-0" />
           </button>
 
           <button
@@ -75,7 +75,7 @@ export function WelcomeModal() {
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Import a Schedule</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">Upload CSV or Excel from MS Project or other tools</p>
             </div>
-            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors flex-shrink-0" />
+            <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors flex-shrink-0" />
           </button>
         </div>
 

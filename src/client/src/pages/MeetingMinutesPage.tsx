@@ -452,14 +452,14 @@ export const MeetingMinutesPage: React.FC = () => {
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500" />
         </div>
       </div>
 
       {!selectedProjectId ? (
         <div className="text-center py-16">
           <Brain className="mx-auto mb-3 h-12 w-12 text-gray-300 dark:text-gray-600" />
-          <p className="text-sm text-gray-400 dark:text-gray-500">Select a project to get started.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">Select a project to get started.</p>
         </div>
       ) : (
         <>
@@ -505,7 +505,7 @@ export const MeetingMinutesPage: React.FC = () => {
             {/* Meeting title (optional) */}
             <div>
               <label htmlFor="meeting-title" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-                Meeting Title <span className="text-gray-400 font-normal">(optional)</span>
+                Meeting Title <span className="text-gray-500 font-normal">(optional)</span>
               </label>
               <input
                 id="meeting-title"
@@ -590,12 +590,12 @@ export const MeetingMinutesPage: React.FC = () => {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-3">
-                      <Upload className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                      <Upload className="w-8 h-8 text-gray-500 dark:text-gray-500" />
                       <div>
                         <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">
                           Drop a transcript file here, or click to browse
                         </p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                           Supported formats: .txt (Otter.ai), .vtt (Teams/Zoom), .srt
                         </p>
                       </div>
@@ -633,7 +633,7 @@ export const MeetingMinutesPage: React.FC = () => {
                         <option key={s.id} value={s.id}>{s.name}</option>
                       ))}
                     </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500" />
                   </div>
                 </div>
 
@@ -680,7 +680,7 @@ export const MeetingMinutesPage: React.FC = () => {
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500" />
                 </div>
               </div>
             )}
@@ -769,12 +769,12 @@ export const MeetingMinutesPage: React.FC = () => {
           <div className="card">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <Clock className="w-4 h-4 text-gray-500 dark:text-gray-500" />
                 Analysis History
               </h2>
               {history.length > 0 && (
                 <div className="relative w-48">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
                   <input
                     type="text"
                     value={historySearch}
@@ -787,11 +787,11 @@ export const MeetingMinutesPage: React.FC = () => {
             </div>
 
             {history.length === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500 italic py-4 text-center">
+              <p className="text-xs text-gray-500 dark:text-gray-500 italic py-4 text-center">
                 No previous analyses. Paste or upload a transcript to get started.
               </p>
             ) : filteredHistory.length === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500 italic py-4 text-center">
+              <p className="text-xs text-gray-500 dark:text-gray-500 italic py-4 text-center">
                 No analyses match your search.
               </p>
             ) : (
@@ -806,12 +806,12 @@ export const MeetingMinutesPage: React.FC = () => {
                         onClick={() => handleHistoryClick(entry)}
                         className="w-full text-left flex items-center gap-3 py-3 px-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors rounded-lg"
                       >
-                        <ChevronRight className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                        <ChevronRight className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
                             {entry.summary || 'Meeting analysis'}
                           </p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 flex items-center gap-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {formatDate(entry.createdAt)}
                           </p>
@@ -930,7 +930,7 @@ export const MeetingMinutesPage: React.FC = () => {
               <h3 id="send-minutes-title" className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Mail className="w-4 h-4" /> Send Meeting Minutes
               </h3>
-              <button onClick={() => setSendMinutesAnalysisId(null)} aria-label="Close"><X className="w-4 h-4 text-gray-400" /></button>
+              <button onClick={() => setSendMinutesAnalysisId(null)} aria-label="Close"><X className="w-4 h-4 text-gray-500" /></button>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               Enter recipient email addresses (comma or newline separated):

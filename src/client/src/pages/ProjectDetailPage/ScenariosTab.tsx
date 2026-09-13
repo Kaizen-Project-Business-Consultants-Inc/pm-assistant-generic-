@@ -235,7 +235,7 @@ function SliderInput({
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-primary-600"
       />
-      <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500">
+      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-500">
         <span>
           {min}
           {unit}

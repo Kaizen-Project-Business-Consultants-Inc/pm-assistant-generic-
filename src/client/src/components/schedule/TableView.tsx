@@ -1094,7 +1094,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     if (isEditing(taskId, field) || isSaving(taskId, field) || isSaved(taskId, field)) return null;
     return (
       <span className="absolute top-1 right-1 opacity-0 group-hover/cell:opacity-100 transition-opacity">
-        <Pencil className="w-2.5 h-2.5 text-gray-400 dark:text-gray-500" />
+        <Pencil className="w-2.5 h-2.5 text-gray-500 dark:text-gray-500" />
       </span>
     );
   };
@@ -1176,7 +1176,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             {isEditing(task.id, 'status') ? (
               <select
                 ref={el => { inputRef.current = el; }}
-                className="text-xs border border-blue-300 dark:border-blue-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-100"
+                className="text-xs border border-primary-300 dark:border-primary-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-100"
                 value={editValue}
                 onChange={e => handleSelectChange(task.id, 'status', e.target.value)}
                 onBlur={() => cancelEditing()}
@@ -1206,7 +1206,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             {isEditing(task.id, 'priority') ? (
               <select
                 ref={el => { inputRef.current = el; }}
-                className="text-xs border border-blue-300 dark:border-blue-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-100"
+                className="text-xs border border-primary-300 dark:border-primary-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-100"
                 value={editValue}
                 onChange={e => handleSelectChange(task.id, 'priority', e.target.value)}
                 onBlur={() => cancelEditing()}
@@ -1237,7 +1237,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               <input
                 ref={el => { inputRef.current = el; }}
                 type="date"
-                className="text-xs border border-blue-300 dark:border-blue-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-100"
+                className="text-xs border border-primary-300 dark:border-primary-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-100"
                 value={editValue}
                 onChange={e => handleDateChange(task.id, 'startDate', e.target.value)}
                 onBlur={() => cancelEditing()}
@@ -1262,7 +1262,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               <input
                 ref={el => { inputRef.current = el; }}
                 type="date"
-                className="text-xs border border-blue-300 dark:border-blue-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-100"
+                className="text-xs border border-primary-300 dark:border-primary-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-100"
                 value={editValue}
                 onChange={e => handleDateChange(task.id, 'endDate', e.target.value)}
                 onBlur={() => cancelEditing()}
@@ -1289,7 +1289,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 type="number"
                 min={0}
                 max={100}
-                className="w-16 text-xs border border-blue-300 dark:border-blue-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-100"
+                className="w-16 text-xs border border-primary-300 dark:border-primary-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-100"
                 value={editValue}
                 onChange={e => setEditValue(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, task.id, 'progressPercentage')}
@@ -1453,7 +1453,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 text-xs w-28 ${hasDepError ? 'ring-2 ring-red-400 ring-inset rounded' : editableCellClass(task.id, 'dependency', task)}`}
+            className={`px-3 py-2 text-xs w-28 ${hasDepError ? 'ring-2 ring-risk-critical/40 ring-inset rounded' : editableCellClass(task.id, 'dependency', task)}`}
             onClick={() => handleCellClick(task.id, 'dependency', task)}
             title={hasDepError ? depError!.message : undefined}
           >
@@ -1462,7 +1462,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 ref={el => { inputRef.current = el; }}
                 type="text"
                 placeholder="e.g. 3FS+2d,5SS"
-                className={`w-full text-xs border ${hasDepError ? 'border-red-400 dark:border-red-600' : 'border-blue-300 dark:border-blue-600'} rounded px-1 py-0.5 focus:outline-none focus:ring-1 ${hasDepError ? 'focus:ring-red-500' : 'focus:ring-blue-500'} bg-white dark:bg-gray-800 dark:text-gray-100 font-mono`}
+                className={`w-full text-xs border ${hasDepError ? 'border-risk-critical/40 dark:border-risk-critical/60' : 'border-primary-300 dark:border-primary-600'} rounded px-1 py-0.5 focus:outline-none focus:ring-1 ${hasDepError ? 'focus:ring-risk-critical' : 'focus:ring-primary-500'} bg-white dark:bg-gray-800 dark:text-gray-100 font-mono`}
                 value={editValue}
                 onChange={e => { setEditValue(e.target.value); setDepError(null); }}
                 onKeyDown={e => handleKeyDown(e, task.id, 'dependency')}
@@ -1471,7 +1471,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             ) : (() => {
               const deps = task.dependencies || [];
               if (deps.length === 0 && !task.dependency) {
-                return <span className="text-gray-400 dark:text-gray-500">{'\u2014'}</span>;
+                return <span className="text-gray-500 dark:text-gray-500">{'\u2014'}</span>;
               }
               const items = deps.length > 0 ? deps : (task.dependency ? [{ dependencyId: task.dependency, dependencyType: task.dependencyType || 'FS', lagDays: task.dependencyLagDays || 0 }] : []);
               let worstHealth: 'satisfied' | 'in_progress' | 'at_risk' = 'satisfied';
@@ -1489,7 +1489,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 if (h === 'at_risk') worstHealth = 'at_risk';
                 else if (h === 'in_progress' && worstHealth !== 'at_risk') worstHealth = 'in_progress';
               }
-              const healthDot = worstHealth === 'satisfied' ? 'bg-green-500' : worstHealth === 'in_progress' ? 'bg-yellow-500' : 'bg-red-500';
+              const healthDot = worstHealth === 'satisfied' ? 'bg-confidence-high' : worstHealth === 'in_progress' ? 'bg-confidence-medium' : 'bg-confidence-low';
               return (
                 <span className="inline-flex items-center gap-1.5 font-mono group/dep relative" title={names.join(', ')}>
                   <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${healthDot}`} />
@@ -1498,7 +1498,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               );
             })()}
             {hasDepError && (
-              <div className="text-xs text-red-500 mt-0.5">{depError!.message}</div>
+              <div className="text-xs text-risk-critical mt-0.5">{depError!.message}</div>
             )}
             {renderSaveIndicator(task.id, 'dependency')}
             {!hasDepError && renderHoverPencil(task.id, 'dependency')}
@@ -1509,7 +1509,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'successor': {
         const succs = successorMap.get(task.id);
         if (!succs || succs.length === 0) {
-          return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center">{'\u2014'}</td>;
+          return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-500 font-mono text-center">{'\u2014'}</td>;
         }
         const succLabels = succs.map(s => {
           const succRowNum = rowNumMap.get(s.successorId);
@@ -1528,7 +1528,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       }
 
       case 'rowNum':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center w-12">{rowNumMap.get(task.id) || '\u2014'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-500 font-mono text-center w-12">{rowNumMap.get(task.id) || '\u2014'}</td>;
 
       case 'notes': {
         const notesField: EditableField = 'notes';
@@ -1598,7 +1598,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'budgetVariance': {
         const budget = (task as any).budgetAllocated;
         const actual = (task as any).actualCost;
-        if (budget == null && actual == null) return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 text-right">{'\u2014'}</td>;
+        if (budget == null && actual == null) return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 text-right">{'\u2014'}</td>;
         const variance = (budget ?? 0) - (actual ?? 0);
         const color = variance < 0 ? 'text-red-600 dark:text-red-400' : variance > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-500';
         return <td key={col.key} className={`px-3 py-2 text-xs font-mono text-right ${color}`}>{variance >= 0 ? '+' : ''}${Math.abs(variance).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>;
@@ -1660,7 +1660,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       }
 
       default:
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">{'\u2014'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-500">{'\u2014'}</td>;
     }
   };
 
@@ -1780,7 +1780,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                             onMouseDown={(e) => handleGripMouseDown(e, task, rowIdx)}
                           >{rowIdx + 1}</span>
                         ) : (
-                          <span className="w-5 text-center text-xs font-medium text-gray-400 dark:text-gray-500">{rowIdx + 1}</span>
+                          <span className="w-5 text-center text-xs font-medium text-gray-500 dark:text-gray-500">{rowIdx + 1}</span>
                         )}
                         <input
                           type="checkbox"
@@ -1802,7 +1802,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                           title="Edit task"
                           aria-label="Edit task"
                         >
-                          <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                          <Pencil className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
                         </button>
                         {(onInlineInsert || onInsertAfter) && (
                           <button
@@ -1818,7 +1818,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                             title="Insert task below"
                             aria-label="Insert task below"
                           >
-                            <PlusCircle className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 hover:text-green-600" />
+                            <PlusCircle className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500 hover:text-green-600" />
                           </button>
                         )}
                         <button
@@ -1827,7 +1827,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                           title="Delete task"
                           aria-label="Delete task"
                         >
-                          <Trash2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 hover:text-red-500" />
+                          <Trash2 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500 hover:text-red-500" />
                         </button>
                       </div>
                     </td>
@@ -1906,7 +1906,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                           <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 capitalize">
                             {groupKey.replace(/_/g, ' ')}
                           </span>
-                          <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                          <span className="text-xs text-gray-500 dark:text-gray-500 font-medium">
                             {groupTasks.length} task{groupTasks.length !== 1 ? 's' : ''}
                           </span>
                         </div>
@@ -1978,7 +1978,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
             {visibleSorted.length === 0 && !onQuickAdd && (
               <tr>
-                <td colSpan={visibleColumns.length + 2} className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
+                <td colSpan={visibleColumns.length + 2} className="text-center py-8 text-sm text-gray-500 dark:text-gray-500">
                   No tasks found
                 </td>
               </tr>

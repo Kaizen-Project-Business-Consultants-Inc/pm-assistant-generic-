@@ -378,7 +378,7 @@ export default function PortalViewPage() {
                           <p className={`text-sm font-medium ${isComplete ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>
                             {ms.name}
                           </p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
                             {ms.endDate ? formatDate(ms.endDate) : 'No date set'}
                             {isComplete && ' — Completed'}
                           </p>
@@ -414,7 +414,7 @@ export default function PortalViewPage() {
                     <span className="text-gray-900 dark:text-white flex-1 min-w-0 truncate">
                       {item.name}
                     </span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+                    <span className="text-xs text-gray-500 dark:text-gray-500 flex-shrink-0">
                       {timeAgo(item.completedAt)}
                     </span>
                   </div>
@@ -447,7 +447,7 @@ export default function PortalViewPage() {
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {comment.authorName}
                       </span>
-                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-500">
                         {new Date(comment.createdAt).toLocaleString()}
                       </span>
                     </div>
@@ -510,7 +510,7 @@ export default function PortalViewPage() {
       {/* Footer */}
       <footer className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 mt-8">
         <div className="max-w-4xl mx-auto px-6 py-4 text-center">
-          <p className="text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-500">
             Powered by Kovarti PM{project.updatedAt ? <> &middot; Last updated {new Date(project.updatedAt).toLocaleString()}</> : null}
           </p>
         </div>

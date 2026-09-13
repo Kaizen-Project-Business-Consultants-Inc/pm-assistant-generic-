@@ -358,10 +358,10 @@ export function ProjectsPM() {
                 onClick={() => toggleGroup(section.id)}
                 className="flex items-center gap-2 mb-3 group cursor-pointer"
               >
-                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${collapsedGroups.has(section.id) ? '' : 'rotate-90'}`} />
+                <ChevronRight className={`w-4 h-4 text-gray-500 transition-transform ${collapsedGroups.has(section.id) ? '' : 'rotate-90'}`} />
                 <span className="w-3 h-3 rounded-full" style={{ backgroundColor: section.color }} />
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{section.name}</span>
-                <span className="text-xs text-gray-400">({section.projects.length})</span>
+                <span className="text-xs text-gray-500">({section.projects.length})</span>
               </button>
               {!collapsedGroups.has(section.id) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -420,12 +420,12 @@ export function ProjectsPM() {
                         {p.name}
                         {(p as any).isDemo && <span className="ml-1.5 text-xs font-bold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 uppercase">Sample</span>}
                       </Link>
-                      {p.client && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{p.client}</p>}
+                      {p.client && <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">{p.client}</p>}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 capitalize">{statusDisplay}</td>
                     <td className="px-4 py-3">
                       <span className={`text-sm font-medium ${healthColor}`}>{healthLabel}</span>
-                      <span className="text-xs text-gray-400 ml-1">({p.healthScore}%)</span>
+                      <span className="text-xs text-gray-500 ml-1">({p.healthScore}%)</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">

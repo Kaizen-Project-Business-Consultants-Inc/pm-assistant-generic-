@@ -492,7 +492,7 @@ export function ProjectDetailPage() {
           value={budgetAllocated > 0 ? `$${(budgetSpent / 1000).toFixed(0)}K / $${(budgetAllocated / 1000).toFixed(0)}K` : 'Not set'}
           icon={DollarSign}
           color={budgetAllocated === 0
-            ? 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
+            ? 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-500'
             : budgetPct > 90 ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400'}
           detail={budgetAllocated > 0 ? (
             <div className="mt-2 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
@@ -588,7 +588,7 @@ export function ProjectDetailPage() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{lesson.recommendation}</p>
                     )}
                     {lesson.projectName && (
-                      <p className="text-[11px] text-gray-400 mt-0.5">From: {lesson.projectName}</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">From: {lesson.projectName}</p>
                     )}
                   </div>
                 </div>

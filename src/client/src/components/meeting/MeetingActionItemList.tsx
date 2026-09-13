@@ -135,7 +135,7 @@ export const MeetingActionItemList: React.FC<MeetingActionItemListProps> = ({
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
           <CheckSquare className="w-3.5 h-3.5" /> Action Items
-          {items.length > 0 && <span className="text-gray-400">({items.length})</span>}
+          {items.length > 0 && <span className="text-gray-500">({items.length})</span>}
         </h3>
         <div className="flex items-center gap-2">
           {/* Status filter */}
@@ -218,9 +218,9 @@ export const MeetingActionItemList: React.FC<MeetingActionItemListProps> = ({
       )}
 
       {isLoading ? (
-        <div className="text-xs text-gray-400 py-4 text-center">Loading...</div>
+        <div className="text-xs text-gray-500 py-4 text-center">Loading...</div>
       ) : items.length === 0 ? (
-        <div className="text-xs text-gray-400 dark:text-gray-500 py-4 text-center italic">
+        <div className="text-xs text-gray-500 dark:text-gray-500 py-4 text-center italic">
           No action items{statusFilter ? ` with status "${statusFilter}"` : ''}.
         </div>
       ) : (
@@ -241,7 +241,7 @@ export const MeetingActionItemList: React.FC<MeetingActionItemListProps> = ({
                   {item.status === 'completed' ? (
                     <CheckSquare className="w-4 h-4 text-green-500" />
                   ) : (
-                    <Square className="w-4 h-4 text-gray-400 hover:text-primary-500" />
+                    <Square className="w-4 h-4 text-gray-500 hover:text-primary-500" />
                   )}
                 </button>
 
@@ -251,7 +251,7 @@ export const MeetingActionItemList: React.FC<MeetingActionItemListProps> = ({
                   onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
                 >
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-sm ${item.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                    <span className={`text-sm ${item.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900 dark:text-white'}`}>
                       {item.description}
                     </span>
                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${PRIORITY_STYLES[item.priority] || ''}`}>
@@ -268,7 +268,7 @@ export const MeetingActionItemList: React.FC<MeetingActionItemListProps> = ({
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
+                  <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
                     {item.assigneeName && <span>{item.assigneeName}</span>}
                     {item.dueDate && (
                       <span className={isOverdue(item) ? 'text-red-500 font-medium flex items-center gap-0.5' : ''}>
@@ -291,9 +291,9 @@ export const MeetingActionItemList: React.FC<MeetingActionItemListProps> = ({
                   className="p-0.5 mt-0.5"
                 >
                   {expandedId === item.id ? (
-                    <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
                   ) : (
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
                   )}
                 </button>
               </div>

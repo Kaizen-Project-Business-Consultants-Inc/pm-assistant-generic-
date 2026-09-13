@@ -98,7 +98,7 @@ export function SprintSnapshotWidget({ projects }: Props) {
       </div>
 
       {displayRows.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-6">No active sprints</p>
+        <p className="text-xs text-gray-500 text-center py-6">No active sprints</p>
       ) : (
         <div className="space-y-2.5 max-h-[260px] overflow-y-auto">
           {displayRows.map(({ project, sprint, velocity }) => {
@@ -127,7 +127,7 @@ export function SprintSnapshotWidget({ projects }: Props) {
                   <div className="text-right flex-shrink-0">
                     <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{done}/{total}</span>
                     {velocity.length > 0 && (
-                      <p className="text-xs text-gray-400">vel: {velocity.join(', ')}</p>
+                      <p className="text-xs text-gray-500">vel: {velocity.join(', ')}</p>
                     )}
                   </div>
                 </div>

@@ -308,7 +308,7 @@ export function DashboardPM() {
       />
 
       {/* ── Footer ── */}
-      <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 pt-2 border-t border-gray-100 dark:border-gray-800">
+      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500 pt-2 border-t border-gray-100 dark:border-gray-800">
         <div className="flex items-center gap-2">
           <span>Updated {dataUpdatedAt ? formatRelativeTime(dataUpdatedAt) : '—'}</span>
           <button

@@ -67,11 +67,11 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
         <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Workload Heatmap</h3>
-          <span className="text-xs text-gray-400 dark:text-gray-500">Weekly utilization by resource</span>
+          <span className="text-xs text-gray-500 dark:text-gray-500">Weekly utilization by resource</span>
         </div>
 
         {workload.length === 0 ? (
-          <div className="text-center py-8 text-sm text-gray-400">
+          <div className="text-center py-8 text-sm text-gray-500">
             No resource assignments for this project.
           </div>
         ) : (
@@ -85,7 +85,7 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                   <th className="px-2 py-2 font-semibold text-gray-600 dark:text-gray-400 text-center w-16">Avg</th>
                   <th className="px-2 py-2 font-semibold text-gray-600 dark:text-gray-400 text-right w-20">Cost</th>
                   {weeks.slice(0, 12).map((w, i) => (
-                    <th key={i} className="px-1 py-2 font-medium text-gray-400 dark:text-gray-500 text-center min-w-[48px]">
+                    <th key={i} className="px-1 py-2 font-medium text-gray-500 dark:text-gray-500 text-center min-w-[48px]">
                       {formatWeek(w.weekStart)}
                     </th>
                   ))}
@@ -99,7 +99,7 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                         <Avatar name={rw.resourceName} size="sm" />
                         <div>
                           <div className="font-medium text-gray-900 dark:text-white">{rw.resourceName}</div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500">{rw.role}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-500">{rw.role}</div>
                         </div>
                         {rw.isOverAllocated && (
                           <span className="ml-1 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
@@ -171,7 +171,7 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
         <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Resource Pool</h3>
-          <span className="text-xs text-gray-400 dark:text-gray-500">{resources.length} resources</span>
+          <span className="text-xs text-gray-500 dark:text-gray-500">{resources.length} resources</span>
         </div>
 
         <div className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -182,14 +182,14 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-900 dark:text-white">{res.name}</span>
                   {!res.isActive && (
-                    <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">Inactive</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">Inactive</span>
                   )}
                 </div>
                 <div className="text-xs text-gray-500">{res.role}</div>
               </div>
               <div className="text-right flex-shrink-0">
                 <div className="text-xs text-gray-500 dark:text-gray-400">{res.capacityHoursPerWeek}h/week</div>
-                <div className="text-xs text-gray-400 dark:text-gray-500">{res.email}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-500">{res.email}</div>
               </div>
               {res.skills.length > 0 && (
                 <div className="flex gap-1 flex-wrap max-w-[200px]">
@@ -199,7 +199,7 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                     </span>
                   ))}
                   {res.skills.length > 3 && (
-                    <span className="text-xs text-gray-400 dark:text-gray-500">+{res.skills.length - 3}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-500">+{res.skills.length - 3}</span>
                   )}
                 </div>
               )}

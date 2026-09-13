@@ -117,7 +117,7 @@ function severityColor(s: string): string {
 function trendIcon(direction?: string) {
   if (direction === 'improving') return <TrendingUp className="w-4 h-4 text-green-500" />;
   if (direction === 'deteriorating') return <TrendingDown className="w-4 h-4 text-red-500" />;
-  return <Activity className="w-4 h-4 text-gray-400" />;
+  return <Activity className="w-4 h-4 text-gray-500" />;
 }
 
 // ---------------------------------------------------------------------------
@@ -274,7 +274,7 @@ function computeEarnedSchedule(sCurveData: SCurveDataPoint[], currentEV: number)
 
 function VarianceParetoChart({ variances }: { variances: TaskVariance[] }) {
   const top10 = variances.slice(0, 10);
-  if (top10.length === 0) return <div className="text-center py-6 text-gray-400 text-sm">No task-level variance data available.</div>;
+  if (top10.length === 0) return <div className="text-center py-6 text-gray-500 text-sm">No task-level variance data available.</div>;
 
   const maxAbsCV = Math.max(...top10.map(v => Math.abs(v.cv)), 1);
   const barH = 22;
@@ -500,11 +500,11 @@ export function EVMDashboardPage() {
           <option value="">Select project...</option>
           {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
       </div>
 
       {!selectedProjectId && (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-gray-500">
           <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-40" />
           <p className="text-lg font-medium">Select a project to view EVM data</p>
         </div>
@@ -517,7 +517,7 @@ export function EVMDashboardPage() {
       )}
 
       {selectedProjectId && !isLoading && !result && (
-        <div className="text-center py-16 text-gray-400 dark:text-gray-500">No EVM data available for this project.</div>
+        <div className="text-center py-16 text-gray-500 dark:text-gray-500">No EVM data available for this project.</div>
       )}
 
       {result && m && (
@@ -606,7 +606,7 @@ export function EVMDashboardPage() {
               return `${sign}${d.toFixed(2)}`;
             }
             function deltaColor(d: number | null): string {
-              if (d === null || Math.abs(d) < 0.005) return 'text-gray-400';
+              if (d === null || Math.abs(d) < 0.005) return 'text-gray-500';
               return d > 0 ? 'text-green-500' : 'text-red-500';
             }
 
@@ -622,7 +622,7 @@ export function EVMDashboardPage() {
                         <span className="text-xl font-bold" style={{ color: indexColor(m.CPI) }}>{m.CPI.toFixed(2)}</span>
                         {cpiDelta !== null && <span className={`text-xs font-semibold ${deltaColor(cpiDelta)}`}>{deltaLabel(cpiDelta)}</span>}
                       </div>
-                      <div className="text-xs text-gray-400 mt-0.5 text-center">Cost Performance</div>
+                      <div className="text-xs text-gray-500 mt-0.5 text-center">Cost Performance</div>
                     </div>
                   </EVMMetricTooltip>
                   {/* SPI with gauge */}
@@ -634,7 +634,7 @@ export function EVMDashboardPage() {
                         <span className="text-xl font-bold" style={{ color: indexColor(m.SPI) }}>{m.SPI.toFixed(2)}</span>
                         {spiDelta !== null && <span className={`text-xs font-semibold ${deltaColor(spiDelta)}`}>{deltaLabel(spiDelta)}</span>}
                       </div>
-                      <div className="text-xs text-gray-400 mt-0.5 text-center">Schedule Performance</div>
+                      <div className="text-xs text-gray-500 mt-0.5 text-center">Schedule Performance</div>
                     </div>
                   </EVMMetricTooltip>
                   {/* CV */}
@@ -642,7 +642,7 @@ export function EVMDashboardPage() {
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
                       <div className="text-xs text-gray-500 uppercase font-semibold">CV</div>
                       <div className="text-2xl font-bold" style={{ color: CV >= 0 ? '#22c55e' : '#ef4444' }}>{formatCurrency(CV)}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">Cost Variance</div>
+                      <div className="text-xs text-gray-500 mt-0.5">Cost Variance</div>
                     </div>
                   </EVMMetricTooltip>
                   {/* SV */}
@@ -650,7 +650,7 @@ export function EVMDashboardPage() {
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
                       <div className="text-xs text-gray-500 uppercase font-semibold">SV</div>
                       <div className="text-2xl font-bold" style={{ color: SV >= 0 ? '#22c55e' : '#ef4444' }}>{formatCurrency(SV)}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">Schedule Variance</div>
+                      <div className="text-xs text-gray-500 mt-0.5">Schedule Variance</div>
                     </div>
                   </EVMMetricTooltip>
                   {/* EV, PV, AC, BAC */}
@@ -664,7 +664,7 @@ export function EVMDashboardPage() {
                       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-help">
                         <div className="text-xs text-gray-500 uppercase font-semibold">{kpi.label}</div>
                         <div className="text-2xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">{kpi.sub}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{kpi.sub}</div>
                       </div>
                     </EVMMetricTooltip>
                   ))}
@@ -685,7 +685,7 @@ export function EVMDashboardPage() {
                           {kpi.warn && <AlertTriangle className="w-3.5 h-3.5 text-red-500" />}
                         </div>
                         <div className={`text-xl font-bold mt-1 ${kpi.warn ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{kpi.value}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">{kpi.sub}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{kpi.sub}</div>
                       </div>
                     </EVMMetricTooltip>
                   ))}
@@ -728,7 +728,7 @@ export function EVMDashboardPage() {
                   {/* Threshold config gear */}
                   <button
                     onClick={() => setThresholdOpen(!thresholdOpen)}
-                    className={`p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${thresholdOpen ? 'text-primary-500' : 'text-gray-400'}`}
+                    className={`p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${thresholdOpen ? 'text-primary-500' : 'text-gray-500'}`}
                     title="Configure threshold lines"
                   >
                     <Settings2 className="w-3.5 h-3.5" />
@@ -773,7 +773,7 @@ export function EVMDashboardPage() {
                 const hasData = activeData.length >= 2 && activeLines;
 
                 if (!hasData) {
-                  return <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">Not enough historical data for trend chart.</div>;
+                  return <div className="text-center py-8 text-gray-500 dark:text-gray-500 text-sm">Not enough historical data for trend chart.</div>;
                 }
 
                 // Compute annotations: crossover points where CPI or SPI crosses 1.0
@@ -906,7 +906,7 @@ export function EVMDashboardPage() {
                   <ShieldAlert className="w-3.5 h-3.5" />
                   <span>MR:</span>
                   <div className="relative">
-                    <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                    <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
                     <input
                       type="number"
                       min="0"
@@ -986,7 +986,7 @@ export function EVMDashboardPage() {
                       <div className={`text-3xl font-bold ${tcpiBac > 1.2 ? 'text-red-600' : tcpiBac > 1.05 ? 'text-amber-600' : 'text-green-600'}`}>
                         {tcpiBac === Infinity ? '—' : tcpiBac.toFixed(2)}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">
+                      <div className="text-xs text-gray-500 mt-1">
                         {tcpiBac > 1.2 ? 'Unrealistic — consider rebaselining' : tcpiBac > 1.05 ? 'Challenging but achievable' : 'Achievable at current pace'}
                       </div>
                     </div>
@@ -995,7 +995,7 @@ export function EVMDashboardPage() {
                       <div className={`text-3xl font-bold ${tcpiEac > 1.2 ? 'text-red-600' : tcpiEac > 1.05 ? 'text-amber-600' : 'text-green-600'}`}>
                         {tcpiEac === Infinity ? '—' : tcpiEac.toFixed(2)}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">
+                      <div className="text-xs text-gray-500 mt-1">
                         {tcpiEac > 1.2 ? 'Even adjusted forecast at risk' : tcpiEac > 1.05 ? 'Moderate effort needed' : 'On track for adjusted forecast'}
                       </div>
                     </div>
@@ -1019,12 +1019,12 @@ export function EVMDashboardPage() {
                         <div>
                           <div className="text-xs text-gray-500">Earned Schedule (ES)</div>
                           <div className="text-lg font-bold text-gray-900 dark:text-white">{es.es.toFixed(1)} wks</div>
-                          <div className="text-xs text-gray-400">Planned time to earn current EV</div>
+                          <div className="text-xs text-gray-500">Planned time to earn current EV</div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Actual Time (AT)</div>
                           <div className="text-lg font-bold text-gray-900 dark:text-white">{es.at.toFixed(1)} wks</div>
-                          <div className="text-xs text-gray-400">Elapsed since project start</div>
+                          <div className="text-xs text-gray-500">Elapsed since project start</div>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
@@ -1033,12 +1033,12 @@ export function EVMDashboardPage() {
                           <div className={`text-lg font-bold ${es.svt >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {es.svt >= 0 ? '+' : ''}{es.svt.toFixed(1)} wks
                           </div>
-                          <div className="text-xs text-gray-400">{es.svt >= 0 ? 'Ahead of schedule' : 'Behind schedule'}</div>
+                          <div className="text-xs text-gray-500">{es.svt >= 0 ? 'Ahead of schedule' : 'Behind schedule'}</div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">SPI(t) — Schedule Performance (time)</div>
                           <div className="text-lg font-bold" style={{ color: indexColor(es.spit) }}>{es.spit.toFixed(2)}</div>
-                          <div className="text-xs text-gray-400">{es.spit >= 1 ? 'Earning value faster than planned' : 'Earning value slower than planned'}</div>
+                          <div className="text-xs text-gray-500">{es.spit >= 1 ? 'Earning value faster than planned' : 'Earning value slower than planned'}</div>
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 italic">
@@ -1046,7 +1046,7 @@ export function EVMDashboardPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="text-center py-6 text-gray-400 text-sm">Not enough S-curve data to compute earned schedule.</div>
+                    <div className="text-center py-6 text-gray-500 text-sm">Not enough S-curve data to compute earned schedule.</div>
                   )}
                 </div>
               </div>
@@ -1063,7 +1063,7 @@ export function EVMDashboardPage() {
                 <SlidersHorizontal className="w-4 h-4 text-primary-500" />
                 What-If Scenario Simulator
               </h3>
-              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${whatIfOpen ? 'rotate-90' : ''}`} />
+              <ChevronRight className={`w-4 h-4 text-gray-500 transition-transform ${whatIfOpen ? 'rotate-90' : ''}`} />
             </button>
             {whatIfOpen && (() => {
               const simCPI = whatIfCPI ?? m.CPI;
@@ -1079,7 +1079,7 @@ export function EVMDashboardPage() {
                     <div>
                       <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">
                         Target CPI: <span className="font-bold text-gray-900 dark:text-white">{simCPI.toFixed(2)}</span>
-                        <span className="text-gray-400 ml-1">(current: {m.CPI.toFixed(2)})</span>
+                        <span className="text-gray-500 ml-1">(current: {m.CPI.toFixed(2)})</span>
                       </label>
                       <input
                         type="range"
@@ -1090,7 +1090,7 @@ export function EVMDashboardPage() {
                         onChange={(e) => setWhatIfCPI(parseFloat(e.target.value))}
                         className="w-full accent-primary-500"
                       />
-                      <div className="flex justify-between text-xs text-gray-400">
+                      <div className="flex justify-between text-xs text-gray-500">
                         <span>0.50</span><span>1.00</span><span>1.50</span>
                       </div>
                     </div>
@@ -1107,7 +1107,7 @@ export function EVMDashboardPage() {
                         onChange={(e) => setWhatIfBudgetAdd(parseFloat(e.target.value))}
                         className="w-full accent-primary-500"
                       />
-                      <div className="flex justify-between text-xs text-gray-400">
+                      <div className="flex justify-between text-xs text-gray-500">
                         <span>-{formatCurrency(m.BAC * 0.3)}</span><span>0</span><span>+{formatCurrency(m.BAC * 0.5)}</span>
                       </div>
                     </div>
@@ -1128,7 +1128,7 @@ export function EVMDashboardPage() {
                             {s.isIndex ? s.sim.toFixed(2) : formatCurrency(s.sim)}
                           </div>
                           {changed && (
-                            <div className="text-xs text-gray-400">
+                            <div className="text-xs text-gray-500">
                               was {s.isIndex ? s.current.toFixed(2) : formatCurrency(s.current)}
                               <span className={`ml-1 font-semibold ${(s.label.includes('VAC') ? s.sim > s.current : s.sim < s.current) ? 'text-green-500' : 'text-red-500'}`}>
                                 ({s.sim > s.current ? '+' : ''}{s.isIndex ? (s.sim - s.current).toFixed(2) : formatCurrency(s.sim - s.current)})
@@ -1212,7 +1212,7 @@ export function EVMDashboardPage() {
                 <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3">
                   <div className="text-xs text-gray-500">AI-Adjusted EAC</div>
                   <div className="text-lg font-bold text-purple-700">{formatCurrency(result.aiPredictions.aiAdjustedEAC)}</div>
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-gray-500">
                     Range: {formatCurrency(result.aiPredictions.eacConfidenceRange.low)} — {formatCurrency(result.aiPredictions.eacConfidenceRange.high)}
                   </div>
                 </div>

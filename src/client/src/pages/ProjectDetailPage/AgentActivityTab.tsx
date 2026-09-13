@@ -81,7 +81,7 @@ export function AgentActivityTab({ projectId }: { projectId: string }) {
       {isLoading ? (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading agent activity…</div>
       ) : entries.length === 0 ? (
-        <div className="text-center py-8 text-gray-400 dark:text-gray-500">No agent activity recorded yet</div>
+        <div className="text-center py-8 text-gray-500 dark:text-gray-500">No agent activity recorded yet</div>
       ) : (
         <>
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">

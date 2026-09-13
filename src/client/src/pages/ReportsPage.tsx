@@ -193,7 +193,7 @@ const ReportViewerModal: React.FC<{
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeColor}`}>
                 {typeLabel}
               </span>
-              <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+              <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-500">
                 <Clock className="w-3 h-3" />
                 {formatDate(dateStr)}
               </span>
@@ -203,14 +203,14 @@ const ReportViewerModal: React.FC<{
             <button
               onClick={handleDownload}
               disabled={!content}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30"
+              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30"
               title="Download"
             >
               <Download className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="p-1.5 rounded-lg text-gray-500 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -560,7 +560,7 @@ export const ReportsPage: React.FC = () => {
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500" />
         </div>
       </div>
 
@@ -572,7 +572,7 @@ export const ReportsPage: React.FC = () => {
           <div className="flex items-center gap-2 mb-3">
             <Star className="w-4 h-4 text-amber-400 fill-current" />
             <span className="text-sm font-semibold text-gray-900 dark:text-white">Favorites</span>
-            <span className="text-xs text-gray-400 dark:text-gray-500">{favoriteReports.length}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-500">{favoriteReports.length}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {favoriteReports.map(report => (
@@ -600,14 +600,14 @@ export const ReportsPage: React.FC = () => {
             className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
           >
             {showSchedules ? (
-              <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
             ) : (
-              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
             )}
             <CalendarClock className="w-4 h-4 text-primary-500 flex-shrink-0" />
             <span className="text-sm font-semibold text-gray-900 dark:text-white">Scheduled Reports</span>
             {schedules.length > 0 && (
-              <span className="text-xs text-gray-400 dark:text-gray-500">{schedules.length}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-500">{schedules.length}</span>
             )}
           </button>
           <button
@@ -670,21 +670,21 @@ export const ReportsPage: React.FC = () => {
                             ) : s.lastRunStatus === 'success' ? (
                               <span className="text-xs text-green-600 dark:text-green-400">Success</span>
                             ) : (
-                              <span className="text-xs text-gray-400">—</span>
+                              <span className="text-xs text-gray-500">—</span>
                             )}
                           </td>
                           <td className="px-4 py-2.5 text-right">
                             <div className="flex items-center justify-end gap-1">
                               <button
                                 onClick={() => { setEditingScheduleId(s.id); setShowScheduleModal(true); }}
-                                className="p-1.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                className="p-1.5 text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                                 title="Edit schedule"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => toggleScheduleMutation.mutate({ id: s.id, isActive: !s.isActive })}
-                                className="p-1.5 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                                className="p-1.5 text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
                                 title={s.isActive ? 'Pause' : 'Resume'}
                               >
                                 {s.isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
@@ -692,7 +692,7 @@ export const ReportsPage: React.FC = () => {
                               <button
                                 onClick={() => runNowMutation.mutate(s.id)}
                                 disabled={runNowMutation.isPending}
-                                className="p-1.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors disabled:opacity-30"
+                                className="p-1.5 text-gray-500 hover:text-green-600 dark:hover:text-green-400 transition-colors disabled:opacity-30"
                                 title="Run now"
                               >
                                 <RefreshCw className={`w-3.5 h-3.5 ${runNowMutation.isPending ? 'animate-spin' : ''}`} />
@@ -757,11 +757,11 @@ export const ReportsPage: React.FC = () => {
           className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
         >
           {showHistory ? (
-            <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
           ) : (
-            <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
           )}
-          <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+          <Clock className="w-4 h-4 text-gray-500 dark:text-gray-500 flex-shrink-0" />
           <span className="text-sm font-semibold text-gray-900 dark:text-white">Report History</span>
         </button>
 
@@ -786,7 +786,7 @@ export const ReportsPage: React.FC = () => {
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
               </div>
             </div>
 
@@ -926,7 +926,7 @@ export const ReportsPage: React.FC = () => {
                             <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
                               <button
                                 onClick={() => setViewingReport(report)}
-                                className="p-1.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                className="p-1.5 text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                                 title="View report"
                               >
                                 <FileText className="w-3.5 h-3.5" />
@@ -958,7 +958,7 @@ export const ReportsPage: React.FC = () => {
                   <button
                     onClick={() => setPage(1)}
                     disabled={page === 1}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     title="First page"
                   >
                     <ChevronsLeft className="w-4 h-4" />
@@ -966,7 +966,7 @@ export const ReportsPage: React.FC = () => {
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     title="Previous page"
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -988,7 +988,7 @@ export const ReportsPage: React.FC = () => {
                     }
                     return pages.map((p, idx) =>
                       p === '...' ? (
-                        <span key={`dots-${idx}`} className="px-1 text-xs text-gray-400">...</span>
+                        <span key={`dots-${idx}`} className="px-1 text-xs text-gray-500">...</span>
                       ) : (
                         <button
                           key={p}
@@ -1008,7 +1008,7 @@ export const ReportsPage: React.FC = () => {
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     title="Next page"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -1016,7 +1016,7 @@ export const ReportsPage: React.FC = () => {
                   <button
                     onClick={() => setPage(totalPages)}
                     disabled={page === totalPages}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     title="Last page"
                   >
                     <ChevronsRight className="w-4 h-4" />

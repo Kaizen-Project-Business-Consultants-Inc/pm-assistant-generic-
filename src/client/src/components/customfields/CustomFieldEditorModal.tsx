@@ -75,7 +75,7 @@ export function CustomFieldEditorModal({ projectId, entityType, field, onClose }
       <div ref={dialogRef} onKeyDown={handleKeyDown} tabIndex={-1} className="relative w-full max-w-md mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl" role="dialog" aria-modal="true" aria-label={isEdit ? 'Edit Field' : 'Add Custom Field'}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">{isEdit ? 'Edit Field' : 'Add Custom Field'}</h3>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close">
+          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>

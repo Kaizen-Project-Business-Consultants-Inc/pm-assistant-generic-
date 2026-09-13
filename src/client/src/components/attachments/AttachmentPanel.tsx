@@ -117,7 +117,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
           ${dragOver ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}`}
         onClick={() => document.getElementById(`file-input-${entityId}`)?.click()}
       >
-        <UploadCloud className={`w-6 h-6 mx-auto mb-1 ${dragOver ? 'text-primary-500' : 'text-gray-400'}`} />
+        <UploadCloud className={`w-6 h-6 mx-auto mb-1 ${dragOver ? 'text-primary-500' : 'text-gray-500'}`} />
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {uploadMutation.isPending ? 'Uploading…' : 'Drop files here or click to upload'}
         </p>
@@ -136,7 +136,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
           <div className="w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
         </div>
       ) : attachments.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-2">No attachments yet</p>
+        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-2">No attachments yet</p>
       ) : (
         <div className="space-y-2">
           {attachments.map((att: any) => (
@@ -150,20 +150,20 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
               </button>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{att.originalName}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-500">
                   {formatSize(att.fileSize)} &middot; v{att.version} &middot; {new Date(att.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => setVersionHistoryId(att.id)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Version history" aria-label="Version history">
+                <button onClick={() => setVersionHistoryId(att.id)} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" title="Version history" aria-label="Version history">
                   <Clock className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => handleDownload(att)} className="p-1 text-gray-400 hover:text-primary-600" title="Download" aria-label="Download file">
+                <button onClick={() => handleDownload(att)} className="p-1 text-gray-500 hover:text-primary-600" title="Download" aria-label="Download file">
                   <Download className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => setDeleteConfirmId(att.id)}
-                  className="p-1 text-gray-400 hover:text-red-600" title="Delete" aria-label="Delete file"
+                  className="p-1 text-gray-500 hover:text-red-600" title="Delete" aria-label="Delete file"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

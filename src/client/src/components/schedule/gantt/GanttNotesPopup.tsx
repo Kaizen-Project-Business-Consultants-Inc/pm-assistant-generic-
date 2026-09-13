@@ -35,7 +35,7 @@ export const GanttNotesPopup = React.memo(function GanttNotesPopup({
         <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Notes</span>
         <button
           onClick={saveAndClose}
-          className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          className="text-xs text-gray-500 hover:text-gray-600 dark:hover:text-gray-200"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>

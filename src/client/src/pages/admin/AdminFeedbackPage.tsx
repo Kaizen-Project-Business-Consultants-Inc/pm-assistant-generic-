@@ -45,7 +45,7 @@ function fmt(date: string) {
 }
 
 function Stars({ rating, size = 14 }: { rating: number | null; size?: number }) {
-  if (rating == null) return <span className="text-gray-400 text-xs">--</span>;
+  if (rating == null) return <span className="text-gray-500 text-xs">--</span>;
   return (
     <span className="inline-flex gap-0.5">
       {[1, 2, 3, 4, 5].map((s) => (
@@ -87,7 +87,7 @@ function ScreenshotViewer({ feedbackId }: { feedbackId: string }) {
     );
   }
 
-  if (isLoading) return <p className="text-xs text-gray-400">Loading...</p>;
+  if (isLoading) return <p className="text-xs text-gray-500">Loading...</p>;
 
   return data?.screenshotData ? (
     <img
@@ -191,14 +191,14 @@ export function AdminFeedbackPage() {
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {item.fullName || item.username}
                   </span>
-                  <span className="text-xs text-gray-400 ml-2">{item.userEmail}</span>
+                  <span className="text-xs text-gray-500 ml-2">{item.userEmail}</span>
                 </div>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[item.status] || ''}`}>
                   {item.status}
                 </span>
-                {item.hasScreenshot && <span title="Has screenshot"><Camera className="w-4 h-4 text-gray-400" /></span>}
+                {item.hasScreenshot && <span title="Has screenshot"><Camera className="w-4 h-4 text-gray-500" /></span>}
                 {item.adminReply && <span title="Replied"><Send className="w-3.5 h-3.5 text-green-500" /></span>}
-                <span className="text-xs text-gray-400 whitespace-nowrap">{fmt(item.createdAt)}</span>
+                <span className="text-xs text-gray-500 whitespace-nowrap">{fmt(item.createdAt)}</span>
                 <span className="px-2 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                   {CATEGORY_LABELS[item.category] || item.category}
                 </span>
@@ -234,7 +234,7 @@ export function AdminFeedbackPage() {
                   {/* Admin Notes (internal) */}
                   <div>
                     <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                      Internal Notes <span className="text-gray-400">(not visible to user)</span>
+                      Internal Notes <span className="text-gray-500">(not visible to user)</span>
                     </label>
                     <textarea
                       defaultValue={item.adminNotes || ''}
@@ -251,13 +251,13 @@ export function AdminFeedbackPage() {
                   {/* Admin Reply (visible to user) */}
                   <div>
                     <label className="block text-xs font-medium text-primary-600 dark:text-primary-400 mb-1">
-                      Reply to User <span className="text-gray-400">(visible to user)</span>
+                      Reply to User <span className="text-gray-500">(visible to user)</span>
                     </label>
                     {item.adminReply && (
                       <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded p-2 mb-2">
                         <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{item.adminReply}</p>
                         {item.adminReplyAt && (
-                          <p className="text-xs text-gray-400 mt-1">Sent {fmt(item.adminReplyAt)}</p>
+                          <p className="text-xs text-gray-500 mt-1">Sent {fmt(item.adminReplyAt)}</p>
                         )}
                       </div>
                     )}

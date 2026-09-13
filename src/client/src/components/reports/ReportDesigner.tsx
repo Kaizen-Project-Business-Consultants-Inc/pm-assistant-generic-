@@ -364,7 +364,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={onClose}
-          className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          className="p-1.5 text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           aria-label="Go back"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -468,7 +468,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
               {/* Section Header */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-400 dark:text-gray-500">#{index + 1}</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-500">#{index + 1}</span>
                   <span className={`text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${TYPE_BADGE_COLORS[section.type]}`}>
                     {SECTION_TYPE_OPTIONS.find((o) => o.value === section.type)?.label}
                   </span>
@@ -477,20 +477,20 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                   <button
                     onClick={() => moveSection(index, 'up')}
                     disabled={index === 0}
-                    className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
+                    className="p-1 text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
                   >
                     <ArrowUp className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => moveSection(index, 'down')}
                     disabled={index === form.sections.length - 1}
-                    className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
+                    className="p-1 text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
                   >
                     <ArrowDown className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => removeSection(section.id)}
-                    className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 rounded transition-colors"
+                    className="p-1 text-gray-500 dark:text-gray-500 hover:text-red-600 rounded transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -647,7 +647,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                       {section.columns.length > 0 && (
                         <button
                           onClick={() => updateSection(section.id, { columns: [] })}
-                          className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
+                          className="px-2 py-1 text-xs text-gray-500 dark:text-gray-500 hover:text-red-500 transition-colors"
                         >
                           Clear all
                         </button>
@@ -655,7 +655,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                     </div>
                   )}
                   {!expandedColumnPickers.has(section.id) && section.columns.length === 0 && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">All columns shown by default. Click to pick specific columns.</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">All columns shown by default. Click to pick specific columns.</p>
                   )}
                 </div>
               )}
@@ -699,7 +699,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
               </span>
             ));
           })()}
-          <span className="text-xs text-gray-400 dark:text-gray-500">
+          <span className="text-xs text-gray-500 dark:text-gray-500">
             across {new Set(form.sections.map(s => s.dataSource)).size} data source{new Set(form.sections.map(s => s.dataSource)).size !== 1 ? 's' : ''}
           </span>
         </div>

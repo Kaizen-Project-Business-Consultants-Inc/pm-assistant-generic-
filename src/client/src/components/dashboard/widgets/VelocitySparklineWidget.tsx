@@ -55,13 +55,13 @@ function Sparkline({ data, width = 120, height = 24 }: { data: number[]; width?:
 }
 
 function TrendArrow({ values }: { values: number[] }) {
-  if (values.length < 2) return <Minus className="w-3.5 h-3.5 text-gray-400" />;
+  if (values.length < 2) return <Minus className="w-3.5 h-3.5 text-gray-500" />;
   const recent = values[values.length - 1];
   const previous = values[values.length - 2];
   const diff = recent - previous;
   if (diff > 1) return <TrendingUp className="w-3.5 h-3.5 text-green-500" />;
   if (diff < -1) return <TrendingDown className="w-3.5 h-3.5 text-red-500" />;
-  return <Minus className="w-3.5 h-3.5 text-gray-400" />;
+  return <Minus className="w-3.5 h-3.5 text-gray-500" />;
 }
 
 function SprintDelta({ current, previous }: { current: number; previous: number }) {
@@ -140,11 +140,11 @@ export function VelocitySparklineWidget({ projects }: VelocitySparklineWidgetPro
       <div className="flex items-center gap-2 mb-3">
         <Zap className="w-4 h-4 text-indigo-500" />
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Sprint Velocity</h3>
-        <span className="text-xs text-gray-400 dark:text-gray-500">pts/sprint</span>
+        <span className="text-xs text-gray-500 dark:text-gray-500">pts/sprint</span>
       </div>
 
       {projectsWithData.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-6">
+        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-6">
           {agileProjects.length > 0 ? 'No completed sprints yet' : 'No agile projects'}
         </p>
       ) : (

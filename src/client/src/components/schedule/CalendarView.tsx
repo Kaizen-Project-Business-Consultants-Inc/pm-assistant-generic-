@@ -315,7 +315,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
 
         {/* Task list */}
         {dayTasks.length === 0 ? (
-          <div className="text-center py-12 text-sm text-gray-400 dark:text-gray-500">No tasks scheduled for this day</div>
+          <div className="text-center py-12 text-sm text-gray-500 dark:text-gray-500">No tasks scheduled for this day</div>
         ) : (
           <div className="space-y-2">
             {dayTasks.map(task => {
@@ -334,13 +334,13 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
                     <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{task.name}</div>
                     <div className="flex items-center gap-2 mt-0.5">
                       {task.priority && (
-                        <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">{task.priority}</span>
+                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase">{task.priority}</span>
                       )}
                       {task.assignedTo && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">{task.assignedTo}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-500">{task.assignedTo}</span>
                       )}
                       {task.startDate && task.endDate && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-gray-500">
                           {new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(task.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                       )}

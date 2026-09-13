@@ -443,13 +443,13 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
                         : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500'
                     }`}
                   >
-                    <Upload size={32} className="text-gray-400 dark:text-gray-500" />
+                    <Upload size={32} className="text-gray-500 dark:text-gray-500" />
                     <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop a file here, or click to browse</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">.csv, .xlsx, .xls supported (max 5MB)</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">.csv, .xlsx, .xls supported (max 5MB)</p>
                     <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
                     <span className="flex-1 border-t dark:border-gray-700" />or paste CSV below<span className="flex-1 border-t dark:border-gray-700" />
                   </div>
 
@@ -496,7 +496,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
                     )}
                   </div>
                   {raidSheetCount >= 2 && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                       Detected RAID tabs: {sheetNames.filter(n => SHEET_TYPE_MAP[n.toLowerCase().trim()]).join(', ')}
                     </p>
                   )}

@@ -132,7 +132,7 @@ export function AdminWaitlistPage() {
             <tbody>
               {entries.map((entry, i) => (
                 <tr key={entry.email} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <td className="px-4 py-3 text-gray-400">{i + 1}</td>
+                  <td className="px-4 py-3 text-gray-500">{i + 1}</td>
                   <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{entry.email}</td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                     {new Date(entry.created_at).toLocaleDateString()}
@@ -143,7 +143,7 @@ export function AdminWaitlistPage() {
                         <CheckCircle2 className="w-3 h-3" /> Sent
                       </span>
                     ) : (
-                      <span className="text-xs text-gray-400">Not sent</span>
+                      <span className="text-xs text-gray-500">Not sent</span>
                     )}
                   </td>
                 </tr>

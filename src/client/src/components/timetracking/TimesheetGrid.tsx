@@ -164,7 +164,7 @@ export function TimesheetGrid() {
             <tbody>
               {projectGroups.length === 0 ? (
                 <tr>
-                  <td colSpan={days.length + 3} className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
+                  <td colSpan={days.length + 3} className="text-center py-8 text-gray-500 dark:text-gray-500 text-sm">
                     No time entries for this week
                   </td>
                 </tr>
@@ -226,7 +226,7 @@ export function TimesheetGrid() {
                           <tr key={taskId} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                             <td className="py-2 px-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                               <div className="flex items-center gap-1.5">
-                                {isLocked && <Lock className="w-3 h-3 text-gray-400 shrink-0" />}
+                                {isLocked && <Lock className="w-3 h-3 text-gray-500 shrink-0" />}
                                 <span className="truncate">{taskEntries[0]?.taskName || taskEntries[0]?.description || taskId}</span>
                               </div>
                             </td>

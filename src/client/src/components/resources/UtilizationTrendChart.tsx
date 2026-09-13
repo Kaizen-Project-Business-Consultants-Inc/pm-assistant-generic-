@@ -55,7 +55,7 @@ export function UtilizationTrendChart({ resourceId, weeks: numWeeks = 12 }: Util
 
   if (!chartMetrics || trendWeeks.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center text-gray-400">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center text-gray-500">
         No utilization history available.
       </div>
     );

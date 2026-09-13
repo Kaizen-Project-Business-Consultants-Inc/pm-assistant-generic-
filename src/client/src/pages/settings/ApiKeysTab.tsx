@@ -154,11 +154,11 @@ export const ApiKeysTab: React.FC = () => {
                   <p className="text-sm font-medium text-gray-900 dark:text-white">{key.name}</p>
                   <div className="flex items-center gap-3 mt-1">
                     <code className="text-xs text-gray-500 dark:text-gray-400 font-mono">{key.keyPrefix}...</code>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-500">
                       Scopes: {(key.scopes || []).join(', ')}
                     </span>
                     {key.lastUsedAt && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-500">
                         Last used: {new Date(key.lastUsedAt).toLocaleDateString()}
                       </span>
                     )}
@@ -167,7 +167,7 @@ export const ApiKeysTab: React.FC = () => {
                 <button
                   onClick={() => setConfirmRevokeId(key.id)}
                   className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
-                    key.isActive ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800' : 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                    key.isActive ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800' : 'text-gray-500 dark:text-gray-500 cursor-not-allowed'
                   }`}
                   disabled={!key.isActive}
                 >
@@ -187,7 +187,7 @@ export const ApiKeysTab: React.FC = () => {
           <span className="text-green-400">curl</span> -H <span className="text-yellow-300">"Authorization: Bearer kpm_your_key_here"</span> \<br />
           &nbsp;&nbsp;{window.location.origin}/api/v1/projects
         </div>
-        <p className="text-xs text-gray-400 mt-3">Rate limit: 100 requests/minute per key. Headers: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset</p>
+        <p className="text-xs text-gray-500 mt-3">Rate limit: 100 requests/minute per key. Headers: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset</p>
       </div>
 
       {confirmRevokeId && (

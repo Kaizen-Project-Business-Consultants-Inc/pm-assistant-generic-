@@ -148,7 +148,7 @@ export function MonteCarloHistogram({ histogram, p50, p80, p90 }: MonteCarloHist
 
   if (histogram.length === 0) {
     return (
-      <div className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
+      <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-500">
         No histogram data available.
       </div>
     );

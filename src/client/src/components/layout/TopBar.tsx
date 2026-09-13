@@ -200,7 +200,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
             return (
               <li key={crumb.path} className="flex items-center min-w-0">
                 {index > 0 && (
-                  <ChevronRight className="w-4 h-4 text-gray-400 mx-1 flex-shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-gray-500 mx-1 flex-shrink-0" />
                 )}
                 {isLast ? (
                   <span className="font-medium text-gray-900 dark:text-gray-100 truncate" aria-current="page">
@@ -234,7 +234,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
           className="
             w-full h-9 pl-3 pr-3 text-sm flex items-center gap-2
             bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg
-            text-gray-400 hover:border-gray-300 dark:hover:border-gray-500
+            text-gray-500 hover:border-gray-300 dark:hover:border-gray-500
             hover:bg-gray-100 dark:hover:bg-gray-600
             transition-colors duration-200 cursor-pointer
           "
@@ -242,7 +242,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
         >
           <Search className="w-4 h-4 flex-shrink-0" />
           <span className="flex-1 text-left">Search...</span>
-          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-gray-400 bg-white dark:bg-gray-600 rounded border border-gray-200 dark:border-gray-500">
+          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-gray-500 bg-white dark:bg-gray-600 rounded border border-gray-200 dark:border-gray-500">
             {navigator.platform?.includes('Mac') ? '\u2318K' : 'Ctrl+K'}
           </kbd>
         </button>
@@ -335,7 +335,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
                   role="menuitem"
                   onClick={() => setDropdownOpen(false)}
                 >
-                  <User className="w-4 h-4 text-gray-400" />
+                  <User className="w-4 h-4 text-gray-500" />
                   <span>Profile & Settings</span>
                 </Link>
               </div>
@@ -347,7 +347,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
                   role="menuitem"
                   onClick={() => setDropdownOpen(false)}
                 >
-                  <HelpCircle className="w-4 h-4 text-gray-400" />
+                  <HelpCircle className="w-4 h-4 text-gray-500" />
                   <span>Help & Support</span>
                 </a>
               </div>
@@ -358,7 +358,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
                   className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150"
                   role="menuitem"
                 >
-                  <MessageCircleHeart className="w-4 h-4 text-gray-400" />
+                  <MessageCircleHeart className="w-4 h-4 text-gray-500" />
                   <span>Send Feedback</span>
                 </button>
               </div>

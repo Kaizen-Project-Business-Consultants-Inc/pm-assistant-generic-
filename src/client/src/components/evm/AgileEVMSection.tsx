@@ -55,7 +55,7 @@ export function AgileEVMSection({ projectId, sprintContext }: AgileEVMSectionPro
             Avg Velocity
           </div>
           <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{sprintContext.avgVelocity}</div>
-          <div className="text-xs text-gray-400">pts/sprint</div>
+          <div className="text-xs text-gray-500">pts/sprint</div>
         </div>
         <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center">
           <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1">
@@ -63,17 +63,17 @@ export function AgileEVMSection({ projectId, sprintContext }: AgileEVMSectionPro
             Backlog
           </div>
           <div className="text-lg font-bold text-gray-800 dark:text-white">{sprintContext.totalBacklogPoints}</div>
-          <div className="text-xs text-gray-400">total points</div>
+          <div className="text-xs text-gray-500">total points</div>
         </div>
         <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center">
           <div className="text-xs text-gray-500 dark:text-gray-400">Completed</div>
           <div className="text-lg font-bold text-green-600 dark:text-green-400">{sprintContext.completedPoints}</div>
-          <div className="text-xs text-gray-400">{completionPct}% of backlog</div>
+          <div className="text-xs text-gray-500">{completionPct}% of backlog</div>
         </div>
         <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center">
           <div className="text-xs text-gray-500 dark:text-gray-400">Sprints</div>
           <div className="text-lg font-bold text-gray-800 dark:text-white">{sprintContext.sprintCount}</div>
-          <div className="text-xs text-gray-400">total</div>
+          <div className="text-xs text-gray-500">total</div>
         </div>
       </div>
 
@@ -92,7 +92,7 @@ export function AgileEVMSection({ projectId, sprintContext }: AgileEVMSectionPro
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex items-center justify-center">
-            <p className="text-sm text-gray-400 dark:text-gray-500 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-500 text-center">
               No active sprint. Sprint burndown will appear when a sprint is in progress.
             </p>
           </div>

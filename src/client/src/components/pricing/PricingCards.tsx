@@ -233,7 +233,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
             className={`px-5 py-2 text-sm font-medium rounded-full transition-colors ${
               billing === 'monthly'
                 ? dk ? 'bg-gray-600 text-white shadow-sm' : 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                : dk ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                : dk ? 'text-gray-500 hover:text-gray-200' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
           >
             Monthly
@@ -244,7 +244,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
             className={`px-5 py-2 text-sm font-medium rounded-full transition-colors ${
               billing === 'annual'
                 ? dk ? 'bg-gray-600 text-white shadow-sm' : 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                : dk ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                : dk ? 'text-gray-500 hover:text-gray-200' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
           >
             Annual
@@ -280,7 +280,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
             : dk ? 'border-slate-600 shadow-lg shadow-black/30' : 'border-gray-200 dark:border-gray-700';
           const textPrimary = dk ? 'text-white' : 'text-gray-900 dark:text-white';
           const textSecondary = dk ? 'text-gray-300' : 'text-gray-500 dark:text-gray-400';
-          const textTertiary = dk ? 'text-gray-400' : 'text-gray-400 dark:text-gray-500';
+          const textTertiary = dk ? 'text-gray-500' : 'text-gray-500 dark:text-gray-500';
           const textFeature = dk ? 'text-gray-200' : 'text-gray-700 dark:text-gray-200';
 
           return (
@@ -347,7 +347,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
                   <>
                     <div className="mt-3 flex items-baseline gap-1">
                       {isLaunchDiscount && (
-                        <span className="text-lg font-medium text-gray-400 line-through mr-1">${originalPrice}</span>
+                        <span className="text-lg font-medium text-gray-500 line-through mr-1">${originalPrice}</span>
                       )}
                       <span className={`text-4xl font-bold ${textPrimary}`}>
                         ${price}
@@ -545,7 +545,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
             <thead>
               <tr className="border-b-2 border-gray-700">
                 <th scope="col" className="text-left py-3 pr-6 font-semibold text-white">Feature</th>
-                <th scope="col" className="text-center py-3 px-3 font-semibold text-gray-400 w-20">
+                <th scope="col" className="text-center py-3 px-3 font-semibold text-gray-500 w-20">
                   Trial
                   <div className="text-xs font-normal text-gray-500">14 days</div>
                 </th>
@@ -558,7 +558,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
                 <tr key={row.feature} className={`border-b border-gray-700/50 ${i % 2 === 0 ? 'bg-gray-800/50' : ''}`}>
                   <td className="py-2.5 pr-4">
                     <div className="text-gray-300">{row.feature}</div>
-                    {row.desc && <div className="text-xs text-gray-400 mt-0.5">{row.desc}</div>}
+                    {row.desc && <div className="text-xs text-gray-500 mt-0.5">{row.desc}</div>}
                   </td>
                   {(['trial', 'consultant_basic', 'consultant_pro'] as const).map((tier) => {
                     const val = row[tier];

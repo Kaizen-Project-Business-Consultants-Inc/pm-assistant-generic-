@@ -66,7 +66,7 @@ export function StandupSummaryWidget({ projects }: Props) {
         <button onClick={toggle} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <ClipboardList className="w-4 h-4 text-indigo-500" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Standup Summary</h3>
-          {collapsed ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronUp className="w-4 h-4 text-gray-400" />}
+          {collapsed ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronUp className="w-4 h-4 text-gray-500" />}
         </button>
         <div className="flex items-center gap-2">
           <select
@@ -117,10 +117,10 @@ export function StandupSummaryWidget({ projects }: Props) {
               {/* Sections */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <Section icon={CheckCircle} title="Completed" color="green" items={changes.completions} render={(c: any) => (
-                  <span>{c.taskName} <span className="text-gray-400">by {c.completedBy}</span></span>
+                  <span>{c.taskName} <span className="text-gray-500">by {c.completedBy}</span></span>
                 )} />
                 <Section icon={ArrowRightLeft} title="Status Changes" color="blue" items={changes.statusChanges} render={(c: any) => (
-                  <span>{c.taskName} <span className="text-gray-400">{c.fromStatus} → {c.toStatus}</span></span>
+                  <span>{c.taskName} <span className="text-gray-500">{c.fromStatus} → {c.toStatus}</span></span>
                 )} />
                 <Section icon={Plus} title="New Tasks" color="indigo" items={changes.newTasks} render={(c: any) => (
                   <span>{c.taskName}</span>
@@ -129,14 +129,14 @@ export function StandupSummaryWidget({ projects }: Props) {
                   <span>{c.title} <span className={`text-xs font-medium ${c.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`}>({c.severity})</span></span>
                 )} />
                 <Section icon={Ban} title="Blockers" color="red" items={changes.blockers} render={(c: any) => (
-                  <span>{c.taskName}{c.assignee ? <span className="text-gray-400"> — {c.assignee}</span> : ''}</span>
+                  <span>{c.taskName}{c.assignee ? <span className="text-gray-500"> — {c.assignee}</span> : ''}</span>
                 )} />
               </div>
 
               {/* Empty state */}
               {changes.completions.length === 0 && changes.statusChanges.length === 0 &&
                changes.newTasks.length === 0 && changes.newRisks.length === 0 && changes.blockers.length === 0 && (
-                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No notable changes yesterday.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-4">No notable changes yesterday.</p>
               )}
             </div>
           )}
@@ -178,7 +178,7 @@ function Section({ icon: Icon, title, color, items, render }: {
           </li>
         ))}
         {items.length > 8 && (
-          <li className="text-xs text-gray-400 dark:text-gray-500">+{items.length - 8} more</li>
+          <li className="text-xs text-gray-500 dark:text-gray-500">+{items.length - 8} more</li>
         )}
       </ul>
     </div>

@@ -18,7 +18,7 @@ export function UpgradePrompt() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-md mx-4 relative">
         <button
           onClick={() => setVisible(false)}
-          className="absolute top-3 right-3 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg"
+          className="absolute top-3 right-3 p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg"
         >
           <X className="w-4 h-4" />
         </button>

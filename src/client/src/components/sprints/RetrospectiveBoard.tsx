@@ -118,7 +118,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: Retrospe
                 <span className={`text-xs font-semibold uppercase tracking-wide ${col.headerText}`}>
                   {col.label}
                 </span>
-                <span className="ml-1.5 text-xs text-gray-400">{columnItems.length}</span>
+                <span className="ml-1.5 text-xs text-gray-500">{columnItems.length}</span>
               </div>
 
               {/* Items */}
@@ -175,7 +175,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: Retrospe
 
                         <button
                           onClick={() => deleteItemMutation.mutate(item.id)}
-                          className="ml-auto p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                          className="ml-auto p-0.5 text-gray-500 hover:text-red-500 transition-colors"
                           tabIndex={0}
                           role="button"
                           aria-label="Delete item"

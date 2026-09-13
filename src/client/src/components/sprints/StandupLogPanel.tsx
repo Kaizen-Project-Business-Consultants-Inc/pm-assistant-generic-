@@ -117,7 +117,7 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
         >
           Today
         </button>
-        <span className="text-xs text-gray-400 ml-auto">{entries.length} entr{entries.length === 1 ? 'y' : 'ies'}</span>
+        <span className="text-xs text-gray-500 ml-auto">{entries.length} entr{entries.length === 1 ? 'y' : 'ies'}</span>
       </div>
 
       {/* My Standup Form */}
@@ -160,7 +160,7 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
                 <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{b}</span>
                 <button
                   onClick={() => removeBlocker(i)}
-                  className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                  className="p-0.5 text-gray-500 hover:text-red-500 transition-colors"
                   tabIndex={0}
                   role="button"
                   aria-label={`Remove blocker: ${b}`}
@@ -248,7 +248,7 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400 truncate">{entry.userId}</span>
                 <button
                   onClick={() => deleteMutation.mutate(entry.id)}
-                  className="ml-auto p-1 text-gray-400 hover:text-red-500 transition-colors"
+                  className="ml-auto p-1 text-gray-500 hover:text-red-500 transition-colors"
                   title="Delete entry"
                   tabIndex={0}
                   role="button"
@@ -261,13 +261,13 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
 
               {entry.yesterday && (
                 <div className="mb-2">
-                  <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Yesterday</span>
+                  <span className="text-xs font-bold text-gray-500 dark:text-gray-500 uppercase tracking-wide">Yesterday</span>
                   <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mt-0.5">{entry.yesterday}</p>
                 </div>
               )}
               {entry.today && (
                 <div className="mb-2">
-                  <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Today</span>
+                  <span className="text-xs font-bold text-gray-500 dark:text-gray-500 uppercase tracking-wide">Today</span>
                   <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mt-0.5">{entry.today}</p>
                 </div>
               )}

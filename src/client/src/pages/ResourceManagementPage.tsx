@@ -445,7 +445,7 @@ export function ResourceManagementPage() {
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-primary-200 dark:border-primary-700 p-5 space-y-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white">{editingResource ? 'Edit Resource' : 'New Resource'}</h3>
-                <button onClick={resetForm} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close resource form"><X className="w-4 h-4" /></button>
+                <button onClick={resetForm} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close resource form"><X className="w-4 h-4" /></button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
                 <div>
@@ -554,7 +554,7 @@ export function ResourceManagementPage() {
                 <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
               </div>
             ) : filteredResources.length === 0 ? (
-              <div className="text-center py-16 text-gray-400">
+              <div className="text-center py-16 text-gray-500">
                 <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
                 <p>{groupFilter ? 'No resources in this department.' : 'No resources yet. Add your first team member.'}</p>
               </div>
@@ -618,7 +618,7 @@ export function ResourceManagementPage() {
                               <span className="ml-0.5 opacity-60">{s.level}</span>
                             </span>
                           ))}
-                          {(r.skills || []).length > 4 && <span className="text-xs text-gray-400">+{(r.skills || []).length - 4}</span>}
+                          {(r.skills || []).length > 4 && <span className="text-xs text-gray-500">+{(r.skills || []).length - 4}</span>}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.email}</td>
@@ -657,13 +657,13 @@ export function ResourceManagementPage() {
                       <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.costRateHourly != null ? `$${r.costRateHourly.toFixed(2)}` : '--'}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => openEdit(r)} className="p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit resource"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => openEdit(r)} className="p-1.5 rounded text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit resource"><Edit2 className="w-3.5 h-3.5" /></button>
                           <button onClick={() => {
                             setDeleteConfirmId(r.id);
                             setDeleteImpact(null);
                             setDeleteImpactLoading(true);
                             apiService.getResourceDeleteImpact(r.id).then(setDeleteImpact).catch(() => setDeleteImpact(null)).finally(() => setDeleteImpactLoading(false));
-                          }} className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete resource"><Trash2 className="w-3.5 h-3.5" /></button>
+                          }} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete resource"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -688,7 +688,7 @@ export function ResourceManagementPage() {
             <option value="__all__">All Projects (Cross-Project)</option>
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
         </div>
         {!isGlobalWorkload && schedules.length > 1 && (
           <div className="relative">
@@ -699,13 +699,13 @@ export function ResourceManagementPage() {
             >
               {schedules.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
           </div>
         )}
       </div>}
 
       {needsProjectSelector && !selectedProjectId && (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-gray-500">
           <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
           <p className="text-lg font-medium">Select a project to view resource data</p>
         </div>
@@ -765,7 +765,7 @@ export function ResourceManagementPage() {
                   <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
                 </div>
               ) : workload.length === 0 ? (
-                <div className="text-center py-16 text-gray-400">
+                <div className="text-center py-16 text-gray-500">
                   <p>No workload data available{isGlobalWorkload ? '.' : ' for this project.'}</p>
                 </div>
               ) : (
@@ -845,13 +845,13 @@ export function ResourceManagementPage() {
           {activeTab === 'histogram' && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               {!selectedScheduleId ? (
-                <div className="text-center py-12 text-gray-400">Select a schedule to view the histogram.</div>
+                <div className="text-center py-12 text-gray-500">Select a schedule to view the histogram.</div>
               ) : histogramLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
                 </div>
               ) : !histogram || histogram.resources.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">No histogram data available.</div>
+                <div className="text-center py-12 text-gray-500">No histogram data available.</div>
               ) : (
                 <div className="space-y-6">
                   {histogram.overAllocations.length > 0 && (
@@ -915,13 +915,13 @@ export function ResourceManagementPage() {
           {activeTab === 'forecast' && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               {isGlobalWorkload ? (
-                <div className="text-center py-12 text-gray-400">Select a specific project to view capacity forecast.</div>
+                <div className="text-center py-12 text-gray-500">Select a specific project to view capacity forecast.</div>
               ) : forecastLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
                 </div>
               ) : !forecast ? (
-                <div className="text-center py-12 text-gray-400">No forecast data available.</div>
+                <div className="text-center py-12 text-gray-500">No forecast data available.</div>
               ) : (
                 <div className="space-y-6">
                   {forecast.bottlenecks && forecast.bottlenecks.length > 0 ? (
@@ -1003,7 +1003,7 @@ export function ResourceManagementPage() {
           {trendResourceId ? (
             <UtilizationTrendChart resourceId={trendResourceId} />
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center text-gray-400">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center text-gray-500">
               Select a resource to view utilization trends over time.
             </div>
           )}
@@ -1040,7 +1040,7 @@ export function ResourceManagementPage() {
           onCancel={() => { setDeleteConfirmId(null); setRemoveAccessOnDelete(false); setDeleteImpact(null); }}
         >
           {deleteImpactLoading && (
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Checking assignments...</p>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">Checking assignments...</p>
           )}
           {deleteImpact && (deleteImpact.taskAssignments > 0 || deleteImpact.raidItems > 0) && (
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">

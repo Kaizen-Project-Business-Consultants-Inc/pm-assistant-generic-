@@ -54,7 +54,7 @@ export function ActualVsEstimatedChart({ tasks, height = 300 }: ActualVsEstimate
   }, [filtered, height]);
 
   if (filtered.length === 0) {
-    return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">No data to compare</p>;
+    return <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-8">No data to compare</p>;
   }
 
   return (

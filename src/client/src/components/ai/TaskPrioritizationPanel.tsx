@@ -182,7 +182,7 @@ export function TaskPrioritizationPanel({ projectId, scheduleId }: TaskPrioritiz
 
       {/* Empty state */}
       {!isLoading && !error && tasks.length === 0 && (
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-4">No active tasks to prioritize.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-4">No active tasks to prioritize.</p>
       )}
 
       {/* Content */}
@@ -192,28 +192,28 @@ export function TaskPrioritizationPanel({ projectId, scheduleId }: TaskPrioritiz
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
-                <BarChart3 className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                <BarChart3 className="h-3.5 w-3.5 text-gray-500 dark:text-gray-500" />
                 <p className="text-xs uppercase text-gray-500 dark:text-gray-400 font-medium">Analyzed</p>
               </div>
               <p className="text-lg font-bold text-gray-900 dark:text-white">{summary.tasksAnalyzed}</p>
             </div>
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
-                <ArrowRight className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                <ArrowRight className="h-3.5 w-3.5 text-gray-500 dark:text-gray-500" />
                 <p className="text-xs uppercase text-gray-500 dark:text-gray-400 font-medium">Changes</p>
               </div>
               <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{summary.priorityChanges}</p>
             </div>
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
-                <Target className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                <Target className="h-3.5 w-3.5 text-gray-500 dark:text-gray-500" />
                 <p className="text-xs uppercase text-gray-500 dark:text-gray-400 font-medium">Avg Score</p>
               </div>
               <p className="text-lg font-bold text-gray-900 dark:text-white">{summary.averageScore}</p>
             </div>
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
-                <Clock className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                <Clock className="h-3.5 w-3.5 text-gray-500 dark:text-gray-500" />
                 <p className="text-xs uppercase text-gray-500 dark:text-gray-400 font-medium">Critical Path</p>
               </div>
               <p className="text-lg font-bold text-red-600 dark:text-red-400">{summary.criticalPathTasks}</p>
@@ -264,7 +264,7 @@ export function TaskPrioritizationPanel({ projectId, scheduleId }: TaskPrioritiz
                       <PriorityBadge priority={task.currentPriority} />
                       {hasChange && (
                         <>
-                          <ArrowRight className="h-3 w-3 text-gray-400" />
+                          <ArrowRight className="h-3 w-3 text-gray-500" />
                           <PriorityBadge priority={task.suggestedPriority} />
                         </>
                       )}
@@ -297,7 +297,7 @@ export function TaskPrioritizationPanel({ projectId, scheduleId }: TaskPrioritiz
                     {/* Expand Toggle */}
                     <button
                       onClick={() => toggleExpand(task.taskId)}
-                      className="flex-shrink-0 p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      className="flex-shrink-0 p-1.5 rounded-md text-gray-500 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
                       {isExpanded ? (
                         <ChevronUp className="h-3.5 w-3.5" />

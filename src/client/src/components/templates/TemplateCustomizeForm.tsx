@@ -300,7 +300,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 Tasks: {selectedCount}/{totalTasks} selected
               </span>
-              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${taskSectionExpanded ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${taskSectionExpanded ? 'rotate-180' : ''}`} />
             </button>
 
             {taskSectionExpanded && (
@@ -318,7 +318,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
                       }`}
                     >
                       {isMandatory ? (
-                        <Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        <Lock className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
                       ) : (
                         <input
                           type="checkbox"
@@ -329,7 +329,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
                       )}
                       <span
                         className={`text-xs flex-1 ${
-                          !isSelected ? 'line-through text-gray-400 dark:text-gray-500' : t.isSummary ? 'font-medium text-gray-800 dark:text-gray-200' : 'text-gray-700 dark:text-gray-300'
+                          !isSelected ? 'line-through text-gray-500 dark:text-gray-500' : t.isSummary ? 'font-medium text-gray-800 dark:text-gray-200' : 'text-gray-700 dark:text-gray-300'
                         }`}
                       >
                         {t.name}
@@ -339,7 +339,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
                           Required
                         </span>
                       )}
-                      <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+                      <span className="text-xs text-gray-500 dark:text-gray-500 flex-shrink-0">
                         {t.estimatedDays}d
                       </span>
                     </label>

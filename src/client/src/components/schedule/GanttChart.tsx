@@ -2165,7 +2165,7 @@ export function GanttChart({
 
   if (rows.length === 0 && baseRows.length === 0 && !onQuickAdd) {
     return (
-      <div className="text-center py-12 text-sm text-gray-400 dark:text-gray-500">
+      <div className="text-center py-12 text-sm text-gray-500 dark:text-gray-500">
         <p>No tasks to display.</p>
         {onAddTask && (
           <button
@@ -2341,7 +2341,7 @@ export function GanttChart({
 
       {/* No matching tasks message */}
       {rows.length === 0 && baseRows.length > 0 && (
-        <div className="text-center py-6 text-sm text-gray-400 dark:text-gray-500">
+        <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-500">
           No tasks match the current {searchQuery ? 'search' : 'filters'}.
           <button className="ml-2 text-primary-600 hover:text-primary-700 underline" onClick={() => { setSearchQuery(''); clearFilters(); }}>Clear all</button>
         </div>

@@ -30,7 +30,7 @@ export const ScheduleSummaryBar = React.memo(function ScheduleSummaryBar({ stats
       <span className="w-px h-3 bg-gray-200 dark:bg-gray-600" />
       <span className="text-green-600 dark:text-green-400">
         <span className="font-semibold">{stats.completed}</span> done
-        <span className="text-gray-400 dark:text-gray-500 ml-0.5">({stats.pct}%)</span>
+        <span className="text-gray-500 dark:text-gray-500 ml-0.5">({stats.pct}%)</span>
       </span>
       <span className="w-px h-3 bg-gray-200 dark:bg-gray-600" />
       <span className="text-blue-600 dark:text-blue-400">

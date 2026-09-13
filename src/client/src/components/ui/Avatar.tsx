@@ -1,13 +1,19 @@
 // Avatar identity hues mapped to identity.* tokens from tailwind.config.js
 const AVATAR_COLORS = [
-  'bg-identity-1',  // cyan-600
-  'bg-identity-2',  // teal-600
-  'bg-identity-3',  // emerald-600
-  'bg-identity-4',  // yellow-600
-  'bg-identity-5',  // orange-600
-  'bg-identity-6',  // rose-600
-  'bg-identity-7',  // purple-600
-  'bg-identity-8',  // blue-600
+  'bg-identity-1',  // cyan-700
+  'bg-identity-2',  // indigo-700
+  'bg-identity-3',  // purple-700
+  'bg-identity-4',  // fuchsia-700
+  'bg-identity-5',  // rose-700
+  'bg-identity-6',  // amber-700
+  'bg-identity-7',  // lime-700
+  'bg-identity-8',  // blue-800
+];
+
+// Hex values for inline styles (must match identity.* tokens in tailwind.config.js)
+const IDENTITY_HEX = [
+  '#0e7490', '#4338ca', '#7e22ce', '#a21caf',
+  '#be123c', '#b45309', '#4d7c0f', '#1e40af',
 ];
 
 function hashName(s: string): number {
@@ -24,6 +30,10 @@ export function getInitials(name: string): string {
 
 export function getAvatarColor(name: string): string {
   return AVATAR_COLORS[hashName(name) % AVATAR_COLORS.length];
+}
+
+export function getAvatarHex(name: string): string {
+  return IDENTITY_HEX[hashName(name) % IDENTITY_HEX.length];
 }
 
 type AvatarSize = 'xs' | 'sm' | 'md' | 'lg';

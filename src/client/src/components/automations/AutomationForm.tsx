@@ -342,7 +342,7 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
     <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 space-y-3 bg-white dark:bg-gray-800">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <GripVertical className="w-4 h-4 text-gray-400" />
+          <GripVertical className="w-4 h-4 text-gray-500" />
           <span className="text-xs font-medium text-gray-500 dark:text-gray-400">#{index + 1}</span>
           <select
             value={action.type}
@@ -402,7 +402,7 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
                   />
                 )}
                 {param.help && (
-                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{param.help}</p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-500 mt-0.5">{param.help}</p>
                 )}
               </div>
             ))}

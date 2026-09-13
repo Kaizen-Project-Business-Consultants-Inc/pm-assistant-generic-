@@ -128,7 +128,7 @@ export function AIScanReviewModal({ isOpen, onClose, onImport, candidates, impor
               </p>
             )}
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -178,7 +178,7 @@ export function AIScanReviewModal({ isOpen, onClose, onImport, candidates, impor
                         <button onClick={() => toggleSelect(idx)} className="mt-0.5 flex-shrink-0">
                           {isSelected
                             ? <CheckSquare className="w-4.5 h-4.5 text-primary-600 dark:text-primary-400" />
-                            : <Square className="w-4.5 h-4.5 text-gray-400 dark:text-gray-500" />
+                            : <Square className="w-4.5 h-4.5 text-gray-500 dark:text-gray-500" />
                           }
                         </button>
 
@@ -237,7 +237,7 @@ export function AIScanReviewModal({ isOpen, onClose, onImport, candidates, impor
                             {(c.mitigations?.length > 0 || c.affectedTasks?.length > 0) && (
                               <button
                                 onClick={() => setExpandedIdx(isExpanded ? null : idx)}
-                                className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1"
+                                className="ml-auto text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1"
                               >
                                 <span className="text-xs">Details</span>
                                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

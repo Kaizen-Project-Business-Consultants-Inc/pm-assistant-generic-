@@ -121,10 +121,10 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
         className="input w-full text-left flex items-center justify-between gap-2"
         onClick={() => setOpen(!open)}
       >
-        <span className={current ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}>
+        <span className={current ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-500'}>
           {current ? current.name : 'Select resource...'}
         </span>
-        <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+        <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
       </button>
       {open && (
         <div className="absolute left-0 right-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden">
@@ -150,7 +150,7 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
           )}
           <div className="max-h-48 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-gray-400 text-center">
+              <div className="px-3 py-2 text-xs text-gray-500 text-center">
                 {resources.length === 0 ? 'No resources — add them in Resources' : 'No matches'}
               </div>
             ) : (
@@ -166,7 +166,7 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
                     <Avatar name={r.name} size="xs" />
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
-                      <div className="text-gray-400 dark:text-gray-500 truncate">{r.role}</div>
+                      <div className="text-gray-500 dark:text-gray-500 truncate">{r.role}</div>
                     </div>
                     {selected && <span className="text-primary-600 text-xs font-medium">Current</span>}
                   </button>
@@ -374,7 +374,7 @@ export function TaskFormModal({
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -509,7 +509,7 @@ export function TaskFormModal({
               {form.acceptanceCriteria && (() => {
                 const lines = form.acceptanceCriteria.split('\n').filter(l => l.trim().startsWith('- ['));
                 const checked = lines.filter(l => l.includes('[x]') || l.includes('[X]')).length;
-                return lines.length > 0 ? <span className="ml-2 text-gray-400">({checked}/{lines.length} met)</span> : null;
+                return lines.length > 0 ? <span className="ml-2 text-gray-500">({checked}/{lines.length} met)</span> : null;
               })()}
             </label>
             <textarea
@@ -564,7 +564,7 @@ export function TaskFormModal({
                 disabled={isSummary}
                 className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-primary-600"
               />
-              <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+              <div className="flex justify-between text-xs text-gray-500 mt-0.5">
                 <span>0%</span>
                 <span>50%</span>
                 <span>100%</span>
@@ -646,7 +646,7 @@ export function TaskFormModal({
                   className="input w-16 text-xs"
                   title="Allocation %"
                 />
-                <span className="text-xs text-gray-400">%</span>
+                <span className="text-xs text-gray-500">%</span>
                 <input
                   type="text"
                   value={a.roleOnTask}
@@ -853,7 +853,7 @@ export function TaskFormModal({
             </div>
           </div>
           {form.effortDriven && (
-            <p className="text-xs text-gray-400 -mt-2">Duration auto-adjusts when resources are assigned. Work stays constant.</p>
+            <p className="text-xs text-gray-500 -mt-2">Duration auto-adjusts when resources are assigned. Work stays constant.</p>
           )}
 
           {/* Constraint */}

@@ -134,7 +134,7 @@ export function TimeAnomalyPanel({ projectId, isManagerOrOwner = false }: { proj
             )}
           </div>
         </div>
-        {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        {expanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
       </button>
 
       {expanded && (
@@ -173,7 +173,7 @@ export function TimeAnomalyPanel({ projectId, isManagerOrOwner = false }: { proj
                   )}
                   <button
                     onClick={() => setDismissed(prev => new Set(prev).add(anomaly.id))}
-                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
+                    className="text-xs text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
                   >
                     Dismiss
                   </button>

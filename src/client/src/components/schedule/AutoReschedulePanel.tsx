@@ -76,7 +76,7 @@ function dateMoved(current: string, proposed: string): 'later' | 'earlier' | 'sa
 function dateTextClass(direction: 'later' | 'earlier' | 'same'): string {
   if (direction === 'later') return 'text-red-600 font-medium';
   if (direction === 'earlier') return 'text-green-600 font-medium';
-  return 'text-gray-400';
+  return 'text-gray-500';
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +234,7 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-1.5 rounded-lg text-gray-500 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             aria-label="Close"
           >
             <X className="w-5 h-5" />

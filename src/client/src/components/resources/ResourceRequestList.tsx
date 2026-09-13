@@ -117,14 +117,14 @@ export function ResourceRequestList({ projectId }: { projectId?: string }) {
                 <tr key={rr.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-4 py-3">
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{rr.resourceRole}</div>
-                    {rr.resourceGroup && <div className="text-xs text-gray-400">{rr.resourceGroup}</div>}
+                    {rr.resourceGroup && <div className="text-xs text-gray-500">{rr.resourceGroup}</div>}
                     {rr.skillsRequired && rr.skillsRequired.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {rr.skillsRequired.slice(0, 3).map(s => (
                           <span key={s} className="px-1.5 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">{s}</span>
                         ))}
                         {rr.skillsRequired.length > 3 && (
-                          <span className="text-xs text-gray-400">+{rr.skillsRequired.length - 3}</span>
+                          <span className="text-xs text-gray-500">+{rr.skillsRequired.length - 3}</span>
                         )}
                       </div>
                     )}
@@ -142,7 +142,7 @@ export function ResourceRequestList({ projectId }: { projectId?: string }) {
                       {rr.status}
                     </span>
                     {rr.reviewerComment && (
-                      <p className="text-xs text-gray-400 mt-0.5 max-w-[200px] truncate" title={rr.reviewerComment}>{rr.reviewerComment}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 max-w-[200px] truncate" title={rr.reviewerComment}>{rr.reviewerComment}</p>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -161,7 +161,7 @@ export function ResourceRequestList({ projectId }: { projectId?: string }) {
                         <button
                           onClick={() => cancelMut.mutate(rr.id)}
                           disabled={cancelMut.isPending}
-                          className="p-1 text-gray-400 hover:text-red-500"
+                          className="p-1 text-gray-500 hover:text-red-500"
                           title="Cancel request"
                         >
                           <Ban className="w-4 h-4" />

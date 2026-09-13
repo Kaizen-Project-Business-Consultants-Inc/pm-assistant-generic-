@@ -118,7 +118,7 @@ export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
             <tbody>
               {userGroups.length === 0 ? (
                 <tr>
-                  <td colSpan={days.length + 2} className="text-center py-12 text-gray-400 dark:text-gray-500 text-sm">
+                  <td colSpan={days.length + 2} className="text-center py-12 text-gray-500 dark:text-gray-500 text-sm">
                     No time entries for this week
                   </td>
                 </tr>

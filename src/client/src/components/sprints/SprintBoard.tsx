@@ -328,7 +328,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
       <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2 flex-wrap">
         <Kanban className="w-4 h-4 text-primary-500" />
         <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Sprint Board</h3>
-        <span className="text-xs text-gray-400 dark:text-gray-500">
+        <span className="text-xs text-gray-500 dark:text-gray-500">
           {tasks.length} task{tasks.length !== 1 ? 's' : ''}
           {totalPoints > 0 && <> · {totalPoints} pts</>}
         </span>
@@ -357,7 +357,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                   <Avatar name={group.label} size="xs" />
                 )}
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">{group.label}</span>
-                <span className="text-xs text-gray-400 dark:text-gray-500">{group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-500">{group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}</span>
               </div>
             </div>
           )}
@@ -400,7 +400,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                       </span>
                       <button
                         onClick={() => handleSetWipLimit(col.id)}
-                        className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                        className="p-0.5 text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                         aria-label="Set WIP limit"
                         title="Set WIP limit"
                       >
@@ -412,7 +412,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                   {/* Cards */}
                   <div className="p-2 space-y-2 max-h-[60vh] overflow-y-auto">
                     {columnTasks.length === 0 && (
-                      <div className="text-center py-8 text-xs text-gray-400 dark:text-gray-500">
+                      <div className="text-center py-8 text-xs text-gray-500 dark:text-gray-500">
                         {isOver ? 'Drop here' : 'No tasks'}
                       </div>
                     )}

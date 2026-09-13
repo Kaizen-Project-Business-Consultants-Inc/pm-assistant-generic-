@@ -20,7 +20,7 @@ interface TrendAnalysis {
 const TREND_ICON = {
   increasing: <TrendingUp className="w-4 h-4 text-green-500" />,
   decreasing: <TrendingDown className="w-4 h-4 text-red-500" />,
-  stable: <Minus className="w-4 h-4 text-gray-400" />,
+  stable: <Minus className="w-4 h-4 text-gray-500" />,
 };
 
 const TREND_LABEL = {
@@ -78,7 +78,7 @@ export function TimeTrendChart({ projectId }: { projectId: string }) {
 
   if (!trends || trends.weeks.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-400">
+      <div className="text-center py-16 text-gray-500">
         <TrendingUp className="w-10 h-10 mx-auto mb-3 opacity-40" />
         <p>Not enough data for trend analysis. Log time over multiple weeks.</p>
       </div>
@@ -104,7 +104,7 @@ export function TimeTrendChart({ projectId }: { projectId: string }) {
           <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Peak Week</p>
             <p className="text-lg font-bold text-gray-900 dark:text-white">{trends.peakWeek.hours.toFixed(1)}h</p>
-            <p className="text-xs text-gray-400">{new Date(trends.peakWeek.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+            <p className="text-xs text-gray-500">{new Date(trends.peakWeek.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
           </div>
         )}
       </div>

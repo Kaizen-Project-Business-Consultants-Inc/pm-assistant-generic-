@@ -78,12 +78,12 @@ function DefinitionEditor({
       <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
         <Icon className="w-4 h-4 text-primary-500" />
         <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{label}</h4>
-        <span className="text-xs text-gray-400">{criteria.length} criteria</span>
+        <span className="text-xs text-gray-500">{criteria.length} criteria</span>
       </div>
 
       <div className="p-4 space-y-2">
         {criteria.length === 0 && (
-          <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">
+          <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-4">
             No criteria defined yet.
             {isManager && unusedSuggestions.length > 0 && ' Click suggestions below to add.'}
           </p>
@@ -91,14 +91,14 @@ function DefinitionEditor({
 
         {criteria.map((c, i) => (
           <div key={c.id} className="flex items-center gap-2 group">
-            <span className="text-xs text-gray-400 w-5 text-right">{i + 1}.</span>
+            <span className="text-xs text-gray-500 w-5 text-right">{i + 1}.</span>
             <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">{c.label}</span>
             {isManager && (
               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={() => moveCriterion(i, -1)}
                   disabled={i === 0}
-                  className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                  className="p-0.5 text-gray-500 hover:text-gray-600 disabled:opacity-30"
                   tabIndex={0}
                   aria-label="Move up"
                 >
@@ -107,7 +107,7 @@ function DefinitionEditor({
                 <button
                   onClick={() => moveCriterion(i, 1)}
                   disabled={i === criteria.length - 1}
-                  className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                  className="p-0.5 text-gray-500 hover:text-gray-600 disabled:opacity-30"
                   tabIndex={0}
                   aria-label="Move down"
                 >
@@ -115,7 +115,7 @@ function DefinitionEditor({
                 </button>
                 <button
                   onClick={() => removeCriterion(c.id)}
-                  className="p-0.5 text-gray-400 hover:text-red-500"
+                  className="p-0.5 text-gray-500 hover:text-red-500"
                   tabIndex={0}
                   aria-label="Remove criterion"
                 >
@@ -152,7 +152,7 @@ function DefinitionEditor({
 
             {unusedSuggestions.length > 0 && criteria.length === 0 && (
               <div className="mt-2">
-                <span className="text-xs text-gray-400 uppercase tracking-wide">Suggestions</span>
+                <span className="text-xs text-gray-500 uppercase tracking-wide">Suggestions</span>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {unusedSuggestions.map((s) => (
                     <button

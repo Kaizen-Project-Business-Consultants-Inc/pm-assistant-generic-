@@ -47,7 +47,7 @@ export const TableToolbar = React.memo(function TableToolbar({
     <div className="flex items-center justify-end gap-1.5 px-3 py-1.5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
       {/* Group by */}
       <div className="flex items-center gap-1 mr-auto">
-        <Layers className="w-3 h-3 text-gray-400" />
+        <Layers className="w-3 h-3 text-gray-500" />
         <select
           value={groupBy}
           onChange={(e) => onGroupByChange(e.target.value as GroupByField)}

@@ -241,7 +241,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
     if (s === 'pending_decision') return 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400';
     if (s === 'deferred' || s === 'unverified' || s === 'pending') return 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400';
     if (s === 'at_risk') return 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400';
-    if (s === 'cancelled' || s === 'reversed') return 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500';
+    if (s === 'cancelled' || s === 'reversed') return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-500';
     return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
   };
 
@@ -457,7 +457,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
             <input
               type="text"
               value={searchText}
@@ -533,7 +533,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                 <X className="w-3 h-3" /> Clear all
               </button>
             )}
-            <span className="text-xs text-gray-400 ml-auto">{risks.length} items</span>
+            <span className="text-xs text-gray-500 ml-auto">{risks.length} items</span>
           </div>
         )}
       </div>
@@ -690,7 +690,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                   </span>
 
                   {/* Date */}
-                  <span onClick={() => setSelectedRaidId(risk.id)} className="text-xs text-gray-400 dark:text-gray-500">
+                  <span onClick={() => setSelectedRaidId(risk.id)} className="text-xs text-gray-500 dark:text-gray-500">
                     {formatDate(risk.createdAt)}
                   </span>
                 </div>
@@ -715,7 +715,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                       <div className="min-w-0">
                         <p className={`text-sm font-medium text-gray-900 dark:text-white truncate ${isTerminal ? 'line-through' : ''}`}>{risk.title}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs font-mono text-gray-400">{risk.recordId}</span>
+                          <span className="text-xs font-mono text-gray-500">{risk.recordId}</span>
                           <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full capitalize ${severityColor(risk.severity)}`}>{risk.severity}</span>
                           {due && <span className={`text-xs font-medium ${due.color}`}>{due.label}</span>}
                         </div>
@@ -750,7 +750,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${statusColor(status)}`}>
                   {status.replace(/_/g, ' ')}
                 </span>
-                <span className="text-xs text-gray-400">{boardGroups[status].length}</span>
+                <span className="text-xs text-gray-500">{boardGroups[status].length}</span>
               </div>
               <div className="p-2 space-y-2 flex-1 min-h-[60px]">
                 {boardGroups[status].map((risk: any) => {
@@ -765,7 +765,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                     >
                       <div className="flex items-center gap-1.5 mb-1">
                         <div className={`w-1.5 h-4 rounded-full ${typeIndicatorColor(risk.type)}`} />
-                        <span className="text-xs font-mono text-gray-400">{risk.recordId}</span>
+                        <span className="text-xs font-mono text-gray-500">{risk.recordId}</span>
                         <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full capitalize ml-auto ${severityColor(risk.severity)}`}>{risk.severity}</span>
                       </div>
                       <p className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">{risk.title}</p>
@@ -829,7 +829,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-gray-400 text-center mt-2">Click a cell to view its risks. Only items of type "Risk" with probability and impact values appear here.</p>
+          <p className="text-xs text-gray-500 text-center mt-2">Click a cell to view its risks. Only items of type "Risk" with probability and impact values appear here.</p>
         </div>
       )}
 

@@ -105,7 +105,7 @@ export function AISummaryBanner() {
           <div
             className={`flex h-14 w-14 items-center justify-center rounded-full border-2 ${portfolioHealthScore != null ? getHealthBgColor(portfolioHealthScore) : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700'}`}
           >
-            <span className={`text-xl font-bold ${portfolioHealthScore != null ? getHealthColor(portfolioHealthScore) : 'text-gray-400 dark:text-gray-500'}`}>
+            <span className={`text-xl font-bold ${portfolioHealthScore != null ? getHealthColor(portfolioHealthScore) : 'text-gray-500 dark:text-gray-500'}`}>
               {portfolioHealthScore != null ? portfolioHealthScore : '—'}
             </span>
           </div>
@@ -113,7 +113,7 @@ export function AISummaryBanner() {
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               Portfolio Health
             </p>
-            <p className={`text-sm font-semibold ${portfolioHealthScore != null ? getHealthColor(portfolioHealthScore) : 'text-gray-400 dark:text-gray-500'}`}>
+            <p className={`text-sm font-semibold ${portfolioHealthScore != null ? getHealthColor(portfolioHealthScore) : 'text-gray-500 dark:text-gray-500'}`}>
               {portfolioHealthScore == null
                 ? 'No active projects'
                 : portfolioHealthScore >= 75
@@ -128,7 +128,7 @@ export function AISummaryBanner() {
         {/* Middle: Risk Summary */}
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <Shield className="h-3.5 w-3.5 text-gray-400" />
+            <Shield className="h-3.5 w-3.5 text-gray-500" />
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               Risk Summary
             </p>
@@ -159,7 +159,7 @@ export function AISummaryBanner() {
               </span>
             )}
             {risks.critical === 0 && risks.high === 0 && risks.medium === 0 && risks.low === 0 && (
-              <span className="text-xs text-gray-400">No active risks</span>
+              <span className="text-xs text-gray-500">No active risks</span>
             )}
           </div>
         </div>
@@ -167,7 +167,7 @@ export function AISummaryBanner() {
         {/* Right: Budget Overview */}
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <DollarSign className="h-3.5 w-3.5 text-gray-400" />
+            <DollarSign className="h-3.5 w-3.5 text-gray-500" />
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               Budget Status
             </p>
@@ -189,7 +189,7 @@ export function AISummaryBanner() {
       {(summary || highlights.length > 0) && (
         <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-3">
           <div className="flex items-center gap-1.5 mb-1.5">
-            <TrendingUp className="h-3.5 w-3.5 text-gray-400" />
+            <TrendingUp className="h-3.5 w-3.5 text-gray-500" />
             <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Key Insights</p>
           </div>
           {summary && (
@@ -218,7 +218,7 @@ export function AISummaryBanner() {
             </div>
             <button
               onClick={() => refetchNarrative()}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               title="Refresh narrative"
               aria-label="Refresh narrative"
             >

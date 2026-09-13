@@ -15,13 +15,13 @@ export const BaselineVarianceReport = React.memo(function BaselineVarianceReport
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">
             Baseline Variance Report — {comparison.baselineName}
           </h3>
-          <span className="text-xs text-gray-400 dark:text-gray-500">
+          <span className="text-xs text-gray-500 dark:text-gray-500">
             Saved {new Date(comparison.baselineDate).toLocaleDateString()}
           </span>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 text-xs"
+          className="text-gray-500 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 text-xs"
         >
           Close
         </button>
@@ -30,7 +30,7 @@ export const BaselineVarianceReport = React.memo(function BaselineVarianceReport
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 mb-4">
         <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-          <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Health</div>
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">Health</div>
           <div className={`mt-1 text-lg font-bold ${
             comparison.summary.scheduleHealthPct >= 70 ? 'text-green-600' :
             comparison.summary.scheduleHealthPct >= 40 ? 'text-yellow-600' : 'text-red-600'
@@ -39,19 +39,19 @@ export const BaselineVarianceReport = React.memo(function BaselineVarianceReport
           </div>
         </div>
         <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-          <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Slipped</div>
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">Slipped</div>
           <div className="mt-1 text-lg font-bold text-red-600">{comparison.summary.tasksSlipped}</div>
         </div>
         <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-          <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">On Track</div>
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">On Track</div>
           <div className="mt-1 text-lg font-bold text-green-600">{comparison.summary.tasksOnTrack}</div>
         </div>
         <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-          <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Ahead</div>
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">Ahead</div>
           <div className="mt-1 text-lg font-bold text-blue-600">{comparison.summary.tasksAhead}</div>
         </div>
         <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-          <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Avg End Var</div>
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">Avg End Var</div>
           <div className={`mt-1 text-lg font-bold ${
             comparison.summary.avgEndVarianceDays > 0 ? 'text-red-600' : 'text-green-600'
           }`}>
@@ -59,7 +59,7 @@ export const BaselineVarianceReport = React.memo(function BaselineVarianceReport
           </div>
         </div>
         <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center">
-          <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">New Tasks</div>
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">New Tasks</div>
           <div className="mt-1 text-lg font-bold text-gray-900 dark:text-white">{comparison.summary.newTasks}</div>
         </div>
       </div>
@@ -105,7 +105,7 @@ export const BaselineVarianceReport = React.memo(function BaselineVarianceReport
                   {tv.statusChanged ? (
                     <span className="text-amber-600">{tv.baselineStatus} → {tv.actualStatus}</span>
                   ) : (
-                    <span className="text-gray-400 dark:text-gray-500">{tv.actualStatus}</span>
+                    <span className="text-gray-500 dark:text-gray-500">{tv.actualStatus}</span>
                   )}
                 </td>
               </tr>

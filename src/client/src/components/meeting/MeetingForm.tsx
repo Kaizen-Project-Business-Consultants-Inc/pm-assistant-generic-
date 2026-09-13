@@ -107,7 +107,7 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
             {initialData?.title ? 'Edit Meeting' : 'New Meeting'}
           </h2>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-            <X className="w-5 h-5 text-gray-400" />
+            <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 

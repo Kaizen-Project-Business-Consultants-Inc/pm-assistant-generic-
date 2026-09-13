@@ -533,7 +533,7 @@ function PortfolioResourcesView() {
 // ---------------------------------------------------------------------------
 
 function Sparkline({ data, width = 80, height = 20, color = '#3b82f6' }: { data: number[]; width?: number; height?: number; color?: string }) {
-  if (data.length < 2) return <span className="text-xs text-gray-400">—</span>;
+  if (data.length < 2) return <span className="text-xs text-gray-500">—</span>;
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;
@@ -546,7 +546,7 @@ function Sparkline({ data, width = 80, height = 20, color = '#3b82f6' }: { data:
 }
 
 function BurndownSparkline({ data, width = 100, height = 24 }: { data: Array<{ ideal: number; actual: number }>; width?: number; height?: number }) {
-  if (data.length < 2) return <span className="text-xs text-gray-400">—</span>;
+  if (data.length < 2) return <span className="text-xs text-gray-500">—</span>;
   const maxVal = Math.max(...data.map(d => Math.max(d.ideal, d.actual))) || 1;
   const toPoints = (values: number[]) => values.map((v, i) => `${(i / (values.length - 1)) * width},${height - (v / maxVal) * (height - 2) - 1}`).join(' ');
   return (
@@ -562,7 +562,7 @@ function BurndownSparkline({ data, width = 100, height = 24 }: { data: Array<{ i
 // ---------------------------------------------------------------------------
 
 function cpiSpiColor(val: number | null): string {
-  if (val === null) return 'text-gray-400';
+  if (val === null) return 'text-gray-500';
   if (val >= 1.0) return 'text-green-600';
   if (val >= 0.85) return 'text-amber-600';
   return 'text-red-600';
@@ -732,7 +732,7 @@ function ProjectComparisonMatrix({ projects, onProjectClick }: { projects: Portf
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
-        <ArrowUpDown className="w-4 h-4 text-gray-400" />
+        <ArrowUpDown className="w-4 h-4 text-gray-500" />
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Project Comparison</h3>
       </div>
       <div className="overflow-x-auto">

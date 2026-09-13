@@ -25,7 +25,7 @@ interface TableHeaderRowProps {
 }
 
 const SortIcon = ({ field, sortField, sortDir }: { field: ColumnKey; sortField: ColumnKey | null; sortDir: SortDir }) => {
-  if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-gray-400 dark:text-gray-500" />;
+  if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-gray-500 dark:text-gray-500" />;
   return sortDir === 'asc'
     ? <ArrowUp className="w-3 h-3 text-primary-600" />
     : <ArrowDown className="w-3 h-3 text-primary-600" />;
@@ -48,7 +48,7 @@ export const TableHeaderRow = React.memo(function TableHeaderRow({
     <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <th className="w-16 px-2 py-2.5" scope="col">
         <div className="flex items-center gap-1">
-          <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 w-5 text-center">#</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-500 w-5 text-center">#</span>
           <input
             type="checkbox"
             checked={allSelected}

@@ -87,7 +87,7 @@ export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleG
                     onChange={() => onToggleGroup(group, !allVisible)}
                     className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer"
                   />
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</span>
                 </div>
                 {cols.map(col => {
                   const isFixed = col.key === 'name' || col.key === 'rowNum';

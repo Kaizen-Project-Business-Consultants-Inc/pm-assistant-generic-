@@ -106,7 +106,7 @@ export const ChangeRequestsPage: React.FC = () => {
       {!selectedProjectId ? (
         <div className="text-center py-16">
           <GitPullRequest className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-400 dark:text-gray-500">Select a project to view change requests</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">Select a project to view change requests</p>
         </div>
       ) : (
         <>
@@ -184,8 +184,8 @@ export const ChangeRequestsPage: React.FC = () => {
               ) : workflows.length === 0 ? (
                 <div className="text-center py-12">
                   <Settings2 className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400 dark:text-gray-500">No approval workflows defined</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Create a workflow to define approval steps for change requests</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500">No approval workflows defined</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Create a workflow to define approval steps for change requests</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
@@ -226,7 +226,7 @@ export const ChangeRequestsPage: React.FC = () => {
                           <td className="px-4 py-3 text-right">
                             <button
                               onClick={() => setConfirmDeleteWf({ id: wf.id, name: wf.name })}
-                              className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 transition-colors"
+                              className="p-1 text-gray-500 dark:text-gray-500 hover:text-red-600 transition-colors"
                               title="Delete workflow"
                             >
                               <Trash2 className="w-4 h-4" />

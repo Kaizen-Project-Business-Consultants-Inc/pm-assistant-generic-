@@ -102,7 +102,7 @@ export function MorningBriefingWidget({ scope }: Props) {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 dark:text-gray-400">{today}</span>
-          {collapsed ? <ChevronDown className="w-4 h-4 text-gray-400" aria-hidden="true" /> : <ChevronUp className="w-4 h-4 text-gray-400" aria-hidden="true" />}
+          {collapsed ? <ChevronDown className="w-4 h-4 text-gray-500" aria-hidden="true" /> : <ChevronUp className="w-4 h-4 text-gray-500" aria-hidden="true" />}
         </div>
       </button>
 

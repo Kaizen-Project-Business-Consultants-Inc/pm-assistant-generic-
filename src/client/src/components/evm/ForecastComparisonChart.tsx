@@ -102,7 +102,7 @@ export function ForecastComparisonChart({ data, bac, height = 320 }: ForecastCom
 
   if (data.length === 0) {
     return (
-      <div className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
+      <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-500">
         No forecast comparison data available.
       </div>
     );

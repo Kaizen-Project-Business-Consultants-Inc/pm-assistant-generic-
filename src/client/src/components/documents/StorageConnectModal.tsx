@@ -175,12 +175,12 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
                   onClick={() => p.configured && selectProvider(p.id)}
                   disabled={!p.configured || authMutation.isPending}
                 >
-                  <HardDrive className={`w-8 h-8 ${p.configured ? 'text-gray-700 dark:text-gray-200' : 'text-gray-400'}`} />
-                  <span className={`text-sm font-medium ${p.configured ? '' : 'text-gray-400'}`}>
+                  <HardDrive className={`w-8 h-8 ${p.configured ? 'text-gray-700 dark:text-gray-200' : 'text-gray-500'}`} />
+                  <span className={`text-sm font-medium ${p.configured ? '' : 'text-gray-500'}`}>
                     {PROVIDER_ICONS[p.id] || p.label}
                   </span>
                   {!p.configured && (
-                    <span className="text-xs text-gray-400">Not configured</span>
+                    <span className="text-xs text-gray-500">Not configured</span>
                   )}
                 </button>
               ))}
@@ -254,7 +254,7 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') submitShareLink(); }}
             />
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               The link may contain "sharepoint.com" — that's normal for OneDrive business accounts.
               You must have access to this shared folder with your Microsoft account.
             </p>
@@ -315,7 +315,7 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
             <p className="text-sm text-gray-600 dark:text-gray-300">
               Waiting for authorization...
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               Complete sign-in in the popup window
             </p>
           </div>
@@ -338,7 +338,7 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
             <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
               Storage connected!
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               Initial sync will begin shortly.
             </p>
           </div>

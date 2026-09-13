@@ -74,9 +74,9 @@ export function ChangeRequestWidget() {
                   >
                     {cr.title}
                   </Link>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">{cr.projectName}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-500">{cr.projectName}</span>
                 </div>
-                <span className="text-xs text-gray-400 whitespace-nowrap">{cr.daysWaiting}d</span>
+                <span className="text-xs text-gray-500 whitespace-nowrap">{cr.daysWaiting}d</span>
               </li>
             ))}
           </ul>

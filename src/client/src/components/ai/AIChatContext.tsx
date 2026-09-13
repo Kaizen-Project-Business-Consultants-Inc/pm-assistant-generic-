@@ -20,7 +20,7 @@ export function AIChatContext({ context }: AIChatContextProps) {
 
   return (
     <div className="flex items-center gap-2 px-2 py-1">
-      <span className="text-xs text-gray-400 dark:text-gray-500">Context:</span>
+      <span className="text-xs text-gray-500 dark:text-gray-500">Context:</span>
       <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${config.color}`}>
         <Icon className="h-3 w-3" />
         {config.label}

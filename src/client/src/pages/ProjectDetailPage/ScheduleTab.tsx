@@ -128,7 +128,7 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
             <Calendar className="w-4 h-4" />
             Create Schedule
           </button>
-          <span className="text-xs text-gray-400 dark:text-gray-500">or</span>
+          <span className="text-xs text-gray-500 dark:text-gray-500">or</span>
           <button
             onClick={async () => {
               setUploadingSchedule(true);
@@ -287,7 +287,7 @@ function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule, desktopV
       {mobileView === 'list' && (
         <>
           {desktopViewMode && !['table', 'kanban', 'calendar'].includes(desktopViewMode) && (
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+            <p className="text-xs text-gray-500 dark:text-gray-500 mb-2">
               {desktopViewMode.charAt(0).toUpperCase() + desktopViewMode.slice(1)} view requires a wider screen. Showing task list instead.
             </p>
           )}
@@ -1269,10 +1269,10 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           >
             Undo
           </button>
-          <span className="text-gray-400 text-xs">Ctrl+Z</span>
+          <span className="text-gray-500 text-xs">Ctrl+Z</span>
           <button
             onClick={() => { setUndoToast(null); clearTimeout(toastTimerRef.current); }}
-            className="text-gray-400 hover:text-gray-200 ml-1"
+            className="text-gray-500 hover:text-gray-200 ml-1"
             aria-label="Dismiss notification"
           >
             ✕
@@ -1412,7 +1412,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
   }, [open]);
 
   const itemClass = 'w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2';
-  const groupLabel = 'px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider';
+  const groupLabel = 'px-3 pt-2 pb-1 text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase tracking-wider';
   const divider = 'border-t border-gray-100 dark:border-gray-700 my-1';
 
   return (
@@ -1473,7 +1473,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
                 onClick={() => { props.onCreateScenario(); setOpen(false); }}
                 className={itemClass}
               >
-                <svg className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                <svg className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                 Create Scenario
               </button>
               {props.scenarios.length > 0 && (
@@ -1495,7 +1495,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
                   onClick={() => props.setShowScenarioCompare(!props.showScenarioCompare)}
                   className={itemClass}
                 >
-                  <BarChart3 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                  <BarChart3 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
                   {props.showScenarioCompare ? 'Hide Comparison' : 'Compare'}
                 </button>
               )}
@@ -1509,7 +1509,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
             onClick={() => { props.setShowImportModal(true); setOpen(false); }}
             className={itemClass}
           >
-            <Upload className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+            <Upload className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
             Import
           </button>
           <button
@@ -1528,7 +1528,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
             onClick={() => { props.setShowReschedulePanel(true); setOpen(false); }}
             className={itemClass}
           >
-            <Bot className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+            <Bot className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
             AI Reschedule
           </button>
           <button
@@ -1536,11 +1536,11 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
             disabled={props.levelingBusy}
             className={`${itemClass} disabled:opacity-50`}
           >
-            <BarChart3 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+            <BarChart3 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
             Level Resources
           </button>
           <div className="px-3 py-1.5 flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-400 uppercase">% Mode:</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase">% Mode:</span>
             <select
               value={props.schedule.progressMode || 'duration'}
               onChange={async (e) => {

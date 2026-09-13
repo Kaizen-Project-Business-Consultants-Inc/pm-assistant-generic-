@@ -72,7 +72,7 @@ export function LessonsInsightsWidget() {
           <BookOpen className="h-4 w-4 text-primary-500" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Lessons & Insights</h3>
         </div>
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-4">
+        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-4">
           No lessons captured yet. Complete a project to start building your knowledge base.
         </p>
       </div>
@@ -86,7 +86,7 @@ export function LessonsInsightsWidget() {
           <BookOpen className="h-4 w-4 text-primary-500" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Lessons & Insights</h3>
         </div>
-        <span className="text-xs text-gray-400 uppercase tracking-wider">Knowledge Base</span>
+        <span className="text-xs text-gray-500 uppercase tracking-wider">Knowledge Base</span>
       </div>
 
       {/* Patterns section */}
@@ -128,13 +128,13 @@ export function LessonsInsightsWidget() {
                     <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[lesson.category] || 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
                       {lesson.category}
                     </span>
-                    {expanded === lesson.id ? <ChevronUp className="w-3 h-3 text-gray-400" /> : <ChevronDown className="w-3 h-3 text-gray-400" />}
+                    {expanded === lesson.id ? <ChevronUp className="w-3 h-3 text-gray-500" /> : <ChevronDown className="w-3 h-3 text-gray-500" />}
                   </div>
                 </div>
                 {expanded === lesson.id && (
                   <div className="mt-1.5 space-y-1">
                     {lesson.projectName && (
-                      <p className="text-xs text-gray-400">From: {lesson.projectName}</p>
+                      <p className="text-xs text-gray-500">From: {lesson.projectName}</p>
                     )}
                     <p className="text-xs text-gray-600 dark:text-gray-400">{lesson.recommendation}</p>
                   </div>

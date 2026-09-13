@@ -104,7 +104,7 @@ function PrioritiesList({ projects }: { projects: Array<{ id: string; name: stri
   return (
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-1.5 mb-3">
-        <CalendarClock className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
+        <CalendarClock className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
         <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
           Today's Priorities
         </h4>
@@ -295,7 +295,7 @@ function AINextBestActions({ notifications }: { notifications: any[] }) {
                       )}
                     </div>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" aria-hidden="true" />
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500 flex-shrink-0" aria-hidden="true" />
                 </button>
               </li>
             );
@@ -355,7 +355,7 @@ export function ActionCenterPM({ projects }: ActionCenterPMProps) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-gray-400" aria-hidden="true" />
+          <AlertCircle className="w-4 h-4 text-gray-500" aria-hidden="true" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Action Center</h3>
         </div>
         <Link

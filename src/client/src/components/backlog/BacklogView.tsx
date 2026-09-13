@@ -298,7 +298,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
                       <tr className="bg-purple-50 dark:bg-purple-900/10 border-b border-purple-200 dark:border-purple-800">
                         <td colSpan={7} className="px-3 py-2">
                           <span className="text-xs font-bold text-purple-700 dark:text-purple-300">{g.epicName}</span>
-                          <span className="ml-2 text-xs text-gray-400">{g.tasks.length} task{g.tasks.length !== 1 ? 's' : ''}</span>
+                          <span className="ml-2 text-xs text-gray-500">{g.tasks.length} task{g.tasks.length !== 1 ? 's' : ''}</span>
                         </td>
                       </tr>
                       {g.tasks.map(task => renderTaskRow(task))}
@@ -338,7 +338,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
                           {taskTypeBadge[task.taskType].label}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-400">Task</span>
+                        <span className="text-xs text-gray-500">Task</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5">

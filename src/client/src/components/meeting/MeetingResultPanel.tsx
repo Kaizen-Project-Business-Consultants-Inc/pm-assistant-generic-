@@ -183,7 +183,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                 {analysis.summary}
               </p>
             ) : (
-              <p className="text-sm text-gray-400 italic">No summary available.</p>
+              <p className="text-sm text-gray-500 italic">No summary available.</p>
             )}
           </div>
         )}
@@ -192,7 +192,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
         {activeTab === 'actions' && (
           <div className="overflow-x-auto">
             {(analysis.actionItems || []).length === 0 ? (
-              <p className="text-sm text-gray-400 italic">No action items identified.</p>
+              <p className="text-sm text-gray-500 italic">No action items identified.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>
@@ -230,7 +230,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
         {activeTab === 'decisions' && (
           <div>
             {(analysis.decisions || []).length === 0 ? (
-              <p className="text-sm text-gray-400 italic">No decisions recorded.</p>
+              <p className="text-sm text-gray-500 italic">No decisions recorded.</p>
             ) : (
               <div className="space-y-3">
                 {analysis.decisions!.map((d, idx) => (
@@ -253,7 +253,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
         {activeTab === 'risks' && (
           <div>
             {(analysis.risks || []).length === 0 ? (
-              <p className="text-sm text-gray-400 italic">No risks identified.</p>
+              <p className="text-sm text-gray-500 italic">No risks identified.</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {analysis.risks!.map((r, idx) => (
@@ -280,7 +280,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
         {activeTab === 'tasks' && (
           <div>
             {taskUpdates.length === 0 ? (
-              <p className="text-sm text-gray-400 italic">No task updates proposed.</p>
+              <p className="text-sm text-gray-500 italic">No task updates proposed.</p>
             ) : (
               <>
                 <div className="overflow-x-auto">

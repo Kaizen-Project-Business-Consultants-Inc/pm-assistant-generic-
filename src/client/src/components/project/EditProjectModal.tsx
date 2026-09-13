@@ -88,7 +88,7 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
     <AccessibleModal isOpen={true} onClose={onClose} ariaLabel="Edit Project" className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto mx-4">
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Project</h2>
-        <button onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+        <button onClick={onClose} aria-label="Close" className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-200">
           <X className="w-5 h-5" />
         </button>
       </div>

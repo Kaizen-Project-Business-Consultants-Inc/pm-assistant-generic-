@@ -55,7 +55,7 @@ export function VelocityChart({ weeks, averageVelocity, height = 250 }: Velocity
   }, [weeks, averageVelocity, height]);
 
   if (weeks.length === 0) {
-    return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">No velocity data available</p>;
+    return <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-8">No velocity data available</p>;
   }
 
   const svgWidth = 700;

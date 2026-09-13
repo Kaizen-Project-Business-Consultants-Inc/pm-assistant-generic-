@@ -74,12 +74,12 @@ const severityDotColors: Record<string, string> = {
   low: 'bg-risk-low',
 };
 
-// Text colors for severity headings/icons
+// Darker text variants for AA contrast on light backgrounds
 const severityTextColors: Record<string, string> = {
-  critical: 'text-risk-critical',
-  high: 'text-risk-high',
-  medium: 'text-risk-medium',
-  low: 'text-risk-low',
+  critical: 'text-red-700 dark:text-red-400',
+  high: 'text-orange-800 dark:text-orange-400',
+  medium: 'text-amber-800 dark:text-yellow-400',
+  low: 'text-green-700 dark:text-green-400',
 };
 
 
@@ -259,7 +259,7 @@ export function NotificationsPage() {
         {filtered.length === 0 ? (
           <div className="text-center py-16">
             <Bell className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-400">{notifications.length === 0 ? 'No notifications yet' : 'No notifications match your filters'}</p>
+            <p className="text-sm text-gray-500">{notifications.length === 0 ? 'No notifications yet' : 'No notifications match your filters'}</p>
           </div>
         ) : (
           filtered.map((n: Notification) => {
@@ -300,7 +300,7 @@ export function NotificationsPage() {
                             dismissNotification(n.id);
                             apiService.markNotificationRead(n.id).catch(() => {/* best effort */});
                           }}
-                          className="p-1 rounded text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+                          className="p-1 rounded text-gray-500 hover:text-green-600 hover:bg-green-50 transition-colors"
                           title="Mark as read"
                           aria-label="Mark as read"
                         >
@@ -311,8 +311,8 @@ export function NotificationsPage() {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">{n.message}</p>
                   <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-xs text-gray-400">{timeAgo(n.createdAt)}</span>
-                    <span className="text-xs text-gray-400 capitalize">{typeLabels[n.type] || n.type}</span>
+                    <span className="text-xs text-gray-500">{timeAgo(n.createdAt)}</span>
+                    <span className="text-xs text-gray-500 capitalize">{typeLabels[n.type] || n.type}</span>
                     {n.projectName && <span className="text-xs text-primary-500">{n.projectName}</span>}
                   </div>
                 </div>

@@ -145,7 +145,7 @@ function severityIcon(severity: string) {
     case 'medium':
       return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
     default:
-      return <AlertTriangle className="w-4 h-4 text-gray-400 dark:text-gray-500" />;
+      return <AlertTriangle className="w-4 h-4 text-gray-500 dark:text-gray-500" />;
   }
 }
 
@@ -156,7 +156,7 @@ function trendIcon(trend: string) {
     case 'declining':
       return <TrendingDown className="w-5 h-5 text-red-500" />;
     default:
-      return <Minus className="w-5 h-5 text-gray-400 dark:text-gray-500" />;
+      return <Minus className="w-5 h-5 text-gray-500 dark:text-gray-500" />;
   }
 }
 
@@ -244,7 +244,7 @@ const PortfolioIntelligence: React.FC = () => {
       {heatMap.length > 0 && (
         <div className="mb-6">
           <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+            <Activity className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
             Portfolio Risk Heat Map
           </h3>
           <div className="overflow-x-auto">
@@ -290,7 +290,7 @@ const PortfolioIntelligence: React.FC = () => {
                     </td>
                     <td className="py-2.5 px-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        <DollarSign className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                        <DollarSign className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
                         <span className="text-gray-700 dark:text-gray-200">
                           {Math.round(entry.budgetUtilization)}%
                         </span>
@@ -321,7 +321,7 @@ const PortfolioIntelligence: React.FC = () => {
       {reallocation && (
         <div>
           <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+            <DollarSign className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
             Budget Reallocation
           </h3>
 
@@ -455,7 +455,7 @@ const AnomalyDetection: React.FC = () => {
       )}
 
       {/* Scanned projects count */}
-      <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+      <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">
         Scanned {anomalyData.scannedProjects} project{anomalyData.scannedProjects !== 1 ? 's' : ''}
       </p>
 
@@ -1109,7 +1109,7 @@ const WhatIfScenario: React.FC = () => {
                     <th key={idx} className="text-left py-2 px-3 text-gray-700 dark:text-gray-200 font-medium">
                       <div className="flex items-center gap-1">
                         <span className="truncate max-w-[120px]">{p.label}</span>
-                        <button type="button" onClick={() => setPinnedResults((prev) => prev.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-500 flex-shrink-0">
+                        <button type="button" onClick={() => setPinnedResults((prev) => prev.filter((_, i) => i !== idx))} className="text-gray-500 hover:text-red-500 flex-shrink-0">
                           <X className="w-3 h-3" />
                         </button>
                       </div>
@@ -1192,7 +1192,7 @@ const WhatIfScenario: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{s.scenario_text}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-xs text-gray-400">{new Date(s.created_at).toLocaleDateString()} {new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-xs text-gray-500">{new Date(s.created_at).toLocaleDateString()} {new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         <span className="text-xs text-gray-500">Confidence: {Math.round(s.confidence * 100)}%</span>
                         {s.ai_powered && (
                           <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 text-xs font-medium">
@@ -1225,14 +1225,14 @@ const WhatIfScenario: React.FC = () => {
                           }]);
                         }}
                         disabled={pinnedResults.length >= 3}
-                        className="p-1 text-gray-400 hover:text-violet-600 disabled:opacity-40 transition-colors"
+                        className="p-1 text-gray-500 hover:text-violet-600 disabled:opacity-40 transition-colors"
                       >
                         <span title="Pin for comparison"><Pin className="w-3.5 h-3.5" /></span>
                       </button>
                       <button
                         type="button"
                         onClick={() => deleteMutation.mutate(s.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        className="p-1 text-gray-500 hover:text-red-500 transition-colors"
                       >
                         <span title="Delete scenario"><Trash2 className="w-3.5 h-3.5" /></span>
                       </button>

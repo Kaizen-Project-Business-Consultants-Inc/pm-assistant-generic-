@@ -40,7 +40,7 @@ export function NotFoundPage() {
             Home
           </Link>
         </div>
-        <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
+        <p className="mt-4 text-xs text-gray-500 dark:text-gray-500">
           Need help?{' '}
           <a
             href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Help - Page Not Found')}&body=${encodeURIComponent(`I couldn't find the page I was looking for.\n\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}

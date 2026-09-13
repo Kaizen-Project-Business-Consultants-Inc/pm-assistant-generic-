@@ -120,7 +120,7 @@ export const SyncLogPanel: React.FC<SyncLogPanelProps> = ({
             <button
               onClick={onClose}
               aria-label="Close"
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -131,7 +131,7 @@ export const SyncLogPanel: React.FC<SyncLogPanelProps> = ({
         <div className="p-5 overflow-y-auto flex-1">
           {isLoading && (
             <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-5 w-5 animate-spin text-gray-400" />
+              <RefreshCw className="h-5 w-5 animate-spin text-gray-500" />
               <span className="ml-2 text-gray-500 dark:text-gray-400">Loading sync history…</span>
             </div>
           )}
@@ -146,7 +146,7 @@ export const SyncLogPanel: React.FC<SyncLogPanelProps> = ({
             <div className="text-center py-12">
               <Clock className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
               <p className="text-gray-500 dark:text-gray-400 font-medium">No sync history yet</p>
-              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
                 Click "Sync Now" to run the first synchronization.
               </p>
             </div>

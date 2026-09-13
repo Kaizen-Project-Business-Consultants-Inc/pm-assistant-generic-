@@ -42,11 +42,12 @@ const severityColors: Record<Notification['severity'], string> = {
   low: 'bg-risk-low',
 };
 
+// Darker text variants for AA contrast on light backgrounds
 const severityTextColors: Record<Notification['severity'], string> = {
-  critical: 'text-risk-critical',
-  high: 'text-risk-high',
-  medium: 'text-risk-medium',
-  low: 'text-risk-low',
+  critical: 'text-red-700 dark:text-red-400',
+  high: 'text-orange-800 dark:text-orange-400',
+  medium: 'text-amber-800 dark:text-yellow-400',
+  low: 'text-green-700 dark:text-green-400',
 };
 
 
@@ -372,7 +373,7 @@ export function NotificationBell() {
                             e.stopPropagation();
                             dismissNotification(notification.id);
                           }}
-                          className="flex-shrink-0 p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
+                          className="flex-shrink-0 p-1.5 rounded text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
                           aria-label="Dismiss notification"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -382,7 +383,7 @@ export function NotificationBell() {
                         {notification.message}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-gray-500">
                           {timeAgo(notification.createdAt)}
                         </span>
                         {notification.projectName && (

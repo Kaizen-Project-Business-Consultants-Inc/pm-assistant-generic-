@@ -538,7 +538,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className={`text-sm font-medium truncate ${isDone ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
+                <p className={`text-sm font-medium truncate ${isDone ? 'text-gray-500 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
                   {m.name}
                 </p>
                 <p className={`text-xs ${isPast && !isDone ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
@@ -566,7 +566,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
             <div className="flex items-center gap-1.5">
               {healthTrend === 'improving' && <TrendingUp className="w-4 h-4 text-green-500" />}
               {healthTrend === 'declining' && <TrendingDown className="w-4 h-4 text-red-500" />}
-              {healthTrend === 'stable' && <Minus className="w-4 h-4 text-gray-400" />}
+              {healthTrend === 'stable' && <Minus className="w-4 h-4 text-gray-500" />}
               <span className={`text-sm font-medium capitalize ${
                 healthTrend === 'improving' ? 'text-green-600 dark:text-green-400' :
                 healthTrend === 'declining' ? 'text-red-600 dark:text-red-400' :
@@ -592,7 +592,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
             <p className={`text-2xl font-bold ${cpiSpiColor(cpi)}`}>
               {cpi !== null ? cpi.toFixed(2) : '—'}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-500 mt-0.5">
               {cpi !== null ? (cpi >= 1.0 ? 'Under budget' : 'Over budget') : ''}
             </p>
           </div>
@@ -601,7 +601,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
             <p className={`text-2xl font-bold ${cpiSpiColor(spi)}`}>
               {spi !== null ? spi.toFixed(2) : '—'}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-500 mt-0.5">
               {spi !== null ? (spi >= 1.0 ? 'Ahead of schedule' : 'Behind schedule') : ''}
             </p>
           </div>
@@ -785,13 +785,13 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         {recentActivity.map((a: any, i: number) => (
           <div key={a.id || i} className="flex items-start gap-2.5">
             <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Activity className="w-3 h-3 text-gray-400" />
+              <Activity className="w-3 h-3 text-gray-500" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs text-gray-800 dark:text-gray-200 truncate">
                 {a.action || a.description || a.summary || a.message || 'Activity'}
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-500">
                 {a.userName || a.user || ''}{a.userName || a.user ? ' · ' : ''}
                 {new Date(a.createdAt || a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
               </p>
@@ -846,7 +846,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               <p className="text-xs text-gray-800 dark:text-gray-200 truncate">
                 {a.action || a.description || a.summary || a.message || 'Comment'}
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-500">
                 {a.userName || a.user || ''}{a.userName || a.user ? ' · ' : ''}
                 {new Date(a.createdAt || a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
               </p>
@@ -865,7 +865,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
           return (
             <div key={g.id} className="space-y-1">
               <div className="flex items-center justify-between">
-                <p className={`text-sm font-medium truncate flex-1 mr-2 ${isDone ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
+                <p className={`text-sm font-medium truncate flex-1 mr-2 ${isDone ? 'text-gray-500 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
                   {g.name || g.title}
                 </p>
                 <span className={`text-xs font-medium ${isDone ? 'text-green-600 dark:text-green-400' : progress >= 75 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
@@ -879,7 +879,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
                 />
               </div>
               {g.targetDate && (
-                <p className="text-xs text-gray-400 dark:text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-500">
                   Target: {new Date(g.targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </p>
               )}
@@ -907,7 +907,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToTab?.('files'); } }}
             >
-              <Paperclip className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+              <Paperclip className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-gray-900 dark:text-white truncate">{name}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -1059,7 +1059,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               )}
               {project.location && (
                 <span className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                  <MapPin className="w-3.5 h-3.5 text-gray-500" />
                   <span className="font-medium text-gray-900 dark:text-white">{project.location}</span>
                 </span>
               )}
@@ -1155,7 +1155,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         <div className="flex justify-end">
           <button
             onClick={resetCardOrder}
-            className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="text-xs text-gray-500 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             Reset card order
           </button>
@@ -1278,7 +1278,7 @@ function CollapsibleCard({ id, icon, title, className, children, draggable, onDr
         )}
         <button onClick={toggle} className="flex items-center justify-between flex-1 text-base font-semibold text-gray-900 dark:text-white">
           <span className="flex items-center gap-2">{icon} {title}</span>
-          <ChevronDown className={`w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`} />
+          <ChevronDown className={`w-4 h-4 text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`} />
         </button>
       </div>
       <div className={`transition-all duration-200 overflow-hidden ${collapsed ? 'max-h-0 opacity-0 mt-0' : 'max-h-[2000px] opacity-100 mt-4'}`}>
@@ -1305,7 +1305,7 @@ function EmptyState({ icon, message, cta, onAction }: { icon: ReactNode; message
 }
 
 function cpiSpiColor(val: number | null): string {
-  if (val === null) return 'text-gray-400';
+  if (val === null) return 'text-gray-500';
   if (val >= 1.0) return 'text-green-600 dark:text-green-400';
   if (val >= 0.85) return 'text-amber-600 dark:text-amber-400';
   return 'text-red-600 dark:text-red-400';

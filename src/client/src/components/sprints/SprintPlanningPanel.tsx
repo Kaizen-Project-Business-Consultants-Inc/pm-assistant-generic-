@@ -293,7 +293,7 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
           <div>
             <h3 className="text-sm font-semibold text-gray-800 dark:text-white">{sprint.name}</h3>
             {sprint.goal && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{sprint.goal}</p>}
-            <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 dark:text-gray-500 flex-wrap">
+            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-500 flex-wrap">
               {sprint.start_date && (
                 <span>
                   {new Date(sprint.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -345,14 +345,14 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
           <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Backlog</h4>
-            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-700 rounded-full w-5 h-5 flex items-center justify-center">
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-500 bg-white dark:bg-gray-700 rounded-full w-5 h-5 flex items-center justify-center">
               {totalBacklog}
             </span>
           </div>
           {/* Search/filter bar */}
           <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
               <input
                 type="text"
                 value={backlogSearch}
@@ -375,7 +375,7 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
           </div>
           <div className="p-2 space-y-1.5 max-h-[60vh] overflow-y-auto">
             {backlogTasks.length === 0 ? (
-              <div className="text-center py-8 text-xs text-gray-400 dark:text-gray-500">
+              <div className="text-center py-8 text-xs text-gray-500 dark:text-gray-500">
                 {totalBacklog === 0 ? 'All tasks are in this sprint' : 'No matching tasks'}
               </div>
             ) : (
@@ -401,14 +401,14 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
               <span className="text-xs font-bold text-primary-500 dark:text-primary-400 bg-white dark:bg-gray-800 rounded-full px-2 py-0.5">
                 {totalPoints} pts
               </span>
-              <span className="text-xs font-bold text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800 rounded-full w-5 h-5 flex items-center justify-center">
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-500 bg-white dark:bg-gray-800 rounded-full w-5 h-5 flex items-center justify-center">
                 {sprintTasks.length}
               </span>
             </div>
           </div>
           <div className="p-2 space-y-1.5 max-h-[60vh] overflow-y-auto">
             {sprintTasks.length === 0 ? (
-              <div className="text-center py-8 text-xs text-gray-400 dark:text-gray-500">
+              <div className="text-center py-8 text-xs text-gray-500 dark:text-gray-500">
                 Add tasks from the backlog to plan this sprint
               </div>
             ) : (

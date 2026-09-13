@@ -88,7 +88,7 @@ export function AdminSchedulesPage() {
             <option value="paused">Paused ({schedules.filter((s: any) => !s.isActive).length})</option>
             <option value="error">Errors ({schedules.filter((s: any) => s.lastRunStatus === 'error').length})</option>
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
         </div>
       </div>
 
@@ -153,13 +153,13 @@ export function AdminSchedulesPage() {
                         ) : !s.isActive ? (
                           <span className="text-xs text-amber-500">Paused</span>
                         ) : (
-                          <span className="text-xs text-gray-400">Pending</span>
+                          <span className="text-xs text-gray-500">Pending</span>
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-right">
                         <button
                           onClick={() => toggleMutation.mutate({ id: s.id, isActive: !s.isActive })}
-                          className="p-1.5 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                          className="p-1.5 text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
                           title={s.isActive ? 'Pause' : 'Resume'}
                         >
                           {s.isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}

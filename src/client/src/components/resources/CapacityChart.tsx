@@ -126,7 +126,7 @@ export function CapacityChart({ data }: CapacityChartProps) {
 
   if (!chart || data.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 text-center text-sm text-gray-400 dark:text-gray-500">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 text-center text-sm text-gray-500 dark:text-gray-500">
         No capacity data available.
       </div>
     );
@@ -147,7 +147,7 @@ export function CapacityChart({ data }: CapacityChartProps) {
           <path d="M15.5 2A1.5 1.5 0 0014 3.5v13a1.5 1.5 0 001.5 1.5h1a1.5 1.5 0 001.5-1.5v-13A1.5 1.5 0 0016.5 2h-1zM9.5 6A1.5 1.5 0 008 7.5v9A1.5 1.5 0 009.5 18h1a1.5 1.5 0 001.5-1.5v-9A1.5 1.5 0 0010.5 6h-1zM3.5 10A1.5 1.5 0 002 11.5v5A1.5 1.5 0 003.5 18h1A1.5 1.5 0 006 16.5v-5A1.5 1.5 0 004.5 10h-1z" />
         </svg>
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Capacity vs Allocation</h3>
-        <span className="text-xs text-gray-400 dark:text-gray-500">{data.length} weeks</span>
+        <span className="text-xs text-gray-500 dark:text-gray-500">{data.length} weeks</span>
       </div>
 
       <div className="relative">

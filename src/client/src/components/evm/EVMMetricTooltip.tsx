@@ -316,13 +316,13 @@ export function EVMMetricTooltip({ metricKey, values, children }: EVMMetricToolt
 
           {/* What it measures */}
           <div>
-            <div className="text-xs font-semibold text-gray-400 uppercase mb-0.5">What it measures</div>
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-0.5">What it measures</div>
             <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{info.whatItMeasures}</p>
           </div>
 
           {/* Formula */}
           <div>
-            <div className="text-xs font-semibold text-gray-400 uppercase mb-0.5">Formula</div>
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-0.5">Formula</div>
             <div className="text-xs text-gray-500 dark:text-gray-400">{info.formula}</div>
             <div className="text-xs font-mono text-gray-700 dark:text-gray-200 mt-0.5 bg-gray-50 dark:bg-gray-700/50 rounded px-2 py-1">
               {info.formulaWithValues(values)}
@@ -331,7 +331,7 @@ export function EVMMetricTooltip({ metricKey, values, children }: EVMMetricToolt
 
           {/* Health bands */}
           <div>
-            <div className="text-xs font-semibold text-gray-400 uppercase mb-1">Health</div>
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Health</div>
             <div className="space-y-1">
               {info.bands.map((b, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs">
@@ -345,7 +345,7 @@ export function EVMMetricTooltip({ metricKey, values, children }: EVMMetricToolt
 
           {/* Guidance */}
           <div>
-            <div className="text-xs font-semibold text-gray-400 uppercase mb-0.5">What to look at</div>
+            <div className="text-xs font-semibold text-gray-500 uppercase mb-0.5">What to look at</div>
             <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{info.guidance(values)}</p>
           </div>
         </div>

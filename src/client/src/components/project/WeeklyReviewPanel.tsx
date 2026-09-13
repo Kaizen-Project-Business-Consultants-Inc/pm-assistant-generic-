@@ -76,7 +76,7 @@ export function WeeklyReviewPanel({ projectId }: { projectId: string }) {
             onClick={(e) => e.stopPropagation()}
             className="text-xs px-2 py-1 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
           />
-          {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          {expanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
         </div>
       </button>
 
@@ -170,7 +170,7 @@ export function WeeklyReviewPanel({ projectId }: { projectId: string }) {
                     <span className="text-gray-700 dark:text-gray-300 truncate max-w-[50%]">{t.taskName}</span>
                     <div className="text-right">
                       <span className="text-red-600 dark:text-red-400 font-medium">{t.actualHours.toFixed(1)}h</span>
-                      <span className="text-gray-400 mx-1">/</span>
+                      <span className="text-gray-500 mx-1">/</span>
                       <span className="text-gray-500">{t.estimatedHours.toFixed(1)}h est.</span>
                       <span className="ml-2 text-xs text-red-500 font-medium">+{t.overBy.toFixed(1)}h</span>
                     </div>

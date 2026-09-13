@@ -155,7 +155,7 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
               </button>
             )}
             <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-              <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <X className="w-4 h-4 text-gray-500 dark:text-gray-500" />
             </button>
           </div>
         </div>
@@ -337,13 +337,13 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
                           <span className="text-gray-500 dark:text-gray-400 ml-1">on day {s.dayOfMonth}</span>
                         )}
                         <span className="text-gray-500 dark:text-gray-400 ml-1">at {s.timeOfDay || '08:00'}</span>
-                        <div className="text-gray-400 dark:text-gray-500 mt-0.5">
+                        <div className="text-gray-500 dark:text-gray-500 mt-0.5">
                           To: {(s.recipients || []).join(', ')}
                         </div>
                       </div>
                       <button
                         onClick={() => deleteMutation.mutate(s.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        className="p-1 text-gray-500 hover:text-red-500 transition-colors"
                         title="Delete schedule"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

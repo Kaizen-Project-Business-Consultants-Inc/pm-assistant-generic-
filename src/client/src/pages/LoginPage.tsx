@@ -105,7 +105,7 @@ export const LoginPage: React.FC = () => {
             <p className="text-gray-500 dark:text-gray-400 mb-6">
               We sent a login confirmation link to your email address. Click the link to complete sign-in.
             </p>
-            <p className="text-sm text-gray-400 dark:text-gray-500 mb-6">
+            <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
               The link expires in 10 minutes.
             </p>
             <button
@@ -219,7 +219,7 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -247,7 +247,7 @@ export const LoginPage: React.FC = () => {
                 Don't have an account?{' '}
                 <Link to="/pricing" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:text-primary-300 font-medium">Sign up</Link>
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-500">
                 Need help?{' '}
                 <a
                   href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Login Help')}&body=${encodeURIComponent(`I need help logging in.\n\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}

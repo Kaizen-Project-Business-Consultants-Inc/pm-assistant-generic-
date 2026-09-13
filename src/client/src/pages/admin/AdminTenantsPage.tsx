@@ -99,7 +99,7 @@ export function AdminTenantsPage() {
                     <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="py-3 pr-4">
                         <div className="font-medium text-gray-900 dark:text-white">{t.name}</div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">{t.slug}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-500">{t.slug}</div>
                       </td>
                       <td className="py-3 pr-4">
                         {t.owner_name ? (
@@ -108,7 +108,7 @@ export function AdminTenantsPage() {
                             <div className="text-xs text-gray-500 dark:text-gray-400">{t.owner_email}</div>
                           </>
                         ) : (
-                          <span className="text-gray-400">{'\u2014'}</span>
+                          <span className="text-gray-500">{'\u2014'}</span>
                         )}
                       </td>
                       <td className="py-3 pr-4 text-right font-medium text-gray-700 dark:text-gray-200">
@@ -129,9 +129,9 @@ export function AdminTenantsPage() {
                           {active ? (
                             <ToggleRight className="w-6 h-6 text-green-500" />
                           ) : (
-                            <ToggleLeft className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                            <ToggleLeft className="w-6 h-6 text-gray-500 dark:text-gray-500" />
                           )}
-                          <span className={active ? 'text-green-600' : 'text-gray-400 dark:text-gray-500'}>
+                          <span className={active ? 'text-green-600' : 'text-gray-500 dark:text-gray-500'}>
                             {active ? 'Active' : 'Inactive'}
                           </span>
                         </button>

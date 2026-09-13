@@ -33,7 +33,7 @@ export const TableNotesPopup = React.memo(function TableNotesPopup({
         <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Notes</span>
         <button
           onClick={onSave}
-          className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          className="text-xs text-gray-500 hover:text-gray-600 dark:hover:text-gray-200"
         >
           <X className="w-3.5 h-3.5" />
         </button>

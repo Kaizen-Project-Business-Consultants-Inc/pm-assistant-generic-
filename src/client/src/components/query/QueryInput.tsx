@@ -38,7 +38,7 @@ export const QueryInput: React.FC<QueryInputProps> = ({
     <div className="relative flex items-center">
       {/* Search icon */}
       <div className="absolute left-4 pointer-events-none">
-        <Search className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+        <Search className="w-5 h-5 text-gray-500 dark:text-gray-500" />
       </div>
 
       {/* Input */}

@@ -107,7 +107,7 @@ export function ComplianceReport({ projectId }: { projectId: string }) {
           <p className={`text-lg font-bold ${chainStatus.valid ? 'text-green-600' : 'text-red-600'}`}>
             {chainStatus.valid ? 'VERIFIED' : 'BROKEN'}
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">{chainStatus.checkedCount} entries checked</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500">{chainStatus.checkedCount} entries checked</p>
         </div>
 
         {/* Policy Evaluations */}
@@ -117,7 +117,7 @@ export function ComplianceReport({ projectId }: { projectId: string }) {
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Policy Evaluations</span>
           </div>
           <p className="text-lg font-bold text-gray-900 dark:text-white">{policyStats.total}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">Last {days} days</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500">Last {days} days</p>
         </div>
 
         {/* Allowed */}
@@ -127,7 +127,7 @@ export function ComplianceReport({ projectId }: { projectId: string }) {
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Allowed</span>
           </div>
           <p className="text-lg font-bold text-green-600">{policyStats.allowed}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-500">
             {policyStats.total > 0 ? Math.round((policyStats.allowed / policyStats.total) * 100) : 0}% of total
           </p>
         </div>
@@ -143,7 +143,7 @@ export function ComplianceReport({ projectId }: { projectId: string }) {
             {' / '}
             <span className="text-amber-600">{policyStats.pendingApproval}</span>
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">Enforcement actions</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500">Enforcement actions</p>
         </div>
       </div>
 
@@ -151,7 +151,7 @@ export function ComplianceReport({ projectId }: { projectId: string }) {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm dark:shadow-gray-900/30 border border-gray-200 dark:border-gray-700 p-5">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Audit Activity (last 14 days)</h3>
         {dailyActivity.length === 0 ? (
-          <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No audit activity</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-4">No audit activity</p>
         ) : (
           <div className="flex items-end gap-1 h-32">
             {dailyActivity.map(([day, counts]) => {
@@ -166,7 +166,7 @@ export function ComplianceReport({ projectId }: { projectId: string }) {
                       title={`${day}: ${total} actions (${counts.user} user, ${counts.api_key} API, ${counts.system} system)`}
                     />
                   </div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                  <span className="text-xs text-gray-500 dark:text-gray-500 whitespace-nowrap">
                     {day.slice(5)}
                   </span>
                 </div>
@@ -180,7 +180,7 @@ export function ComplianceReport({ projectId }: { projectId: string }) {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm dark:shadow-gray-900/30 border border-gray-200 dark:border-gray-700 p-5">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Recent Audit Entries</h3>
         {entries.length === 0 ? (
-          <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No audit entries</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-4">No audit entries</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

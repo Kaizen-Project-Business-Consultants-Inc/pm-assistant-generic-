@@ -86,7 +86,7 @@ export function GoalsWidget() {
       </div>
 
       {goals.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-6">No objectives defined</p>
+        <p className="text-xs text-gray-500 text-center py-6">No objectives defined</p>
       ) : (
         <div className="space-y-2.5 max-h-[280px] overflow-y-auto">
           {goals.map(g => {
@@ -105,7 +105,7 @@ export function GoalsWidget() {
                       {statusLabel}
                     </span>
                     {g.dueDate && (
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-500">
                         {new Date(g.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     )}

@@ -96,12 +96,12 @@ export function ProjectReadinessBar({ projectId, tasks, resources, methodology =
         </span>
       ))}
       <span className="ml-auto flex items-center gap-2 flex-shrink-0">
-        <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+        <span className="text-xs text-gray-500 dark:text-gray-500 whitespace-nowrap">
           {completedCount}/{steps.length} ready
         </span>
         <button
           onClick={handleDismiss}
-          className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          className="p-0.5 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           title="Dismiss"
         >
           <X className="w-3.5 h-3.5" />

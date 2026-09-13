@@ -209,7 +209,7 @@ export function ResourceHistogram({ data }: ResourceHistogramProps) {
 
   if (!data || data.resources.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 text-center text-sm text-gray-400 dark:text-gray-500">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 text-center text-sm text-gray-500 dark:text-gray-500">
         No resource histogram data available.
       </div>
     );
@@ -217,7 +217,7 @@ export function ResourceHistogram({ data }: ResourceHistogramProps) {
 
   if (!chart) {
     return (
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 text-center text-sm text-gray-400 dark:text-gray-500">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 text-center text-sm text-gray-500 dark:text-gray-500">
         No demand data to display.
       </div>
     );

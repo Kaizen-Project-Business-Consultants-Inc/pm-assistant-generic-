@@ -77,7 +77,7 @@ export const TaskListMobile: React.FC<TaskListMobileProps> = ({
 
       {/* Task list */}
       {filtered.length === 0 ? (
-        <div className="text-center py-8 text-sm text-gray-400">No tasks match the filter</div>
+        <div className="text-center py-8 text-sm text-gray-500">No tasks match the filter</div>
       ) : (
         <div className="space-y-2">
           {filtered.map((task) => (

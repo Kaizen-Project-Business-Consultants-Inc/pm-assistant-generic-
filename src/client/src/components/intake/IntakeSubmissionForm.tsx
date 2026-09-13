@@ -59,7 +59,7 @@ export const IntakeSubmissionForm: React.FC<Props> = ({ formId, onClose, onSubmi
 
   if (isLoading) {
     return (
-      <div className="text-center py-12 text-gray-400 dark:text-gray-500">Loading form…</div>
+      <div className="text-center py-12 text-gray-500 dark:text-gray-500">Loading form…</div>
     );
   }
 
@@ -99,7 +99,7 @@ export const IntakeSubmissionForm: React.FC<Props> = ({ formId, onClose, onSubmi
       {/* Form fields */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">
         {fields.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">
+          <p className="text-sm text-gray-500 text-center py-6">
             This form has no fields configured.
           </p>
         ) : (

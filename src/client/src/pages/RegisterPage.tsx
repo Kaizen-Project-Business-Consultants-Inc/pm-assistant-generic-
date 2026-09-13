@@ -255,7 +255,7 @@ export const RegisterPage: React.FC = () => {
             {!isPlanSignup && !isInviteFlow && (
               <div>
                 <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  Organization Name <span className="text-gray-400 font-normal">(optional)</span>
+                  Organization Name <span className="text-gray-500 font-normal">(optional)</span>
                 </label>
                 <input id="organizationName" type="text" autoComplete="organization" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)}
                   className="input" placeholder="Your company name (we'll use your name if blank)" />
@@ -268,7 +268,7 @@ export const RegisterPage: React.FC = () => {
                 <input id="password" type={showPassword ? 'text' : 'password'} required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)}
                   className="input pr-10" placeholder="Min. 8 characters" minLength={8} aria-describedby={error ? 'register-error' : undefined} />
                 <button type="button" onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}>
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -281,7 +281,7 @@ export const RegisterPage: React.FC = () => {
                 <input id="confirmPassword" type={showPassword ? 'text' : 'password'} required autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                   className="input pr-10" placeholder="Confirm your password" minLength={8} />
                 <button type="button" onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}>
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -291,7 +291,7 @@ export const RegisterPage: React.FC = () => {
             {isPlanSignup && tierParam === 'sme' && (
               <div>
                 <label htmlFor="seatCount" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  Team Seats <span className="text-gray-400 font-normal">(minimum 3)</span>
+                  Team Seats <span className="text-gray-500 font-normal">(minimum 3)</span>
                 </label>
                 <div className="flex items-center gap-3">
                   <input

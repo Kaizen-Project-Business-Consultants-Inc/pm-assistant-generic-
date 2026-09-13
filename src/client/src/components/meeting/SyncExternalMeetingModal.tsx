@@ -117,7 +117,7 @@ export const SyncExternalMeetingModal: React.FC<SyncExternalMeetingModalProps> =
             <Upload className="w-4 h-4 text-primary-500" />
             Import External Meeting
           </h3>
-          <button onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+          <button onClick={onClose} aria-label="Close" className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -203,7 +203,7 @@ export const SyncExternalMeetingModal: React.FC<SyncExternalMeetingModalProps> =
           {/* Attendees */}
           <div>
             <label htmlFor="sync-attendees" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Attendees <span className="text-gray-400 font-normal">(comma-separated)</span>
+              Attendees <span className="text-gray-500 font-normal">(comma-separated)</span>
             </label>
             <input
               id="sync-attendees"
@@ -234,7 +234,7 @@ export const SyncExternalMeetingModal: React.FC<SyncExternalMeetingModalProps> =
           {/* Action Items */}
           <div>
             <label htmlFor="sync-actions" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Action Items <span className="text-gray-400 font-normal">(one per line, optional &quot;Name: Description&quot; format)</span>
+              Action Items <span className="text-gray-500 font-normal">(one per line, optional &quot;Name: Description&quot; format)</span>
             </label>
             <textarea
               id="sync-actions"
@@ -245,7 +245,7 @@ export const SyncExternalMeetingModal: React.FC<SyncExternalMeetingModalProps> =
               rows={4}
             />
             {actionItemsText.trim() && (
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {parseActionItems(actionItemsText).length} action item(s) detected
               </p>
             )}

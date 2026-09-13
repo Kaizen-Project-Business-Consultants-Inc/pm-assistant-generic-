@@ -194,12 +194,12 @@
 }
 
 /* Boost muted text contrast — light mode (stone ramp to match app neutrals) */
-.high-contrast [class*="text-gray-400"],
+.high-contrast [class*="text-gray-500"],
 .high-contrast [class*="text-gray-500"] {
   color: #44403c; /* stone-700, WCAG AA on white */
 }
 /* Boost muted text contrast — dark mode */
-.high-contrast.dark [class*="text-gray-400"],
+.high-contrast.dark [class*="text-gray-500"],
 .high-contrast.dark [class*="text-gray-500"] {
   color: #d6d3d1; /* stone-300, WCAG AA on dark backgrounds */
 }
@@ -243,7 +243,7 @@
   body { color: #000; background: #fff; }
   .card, .rounded-xl { border-width: 2px; border-color: #000; }
   button:focus, a:focus { outline: 3px solid #000; outline-offset: 2px; }
-  [class*="text-gray-400"], [class*="text-gray-500"] { color: #44403c; /* stone-700 */ }
+  [class*="text-gray-500"], [class*="text-gray-500"] { color: #44403c; /* stone-700 */ }
   [class*="border-gray-200"], [class*="border-gray-300"] { border-color: #78716c; /* stone-500 */ }
   ::placeholder { color: #44403c; }
 }
@@ -251,7 +251,7 @@
   .dark body { color: #fff; background: #000; }
   .dark .card, .dark .rounded-xl { border-color: #fff; }
   .dark button:focus, .dark a:focus { outline-color: #fff; }
-  .dark [class*="text-gray-400"], .dark [class*="text-gray-500"] { color: #d6d3d1; /* stone-300 */ }
+  .dark [class*="text-gray-500"], .dark [class*="text-gray-500"] { color: #d6d3d1; /* stone-300 */ }
   .dark [class*="border-gray-600"], .dark [class*="border-gray-700"] { border-color: #a8a29e; /* stone-400 */ }
   .dark ::placeholder { color: #d6d3d1; }
 }

@@ -204,7 +204,7 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <button onClick={onBack} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded mt-0.5">
-            <ArrowLeft className="w-5 h-5 text-gray-400" />
+            <ArrowLeft className="w-5 h-5 text-gray-500" />
           </button>
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{meeting.title}</h2>
@@ -295,11 +295,11 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
           <ol className="space-y-2">
             {agendaItems.map((item: any, idx: number) => (
               <li key={idx} className="flex items-start gap-2">
-                <span className="text-xs font-medium text-gray-400 mt-0.5 w-5 text-right">{idx + 1}.</span>
+                <span className="text-xs font-medium text-gray-500 mt-0.5 w-5 text-right">{idx + 1}.</span>
                 <div className="flex-1 min-w-0">
                   <span className="text-sm text-gray-900 dark:text-white">{item.title}</span>
                   {(item.presenter || item.durationMinutes) && (
-                    <span className="text-xs text-gray-400 ml-2">
+                    <span className="text-xs text-gray-500 ml-2">
                       {item.presenter && `— ${item.presenter}`}
                       {item.durationMinutes && ` (${item.durationMinutes} min)`}
                     </span>
@@ -335,7 +335,7 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
               </button>
               <button
                 onClick={() => { setNotes(meeting.notes || ''); setNotesEditing(false); }}
-                className="text-xs text-gray-400 hover:text-gray-500"
+                className="text-xs text-gray-500 hover:text-gray-500"
               >
                 Cancel
               </button>
@@ -352,7 +352,7 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
           />
         ) : (
           <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-            {notes || <span className="italic text-gray-400">No notes yet.</span>}
+            {notes || <span className="italic text-gray-500">No notes yet.</span>}
           </p>
         )}
       </div>
@@ -368,7 +368,7 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
               <div key={a.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-gray-900 dark:text-white line-clamp-1">{a.summary || 'Analysis'}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{a.created_at ? new Date(a.created_at).toLocaleDateString() : ''}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{a.created_at ? new Date(a.created_at).toLocaleDateString() : ''}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -445,7 +445,7 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Mail className="w-4 h-4" /> Send Meeting Minutes
               </h3>
-              <button onClick={() => setSendMinutesAnalysisId(null)}><X className="w-4 h-4 text-gray-400" /></button>
+              <button onClick={() => setSendMinutesAnalysisId(null)}><X className="w-4 h-4 text-gray-500" /></button>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               Enter recipient email addresses (comma or newline separated):

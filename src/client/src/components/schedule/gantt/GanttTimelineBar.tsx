@@ -8,10 +8,9 @@ import {
   toDate,
   daysBetween,
   formatShortDate,
-  avatarColor,
   healthColor,
 } from './types';
-import { getInitials } from '../../ui/Avatar';
+import { getInitials, getAvatarHex } from '../../ui/Avatar';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -291,7 +290,7 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
             right: 2,
             width: 18,
             height: 18,
-            backgroundColor: avatarColor(assigneeName),
+            backgroundColor: getAvatarHex(assigneeName),
             fontSize: 9,
             fontWeight: 700,
             color: '#fff',

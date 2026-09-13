@@ -218,7 +218,7 @@ export const IntegrationsPage: React.FC = () => {
       {/* Loading / Error */}
       {isLoading && (
         <div className="flex items-center justify-center py-20">
-          <RefreshCw className="h-6 w-6 animate-spin text-gray-400 dark:text-gray-500" />
+          <RefreshCw className="h-6 w-6 animate-spin text-gray-500 dark:text-gray-500" />
           <span className="ml-2 text-gray-500 dark:text-gray-400">Loading integrations…</span>
         </div>
       )}
@@ -296,7 +296,7 @@ export const IntegrationsPage: React.FC = () => {
                                       </p>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+                                  <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-500">
                                     <Clock className="h-3 w-3" />
                                     {formatRelativeTime(integ.lastSyncAt)}
                                   </div>

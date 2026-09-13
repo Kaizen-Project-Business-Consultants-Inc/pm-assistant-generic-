@@ -107,7 +107,7 @@ export function ResourceQuickAssign({ taskId, assignments, onUpdate }: ResourceQ
 
       {/* Add button */}
       <button
-        className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors shrink-0"
+        className="w-4 h-4 rounded-full flex items-center justify-center text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors shrink-0"
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
         title="Assign resource"
       >
@@ -131,7 +131,7 @@ export function ResourceQuickAssign({ taskId, assignments, onUpdate }: ResourceQ
           </div>
           <div className="max-h-40 overflow-y-auto">
             {available.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-gray-400 text-center">
+              <div className="px-3 py-2 text-xs text-gray-500 text-center">
                 {resources.length === 0 ? 'No resources' : 'No matches'}
               </div>
             ) : (
@@ -144,7 +144,7 @@ export function ResourceQuickAssign({ taskId, assignments, onUpdate }: ResourceQ
                   <Avatar name={r.name} size="xs" />
                   <div className="min-w-0">
                     <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
-                    <div className="text-gray-400 dark:text-gray-500 truncate">{r.role}</div>
+                    <div className="text-gray-500 dark:text-gray-500 truncate">{r.role}</div>
                   </div>
                 </button>
               ))

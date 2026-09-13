@@ -165,6 +165,6 @@ export function WorkflowNodeEditor({ nodeType, config, onChange }: NodeEditorPro
       );
 
     default:
-      return <div className="text-xs text-gray-400 dark:text-gray-500">Unknown node type</div>;
+      return <div className="text-xs text-gray-500 dark:text-gray-500">Unknown node type</div>;
   }
 }

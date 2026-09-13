@@ -114,7 +114,7 @@ export function StrategicRiskScanModal({ projectId, projectName, onClose }: { pr
                 </button>
               </>
             )}
-            <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -126,7 +126,7 @@ export function StrategicRiskScanModal({ projectId, projectName, onClose }: { pr
             <div className="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-gray-400">
               <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
               <p className="text-sm font-medium">Analyzing project plan for structural risks...</p>
-              <p className="text-xs mt-1 text-gray-400">This may take a few moments</p>
+              <p className="text-xs mt-1 text-gray-500">This may take a few moments</p>
             </div>
           )}
 
@@ -150,7 +150,7 @@ export function StrategicRiskScanModal({ projectId, projectName, onClose }: { pr
           )}
 
           {!scanning && !scanError && !html && (
-            <div className="text-center py-16 text-gray-400 text-sm">
+            <div className="text-center py-16 text-gray-500 text-sm">
               Starting scan...
             </div>
           )}

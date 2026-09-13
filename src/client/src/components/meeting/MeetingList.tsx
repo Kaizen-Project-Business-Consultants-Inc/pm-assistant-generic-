@@ -78,9 +78,9 @@ export const MeetingList: React.FC<MeetingListProps> = ({
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-gray-400 dark:text-gray-500 py-8 text-center">Loading meetings...</div>
+        <div className="text-sm text-gray-500 dark:text-gray-500 py-8 text-center">Loading meetings...</div>
       ) : meetings.length === 0 ? (
-        <div className="text-sm text-gray-400 dark:text-gray-500 py-8 text-center italic">
+        <div className="text-sm text-gray-500 dark:text-gray-500 py-8 text-center italic">
           No meetings yet. Create one to get started.
         </div>
       ) : (
@@ -132,7 +132,7 @@ export const MeetingList: React.FC<MeetingListProps> = ({
                     onClick={e => { e.stopPropagation(); setMenuOpen(menuOpen === meeting.id ? null : meeting.id); }}
                     className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                   >
-                    <MoreVertical className="w-4 h-4 text-gray-400" />
+                    <MoreVertical className="w-4 h-4 text-gray-500" />
                   </button>
                   {menuOpen === meeting.id && (
                     <div className="absolute right-0 top-8 z-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 w-36">

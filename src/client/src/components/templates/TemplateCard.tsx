@@ -35,7 +35,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({ template, onSelect, 
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{template.description}</p>
 
-        <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500 mb-3">
+        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500 mb-3">
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
             ~{template.estimatedDurationDays}d

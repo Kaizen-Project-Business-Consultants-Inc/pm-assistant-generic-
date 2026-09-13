@@ -105,7 +105,7 @@ export function TimesheetPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-primary-200 dark:border-primary-700 p-5 space-y-4 shadow-sm dark:shadow-gray-900/30">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Log Time Entry</h3>
-            <button onClick={() => setShowLogForm(false)} className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300" aria-label="Close time log form"><X className="w-4 h-4" /></button>
+            <button onClick={() => setShowLogForm(false)} className="p-1 text-gray-500 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300" aria-label="Close time log form"><X className="w-4 h-4" /></button>
           </div>
           <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-4'} gap-3`}>
             <div>
@@ -239,7 +239,7 @@ export function TimesheetPage() {
           )}
 
           {!selectedScheduleId && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center text-gray-400 dark:text-gray-500">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center text-gray-500 dark:text-gray-500">
               Select a project and schedule to view time comparison
             </div>
           )}
@@ -324,7 +324,7 @@ function MobileTimesheetView() {
         <div key={day.date} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{formatDay(day.date)}</span>
-            <span className={`text-sm font-semibold ${day.total > 0 ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'}`}>
+            <span className={`text-sm font-semibold ${day.total > 0 ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-500'}`}>
               {day.total.toFixed(1)}h
             </span>
           </div>
@@ -338,7 +338,7 @@ function MobileTimesheetView() {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-gray-400 dark:text-gray-500">No entries</p>
+            <p className="text-xs text-gray-500 dark:text-gray-500">No entries</p>
           )}
         </div>
       ))}

@@ -127,7 +127,7 @@ export function TeamWorkloadWidget({ projects }: Props) {
         <div className="flex items-center gap-3 p-2 mb-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600/50">
           <div className="flex items-center gap-4 text-xs w-full">
             <div className="flex items-center gap-1.5">
-              <Users className="w-3 h-3 text-gray-400" />
+              <Users className="w-3 h-3 text-gray-500" />
               <span className="text-gray-500 dark:text-gray-400">Active:</span>
               <span className="font-semibold text-gray-800 dark:text-gray-200">{totalResources}</span>
             </div>
@@ -147,7 +147,7 @@ export function TeamWorkloadWidget({ projects }: Props) {
       )}
 
       {sorted.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-6">No resource data available</p>
+        <p className="text-xs text-gray-500 text-center py-6">No resource data available</p>
       ) : (
         <div className="space-y-2 max-h-[260px] overflow-y-auto">
           {sorted.map(r => {
@@ -189,7 +189,7 @@ export function TeamWorkloadWidget({ projects }: Props) {
                         <span className="text-xs text-amber-500 dark:text-amber-400">{r.projectCount} projects</span>
                       )}
                       {r.capacity != null && r.capacity > 0 && (
-                        <span className="text-xs text-gray-400">{r.capacity}h/wk capacity</span>
+                        <span className="text-xs text-gray-500">{r.capacity}h/wk capacity</span>
                       )}
                     </div>
                   )}

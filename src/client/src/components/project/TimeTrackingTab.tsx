@@ -308,7 +308,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
                 </span>
               )}
             </div>
-            <button onClick={() => setShowLogForm(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><X className="w-4 h-4" /></button>
+            <button onClick={() => setShowLogForm(false)} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {schedules.length > 1 && (
@@ -382,7 +382,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
               <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
             </div>
           ) : entries.length === 0 ? (
-            <div className="text-center py-16 text-gray-400">
+            <div className="text-center py-16 text-gray-500">
               <Clock className="w-10 h-10 mx-auto mb-3 opacity-40" />
               <p>No time entries yet. Log time against project tasks.</p>
             </div>
@@ -415,9 +415,9 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">{e.hours}h</td>
                     <td className="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-[200px]">{e.description || '\u2014'}</td>
-                    <td className="px-4 py-3 text-center">{e.billable ? <span className="text-green-600 text-xs font-medium">Yes</span> : <span className="text-gray-400 text-xs">No</span>}</td>
+                    <td className="px-4 py-3 text-center">{e.billable ? <span className="text-green-600 text-xs font-medium">Yes</span> : <span className="text-gray-500 text-xs">No</span>}</td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => deleteMutation.mutate(e.id)} className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => deleteMutation.mutate(e.id)} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3.5 h-3.5" /></button>
                     </td>
                   </tr>
                 ))}
@@ -431,13 +431,13 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
       {subTab === 'comparison' && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           {!primaryScheduleId ? (
-            <div className="text-center py-12 text-gray-400">No schedule found for this project.</div>
+            <div className="text-center py-12 text-gray-500">No schedule found for this project.</div>
           ) : comparisonLoading ? (
             <div className="flex items-center justify-center py-16">
               <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
             </div>
           ) : comparisonTasks.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">No task estimates or time entries to compare.</div>
+            <div className="text-center py-12 text-gray-500">No task estimates or time entries to compare.</div>
           ) : (
             <div>
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Estimated vs Actual Hours by Task</h3>

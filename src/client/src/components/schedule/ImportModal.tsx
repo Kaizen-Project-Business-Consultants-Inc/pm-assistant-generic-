@@ -341,7 +341,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
                 <div className="flex flex-col items-center justify-center gap-3 p-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent" />
                   <p className="text-sm text-gray-600 dark:text-gray-400">Analyzing <span className="font-medium">{docFileName}</span>...</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">AI is extracting tasks from your document</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">AI is extracting tasks from your document</p>
                 </div>
               )}
 
@@ -426,14 +426,14 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
                                 <div className="flex items-center gap-1 justify-center">
                                   <button
                                     onClick={() => setEditingTaskIdx(isEditing ? null : idx)}
-                                    className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                                     title="Edit task"
                                   >
                                     <Pencil size={12} />
                                   </button>
                                   <button
                                     onClick={() => setExtractedTasks(prev => prev!.filter((_, i) => i !== idx))}
-                                    className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500"
+                                    className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-500 hover:text-red-500"
                                     title="Remove task"
                                   >
                                     <Trash2 size={12} />
@@ -481,15 +481,15 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
                         : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500'
                     }`}
                   >
-                    <Upload size={32} className="text-gray-400 dark:text-gray-500" />
+                    <Upload size={32} className="text-gray-500 dark:text-gray-500" />
                     <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop a file here, or click to browse</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">.csv, .xlsx, .xml, .pdf, .docx, .txt supported (max 5MB)</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF, Word, and text files are analyzed by AI to extract tasks automatically</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">Using Microsoft Project? Save as XML first (File → Save As → XML), then import the .xml file here.</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">.csv, .xlsx, .xml, .pdf, .docx, .txt supported (max 5MB)</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">PDF, Word, and text files are analyzed by AI to extract tasks automatically</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">Using Microsoft Project? Save as XML first (File → Save As → XML), then import the .xml file here.</p>
                     <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.xml,.pdf,.docx,.doc,.txt,text/csv,text/xml,application/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/plain" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
                     <span className="flex-1 border-t dark:border-gray-700" />or paste CSV below<span className="flex-1 border-t dark:border-gray-700" />
                   </div>
 

@@ -230,7 +230,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                         <Clock className="w-3 h-3 text-blue-500" />
                         <span className="text-xs text-blue-600 dark:text-blue-400">{formatScheduleFrequency(auto)}</span>
                         {auto.nextRunAt && (
-                          <span className="text-xs text-gray-400 dark:text-gray-500" title={`Next: ${new Date(auto.nextRunAt).toLocaleString()}`}>
+                          <span className="text-xs text-gray-500 dark:text-gray-500" title={`Next: ${new Date(auto.nextRunAt).toLocaleString()}`}>
                             (next: {formatRelativeDate(auto.nextRunAt)})
                           </span>
                         )}
@@ -255,7 +255,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                         {auto.status === 'active' ? (
                           <ToggleRight className="w-4 h-4 text-green-600" />
                         ) : (
-                          <ToggleLeft className="w-4 h-4 text-gray-400" />
+                          <ToggleLeft className="w-4 h-4 text-gray-500" />
                         )}
                       </button>
                       <button
@@ -322,7 +322,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                     <button
                       onClick={() => dismissMutation.mutate(s.id)}
                       disabled={dismissMutation.isPending}
-                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                       title="Dismiss"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -381,7 +381,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
               <Store className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span className="text-sm font-medium text-blue-800 dark:text-blue-300">Automation Marketplace</span>
             </div>
-            <button onClick={() => setShowMarketplace(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <button onClick={() => setShowMarketplace(false)} className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -397,7 +397,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                       <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">{mp.triggerEventType}</code>
                     </div>
                     {mp.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{mp.description}</p>}
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 dark:text-gray-500">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-500">
                       <span>By {mp.publishedByOrgName}</span>
                       <span>{mp.downloadCount} imports</span>
                     </div>

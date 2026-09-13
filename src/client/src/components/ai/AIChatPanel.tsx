@@ -157,7 +157,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
         <div className="flex items-center gap-1">
           <button
             onClick={handleNewConversation}
-            className="rounded-md p-1.5 text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300"
+            className="rounded-md p-1.5 text-gray-500 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300"
             title="New conversation"
             aria-label="New conversation"
           >
@@ -168,7 +168,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
               setShowHistory(!showHistory);
               if (!conversationsLoaded) loadConversations();
             }}
-            className={`rounded-md p-1.5 ${showHistory ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300'}`}
+            className={`rounded-md p-1.5 ${showHistory ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300'}`}
             title="Conversation history"
             aria-label="Conversation history"
           >
@@ -181,7 +181,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
       {showHistory && (
         <div className="max-h-60 overflow-y-auto border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           {conversations.length === 0 ? (
-            <div className="px-4 py-3 text-center text-xs text-gray-400 dark:text-gray-500">
+            <div className="px-4 py-3 text-center text-xs text-gray-500 dark:text-gray-500">
               No past conversations
             </div>
           ) : (
@@ -192,12 +192,12 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
                   onClick={() => handleSelectConversation(conv)}
                   className="flex w-full items-start gap-2 px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
-                  <MessageSquare className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+                  <MessageSquare className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-gray-500 dark:text-gray-500" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-xs font-medium text-gray-700 dark:text-gray-200">
                       {conv.title}
                     </div>
-                    <div className="text-xs text-gray-400 dark:text-gray-500">
+                    <div className="text-xs text-gray-500 dark:text-gray-500">
                       {formatDate(conv.updatedAt)}
                     </div>
                   </div>
@@ -330,7 +330,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
           <div className="flex items-center gap-1">
             <button
               onClick={clearChat}
-              className="rounded-md p-1.5 text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300"
+              className="rounded-md p-1.5 text-gray-500 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300"
               title="Clear chat"
               aria-label="Clear chat"
             >
@@ -344,7 +344,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
                 className={`rounded-md p-1.5 ${
                   isListening
                     ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
-                    : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300'
+                    : 'text-gray-500 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300'
                 }`}
                 title={isListening ? 'Stop listening' : 'Speak your message'}
                 aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
@@ -395,7 +395,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
             />
             Speak replies
           </label>
-          <span className="text-xs text-gray-400 dark:text-gray-500">
+          <span className="text-xs text-gray-500 dark:text-gray-500">
             Mjuzi can make mistakes. Verify important information.
           </span>
         </div>

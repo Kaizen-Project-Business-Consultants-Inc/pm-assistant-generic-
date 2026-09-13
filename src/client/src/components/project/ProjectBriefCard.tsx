@@ -256,7 +256,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
             <PresenceIndicator variant="chip" users={otherBriefEditors} />
           )}
           {saveStatus === 'saving' && (
-            <span className="text-xs text-gray-400 dark:text-gray-500 animate-pulse">Saving...</span>
+            <span className="text-xs text-gray-500 dark:text-gray-500 animate-pulse">Saving...</span>
           )}
           {saveStatus === 'saved' && (
             <span className="text-xs text-green-500 dark:text-green-400">Saved</span>
@@ -279,7 +279,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
               className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               title="Edit brief"
             >
-              <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+              <Pencil className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
             </button>
           )}
         </div>
@@ -355,7 +355,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
       {/* Empty state */}
       {!editing && isEmpty && (
         <div
-          className={`flex flex-col items-center justify-center py-8 text-gray-400 dark:text-gray-500 ${canEdit ? 'cursor-pointer hover:text-gray-500 dark:hover:text-gray-400' : ''}`}
+          className={`flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-500 ${canEdit ? 'cursor-pointer hover:text-gray-500 dark:hover:text-gray-400' : ''}`}
           onClick={canEdit ? enterEdit : undefined}
           tabIndex={canEdit ? 0 : undefined}
           role={canEdit ? 'button' : undefined}

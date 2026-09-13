@@ -119,7 +119,7 @@ export function ChangeRequestList({ projectId, onSelect, onNew }: ChangeRequestL
       ) : changeRequests.length === 0 ? (
         <div className="text-center py-12">
           <GitPullRequest className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-          <p className="text-sm text-gray-400 dark:text-gray-500">No change requests found</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">No change requests found</p>
         </div>
       ) : (
         <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">

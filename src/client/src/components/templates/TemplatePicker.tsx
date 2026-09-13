@@ -458,7 +458,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                         ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
                         : s.completed
                           ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                          : 'text-gray-400 dark:text-gray-500'
+                          : 'text-gray-500 dark:text-gray-500'
                     }`}
                   >
                     {s.label}
@@ -469,7 +469,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
           </div>
           <button
             onClick={handleClose}
-            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-1.5 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -556,10 +556,10 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                 onClick={() => fileInputRef.current?.click()}
                 className="flex flex-col items-center justify-center gap-3 p-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors"
               >
-                <Upload className="w-10 h-10 text-gray-400 dark:text-gray-500" />
+                <Upload className="w-10 h-10 text-gray-500 dark:text-gray-500" />
                 <div className="text-center">
                   <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop your file here, or <span className="text-blue-600 font-medium">browse</span></p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">.xlsx, .xls, or .csv (max 5MB)</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">.xlsx, .xls, or .csv (max 5MB)</p>
                 </div>
               </div>
               <input
@@ -775,13 +775,13 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                     <div key={t.id} className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow">
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.name}</h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{t.description}</p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                         <span>{t.taskCount} tasks</span>
                         <span>{t.estimatedDays} days</span>
                         <span className="flex items-center gap-0.5"><Download className="w-3 h-3" />{t.downloadCount}</span>
                       </div>
                       <div className="flex items-center justify-between mt-3">
-                        <span className="text-xs text-gray-400 truncate max-w-[140px]">by {t.publishedByOrgName}</span>
+                        <span className="text-xs text-gray-500 truncate max-w-[140px]">by {t.publishedByOrgName}</span>
                         <button
                           onClick={() => importMutation.mutate(t.id)}
                           disabled={importMutation.isPending}

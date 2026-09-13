@@ -380,7 +380,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
               </>
             )}
             <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-              <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <X className="w-4 h-4 text-gray-500 dark:text-gray-500" />
             </button>
           </div>
         </div>
@@ -431,7 +431,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-4" />
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Generating your status report...</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">This typically takes 20–30 seconds. Feel free to close this dialog and continue working — we'll notify you when it's ready.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">This typically takes 20–30 seconds. Feel free to close this dialog and continue working — we'll notify you when it's ready.</p>
                 </div>
               ) : (mutation.isError || generateError) ? (
                 <div className="text-center py-8">
@@ -488,11 +488,11 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                       {editData.achievements.map((a, i) => (
                         <div key={i} className="flex items-center gap-1">
                           <input type="text" value={a} onChange={e => updateAchievement(i, e.target.value)} className={inputClass + ' flex-1'} />
-                          <button onClick={() => removeAchievement(i)} className="p-1 text-gray-400 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
+                          <button onClick={() => removeAchievement(i)} className="p-1 text-gray-500 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
                         </div>
                       ))}
                       {editData.achievements.length === 0 && (
-                        <p className="text-xs text-gray-400 italic">No achievements listed</p>
+                        <p className="text-xs text-gray-500 italic">No achievements listed</p>
                       )}
                     </div>
                   </div>
@@ -507,11 +507,11 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                       {editData.plannedActivities.map((a, i) => (
                         <div key={i} className="flex items-center gap-1">
                           <input type="text" value={a} onChange={e => updatePlanned(i, e.target.value)} className={inputClass + ' flex-1'} />
-                          <button onClick={() => removePlanned(i)} className="p-1 text-gray-400 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
+                          <button onClick={() => removePlanned(i)} className="p-1 text-gray-500 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
                         </div>
                       ))}
                       {editData.plannedActivities.length === 0 && (
-                        <p className="text-xs text-gray-400 italic">No planned activities listed</p>
+                        <p className="text-xs text-gray-500 italic">No planned activities listed</p>
                       )}
                     </div>
                   </div>
@@ -527,7 +527,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                         <div key={i} className="p-2 border border-gray-200 dark:border-gray-600 rounded-lg space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{item.ref}</span>
-                            <button onClick={() => removeAttention(i)} className="p-0.5 text-gray-400 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
+                            <button onClick={() => removeAttention(i)} className="p-0.5 text-gray-500 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
                           </div>
                           <input type="text" value={item.matter} onChange={e => updateAttention(i, 'matter', e.target.value)} placeholder="Matter requiring attention" className={inputClass} />
                           <div className="grid grid-cols-3 gap-1">
@@ -538,7 +538,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                         </div>
                       ))}
                       {editData.managementAttention.length === 0 && (
-                        <p className="text-xs text-gray-400 italic">No items requiring management attention</p>
+                        <p className="text-xs text-gray-500 italic">No items requiring management attention</p>
                       )}
                     </div>
                   </div>
@@ -601,13 +601,13 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                           <span className="text-gray-500 dark:text-gray-400 ml-1">on day {s.dayOfMonth}</span>
                         )}
                         <span className="text-gray-500 dark:text-gray-400 ml-1">at {s.timeOfDay || '08:00'}</span>
-                        <div className="text-gray-400 dark:text-gray-500 mt-0.5">
+                        <div className="text-gray-500 dark:text-gray-500 mt-0.5">
                           To: {(s.recipients || []).join(', ')}
                         </div>
                       </div>
                       <button
                         onClick={() => deleteMutation.mutate(s.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        className="p-1 text-gray-500 hover:text-red-500 transition-colors"
                         title="Delete schedule"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

@@ -125,7 +125,7 @@ export function ResourceForecastPanel({ projectId }: ResourceForecastPanelProps)
 
   if (isError || !data?.result) {
     return (
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 text-center text-sm text-gray-400 dark:text-gray-500">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 text-center text-sm text-gray-500 dark:text-gray-500">
         Unable to load resource forecast.
       </div>
     );
@@ -189,7 +189,7 @@ export function ResourceForecastPanel({ projectId }: ResourceForecastPanelProps)
               />
             </svg>
             <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Bottlenecks</h3>
-            <span className="text-xs text-gray-400 dark:text-gray-500">
+            <span className="text-xs text-gray-500 dark:text-gray-500">
               {bottlenecks.length} detected
             </span>
           </div>
@@ -205,7 +205,7 @@ export function ResourceForecastPanel({ projectId }: ResourceForecastPanelProps)
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
                       {bn.resourceName}
                     </span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-500">
                       Week of {formatWeek(bn.week)}
                     </span>
                   </div>
@@ -229,7 +229,7 @@ export function ResourceForecastPanel({ projectId }: ResourceForecastPanelProps)
                         className="inline-flex items-center gap-1 rounded bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-300"
                       >
                         {t.taskName}
-                        <span className="text-gray-400">({t.hoursRequired}h)</span>
+                        <span className="text-gray-500">({t.hoursRequired}h)</span>
                       </span>
                     ))}
                   </div>
@@ -267,7 +267,7 @@ export function ResourceForecastPanel({ projectId }: ResourceForecastPanelProps)
                 <span className={`h-2 w-2 rounded-full ${riskDotColor[br.riskLevel] || riskDotColor.medium}`} />
                 <div>
                   <span className="text-xs font-medium text-gray-900 dark:text-white">{br.resourceName}</span>
-                  <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-500">
                     {br.consecutiveOverloadWeeks} week{br.consecutiveOverloadWeeks !== 1 ? 's' : ''} overloaded
                   </span>
                 </div>
@@ -298,7 +298,7 @@ export function ResourceForecastPanel({ projectId }: ResourceForecastPanelProps)
             />
           </svg>
           <p className="text-sm font-medium text-gray-600 dark:text-gray-300">No bottlenecks or burnout risks detected</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Resource allocation looks healthy for the forecast period.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Resource allocation looks healthy for the forecast period.</p>
         </div>
       )}
     </div>

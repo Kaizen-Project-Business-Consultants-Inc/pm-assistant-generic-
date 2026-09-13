@@ -56,26 +56,26 @@ export function CustomFieldManager({ projectId, entityType }: CustomFieldManager
           <div className="w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
         </div>
       ) : fields.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-4">No custom fields defined</p>
+        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-4">No custom fields defined</p>
       ) : (
         <div className="space-y-1">
           {fields.map((field: any) => (
             <div key={field.id} className="flex items-center justify-between p-2 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 group">
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{field.fieldLabel}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-500">
                   {fieldTypeLabel[field.fieldType] || field.fieldType}
                   {field.isRequired && ' · Required'}
                   {field.options?.length > 0 && ` · ${field.options.length} options`}
                 </p>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => setEditField(field)} className="p-1 text-gray-400 hover:text-primary-600">
+                <button onClick={() => setEditField(field)} className="p-1 text-gray-500 hover:text-primary-600">
                   <Edit3 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => setDeleteConfirmId(field.id)}
-                  className="p-1 text-gray-400 hover:text-red-600"
+                  className="p-1 text-gray-500 hover:text-red-600"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

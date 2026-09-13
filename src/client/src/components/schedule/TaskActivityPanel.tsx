@@ -155,7 +155,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
           className={`flex items-center gap-1.5 text-xs font-medium pb-1 border-b-2 transition-colors ${
             tab === 'comments'
               ? 'border-primary-500 text-primary-600'
-              : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              : 'border-transparent text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5" />
@@ -171,7 +171,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
           className={`flex items-center gap-1.5 text-xs font-medium pb-1 border-b-2 transition-colors ${
             tab === 'activity'
               ? 'border-primary-500 text-primary-600'
-              : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              : 'border-transparent text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
           }`}
         >
           <Activity className="w-3.5 h-3.5" />
@@ -207,7 +207,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
                     >
                       <Avatar name={user.name} size="xs" />
                       <span className="font-medium text-gray-700 dark:text-gray-200">{user.name}</span>
-                      <span className="text-gray-400">@{user.username}</span>
+                      <span className="text-gray-500">@{user.username}</span>
                     </button>
                   ))}
                 </div>
@@ -243,7 +243,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
               </div>
             )}
             {!isCommentsError && comments.length === 0 && (
-              <p className="text-xs text-gray-400 text-center py-4">No comments yet</p>
+              <p className="text-xs text-gray-500 text-center py-4">No comments yet</p>
             )}
             {comments.map((comment: any) => (
               <div key={comment.id} className="flex gap-2 group">
@@ -253,7 +253,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
                     <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                       {comment.userName || 'User'}
                     </span>
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-gray-500">
                       {timeAgo(comment.createdAt)}
                     </span>
                     <button
@@ -289,7 +289,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
             </div>
           )}
           {!isActivityError && activities.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-4">No activity recorded</p>
+            <p className="text-xs text-gray-500 text-center py-4">No activity recorded</p>
           )}
           {activities.map((entry: any) => (
             <div key={entry.id} className="flex gap-2 items-start">
@@ -302,13 +302,13 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
                   {entry.oldValue && entry.newValue && (
                     <>
                       {' from '}
-                      <span className="line-through text-gray-400">{formatValue(entry.field, entry.oldValue)}</span>
+                      <span className="line-through text-gray-500">{formatValue(entry.field, entry.oldValue)}</span>
                       {' to '}
                       <span className="font-medium text-primary-600">{formatValue(entry.field, entry.newValue)}</span>
                     </>
                   )}
                 </p>
-                <span className="text-xs text-gray-400">{timeAgo(entry.createdAt)}</span>
+                <span className="text-xs text-gray-500">{timeAgo(entry.createdAt)}</span>
               </div>
             </div>
           ))}

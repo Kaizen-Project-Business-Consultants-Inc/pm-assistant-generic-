@@ -233,7 +233,7 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
       {/* Entries list */}
       {entries.length > 0 && (
         <div className="mt-3 space-y-1">
-          <h4 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">Scheduled Blocks</h4>
+          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase">Scheduled Blocks</h4>
           {entries.map(e => {
             const colors = typeColors[e.type];
             return (
@@ -246,10 +246,10 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
                   {' — '}
                   {new Date(e.dateTo).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
-                {e.note && <span className="text-gray-400 dark:text-gray-500 truncate">{e.note}</span>}
+                {e.note && <span className="text-gray-500 dark:text-gray-500 truncate">{e.note}</span>}
                 <button
                   onClick={() => deleteMutation.mutate(e.id)}
-                  className="ml-auto p-0.5 text-gray-400 hover:text-red-500"
+                  className="ml-auto p-0.5 text-gray-500 hover:text-red-500"
                   title="Delete"
                 >
                   <Trash2 className="w-3 h-3" />

@@ -139,7 +139,7 @@ export function OneDriveConnectModal({ projectId, onClose }: OneDriveConnectModa
             <p className="text-sm text-gray-600 dark:text-gray-300">
               Waiting for authorization...
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               Complete sign-in in the popup window
             </p>
           </div>
@@ -165,7 +165,7 @@ export function OneDriveConnectModal({ projectId, onClose }: OneDriveConnectModa
             <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
               OneDrive connected!
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               Initial sync will begin shortly.
             </p>
           </div>

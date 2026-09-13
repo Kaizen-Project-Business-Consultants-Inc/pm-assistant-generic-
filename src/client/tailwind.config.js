@@ -99,15 +99,17 @@ export default {
         },
         // Identity hues for avatars — chosen to be distinguishable from each
         // other and from every semantic hue (AI violet, risk red/orange/green, status blue).
+        // Identity hues for avatars — each value must differ from every semantic
+        // token (risk, status, confidence, ai) to avoid visual aliasing.
         identity: {
-          1: '#0891b2',  // cyan-600
-          2: '#0d9488',  // teal-600 (brand-adjacent)
-          3: '#059669',  // emerald-600
-          4: '#ca8a04',  // yellow-600
-          5: '#ea580c',  // orange-600
-          6: '#e11d48',  // rose-600
-          7: '#9333ea',  // purple-600
-          8: '#2563eb',  // blue-600
+          1: '#0e7490',  // cyan-700
+          2: '#4338ca',  // indigo-700
+          3: '#7e22ce',  // purple-700
+          4: '#a21caf',  // fuchsia-700
+          5: '#be123c',  // rose-700
+          6: '#b45309',  // amber-700
+          7: '#4d7c0f',  // lime-700
+          8: '#1e40af',  // blue-800
         },
         sidebar: {
           bg: '#1c1917',

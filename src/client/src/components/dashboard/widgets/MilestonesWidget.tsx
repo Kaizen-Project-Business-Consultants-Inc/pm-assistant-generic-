@@ -52,12 +52,12 @@ export function MilestonesWidget({ scope }: Props) {
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Flag className="h-4 w-4 text-gray-400" />
+        <Flag className="h-4 w-4 text-gray-500" />
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Milestones</h3>
       </div>
 
       {milestones.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-6">No upcoming milestones</p>
+        <p className="text-xs text-gray-500 text-center py-6">No upcoming milestones</p>
       ) : (
         <ul className="space-y-2">
           {milestones.map((m) => {
@@ -73,7 +73,7 @@ export function MilestonesWidget({ scope }: Props) {
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{m.projectName}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-500">
                     {new Date(m.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                   </span>
                   <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${overdue ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'}`}>

@@ -100,7 +100,7 @@ function EpicCard({ epic, scheduleId }: { epic: Epic; scheduleId: string }) {
               <div className="animate-spin w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full mx-auto" />
             </div>
           ) : children.length === 0 ? (
-            <p className="p-3 text-xs text-gray-400 text-center">No child tasks</p>
+            <p className="p-3 text-xs text-gray-500 text-center">No child tasks</p>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-700">
               {children.map((child) => {

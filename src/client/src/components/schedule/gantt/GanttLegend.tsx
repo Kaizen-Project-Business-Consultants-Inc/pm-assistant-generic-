@@ -32,7 +32,7 @@ export const GanttLegend = React.memo(function GanttLegend({
         <span className="text-xs text-gray-500 dark:text-gray-400">Today</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="text-xs text-gray-400 dark:text-gray-500">
+        <span className="text-xs text-gray-500 dark:text-gray-500">
           <svg width="16" height="8" className="inline-block">
             <line
               x1="0"

@@ -64,8 +64,8 @@ function ChecklistSection({
         role="button"
         aria-expanded={expanded}
       >
-        {expanded ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
-        <Icon className={`w-4 h-4 ${allChecked ? 'text-green-500' : 'text-gray-400'}`} />
+        {expanded ? <ChevronDown className="w-3.5 h-3.5 text-gray-500" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-500" />}
+        <Icon className={`w-4 h-4 ${allChecked ? 'text-green-500' : 'text-gray-500'}`} />
         <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{label}</span>
         {total > 0 && (
           <span className={`ml-auto text-xs font-medium ${allChecked ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
@@ -78,7 +78,7 @@ function ChecklistSection({
         <div className="p-3">
           {!checklist ? (
             <div className="text-center py-3">
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">No checklist initialized</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500 mb-2">No checklist initialized</p>
               <button
                 onClick={() => initMutation.mutate()}
                 disabled={initMutation.isPending}
@@ -94,7 +94,7 @@ function ChecklistSection({
               )}
             </div>
           ) : items.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-2">No criteria in checklist</p>
+            <p className="text-xs text-gray-500 text-center py-2">No criteria in checklist</p>
           ) : (
             <div className="space-y-1.5">
               {items.map((item) => (
@@ -114,10 +114,10 @@ function ChecklistSection({
                     {item.checked ? (
                       <CheckSquare className="w-4 h-4 text-green-500" />
                     ) : (
-                      <Square className="w-4 h-4 text-gray-400 group-hover:text-gray-500" />
+                      <Square className="w-4 h-4 text-gray-500 group-hover:text-gray-500" />
                     )}
                   </button>
-                  <span className={`text-sm ${item.checked ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-300'}`}>
+                  <span className={`text-sm ${item.checked ? 'text-gray-500 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-300'}`}>
                     {item.label}
                   </span>
                 </label>

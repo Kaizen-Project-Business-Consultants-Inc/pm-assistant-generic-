@@ -22,7 +22,7 @@ const EXEC_STATUS_ICONS: Record<string, any> = {
   failed: { icon: XCircle, color: 'text-red-600' },
   partial: { icon: AlertTriangle, color: 'text-yellow-600' },
   running: { icon: Clock, color: 'text-blue-600' },
-  skipped: { icon: Clock, color: 'text-gray-400' },
+  skipped: { icon: Clock, color: 'text-gray-500' },
 };
 
 function formatDate(d: string | null) {
@@ -36,7 +36,7 @@ function ConditionTraceTree({ node, depth = 0 }: { node: any; depth?: number }) 
       <div className={`flex items-center gap-1.5 text-xs ${depth > 0 ? 'ml-4' : ''}`}>
         {node.passed ? <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
         <span className="font-mono text-gray-700 dark:text-gray-300">{node.field} {node.operator} {node.expectedValue !== undefined ? JSON.stringify(node.expectedValue) : ''}</span>
-        <span className="text-gray-400">(actual: {node.actualValue !== undefined ? JSON.stringify(node.actualValue) : 'undefined'})</span>
+        <span className="text-gray-500">(actual: {node.actualValue !== undefined ? JSON.stringify(node.actualValue) : 'undefined'})</span>
       </div>
     );
   }
@@ -359,7 +359,7 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
           <div className="space-y-1">
             {actionsList.map((a: any, i: number) => (
               <div key={a.id || i} className="text-xs bg-gray-50 dark:bg-gray-700 rounded px-2 py-1 flex items-center gap-2">
-                <span className="text-gray-400">#{i + 1}</span>
+                <span className="text-gray-500">#{i + 1}</span>
                 <span className="font-medium">{a.type}</span>
                 {a.params?.messageTemplate && (
                   <span className="text-gray-500 truncate">— {a.params.messageTemplate}</span>

@@ -60,7 +60,7 @@ export function ResourceImportModal({ onClose }: ResourceImportModalProps) {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Import Resources from CSV</h2>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="p-5 space-y-4">
@@ -116,9 +116,9 @@ export function ResourceImportModal({ onClose }: ResourceImportModalProps) {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Upload className="w-8 h-8 mx-auto text-gray-400" />
+                  <Upload className="w-8 h-8 mx-auto text-gray-500" />
                   <p className="text-sm text-gray-500">Drop a CSV file here or click to browse</p>
-                  <p className="text-xs text-gray-400">Max 5MB, up to 200 resources</p>
+                  <p className="text-xs text-gray-500">Max 5MB, up to 200 resources</p>
                 </div>
               )}
             </div>

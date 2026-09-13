@@ -65,7 +65,7 @@ export function SetupChecklist({ project, onNavigate }: SetupChecklistProps) {
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Get Started</h3>
           <span className="text-xs text-gray-500 dark:text-gray-400">{completedCount}/{items.length} complete</span>
         </div>
-        <button onClick={() => setDismissed(true)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+        <button onClick={() => setDismissed(true)} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
           <X className="w-4 h-4" />
         </button>
       </div>

@@ -76,7 +76,7 @@ function ScreenshotViewer({ feedbackId }: { feedbackId: string }) {
     );
   }
 
-  if (isLoading) return <p className="text-xs text-gray-400">Loading screenshot...</p>;
+  if (isLoading) return <p className="text-xs text-gray-500">Loading screenshot...</p>;
 
   return data?.screenshotData ? (
     <div className="mt-2">
@@ -138,9 +138,9 @@ export function MyFeedbackPage() {
                 onClick={() => setExpandedId(expanded ? null : item.id)}
               >
                 {expanded ? (
-                  <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
                 )}
                 <CategoryIcon className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -157,11 +157,11 @@ export function MyFeedbackPage() {
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${statusStyle.bg}`}>
                   {statusStyle.label}
                 </span>
-                <span className="text-xs text-gray-400 flex-shrink-0 whitespace-nowrap">
+                <span className="text-xs text-gray-500 flex-shrink-0 whitespace-nowrap">
                   <Clock className="w-3 h-3 inline mr-1" />
                   {timeAgo(item.createdAt)}
                 </span>
-                {item.hasScreenshot && <Camera className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+                {item.hasScreenshot && <Camera className="w-4 h-4 text-gray-500 flex-shrink-0" />}
                 {item.adminReply && (
                   <span className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0" title="Has response" />
                 )}
@@ -197,7 +197,7 @@ export function MyFeedbackPage() {
 
                   {/* No reply yet */}
                   {!item.adminReply && item.status !== 'resolved' && (
-                    <p className="text-xs text-gray-400 italic">Awaiting response from our team.</p>
+                    <p className="text-xs text-gray-500 italic">Awaiting response from our team.</p>
                   )}
                 </div>
               )}

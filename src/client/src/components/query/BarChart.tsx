@@ -112,7 +112,7 @@ export function BarChart({ data, xAxisLabel, yAxisLabel, horizontal = false }: B
 
   if (!layout || data.length === 0) {
     return (
-      <div className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
+      <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-500">
         No chart data available.
       </div>
     );

@@ -145,23 +145,6 @@ export const barColors: Record<string, { bg: string; fill: string; text: string 
   cancelled: { bg: '#f5f5f4', fill: '#a8a29e', text: '#44403c' },
 };
 
-export const AVATAR_PALETTE = [
-  '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-];
-
-export function avatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
-}
-
-export function avatarInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
-
 export const statusLabels: Record<string, string> = {
   completed: 'Complete',
   done: 'Complete',
@@ -174,11 +157,12 @@ export const statusLabels: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
+// Priority dot colours mapped to risk.* design tokens from tailwind.config.js
 export const priorityDot: Record<string, string> = {
-  urgent: 'bg-red-500',
-  high: 'bg-orange-400',
-  medium: 'bg-yellow-400',
-  low: 'bg-green-400',
+  urgent: 'bg-risk-critical',
+  high: 'bg-risk-high',
+  medium: 'bg-risk-medium',
+  low: 'bg-risk-low',
 };
 
 // ---------------------------------------------------------------------------
@@ -379,5 +363,6 @@ export interface GanttFilters {
 // Health color helper
 // ---------------------------------------------------------------------------
 
+// Health colours mapped to confidence.* tokens from tailwind.config.js
 export const healthColor = (health: 'satisfied' | 'in_progress' | 'at_risk') =>
-  health === 'satisfied' ? '#22c55e' : health === 'in_progress' ? '#eab308' : '#ef4444';
+  health === 'satisfied' ? '#059669' : health === 'in_progress' ? '#d97706' : '#dc2626';

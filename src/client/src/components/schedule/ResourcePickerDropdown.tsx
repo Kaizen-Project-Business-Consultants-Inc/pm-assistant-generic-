@@ -60,7 +60,7 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
         <div className="px-3 py-1.5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
           <span className="text-xs text-gray-600 dark:text-gray-300 truncate">{currentResource.name}</span>
           <button
-            className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+            className="p-0.5 text-gray-500 hover:text-red-500 transition-colors"
             onClick={(e) => { e.stopPropagation(); onClear(); }}
             title="Unassign"
           >
@@ -89,7 +89,7 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
       {/* Resource list */}
       <div className="max-h-48 overflow-y-auto">
         {filtered.length === 0 ? (
-          <div className="px-3 py-2 text-xs text-gray-400 text-center">
+          <div className="px-3 py-2 text-xs text-gray-500 text-center">
             {resources.length === 0 ? 'No resources in project' : 'No matches'}
           </div>
         ) : (
@@ -107,7 +107,7 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
                 <Avatar name={r.name} size="xs" />
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
-                  <div className="text-gray-400 dark:text-gray-500 truncate">{r.role}</div>
+                  <div className="text-gray-500 dark:text-gray-500 truncate">{r.role}</div>
                 </div>
                 {isSelected && <span className="text-primary-600 text-xs font-medium">Current</span>}
               </button>

@@ -82,7 +82,7 @@ export function AdminRevenuePage() {
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5">
               <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Subscribers by Tier</h3>
               {data.subscribersByTier.length === 0 ? (
-                <p className="text-sm text-gray-400 dark:text-gray-500">No active subscribers yet.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500">No active subscribers yet.</p>
               ) : (
                 <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -136,7 +136,7 @@ export function AdminRevenuePage() {
                         <div className="absolute bottom-0 w-full bg-cyan-400 dark:bg-cyan-600 rounded-t" style={{ height: `${totalH > 0 ? ((pt.topups / (pt.mrr + pt.topups)) * 100) : 0}%` }} />
                         <div className="absolute bottom-0 w-full bg-green-500 dark:bg-green-600 rounded-t" style={{ height: `${mrrH > 0 ? (mrrH / totalH * 100) : 0}%` }} />
                       </div>
-                      <span className="text-[9px] text-gray-400 dark:text-gray-500 truncate w-full text-center">{pt.month.slice(5)}</span>
+                      <span className="text-[9px] text-gray-500 dark:text-gray-500 truncate w-full text-center">{pt.month.slice(5)}</span>
                     </div>
                   );
                 })}
@@ -152,7 +152,7 @@ export function AdminRevenuePage() {
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5">
             <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Recent Events</h3>
             {data.recentEvents.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500">No subscription events yet.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-500">No subscription events yet.</p>
             ) : (
               <div className="space-y-2 max-h-80 overflow-y-auto">
                 {data.recentEvents.map(ev => {
@@ -165,13 +165,13 @@ export function AdminRevenuePage() {
                       <span className="text-gray-700 dark:text-gray-200 truncate flex-1">
                         {ev.full_name || ev.email || ev.user_id}
                         {ev.previous_tier && ev.new_tier && ev.previous_tier !== ev.new_tier && (
-                          <span className="text-gray-400 dark:text-gray-500"> ({ev.previous_tier} → {ev.new_tier})</span>
+                          <span className="text-gray-500 dark:text-gray-500"> ({ev.previous_tier} → {ev.new_tier})</span>
                         )}
                         {ev.amount_cents != null && (
-                          <span className="text-gray-400 dark:text-gray-500"> ${(ev.amount_cents / 100).toFixed(2)}</span>
+                          <span className="text-gray-500 dark:text-gray-500"> ${(ev.amount_cents / 100).toFixed(2)}</span>
                         )}
                       </span>
-                      <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{fmt(ev.created_at)}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-500 whitespace-nowrap">{fmt(ev.created_at)}</span>
                     </div>
                   );
                 })}

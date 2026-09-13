@@ -42,7 +42,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
       {/* Search — hidden in Gantt mode (GanttChart has its own Ctrl+F search) */}
       {tasksCount > 0 && viewMode !== 'gantt' && (
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
           <input
             type="text"
             value={searchQuery}
@@ -51,7 +51,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
             className="w-40 lg:w-48 pl-7 pr-7 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-400 focus:border-primary-400"
           />
           {searchQuery && (
-            <button onClick={() => onSearchChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Clear search">
+            <button onClick={() => onSearchChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Clear search">
               <X className="w-3 h-3" />
             </button>
           )}
@@ -120,7 +120,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
 
       {/* Filter result count */}
       {hasActiveFilters && (
-        <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
+        <span className="text-xs text-gray-500 dark:text-gray-500 ml-auto">
           {filteredCount} of {totalCount} tasks
         </span>
       )}

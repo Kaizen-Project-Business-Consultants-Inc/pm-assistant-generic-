@@ -40,7 +40,7 @@ export function IssuesCreatedVsResolvedChart({ scope }: Props) {
     return (
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Issues Created vs Resolved</h3>
-        <p className="text-xs text-gray-400 text-center py-8">No data available</p>
+        <p className="text-xs text-gray-500 text-center py-8">No data available</p>
       </div>
     );
   }

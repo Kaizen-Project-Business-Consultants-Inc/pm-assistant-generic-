@@ -75,7 +75,7 @@ export function BurndownChart({ dataPoints, totalScope, height = 300 }: Burndown
   }, [dataPoints, totalScope, height]);
 
   if (dataPoints.length === 0) {
-    return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">No burndown data available</p>;
+    return <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-8">No burndown data available</p>;
   }
 
   const svgWidth = 700;

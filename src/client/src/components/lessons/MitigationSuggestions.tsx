@@ -64,7 +64,7 @@ export const MitigationSuggestions: React.FC<MitigationSuggestionsProps> = ({
 
             {/* Source project */}
             <div className="flex items-center gap-1.5 mb-3">
-              <Building2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+              <Building2 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 Source: <span className="font-medium text-gray-700 dark:text-gray-200">{item.source}</span>
               </span>

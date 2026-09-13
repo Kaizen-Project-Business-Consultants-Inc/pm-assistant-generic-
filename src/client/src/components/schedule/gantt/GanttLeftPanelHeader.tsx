@@ -146,7 +146,7 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
                   {col.label}
                   {isSortable && (
                     !isActiveSortCol
-                      ? <ArrowUpDown className="w-3 h-3 text-gray-400" />
+                      ? <ArrowUpDown className="w-3 h-3 text-gray-500" />
                       : sortDirection === 'asc'
                         ? <ArrowUp className="w-3 h-3 text-primary-600" />
                         : <ArrowDown className="w-3 h-3 text-primary-600" />

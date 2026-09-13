@@ -37,7 +37,7 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Resource Profile</h2>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close"><X className="w-5 h-5" /></button>
         </div>
 
         {isLoading ? (
@@ -45,7 +45,7 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
             <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
           </div>
         ) : !resource ? (
-          <div className="text-center py-12 text-gray-400">Resource not found.</div>
+          <div className="text-center py-12 text-gray-500">Resource not found.</div>
         ) : (
           <div className="p-5 space-y-5">
             {/* Header */}
@@ -56,7 +56,7 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{resource.name}</h3>
                 <p className="text-sm text-gray-500">{resource.role}</p>
-                <p className="text-xs text-gray-400">{resource.email}</p>
+                <p className="text-xs text-gray-500">{resource.email}</p>
               </div>
             </div>
 
@@ -104,7 +104,7 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
             <div>
               <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Current Assignments</h4>
               {assignments.length === 0 ? (
-                <p className="text-sm text-gray-400">No active assignments.</p>
+                <p className="text-sm text-gray-500">No active assignments.</p>
               ) : (
                 <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                   <table className="w-full text-sm">
@@ -142,7 +142,7 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
               )}
               <div>
                 <span className="text-gray-500">Status:</span>{' '}
-                <span className={resource.isActive ? 'text-green-600' : 'text-gray-400'}>{resource.isActive ? 'Active' : 'Inactive'}</span>
+                <span className={resource.isActive ? 'text-green-600' : 'text-gray-500'}>{resource.isActive ? 'Active' : 'Inactive'}</span>
               </div>
             </div>
           </div>

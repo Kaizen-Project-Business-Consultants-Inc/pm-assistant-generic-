@@ -39,7 +39,7 @@ export function FlowMetricsWidget({ scheduleId }: FlowMetricsWidgetProps) {
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center">
         <Activity className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
         <p className="text-sm text-gray-500 dark:text-gray-400">No flow metrics available</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Complete some tasks to see lead time and cycle time metrics.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Complete some tasks to see lead time and cycle time metrics.</p>
       </div>
     );
   }
@@ -66,21 +66,21 @@ export function FlowMetricsWidget({ scheduleId }: FlowMetricsWidgetProps) {
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4">
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium">Avg Lead Time</div>
+          <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-500 font-medium">Avg Lead Time</div>
           <div className={`text-xl font-bold ${timeColor(metrics.avgLeadTimeDays)}`}>{metrics.avgLeadTimeDays}d</div>
-          <div className="text-xs text-gray-400">created to done</div>
+          <div className="text-xs text-gray-500">created to done</div>
         </div>
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium">Avg Cycle Time</div>
+          <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-500 font-medium">Avg Cycle Time</div>
           <div className={`text-xl font-bold ${timeColor(metrics.avgCycleTimeDays)}`}>{metrics.avgCycleTimeDays}d</div>
-          <div className="text-xs text-gray-400">started to done</div>
+          <div className="text-xs text-gray-500">started to done</div>
         </div>
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium">Median Lead</div>
+          <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-500 font-medium">Median Lead</div>
           <div className={`text-xl font-bold ${timeColor(metrics.medianLeadTimeDays)}`}>{metrics.medianLeadTimeDays}d</div>
         </div>
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium">Median Cycle</div>
+          <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-500 font-medium">Median Cycle</div>
           <div className={`text-xl font-bold ${timeColor(metrics.medianCycleTimeDays)}`}>{metrics.medianCycleTimeDays}d</div>
         </div>
       </div>

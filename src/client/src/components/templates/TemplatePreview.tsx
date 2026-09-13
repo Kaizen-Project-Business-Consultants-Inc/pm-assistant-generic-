@@ -45,7 +45,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({ template, onBa
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>
-        <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
           <Clock className="w-3 h-3" />
           ~{template.estimatedDurationDays} days
           <span className="mx-1">|</span>
@@ -80,7 +80,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({ template, onBa
               <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${pColor}`}>
                 {task.priority}
               </span>
-              <span className="text-xs text-gray-400 dark:text-gray-500 w-12 text-right flex-shrink-0">
+              <span className="text-xs text-gray-500 dark:text-gray-500 w-12 text-right flex-shrink-0">
                 {task.estimatedDays}d
               </span>
             </div>

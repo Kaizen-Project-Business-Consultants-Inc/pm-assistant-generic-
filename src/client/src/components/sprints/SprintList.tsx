@@ -68,7 +68,7 @@ function VelocitySparkline({ sprints }: { sprints: Sprint[] }) {
           <circle key={i} cx={(i / (vals.length - 1)) * w} cy={h - ((v - min) / range) * (h - 4) - 2} r="2" fill="#6366f1" />
         ))}
       </svg>
-      <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">velocity</span>
+      <span className="text-xs text-gray-500 dark:text-gray-500 whitespace-nowrap">velocity</span>
     </div>
   );
 }
@@ -130,7 +130,7 @@ export function SprintList({ projectId, onSelect, onCreate, onRetro }: SprintLis
         <div className="flex items-center gap-2">
           <Kanban className="w-4 h-4 text-primary-500" />
           <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Sprints</h3>
-          <span className="text-xs text-gray-400">({sprints.length})</span>
+          <span className="text-xs text-gray-500">({sprints.length})</span>
           <VelocitySparkline sprints={sprints} />
         </div>
         <div className="flex items-center gap-2">
@@ -158,7 +158,7 @@ export function SprintList({ projectId, onSelect, onCreate, onRetro }: SprintLis
         <div className="p-8 text-center">
           <Target className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
           <p className="text-sm text-gray-500 dark:text-gray-400">No sprints yet</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Create your first sprint to start planning.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Create your first sprint to start planning.</p>
         </div>
       ) : (
         <div className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -191,7 +191,7 @@ export function SprintList({ projectId, onSelect, onCreate, onRetro }: SprintLis
                     {sprint.goal && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-1">{sprint.goal}</p>
                     )}
-                    <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+                    <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
                       <span>{formatDate(sprint.start_date)} - {formatDate(sprint.end_date)}</span>
                     </div>
                     {sprint.taskStats && sprint.taskStats.totalTasks > 0 && (() => {
@@ -227,7 +227,7 @@ export function SprintList({ projectId, onSelect, onCreate, onRetro }: SprintLis
                         <span className="font-medium text-gray-700 dark:text-gray-300">
                           {sprint.velocity_actual ?? '?'}
                         </span>
-                        <span className="text-gray-400 dark:text-gray-500"> / {sprint.velocity_commitment} pts</span>
+                        <span className="text-gray-500 dark:text-gray-500"> / {sprint.velocity_commitment} pts</span>
                       </div>
                     )}
                     {sprint.status === 'completed' && onRetro && (
