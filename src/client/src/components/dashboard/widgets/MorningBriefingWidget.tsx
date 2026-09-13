@@ -35,11 +35,13 @@ export function MorningBriefingWidget({ scope }: Props) {
     } catch { /* ignore */ }
   }, []);
 
-  const { data: briefing, isLoading } = useQuery({
+  const { data: briefingRaw, isLoading } = useQuery({
     queryKey: ['daily-briefing', scope],
     queryFn: () => apiService.getDailyBriefing(scope),
     staleTime: 120_000,
   });
+  // Unwrap the { data: ... } envelope from the API response
+  const briefing = briefingRaw?.data ?? briefingRaw;
 
   const toggle = () => {
     const next = !collapsed;
