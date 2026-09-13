@@ -82,6 +82,7 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
           <div
             key={col.key}
             role="columnheader"
+            aria-sort={isSortable ? (isActiveSortCol ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
             draggable={colIsDraggable}
             onDragStart={(e) => ganttColDrag.handleDragStart(e, col.key)}
             onDragOver={(e) => ganttColDrag.handleDragOver(e, col.key)}

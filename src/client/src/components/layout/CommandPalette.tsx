@@ -8,6 +8,7 @@ import {
   UserCog, CreditCard,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { severityColor } from '../../utils/severityColors';
 import { useModal } from '../../hooks/useModal';
 
 // --- Types ---
@@ -116,12 +117,7 @@ const statusColors: Record<string, string> = {
   cancelled: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300',
 };
 
-const severityColors: Record<string, string> = {
-  critical: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
-  high: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300',
-  medium: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300',
-  low: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
-};
+// Severity colors now use shared severityColor() from utils/severityColors.ts
 
 const priorityColors: Record<string, string> = {
   critical: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
@@ -165,7 +161,7 @@ function ResultBadges({ result }: { result: SearchResult }) {
         <span className="text-xs text-gray-400 font-mono">{result.recordId}</span>
       )}
       {result.type === 'risk' && result.severity && (
-        <span className={`inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded-full ${severityColors[result.severity] || 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
+        <span className={`inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded-full ${severityColor(result.severity)}`}>
           {formatStatus(result.severity)}
         </span>
       )}
@@ -443,7 +439,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
             placeholder="Type a command or search..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full h-12 pl-3 pr-4 text-sm bg-transparent border-0 outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
+            className="w-full h-12 pl-3 pr-4 text-sm bg-transparent border-0 focus-visible:ring-2 focus-visible:ring-primary-500 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
           />
           <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-gray-400 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
             ESC

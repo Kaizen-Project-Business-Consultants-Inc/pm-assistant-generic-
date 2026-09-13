@@ -34,18 +34,19 @@ const typeIcons: Record<string, React.ElementType> = {
   ai_budget_warning: Wallet,
 };
 
+// Dot/text colors mapped to risk.* design tokens from tailwind.config.js
 const severityColors: Record<Notification['severity'], string> = {
-  critical: 'bg-red-500',
-  high: 'bg-orange-500',
-  medium: 'bg-yellow-500',
-  low: 'bg-blue-500',
+  critical: 'bg-risk-critical',
+  high: 'bg-risk-high',
+  medium: 'bg-risk-medium',
+  low: 'bg-risk-low',
 };
 
 const severityTextColors: Record<Notification['severity'], string> = {
-  critical: 'text-red-600',
-  high: 'text-orange-600',
-  medium: 'text-yellow-600',
-  low: 'text-blue-600',
+  critical: 'text-risk-critical',
+  high: 'text-risk-high',
+  medium: 'text-risk-medium',
+  low: 'text-risk-low',
 };
 
 

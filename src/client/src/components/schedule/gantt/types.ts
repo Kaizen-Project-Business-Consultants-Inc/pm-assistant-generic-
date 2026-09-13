@@ -130,16 +130,19 @@ export function buildFlatRows(tasks: GanttTask[], collapsedIds?: Set<string>): F
 // Status / priority colors
 // ---------------------------------------------------------------------------
 
+// Bar colours derived from the status.* tokens in tailwind.config.js
+// complete=#059669, active=#2563eb, not-started=#78716c (stone-500),
+// cancelled=#a8a29e (stone-400), overdue=#dc2626
 export const barColors: Record<string, { bg: string; fill: string; text: string }> = {
-  completed: { bg: '#dcfce7', fill: '#22c55e', text: '#166534' },
-  done: { bg: '#dcfce7', fill: '#22c55e', text: '#166534' },
-  in_progress: { bg: '#dbeafe', fill: '#3b82f6', text: '#1e40af' },
+  completed: { bg: '#ecfdf5', fill: '#059669', text: '#064e3b' },
+  done: { bg: '#ecfdf5', fill: '#059669', text: '#064e3b' },
+  in_progress: { bg: '#dbeafe', fill: '#2563eb', text: '#1e3a8a' },
   in_review: { bg: '#f3e8ff', fill: '#a855f7', text: '#6b21a8' },
   testing: { bg: '#fef3c7', fill: '#f59e0b', text: '#92400e' },
-  pending: { bg: '#f3f4f6', fill: '#9ca3af', text: '#374151' },
-  not_started: { bg: '#f3f4f6', fill: '#9ca3af', text: '#374151' },
-  blocked: { bg: '#fee2e2', fill: '#ef4444', text: '#991b1b' },
-  cancelled: { bg: '#fce4ec', fill: '#78909c', text: '#37474f' },
+  pending: { bg: '#f5f5f4', fill: '#78716c', text: '#44403c' },
+  not_started: { bg: '#f5f5f4', fill: '#78716c', text: '#44403c' },
+  blocked: { bg: '#fee2e2', fill: '#dc2626', text: '#991b1b' },
+  cancelled: { bg: '#f5f5f4', fill: '#a8a29e', text: '#44403c' },
 };
 
 export const AVATAR_PALETTE = [

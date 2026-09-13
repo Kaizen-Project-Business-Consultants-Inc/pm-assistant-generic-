@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore, Notification } from '../stores/uiStore';
 import { apiService } from '../services/api';
 import { timeAgo } from '../utils/timeAgo';
+import { severityColor } from '../utils/severityColors';
 
 // ---------------------------------------------------------------------------
 // Constants (same as NotificationBell)
@@ -65,25 +66,20 @@ const typeLabels: Record<string, string> = {
   ai_budget_warning: 'AI Budget',
 };
 
-const severityColors: Record<string, string> = {
-  critical: 'bg-red-500',
-  high: 'bg-orange-500',
-  medium: 'bg-yellow-500',
-  low: 'bg-blue-500',
+// Dot colors mapped to risk.* design tokens
+const severityDotColors: Record<string, string> = {
+  critical: 'bg-risk-critical',
+  high: 'bg-risk-high',
+  medium: 'bg-risk-medium',
+  low: 'bg-risk-low',
 };
 
-const severityBadge: Record<string, string> = {
-  critical: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-  high: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
-  medium: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
-  low: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-};
-
+// Text colors for severity headings/icons
 const severityTextColors: Record<string, string> = {
-  critical: 'text-red-600',
-  high: 'text-orange-600',
-  medium: 'text-yellow-600',
-  low: 'text-blue-600',
+  critical: 'text-risk-critical',
+  high: 'text-risk-high',
+  medium: 'text-risk-medium',
+  low: 'text-risk-low',
 };
 
 
@@ -282,7 +278,7 @@ export function NotificationsPage() {
                 className={`flex items-start gap-4 px-5 py-4 relative hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${n.read ? 'opacity-60' : ''} ${isClickable ? 'cursor-pointer' : ''}`}
               >
                 {/* Severity bar */}
-                <div className={`absolute left-0 top-0 bottom-0 w-1 ${severityColors[n.severity]}`} />
+                <div className={`absolute left-0 top-0 bottom-0 w-1 ${severityDotColors[n.severity]}`} />
 
                 {/* Icon */}
                 <div className={`shrink-0 mt-0.5 ${severityTextColors[n.severity]}`}>
@@ -296,7 +292,7 @@ export function NotificationsPage() {
                       {n.title}
                     </p>
                     <div className="flex items-center gap-1 shrink-0">
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-bold capitalize ${severityBadge[n.severity]}`}>{n.severity}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-bold capitalize ${severityColor(n.severity)}`}>{n.severity}</span>
                       {!n.read && (
                         <button
                           onClick={(e) => {

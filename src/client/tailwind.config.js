@@ -55,7 +55,8 @@ export default {
           900: '#134e4a',
           950: '#042f2e',
         },
-        // Warm neutral ramp — stone
+        // Warm neutral ramp — stone (component surfaces: cards, inputs, buttons)
+        // gray = text and borders, neutral = component surfaces
         neutral: {
           50:  '#fafaf9',
           100: '#f5f5f4',
@@ -92,9 +93,21 @@ export default {
         status: {
           complete: '#059669',
           active: '#2563eb',
-          'not-started': '#6b7280',
-          cancelled: '#9ca3af',
+          'not-started': '#78716c',   // stone-500 — warm neutral, matches app ramp
+          cancelled: '#a8a29e',       // stone-400 — withdrawn, not alarming
           overdue: '#dc2626',
+        },
+        // Identity hues for avatars — chosen to be distinguishable from each
+        // other and from every semantic hue (AI violet, risk red/orange/green, status blue).
+        identity: {
+          1: '#0891b2',  // cyan-600
+          2: '#0d9488',  // teal-600 (brand-adjacent)
+          3: '#059669',  // emerald-600
+          4: '#ca8a04',  // yellow-600
+          5: '#ea580c',  // orange-600
+          6: '#e11d48',  // rose-600
+          7: '#9333ea',  // purple-600
+          8: '#2563eb',  // blue-600
         },
         sidebar: {
           bg: '#1c1917',

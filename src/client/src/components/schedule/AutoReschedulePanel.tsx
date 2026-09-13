@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { X, AlertTriangle, Loader2, CheckCircle2, XCircle, Pencil, Flag, Lock } from 'lucide-react';
+import { severityColor } from '../../utils/severityColors';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,12 +49,7 @@ interface Proposal {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const severityColors: Record<string, { bg: string; text: string }> = {
-  critical: { bg: 'bg-red-100 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-400' },
-  high: { bg: 'bg-orange-100 dark:bg-orange-900/20', text: 'text-orange-700 dark:text-orange-400' },
-  medium: { bg: 'bg-yellow-100 dark:bg-yellow-900/20', text: 'text-yellow-700 dark:text-yellow-400' },
-  low: { bg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-400' },
-};
+// Severity colors now use shared severityColor() from utils/severityColors.ts
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return '--';
@@ -288,7 +284,6 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
             {!delaysLoading && delays.length > 0 && (
               <div className="space-y-2">
                 {delays.map((delay) => {
-                  const colors = severityColors[delay.severity] || severityColors.low;
                   return (
                     <div
                       key={delay.taskId}
@@ -309,7 +304,7 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
                         -{delay.delayDays}d
                       </span>
                       <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${colors.bg} ${colors.text}`}
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${severityColor(delay.severity)}`}
                       >
                         {delay.severity}
                       </span>

@@ -101,17 +101,17 @@ export const AccessibilityTab: React.FC = () => {
           onChange={(e) => handleFontSize(Number(e.target.value))}
           className="w-full max-w-sm accent-primary-600"
         />
-        <div className="flex justify-between text-xs text-gray-400 max-w-sm mt-1">
-          <span>75%</span>
-          <span>100%</span>
-          <span>150%</span>
-          <span>200%</span>
+        <div className="relative text-xs text-gray-400 max-w-sm mt-1 h-4">
+          <span className="absolute left-[0%]">75%</span>
+          <span className="absolute left-[20%] -translate-x-1/2">100%</span>
+          <span className="absolute left-[60%] -translate-x-1/2">150%</span>
+          <span className="absolute right-0">200%</span>
         </div>
       </div>
 
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Text Simplification</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">AI-generated narratives and reports can be simplified for easier reading.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Set your preferred simplification level for AI-generated text. When enabled, you can use Mjuzi Chat to simplify any report or narrative on demand.</p>
         <div className="flex flex-wrap gap-3">
           {(['off', 'mild', 'strong'] as const).map((level) => (
             <button

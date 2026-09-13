@@ -17,6 +17,7 @@ import {
 import { apiService } from '../../services/api';
 import { SCurveChart } from '../../components/evm/SCurveChart';
 import { TaskPrioritizationPanel } from '../../components/ai/TaskPrioritizationPanel';
+import { severityColor as sharedSeverityColor } from '../../utils/severityColors';
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -116,18 +117,12 @@ function MetricCard({
   );
 }
 
-const severityColors: Record<string, string> = {
-  critical: 'bg-red-100 text-red-600 border-red-200',
-  high: 'bg-orange-100 text-orange-500 border-orange-200',
-  medium: 'bg-yellow-100 text-yellow-500 border-yellow-200',
-  low: 'bg-green-100 text-green-500 border-green-200',
-};
-
+// Severity dot colors mapped to risk.* design tokens
 const severityDotColors: Record<string, string> = {
-  critical: 'bg-red-600',
-  high: 'bg-orange-500',
-  medium: 'bg-yellow-500',
-  low: 'bg-green-500',
+  critical: 'bg-risk-critical',
+  high: 'bg-risk-high',
+  medium: 'bg-risk-medium',
+  low: 'bg-risk-low',
 };
 
 // ---------------------------------------------------------------------------
@@ -180,15 +175,6 @@ function TaskSlipPredictionSection({ projectId }: { projectId: string }) {
   const tasks = data?.data?.tasks || [];
   const summary = data?.data?.summary || '';
 
-  const severityColor = (s: string) => {
-    switch (s) {
-      case 'critical': return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
-      case 'high': return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400';
-      case 'medium': return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
-      default: return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
-    }
-  };
-
   const barColor = (prob: number) =>
     prob >= 80 ? 'bg-red-500' : prob >= 60 ? 'bg-orange-500' : prob >= 30 ? 'bg-amber-500' : 'bg-green-500';
 
@@ -210,7 +196,7 @@ function TaskSlipPredictionSection({ projectId }: { projectId: string }) {
               <div key={task.taskId} className="p-2.5 rounded-lg border border-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-medium text-gray-900 dark:text-white truncate flex-1">{task.taskName}</span>
-                  <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${severityColor(task.severity)}`}>
+                  <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${sharedSeverityColor(task.severity)}`}>
                     {task.slipProbability}%
                   </span>
                 </div>
@@ -243,15 +229,6 @@ function ScopeCreepSection({ projectId }: { projectId: string }) {
     enabled: !!projectId,
   });
 
-  const severityColor = (s: string) => {
-    switch (s) {
-      case 'critical': return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800';
-      case 'high': return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800';
-      case 'medium': return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800';
-      default: return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800';
-    }
-  };
-
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
       <div className="flex items-center gap-2 mb-3">
@@ -268,7 +245,7 @@ function ScopeCreepSection({ projectId }: { projectId: string }) {
       ) : (
         <>
           <div className="flex items-center gap-2 mb-3">
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium border ${severityColor(data.severity)}`}>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium border ${sharedSeverityColor(data.severity)}`}>
               {data.severity.charAt(0).toUpperCase() + data.severity.slice(1)} Risk
             </span>
           </div>
@@ -433,7 +410,7 @@ function RiskAssessmentSection({ projectId }: { projectId: string }) {
               {riskData.risks.map((risk: any, idx: number) => (
                 <div
                   key={idx}
-                  className={`rounded-lg border p-3 ${severityColors[risk.severity] || 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700'}`}
+                  className={`rounded-lg border p-3 ${sharedSeverityColor(risk.severity)}`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">

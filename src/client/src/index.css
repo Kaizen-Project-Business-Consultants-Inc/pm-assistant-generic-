@@ -193,34 +193,34 @@
   outline-color: #fff;
 }
 
-/* Boost muted text contrast — light mode */
+/* Boost muted text contrast — light mode (stone ramp to match app neutrals) */
 .high-contrast [class*="text-gray-400"],
 .high-contrast [class*="text-gray-500"] {
-  color: #374151; /* gray-700, WCAG AA on white */
+  color: #44403c; /* stone-700, WCAG AA on white */
 }
 /* Boost muted text contrast — dark mode */
 .high-contrast.dark [class*="text-gray-400"],
 .high-contrast.dark [class*="text-gray-500"] {
-  color: #d1d5db; /* gray-300, WCAG AA on dark backgrounds */
+  color: #d6d3d1; /* stone-300, WCAG AA on dark backgrounds */
 }
 
 /* Boost border contrast — light mode */
 .high-contrast [class*="border-gray-200"],
 .high-contrast [class*="border-gray-300"] {
-  border-color: #6b7280; /* gray-500 */
+  border-color: #78716c; /* stone-500 */
 }
 /* Boost border contrast — dark mode */
 .high-contrast.dark [class*="border-gray-600"],
 .high-contrast.dark [class*="border-gray-700"] {
-  border-color: #9ca3af; /* gray-400 */
+  border-color: #a8a29e; /* stone-400 */
 }
 
 /* Boost placeholder text */
 .high-contrast ::placeholder {
-  color: #374151;
+  color: #44403c; /* stone-700 */
 }
 .high-contrast.dark ::placeholder {
-  color: #d1d5db;
+  color: #d6d3d1; /* stone-300 */
 }
 
 /* Reduced motion (user preference via toggle) */
@@ -238,20 +238,20 @@
   }
 }
 
-/* W1: OS-level high contrast — mirrors .high-contrast toggle rules */
+/* W1: OS-level high contrast — mirrors .high-contrast toggle rules (stone ramp) */
 @media (prefers-contrast: more) {
   body { color: #000; background: #fff; }
   .card, .rounded-xl { border-width: 2px; border-color: #000; }
   button:focus, a:focus { outline: 3px solid #000; outline-offset: 2px; }
-  [class*="text-gray-400"], [class*="text-gray-500"] { color: #374151; }
-  [class*="border-gray-200"], [class*="border-gray-300"] { border-color: #6b7280; }
-  ::placeholder { color: #374151; }
+  [class*="text-gray-400"], [class*="text-gray-500"] { color: #44403c; /* stone-700 */ }
+  [class*="border-gray-200"], [class*="border-gray-300"] { border-color: #78716c; /* stone-500 */ }
+  ::placeholder { color: #44403c; }
 }
 @media (prefers-contrast: more) {
   .dark body { color: #fff; background: #000; }
   .dark .card, .dark .rounded-xl { border-color: #fff; }
   .dark button:focus, .dark a:focus { outline-color: #fff; }
-  .dark [class*="text-gray-400"], .dark [class*="text-gray-500"] { color: #d1d5db; }
-  .dark [class*="border-gray-600"], .dark [class*="border-gray-700"] { border-color: #9ca3af; }
-  .dark ::placeholder { color: #d1d5db; }
+  .dark [class*="text-gray-400"], .dark [class*="text-gray-500"] { color: #d6d3d1; /* stone-300 */ }
+  .dark [class*="border-gray-600"], .dark [class*="border-gray-700"] { border-color: #a8a29e; /* stone-400 */ }
+  .dark ::placeholder { color: #d6d3d1; }
 }

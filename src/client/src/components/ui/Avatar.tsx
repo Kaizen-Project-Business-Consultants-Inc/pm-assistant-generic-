@@ -1,14 +1,13 @@
+// Avatar identity hues mapped to identity.* tokens from tailwind.config.js
 const AVATAR_COLORS = [
-  'bg-blue-500',
-  'bg-emerald-500',
-  'bg-purple-500',
-  'bg-amber-500',
-  'bg-rose-500',
-  'bg-cyan-500',
-  'bg-indigo-500',
-  'bg-pink-500',
-  'bg-orange-500',
-  'bg-teal-500',
+  'bg-identity-1',  // cyan-600
+  'bg-identity-2',  // teal-600
+  'bg-identity-3',  // emerald-600
+  'bg-identity-4',  // yellow-600
+  'bg-identity-5',  // orange-600
+  'bg-identity-6',  // rose-600
+  'bg-identity-7',  // purple-600
+  'bg-identity-8',  // blue-600
 ];
 
 function hashName(s: string): number {
