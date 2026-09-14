@@ -138,7 +138,7 @@ owner  >  manager  >  editor  >  viewer
 
 **Viewer write bypass:** The `viewerWriteBypass` middleware (`src/server/middleware/viewerWriteBypass.ts`) allows viewers to log time on tasks assigned to them, edit their own time entries, and comment on assigned tasks. Ownership verification is performed in the route handler after the middleware grants access. **Schedules are fully read-only for viewers** — task creation, editing, deletion, drag-and-drop reordering, and bulk operations all require the `editor` project role. The frontend hides all editing controls (inline edit, drag handles, add/delete buttons, overflow menu) for viewer and team_member roles.
 
-**Sidebar visibility:** Viewers and team_members see a reduced sidebar: Dashboard, Projects, Lessons, Reports, AI Query, Notifications, Timesheets, Goals, My Feedback, and Settings. Management pages (Resources, Meetings, Change Requests, Workflows, Intake) and analytics pages (Analytics, EVM, Monte Carlo, Scenarios, Report Builder) are hidden.
+**Sidebar visibility:** Viewers and team_members see a reduced sidebar. Role-restricted items (Resources, Meetings, Change Requests, Workflows, Intake, Analytics, EVM, Monte Carlo, Scenarios, Report Builder) are rendered as disabled with a lock icon rather than being hidden entirely, so users can see what is available at higher tiers/roles. Accessible items for viewers/team_members: Dashboard, Projects, Lessons, Reports, AI Query, Notifications, Timesheets, Goals, My Feedback, and Settings.
 
 ### Global Role Bypasses
 
@@ -160,10 +160,12 @@ owner  >  manager  >  editor  >  viewer
 
 The middleware is applied to all project-scoped routes across:
 
-- **Core:** projects, schedules, sprints, project members, portal links
+- **Core:** projects, schedules, sprints, project members, portal links, pinned project links
 - **Resources:** expenses, time entries, custom fields, resource assignments
 - **Collaboration:** meetings, RAID/risk items, approval workflows, document intelligence
 - **Reporting:** status reports, report schedules
+
+**Pinned project links** (`/projects/:projectId/links`) follow the standard two-layer pattern: `requireScope('read'/'write')` + `requireProjectAccess('viewer'/'editor')`. The list endpoint is viewer-accessible; create, reorder, update, and delete require editor. Non-members receive 404.
 
 Routes without a project context (e.g., `GET /projects` list, `GET /timesheet` for the current user) are not affected — the middleware skips when no projectId can be extracted.
 

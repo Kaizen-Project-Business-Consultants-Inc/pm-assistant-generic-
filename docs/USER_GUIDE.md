@@ -288,6 +288,16 @@ The **Project Brief** card is part of the reorderable overview card grid — dra
 - **Markdown support** -- `# Headings`, `**bold**`, `*italic*`, `- lists`, `[links](url)`, and `` `inline code` `` are all rendered.
 - **Reading level badge** -- Next to the "Project Brief" heading, a color-coded badge displays the Flesch-Kincaid readability score (e.g., "Grade 8 · Score 65"). The badge color indicates difficulty: green for easy reading (score ≥ 60), amber for moderate (30–59), red for difficult (< 30). The score is computed client-side — no API call required. Descriptions shorter than 20 characters do not show a badge.
 
+#### Key Links
+
+The **Key Links** card appears directly after the Project Brief card on the Overview tab. Use it to pin important URLs — SharePoint sites, Jira boards, Confluence spaces, Figma files, GitHub repos, Google Drive folders, Slack channels, Teams links, Notion pages, Miro boards, and any other URL your team needs quick access to.
+
+- **Viewing links** -- All project members see the Key Links card. Click any link to open it in a new tab.
+- **Adding a link** -- Editors and above see a **+ Add Link** button. Click it to reveal an inline form: enter a title, paste the URL, and choose one of 12 icon presets. Click Save to add it immediately.
+- **Editing or deleting** -- Hover over any link row to reveal the pencil (edit) and trash (delete) buttons. Edit switches the row to an inline form; delete asks for confirmation.
+- **Reordering** -- Drag links up or down to reposition them. The new order is saved automatically.
+- Viewers can see and open links but cannot add, edit, delete, or reorder them.
+
 Additional sections below the card grid:
 - **Custom Fields** -- User-defined metadata fields.
 - **Custom Field Manager** -- Editors see a field definition section below custom field values. Add new custom fields (text, number, date, dropdown, checkbox), configure options, and manage field schemas directly from the project overview — no need to navigate to Settings.
@@ -1556,6 +1566,20 @@ All AI surfaces are grouped under the **Mjuzi AI** section in the sidebar. "Ask 
 - **Speak your message:** If your browser supports it, a **microphone** button appears next to the chat input. Click it, speak your question (e.g. “What projects are in trouble?” or “What’s my portfolio spend to date?”), and your words are sent as a normal chat message. Click the mic again to stop listening.
 - **Speak replies:** Check **Speak replies** below the input to have Mjuzi’s answers read aloud when each reply is complete. Uncheck to turn this off. The welcome message is never spoken.
 - Voice uses the same AI chat as typing: you can say anything you could type and get the same smart, contextual answer.
+
+**PM methodology expertise**
+
+Mjuzi has built-in knowledge of major PM methodologies. Ask how-to questions and get practical guidance — no need to look things up elsewhere:
+
+- **PMBOK** — knowledge areas (scope, schedule, cost, quality, risk, stakeholders, etc.) and process groups (initiating, planning, executing, monitoring & controlling, closing)
+- **PRINCE2** — themes, principles, and tailoring for your environment
+- **Agile** — Scrum ceremonies and roles, Kanban WIP limits and flow, SAFe PI planning, XP practices
+- **Lean** — value stream mapping, waste elimination, Kaizen
+- **Critical Chain** — buffer management and resource constraints
+- **Hybrid** — blending waterfall and agile for regulated or complex projects
+- **Core techniques** — earned value management, risk registers, WBS decomposition, stakeholder analysis, critical path method, resource leveling
+
+Just ask naturally — "how do I run an EVM calculation?", "what goes in a risk register?", "explain PRINCE2 themes to me" — and Mjuzi adjusts the depth of its answer to match your question.
 
 **Knowledge Base search**
 

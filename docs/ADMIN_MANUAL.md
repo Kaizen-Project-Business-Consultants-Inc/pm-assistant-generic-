@@ -116,9 +116,23 @@ Project membership is enforced on all project-scoped API routes. Only members of
 
 **Viewer time logging:** Viewers can log time entries on tasks assigned to them and edit their own time entries. They cannot delete time entries or modify schedule data (tasks, dates, assignments). Schedules are fully read-only for viewers — all editing controls are hidden in the UI.
 
-**Viewer sidebar:** Viewers and team_members see a reduced sidebar showing only: Dashboard, Projects, Lessons, Reports, AI Query, Notifications, Timesheets, Goals, My Feedback, and Settings. Management and analytics pages are hidden.
+**Viewer sidebar:** Viewers and team_members see a reduced sidebar. Role-restricted items (Resources, Meetings, Change Requests, Workflows, Intake, Analytics, EVM, Monte Carlo, Scenarios, Report Builder) are displayed as disabled with a lock icon and the tooltip "Premium feature — contact your administrator" rather than being fully hidden. This gives users visibility into features available at higher tiers or roles. Accessible items for viewers/team_members: Dashboard, Projects, Lessons, Reports, AI Query, Notifications, Timesheets, Goals, My Feedback, and Settings.
 
 > **Important:** Project roles (owner/manager/editor/viewer) are separate from global user roles (admin/executive/project_manager/team_member/etc.). A user needs both: a global role with sufficient scope *and* a project role with sufficient access.
+
+### Pinned Project Links
+
+Each project supports a set of pinned links (e.g., Confluence pages, Figma files, Jira boards) accessible to all project members.
+
+| Method | Endpoint | Min Role | Description |
+|--------|----------|----------|-------------|
+| `GET` | `/api/v1/projects/:projectId/links` | viewer | List all pinned links for the project |
+| `POST` | `/api/v1/projects/:projectId/links` | editor | Create a new pinned link |
+| `PUT` | `/api/v1/projects/:projectId/links/reorder` | editor | Reorder pinned links |
+| `PUT` | `/api/v1/projects/:projectId/links/:linkId` | editor | Update a pinned link |
+| `DELETE` | `/api/v1/projects/:projectId/links/:linkId` | editor | Delete a pinned link |
+
+All endpoints require project membership enforced by `requireProjectAccess`.
 
 ### Archive and Delete
 - **Archive** removes the project from active views but preserves all data.

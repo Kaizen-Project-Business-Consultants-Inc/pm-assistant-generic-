@@ -1340,6 +1340,15 @@ All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the
   - **Versioned memory**: all AI memories have version numbers and hash-based optimistic locking. Edit, rollback, and audit trail via Memory Browser in Settings > AI Context.
   - **Dreaming**: nightly batch job analyzes recent conversations to propose memory improvements (new preferences, corrections, patterns). Auto-applies high-confidence proposals (>= 90%), presents others for manual review.
   - **Skill catalog**: progressive disclosure of agent capabilities. Front-matter summaries are always in context; detailed procedures loaded on-demand.
+- **PM Methodology Expertise** — Mjuzi's system prompt includes explicit knowledge of major PM methodologies. PMs can ask "how do I..." methodology questions and receive practical, experience-level guidance:
+  - **PMBOK** — all 10 knowledge areas (scope, schedule, cost, quality, resource, communications, risk, procurement, stakeholder, integration) and all 5 process groups (initiating, planning, executing, monitoring & controlling, closing)
+  - **PRINCE2** — themes, principles, processes, and tailoring guidance
+  - **Agile frameworks** — Scrum (ceremonies, roles, artifacts), Kanban (WIP limits, flow metrics), SAFe (PI planning, ART structure), XP (TDD, pair programming, continuous integration)
+  - **Lean** — value stream mapping, waste elimination, continuous improvement (Kaizen)
+  - **Critical Chain** — buffer management, resource constraints, drum-buffer-rope
+  - **Hybrid approaches** — blending waterfall and agile for regulated or complex environments
+  - **Core techniques** — earned value management, risk registers, WBS decomposition, stakeholder analysis, critical path method, resource leveling, Monte Carlo simulation
+  - Mjuzi explains concepts at any level — beginner overview through advanced practitioner depth — based on how the question is framed.
 - **Knowledge Base search** — Mjuzi has a `search_knowledge_base` tool that searches embedded product documentation via RAG (Retrieval-Augmented Generation). When users ask how-to questions ("how do I create a subtask?", "where is the Gantt chart?"), Mjuzi searches the indexed documentation instead of guessing. Documentation from USER_GUIDE.md, PRODUCT_MANUAL.md, WORLD_CLASS_FEATURES.md, ADMIN_MANUAL.md, and AI_DESIGN_FEATURES.md is chunked by section heading (max 800 words per chunk to stay within OpenAI's 8192-token embedding limit), embedded via OpenAI text-embedding-3-small, and stored in the `knowledge_base_chunks` table with vector embeddings in the `embeddings` table. Admins can trigger a reindex via `POST /api/v1/admin/knowledge-base/reindex` after doc changes.
 
 ### AI Reports
@@ -4562,3 +4571,37 @@ All React Query cache keys follow a standardized naming convention so that `inva
 | Project risks | `['project-risks', projectId]` |
 
 When adding new queries, follow the kebab-case convention for multi-word keys and always ensure the same key is used in both `useQuery` and `invalidateQueries` calls.
+
+---
+
+## 61. Pinned Project Links (Key Links)
+
+A **Key Links** card on the project Overview tab lets PMs pin important URLs to a project for quick team access — SharePoint sites, Jira boards, Confluence spaces, Figma files, GitHub repos, Google Drive folders, Slack channels, Teams links, Notion pages, Miro boards, and any other URL.
+
+### Database
+
+Migration `T042_project_links.sql` (tenant DB). Table `project_links` with columns: `id`, `project_id`, `title`, `url`, `icon` (12 icon presets), `display_order`, `created_by`, `created_at`, `updated_at`.
+
+### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/projects/:projectId/links` | List all links for a project |
+| `POST` | `/api/v1/projects/:projectId/links` | Create a new link |
+| `PUT` | `/api/v1/projects/:projectId/links/:linkId` | Update a link |
+| `DELETE` | `/api/v1/projects/:projectId/links/:linkId` | Delete a link |
+| `PUT` | `/api/v1/projects/:projectId/links/reorder` | Persist drag-reorder (array of `{id, display_order}`) |
+
+### Permissions
+
+- **Viewers** — read-only access: can see and open links, no edit controls shown.
+- **Editors and above** — full CRUD: inline add form, edit/delete on hover.
+
+### UI
+
+- The **Key Links** card renders directly after the Project Brief card in the Overview card grid.
+- **12 icon presets** with color-coded badges: Generic Link, SharePoint, Jira, Confluence, Figma, GitHub, Google Drive, Slack, Teams, Notion, Miro, Trello.
+- **Inline add form** — editors click **+ Add Link** to reveal a title + URL + icon picker inline form. Save adds the link immediately; Cancel hides the form.
+- **Hover controls** — hovering a link row reveals pencil (edit) and trash (delete) icon buttons. Edit switches the row to an inline form; delete shows a confirm prompt.
+- **Drag to reorder** — links can be dragged to reposition; order is persisted via the reorder endpoint.
+- Links open in a new tab.
