@@ -70,7 +70,11 @@ export const LoginPage: React.FC = () => {
         }
       }
 
-      navigate(response.user?.fullName ? '/dashboard' : '/onboarding');
+      if (response.mustChangePassword || response.user?.mustChangePassword) {
+        navigate('/change-password');
+      } else {
+        navigate(response.user?.fullName ? '/dashboard' : '/onboarding');
+      }
     } catch (err: unknown) {
       const axiosError = err as { response?: { status?: number; data?: { message?: string; requiresVerification?: boolean } } };
 

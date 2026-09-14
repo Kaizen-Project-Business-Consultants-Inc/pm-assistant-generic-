@@ -4604,4 +4604,35 @@ Migration `T042_project_links.sql` (tenant DB). Table `project_links` with colum
 - **Inline add form** — editors click **+ Add Link** to reveal a title + URL + icon picker inline form. Save adds the link immediately; Cancel hides the form.
 - **Hover controls** — hovering a link row reveals pencil (edit) and trash (delete) icon buttons. Edit switches the row to an inline form; delete shows a confirm prompt.
 - **Drag to reorder** — links can be dragged to reposition; order is persisted via the reorder endpoint.
+
+---
+
+## 62. Resource Management Enhancements (Phase 3)
+
+Three targeted improvements to resource visibility and the user invite flow.
+
+### Project Allocation Column (Resource Management — Team Tab)
+
+Each resource row in the Team tab now includes a **Project Allocation** column showing which projects the resource is currently assigned to. Each project appears as a compact chip with the project name and total hours allocated to that project. A summary line beneath the chips shows total allocated hours vs the resource's weekly capacity (e.g., "32h / 40h/wk"), color-coded green when within capacity and red when over-allocated.
+
+- **Endpoint:** Uses existing `GET /api/v1/resources` response; allocation data is joined from `task_assignments` and `resource_assignments`.
+- The column is visible in both the full Team table and the mobile-responsive scrollable table view.
+
+### MPP-Style Resource Usage (Project Detail — Team Tab)
+
+The Team tab on the Project Detail page now renders resource rows as **expandable**, mirroring the per-resource task breakdown found in Microsoft Project's Resource Usage view:
+
+- Clicking a resource row expands it to show all tasks the resource is assigned to within that project.
+- Each task sub-row displays: task name, allocated hours, allocation percentage, role, start/end dates, and task status badge.
+- The collapsed row header summarizes total hours and overall utilization percentage across all assignments.
+- Expansion state is maintained in local component state (not persisted).
+
+### Auto-Create User on Invite
+
+When an admin invites someone to the organization who does not yet have an account, the system now **automatically creates a user account** with a temporary password instead of sending a registration link:
+
+- The invite email includes the temporary password and a prompt to change it on first login.
+- On first login the user is redirected to a **Change Password** screen; they cannot access the app until the password is changed.
+- If the invitee already has an account, the existing behavior applies (invite acceptance links to the existing account).
+- Temporary passwords meet the application's standard complexity requirements and are generated server-side using a cryptographically secure random generator.
 - Links open in a new tab.

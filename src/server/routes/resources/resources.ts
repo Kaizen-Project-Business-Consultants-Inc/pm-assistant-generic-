@@ -11,6 +11,7 @@ import { scheduleService } from '../../services/ScheduleService';
 import { emailService } from '../../services/EmailService';
 import { databaseService } from '../../database/connection';
 import { inviteService } from '../../services/InviteService';
+import { taskAssignmentService } from '../../services/TaskAssignmentService';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
 
@@ -485,6 +486,19 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     });
 
     return { roles, weekHeaders: weeks.map(w => w.toISOString().slice(0, 10)) };
+  });
+
+  // GET /resources/project-allocations — Enhancement A: project allocations for all resources
+  fastify.get('/project-allocations', { preHandler: [requireScope('read')] }, async (_request: FastifyRequest, _reply: FastifyReply) => {
+    const allocations = await taskAssignmentService.getProjectAllocationsForAllResources();
+    return { allocations };
+  });
+
+  // GET /resources/usage/:projectId — Enhancement B: MPP-style resource usage for a project
+  fastify.get('/usage/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
+    const { projectId } = request.params as { projectId: string };
+    const usage = await taskAssignmentService.getResourceUsageForProject(projectId);
+    return { usage };
   });
 }
 

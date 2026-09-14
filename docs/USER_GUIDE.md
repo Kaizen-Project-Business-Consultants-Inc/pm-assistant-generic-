@@ -2331,6 +2331,8 @@ Paid plan users (Consultant Basic, Consultant Pro, SME, and Enterprise) can invi
 
 **Resending an invite:** If an invite expires or the recipient missed the email, go to the **Resources** page. Resources with a **Pending** or **Expired** status badge will show a **Resend** link. Clicking it generates a new 7-day token and sends a fresh invite email. Accepted and revoked invites cannot be resent.
 
+**Auto-created accounts:** If the invitee does not yet have an account, the system automatically creates one with a temporary password, which is included in the invite email. The new user must change their password on first login before they can access the app. If the invitee already has an account, the standard invite-acceptance flow applies.
+
 **Existing users:** If the invitee already has an account, clicking the invite link redirects them to the login page (not the registration page). After signing in, the invite is automatically accepted — no separate confirmation step is needed.
 
 **What viewers can do:**
@@ -2579,6 +2581,14 @@ Standard 5-day/8-hour schedules do not fit every team. Calendar templates let yo
 To manage templates, go to the **Calendar Templates** tab on the Resource Management page (`/resources`). To assign a template to a resource, open the resource's edit form and select a template from the **Working Schedule** dropdown.
 
 When a resource has a template assigned, all capacity and workload calculations use the template's effective weekly hours rather than the flat capacity value.
+
+### Project Allocation Column
+
+The Team tab on the Resource Management page now shows a **Project Allocation** column for each resource. Each project the resource is assigned to appears as a compact chip with the project name and total allocated hours. A summary line below the chips shows total hours vs weekly capacity (e.g., "32h / 40h/wk") — green when within capacity, red when over-allocated. Use this column to quickly spot which resources are spread across too many projects.
+
+### MPP-Style Resource Usage (Project Detail — Team Tab)
+
+Inside a project's **Team tab**, resource rows are now expandable. Click any resource to see a per-task breakdown: task name, allocated hours, allocation %, role, start/end dates, and status. The collapsed header shows total hours and overall utilization for that resource on the project — useful for reviewing workload without leaving the project detail page.
 
 ### Timesheet Integration (Actual vs. Planned)
 

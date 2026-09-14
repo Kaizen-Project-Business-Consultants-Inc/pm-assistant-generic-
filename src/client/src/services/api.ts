@@ -52,6 +52,15 @@ class ApiService {
           }
         }
 
+        // Handle 403 password-change-required errors
+        if (
+          error.response?.status === 403 &&
+          error.response?.data?.code === 'PASSWORD_CHANGE_REQUIRED'
+        ) {
+          window.location.href = '/change-password';
+          return Promise.reject(error);
+        }
+
         // Handle 403 subscription-required errors
         if (
           error.response?.status === 403 &&
@@ -1063,6 +1072,16 @@ class ApiService {
 
   async getCapacityByRole() {
     const response = await this.api.get('/resources/capacity-by-role');
+    return response.data;
+  }
+
+  async getResourceProjectAllocations() {
+    const response = await this.api.get('/resources/project-allocations');
+    return response.data;
+  }
+
+  async getResourceUsageForProject(projectId: string) {
+    const response = await this.api.get(`/resources/usage/${projectId}`);
     return response.data;
   }
 

@@ -19,6 +19,7 @@ export const ROUTES = {
   features: '/features',
   about: '/about',
   waitlistAdmin: '/waitlist-admin',
+  changePassword: '/change-password',
   onboarding: '/onboarding',
   dashboard: '/dashboard',
   projects: '/projects',

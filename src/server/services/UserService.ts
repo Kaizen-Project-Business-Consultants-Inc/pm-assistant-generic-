@@ -39,6 +39,7 @@ export interface User {
   notificationTypePreferences: NotificationTypePreferences | null;
   tokenVersion: number;
   aiMonthlyTokenBudget: number | null;
+  mustChangePassword: boolean;
   isFounder: boolean;
   founderAt: Date | null;
   refundCount: number;

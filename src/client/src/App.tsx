@@ -68,6 +68,7 @@ const KPIDrillInPage = lazy(() => import('./pages/KPIDrillInPage').then(m => ({ 
 const ProjectsPM = lazy(() => import('./pages/ProjectsPM').then(m => ({ default: m.ProjectsPM })));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then(m => ({ default: m.OnboardingPage })));
 const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
+const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
 function PageLoader() {
@@ -96,6 +97,7 @@ function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { childre
   }, []);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!skipOnboardingCheck && !user?.fullName) return <Navigate to="/onboarding" replace />;
   if (requiredRole && user?.role !== requiredRole) return <Navigate to="/dashboard" replace />;
   return <AppLayout><RouteErrorBoundary>{children}</RouteErrorBoundary></AppLayout>;
@@ -154,6 +156,7 @@ function App() {
         <Route path={ROUTES.about} element={<AboutPage />} />
         <Route path={ROUTES.waitlistAdmin} element={<Navigate to={ROUTES.adminWaitlist} replace />} />
         <Route path={ROUTE_PATTERNS.portal} element={<PortalViewPage />} />
+        <Route path={ROUTES.changePassword} element={isAuthenticated ? <ChangePasswordPage /> : <Navigate to={ROUTES.login} replace />} />
         <Route path={ROUTES.onboarding} element={isAuthenticated ? <OnboardingPage /> : <Navigate to={ROUTES.login} replace />} />
 
         {/* Protected routes */}

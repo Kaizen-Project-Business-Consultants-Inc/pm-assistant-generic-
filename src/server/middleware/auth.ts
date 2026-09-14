@@ -90,6 +90,23 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       role: decoded.role,
     };
 
+    // Enforce password change for auto-created users
+    const url = request.url;
+    const isPasswordChangeAllowed = url.includes('/auth/change-password') || url.includes('/auth/logout') || url.includes('/auth/me');
+    if (!isPasswordChangeAllowed) {
+      const rows = await databaseService.queryControlPlane<{ must_change_password: number }>(
+        'SELECT must_change_password FROM users WHERE id = ? LIMIT 1',
+        [decoded.userId],
+      );
+      if (rows.length > 0 && rows[0].must_change_password) {
+        return reply.status(403).send({
+          error: 'Password change required',
+          code: 'PASSWORD_CHANGE_REQUIRED',
+          message: 'You must change your password before continuing.',
+        });
+      }
+    }
+
   } catch (error) {
     if ((error as any)?.error === 'Account deactivated') {
       return reply.status(401).send({

@@ -7,6 +7,7 @@ import { AvailabilityCalendar } from '../../components/resources/AvailabilityCal
 import { ResourceForecastPanel } from '../../components/resources/ResourceForecastPanel';
 import { RebalanceSuggestions } from '../../components/resources/RebalanceSuggestions';
 import { CapacityChart } from '../../components/resources/CapacityChart';
+import { ResourceUsageView } from '../../components/resources/ResourceUsageView';
 
 function SectionSpinner() {
   return (
@@ -233,6 +234,9 @@ export function TeamTab({ projectId }: { projectId: string }) {
           </div>
         )}
       </div>
+
+      {/* Resource Usage (MPP-style) */}
+      <ResourceUsageView projectId={projectId} />
 
       {/* Activity Log Section */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">

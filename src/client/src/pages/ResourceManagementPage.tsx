@@ -188,6 +188,14 @@ export function ResourceManagementPage() {
   const resources: Resource[] = resourcesData?.resources || [];
   const isResourcesSample: boolean = resourcesData?.sample || false;
 
+  // Project allocations — Enhancement A
+  const { data: allocationsData } = useQuery({
+    queryKey: ['resource-project-allocations'],
+    queryFn: () => apiService.getResourceProjectAllocations(),
+    enabled: !isResourcesSample,
+  });
+  const allocationsMap: Record<string, Array<{ projectId: string; projectName: string; scheduleName: string; totalHoursPlanned: number; taskCount: number }>> = allocationsData?.allocations || {};
+
   // Invites — for resource status column
   const { data: invitesData } = useQuery({
     queryKey: ['invites'],
@@ -582,6 +590,7 @@ export function ResourceManagementPage() {
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Department</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Skills</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Email</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Allocations</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Status</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Hours/Wk</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">$/hr</th>
@@ -622,6 +631,24 @@ export function ResourceManagementPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.email}</td>
+                      <td className="px-4 py-3">
+                        {(() => {
+                          const allocs = allocationsMap[r.id];
+                          if (!allocs || allocs.length === 0) return <span className="text-gray-300 dark:text-gray-600">--</span>;
+                          const totalHours = allocs.reduce((s, a) => s + a.totalHoursPlanned, 0);
+                          return (
+                            <div className="flex flex-wrap gap-1 items-center max-w-[260px]">
+                              {allocs.slice(0, 3).map((a, i) => (
+                                <span key={i} className="inline-block px-1.5 py-0.5 rounded text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 whitespace-nowrap" title={`${a.projectName} — ${a.scheduleName}: ${a.taskCount} tasks, ${a.totalHoursPlanned}h`}>
+                                  {a.projectName.length > 15 ? a.projectName.slice(0, 15) + '...' : a.projectName} {a.totalHoursPlanned}h
+                                </span>
+                              ))}
+                              {allocs.length > 3 && <span className="text-xs text-gray-500">+{allocs.length - 3}</span>}
+                              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">{totalHours}/{r.capacityHoursPerWeek || 40}h</span>
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="px-4 py-3 text-center">
                         {r.userId ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Confirmed</span>

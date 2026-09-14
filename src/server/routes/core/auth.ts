@@ -118,6 +118,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       return {
         token: accessToken,
+        mustChangePassword: user.mustChangePassword || false,
         user: {
           id: user.id,
           username: user.username,
@@ -128,6 +129,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
           isFounder: user.isFounder || false,
+          mustChangePassword: user.mustChangePassword || false,
         },
       };
     } catch (error) {
@@ -502,6 +504,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
           isFounder: user.isFounder || false,
+          mustChangePassword: user.mustChangePassword || false,
           organization,
         },
       };
@@ -715,7 +718,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       const hash = await bcrypt.hash(newPassword, 12);
       const newVersion = (user.tokenVersion ?? 0) + 1;
-      await userService.update(userId, { passwordHash: hash, tokenVersion: newVersion });
+      await userService.update(userId, { passwordHash: hash, tokenVersion: newVersion, mustChangePassword: false });
 
       // Issue fresh tokens with new version so current session stays alive
       const accessToken = jwt.sign(

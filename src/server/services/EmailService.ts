@@ -836,11 +836,31 @@ export class EmailService {
     });
   }
 
-  async sendOrgInviteEmail(to: string, orgName: string, inviterName: string): Promise<void> {
+  async sendOrgInviteEmail(to: string, orgName: string, inviterName: string, autoCreated?: { tempPassword: string; loginUrl: string }): Promise<void> {
     if (!this.isConfigured) {
-      logger.info(`[EmailService] Org invite email would be sent to ${maskPii(to)} for org "${orgName}"`);
+      logger.info(`[EmailService] Org invite email would be sent to ${maskPii(to)} for org "${orgName}"${autoCreated ? ' (auto-created)' : ''}`);
       return;
     }
+
+    const credentialsBlock = autoCreated ? `
+          <p style="color: #4b5563; line-height: 1.6;">
+            An account has been created for you. Log in with the following credentials:
+          </p>
+          <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <p style="margin: 4px 0; color: #1f2937;"><strong>Email:</strong> ${escapeHtml(to)}</p>
+            <p style="margin: 4px 0; color: #1f2937;"><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">${escapeHtml(autoCreated.tempPassword)}</code></p>
+          </div>
+          <p style="color: #6b7280; font-size: 13px;">
+            You will be asked to change your password on first login.
+          </p>
+    ` : `
+          <p style="color: #4b5563; line-height: 1.6;">
+            Create your account to get started:
+          </p>
+    `;
+
+    const ctaUrl = autoCreated ? autoCreated.loginUrl : `${config.APP_URL}/register`;
+    const ctaLabel = autoCreated ? 'Log In' : 'Create Account';
 
     await this.sendEmail({
       from: config.RESEND_FROM_EMAIL,
@@ -855,12 +875,10 @@ export class EmailService {
           <p style="color: #4b5563; line-height: 1.6;">
             ${escapeHtml(inviterName)} has invited you to join <strong>${escapeHtml(orgName)}</strong> on Kovarti PM Assistant.
           </p>
-          <p style="color: #4b5563; line-height: 1.6;">
-            Create your account to get started:
-          </p>
+          ${credentialsBlock}
           <div style="text-align: center; margin: 32px 0;">
-            <a href="${config.APP_URL}/register" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-              Create Account
+            <a href="${ctaUrl}" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+              ${ctaLabel}
             </a>
           </div>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />

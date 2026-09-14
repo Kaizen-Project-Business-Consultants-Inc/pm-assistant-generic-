@@ -153,6 +153,107 @@ export class TaskAssignmentService {
       [endDate.toISOString().slice(0, 10), durationDays, taskId],
     );
   }
+
+  /** Enhancement B: Per-resource task breakdown for a project (MPP Resource Usage view) */
+  async getResourceUsageForProject(projectId: string): Promise<Array<{
+    resourceId: string; resourceName: string; role: string;
+    capacityHoursPerWeek: number; totalHoursPlanned: number;
+    tasks: Array<{
+      taskId: string; taskName: string; hoursPlanned: number | null;
+      allocationPct: number; roleOnTask: string | null;
+      startDate: string | null; endDate: string | null; status: string;
+    }>;
+  }>> {
+    const rows = await databaseService.query<any>(
+      `SELECT ta.resource_id, r.name AS resource_name, r.role AS resource_role,
+              r.capacity_hours_per_week, ta.task_id, t.name AS task_name,
+              ta.hours_planned, ta.allocation_pct, ta.role_on_task,
+              t.start_date, t.end_date, t.status AS task_status
+       FROM task_assignments ta
+       JOIN tasks t ON ta.task_id = t.id
+       JOIN schedules s ON t.schedule_id = s.id
+       JOIN resources r ON ta.resource_id = r.id
+       WHERE s.project_id = ?
+       ORDER BY r.name, t.start_date`,
+      [projectId],
+    );
+
+    const map = new Map<string, {
+      resourceId: string; resourceName: string; role: string;
+      capacityHoursPerWeek: number; totalHoursPlanned: number;
+      tasks: Array<{
+        taskId: string; taskName: string; hoursPlanned: number | null;
+        allocationPct: number; roleOnTask: string | null;
+        startDate: string | null; endDate: string | null; status: string;
+      }>;
+    }>();
+
+    for (const row of rows) {
+      const rid = row.resource_id;
+      if (!map.has(rid)) {
+        map.set(rid, {
+          resourceId: rid,
+          resourceName: row.resource_name,
+          role: row.resource_role,
+          capacityHoursPerWeek: Number(row.capacity_hours_per_week) || 40,
+          totalHoursPlanned: 0,
+          tasks: [],
+        });
+      }
+      const entry = map.get(rid)!;
+      const hp = row.hours_planned != null ? Number(row.hours_planned) : null;
+      entry.totalHoursPlanned += hp || 0;
+      entry.tasks.push({
+        taskId: row.task_id,
+        taskName: row.task_name,
+        hoursPlanned: hp,
+        allocationPct: Number(row.allocation_pct) || 100,
+        roleOnTask: row.role_on_task || null,
+        startDate: row.start_date ? String(row.start_date).slice(0, 10) : null,
+        endDate: row.end_date ? String(row.end_date).slice(0, 10) : null,
+        status: row.task_status || 'not_started',
+      });
+    }
+
+    return Array.from(map.values());
+  }
+
+  /** Enhancement A: Project allocations for all resources (org-level) */
+  async getProjectAllocationsForAllResources(): Promise<Record<string, Array<{
+    projectId: string; projectName: string; scheduleName: string;
+    totalHoursPlanned: number; taskCount: number;
+  }>>> {
+    const rows = await databaseService.query<any>(
+      `SELECT ta.resource_id, p.id AS project_id, p.name AS project_name,
+              s.name AS schedule_name, COUNT(ta.id) AS task_count,
+              COALESCE(SUM(ta.hours_planned), 0) AS total_hours_planned
+       FROM task_assignments ta
+       JOIN tasks t ON ta.task_id = t.id
+       JOIN schedules s ON t.schedule_id = s.id
+       JOIN projects p ON s.project_id = p.id
+       WHERE t.status NOT IN ('completed', 'cancelled')
+       GROUP BY ta.resource_id, p.id, p.name, s.name`,
+    );
+
+    const result: Record<string, Array<{
+      projectId: string; projectName: string; scheduleName: string;
+      totalHoursPlanned: number; taskCount: number;
+    }>> = {};
+
+    for (const row of rows) {
+      const rid = row.resource_id;
+      if (!result[rid]) result[rid] = [];
+      result[rid].push({
+        projectId: row.project_id,
+        projectName: row.project_name,
+        scheduleName: row.schedule_name,
+        totalHoursPlanned: Number(row.total_hours_planned) || 0,
+        taskCount: Number(row.task_count) || 0,
+      });
+    }
+
+    return result;
+  }
 }
 
 export const taskAssignmentService = new TaskAssignmentService();

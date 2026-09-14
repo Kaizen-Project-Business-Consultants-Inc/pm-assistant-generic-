@@ -1,5 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { authMiddleware } from '../../middleware/auth';
 import { organizationService } from '../../services/OrganizationService';
 import { userService } from '../../services/UserService';
@@ -100,18 +102,70 @@ export async function orgRoutes(fastify: FastifyInstance) {
         };
       }
 
-      // User doesn't exist yet — send invite email
-      // For now, we send a registration link with the org context
-      try {
-        await emailService.sendOrgInviteEmail(email, org.name, inviter.fullName);
-      } catch (emailErr) {
-        logger.warn('Failed to send org invite email', { email, error: emailErr });
-      }
+      // User doesn't exist yet — auto-create account with temp password
+      const tempPassword = crypto.randomBytes(6).toString('base64url'); // 8-char readable
+      const passwordHash = await bcrypt.hash(tempPassword, 12);
+      const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') + '_' + crypto.randomBytes(3).toString('hex');
 
-      return {
-        message: `An invitation has been sent to ${email}. They will need to create an account first.`,
-        status: 'invited',
-      };
+      try {
+        const newUser = await userService.create({
+          username,
+          email,
+          passwordHash,
+          fullName: email.split('@')[0],
+          role: role as any,
+          emailVerified: true, // admin vouches for them
+        });
+
+        // Set must_change_password flag and org membership
+        await userService.update(newUser.id, {
+          mustChangePassword: true,
+          organizationId: org.id,
+          subscriptionStatus: 'none',
+        } as any);
+        organizationService.invalidateUserCache(newUser.id);
+
+        // Create resource record
+        try {
+          await resourceService.createResource({
+            name: email.split('@')[0],
+            role,
+            email,
+            capacityHoursPerWeek: 40,
+            skills: [],
+            isActive: true,
+            costRateHourly: null,
+            overtimeRateHourly: null,
+            resourceGroup: null,
+            userId: newUser.id,
+            calendarTemplateId: null,
+          });
+        } catch (resErr) {
+          logger.warn('Failed to create resource for auto-created user', { email, error: resErr });
+        }
+
+        // Send welcome email with temp password
+        const appUrl = process.env.APP_URL || 'https://kovarti.com';
+        try {
+          await emailService.sendOrgInviteEmail(email, org.name, inviter.fullName, {
+            tempPassword,
+            loginUrl: `${appUrl}/login`,
+          });
+        } catch (emailErr) {
+          logger.warn('Failed to send org invite email', { email, error: emailErr });
+        }
+
+        logger.info('User auto-created via org invite', { userId: newUser.id, orgId: org.id, email });
+
+        return {
+          message: `Account created for ${email} and added to your organization. They will be asked to change their password on first login.`,
+          status: 'created',
+          tempPassword,
+        };
+      } catch (createErr: any) {
+        logger.error('Failed to auto-create user on invite', { email, error: createErr });
+        return reply.status(500).send({ error: 'Failed to create user account', message: createErr.message || 'Unknown error' });
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({ error: 'Validation error', message: error.issues[0]?.message || 'Invalid input' });
