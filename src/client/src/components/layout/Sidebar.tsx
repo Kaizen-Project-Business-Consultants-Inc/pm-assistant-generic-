@@ -41,6 +41,7 @@ import {
   CalendarClock,
   Mail,
   Brain,
+  Lock,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -257,10 +258,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
     return location.pathname.startsWith(path);
   };
 
-  const isItemVisible = (item: NavItem): boolean => {
-    if (!item.roles) return true;
-    if (!user) return false;
-    return item.roles.includes(user.role);
+  const isItemDisabled = (item: NavItem): boolean => {
+    if (!item.roles) return false;
+    if (!user) return true;
+    return !item.roles.includes(user.role);
   };
 
   const userInitials = user?.fullName
@@ -319,9 +320,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
       {/* Navigation — grouped with section labels */}
       <nav className="flex-1 overflow-y-auto py-2 px-2" aria-label="Primary">
         {navSections.map((section) => {
-          const visibleItems = section.items.filter(isItemVisible);
-          if (visibleItems.length === 0) return null;
-
           return (
             <div key={t(section.titleKey)} className="mb-1">
               {/* Section label (hidden when collapsed) */}
@@ -332,9 +330,45 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
               )}
               {collapsed && <div className="h-2" />}
 
-              {visibleItems.map((item) => {
+              {section.items.map((item) => {
                 const Icon = item.icon;
-                const active = isActive(item.path);
+                const disabled = isItemDisabled(item);
+                const active = !disabled && isActive(item.path);
+                const disabledTooltip = 'Premium feature — contact your administrator';
+
+                if (disabled) {
+                  return (
+                    <div
+                      key={item.path}
+                      title={collapsed ? `${t(item.labelKey)} — ${disabledTooltip}` : disabledTooltip}
+                      className={`
+                        group relative flex items-center rounded-lg cursor-not-allowed
+                        ${collapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'}
+                        text-sidebar-text/30
+                      `}
+                      aria-disabled="true"
+                    >
+                      <Icon
+                        className={`
+                          flex-shrink-0
+                          ${collapsed ? 'w-5 h-5' : 'w-[18px] h-[18px]'}
+                        `}
+                      />
+                      <span
+                        className={`
+                          ml-3 text-sm font-medium whitespace-nowrap
+                          transition-all duration-300
+                          ${collapsed ? 'sr-only' : 'block'}
+                        `}
+                      >
+                        {t(item.labelKey)}
+                      </span>
+                      {!collapsed && (
+                        <Lock className="ml-auto w-3 h-3 flex-shrink-0 opacity-60" />
+                      )}
+                    </div>
+                  );
+                }
 
                 return (
                   <Link
