@@ -165,11 +165,15 @@
     </script>
 
     <!-- GA4 loaded dynamically after cookie consent (see CookieConsentBanner.tsx) -->
+
+    <!-- Hide SEO fallback content when JS is available (prevents flash before React mounts) -->
+    <script>document.documentElement.classList.add('js')</script>
+    <style>.js #seo-fallback{display:none}</style>
   </head>
   <body>
     <div id="root">
       <!-- Static content for SEO crawlers (replaced by React on mount) -->
-      <div style="max-width:800px;margin:0 auto;padding:48px 24px;font-family:system-ui,sans-serif;color:#1e293b">
+      <div id="seo-fallback" style="max-width:800px;margin:0 auto;padding:48px 24px;font-family:system-ui,sans-serif;color:#1e293b">
         <h1 style="font-size:2.5rem;font-weight:800;margin-bottom:16px">Kovarti PM — The AI Project Management Platform</h1>
         <p style="font-size:1.125rem;color:#475569;margin-bottom:24px">Plan smarter, predict risks, and deliver on time with intelligent scheduling, Monte Carlo simulations, and natural-language project insights.</p>
         <h2 style="font-size:1.5rem;font-weight:700;margin-top:32px;margin-bottom:16px">Key Features</h2>
