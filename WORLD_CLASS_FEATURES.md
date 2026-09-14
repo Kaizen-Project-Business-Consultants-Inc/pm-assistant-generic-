@@ -240,7 +240,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Benchmark:** Primavera P6, Smartsheet, Monday.com — **exceeds** with EVM-based portfolio analytics (CPI/SPI sparklines, cross-project comparison matrix) alongside budget KPI cards and per-project health cards
 
 ### 2.7 Advanced Security
-- Role-based access control (14 roles: admin, executive, project_manager, team_member, scrum_master, finance_officer, risk_manager, pmo, ba, qa, tester, devops, claude_sme, viewer) with project member roles (owner, manager, editor, viewer)
+- Role-based access control (5 active roles: admin, project_manager, team_member, viewer, executive; 9 legacy roles retained for backward compatibility) with project member roles (owner, manager, editor, viewer)
 - Two-layer authorization: `requireScope` (read/write/admin) gates action type; `requireProjectAccess` (owner/manager/editor/viewer) gates project membership. Delete operations on project entities require `write` scope (not admin), keeping admin scope reserved for system-level operations (kill switches, agent policies, feedback)
 - MCP tool permission matrix: 83 tools filtered by user role at registration time (agents only see permitted tools)
 - Append-only chained audit ledger with API search, filter, and pagination
@@ -453,7 +453,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Benchmark:** Jira, Azure DevOps
 
 ### 4.8 Guided Onboarding & First-Run Experience
-- **Three-step onboarding wizard** shown once to new users after email verification: (1) Profile & Role — display name + role picker (5 options: Project Manager, Team Lead, Developer, Business Analyst, Other; changeable later in Settings); (2) Methodology & Template — pick a project methodology (Waterfall/Agile/Hybrid) which sorts template suggestions, then optionally create a first project from a template; (3) Confirmation — personalised summary with next-step shortcuts
+- **Three-step onboarding wizard** shown once to new users after email verification: (1) Profile & Role — display name + role picker (4 options: Project Manager, Team Member, Executive, Viewer; changeable later in Settings); (2) Methodology & Template — pick a project methodology (Waterfall/Agile/Hybrid) which sorts template suggestions, then optionally create a first project from a template; (3) Confirmation — personalised summary with next-step shortcuts
 - **SME four-step onboarding wizard** — SME-tier users get an extended flow with an additional Team Setup step (Step 2) between Profile and Project creation: seat summary (total/used/available), invite form (email + role dropdown), pending-invites list, and Skip option; Done screen shows org summary (name, seats, invites sent) rather than trial info; org name is required for SME during Step 1; uses existing `GET /api/v1/seats` and `POST /api/v1/org/invite` APIs; non-SME tiers are unaffected
 - **Starter template seeding** — 6 project templates (Software Development, Construction Project, Marketing Campaign, Product Launch, IT Infrastructure, Event Planning) are automatically seeded into every new tenant's library during provisioning; idempotent and non-fatal
 - **Abandoned Stripe checkout detection** — if a user starts a paid-tier checkout and returns without completing it, a dismissible recovery banner prompts them to resume where they left off

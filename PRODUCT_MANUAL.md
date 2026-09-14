@@ -1836,24 +1836,17 @@ The `WebhookService` allows registering outbound webhook endpoints that fire on 
 
 ### Roles
 
-Fourteen user roles with hierarchical scope-based permissions. The `write` scope allows creating, editing, and deleting project-level entities (tasks, schedules, resources, etc.). The `admin` scope is reserved for system-level operations (kill switches, agent policies, feedback management).
+Five user roles with hierarchical scope-based permissions. The `write` scope allows creating, editing, and deleting project-level entities (tasks, schedules, resources, etc.). The `admin` scope is reserved for system-level operations (kill switches, agent policies, feedback management).
 
 | Role | Scopes | Description |
 |------|--------|-------------|
-| `admin` | read, write, admin | Full system access |
-| `executive` | read | Portfolio oversight + approval authority |
-| `project_manager` | read, write | Full project lifecycle management |
-| `scrum_master` | read, write | Sprint and task management |
-| `team_member` | read | Task work + time logging |
-| `finance_officer` | read | Budget and financial visibility |
-| `risk_manager` | read, write | Risk and issue management |
-| `pmo` | read, write | PMO oversight (bypasses project membership) |
-| `ba` | read, write | Business analysis and requirements |
-| `qa` | read, write | Quality assurance and testing |
-| `tester` | read | Test execution and reporting |
-| `devops` | read, write | CI/CD and infrastructure |
-| `claude_sme` | read | AI subject-matter expert |
-| `viewer` | read | Read-only access |
+| `admin` | read, write, admin | Full system access + admin panel |
+| `project_manager` | read, write | Full project lifecycle management — projects, AI, reports, scheduling, team management |
+| `team_member` | read | Update assigned tasks/RAID items, timesheets, comments (write access via assignment bypass) |
+| `viewer` | read | View projects + update assigned RAID items, comment on assigned items |
+| `executive` | read | Pure read-only — dashboards, portfolio, reports. No edits, no comments |
+
+**Legacy roles:** The backend retains 14 historical roles (scrum_master, finance_officer, risk_manager, pmo, ba, qa, tester, devops, claude_sme) for backward compatibility with existing users. These roles are no longer offered in UI dropdowns but continue to function with their original scope permissions. Users with legacy roles see sidebar items as locked until their role is updated to one of the 5 active roles.
 
 MCP tools are filtered by role — agents only see tools their role permits (see `mcp-server/src/permissions.ts`).
 
@@ -2844,7 +2837,7 @@ New users on Trial, Consultant Basic, and Consultant Pro tiers see a **3-step on
 
 | Step | Content |
 |------|---------|
-| **Step 1 — Profile** | Full name, role selector (dropdown: project_manager, team_member, executive, etc.), and preferred methodology (waterfall/agile/hybrid). Role is persisted to the backend only during onboarding (when `fullName` is null), preventing accidental role changes later. The "Other" role option displays "You can change this in Settings" to reassure users. |
+| **Step 1 — Profile** | Full name, role selector (dropdown: Project Manager, Team Member, Executive, Viewer), and preferred methodology (waterfall/agile/hybrid). Role is persisted to the backend only during onboarding (when `fullName` is null), preventing accidental role changes later. |
 | **Step 2 — Template Picker** | Template selection step where the user picks a methodology-matched template or skips. Templates are sorted by relevance to the chosen methodology — all templates remain visible (up to 6) rather than filtered, so the user always sees options. Hybrid methodology matches all templates. |
 | **Step 3 — Done** | Completion screen with navigation links to Dashboard, Projects, and Mjuzi AI Chat. |
 
@@ -3057,8 +3050,8 @@ The `category` field classifies items by domain and is available on Risk, Issue,
 
 RAID items follow a triage workflow aligned with PMI/PRINCE2 governance best practice. **Any team member** can raise a risk, issue, action, decision, assumption, or dependency — open identification is encouraged.
 
-- **Non-PM roles** (team_member, qa, tester, devops, ba): items are created with status `proposed` and require PM review before becoming active.
-- **PM/admin roles** (admin, project_manager, scrum_master, risk_manager, pmo): items bypass triage and are created directly as `open`.
+- **Non-PM roles** (team_member, viewer, and legacy roles like qa, tester, devops, ba): items are created with status `proposed` and require PM review before becoming active.
+- **PM/admin roles** (admin, project_manager, and legacy roles like scrum_master, risk_manager, pmo): items bypass triage and are created directly as `open`.
 
 When a `proposed` item is created, all project managers and owners receive a notification: *"New [Type] requires triage: [Title]"*. The PM reviews the item and either promotes it to `open` (or the appropriate starting status) or cancels it with a reason.
 

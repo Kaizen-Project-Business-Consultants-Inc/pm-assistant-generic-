@@ -78,7 +78,7 @@ A **3-step wizard** guides you through initial setup:
 
 **Step 1 — Your Profile**
 - Enter your full name and choose a username.
-- Select your role from the dropdown (e.g., Project Manager, Team Member, Executive).
+- Select your role from the dropdown (Project Manager, Team Member, Executive, or Viewer).
 - Choose your preferred methodology: Waterfall, Agile, or Hybrid. This sets the default view mode and tab ordering on new projects, and filters the template list in Step 2.
 
 **Step 2 — Create Your First Project (optional)**
@@ -2355,11 +2355,11 @@ Destructive actions throughout the application (deleting integrations, change re
 
 | Role | Permissions |
 |------|-------------|
-| **Admin** | Full access to all features, user management, and settings. |
-| **Executive** | Read-only portfolio view, dashboards, and reports. |
-| **Manager** | Create and manage projects, schedules, resources, and workflows. |
-| **Member** | View assigned projects, update tasks, log time. |
+| **Admin** | Full access to all features, user management, settings, and admin panel. |
+| **Project Manager** | Full project lifecycle — projects, AI, reports, scheduling, team management. |
+| **Team Member** | Update assigned tasks/RAID items, timesheets, and comments. Write access is granted through assignment-based bypass (same as Viewer). |
 | **Viewer** | Read-only access to assigned projects. Schedules (Gantt, Table, Kanban, Calendar) are fully read-only — no task editing, dragging, or adding. Assignment-based write permissions: log time on assigned tasks, comment on assigned tasks, update/complete/reopen/cancel meeting action items assigned to them, upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Sidebar shows only Dashboard, Projects, Lessons, Reports, AI Query, and personal items. Free — no seat consumption. |
+| **Executive** | Pure read-only — dashboards, portfolio, and reports. No edits, no comments. |
 
 **My Assignments Widget**: Viewers (and all users) see a "My Assignments" widget on the Dashboard showing all tasks, RAID items, and meeting action items assigned to them. Each section is collapsible and shows item name, status, priority, due date, and project name with links to the relevant project pages.
 
