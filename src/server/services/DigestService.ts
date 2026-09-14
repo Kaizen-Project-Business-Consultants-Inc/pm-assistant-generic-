@@ -76,26 +76,44 @@ export class DigestService {
     return sentCount;
   }
 
-  private isDue(user: DigestUserRow, now: Date, dayOfWeek: number): boolean {
+  private isDue(user: DigestUserRow, now: Date, _dayOfWeek: number): boolean {
     const lastSent = user.digest_last_sent_at ? new Date(user.digest_last_sent_at) : null;
     const hoursSinceLastSent = lastSent
       ? (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60)
       : Infinity;
 
-    // Check if current hour matches preferred hour
-    const currentHour = now.getUTCHours();
+    // Convert current time to user's timezone
+    const userNow = this.getHourInTimezone(now, user.timezone);
     const preferredHour = user.digest_preferred_hour ?? 7;
-    if (currentHour !== preferredHour && isFinite(hoursSinceLastSent)) return false;
+    if (userNow.hour !== preferredHour && isFinite(hoursSinceLastSent)) return false;
 
     if (user.digest_frequency === 'daily') {
       return hoursSinceLastSent >= 23; // ~24h with some tolerance
     }
 
     if (user.digest_frequency === 'weekly') {
-      return dayOfWeek === 1 && hoursSinceLastSent >= 167; // Monday, ~7 days
+      return userNow.dayOfWeek === 1 && hoursSinceLastSent >= 167; // Monday in user's TZ, ~7 days
     }
 
     return false;
+  }
+
+  private getHourInTimezone(date: Date, timezone: string): { hour: number; dayOfWeek: number } {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: 'numeric',
+        hour12: false,
+        weekday: 'short',
+      }).formatToParts(date);
+      const hour = Number(parts.find(p => p.type === 'hour')?.value ?? date.getUTCHours());
+      const dayStr = parts.find(p => p.type === 'weekday')?.value ?? '';
+      const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+      return { hour, dayOfWeek: dayMap[dayStr] ?? date.getDay() };
+    } catch {
+      // Invalid timezone — fall back to UTC
+      return { hour: date.getUTCHours(), dayOfWeek: date.getUTCDay() };
+    }
   }
 
   private isDigestEmpty(digest: ReturnType<DigestService['buildDigest']> extends Promise<infer T> ? T : never): boolean {

@@ -9,6 +9,7 @@ export interface DigestUserRow {
   digest_last_sent_at: string | null;
   digest_preferred_hour: number;
   digest_sections: string[] | null;
+  timezone: string;
 }
 
 class DigestRepository {
@@ -16,7 +17,8 @@ class DigestRepository {
     const rows = await databaseService.queryControlPlane<any>(
       `SELECT id, username, email, full_name, digest_frequency, digest_last_sent_at,
               COALESCE(digest_preferred_hour, 7) AS digest_preferred_hour,
-              digest_sections
+              digest_sections,
+              COALESCE(timezone, 'UTC') AS timezone
        FROM users
        WHERE digest_frequency != 'none'
          AND email_verified = TRUE
@@ -27,6 +29,7 @@ class DigestRepository {
       ...r,
       digest_preferred_hour: Number(r.digest_preferred_hour) || 7,
       digest_sections: r.digest_sections ? (typeof r.digest_sections === 'string' ? JSON.parse(r.digest_sections) : r.digest_sections) : null,
+      timezone: r.timezone || 'UTC',
     }));
   }
 
