@@ -4,7 +4,7 @@
 
 ## Overview
 
-Kovarti PM uses **16 specialized AI agents** that analyze project data, detect risks, propose actions, and generate insights. This document describes how these agents communicate today and the recommended upgrade path to a more modern, event-driven architecture.
+Kovarti PM uses **16 specialized AI agents** (plus the Dreaming batch agent) that analyze project data, detect risks, propose actions, and generate insights. This document describes how these agents communicate today, the context engineering layer, and the recommended upgrade path to a more modern, event-driven architecture.
 
 ---
 
@@ -13,6 +13,8 @@ Kovarti PM uses **16 specialized AI agents** that analyze project data, detect r
 ### How It Works
 
 All 16 agents communicate through a **shared blackboard** — the `agent_memory` table in each tenant database. Agents write their findings as memory entries, and other agents read those entries to inform their own analyses.
+
+The `agent_memory` table now includes **versioning** columns (`version`, `version_hash`) and **permission scoping** (`permission_scope`: org/project/user). All writes are versioned with audit trail via `memory_change_log`. This enables optimistic concurrency control (409 on hash mismatch) and rollback to previous versions.
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
@@ -36,8 +38,12 @@ All 16 agents communicate through a **shared blackboard** — the `agent_memory`
 | Component | File | Purpose |
 |-----------|------|---------|
 | `InterAgentQueryService` | `src/server/services/agents/InterAgentQueryService.ts` | Query insights from specific agents or all agents for a project |
-| `memoryContext.ts` | `src/server/services/agents/memoryContext.ts` | Build cross-agent context for Claude prompts |
+| `memoryContext.ts` | `src/server/services/agents/memoryContext.ts` | Build cross-agent context for Claude prompts (includes skill catalog) |
 | `AgentMemoryService` | `src/server/services/AgentMemoryService.ts` | CRUD operations on `agent_memory` table |
+| `VersionedMemoryService` | `src/server/services/context/VersionedMemoryService.ts` | Versioned memory with optimistic locking and audit trail |
+| `ContextConfigService` | `src/server/services/context/ContextConfigService.ts` | Hierarchical AI context config (org -> project -> user) |
+| `DreamingService` | `src/server/services/context/DreamingService.ts` | Batch memory refinement from conversation analysis |
+| `SkillRegistryService` | `src/server/services/context/SkillRegistryService.ts` | Skill catalog with progressive disclosure |
 | `ReasoningEngine` | `src/server/services/agents/ReasoningEngine.ts` | Orchestrates agent analysis with memory context |
 
 ### Data Flow
@@ -47,7 +53,7 @@ All 16 agents communicate through a **shared blackboard** — the `agent_memory`
    - Agent's own reflections (last 5)
    - Agent's project memories
    - **Cross-agent insights** — latest 10 memories from _other_ agents for the same project
-3. **Context injected** — `formatMemoryContextForPrompt()` formats insights into the Claude prompt under `## Insights from Other Agents`
+3. **Context injected** — `formatMemoryContextForPrompt()` formats insights into the Claude prompt under `## Insights from Other Agents`, plus skill front-matter catalog from `SkillRegistryService`
 4. **Agent analyzes** — Claude sees what other agents found and can build on their work
 5. **Agent writes results** — findings stored back to `agent_memory` as `latest_scan`
 
@@ -87,6 +93,25 @@ All 16 agents communicate through a **shared blackboard** — the `agent_memory`
 | Confidence Calculator | `ConfidenceCalculator.ts` | Weights and scores agent outputs |
 | Conflict Resolver | `ConflictResolver.ts` | Detects contradictory recommendations |
 | Autonomy | `AutonomyService.ts` | Manages agent autonomy levels |
+| **Dreaming** | `DreamingService.ts` | Batch agent: analyzes `chat_conversations`, extracts patterns, proposes memory updates. Runs nightly via cron (02:30), not on project events. |
+
+---
+
+## Context Engineering Layer
+
+Inspired by Anthropic's context engineering framework, the system now implements four pillars:
+
+### 1. Hierarchical Context Configuration
+Org -> Project -> User layered AI instructions stored in `ai_context_configs`. Higher-scope admins can lock keys to prevent lower-scope overrides. Resolved context is injected into every AI system prompt via `ContextConfigService.resolveContext()`.
+
+### 2. Dreaming / Batch Memory Refinement
+Nightly cron job (02:30) analyzes recent `chat_conversations` using Claude to identify patterns (recurring corrections, preferences, domain terminology). Creates `dreaming_proposals` with confidence scores. Proposals >= 0.90 confidence are auto-applied; others require manual approval via the Settings > AI Context tab.
+
+### 3. Versioned Permissioned Memory
+The `agent_memory` table now has `version`, `version_hash`, `created_by`, `source`, and `permission_scope` columns. All mutations are logged to `memory_change_log`. Updates require the current `version_hash` (optimistic locking, 409 on mismatch). Rollback restores the previous value from the audit log.
+
+### 4. Progressive Skill Disclosure
+The `agent_skills` table stores a skill catalog with short summaries (front-matter) and detailed procedures. Front-matter is always included in agent context via `formatMemoryContextForPrompt()`. Detailed procedures are loaded on-demand when an agent needs to execute a skill. Skills are filtered by user role.
 
 ---
 

@@ -2246,7 +2246,16 @@ Navigate to **Settings** to configure:
 - **Language** -- Select your preferred display language (English, French, or Spanish). The change applies instantly without a page reload.
 - **Time Zone** -- Set your IANA timezone (e.g., `America/Toronto`). All dates in the application are displayed in this timezone.
 
-All eight Settings tabs (Profile, Team, Notifications, Display, Accessibility, API Keys, Webhooks, Danger Zone) fully support dark mode — toggle tracks, form panels, badges, code blocks, and the danger zone section all switch correctly when dark theme is active. The Settings tabs use a proper ARIA tablist pattern for screen reader navigation.
+### AI Context Settings
+
+Open **Settings > AI Context** to customize how Mjuzi AI responds to you:
+
+- **AI Preferences** -- Set custom instructions (up to 5,000 characters), response style (tone, length, format), forbidden topics, project methodology, and AI creativity/temperature. Your user-level settings override project and org defaults unless locked by an admin.
+- **Memory Browser** -- View, search, edit, and delete all AI memories. Each memory shows its version number, permission scope (org/project/user), and source. Edit with optimistic locking (if another user changed the memory, you'll see a conflict dialog). Roll back to previous versions from the version history panel.
+- **Dreaming** (admin only) -- Review AI-generated memory improvement proposals. The system analyzes recent conversations overnight to identify patterns (user corrections, preferences, domain terminology). Approve or reject proposals individually, or let high-confidence proposals (>= 90%) auto-apply. Manually trigger a dreaming run with the "Run Now" button.
+- **Context Preview** -- See exactly what custom context the AI receives for your current session. Each config entry shows which layer it comes from (org, project, or user) and whether it's locked. The raw prompt injection preview shows the exact text added to the AI system prompt.
+
+All nine Settings tabs (Profile, Team, Notifications, Display, Accessibility, AI Context, API Keys, Webhooks, Danger Zone) fully support dark mode — toggle tracks, form panels, badges, code blocks, and the danger zone section all switch correctly when dark theme is active. The Settings tabs use a proper ARIA tablist pattern for screen reader navigation.
 
 ### Accessibility Settings
 

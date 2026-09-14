@@ -1,9 +1,11 @@
 import { agentMemoryService, AgentMemory } from '../AgentMemoryService';
+import { skillRegistryService } from '../context/SkillRegistryService';
 
 export interface MemoryContext {
   reflections: Array<{ action: string; decision: string; reasoning: string; outcome: string; timestamp: string }>;
   projectMemories: Array<{ key: string; value: unknown; updatedAt: string }>;
   crossAgentInsights: Array<{ agentId: string; key: string; value: unknown; updatedAt: string }>;
+  skillCatalog?: string;
 }
 
 /**
@@ -94,5 +96,27 @@ export function formatMemoryContextForPrompt(ctx: MemoryContext): string {
     }
   }
 
+  if (ctx.skillCatalog) {
+    parts.push('\n' + ctx.skillCatalog);
+  }
+
   return parts.length > 0 ? parts.join('\n') : '';
+}
+
+/**
+ * Enhanced memory context that includes skill catalog front-matter.
+ */
+export async function getMemoryContextWithSkills(
+  agentId: string,
+  projectId: string,
+  userRole: string,
+): Promise<MemoryContext & { skillCatalog: string }> {
+  const [baseCtx, skills] = await Promise.all([
+    getMemoryContext(agentId, projectId),
+    skillRegistryService.getSkillsForRole(userRole).catch(() => []),
+  ]);
+
+  const skillCatalog = skillRegistryService.formatSkillCatalogForPrompt(skills);
+
+  return { ...baseCtx, skillCatalog };
 }

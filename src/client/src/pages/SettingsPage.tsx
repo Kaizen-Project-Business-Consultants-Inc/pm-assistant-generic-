@@ -9,6 +9,7 @@ import {
   Webhook,
   Accessibility,
   Users,
+  Brain,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { ProfileTab } from './settings/ProfileTab';
@@ -19,8 +20,9 @@ import { AccessibilityTab } from './settings/AccessibilityTab';
 import { ApiKeysTab } from './settings/ApiKeysTab';
 import { WebhooksTab } from './settings/WebhooksTab';
 import { DangerZoneTab } from './settings/DangerZoneTab';
+import { AIContextTab } from './settings/AIContextTab';
 
-type Tab = 'profile' | 'team' | 'notifications' | 'display' | 'accessibility' | 'api-keys' | 'webhooks' | 'danger';
+type Tab = 'profile' | 'team' | 'notifications' | 'display' | 'accessibility' | 'ai-context' | 'api-keys' | 'webhooks' | 'danger';
 
 const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
@@ -28,6 +30,7 @@ const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
   { id: 'display', label: 'Display', icon: <Palette className="w-4 h-4" /> },
   { id: 'accessibility', label: 'Accessibility', icon: <Accessibility className="w-4 h-4" /> },
+  { id: 'ai-context', label: 'AI Context', icon: <Brain className="w-4 h-4" /> },
   { id: 'api-keys', label: 'API Keys', icon: <Key className="w-4 h-4" /> },
   { id: 'webhooks', label: 'Webhooks', icon: <Webhook className="w-4 h-4" /> },
   { id: 'danger', label: 'Danger Zone', icon: <AlertTriangle className="w-4 h-4" /> },
@@ -87,6 +90,7 @@ export const SettingsPage: React.FC = () => {
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'display' && <DisplayTab />}
         {activeTab === 'accessibility' && <AccessibilityTab />}
+        {activeTab === 'ai-context' && <AIContextTab />}
         {activeTab === 'api-keys' && <ApiKeysTab />}
         {activeTab === 'webhooks' && <WebhooksTab />}
         {activeTab === 'danger' && <DangerZoneTab />}

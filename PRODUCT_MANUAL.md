@@ -1335,6 +1335,11 @@ All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the
 - **Task highlight on creation** — When Mjuzi creates a task, the new task is automatically selected, scrolled into view, and highlighted with a yellow flash for 3 seconds so the user can immediately see where it was placed.
 - **Delete cleanup** — When Mjuzi deletes a task that is currently selected, the selection is automatically cleared to prevent stale UI state.
 - **Tenant-scoped conversations** — Chat conversations are stored in the tenant database (not the shared control plane), ensuring proper multi-tenant data isolation.
+- **Context engineering** — four pillars of AI context customization:
+  - **Hierarchical config**: org, project, and user-level AI instructions (custom system prompts, response style, forbidden topics, domain glossary, project methodology, AI temperature). User overrides project overrides org, unless locked by an admin.
+  - **Versioned memory**: all AI memories have version numbers and hash-based optimistic locking. Edit, rollback, and audit trail via Memory Browser in Settings > AI Context.
+  - **Dreaming**: nightly batch job analyzes recent conversations to propose memory improvements (new preferences, corrections, patterns). Auto-applies high-confidence proposals (>= 90%), presents others for manual review.
+  - **Skill catalog**: progressive disclosure of agent capabilities. Front-matter summaries are always in context; detailed procedures loaded on-demand.
 - **Knowledge Base search** — Mjuzi has a `search_knowledge_base` tool that searches embedded product documentation via RAG (Retrieval-Augmented Generation). When users ask how-to questions ("how do I create a subtask?", "where is the Gantt chart?"), Mjuzi searches the indexed documentation instead of guessing. Documentation from USER_GUIDE.md, PRODUCT_MANUAL.md, WORLD_CLASS_FEATURES.md, ADMIN_MANUAL.md, and AI_DESIGN_FEATURES.md is chunked by section heading (max 800 words per chunk to stay within OpenAI's 8192-token embedding limit), embedded via OpenAI text-embedding-3-small, and stored in the `knowledge_base_chunks` table with vector embeddings in the `embeddings` table. Admins can trigger a reindex via `POST /api/v1/admin/knowledge-base/reindex` after doc changes.
 
 ### AI Reports

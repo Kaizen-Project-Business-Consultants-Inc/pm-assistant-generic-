@@ -3621,6 +3621,114 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     const response = await this.api.delete(`/projects/${projectId}/storage-connectors/${connectorId}`);
     return response.data;
   }
+
+  // -------------------------------------------------------------------------
+  // Context Engineering
+  // -------------------------------------------------------------------------
+
+  async getResolvedContextConfig(projectId?: string) {
+    const params: Record<string, string> = {};
+    if (projectId) params.projectId = projectId;
+    const response = await this.api.get('/context/config', { params });
+    return response.data;
+  }
+
+  async getContextConfigAtScope(scope: string, scopeId: string) {
+    const response = await this.api.get(`/context/config/${scope}/${scopeId}`);
+    return response.data;
+  }
+
+  async updateContextConfig(scope: string, scopeId: string, configKey: string, configValue: unknown, versionHash?: string) {
+    const response = await this.api.put(`/context/config/${scope}/${scopeId}`, { configKey, configValue, versionHash });
+    return response.data;
+  }
+
+  async lockContextConfigKey(scope: string, scopeId: string, configKey: string) {
+    const response = await this.api.post(`/context/config/${scope}/${scopeId}/lock`, { configKey });
+    return response.data;
+  }
+
+  async getContextConfigHistory(configId: string) {
+    const response = await this.api.get(`/context/config/history/${configId}`);
+    return response.data;
+  }
+
+  async previewAIContext(projectId?: string) {
+    const params: Record<string, string> = {};
+    if (projectId) params.projectId = projectId;
+    const response = await this.api.get('/context/preview', { params });
+    return response.data;
+  }
+
+  // Versioned Memory
+  async listVersionedMemories(filters?: Record<string, string>) {
+    const response = await this.api.get('/memory', { params: filters });
+    return response.data;
+  }
+
+  async getVersionedMemory(id: string) {
+    const response = await this.api.get(`/memory/${id}`);
+    return response.data;
+  }
+
+  async updateVersionedMemory(id: string, data: { value?: unknown; permissionScope?: string; versionHash: string }) {
+    const response = await this.api.put(`/memory/${id}`, data);
+    return response.data;
+  }
+
+  async deleteVersionedMemory(id: string) {
+    const response = await this.api.delete(`/memory/${id}`);
+    return response.data;
+  }
+
+  async rollbackMemory(id: string) {
+    const response = await this.api.post(`/memory/${id}/rollback`);
+    return response.data;
+  }
+
+  async getMemoryHistory(id: string) {
+    const response = await this.api.get(`/memory/${id}/history`);
+    return response.data;
+  }
+
+  // Dreaming
+  async listDreamingRuns() {
+    const response = await this.api.get('/dreaming/runs');
+    return response.data;
+  }
+
+  async listDreamingProposals(status?: string) {
+    const params: Record<string, string> = {};
+    if (status) params.status = status;
+    const response = await this.api.get('/dreaming/proposals', { params });
+    return response.data;
+  }
+
+  async approveDreamingProposal(id: string) {
+    const response = await this.api.post(`/dreaming/proposals/${id}/approve`);
+    return response.data;
+  }
+
+  async rejectDreamingProposal(id: string) {
+    const response = await this.api.post(`/dreaming/proposals/${id}/reject`);
+    return response.data;
+  }
+
+  async triggerDreamingRun() {
+    const response = await this.api.post('/dreaming/trigger');
+    return response.data;
+  }
+
+  // Skills
+  async listSkills() {
+    const response = await this.api.get('/skills');
+    return response.data;
+  }
+
+  async getSkillDetail(id: string) {
+    const response = await this.api.get(`/skills/${id}`);
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();

@@ -42,6 +42,10 @@ import { aiBudgetRoutes } from './routes/ai/aiBudget';
 import { narrativeRoutes } from './routes/ai/narratives';
 import { accessibilityRoutes } from './routes/ai/accessibility';
 import { aiTaskEstimationRoutes } from './routes/ai/aiTaskEstimation';
+import { contextConfigRoutes } from './routes/ai/contextConfig';
+import { versionedMemoryRoutes } from './routes/ai/versionedMemory';
+import { dreamingRoutes } from './routes/ai/dreaming';
+import { skillRoutes } from './routes/ai/skills';
 
 // Resources
 import { resourceRoutes } from './routes/resources/resources';
@@ -162,6 +166,10 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(narrativeRoutes, { prefix: '/api/v1/narratives' });
   await fastify.register(accessibilityRoutes, { prefix: '/api/v1/accessibility' });
   await fastify.register(aiTaskEstimationRoutes, { prefix: '/api/v1/ai/estimate-task' });
+  await fastify.register(contextConfigRoutes, { prefix: '/api/v1/context' });
+  await fastify.register(versionedMemoryRoutes, { prefix: '/api/v1/memory' });
+  await fastify.register(dreamingRoutes, { prefix: '/api/v1/dreaming' });
+  await fastify.register(skillRoutes, { prefix: '/api/v1/skills' });
 
   // Resources
   await fastify.register(resourceRoutes, { prefix: '/api/v1/resources' });

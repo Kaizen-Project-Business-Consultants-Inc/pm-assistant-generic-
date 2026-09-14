@@ -25,6 +25,7 @@ export interface CronTasks {
   weeklyReviewTask: cron.ScheduledTask | null;
   utilizationCoachingTask: cron.ScheduledTask | null;
   scheduledAutomationTask: cron.ScheduledTask | null;
+  dreamingTask: cron.ScheduledTask | null;
 }
 
 export function startCronTasks(
@@ -45,6 +46,7 @@ export function startCronTasks(
     weeklyReviewTask: null,
     utilizationCoachingTask: null,
     scheduledAutomationTask: null,
+    dreamingTask: null,
   };
 
   // Agent-specific jobs: gated by AGENT_ENABLED
@@ -333,6 +335,27 @@ export function startCronTasks(
     });
   });
 
+  // Dreaming batch — nightly at 02:30 (AI memory refinement)
+  if (config.AGENT_ENABLED) {
+    logger.info('[cron] Starting dreaming batch job (daily at 02:30)');
+    tasks.dreamingTask = cron.schedule('30 2 * * *', async () => {
+      const start = Date.now();
+      try {
+        const { dreamingService } = await import('../context/DreamingService');
+        const run = await dreamingService.triggerRun('cron');
+        logger.info('[cron:dreaming] Triggered', {
+          cronJob: 'dreaming', durationMs: Date.now() - start,
+          result: { runId: run.id },
+        });
+      } catch (error) {
+        logger.error('[cron:dreaming] FAILED', {
+          cronJob: 'dreaming', durationMs: Date.now() - start,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  }
+
   return tasks;
 }
 
@@ -350,6 +373,7 @@ export function stopCronTasks(tasks: CronTasks): void {
   if (tasks.weeklyReviewTask) { tasks.weeklyReviewTask.stop(); tasks.weeklyReviewTask = null; }
   if (tasks.utilizationCoachingTask) { tasks.utilizationCoachingTask.stop(); tasks.utilizationCoachingTask = null; }
   if (tasks.scheduledAutomationTask) { tasks.scheduledAutomationTask.stop(); tasks.scheduledAutomationTask = null; }
+  if (tasks.dreamingTask) { tasks.dreamingTask.stop(); tasks.dreamingTask = null; }
   logger.info('[Agent] Stopped agent scheduler');
 }
 

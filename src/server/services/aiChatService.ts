@@ -9,6 +9,7 @@ import { chatRepository, type ChatConversation, type ChatMessage } from '../data
 import { agentMemoryService } from './AgentMemoryService';
 import { InterAgentQueryService } from './agents/InterAgentQueryService';
 import { AIBudgetExceededError } from './AIBudgetService';
+import { contextConfigService } from './context/ContextConfigService';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -337,8 +338,22 @@ export class AIChatService {
       }
     }
 
+    // Resolve hierarchical context config (org -> project -> user)
+    let customContextPrompt = '';
+    try {
+      const user = { organizationId: null as string | null, ...(req as any) };
+      const resolved = await contextConfigService.resolveContext(
+        user.organizationId || null,
+        req.context?.projectId || null,
+        req.userId,
+      );
+      customContextPrompt = contextConfigService.formatForPrompt(resolved);
+    } catch {
+      // Non-critical — continue without custom context
+    }
+
     const systemPrompt = promptTemplates.conversational.render({
-      projectContext: projectContext + agentInsightsContext,
+      projectContext: projectContext + agentInsightsContext + customContextPrompt,
       userRole: req.userRole || 'team_member',
     });
 
