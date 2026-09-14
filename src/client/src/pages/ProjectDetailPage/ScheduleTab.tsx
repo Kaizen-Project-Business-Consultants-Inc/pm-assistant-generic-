@@ -225,6 +225,8 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
 
 function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule, desktopViewMode }: { schedules: any[]; selectedIdx: number; onSelectSchedule: (idx: number) => void; desktopViewMode?: string }) {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const canEdit = !!user && user.role !== 'viewer' && user.role !== 'team_member';
   const [mobileView, setMobileView] = useState<'list' | 'kanban' | 'calendar'>(() => {
     if (desktopViewMode === 'kanban') return 'kanban';
     if (desktopViewMode === 'calendar') return 'calendar';
@@ -291,14 +293,14 @@ function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule, desktopV
               {desktopViewMode.charAt(0).toUpperCase() + desktopViewMode.slice(1)} view requires a wider screen. Showing task list instead.
             </p>
           )}
-          <TaskListMobile tasks={tasks} onStatusChange={handleStatusChange} />
+          <TaskListMobile tasks={tasks} onStatusChange={canEdit ? handleStatusChange : undefined} />
         </>
       )}
       {mobileView === 'kanban' && (
         <KanbanBoard
           tasks={tasks}
           onTaskClick={() => {}}
-          onStatusChange={handleStatusChange}
+          onStatusChange={canEdit ? handleStatusChange : undefined}
           scheduleId={schedule?.id}
         />
       )}
@@ -371,8 +373,9 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   const [filterAssignee, setFilterAssignee] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Quick filter pills
+  // Role-based editing — viewers and team_members are read-only on schedules
   const { user } = useAuthStore();
+  const canEdit = !!user && user.role !== 'viewer' && user.role !== 'team_member';
   const VALID_QF = ['all', 'due', 'late', 'at_risk', 'my_tasks', 'unassigned'];
   const [quickFilter, setQuickFilter] = useState<QuickFilterType>(() => {
     try {
@@ -1023,35 +1026,35 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           onTaskSelect={(task) => setActiveTaskId(task.id)}
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}
-          onAddTask={() => setShowAddForm(true)}
-          onQuickAdd={(name) => {
+          onAddTask={canEdit ? () => setShowAddForm(true) : undefined}
+          onQuickAdd={canEdit ? (name) => {
             createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '' } as any);
-          }}
-          onCreateTaskWithDates={(startDate, endDate, parentTaskId) => {
+          } : undefined}
+          onCreateTaskWithDates={canEdit ? (startDate, endDate, parentTaskId) => {
             setCreateTaskDates({ startDate, endDate, parentTaskId });
             setShowAddForm(true);
-          }}
-          onDeleteTask={(taskId) => deleteMutation.mutate(taskId)}
-          onInlineInsert={(name, afterTaskId, parentTaskId) => {
+          } : undefined}
+          onDeleteTask={canEdit ? (taskId) => deleteMutation.mutate(taskId) : undefined}
+          onInlineInsert={canEdit ? (name, afterTaskId, parentTaskId) => {
             createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', afterTaskId, parentTaskId: parentTaskId || undefined } as any);
-          }}
-          onInlineInsertBefore={(name, beforeTaskId, parentTaskId) => {
+          } : undefined}
+          onInlineInsertBefore={canEdit ? (name, beforeTaskId, parentTaskId) => {
             createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', beforeTaskId, parentTaskId: parentTaskId || undefined } as any);
-          }}
-          onInsertBefore={(beforeTaskId, parentTaskId) => {
+          } : undefined}
+          onInsertBefore={canEdit ? (beforeTaskId, parentTaskId) => {
             setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, beforeTaskId });
             setShowAddForm(true);
-          }}
-          onInsertAfter={(afterTaskId, parentTaskId) => {
+          } : undefined}
+          onInsertAfter={canEdit ? (afterTaskId, parentTaskId) => {
             setCreateTaskDates({ startDate: '', endDate: '', parentTaskId, afterTaskId });
             setShowAddForm(true);
-          }}
+          } : undefined}
           columnState={columnState}
-          onTaskDragEnd={handleTaskDragEndWithUndo}
-          onTaskUpdate={updateTaskWithUndo}
-          onTaskReorder={handleTaskReorder}
-          onBulkUpdate={handleBulkUpdate}
-          onBulkDelete={handleBulkDelete}
+          onTaskDragEnd={canEdit ? handleTaskDragEndWithUndo : undefined}
+          onTaskUpdate={canEdit ? updateTaskWithUndo : undefined}
+          onTaskReorder={canEdit ? handleTaskReorder : undefined}
+          onBulkUpdate={canEdit ? handleBulkUpdate : undefined}
+          onBulkDelete={canEdit ? handleBulkDelete : undefined}
           canUndo={canUndo}
           canRedo={canRedo}
           undoDescription={undoDescription}
@@ -1066,11 +1069,11 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
             endDate: bt.endDate,
           }))}
           nonWorkingDates={nonWorkingDates}
-          onDuplicateTasks={handleDuplicateTasks}
+          onDuplicateTasks={canEdit ? handleDuplicateTasks : undefined}
           taskRiskMap={taskRiskMap}
           showCriticalPath={showCriticalPath}
           onCriticalPathChange={setShowCriticalPath}
-          scheduleOverflowMenu={
+          scheduleOverflowMenu={canEdit ?
             <ScheduleOverflowMenu
               schedule={schedule}
               projectId={projectId}
@@ -1108,7 +1111,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
                 setShowScenarioPrompt(true);
               }}
             />
-          }
+          : undefined}
         />
       )}
       {viewMode === 'kanban' && (
@@ -1117,10 +1120,10 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           allTasks={tasks}
           taskRiskMap={taskRiskMap}
           onTaskClick={(task) => { setActiveTaskId(task.id); setEditingTask(task as GanttTask); }}
-          onStatusChange={handleKanbanStatusChange}
-          onQuickAdd={(name, status) => {
+          onStatusChange={canEdit ? handleKanbanStatusChange : undefined}
+          onQuickAdd={canEdit ? (name, status) => {
             createMutation.mutate({ name, status, priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '' } as any);
-          }}
+          } : undefined}
           activeTaskId={activeTaskId}
         />
       )}
@@ -1131,31 +1134,31 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           onTaskSelect={(task) => setActiveTaskId(task.id)}
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}
-          onTaskUpdate={updateTaskWithUndo}
-          onTaskReorder={handleTaskReorder}
-          onQuickAdd={(name) => {
+          onTaskUpdate={canEdit ? updateTaskWithUndo : undefined}
+          onTaskReorder={canEdit ? handleTaskReorder : undefined}
+          onQuickAdd={canEdit ? (name) => {
             createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '' } as any);
-          }}
+          } : undefined}
           columnState={columnState}
           cpmData={cpmData}
           baselineData={comparison}
           scheduleStartDate={schedule.startDate}
-          onBulkUpdate={handleBulkUpdate}
-          onBulkDelete={handleBulkDelete}
-          onDeleteTask={(taskId) => deleteMutation.mutate(taskId)}
-          onInlineInsert={(name, afterTaskId, parentTaskId) => {
+          onBulkUpdate={canEdit ? handleBulkUpdate : undefined}
+          onBulkDelete={canEdit ? handleBulkDelete : undefined}
+          onDeleteTask={canEdit ? (taskId) => deleteMutation.mutate(taskId) : undefined}
+          onInlineInsert={canEdit ? (name, afterTaskId, parentTaskId) => {
             createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', afterTaskId, parentTaskId: parentTaskId || undefined } as any);
-          }}
-          onInsertBefore={(beforeTaskId, parentTaskId) => {
+          } : undefined}
+          onInsertBefore={canEdit ? (beforeTaskId, parentTaskId) => {
             createMutation.mutate({ name: 'New Task', status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', beforeTaskId, parentTaskId: parentTaskId || undefined } as any);
-          }}
-          canUndo={canUndo}
-          canRedo={canRedo}
+          } : undefined}
+          canUndo={canEdit ? canUndo : false}
+          canRedo={canEdit ? canRedo : false}
           undoDescription={undoDescription}
           redoDescription={redoDescription}
-          onUndo={undo}
-          onRedo={redo}
-          onDuplicateTasks={handleDuplicateTasks}
+          onUndo={canEdit ? undo : undefined}
+          onRedo={canEdit ? redo : undefined}
+          onDuplicateTasks={canEdit ? handleDuplicateTasks : undefined}
           taskRiskMap={taskRiskMap}
         />
       )}
@@ -1163,9 +1166,9 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         <CalendarView
           tasks={filteredTasks}
           onTaskClick={(task) => { setActiveTaskId(task.id); setEditingTask(task); }}
-          onTaskReschedule={(taskId, newStart, newEnd) => {
+          onTaskReschedule={canEdit ? (taskId, newStart, newEnd) => {
             updateTaskWithUndo(taskId, { startDate: newStart, endDate: newEnd });
-          }}
+          } : undefined}
         />
       )}
       {viewMode === 'network' && (
@@ -1199,15 +1202,15 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           allTasks={tasks}
           scheduleId={schedule.id}
           projectId={projectId}
-          onSave={(data) => updateMutation.mutate({ taskId: editingTask.id, data })}
-          onDelete={(taskId) => deleteMutation.mutate(taskId)}
+          onSave={canEdit ? (data) => updateMutation.mutate({ taskId: editingTask.id, data }) : undefined}
+          onDelete={canEdit ? (taskId) => deleteMutation.mutate(taskId) : undefined}
           onClose={() => setEditingTask(null)}
           isSaving={updateMutation.isPending}
         />
       )}
 
-      {/* Add modal */}
-      {showAddForm && (
+      {/* Add modal — editors only */}
+      {showAddForm && canEdit && (
         <TaskFormModal
           task={null}
           allTasks={tasks}

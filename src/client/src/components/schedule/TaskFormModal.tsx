@@ -60,7 +60,7 @@ interface TaskFormModalProps {
   task: GanttTask | null;
   /** All tasks in the schedule (for dependency & parent dropdowns) */
   allTasks: GanttTask[];
-  onSave: (data: TaskFormData) => void;
+  onSave?: (data: TaskFormData) => void;
   onDelete?: (taskId: string) => void;
   onClose: () => void;
   isSaving?: boolean;
@@ -352,7 +352,7 @@ export function TaskFormModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || !onSave) return;
     onSave(form);
   };
 
@@ -941,7 +941,7 @@ export function TaskFormModal({
             >
               Cancel
             </button>
-            <button
+            {onSave && <button
               type="submit"
               onClick={handleSubmit}
               disabled={isSaving || !form.name.trim()}
@@ -958,7 +958,7 @@ export function TaskFormModal({
                   {isEdit ? 'Update Task' : 'Create Task'}
                 </>
               )}
-            </button>
+            </button>}
           </div>
         </div>
       </div>

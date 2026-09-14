@@ -31,7 +31,7 @@ export interface TableViewProps {
   onTaskClick: (task: GanttTask) => void;
   onTaskSelect?: (task: GanttTask) => void;
   activeTaskId?: string | null;
-  onTaskUpdate: (taskId: string, data: Record<string, unknown>) => void;
+  onTaskUpdate?: (taskId: string, data: Record<string, unknown>) => void;
   onTaskReorder?: (updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }>) => void;
   onQuickAdd?: (name: string) => void;
   columnState: ColumnState;

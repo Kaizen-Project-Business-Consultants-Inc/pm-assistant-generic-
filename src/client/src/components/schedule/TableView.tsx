@@ -628,10 +628,11 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   }, [visibleColumns, visibleSorted, getCellText, setColWidths]);
 
   const startEditing = useCallback((taskId: string, field: EditableField, task: GanttTask) => {
+    if (!onTaskUpdate) return; // read-only mode
     if (task.isSummary && SUMMARY_ROLLUP_FIELDS.has(field)) return;
     setEditingCell({ taskId, field });
     setEditValue(getTaskFieldValue(task, field));
-  }, [getTaskFieldValue]);
+  }, [getTaskFieldValue, onTaskUpdate]);
 
   // Dropdown fields open immediately on first click (no select-first requirement)
   const IMMEDIATE_EDIT_FIELDS = new Set<EditableField>(['assignedTo', 'status', 'priority']);
@@ -666,7 +667,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       setSavingCell({ taskId, field });
       setEditingCell(null);
       setEditValue('');
-      onTaskUpdate(taskId, { endDate: newEnd.toISOString().split('T')[0] });
+      onTaskUpdate?.(taskId, { endDate: newEnd.toISOString().split('T')[0] });
       setTimeout(() => {
         setSavingCell(null);
         setSavedCell({ taskId, field });
@@ -686,7 +687,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       setSavingCell({ taskId, field });
       setEditingCell(null);
       setEditValue('');
-      onTaskUpdate(taskId, {
+      onTaskUpdate?.(taskId, {
         dependencies: result.deps.map(d => ({
           dependencyId: d.taskId,
           dependencyType: d.type,
@@ -713,7 +714,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     setEditValue('');
 
     const apiField = field === 'notes' ? 'description' : field;
-    onTaskUpdate(taskId, { [apiField]: saveValue });
+    onTaskUpdate?.(taskId, { [apiField]: saveValue });
 
     setTimeout(() => {
       setSavingCell(null);
@@ -853,7 +854,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     const task = tasks.find(t => t.id === taskId);
     if (task?.parentTaskId) {
       const parent = tasks.find(t => t.id === task.parentTaskId);
-      onTaskUpdate(taskId, { parentTaskId: parent?.parentTaskId || null });
+      onTaskUpdate?.(taskId, { parentTaskId: parent?.parentTaskId || null });
     }
   }, [tasks, onTaskUpdate]);
 
@@ -861,7 +862,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     if (onBulkUpdate) {
       onBulkUpdate([taskId], 'parentTaskId', aboveTaskId);
     } else {
-      onTaskUpdate(taskId, { parentTaskId: aboveTaskId });
+      onTaskUpdate?.(taskId, { parentTaskId: aboveTaskId });
     }
   }, [onBulkUpdate, onTaskUpdate]);
 
@@ -916,7 +917,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
             const val = focusedCell.field === 'progressPercentage'
               ? Math.max(0, Math.min(100, Number(copiedValue.value)))
               : copiedValue.value;
-            onTaskUpdate(focusedCell.taskId, { [apiField]: val });
+            onTaskUpdate?.(focusedCell.taskId, { [apiField]: val });
             setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
             setTimeout(() => setPasteFlash(null), 800);
           } else if (copiedTasks.length > 0 && onDuplicateTasks) {
@@ -952,7 +953,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
               if (onBulkUpdate) {
                 onBulkUpdate([id], 'parentTaskId', parent?.parentTaskId || '');
               } else {
-                onTaskUpdate(id, { parentTaskId: parent?.parentTaskId || null });
+                onTaskUpdate?.(id, { parentTaskId: parent?.parentTaskId || null });
               }
             }
           }
@@ -971,7 +972,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                   if (onBulkUpdate) {
                     onBulkUpdate([id], 'parentTaskId', above.id);
                   } else {
-                    onTaskUpdate(id, { parentTaskId: above.id });
+                    onTaskUpdate?.(id, { parentTaskId: above.id });
                   }
                 }
               }
@@ -1066,7 +1067,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       if (target.closest('.fixed.z-50')) return;
       const task = tasks.find(t => t.id === notesPopup.taskId);
       if (task && notesPopup.value !== (task.description || '')) {
-        onTaskUpdate(notesPopup.taskId, { description: notesPopup.value });
+        onTaskUpdate?.(notesPopup.taskId, { description: notesPopup.value });
       }
       setNotesPopup(null);
     };
@@ -1325,7 +1326,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 value={task.assignedTo || null}
                 onSelect={(userId) => {
                   cancelEditing();
-                  onTaskUpdate(task.id, { assignedTo: userId });
+                  onTaskUpdate?.(task.id, { assignedTo: userId });
                   setSavingCell({ taskId: task.id, field: 'assignedTo' });
                   setTimeout(() => {
                     setSavingCell(null);
@@ -1336,7 +1337,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 }}
                 onClear={() => {
                   cancelEditing();
-                  onTaskUpdate(task.id, { assignedTo: '' });
+                  onTaskUpdate?.(task.id, { assignedTo: '' });
                 }}
                 onClose={cancelEditing}
               />
@@ -1560,7 +1561,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'resource':
         return (
           <td key={col.key} className="px-3 py-2 text-xs overflow-visible" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-            {!task.isSummary && (
+            {!task.isSummary && onTaskUpdate && (
               <ResourceQuickAssign
                 taskId={task.id}
                 assignments={task.assignments || []}
@@ -1675,7 +1676,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     if (!notesPopup) return;
     const task = tasks.find(t => t.id === notesPopup.taskId);
     if (task && notesPopup.value !== (task.description || '')) {
-      onTaskUpdate(notesPopup.taskId, { description: notesPopup.value });
+      onTaskUpdate?.(notesPopup.taskId, { description: notesPopup.value });
     }
     setNotesPopup(null);
   }, [notesPopup, tasks, onTaskUpdate]);

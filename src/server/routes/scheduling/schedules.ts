@@ -211,23 +211,15 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Viewers can update tasks assigned to them (via resource linkage)
+  // Editor+ can update tasks; viewers are read-only on schedules
   fastify.put('/:scheduleId/tasks/:taskId', {
-    preHandler: [viewerWriteBypass()],
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
     schema: { description: 'Update a task', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { taskId } = request.params as { taskId: string };
       const data = updateTaskSchema.parse(request.body);
-
-      // Viewer ownership check: must be assigned to this task
       const userId = request.user!.userId;
-      if (request.user!.role === 'viewer') {
-        const assigned = await scheduleService.isTaskAssignedToUser(taskId, userId);
-        if (!assigned) {
-          return reply.status(403).send({ error: 'Viewers can only update tasks assigned to them' });
-        }
-      }
 
       // Capture old end date before update for cascade detection
       const oldTask = await scheduleService.findTaskById(taskId);
