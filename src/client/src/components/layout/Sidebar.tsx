@@ -66,6 +66,9 @@ interface NavSection {
   items: NavItem[];
 }
 
+// All roles except viewer and team_member
+const NON_VIEWER_ROLES: NavItem['roles'] = ['admin', 'executive', 'project_manager', 'scrum_master', 'pmo', 'finance_officer', 'risk_manager', 'ba', 'qa', 'tester', 'devops', 'claude_sme'];
+
 const pmNavSections: NavSection[] = [
   {
     titleKey: 'section.work',
@@ -78,24 +81,24 @@ const pmNavSections: NavSection[] = [
   {
     titleKey: 'section.manage',
     items: [
-      { labelKey: 'nav.resources', icon: UserCog, path: '/resources' },
-      { labelKey: 'nav.intelligence', icon: Brain, path: '/meetings' },
+      { labelKey: 'nav.resources', icon: UserCog, path: '/resources', roles: NON_VIEWER_ROLES },
+      { labelKey: 'nav.intelligence', icon: Brain, path: '/meetings', roles: NON_VIEWER_ROLES },
       { labelKey: 'nav.lessons', icon: BookOpen, path: '/lessons' },
-      { labelKey: 'nav.changeRequests', icon: GitPullRequest, path: '/change-requests' },
-      { labelKey: 'nav.workflows', icon: Workflow, path: '/workflows' },
-      { labelKey: 'nav.intake', icon: ClipboardList, path: '/intake' },
+      { labelKey: 'nav.changeRequests', icon: GitPullRequest, path: '/change-requests', roles: NON_VIEWER_ROLES },
+      { labelKey: 'nav.workflows', icon: Workflow, path: '/workflows', roles: NON_VIEWER_ROLES },
+      { labelKey: 'nav.intake', icon: ClipboardList, path: '/intake', roles: NON_VIEWER_ROLES },
       { labelKey: 'nav.integrations', icon: Plug, path: '/integrations', roles: ['admin', 'project_manager', 'pmo'] },
     ],
   },
   {
     titleKey: 'section.insights',
     items: [
-      { labelKey: 'nav.analytics', icon: BarChart3, path: '/analytics' },
-      { labelKey: 'nav.evm', icon: TrendingUp, path: '/evm' },
-      { labelKey: 'nav.simulation', icon: Dices, path: '/monte-carlo' },
-      { labelKey: 'nav.scenarios', icon: FlaskConical, path: '/scenarios' },
+      { labelKey: 'nav.analytics', icon: BarChart3, path: '/analytics', roles: NON_VIEWER_ROLES },
+      { labelKey: 'nav.evm', icon: TrendingUp, path: '/evm', roles: NON_VIEWER_ROLES },
+      { labelKey: 'nav.simulation', icon: Dices, path: '/monte-carlo', roles: NON_VIEWER_ROLES },
+      { labelKey: 'nav.scenarios', icon: FlaskConical, path: '/scenarios', roles: NON_VIEWER_ROLES },
       { labelKey: 'nav.reports', icon: FileText, path: '/reports' },
-      { labelKey: 'nav.reportBuilder', icon: FileBarChart, path: '/report-builder' },
+      { labelKey: 'nav.reportBuilder', icon: FileBarChart, path: '/report-builder', roles: NON_VIEWER_ROLES },
     ],
   },
   {
