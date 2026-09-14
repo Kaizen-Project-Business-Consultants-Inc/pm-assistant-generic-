@@ -8,19 +8,11 @@ import { ViewerInvitePanel } from '../../components/settings/ViewerInvitePanel';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 
 const ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin' },
   { value: 'project_manager', label: 'Project Manager' },
   { value: 'team_member', label: 'Team Member' },
   { value: 'viewer', label: 'Viewer' },
-  { value: 'scrum_master', label: 'Scrum Master' },
   { value: 'executive', label: 'Executive' },
-  { value: 'finance_officer', label: 'Finance Officer' },
-  { value: 'risk_manager', label: 'Risk Manager' },
-  { value: 'pmo', label: 'PMO' },
-  { value: 'ba', label: 'Business Analyst' },
-  { value: 'qa', label: 'QA' },
-  { value: 'tester', label: 'Tester' },
-  { value: 'devops', label: 'DevOps' },
-  { value: 'claude_sme', label: 'Claude SME' },
 ];
 
 interface OrgMember {

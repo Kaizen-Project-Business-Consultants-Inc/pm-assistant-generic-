@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { User, Briefcase, BarChart3, Users, Zap, CheckCircle, ArrowRight, ArrowLeft, SkipForward, CreditCard, Mail, Plus, X, Building2 } from 'lucide-react';
+import { User, Briefcase, BarChart3, Users, CheckCircle, ArrowRight, ArrowLeft, SkipForward, CreditCard, Mail, Plus, X, Building2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
 
@@ -8,8 +8,7 @@ const ROLE_OPTIONS = [
   { value: 'project_manager', label: 'Project Manager', icon: Briefcase, description: 'Plan, schedule, and deliver projects' },
   { value: 'team_member', label: 'Team Member', icon: User, description: 'Execute tasks and track progress' },
   { value: 'executive', label: 'Executive', icon: BarChart3, description: 'Monitor portfolio and KPIs' },
-  { value: 'scrum_master', label: 'Scrum Master', icon: Users, description: 'Facilitate agile ceremonies' },
-  { value: 'other', label: 'Other', icon: Zap, description: 'You can change this in Settings' },
+  { value: 'viewer', label: 'Viewer', icon: Users, description: 'View projects and dashboards' },
 ] as const;
 
 const METHODOLOGY_OPTIONS = [
@@ -30,16 +29,7 @@ const TEAM_ROLE_OPTIONS = [
   { value: 'project_manager', label: 'Project Manager' },
   { value: 'team_member', label: 'Team Member' },
   { value: 'viewer', label: 'Viewer' },
-  { value: 'scrum_master', label: 'Scrum Master' },
   { value: 'executive', label: 'Executive' },
-  { value: 'finance_officer', label: 'Finance Officer' },
-  { value: 'risk_manager', label: 'Risk Manager' },
-  { value: 'pmo', label: 'PMO' },
-  { value: 'ba', label: 'Business Analyst' },
-  { value: 'qa', label: 'QA' },
-  { value: 'tester', label: 'Tester' },
-  { value: 'devops', label: 'DevOps' },
-  { value: 'claude_sme', label: 'Claude SME' },
 ];
 
 interface PendingInvite {

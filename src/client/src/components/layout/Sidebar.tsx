@@ -68,7 +68,7 @@ interface NavSection {
 }
 
 // All roles except viewer and team_member
-const NON_VIEWER_ROLES: NavItem['roles'] = ['admin', 'executive', 'project_manager', 'scrum_master', 'pmo', 'finance_officer', 'risk_manager', 'ba', 'qa', 'tester', 'devops', 'claude_sme'];
+const NON_VIEWER_ROLES: NavItem['roles'] = ['admin', 'executive', 'project_manager'];
 
 const pmNavSections: NavSection[] = [
   {
