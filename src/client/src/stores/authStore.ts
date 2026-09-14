@@ -70,6 +70,13 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      // Force isLoading=true after rehydration so the /auth/me check
+      // completes before any PrivateRoute renders (prevents flash of stale page)
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isLoading = true;
+        }
+      },
     }
   )
 );
