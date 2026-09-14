@@ -35,6 +35,7 @@ import { ProjectBriefCard } from '../../components/project/ProjectBriefCard';
 import { CustomFieldsSection } from '../../components/customfields/CustomFieldsSection';
 import { CustomFieldManager } from '../../components/customfields/CustomFieldManager';
 import { PortalLinkManager } from '../../components/portal/PortalLinkManager';
+import { ProjectLinksCard } from '../../components/project/ProjectLinksCard';
 
 interface ProjectOverview {
   id: string;
@@ -57,10 +58,10 @@ interface ProjectOverview {
   updated_at?: string;
 }
 
-type CardId = 'brief' | 'task-summary' | 'timeline' | 'milestones' | 'health' | 'evm' | 'budget' | 'due-soon' | 'raid' | 'sprint' | 'activity' | 'blocked' | 'comments' | 'goals' | 'attachments' | 'latest-meeting';
+type CardId = 'brief' | 'links' | 'task-summary' | 'timeline' | 'milestones' | 'health' | 'evm' | 'budget' | 'due-soon' | 'raid' | 'sprint' | 'activity' | 'blocked' | 'comments' | 'goals' | 'attachments' | 'latest-meeting';
 
 const DEFAULT_CARD_ORDER: CardId[] = [
-  'brief',
+  'brief', 'links',
   'task-summary', 'timeline', 'milestones',
   'health', 'evm', 'budget',
   'due-soon', 'raid', 'sprint',
@@ -379,6 +380,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
   // ── Card metadata ──────────────────────────────
   const cardMeta: Record<CardId, { icon: ReactNode; title: string }> = {
     'brief': { icon: <FileText className="w-4 h-4" />, title: 'Project Brief' },
+    'links': { icon: <Link2 className="w-4 h-4" />, title: 'Key Links' },
     'task-summary': { icon: <BarChart3 className="w-4 h-4" />, title: 'Task Summary' },
     'timeline': { icon: <Clock className="w-4 h-4" />, title: 'Timeline Progress' },
     'milestones': { icon: <Target className="w-4 h-4" />, title: 'Key Milestones' },
@@ -423,6 +425,9 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         currentUserId={currentUserId}
         updatedAt={project.updatedAt || project.updated_at}
       />
+    ),
+    'links': (
+      <ProjectLinksCard projectId={project.id} canEdit={canEdit} />
     ),
     'task-summary': analyticsLoading ? (
       <div className="grid grid-cols-2 gap-3">

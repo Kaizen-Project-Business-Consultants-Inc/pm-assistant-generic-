@@ -872,6 +872,32 @@ class ApiService {
     return response.data;
   }
 
+  // Project Links
+  async getProjectLinks(projectId: string) {
+    const response = await this.api.get(`/projects/${projectId}/links`);
+    return response.data;
+  }
+
+  async createProjectLink(projectId: string, data: { label: string; url: string; icon?: string }) {
+    const response = await this.api.post(`/projects/${projectId}/links`, data);
+    return response.data;
+  }
+
+  async updateProjectLink(projectId: string, linkId: string, data: { label?: string; url?: string; icon?: string | null }) {
+    const response = await this.api.put(`/projects/${projectId}/links/${linkId}`, data);
+    return response.data;
+  }
+
+  async deleteProjectLink(projectId: string, linkId: string) {
+    const response = await this.api.delete(`/projects/${projectId}/links/${linkId}`);
+    return response.data;
+  }
+
+  async reorderProjectLinks(projectId: string, orderedIds: string[]) {
+    const response = await this.api.put(`/projects/${projectId}/links/reorder`, { orderedIds });
+    return response.data;
+  }
+
   async addProjectMember(projectId: string, data: { userId?: string; userName: string; email: string; role: string }) {
     const response = await this.api.post(`/projects/${projectId}/members`, data);
     return response.data;

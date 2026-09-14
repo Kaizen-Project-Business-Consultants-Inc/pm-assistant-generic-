@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS project_links (
+  id CHAR(36) PRIMARY KEY,
+  project_id CHAR(36) NOT NULL,
+  label VARCHAR(255) NOT NULL,
+  url VARCHAR(2048) NOT NULL,
+  icon VARCHAR(50) DEFAULT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_by CHAR(36) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_project_links_project (project_id)
+);

@@ -88,7 +88,7 @@ const features = [
   },
 ];
 
-const LAUNCH_DATE = new Date(import.meta.env.VITE_LAUNCH_DATE ?? '2026-09-15T00:00:00Z');
+const LAUNCH_DATE = new Date(import.meta.env.VITE_LAUNCH_DATE ?? '2026-09-21T00:00:00Z');
 
 function useCountdown(target: Date) {
   const calc = () => {
@@ -548,7 +548,7 @@ const faqItems = [
   },
   {
     question: 'When do you launch?',
-    answer: 'We launch September 7, 2026. Join the waitlist to get early access and our launch-window discount on the Pro plan.',
+    answer: 'We launch September 21, 2026. Join the waitlist to get early access and our launch-window discount on the Pro plan.',
   },
   {
     question: 'Can I see a demo?',

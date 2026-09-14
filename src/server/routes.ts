@@ -16,6 +16,7 @@ import { inviteRoutes } from './routes/core/invites';
 import { seatRoutes } from './routes/core/seats';
 import { pricingRoutes } from './routes/core/pricing';
 import { projectGroupRoutes } from './routes/core/projectGroups';
+import { projectLinkRoutes } from './routes/core/projectLinks';
 
 // Scheduling
 import { scheduleRoutes } from './routes/scheduling/schedules';
@@ -129,6 +130,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(projectRoutes, { prefix: '/api/v1/projects' });
   await fastify.register(userRoutes, { prefix: '/api/v1/users' });
   await fastify.register(projectMemberRoutes, { prefix: '/api/v1/projects' });
+  await fastify.register(projectLinkRoutes, { prefix: '/api/v1/projects' });
   await fastify.register(notificationRoutes, { prefix: '/api/v1/notifications' });
   await fastify.register(searchRoutes, { prefix: '/api/v1/search' });
   await fastify.register(websocketRoutes, { prefix: '/api/v1/ws' });
