@@ -1831,6 +1831,7 @@ The `WebhookService` allows registering outbound webhook endpoints that fire on 
 - **Password hashing**: bcrypt with configurable salt rounds
 - **Registration**: username, email, password, full name
 - **Password reset**: token-based email flow via `EmailService`. Successfully completing a reset (clicking the link and setting a new password) auto-sets `email_verified = true`, so users are never stranded by an email-verification gate after a reset. If the reset token is expired or invalid, the ResetPassword page shows a **"Request a new reset link"** prompt instead of a dead-end error.
+- **Force change password**: Admins can flag any user with `must_change_password`. On next login, the user is redirected to a dedicated **Change Password** page and all API calls return 403 (`PASSWORD_CHANGE_REQUIRED`) until the password is changed. The flag is set automatically for auto-created accounts (via invite) and can be set manually in the database. Allowed endpoints while the flag is active: `/auth/change-password`, `/auth/logout`, `/auth/me`.
 - **Session management**: refresh token rotation
 - **OAuth 2.1**: PKCE-based authorization for MCP HTTP transport (per-user access from Claude Desktop/Web)
 

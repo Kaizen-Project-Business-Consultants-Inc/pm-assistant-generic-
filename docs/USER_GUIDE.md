@@ -65,8 +65,9 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 
 1. Go to the login page (`/login`) and enter your username and password.
 2. Click **Sign In**. You will be redirected to the **Dashboard**.
-3. If your session expires, you will be returned to the login page automatically.
-4. Use **Forgot Password** if you need to reset your credentials. A reset link is emailed to you (expires after 24 hours). Clicking the link and setting a new password automatically verifies your email address, so you will not be prompted to verify it again after a reset. If the reset link has expired or is invalid, the page shows a **"Request a new reset link"** button so you can request a fresh one without navigating away.
+3. If your account has been flagged for a password change (e.g., auto-created via invite, or set by an admin), you will be redirected to the **Change Password** page instead. Enter your temporary password and choose a new one (minimum 8 characters). You cannot access any other part of the app until the password is changed.
+4. If your session expires, you will be returned to the login page automatically.
+5. Use **Forgot Password** if you need to reset your credentials. A reset link is emailed to you (expires after 24 hours). Clicking the link and setting a new password automatically verifies your email address, so you will not be prompted to verify it again after a reset. If the reset link has expired or is invalid, the page shows a **"Request a new reset link"** button so you can request a fresh one without navigating away.
 
 ### First Login — Onboarding Wizard
 
