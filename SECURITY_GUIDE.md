@@ -131,12 +131,14 @@ owner  >  manager  >  editor  >  viewer
 | **owner** | Yes | Yes | Yes | Yes | Yes |
 | **manager** | Yes | Yes | Yes | Yes | No (members no, delete project no) |
 | **editor** | Yes | Yes | Yes | No | No |
-| **viewer** | Yes | Time entries on assigned tasks only | No | No | No |
+| **viewer** | Yes | Time entries on assigned tasks only; RAID items they own; comments on assigned tasks | No | No | No |
 | **Non-member** | No | No | No | No | No |
 
 **Note:** Delete operations on project-level entities (tasks, schedules, baselines, sprints, resources, expenses, meetings, documents, etc.) require `requireScope('write')` + appropriate `requireProjectAccess` level. Editors can delete items they created; deleting another user's items requires `manager`. Only project deletion requires `requireProjectAccess('owner')`. Document deletion always requires `manager`. System-level operations (kill switches, agent policies, feedback management) remain `requireScope('admin')`.
 
-**Viewer write bypass:** The `viewerWriteBypass` middleware (`src/server/middleware/viewerWriteBypass.ts`) allows viewers to log time on tasks assigned to them and edit their own time entries. Ownership verification is performed in the route handler after the middleware grants access.
+**Viewer write bypass:** The `viewerWriteBypass` middleware (`src/server/middleware/viewerWriteBypass.ts`) allows viewers to log time on tasks assigned to them, edit their own time entries, and comment on assigned tasks. Ownership verification is performed in the route handler after the middleware grants access. **Schedules are fully read-only for viewers** — task creation, editing, deletion, drag-and-drop reordering, and bulk operations all require the `editor` project role. The frontend hides all editing controls (inline edit, drag handles, add/delete buttons, overflow menu) for viewer and team_member roles.
+
+**Sidebar visibility:** Viewers and team_members see a reduced sidebar: Dashboard, Projects, Lessons, Reports, AI Query, Notifications, Timesheets, Goals, My Feedback, and Settings. Management pages (Resources, Meetings, Change Requests, Workflows, Intake) and analytics pages (Analytics, EVM, Monte Carlo, Scenarios, Report Builder) are hidden.
 
 ### Global Role Bypasses
 

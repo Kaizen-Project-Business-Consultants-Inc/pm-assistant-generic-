@@ -109,12 +109,14 @@ Project membership is enforced on all project-scoped API routes. Only members of
 | **owner** | Yes | Yes | Yes | Yes | Yes |
 | **manager** | Yes | Yes | Yes | Yes | No |
 | **editor** | Yes | Yes | Yes | No | No |
-| **viewer** | Yes | Time entries on assigned tasks only | No | No | No |
+| **viewer** | Yes | Time entries on assigned tasks only; RAID items they own; comments on assigned tasks | No | No | No |
 | **Non-member** | 404 | 404 | 404 | 404 | 404 |
 
 **Global role bypasses:** Users with the `admin` or `pmo` global role can access all projects without membership. Users with the `executive` role have read-only access to all projects.
 
-**Viewer time logging:** Viewers can log time entries on tasks assigned to them and edit their own time entries. They cannot delete time entries or write to any other project data.
+**Viewer time logging:** Viewers can log time entries on tasks assigned to them and edit their own time entries. They cannot delete time entries or modify schedule data (tasks, dates, assignments). Schedules are fully read-only for viewers — all editing controls are hidden in the UI.
+
+**Viewer sidebar:** Viewers and team_members see a reduced sidebar showing only: Dashboard, Projects, Lessons, Reports, AI Query, Notifications, Timesheets, Goals, My Feedback, and Settings. Management and analytics pages are hidden.
 
 > **Important:** Project roles (owner/manager/editor/viewer) are separate from global user roles (admin/executive/project_manager/team_member/etc.). A user needs both: a global role with sufficient scope *and* a project role with sufficient access.
 

@@ -2324,7 +2324,7 @@ Destructive actions throughout the application (deleting integrations, change re
 | **Executive** | Read-only portfolio view, dashboards, and reports. |
 | **Manager** | Create and manage projects, schedules, resources, and workflows. |
 | **Member** | View assigned projects, update tasks, log time. |
-| **Viewer** | Read-only access to assigned projects. Assignment-based write permissions: update and comment on tasks assigned via resource linkage, update/complete/reopen/cancel meeting action items assigned to them, upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Free — no seat consumption. |
+| **Viewer** | Read-only access to assigned projects. Schedules (Gantt, Table, Kanban, Calendar) are fully read-only — no task editing, dragging, or adding. Assignment-based write permissions: log time on assigned tasks, comment on assigned tasks, update/complete/reopen/cancel meeting action items assigned to them, upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Sidebar shows only Dashboard, Projects, Lessons, Reports, AI Query, and personal items. Free — no seat consumption. |
 
 **My Assignments Widget**: Viewers (and all users) see a "My Assignments" widget on the Dashboard showing all tasks, RAID items, and meeting action items assigned to them. Each section is collapsible and shows item name, status, priority, due date, and project name with links to the relevant project pages.
 
