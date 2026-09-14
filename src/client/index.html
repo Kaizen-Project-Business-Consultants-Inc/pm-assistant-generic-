@@ -166,14 +166,12 @@
 
     <!-- GA4 loaded dynamically after cookie consent (see CookieConsentBanner.tsx) -->
 
-    <!-- Hide SEO fallback content when JS is available (prevents flash before React mounts) -->
-    <script>document.documentElement.classList.add('js')</script>
-    <style>.js #seo-fallback{display:none}</style>
   </head>
   <body>
-    <div id="root">
-      <!-- Static content for SEO crawlers (replaced by React on mount) -->
-      <div id="seo-fallback" style="max-width:800px;margin:0 auto;padding:48px 24px;font-family:system-ui,sans-serif;color:#1e293b">
+    <div id="root"></div>
+    <!-- SEO-only content: visible to crawlers (no JS), invisible to users (JS replaces #root) -->
+    <noscript>
+      <div style="max-width:800px;margin:0 auto;padding:48px 24px;font-family:system-ui,sans-serif;color:#1e293b">
         <h1 style="font-size:2.5rem;font-weight:800;margin-bottom:16px">Kovarti PM — The AI Project Management Platform</h1>
         <p style="font-size:1.125rem;color:#475569;margin-bottom:24px">Plan smarter, predict risks, and deliver on time with intelligent scheduling, Monte Carlo simulations, and natural-language project insights.</p>
         <h2 style="font-size:1.5rem;font-weight:700;margin-top:32px;margin-bottom:16px">Key Features</h2>
@@ -223,7 +221,7 @@
 
         <p style="margin-top:24px"><a href="/register" style="color:#6366f1;font-weight:600">Get Started Free — 14-day trial</a> | <a href="/login" style="color:#6366f1;font-weight:600">Sign In</a> | <a href="/pricing" style="color:#6366f1;font-weight:600">Pricing</a> | <a href="/features" style="color:#6366f1;font-weight:600">Features</a> | <a href="/about" style="color:#6366f1;font-weight:600">About</a></p>
       </div>
-    </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
