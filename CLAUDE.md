@@ -46,7 +46,7 @@ Before writing any code:
 
 Run all checks before committing. Zero regressions.
 
-1. **Type check:** `npx tsc --noEmit` — zero new type errors (pre-existing errors in aiContextBuilder.ts are known).
+1. **Type check:** `npx tsc --noEmit` — zero type errors.
 2. **Unit tests:** Write tests for new logic — happy path, edge cases, and error handling.
 3. **Run all tests:** `npx vitest run` — all tests pass (new and existing).
 4. **Full build:** `npm run build` — build succeeds with no new errors.

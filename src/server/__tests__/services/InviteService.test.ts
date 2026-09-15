@@ -66,6 +66,8 @@ vi.mock('../../middleware/requestContext', () => ({
 
 vi.mock('../../services/SeatService', () => ({
   seatService: {
+    getOrgSeatInfo: vi.fn().mockResolvedValue({ totalSeats: 3, usedSeats: 1, availableSeats: 2 }),
+    addSeats: vi.fn().mockResolvedValue(undefined),
     validateSeatAvailability: vi.fn().mockResolvedValue(undefined),
   },
 }));

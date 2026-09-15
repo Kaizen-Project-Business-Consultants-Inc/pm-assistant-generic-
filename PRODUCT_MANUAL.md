@@ -4322,6 +4322,20 @@ A tenant-to-tenant sharing layer that lets any user publish a well-crafted autom
 - **Importing** — click **Import** on any marketplace listing. A draft automation is created in the current project pre-populated with the marketplace definition. The download count increments.
 - **Download count** — tracked on the `automation_marketplace` table; displayed in the marketplace panel and in the publishing user's detail view.
 
+**Pre-built Templates (18):** The marketplace ships with 18 system-published automation templates across 7 categories that users can browse and import:
+
+| Category | Templates |
+|----------|-----------|
+| Deadline Management | Escalate Critical Path Tasks, Notify Assignee on Assignment, Auto-Close at 100% Progress |
+| Status Workflow | Flag Backward Status Changes, Notify Project On Hold |
+| Risk & Quality | Auto-Create Risk for Blocked Tasks, Escalate Risk Severity Increase |
+| Team Communication | Welcome Comment on High-Priority Tasks, Email Sprint Kickoff, Notify CR Return |
+| Resource Management | Round-Robin Task Assignment, Flag Excessive Daily Hours |
+| AI-Powered | AI Sprint Retrospective, AI Risk Mitigation Advisor, AI Task Description Enrichment, Extract Lessons on Completion |
+| Compliance & Audit | Task Deletion Audit Trail, Timesheet Submission Confirmation |
+
+Each template is imported as a `draft` automation that the user can review, customize, and activate.
+
 #### Lessons Learned Action Types
 
 Two new action types extend the automation engine's integration with the Lessons Learned module:
