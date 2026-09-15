@@ -81,10 +81,12 @@ export class AgentCostTracker {
     return { allowed: true };
   }
 
-  async getCostsByAgent(since?: string, until?: string): Promise<Array<{ agentId: string; totalTokens: number; estimatedCostUsd: number; invocations: number }>> {
+  async getCostsByAgent(since?: string, until?: string): Promise<Array<{ agentId: string; inputTokens: number; outputTokens: number; totalTokens: number; estimatedCostUsd: number; invocations: number }>> {
     const rows = await agentCostRepository.getCostsByAgent(since, until);
     return rows.map(r => ({
       agentId: r.agent_id,
+      inputTokens: Number(r.input_tokens),
+      outputTokens: Number(r.output_tokens),
       totalTokens: Number(r.total_tokens),
       estimatedCostUsd: Number(r.total_cost),
       invocations: Number(r.invocations),

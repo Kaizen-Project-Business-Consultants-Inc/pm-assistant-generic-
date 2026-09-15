@@ -35,8 +35,8 @@ class AgentCostRepository {
     return rows[0];
   }
 
-  async getCostsByAgent(since?: string, until?: string): Promise<Array<{ agent_id: string; total_tokens: number; total_cost: number; invocations: number }>> {
-    let sql = `SELECT agent_id, SUM(total_tokens) AS total_tokens, SUM(estimated_cost_usd) AS total_cost, COUNT(*) AS invocations
+  async getCostsByAgent(since?: string, until?: string): Promise<Array<{ agent_id: string; input_tokens: number; output_tokens: number; total_tokens: number; total_cost: number; invocations: number }>> {
+    let sql = `SELECT agent_id, SUM(input_tokens) AS input_tokens, SUM(output_tokens) AS output_tokens, SUM(total_tokens) AS total_tokens, SUM(estimated_cost_usd) AS total_cost, COUNT(*) AS invocations
                FROM agent_cost_ledger WHERE 1=1`;
     const params: unknown[] = [];
     if (since) { sql += ' AND created_at >= ?'; params.push(since); }

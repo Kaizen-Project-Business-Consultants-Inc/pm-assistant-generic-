@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { AdminPageWrapper } from './AdminPageWrapper';
-import { Brain, Zap, DollarSign, BarChart3, Activity, MessageSquare, GitBranch, ArrowRight } from 'lucide-react';
+import { Brain, Zap, DollarSign, BarChart3, Activity, MessageSquare, GitBranch, ArrowRight, Bot } from 'lucide-react';
 
 interface AiUsageRow {
   username: string;
@@ -343,8 +343,98 @@ function UsageAnalyticsTab() {
   );
 }
 
+interface AgentCostRow {
+  agentId: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  invocations: number;
+}
+
+interface AgentCostsData {
+  daily: { totalTokens: number; estimatedCostUsd: number; entries: number };
+  byAgent: AgentCostRow[];
+}
+
+function AgentCostsTab() {
+  const [period, setPeriod] = useState(30);
+  const since = period > 0 ? new Date(Date.now() - period * 86400000).toISOString().slice(0, 10) : undefined;
+
+  const { data, isLoading, error } = useQuery<AgentCostsData>({
+    queryKey: ['admin-agent-costs', since],
+    queryFn: () => apiService.getAgentCosts(since),
+  });
+
+  const agents = data?.byAgent ?? [];
+  const totalTokens = agents.reduce((s, a) => s + a.totalTokens, 0);
+  const totalCost = agents.reduce((s, a) => s + a.estimatedCostUsd, 0);
+  const totalInvocations = agents.reduce((s, a) => s + a.invocations, 0);
+
+  return (
+    <>
+      <div className="flex items-center gap-2 mb-5">
+        {PERIODS.map(p => (
+          <button key={p.value} onClick={() => setPeriod(p.value)}
+            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
+              period === p.value
+                ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent'
+            }`}
+          >{p.label}</button>
+        ))}
+      </div>
+
+      {isLoading && <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading agent costs…</div>}
+      {error && <div className="text-center py-12 text-red-500">Failed to load agent costs.</div>}
+
+      {data && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <StatCard icon={Brain} label="Total Agent Tokens" value={totalTokens.toLocaleString()} color="bg-purple-500" />
+            <StatCard icon={DollarSign} label="Total Agent Cost" value={fmtCost(totalCost)} color="bg-emerald-500" />
+            <StatCard icon={Bot} label="Total Invocations" value={totalInvocations.toLocaleString()} color="bg-blue-500" />
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <th className="pb-3 pr-4">Agent</th>
+                  <th className="pb-3 pr-4 text-right">Invocations</th>
+                  <th className="pb-3 pr-4 text-right">Input Tokens</th>
+                  <th className="pb-3 pr-4 text-right">Output Tokens</th>
+                  <th className="pb-3 pr-4 text-right">Total Tokens</th>
+                  <th className="pb-3 pr-4 text-right">Cost</th>
+                  <th className="pb-3 text-right">Avg Tokens/Call</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {agents.map(a => (
+                  <tr key={a.agentId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="py-3 pr-4 font-medium text-gray-900 dark:text-white">{agentLabel(a.agentId)}</td>
+                    <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{a.invocations.toLocaleString()}</td>
+                    <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{a.inputTokens.toLocaleString()}</td>
+                    <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{a.outputTokens.toLocaleString()}</td>
+                    <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{a.totalTokens.toLocaleString()}</td>
+                    <td className="py-3 pr-4 text-right font-medium text-gray-900 dark:text-white">{fmtCost(a.estimatedCostUsd)}</td>
+                    <td className="py-3 text-right text-gray-700 dark:text-gray-200">{a.invocations > 0 ? Math.round(a.totalTokens / a.invocations).toLocaleString() : '—'}</td>
+                  </tr>
+                ))}
+                {agents.length === 0 && (
+                  <tr><td colSpan={7} className="py-12 text-center text-gray-500 dark:text-gray-400">No agent cost data in this period.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 export function AdminAiUsagePage() {
-  const [tab, setTab] = useState<'cost' | 'analytics'>('cost');
+  const [tab, setTab] = useState<'cost' | 'analytics' | 'agentCosts'>('cost');
 
   return (
     <AdminPageWrapper title="AI Usage" subtitle="AI cost tracking and feature usage analytics">
@@ -353,13 +443,19 @@ export function AdminAiUsagePage() {
           className={`px-4 py-2 text-sm font-medium rounded-md transition ${
             tab === 'cost' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'
           }`}>AI Costs</button>
+        <button onClick={() => setTab('agentCosts')}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition ${
+            tab === 'agentCosts' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'
+          }`}>Agent Costs</button>
         <button onClick={() => setTab('analytics')}
           className={`px-4 py-2 text-sm font-medium rounded-md transition ${
             tab === 'analytics' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'
           }`}>Usage Analytics</button>
       </div>
 
-      {tab === 'cost' ? <AiCostTab /> : <UsageAnalyticsTab />}
+      {tab === 'cost' && <AiCostTab />}
+      {tab === 'agentCosts' && <AgentCostsTab />}
+      {tab === 'analytics' && <UsageAnalyticsTab />}
     </AdminPageWrapper>
   );
 }

@@ -2900,6 +2900,12 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  async getAgentCosts(since?: string) {
+    const params = since ? `?since=${encodeURIComponent(since)}` : '';
+    const response = await this.api.get(`/agent/costs${params}`);
+    return response.data;
+  }
+
   async getAdminUsageAnalytics(days: number = 30) {
     const response = await this.api.get(`/admin/usage-analytics?days=${days}`);
     return response.data;
