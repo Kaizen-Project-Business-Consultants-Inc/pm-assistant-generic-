@@ -31,7 +31,7 @@ export const PricingPage: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] dark">
+    <div className="min-h-screen bg-slate-950 text-white">
       {/* Navbar */}
       <nav className="border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
