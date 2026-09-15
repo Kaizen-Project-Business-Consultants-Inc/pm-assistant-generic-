@@ -533,29 +533,34 @@ export class EmailService {
       ? 'Your Kovarti PM trial ends tomorrow'
       : `Your Kovarti PM trial ends in ${daysLeft} days`;
 
-    const bodyHtml = `
-      <p style="color: #4b5563; line-height: 1.6;">
-        Hi ${escapeHtml(name)}, your free trial ends ${daysLeft === 1 ? 'tomorrow' : `in ${daysLeft} days`}.
-      </p>
-      <p style="color: #4b5563; line-height: 1.6;">
-        Subscribe to the Consultant plan to keep access to all features — including AI insights, Gantt charts, EVM forecasting, and more.
-      </p>
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${config.APP_URL}/pricing" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-          View Plans
-        </a>
-      </div>
-      <p style="color: #9ca3af; font-size: 14px;">
-        If you choose not to subscribe, your data will be preserved and you'll retain read-only access.
-      </p>
-    `;
+    const escapedName = escapeHtml(name);
+    const daysText = daysLeft === 1 ? 'tomorrow' : `in ${daysLeft} days`;
+    const pricingUrl = `${config.APP_URL}/pricing`;
+    const preheader = `Your Kovarti PM trial ends ${daysText}. Upgrade now to keep your projects, AI assistant, and dashboards running.`;
 
-    await this.sendEmail({
-      from: config.RESEND_FROM_EMAIL,
-      to,
-      subject,
-      html: this.wrapHtml(subject, bodyHtml),
+    const html = this.buildTrialEmailHtml({
+      preheader,
+      badgeText: 'Trial ending soon',
+      badgeColor: '#f59e0b',
+      accentGradient: 'linear-gradient(90deg,#6366f1,#a855f7,#6366f1)',
+      headline: `Your trial ends ${daysText}`,
+      bodyParagraphs: [
+        `Hi ${escapedName}, your <strong style="color:#e8ecf1;">Kovarti PM</strong> free trial expires ${daysText}.`,
+        'After your trial ends, your projects, dashboards, and AI features will become read-only. Your data and settings will be preserved — but you\'ll need an active plan to keep working.',
+        'Upgrade now to lock in your setup and avoid any interruption.',
+      ],
+      ctaText: 'View Plans &amp; Upgrade →',
+      ctaUrl: pricingUrl,
+      ctaGradient: 'linear-gradient(135deg,#6366f1,#a855f7)',
+      ctaShadow: 'rgba(99,102,241,0.3)',
+      infoPoints: [
+        { emoji: '⚡', title: 'What you\'ll keep', text: 'All your projects, schedules, RAID logs, reports, and team settings carry over. Zero setup needed.' },
+        { emoji: '💰', title: 'No surprise charges', text: 'You only pay when you choose to. Your trial is completely free until the end date.' },
+        { emoji: '💬', title: 'Questions?', text: `Reply to this email or reach us at support@kovarti.com. We're happy to help you find the right plan.` },
+      ],
     });
+
+    await this.sendEmail({ from: config.RESEND_FROM_EMAIL, to, subject, html });
   }
 
   async sendTrialExpiredEmail(to: string, name: string): Promise<void> {
@@ -564,29 +569,134 @@ export class EmailService {
       return;
     }
 
-    const bodyHtml = `
-      <p style="color: #4b5563; line-height: 1.6;">
-        Hi ${escapeHtml(name)}, your 14-day free trial has ended.
-      </p>
-      <p style="color: #4b5563; line-height: 1.6;">
-        Your account is now in read-only mode. Subscribe to restore full access to all features.
-      </p>
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${config.APP_URL}/pricing" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-          Subscribe Now
-        </a>
-      </div>
-      <p style="color: #9ca3af; font-size: 14px;">
-        Your data is safe — subscribe anytime to pick up where you left off.
-      </p>
-    `;
+    const escapedName = escapeHtml(name);
+    const pricingUrl = `${config.APP_URL}/pricing`;
+    const preheader = 'Your Kovarti PM trial has ended. Subscribe now to restore full access to your projects and AI features.';
 
-    await this.sendEmail({
-      from: config.RESEND_FROM_EMAIL,
-      to,
-      subject: 'Your Kovarti PM trial has ended',
-      html: this.wrapHtml('Your trial has ended', bodyHtml),
+    const html = this.buildTrialEmailHtml({
+      preheader,
+      badgeText: 'Trial ended',
+      badgeColor: '#ef4444',
+      accentGradient: 'linear-gradient(90deg,#78716c,#ef4444,#78716c)',
+      headline: 'Your free trial has ended',
+      bodyParagraphs: [
+        `Hi ${escapedName}, your 14-day <strong style="color:#e8ecf1;">Kovarti PM</strong> free trial has expired.`,
+        'Your account is now in read-only mode — your projects, schedules, and data are all safely preserved. Subscribe to restore full access and pick up right where you left off.',
+        'Plans start at just $19/month for core PM features, or $29/month with AI insights, Mjuzi assistant, and advanced forecasting.',
+      ],
+      ctaText: 'Subscribe Now →',
+      ctaUrl: pricingUrl,
+      ctaGradient: 'linear-gradient(135deg,#6366f1,#a855f7)',
+      ctaShadow: 'rgba(99,102,241,0.3)',
+      infoPoints: [
+        { emoji: '🔒', title: 'Your data is safe', text: 'All projects, schedules, RAID logs, reports, and settings are preserved. Subscribe anytime to unlock them.' },
+        { emoji: '⚡', title: 'Instant reactivation', text: 'The moment you subscribe, everything is live again — no re-setup, no data loss, no waiting.' },
+        { emoji: '💬', title: 'Need help deciding?', text: `Reply to this email or contact support@kovarti.com. We'll help you pick the right plan.` },
+      ],
     });
+
+    await this.sendEmail({ from: config.RESEND_FROM_EMAIL, to, subject: 'Your Kovarti PM trial has ended', html });
+  }
+
+  private buildTrialEmailHtml(opts: {
+    preheader: string;
+    badgeText: string;
+    badgeColor: string;
+    accentGradient: string;
+    headline: string;
+    bodyParagraphs: string[];
+    ctaText: string;
+    ctaUrl: string;
+    ctaGradient: string;
+    ctaShadow: string;
+    infoPoints: Array<{ emoji: string; title: string; text: string }>;
+  }): string {
+    const infoRows = opts.infoPoints.map(p => `
+      <tr><td style="padding-bottom:14px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>
+        <td style="vertical-align:top;padding-right:12px;font-size:16px;line-height:22px;">${p.emoji}</td>
+        <td><p style="margin:0;font-size:13px;line-height:20px;color:#5c6577;"><strong style="color:#8b95a5;">${p.title}</strong> — ${p.text}</p></td>
+      </tr></table></td></tr>
+    `).join('');
+
+    const bodyParas = opts.bodyParagraphs.map(p =>
+      `<p style="margin:0 0 12px 0;font-size:16px;line-height:26px;color:#8b95a5;">${p}</p>`
+    ).join('');
+
+    return `<!DOCTYPE html><html lang="en" xmlns="http://www.w3.org/1999/xhtml"><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Kovarti PM</title>
+<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+<style>
+body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td{mso-table-lspace:0pt;mso-table-rspace:0pt}img{-ms-interpolation-mode:bicubic;border:0;height:auto;line-height:100%;outline:none;text-decoration:none}body{margin:0;padding:0;width:100%!important;height:100%!important}a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important}
+@media(prefers-color-scheme:dark){.email-bg{background-color:#0f1117!important}.email-card{background-color:#181b23!important}.text-primary{color:#e8ecf1!important}.text-secondary{color:#8b95a5!important}.divider{border-color:rgba(255,255,255,0.08)!important}}
+@media only screen and (max-width:600px){.email-container{width:100%!important;padding:16px!important}.email-card{padding:32px 24px!important}.heading{font-size:24px!important;line-height:32px!important}.body-text{font-size:15px!important;line-height:24px!important}.cta-btn{padding:16px 32px!important;font-size:16px!important}.footer-text{font-size:12px!important}}
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#0f1117;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<div style="display:none;font-size:1px;color:#0f1117;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${opts.preheader}</div>
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="email-bg" style="background-color:#0f1117;"><tr><td align="center" style="padding:40px 16px;">
+<table role="presentation" cellpadding="0" cellspacing="0" width="560" class="email-container" style="max-width:560px;width:100%;">
+
+<!-- Logo -->
+<tr><td align="center" style="padding-bottom:32px;">
+  <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+    <td style="vertical-align:middle;padding-right:10px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#a855f7);display:inline-block;text-align:center;line-height:36px;font-size:18px;color:#ffffff;">K</div>
+    </td>
+    <td style="font-family:'Inter',-apple-system,sans-serif;font-size:24px;font-weight:700;color:#e8ecf1;letter-spacing:-0.02em;">Kovarti <span style="color:#a78bfa;">PM</span></td>
+  </tr></table>
+</td></tr>
+
+<!-- Card -->
+<tr><td>
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="email-card" style="background-color:#181b23;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
+  <!-- Accent bar -->
+  <tr><td style="height:5px;background:${opts.accentGradient};font-size:0;line-height:0;">&nbsp;</td></tr>
+  <tr><td style="padding:48px 40px;">
+    <!-- Badge -->
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="padding-bottom:20px;">
+      <div style="display:inline-block;padding:6px 14px;border-radius:20px;background:rgba(${opts.badgeColor === '#f59e0b' ? '245,158,11' : '239,68,68'},0.1);border:1px solid rgba(${opts.badgeColor === '#f59e0b' ? '245,158,11' : '239,68,68'},0.2);color:${opts.badgeColor};font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">${opts.badgeText}</div>
+    </td></tr></table>
+
+    <!-- Headline -->
+    <h1 class="heading" style="margin:0 0 16px 0;font-family:'Inter',-apple-system,sans-serif;font-size:28px;font-weight:700;line-height:36px;color:#e8ecf1;letter-spacing:-0.02em;">${opts.headline}</h1>
+
+    <!-- Body -->
+    ${bodyParas}
+
+    <!-- CTA -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:20px;"><tr><td align="center" style="padding-bottom:32px;">
+      <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${opts.ctaUrl}" style="height:52px;v-text-anchor:middle;width:280px;" arcsize="50%" fillcolor="#6366f1"><w:anchorlock /><center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:bold;">${opts.ctaText}</center></v:roundrect><![endif]-->
+      <!--[if !mso]><!-->
+      <a href="${opts.ctaUrl}" target="_blank" class="cta-btn" style="display:inline-block;padding:16px 40px;background:${opts.ctaGradient};color:#ffffff;font-family:'Inter',-apple-system,sans-serif;font-size:16px;font-weight:600;text-decoration:none;border-radius:50px;letter-spacing:0.02em;box-shadow:0 4px 20px ${opts.ctaShadow};mso-hide:all;">${opts.ctaText}</a>
+      <!--<![endif]-->
+    </td></tr></table>
+
+    <!-- Divider + info points -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr><td class="divider" style="border-top:1px solid rgba(255,255,255,0.06);padding-top:24px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+        ${infoRows}
+      </table>
+    </td></tr></table>
+  </td></tr>
+</table>
+</td></tr>
+
+<!-- Footer -->
+<tr><td style="padding:32px 0;text-align:center;">
+  <p style="margin:0 0 8px 0;font-size:13px;color:#5c6577;">
+    <a href="${config.APP_URL}" style="color:#a78bfa;text-decoration:none;font-weight:500;">Website</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${config.APP_URL}/pricing" style="color:#a78bfa;text-decoration:none;font-weight:500;">Pricing</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${config.APP_URL}/guide" style="color:#a78bfa;text-decoration:none;font-weight:500;">Guide</a>
+  </p>
+  <p style="margin:0;font-size:11px;line-height:18px;color:#3d4555;">
+    &copy; ${new Date().getFullYear()} Kovarti PM &middot; <a href="${config.APP_URL}/terms" style="color:#3d4555;text-decoration:underline;">Terms</a> &middot; <a href="${config.APP_URL}/privacy" style="color:#3d4555;text-decoration:underline;">Privacy</a>
+  </p>
+</td></tr>
+
+</table>
+</td></tr></table>
+</body></html>`;
   }
 
   async sendProjectInviteEmail(to: string, params: {
