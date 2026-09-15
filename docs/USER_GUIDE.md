@@ -2262,7 +2262,7 @@ All prices are displayed in **USD (US Dollars)**:
 Navigate to **Settings** to configure:
 
 - **User management** -- Add, edit, or deactivate users. Assign roles (admin, executive, manager, member).
-- **Team & Viewers** -- Manage your team members and invite client stakeholders as viewer accounts (see [Viewer Invites](#viewer-invites) below). Available on Consultant Basic, Consultant Pro, SME, and Enterprise plans.
+- **Team & Viewers** -- Manage your team members and invite client stakeholders as viewer accounts (see [Viewer Invites](#viewer-invites) below). Available on Consultant Basic, Consultant Pro, SME, and Enterprise plans. **Note:** Consultant tiers can only invite viewers (the role dropdown is hidden). SME and Enterprise tiers can invite any role, but non-viewer invites consume a paid seat (auto-added to your Stripe subscription if needed).
 - **API keys** -- Generate and manage API keys for programmatic access. Revoking a key shows a styled confirmation modal before the key is deleted.
 - **Webhooks** -- Configure outbound webhook endpoints. Deleting a webhook shows a styled confirmation modal.
 - **Custom fields** -- Define organization-wide custom fields that appear on tasks and projects.

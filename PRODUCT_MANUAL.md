@@ -2031,6 +2031,22 @@ Viewers remain free and do not consume a paid seat regardless of RAID activity. 
 
 **Role:** Invited viewers receive the `viewer` system role. This role has read scope only, plus the ability to update RAID items they own (see Section 45 for RAID role-based permissions).
 
+### Invite Role Restrictions by Tier
+
+The invite system enforces role restrictions based on the organization's subscription tier:
+
+**Consultant Basic / Consultant Pro:**
+- Can **only** invite viewers. The role dropdown is hidden in the UI; the backend rejects any non-viewer invite with a 403 error.
+- Role changes on existing members are also restricted — consultant-tier admins cannot promote a viewer to a non-viewer role.
+
+**SME / Enterprise (per-seat billing):**
+- Can invite any role. Non-viewer invites consume a paid seat.
+- If no seats are available, a seat is **automatically added** to the Stripe subscription (prorated). The UI shows an amber note: "Non-viewer invites use a paid seat."
+- Promoting an existing viewer to a non-viewer role also auto-adds a seat if needed.
+
+**Trial:**
+- Standard invite behavior (no per-seat billing, subject to max user limit).
+
 ### Trial Reminder Emails
 
 The `EmailService` sends automated reminder emails to users approaching the end of their 14-day free trial:

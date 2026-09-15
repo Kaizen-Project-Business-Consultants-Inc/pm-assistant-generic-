@@ -8,6 +8,7 @@ import { userService } from './UserService';
 import { pricingConfigService } from './PricingConfigService';
 import { runWithTenantContext } from '../middleware/requestContext';
 import { resourceService } from './ResourceService';
+import { isConsultantTier } from '../utils/tierUtils';
 import logger from '../utils/logger';
 
 const VIEWER_LIMITS_FALLBACK: Record<string, number> = {
@@ -39,9 +40,18 @@ export class InviteService {
     const org = await organizationRepository.findByUserId(inviterUserId);
     if (!org) throw new Error('Organization not found');
 
-    // For non-viewer roles on per-seat orgs, check seat availability
+    // Consultant tiers can only invite viewers
+    if (isConsultantTier(org.subscriptionTier) && role !== 'viewer') {
+      throw new Error('Your plan only allows viewer invites. Upgrade to SME or Enterprise for team member seats.');
+    }
+
+    // For non-viewer roles on per-seat orgs, auto-add a seat if needed
     if (role !== 'viewer' && org.billingModel === 'per_seat') {
       const { seatService } = await import('./SeatService');
+      const seatInfo = await seatService.getOrgSeatInfo(org.id);
+      if (seatInfo.availableSeats < 1) {
+        await seatService.addSeats(org.id, 1);
+      }
       await seatService.validateSeatAvailability(org.id);
     }
 

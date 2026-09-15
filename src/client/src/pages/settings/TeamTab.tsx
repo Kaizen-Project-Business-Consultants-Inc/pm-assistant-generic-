@@ -25,8 +25,15 @@ interface OrgMember {
   lastLoginAt: string | null;
 }
 
+const CONSULTANT_TIERS = ['consultant_basic', 'consultant_pro'];
+
 export const TeamTab: React.FC = () => {
   const { user } = useAuthStore();
+  const isConsultant = CONSULTANT_TIERS.includes(user?.subscriptionTier ?? '');
+  const isPerSeat = user?.subscriptionTier === 'sme' || user?.subscriptionTier === 'enterprise';
+  const availableRoleOptions = isConsultant
+    ? ROLE_OPTIONS.filter(r => r.value === 'viewer')
+    : ROLE_OPTIONS;
   const queryClient = useQueryClient();
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('viewer');
@@ -102,15 +109,21 @@ export const TeamTab: React.FC = () => {
             onChange={(e) => setInviteEmail(e.target.value)}
             className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           />
-          <select
-            value={inviteRole}
-            onChange={(e) => setInviteRole(e.target.value)}
-            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-          >
-            {ROLE_OPTIONS.map(r => (
-              <option key={r.value} value={r.value}>{r.label}</option>
-            ))}
-          </select>
+          {isConsultant ? (
+            <span className="inline-flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md border border-gray-300 dark:border-gray-600">
+              Viewer
+            </span>
+          ) : (
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value)}
+              className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+            >
+              {availableRoleOptions.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          )}
           <button
             onClick={() => inviteMutation.mutate({ email: inviteEmail, role: inviteRole })}
             disabled={!inviteEmail || inviteMutation.isPending}
@@ -120,6 +133,11 @@ export const TeamTab: React.FC = () => {
             {inviteMutation.isPending ? 'Sending…' : 'Invite'}
           </button>
         </div>
+        {isPerSeat && inviteRole !== 'viewer' && (
+          <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
+            Non-viewer invites use a paid seat. A seat will be auto-added if needed.
+          </p>
+        )}
         {inviteMsg && (
           <p className={`mt-2 text-sm ${inviteMsg.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {inviteMsg.text}
@@ -155,13 +173,17 @@ export const TeamTab: React.FC = () => {
                         <Shield className="w-3 h-3" />
                         {ROLE_OPTIONS.find(r => r.value === m.role)?.label || m.role}
                       </span>
+                    ) : isConsultant ? (
+                      <span className="text-gray-700 dark:text-gray-300">
+                        {ROLE_OPTIONS.find(r => r.value === m.role)?.label || m.role}
+                      </span>
                     ) : (
                       <select
                         value={m.role}
                         onChange={(e) => updateRoleMutation.mutate({ memberId: m.id, role: e.target.value })}
                         className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-sm text-gray-900 dark:text-white"
                       >
-                        {ROLE_OPTIONS.map(r => (
+                        {availableRoleOptions.map(r => (
                           <option key={r.value} value={r.value}>{r.label}</option>
                         ))}
                       </select>

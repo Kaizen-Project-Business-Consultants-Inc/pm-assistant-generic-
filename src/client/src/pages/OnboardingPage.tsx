@@ -443,6 +443,11 @@ export const OnboardingPage: React.FC = () => {
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
+              {inviteRole !== 'viewer' && (
+                <p className="text-xs text-amber-500 dark:text-amber-400 -mt-2 mb-4">
+                  Non-viewer roles use a paid seat. A seat will be auto-added if needed.
+                </p>
+              )}
 
               {/* Pending invites list */}
               {pendingInvites.length > 0 && (

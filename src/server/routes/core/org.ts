@@ -8,6 +8,7 @@ import { userService } from '../../services/UserService';
 import { emailService } from '../../services/EmailService';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { resourceService } from '../../services/ResourceService';
+import { isConsultantTier } from '../../utils/tierUtils';
 import logger from '../../utils/logger';
 
 const inviteSchema = z.object({
@@ -48,6 +49,20 @@ export async function orgRoutes(fastify: FastifyInstance) {
       }
       if (org.ownerUserId !== inviterId && inviter.role !== 'admin') {
         return reply.status(403).send({ error: 'Forbidden', message: 'Only the organization owner or an admin can invite users.' });
+      }
+
+      // Consultant tiers can only invite viewers
+      if (isConsultantTier(org.subscriptionTier) && role !== 'viewer') {
+        return reply.status(403).send({ error: 'Tier restriction', message: 'Your plan only allows viewer invites. Upgrade to SME or Enterprise for team member seats.' });
+      }
+
+      // Per-seat orgs: non-viewer invites consume a seat — auto-add if needed
+      if (role !== 'viewer' && org.billingModel === 'per_seat') {
+        const { seatService } = await import('../../services/SeatService');
+        const seatInfo = await seatService.getOrgSeatInfo(org.id);
+        if (seatInfo.availableSeats < 1) {
+          await seatService.addSeats(org.id, 1);
+        }
       }
 
       // Check max users limit
@@ -241,6 +256,23 @@ export async function orgRoutes(fastify: FastifyInstance) {
       // Cannot change own role (prevent locking yourself out)
       if (memberId === requesterId) {
         return reply.status(400).send({ error: 'Cannot change your own role' });
+      }
+
+      // Consultant tiers can only have viewers (no promotions to non-viewer)
+      if (isConsultantTier(org.subscriptionTier) && role !== 'viewer') {
+        return reply.status(403).send({ error: 'Tier restriction', message: 'Your plan only allows viewer roles. Upgrade to SME or Enterprise for team member seats.' });
+      }
+
+      // Per-seat orgs: promoting viewer to non-viewer consumes a seat
+      if (role !== 'viewer' && org.billingModel === 'per_seat') {
+        const target = await userService.findById(memberId);
+        if (target?.role === 'viewer') {
+          const { seatService } = await import('../../services/SeatService');
+          const seatInfo = await seatService.getOrgSeatInfo(org.id);
+          if (seatInfo.availableSeats < 1) {
+            await seatService.addSeats(org.id, 1);
+          }
+        }
       }
 
       await userService.update(memberId, { role } as any);
