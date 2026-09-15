@@ -237,7 +237,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
             className={`px-5 py-2 text-sm font-medium rounded-full transition-colors ${
               billing === 'monthly'
                 ? dk ? 'bg-gray-600 text-white shadow-sm' : 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                : dk ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                : dk ? 'text-gray-300 hover:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
           >
             Monthly
@@ -248,7 +248,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
             className={`px-5 py-2 text-sm font-medium rounded-full transition-colors ${
               billing === 'annual'
                 ? dk ? 'bg-gray-600 text-white shadow-sm' : 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                : dk ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                : dk ? 'text-gray-300 hover:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
           >
             Annual
