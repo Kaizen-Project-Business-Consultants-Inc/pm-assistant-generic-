@@ -542,7 +542,7 @@ export class EmailService {
       preheader,
       badgeText: 'Trial ending soon',
       badgeColor: '#f59e0b',
-      accentGradient: 'linear-gradient(90deg,#6366f1,#a855f7,#6366f1)',
+      accentGradient: 'linear-gradient(90deg,#0d9488,#14b8a6,#0d9488)',
       headline: `Your trial ends ${daysText}`,
       bodyParagraphs: [
         `Hi ${escapedName}, your <strong style="color:#e8ecf1;">Kovarti PM</strong> free trial expires ${daysText}.`,
@@ -551,8 +551,8 @@ export class EmailService {
       ],
       ctaText: 'View Plans &amp; Upgrade →',
       ctaUrl: pricingUrl,
-      ctaGradient: 'linear-gradient(135deg,#6366f1,#a855f7)',
-      ctaShadow: 'rgba(99,102,241,0.3)',
+      ctaGradient: 'linear-gradient(135deg,#14b8a6,#0d9488)',
+      ctaShadow: 'rgba(20,184,166,0.3)',
       infoPoints: [
         { emoji: '⚡', title: 'What you\'ll keep', text: 'All your projects, schedules, RAID logs, reports, and team settings carry over. Zero setup needed.' },
         { emoji: '💰', title: 'No surprise charges', text: 'You only pay when you choose to. Your trial is completely free until the end date.' },
@@ -577,7 +577,7 @@ export class EmailService {
       preheader,
       badgeText: 'Trial ended',
       badgeColor: '#ef4444',
-      accentGradient: 'linear-gradient(90deg,#78716c,#ef4444,#78716c)',
+      accentGradient: 'linear-gradient(90deg,#78716c,#dc2626,#78716c)',
       headline: 'Your free trial has ended',
       bodyParagraphs: [
         `Hi ${escapedName}, your 14-day <strong style="color:#e8ecf1;">Kovarti PM</strong> free trial has expired.`,
@@ -586,8 +586,8 @@ export class EmailService {
       ],
       ctaText: 'Subscribe Now →',
       ctaUrl: pricingUrl,
-      ctaGradient: 'linear-gradient(135deg,#6366f1,#a855f7)',
-      ctaShadow: 'rgba(99,102,241,0.3)',
+      ctaGradient: 'linear-gradient(135deg,#14b8a6,#0d9488)',
+      ctaShadow: 'rgba(20,184,166,0.3)',
       infoPoints: [
         { emoji: '🔒', title: 'Your data is safe', text: 'All projects, schedules, RAID logs, reports, and settings are preserved. Subscribe anytime to unlock them.' },
         { emoji: '⚡', title: 'Instant reactivation', text: 'The moment you subscribe, everything is live again — no re-setup, no data loss, no waiting.' },
@@ -643,9 +643,9 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td
 <tr><td align="center" style="padding-bottom:32px;">
   <table role="presentation" cellpadding="0" cellspacing="0"><tr>
     <td style="vertical-align:middle;padding-right:10px;">
-      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#a855f7);display:inline-block;text-align:center;line-height:36px;font-size:18px;color:#ffffff;">K</div>
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#14b8a6,#0d9488);display:inline-block;text-align:center;line-height:36px;font-size:18px;color:#ffffff;">K</div>
     </td>
-    <td style="font-family:'Inter',-apple-system,sans-serif;font-size:24px;font-weight:700;color:#e8ecf1;letter-spacing:-0.02em;">Kovarti <span style="color:#a78bfa;">PM</span></td>
+    <td style="font-family:'Inter',-apple-system,sans-serif;font-size:24px;font-weight:700;color:#e8ecf1;letter-spacing:-0.02em;">Kovarti <span style="color:#2dd4bf;">PM</span></td>
   </tr></table>
 </td></tr>
 
@@ -668,7 +668,7 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td
 
     <!-- CTA -->
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:20px;"><tr><td align="center" style="padding-bottom:32px;">
-      <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${opts.ctaUrl}" style="height:52px;v-text-anchor:middle;width:280px;" arcsize="50%" fillcolor="#6366f1"><w:anchorlock /><center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:bold;">${opts.ctaText}</center></v:roundrect><![endif]-->
+      <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${opts.ctaUrl}" style="height:52px;v-text-anchor:middle;width:280px;" arcsize="50%" fillcolor="#14b8a6"><w:anchorlock /><center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:bold;">${opts.ctaText}</center></v:roundrect><![endif]-->
       <!--[if !mso]><!-->
       <a href="${opts.ctaUrl}" target="_blank" class="cta-btn" style="display:inline-block;padding:16px 40px;background:${opts.ctaGradient};color:#ffffff;font-family:'Inter',-apple-system,sans-serif;font-size:16px;font-weight:600;text-decoration:none;border-radius:50px;letter-spacing:0.02em;box-shadow:0 4px 20px ${opts.ctaShadow};mso-hide:all;">${opts.ctaText}</a>
       <!--<![endif]-->
@@ -687,7 +687,7 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td
 <!-- Footer -->
 <tr><td style="padding:32px 0;text-align:center;">
   <p style="margin:0 0 8px 0;font-size:13px;color:#5c6577;">
-    <a href="${config.APP_URL}" style="color:#a78bfa;text-decoration:none;font-weight:500;">Website</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${config.APP_URL}/pricing" style="color:#a78bfa;text-decoration:none;font-weight:500;">Pricing</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${config.APP_URL}/guide" style="color:#a78bfa;text-decoration:none;font-weight:500;">Guide</a>
+    <a href="${config.APP_URL}" style="color:#2dd4bf;text-decoration:none;font-weight:500;">Website</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${config.APP_URL}/pricing" style="color:#2dd4bf;text-decoration:none;font-weight:500;">Pricing</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${config.APP_URL}/guide" style="color:#2dd4bf;text-decoration:none;font-weight:500;">Guide</a>
   </p>
   <p style="margin:0;font-size:11px;line-height:18px;color:#3d4555;">
     &copy; ${new Date().getFullYear()} Kovarti PM &middot; <a href="${config.APP_URL}/terms" style="color:#3d4555;text-decoration:underline;">Terms</a> &middot; <a href="${config.APP_URL}/privacy" style="color:#3d4555;text-decoration:underline;">Privacy</a>
