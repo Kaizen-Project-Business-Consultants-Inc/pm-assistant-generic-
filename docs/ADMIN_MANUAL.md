@@ -199,9 +199,9 @@ Three paid tiers are available, each with monthly and annual billing:
 | SME | $39 | ~$390 | 1,500,000 | 20 |
 | Enterprise | $79 | ~$790 | 5,000,000 | Unlimited |
 
-Trial accounts are free, limited to 14 days, 3 projects, and no AI token budget (sample responses only). Consultant Basic ($19/mo) includes core PM features plus resource management, reports, and workflow automation — but no AI. Consultant Pro ($29/mo) adds all AI features with 500K tokens/month. Annual billing saves ~17%.
+Trial accounts are free, limited to 14 days, 3 projects, and 5K AI tokens (~10 AI chats to explore Mjuzi). Consultant Basic ($19/mo) includes core PM features plus resource management, reports, and workflow automation — but no AI. Consultant Pro ($29/mo) adds all AI features with 500K tokens/month. Annual billing saves ~17%.
 
-> **Viewer invites:** Viewer accounts are free — invited viewers do not need a subscription. The invite limit is per paid account (5/20/unlimited depending on tier).
+> **Viewer invites:** Viewer accounts are free — invited viewers do not need a subscription. The invite limit is per paid account (Basic: 5 / Pro: 15 / SME: 20 / Enterprise: unlimited).
 
 Map Stripe price IDs to app tiers via env vars:
 - `STRIPE_CONSULTANT_NEW_MONTHLY_PRICE_ID`, `STRIPE_CONSULTANT_NEW_ANNUAL_PRICE_ID`

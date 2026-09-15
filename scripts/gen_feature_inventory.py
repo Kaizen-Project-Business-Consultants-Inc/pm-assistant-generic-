@@ -163,7 +163,7 @@ features = [
     ('Collaboration', 'Stakeholder Portal', 'Branded read-only portal for clients', 'UI', 'Basic+', 'requireFeature(portal)', 'Trial gets sample'),
 
     # AI FEATURES
-    ('AI', 'Mjuzi AI Chat', 'Persistent chat panel with project context', 'UI', 'All tiers (budget-gated)', 'AI budget only', 'Trial:0; Basic:0; Pro:500K; SME:500K/seat'),
+    ('AI', 'Mjuzi AI Chat', 'Persistent chat panel with project context', 'UI', 'All tiers (budget-gated)', 'AI budget only', 'Trial:5K; Basic:0; Pro:500K; SME:500K/seat'),
     ('AI', 'AI Task Estimation', 'AI estimates task duration and effort', 'UI', 'All tiers (budget-gated)', 'AI budget only', ''),
     ('AI', 'AI Task Breakdown', 'AI decomposes epics into subtasks', 'UI', 'All tiers (budget-gated)', 'AI budget only', ''),
     ('AI', 'AI Risk Scan', 'AI identifies project risks', 'UI', 'All tiers (budget-gated)', 'AI budget only', ''),
@@ -376,7 +376,7 @@ for r, (label, val) in enumerate(summary, 1):
 ws.freeze_panes = 'A2'
 ws.auto_filter.ref = f'A1:H{row-1}'
 
-output = r'C:\Users\gerog\Downloads\Kovarti_PM_Feature_Inventory_v2.xlsx'
+output = r'C:\Users\gerog\Downloads\Kovarti_PM_Feature_Inventory_v3.xlsx'
 wb.save(output)
 print(f'Saved: {output}')
 print(f'Total features: {len(features)}')

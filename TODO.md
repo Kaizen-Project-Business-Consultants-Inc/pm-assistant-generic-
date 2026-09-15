@@ -10,7 +10,7 @@ Status: 7/7 complete | Last updated: July 28, 2026
 
 Stripe is fully configured in production (test mode):
 - API keys, webhook secret, and all price IDs set in `/opt/pm-app/.env`
-- 7 prices created: Consultant ($19/mo, $190/yr), SME Seat ($33/mo, $330/yr), Enterprise ($79/mo, $790/yr), Token Top-Up ($5)
+- 7 prices created: Consultant ($19/mo, $190/yr), SME Seat ($19/mo, $190/yr), Enterprise ($79/mo, $790/yr), Token Top-Up ($5)
 - Webhook endpoint verified: `https://pm.kpbc.ca/api/v1/stripe/webhook` (6 events)
 - All users backfilled with `stripe_customer_id`
 - Checkout session creation verified end-to-end
@@ -236,13 +236,13 @@ No help/support link exists anywhere in the authenticated app — not in sidebar
 Is per-seat pricing the right model for SME when only PMs (write-role users) consume seats and viewers are free? With viewer assignment-based permissions shipped, most team members can be free viewers.
 
 ### Current State
-- SME: $33/seat/mo, 3-seat minimum ($99/mo floor)
+- SME: $19/seat/mo, 3-seat minimum ($57/mo floor)
 - Seats consumed by: owner, manager, editor roles
 - Viewers: free, no seat consumption, can update assigned items
 
 ### Options to Evaluate
 1. **Keep 3-seat minimum** — revenue floor, simple to explain
-2. **Drop to 1-seat minimum** — lower entry barrier (but $33/mo is close to Pro at $29/mo, blurs tier distinction)
+2. **Drop to 1-seat minimum** — lower entry barrier (but $19/mo is close to Pro at $29/mo, blurs tier distinction)
 3. **Reframe as platform fee + per-seat** — e.g. $49 base + $20/additional PM seat (clearer value prop)
 4. **Per-project pricing** — charge by active projects instead of users
 5. **Hybrid** — base fee includes N seats, overage per-seat

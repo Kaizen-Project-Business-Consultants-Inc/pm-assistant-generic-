@@ -14,7 +14,7 @@ The production `.env` currently uses **test keys** (`sk_test_*`, `pk_test_*`). B
 2. Create products and prices in **live mode** matching the test ones:
    - **Consultant Basic:** $19/mo, $190/yr
    - **Consultant Pro:** $29/mo, $290/yr
-   - (Optional) **SME:** $33/seat/mo, $330/seat/yr
+   - (Optional) **SME:** $19/seat/mo, $190/seat/yr
    - (Optional) **Enterprise:** $79/mo, $790/yr
    - **Token Top-Up:** $10 one-time (500K tokens)
 3. Create the **20% launch coupon** in live mode (if using founder offer)

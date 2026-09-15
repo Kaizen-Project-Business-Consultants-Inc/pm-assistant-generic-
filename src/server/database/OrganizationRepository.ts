@@ -37,7 +37,7 @@ function mapRow(row: any): Organization {
     subscriptionStatus: row.subscription_status,
     billingModel: row.billing_model ?? 'flat',
     seatCount: row.seat_count ?? 1,
-    seatPriceCents: row.seat_price_cents ?? 3300,
+    seatPriceCents: row.seat_price_cents ?? 1900,
     trialEndsAt: row.trial_ends_at,
     maxUsers: row.max_users,
     viewerLimit: row.viewer_limit ?? 5,

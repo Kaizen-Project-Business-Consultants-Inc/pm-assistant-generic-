@@ -1884,7 +1884,7 @@ The `PolicyEngineService` enforces configurable governance rules:
 
 The `AIBudgetService` enforces per-user monthly AI token limits with tier-aware budget resolution:
 
-- **Per-tier defaults**: Trial — 0 (sample responses only); Consultant Basic — 0 (no AI, but includes resources, reports, workflows); Consultant Pro — 500,000; SME — 1,500,000; Enterprise — 5,000,000. Configurable via `AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_ENTERPRISE` env vars.
+- **Per-tier defaults**: Trial — 5,000 (~10 AI chats to explore Mjuzi); Consultant Basic — 0 (no AI, but includes resources, reports, workflows); Consultant Pro — 500,000; SME — 1,500,000; Enterprise — 5,000,000. Configurable via `AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_ENTERPRISE` env vars.
 - **Budget resolution chain**: per-user override (`users.ai_monthly_token_budget`) → subscription tier default → global fallback (`AI_MONTHLY_TOKEN_BUDGET`)
 - **Token top-ups**: Users can purchase additional token packs ($10 per 500K tokens) via Stripe one-time payment. Top-up tokens are added instantly, do not expire, and are consumed only after the monthly tier allowance is exhausted. FIFO consumption (oldest packs first). Managed by `TokenTopUpRepository`.
 - Tracks all AI usage in the `ai_usage_log` table (input/output tokens, cost, latency, feature, model)
@@ -2104,7 +2104,7 @@ Below the plan cards, a **Feature Comparison Matrix** provides a side-by-side ta
 | Projects | 3 | Unlimited | Unlimited | Unlimited | Unlimited |
 | AI Tokens/mo | 25K | None | 500K | 1.5M | 5M |
 | Storage | 100MB | 1GB | 1GB | 5GB | 10GB |
-| Viewer Invites | 0 | 5 | 5 | 20 | Unlimited |
+| Viewer Invites | 0 | 5 | 15 | 20 | Unlimited |
 | Exports | ✗ | ✓ | ✓ | ✓ | ✓ |
 | API Keys | ✗ | ✓ | ✓ | ✓ | ✓ |
 | EVM | ✗ | ✓ | ✓ | ✓ | ✓ |
@@ -2129,7 +2129,7 @@ A **Token Top-Up CTA** below the comparison table lets users purchase additional
 
 The SME tier is hidden from the public pricing page but accessible through three paths:
 
-1. **Secret Registration URL** — `/register?tier=sme&billing=monthly` (or `billing=annual`). Includes a seat count picker (minimum 3 seats, $33/seat/month). Uses per-seat Stripe checkout on the organization.
+1. **Secret Registration URL** — `/register?tier=sme&billing=monthly` (or `billing=annual`). Includes a seat count picker (minimum 3 seats, $19/seat/month). Uses per-seat Stripe checkout on the organization.
 2. **Admin Tier Change** — In Admin > Users, click the tier badge on any user row to change their tier via a dropdown. Changing to SME automatically sets the org to per-seat billing with minimum 3 seats.
 3. **In-App Upgrade** — On the Account & Billing page, consultant-tier users see an "Upgrade to SME" card that initiates a per-seat Stripe checkout session for their organization (starting at 3 seats).
 

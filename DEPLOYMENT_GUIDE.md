@@ -95,7 +95,7 @@ ALERT_ENABLED=true
 | `AI_FALLBACK_ENABLED` | `false` | Enable AI fallback |
 | `AI_PRICING_INPUT` | `3.0` | Input token price per million |
 | `AI_PRICING_OUTPUT` | `15.0` | Output token price per million |
-| `AI_TIER_BUDGET_FREE` | `0` | Monthly AI token budget for free/trial tier (0 = sample responses only) |
+| `AI_TIER_BUDGET_FREE` | `5000` | Monthly AI token budget for free/trial tier (5K = ~10 AI chats to explore Mjuzi) |
 | `AI_TIER_BUDGET_PRO` | `500000` | Monthly AI token budget for pro tier |
 | `AI_TIER_BUDGET_BUSINESS` | `1500000` | Monthly AI token budget for business tier |
 | `AI_TIER_BUDGET_CONSULTANT` | `3000000` | Monthly AI token budget for consultant tier |
