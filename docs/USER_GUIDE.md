@@ -2282,6 +2282,16 @@ Open **Settings > AI Context** to customize how Mjuzi AI responds to you:
 
 All nine Settings tabs (Profile, Team, Notifications, Display, Accessibility, AI Context, API Keys, Webhooks, Danger Zone) fully support dark mode — toggle tracks, form panels, badges, code blocks, and the danger zone section all switch correctly when dark theme is active. The Settings tabs use a proper ARIA tablist pattern for screen reader navigation.
 
+### Admin AI Usage (Admin Only)
+
+Navigate to **Admin > AI Usage** to monitor AI consumption across your organization. The page has three tabs:
+
+- **AI Costs** — Per-user AI cost breakdown with summary cards (Total Calls, Total Tokens, Total Cost), a daily cost trend chart, and a sortable table of users by calls, tokens, cost, and last usage date.
+- **Agent Costs** — Per-agent token cost breakdown showing each background agent's invocations, input tokens, output tokens, total tokens, cost, and average tokens per call. Sorted by cost descending.
+- **Usage Analytics** — Agent run patterns, feature usage counts, sequential agent patterns, and Mjuzi Chat statistics.
+
+All tabs support period filtering (Last 7 days, 30 days, 90 days, or All time).
+
 ### Accessibility Settings
 
 Open **Settings → Accessibility** to configure:

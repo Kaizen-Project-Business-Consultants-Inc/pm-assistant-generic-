@@ -1895,6 +1895,16 @@ The `AIBudgetService` enforces per-user monthly AI token limits with tier-aware 
 - `GET /api/v1/ai/budget` returns current month's usage summary: `totalInputTokens`, `totalOutputTokens`, `totalTokens`, `totalCost`, `requestCount`, `budget`, `remaining`, `percentUsed`
 - **Admin override**: Admins can set per-user custom budgets via `PATCH /api/v1/admin/users/:id/budget`. The Admin Users page shows an inline-editable "AI Budget" column — set a custom value or clear to use tier default.
 
+### Admin AI Usage Page
+
+The **Admin > AI Usage** page provides three tabs for monitoring AI consumption:
+
+**AI Costs tab** — Per-user AI cost breakdown. Summary cards (Total Calls, Total Tokens, Total Cost), a daily cost trend bar chart, and a sortable table showing each user's call count, tokens, cost, and last usage date. Period selector: 7d / 30d / 90d / All time.
+
+**Agent Costs tab** — Per-agent token cost breakdown from the `agent_cost_ledger` table. Summary cards (Total Agent Tokens, Total Agent Cost, Total Invocations) and a table sorted by cost descending with columns: Agent Name, Invocations, Input Tokens, Output Tokens, Total Tokens, Cost, and Avg Tokens/Call. Period selector: 7d / 30d / 90d / All time. Data sourced from `GET /api/v1/agent/costs`.
+
+**Usage Analytics tab** — Agent run patterns and feature usage. Summary cards (Agent Runs, Chat Messages, Workflow Patterns), daily agent runs chart, agent usage table (runs, projects, last run), sequential agent patterns (agents triggered within 30 minutes on the same project), top features by usage count, and Mjuzi Chat stats (active users, conversations, messages). Period selector: 7d / 30d / 90d.
+
 ### Prompt Injection Mitigation
 
 Defense-in-depth protection against prompt injection in AI-powered features. User-supplied data (project names, descriptions, task names, meeting notes) is sanitized before interpolation into system prompts:

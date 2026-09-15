@@ -247,6 +247,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Append-only chained audit ledger with API search, filter, and pagination
 - Data encryption at rest and in transit
 - Per-tier AI token budget enforcement (`AIBudgetService`) — tier-aware limits (Trial: 25K, Consultant Basic: none, Consultant Pro: 500K, SME: 1.5M, Enterprise: 5M), per-user admin overrides, purchasable token top-ups (500K/$5, FIFO consumption, no expiry), graceful degradation on exhaustion (HTTP 429 with reset date, non-AI features unaffected), `GET /api/v1/ai/budget` usage endpoint, automatic enforcement before every AI call, proactive 80% threshold warning notification (daily-deduped)
+- **Admin AI Usage page** — 3-tab dashboard: AI Costs (per-user token/cost breakdown), Agent Costs (per-agent input/output token breakdown with cost and avg tokens/call from `agent_cost_ledger`), Usage Analytics (agent run patterns, feature usage, chat stats). All tabs support period filtering (7d/30d/90d/all).
 - Zod validation on 24 route files covering all critical API inputs
 - **Benchmark:** Enterprise tools
 
