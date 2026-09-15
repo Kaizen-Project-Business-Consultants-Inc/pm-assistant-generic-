@@ -240,7 +240,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - Server-persisted per-category notification preferences with independent in-app and email toggles (6 categories: Agent & Proposals, Risks & Issues, Budget & Finance, Meetings, System Alerts, Deadlines)
 - Email notifications for critical/high severity events (respects per-category email preference)
 - Daily and weekly email digests (overdue tasks, upcoming deadlines, unread count)
-- Trial reminder emails: daily cron at 09:00 sends 3-day, 1-day, and expired-trial notices via Resend; Redis-backed dedup prevents duplicate sends
+- Trial reminder emails: daily cron at 09:00 sends 3-day, 1-day, and expired-trial notices via Resend; dark-themed branded HTML templates with preheader text, teal accent bar, status badge, gradient CTA button, reassurance info points, responsive layout, Outlook VML fallback, and dark-mode support; Redis-backed dedup prevents duplicate sends
 - **Viewer Invite Flow** — Consultant/SME/Enterprise users can invite client stakeholders as free viewer accounts (5 / 20 / unlimited invites per tier respectively); viewers get read-only access scoped to the inviting user's projects
 - **Feature gating** — Trial accounts are restricted from advanced features (exports, EVM, Monte Carlo, etc.); `requireTier`/`requirePaidTier` middleware enforces tier checks server-side on protected routes
 

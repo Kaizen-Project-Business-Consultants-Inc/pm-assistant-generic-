@@ -168,7 +168,7 @@ Key variables in `.env` (never commit secrets):
 - Static assets are served directly by LiteSpeed; API routes proxy to Fastify.
 - CSP headers are managed by Helmet (currently in report-only mode).
 - **Health Snapshot Cron** — When `AGENT_ENABLED=true`, a daily cron job runs at 03:00 to snapshot each active project's health score into the `project_health_history` table (migration 038). This data powers the Health Trends sparklines on the dashboard. A manual trigger is available at `POST /api/v1/predictions/health/snapshot` (admin only).
-- **Trial Reminder Cron** — When `AGENT_ENABLED=true`, a daily cron job runs at 09:00 to send trial expiry reminder emails. It sends emails at the 3-day warning, 1-day warning, and expiry events. Redis-backed deduplication prevents repeat sends: each reminder is keyed as `trial-reminder:{userId}:{type}` with a 30-day TTL. Implementation: `src/server/services/scheduling/trialReminderJob.ts`.
+- **Trial Reminder Cron** — When `AGENT_ENABLED=true`, a daily cron job runs at 09:00 to send trial expiry reminder emails. It sends emails at the 3-day warning, 1-day warning, and expiry events. Emails use a polished dark-themed HTML template matching the Kovarti brand (teal accent bar, logo, status badge, gradient CTA button, reassurance info points, responsive layout, dark-mode CSS, Outlook VML fallback). Redis-backed deduplication prevents repeat sends: each reminder is keyed as `trial-reminder:{userId}:{type}` with a 30-day TTL. Implementation: `src/server/services/scheduling/trialReminderJob.ts`, template: `buildTrialEmailHtml()` in `EmailService.ts`.
 
 ### Tier ENUM and Feature Gating
 

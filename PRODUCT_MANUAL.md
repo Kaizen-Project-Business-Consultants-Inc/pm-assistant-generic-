@@ -2039,9 +2039,29 @@ The `EmailService` sends automated reminder emails to users approaching the end 
 |--------------------|------------|
 | 3 days | "Your trial ends in 3 days" reminder |
 | 1 day | "Your trial ends tomorrow" reminder |
-| 0 days (expiry day) | "Your trial has expired" notice |
+| 0 days (expiry day) | "Your trial has ended" notice |
 
 A daily cron job runs at **09:00** to scan for trials expiring within the relevant windows and dispatch the appropriate email. Redis-backed deduplication prevents the same reminder from being sent more than once per user per trigger window — if the cron runs multiple times or a user is picked up on consecutive days for the same window, only one email is delivered.
+
+#### Email Design
+
+Both reminder and expired emails use a polished, dark-themed HTML template matching the Kovarti brand:
+
+- **Dark background** (`#0f1117`) with card layout (`#181b23`) and subtle border
+- **Kovarti logo** — teal gradient "K" icon + "Kovarti PM" wordmark with teal accent
+- **Teal accent bar** at the top of the card (gradient `#0d9488` → `#14b8a6`)
+- **Status badge** — amber "Trial ending soon" for reminders, red "Trial ended" for expired
+- **Preheader text** — hidden preview text optimized for email client previews
+- **Gradient CTA button** — teal pill button with box-shadow, links to `/pricing`
+- **Reassurance info points** — 3 emoji-prefixed blocks (e.g., "What you'll keep", "No surprise charges", "Questions?")
+- **Footer** — Website / Pricing / Guide links + Terms / Privacy
+- **Responsive** — media queries for mobile (≤600px)
+- **Dark mode** — `prefers-color-scheme:dark` CSS overrides
+- **Outlook** — VML `<v:roundrect>` fallback for the CTA button
+
+The expired email additionally includes plan pricing ("Plans start at just $19/month…") and "Instant reactivation" messaging.
+
+Implementation: `buildTrialEmailHtml()` private method in `EmailService.ts`.
 
 ### Trial Abuse Prevention
 
