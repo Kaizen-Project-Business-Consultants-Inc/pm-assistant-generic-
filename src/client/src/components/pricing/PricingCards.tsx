@@ -527,7 +527,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
             ) : (
               <>
                 <Zap className="w-4 h-4" />
-                Buy Token Pack — $5
+                Buy Token Pack — $10
               </>
             )}
           </button>
