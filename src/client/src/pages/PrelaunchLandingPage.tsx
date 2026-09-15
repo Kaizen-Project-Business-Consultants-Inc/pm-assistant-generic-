@@ -904,7 +904,7 @@ export const PrelaunchLandingPage: React.FC = () => {
               30-day prorated refund guarantee on annual plans
             </p>
           </div>
-          <PricingSection mode="waitlist" forceDark />
+          <PricingSection mode="link" forceDark />
         </div>
       </section>
 
