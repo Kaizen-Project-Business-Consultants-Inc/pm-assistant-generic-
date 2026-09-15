@@ -43,6 +43,9 @@ export interface User {
   isFounder: boolean;
   founderAt: Date | null;
   refundCount: number;
+  isGuest: boolean;
+  guestInvitedBy: string | null;
+  guestExpiresAt: Date | string | null;
   createdAt: Date;
   updatedAt: Date;
 }

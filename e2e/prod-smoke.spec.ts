@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
-
-// Uses prod auth from globalSetup — storageState injected automatically
-const E2E_PROJECT_ID = 'e2e-test-proj-001';
+import { login } from './helpers';
 
 test.describe('Prod Smoke Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
 
   test('Auth: dashboard loads with saved session', async ({ page }) => {
     await page.goto('/dashboard');
@@ -21,12 +22,14 @@ test.describe('Prod Smoke Tests', () => {
     await expect(page.getByRole('button', { name: /New Project/i })).toBeVisible({ timeout: 15_000 });
   });
 
-  test('Projects: New Project modal opens with 3 options', async ({ page }) => {
+  test('Projects: New Project modal opens with options', async ({ page }) => {
     await page.goto('/projects');
     await page.getByRole('button', { name: /New Project/i }).click();
-    await expect(page.getByRole('heading', { name: /New Project/i })).toBeVisible();
-    // Should show the 3-option start screen
-    await expect(page.getByText(/Start from Scratch|Blank Project/i).first()).toBeVisible({ timeout: 5_000 });
+    // Wait for the template picker modal to appear
+    const modal = page.locator('[role="dialog"][aria-modal="true"]');
+    await expect(modal).toBeVisible({ timeout: 15_000 });
+    // Should show the blank project option
+    await expect(page.getByText(/Blank Project/i).first()).toBeVisible({ timeout: 5_000 });
   });
 
   test('Analytics: page loads', async ({ page }) => {
@@ -51,15 +54,25 @@ test.describe('Prod Smoke Tests', () => {
     await expect(page.getByText(/notification/i).first()).toBeVisible({ timeout: 15_000 });
   });
 
-  test('Gantt: schedule tab loads with tasks', async ({ page }) => {
-    await page.goto(`/project/${E2E_PROJECT_ID}?tab=schedule`);
+  test('Gantt: schedule tab loads', async ({ page }) => {
+    // Navigate to first project's schedule tab
+    await page.goto('/projects');
+    const firstProject = page.locator('a[href^="/project/"]').first();
+    await expect(firstProject).toBeVisible({ timeout: 10_000 });
+    const href = await firstProject.getAttribute('href');
+    await page.goto(`${href}?tab=schedule`);
     await expect(
       page.locator('table, [class*="gantt"], canvas, svg').first()
     ).toBeVisible({ timeout: 20_000 });
   });
 
   test('Gantt: column picker has MPP columns', async ({ page }) => {
-    await page.goto(`/project/${E2E_PROJECT_ID}?tab=schedule`);
+    // Navigate to first project's schedule tab
+    await page.goto('/projects');
+    const firstProject = page.locator('a[href^="/project/"]').first();
+    await expect(firstProject).toBeVisible({ timeout: 10_000 });
+    const href = await firstProject.getAttribute('href');
+    await page.goto(`${href}?tab=schedule`);
     await expect(
       page.locator('table, [class*="gantt"], canvas, svg').first()
     ).toBeVisible({ timeout: 20_000 });

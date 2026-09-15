@@ -1601,6 +1601,28 @@ Deadline notifications run daily at 8:00 AM via cron (`deadline-check` job). Red
 
 When a category's in-app toggle is off, notifications of that type are not inserted into the database or broadcast via WebSocket. When the email toggle is off, emails are suppressed even for critical/high severity. When the Slack toggle is off, `SlackEventDispatcher` skips forwarding for that category without affecting in-app or email delivery. System alerts are never suppressed for admin users. New users (NULL preferences) default to all categories ON for in-app, email, and Slack.
 
+#### Web Push Notifications
+
+Browser push notifications deliver alerts even when the app tab is closed. The system uses VAPID-based Web Push (RFC 8030) with the `web-push` library.
+
+**Setup:**
+1. Navigate to **Settings > Notifications**.
+2. Toggle **"Enable browser notifications"** under Browser Notifications.
+3. Accept the browser permission prompt.
+
+**How it works:**
+- The service worker (`sw.ts`) listens for `push` events and displays native browser notifications with the app icon.
+- Clicking a notification focuses the app window and navigates to the relevant page (e.g., the task or project that triggered the notification).
+- Push is the 4th delivery channel (alongside in-app, email, and Slack) — dispatched fire-and-forget from `NotificationService`.
+- Subscriptions are stored per-device in the `push_subscriptions` table. Stale subscriptions (404/410 from push providers) are auto-cleaned.
+
+**API endpoints:**
+- `GET /api/v1/notifications/push/vapid-key` — returns the VAPID public key
+- `POST /api/v1/notifications/push/subscribe` — register a push subscription
+- `DELETE /api/v1/notifications/push/subscribe` — remove a push subscription
+
+**Environment variables:** `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL`
+
 ### Scheduled Report Delivery
 
 Report templates from the Report Builder can be scheduled for automatic email delivery. Configuration is stored in the `report_schedules` table with:
@@ -1797,12 +1819,17 @@ The Slack integration provides four capabilities:
 
 4. **POST /slack/send** — Internal API endpoint (`POST /api/v1/slack/send`) that sends a free-form message to all Slack channels configured for a given project. Accepts `{ projectId, text, blocks? }`. Used by agents and workflows to push ad-hoc messages.
 
-**Configuration (IntegrationConfigModal):**
-- Set `SLACK_SIGNING_SECRET` and `SLACK_BOT_TOKEN` environment variables.
-- Create a Slack integration per project. The configuration modal includes:
-  - **Project selector** dropdown — choose which project the integration is scoped to.
-  - **Webhook URL** — incoming webhook for the target Slack channel.
-  - **Event filter checkboxes** — select which of the 11 event types send notifications. Unchecked events are silently suppressed at the dispatcher level.
+**Configuration:**
+Two setup methods are available:
+
+1. **OAuth Install Flow (recommended)** — Click "Install to Slack" on the Integrations page. This initiates a Slack OAuth v2 flow that installs the Kovarti bot into your workspace and stores the bot token automatically. After install, use the channel selector to pick which channel receives notifications. Requires `SLACK_CLIENT_ID` and `SLACK_CLIENT_SECRET` environment variables.
+
+2. **Manual Configuration (IntegrationConfigModal)** — For workspaces that prefer manual setup: set `SLACK_SIGNING_SECRET` and `SLACK_BOT_TOKEN` environment variables, create a Slack integration per project, configure webhook URL and event filter checkboxes.
+
+**OAuth API endpoints:**
+- `GET /api/v1/slack/install` — returns the Slack OAuth URL
+- `GET /api/v1/slack/callback` — OAuth callback (exchanges code for bot token)
+- `GET /api/v1/slack/channels` — lists workspace channels for the channel picker
 
 **User Notification Preferences:**
 Each notification category now has three independent toggles — **In-App**, **Email**, and **Slack**. The Slack toggle controls whether that category's events are forwarded to the project's Slack channels. The Slack column appears in the Settings → Notifications table alongside In-App and Email. When the Slack toggle for a category is off, `SlackEventDispatcher` skips dispatch for that notification type without affecting in-app or email delivery.
@@ -1820,6 +1847,37 @@ The `WebhookService` allows registering outbound webhook endpoints that fire on 
 - Sync logging with direction (inbound/outbound), item counts, and error tracking
 - Last-sync timestamp for monitoring
 - Destructive actions (delete integration, delete webhook, revoke API key, delete change request, delete intake form, delete report template, delete goal) use a reusable `ConfirmModal` component instead of the browser's native `window.confirm()`, providing a consistent, styled confirmation dialog that respects the application's dark mode and design system
+
+### Google Calendar Integration
+
+Bi-directional sync between project tasks and Google Calendar events. Task deadlines and milestones appear as calendar events; moving events in Google Calendar updates task dates.
+
+**Setup:**
+1. Navigate to **Integrations** in the sidebar.
+2. Click **Connect** on the Google Calendar card.
+3. Complete the Google OAuth flow to authorize calendar access.
+4. Select which calendar to sync with (defaults to primary).
+5. Choose sync direction: push only, pull only, or both.
+
+**Features:**
+- **Push to calendar**: Tasks with due dates are created as calendar events. Updating a task's dates updates the corresponding event.
+- **Pull from calendar**: Moving or rescheduling events in Google Calendar updates the linked task's dates.
+- **Incremental sync**: Uses Google's `syncToken` for efficient delta updates (only changed events are fetched).
+- **Automatic sync**: A cron job runs every 15 minutes to sync all active calendar integrations.
+- **Manual sync**: Click "Sync Now" on the calendar integration card to trigger an immediate sync.
+- **Link/unlink tasks**: Link individual tasks to calendar events via `POST /api/v1/calendar/link-task`. Unlink via `DELETE /api/v1/calendar/unlink-task/:taskId`.
+
+**API endpoints:**
+- `GET /api/v1/calendar/connect` — returns Google OAuth URL
+- `GET /api/v1/calendar/callback` — OAuth callback (exchanges code, stores tokens)
+- `GET /api/v1/calendar/calendars` — list user's Google Calendars
+- `POST /api/v1/calendar/sync` — trigger manual sync
+- `POST /api/v1/calendar/link-task` — push a task to Google Calendar
+- `DELETE /api/v1/calendar/unlink-task/:taskId` — remove calendar link
+- `POST /api/v1/calendar/settings` — update calendar ID and sync direction
+- `DELETE /api/v1/calendar/disconnect` — disconnect Google Calendar
+
+**Environment variables:** `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`
 
 ---
 
@@ -1848,6 +1906,42 @@ Five user roles with hierarchical scope-based permissions. The `write` scope all
 | `executive` | read | Pure read-only — dashboards, portfolio, reports. No edits, no comments |
 
 **Legacy roles:** The backend retains 14 historical roles (scrum_master, finance_officer, risk_manager, pmo, ba, qa, tester, devops, claude_sme) for backward compatibility with existing users. These roles are no longer offered in UI dropdowns but continue to function with their original scope permissions. Users with legacy roles see sidebar items as locked until their role is updated to one of the 5 active roles.
+
+#### Guest Collaborator Role
+
+External stakeholders (clients, contractors, auditors) can be invited as guest collaborators with authenticated, scoped access to specific projects — without consuming a paid seat.
+
+**Inviting guests:**
+- Admin or project managers navigate to **Settings > Team** and use the "Invite Guest" form.
+- Specify the guest's email, select a project, and configure granular permissions.
+- The guest receives an invite email and logs in with their own credentials.
+
+**Guest permissions (per-project, configurable):**
+| Permission | Default | Description |
+|-----------|---------|-------------|
+| Can comment | Yes | Comment on tasks and RAID items |
+| Can update assigned | Yes | Update tasks assigned to them |
+| Can view budget | No | See project budget information |
+| Can view risks | No | Access RAID items |
+| Can upload files | No | Upload file attachments |
+
+**Restrictions:**
+- Guests can only access projects they have been explicitly granted access to (no global bypass, even for admin-level guests).
+- Guests cannot: create projects, access org settings, invite users, access billing, or manage API keys.
+- Guest access can have an optional expiry date — expired guests are rejected at auth time.
+- Guests do NOT consume a paid seat (excluded from seat count queries).
+
+**API endpoints:**
+- `POST /api/v1/org/invite-guest` — invite a guest to a project
+- `GET /api/v1/org/guests` — list all guest users
+- `PATCH /api/v1/org/guests/:guestId` — update guest permissions/expiry
+- `DELETE /api/v1/org/guests/:guestId` — revoke guest access
+
+**Frontend:**
+- Sidebar hides org settings, billing, and team management for guest users.
+- Settings > Team shows a separate "Guests" section with invite form and management table.
+
+**Database:** `users.is_guest`, `users.guest_invited_by`, `users.guest_expires_at` (control plane); `guest_project_permissions` table (tenant).
 
 MCP tools are filtered by role — agents only see tools their role permits (see `mcp-server/src/permissions.ts`).
 

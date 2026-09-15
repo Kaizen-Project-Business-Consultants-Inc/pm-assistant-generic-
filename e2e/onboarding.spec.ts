@@ -72,7 +72,7 @@ test.describe('Onboarding Wizard', () => {
     await expect(page.getByText('Project Manager')).toBeVisible();
     await expect(page.getByText('Team Member')).toBeVisible();
     await expect(page.getByText('Executive')).toBeVisible();
-    await expect(page.getByText('Scrum Master')).toBeVisible();
+    await expect(page.getByText('Viewer')).toBeVisible();
 
     // Methodology selector — use exact match to avoid matching
     // "Mix of waterfall and agile" in the Hybrid card description

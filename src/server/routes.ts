@@ -107,6 +107,10 @@ import { stripeRoutes } from './routes/integrations/stripe';
 import { slackRoutes } from './routes/integrations/slack';
 import { mcpProxyRoutes } from './routes/integrations/mcpProxy';
 import { storageConnectorRoutes, storageConnectorCallbackRoutes } from './routes/integrations/storageConnectors';
+import { googleCalendarRoutes } from './routes/integrations/calendar';
+
+// Middleware
+import { guestGuard } from './middleware/guestGuard';
 
 // Admin
 import { adminRoutes } from './routes/admin/admin';
@@ -122,6 +126,9 @@ import { mcpAnalyticsRoutes } from './routes/admin/mcpAnalytics';
 import { knowledgeBaseRoutes } from './routes/admin/knowledgeBase';
 
 export async function registerRoutes(fastify: FastifyInstance) {
+  // Guest guard — restrict guest users to allowed routes
+  fastify.addHook('onRequest', guestGuard);
+
   // Health check — unauthenticated, for uptime monitors
   fastify.get('/api/v1/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
@@ -234,6 +241,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(mcpProxyRoutes, { prefix: '/mcp' });
   await fastify.register(storageConnectorRoutes, { prefix: '/api/v1/projects' });
   await fastify.register(storageConnectorCallbackRoutes, { prefix: '/api/v1' });
+  await fastify.register(googleCalendarRoutes, { prefix: '/api/v1/calendar' });
 
   // Admin
   await fastify.register(adminRoutes, { prefix: '/api/v1/admin' });

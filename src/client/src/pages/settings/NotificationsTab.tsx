@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Save } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { apiService } from '../../services/api';
+import { subscribeToPush, unsubscribeFromPush, getPushPermission, isPushSubscribed } from '../../services/pushService';
 
 interface CategoryPref {
   inApp: boolean;
@@ -67,6 +68,13 @@ export const NotificationsTab: React.FC = () => {
   const [typePrefs, setTypePrefs] = useState<TypePreferences>({ ...DEFAULT_TYPE_PREFS });
   const [saved, setSaved] = useState(false);
   const [serverSaving, setServerSaving] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const pushPermission = getPushPermission();
+
+  useEffect(() => {
+    isPushSubscribed().then(setPushEnabled);
+  }, []);
 
   const { data: serverPrefs } = useQuery({
     queryKey: ['notification-preferences'],
@@ -126,6 +134,41 @@ export const NotificationsTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Push Notifications */}
+      {pushPermission !== 'unsupported' && (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Browser Notifications</h2>
+          <div className="flex items-center justify-between py-3">
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Enable push notifications</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {pushPermission === 'denied'
+                  ? 'Notifications are blocked. Please update your browser settings.'
+                  : 'Receive notifications even when the app tab is closed'}
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={pushLoading || pushPermission === 'denied'}
+              onClick={async () => {
+                setPushLoading(true);
+                if (pushEnabled) {
+                  await unsubscribeFromPush();
+                  setPushEnabled(false);
+                } else {
+                  const success = await subscribeToPush();
+                  setPushEnabled(success);
+                }
+                setPushLoading(false);
+              }}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 ${pushEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-600'}`}
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${pushEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Email Notifications</h2>
         <div className="flex items-center justify-between py-3">

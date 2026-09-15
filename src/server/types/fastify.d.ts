@@ -19,6 +19,8 @@ declare module 'fastify' {
       userId: string;
       username: string;
       role: string;
+      isGuest?: boolean;
+      guestExpiresAt?: string | null;
     };
     apiKeyId?: string;
     apiKeyScopes?: string[];

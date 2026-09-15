@@ -16,7 +16,7 @@ test.describe('Task Management', () => {
     await expect(page).toHaveURL(/\/project\//);
 
     // Click Schedule tab
-    const scheduleTab = page.getByRole('button', { name: 'Schedule', exact: true });
+    const scheduleTab = page.getByRole('tab', { name: 'Schedule', exact: true });
     await expect(scheduleTab).toBeVisible({ timeout: 10_000 });
     await scheduleTab.click();
 

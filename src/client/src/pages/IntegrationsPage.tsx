@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plug,
@@ -9,6 +9,7 @@ import {
   Clock,
   History,
   Plus,
+  ExternalLink,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -61,6 +62,12 @@ const PROVIDERS: Record<string, ProviderMeta> = {
     description: 'Send project notifications to Slack',
     color: '#4A154B',
     letter: 'S',
+  },
+  google_calendar: {
+    name: 'Google Calendar',
+    description: 'Sync task deadlines with Google Calendar',
+    color: '#4285F4',
+    letter: 'C',
   },
   trello: {
     name: 'Trello',
@@ -159,6 +166,24 @@ export const IntegrationsPage: React.FC = () => {
   const handleDisconnect = (integrationId: string, providerName: string) => {
     setConfirmDisconnect({ id: integrationId, name: providerName });
   };
+
+  const OAUTH_PROVIDERS = new Set(['slack', 'google_calendar']);
+
+  const handleOAuthConnect = useCallback(async (provider: string) => {
+    try {
+      let data;
+      if (provider === 'slack') {
+        data = await apiService.getSlackInstallUrl();
+      } else if (provider === 'google_calendar') {
+        data = await apiService.getCalendarConnectUrl();
+      }
+      if (data?.url) {
+        window.open(data.url, '_blank', 'width=600,height=700');
+      }
+    } catch (err) {
+      console.error('OAuth connect failed:', err);
+    }
+  }, []);
 
   // Render action buttons for a single integration
   const renderActions = (integ: Integration, providerKey: string, meta: ProviderMeta, compact = false) => (
@@ -307,9 +332,12 @@ export const IntegrationsPage: React.FC = () => {
                           })}
                         </div>
                       )}
-                      {/* Always show "Add Channel" button for multi-connection providers */}
+                      {/* Always show "Add" button for multi-connection providers */}
                       <button
-                        onClick={() => setConfigModal({ provider: providerKey })}
+                        onClick={() => OAUTH_PROVIDERS.has(providerKey)
+                          ? handleOAuthConnect(providerKey)
+                          : setConfigModal({ provider: providerKey })
+                        }
                         className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors hover:opacity-90"
                         style={{
                           backgroundColor: hasAnyConnection ? undefined : meta.color,
@@ -317,8 +345,8 @@ export const IntegrationsPage: React.FC = () => {
                           border: hasAnyConnection ? `1px solid ${meta.color}` : undefined,
                         }}
                       >
-                        {hasAnyConnection ? <Plus className="h-4 w-4" /> : <Plug className="h-4 w-4" />}
-                        {hasAnyConnection ? 'Add Another Channel' : 'Connect'}
+                        {hasAnyConnection ? <Plus className="h-4 w-4" /> : OAUTH_PROVIDERS.has(providerKey) ? <ExternalLink className="h-4 w-4" /> : <Plug className="h-4 w-4" />}
+                        {hasAnyConnection ? 'Add Another Channel' : OAUTH_PROVIDERS.has(providerKey) ? 'Install' : 'Connect'}
                       </button>
                     </>
                   ) : (
@@ -333,12 +361,15 @@ export const IntegrationsPage: React.FC = () => {
                       </>
                     ) : (
                       <button
-                        onClick={() => setConfigModal({ provider: providerKey })}
+                        onClick={() => OAUTH_PROVIDERS.has(providerKey)
+                          ? handleOAuthConnect(providerKey)
+                          : setConfigModal({ provider: providerKey })
+                        }
                         className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-white transition-colors hover:opacity-90"
                         style={{ backgroundColor: meta.color }}
                       >
-                        <Plug className="h-4 w-4" />
-                        Connect
+                        {OAUTH_PROVIDERS.has(providerKey) ? <ExternalLink className="h-4 w-4" /> : <Plug className="h-4 w-4" />}
+                        {OAUTH_PROVIDERS.has(providerKey) ? 'Install' : 'Connect'}
                       </button>
                     )
                   )}

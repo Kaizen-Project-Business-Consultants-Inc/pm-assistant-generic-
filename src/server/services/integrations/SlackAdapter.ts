@@ -17,6 +17,56 @@ function isValidSlackWebhookUrl(url: string): boolean {
 }
 
 export class SlackAdapter {
+  buildOAuthUrl(state: string): string {
+    const clientId = config.SLACK_CLIENT_ID;
+    if (!clientId) throw new Error('SLACK_CLIENT_ID not configured');
+    const redirectUri = `${config.APP_URL}/api/v1/slack/callback`;
+    const scopes = 'chat:write,channels:read,commands,incoming-webhook';
+    const params = new URLSearchParams({
+      client_id: clientId,
+      scope: scopes,
+      redirect_uri: redirectUri,
+      state,
+    });
+    return `https://slack.com/oauth/v2/authorize?${params.toString()}`;
+  }
+
+  async exchangeCode(code: string): Promise<{ access_token: string; team: { id: string; name: string }; bot_user_id: string; incoming_webhook?: { url: string; channel: string } }> {
+    const clientId = config.SLACK_CLIENT_ID;
+    const clientSecret = config.SLACK_CLIENT_SECRET;
+    if (!clientId || !clientSecret) throw new Error('Slack OAuth not configured');
+
+    const redirectUri = `${config.APP_URL}/api/v1/slack/callback`;
+    const body = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      redirect_uri: redirectUri,
+    });
+
+    const response = await fetch('https://slack.com/api/oauth.v2.access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+    const data = await response.json() as any;
+    if (!data.ok) throw new Error(data.error || 'OAuth exchange failed');
+    return data;
+  }
+
+  async listChannels(botToken: string): Promise<{ id: string; name: string; isPrivate: boolean }[]> {
+    const response = await fetch('https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=200', {
+      headers: { Authorization: `Bearer ${botToken}` },
+    });
+    const data = await response.json() as any;
+    if (!data.ok) throw new Error(data.error || 'Failed to list channels');
+    return (data.channels || []).map((ch: any) => ({
+      id: ch.id,
+      name: ch.name,
+      isPrivate: ch.is_private,
+    }));
+  }
+
   async testConnection(config: SlackConfig): Promise<{ success: boolean; message: string }> {
     if (!isValidSlackWebhookUrl(config.webhookUrl)) {
       return { success: false, message: 'Invalid Slack webhook URL. Must be https://hooks.slack.com/...' };

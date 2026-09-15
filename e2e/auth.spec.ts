@@ -4,7 +4,7 @@ import { login, TEST_USER } from './helpers';
 test.describe('Authentication', () => {
   test('shows login page with form fields', async ({ page }) => {
     await page.goto('/login');
-    await expect(page.locator('h2')).toContainText('Kovarti PM Assistant');
+    await expect(page.locator('h1')).toContainText('Kovarti PM');
     await expect(page.locator('#username')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();

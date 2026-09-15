@@ -63,9 +63,9 @@ export function requireProjectAccess(minRole: ProjectRole = 'viewer') {
     // No project context (e.g. list-all routes) — skip
     if (!projectId) return;
 
-    // Global role bypasses
-    if (GLOBAL_FULL_ACCESS.includes(user.role)) return;
-    if (GLOBAL_READ_ONLY.includes(user.role)) {
+    // Global role bypasses (guests never get global bypass)
+    if (!user.isGuest && GLOBAL_FULL_ACCESS.includes(user.role)) return;
+    if (!user.isGuest && GLOBAL_READ_ONLY.includes(user.role)) {
       if (ROLE_HIERARCHY[minRole] <= ROLE_HIERARCHY['viewer']) return;
       return reply.status(403).send({
         error: 'Insufficient project role',

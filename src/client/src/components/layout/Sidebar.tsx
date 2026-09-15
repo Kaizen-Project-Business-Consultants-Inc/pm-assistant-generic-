@@ -246,7 +246,12 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
   });
   const pinnedProjects: { id: string; name: string }[] = (favData?.projects || []).slice(0, 5);
 
-  const navSections = isAdmin && adminView ? adminNavSections : pmNavSections;
+  const isGuest = user?.isGuest;
+  const GUEST_BLOCKED_PATHS = new Set(['/resources', '/integrations', '/admin', '/settings', '/workflows', '/intake', '/change-requests']);
+  const baseNav = isAdmin && adminView ? adminNavSections : pmNavSections;
+  const navSections = isGuest
+    ? baseNav.map(s => ({ ...s, items: s.items.filter(i => !GUEST_BLOCKED_PATHS.has(i.path)) })).filter(s => s.items.length > 0)
+    : baseNav;
 
   const isActive = (path: string): boolean => {
     if (path === '/dashboard') {

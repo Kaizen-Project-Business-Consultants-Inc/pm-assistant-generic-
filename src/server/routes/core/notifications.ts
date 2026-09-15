@@ -1,7 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { z } from 'zod';
 import { notificationService } from '../../services/NotificationService';
+import { webPushService } from '../../services/WebPushService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { config } from '../../config';
 import logger from '../../utils/logger';
 
 export async function notificationRoutes(fastify: FastifyInstance) {
@@ -70,6 +73,54 @@ export async function notificationRoutes(fastify: FastifyInstance) {
     } catch (error) {
       logger.error('Mark all read error', { error });
       return reply.status(500).send({ error: 'Failed to mark all as read' });
+    }
+  });
+
+  // GET /push/vapid-key — return public VAPID key
+  fastify.get('/push/vapid-key', {
+    schema: { description: 'Get VAPID public key for push notifications', tags: ['notifications'] },
+    preHandler: [requireScope('read')],
+  }, async () => {
+    return { vapidPublicKey: config.VAPID_PUBLIC_KEY || null, configured: webPushService.isConfigured };
+  });
+
+  // POST /push/subscribe — store push subscription
+  fastify.post('/push/subscribe', {
+    schema: { description: 'Subscribe to push notifications', tags: ['notifications'] },
+    preHandler: [requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const body = z.object({
+        endpoint: z.string().min(1),
+        keys: z.object({
+          p256dh: z.string().min(1),
+          auth: z.string().min(1),
+        }),
+      }).parse(request.body);
+
+      await webPushService.subscribe(request.user!.userId, body, request.headers['user-agent']);
+      return { message: 'Subscribed to push notifications' };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ error: 'Invalid subscription data', details: error.issues });
+      }
+      logger.error('Push subscribe error', { error });
+      return reply.status(500).send({ error: 'Failed to subscribe' });
+    }
+  });
+
+  // DELETE /push/subscribe — remove push subscription
+  fastify.delete('/push/subscribe', {
+    schema: { description: 'Unsubscribe from push notifications', tags: ['notifications'] },
+    preHandler: [requireScope('write')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { endpoint } = z.object({ endpoint: z.string().min(1) }).parse(request.body);
+      await webPushService.unsubscribe(request.user!.userId, endpoint);
+      return { message: 'Unsubscribed from push notifications' };
+    } catch (error) {
+      logger.error('Push unsubscribe error', { error });
+      return reply.status(500).send({ error: 'Failed to unsubscribe' });
     }
   });
 }

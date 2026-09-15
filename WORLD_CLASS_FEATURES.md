@@ -407,6 +407,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Accessible from sidebar ("Notifications" under Workspace) and "View all alerts" in bell dropdown
 - Email alerts for assignments, deadlines, status changes
 - Configurable notification preferences per user
+- **Web Push Notifications** — VAPID-based browser push via `web-push` library; delivers native OS notifications even when the app tab is closed; service worker push event handler with click-to-navigate; auto-cleanup of stale subscriptions; toggle in Settings > Notifications
 - @mention notifications from comments
 - **Actionable notifications** — notifications can carry `suggestedActions` (array of `{toolName, params, label}`), rendered as inline `AlertActionButton` components in the notification bell dropdown. One-click execution of suggested remediation actions (e.g., reschedule task, acknowledge risk) directly from the notification without navigating away
 - **Benchmark:** All top tools
@@ -479,6 +480,21 @@ An agentic AI project management platform that combines the scheduling power of 
   - HMAC-SHA256 signature verification (Slack signing secret)
   - Bot token support for interactive messages
   - 3 MCP tools: `send-slack-message`, `test-slack-connection`, `list-slack-channels`
+  - **OAuth Install Flow** — one-click "Install to Slack" button initiates Slack OAuth v2 flow; auto-stores bot token; channel picker for post-install configuration; `GET /slack/install`, `GET /slack/callback`, `GET /slack/channels` endpoints
+- **Google Calendar integration** — COMPLETE
+  - Bi-directional sync: task deadlines → calendar events, event moves → task date updates
+  - OAuth2 connect flow with calendar selector and sync direction (push/pull/both)
+  - Incremental sync via Google `syncToken` (delta updates only)
+  - Automatic background sync every 15 minutes via cron
+  - Manual sync trigger and per-task link/unlink
+  - 8 API endpoints: connect, callback, calendars, sync, link-task, unlink-task, settings, disconnect
+- **Guest Collaborator Role** — COMPLETE
+  - Authenticated external access for clients/contractors/auditors without consuming a paid seat
+  - Per-project granular permissions: comment, update assigned tasks, view budget, view risks, upload files
+  - Optional expiry date with automatic rejection at auth time
+  - Guest invite flow via Settings > Team with email + project + permissions
+  - Sidebar and route restrictions: no org settings, billing, team management, or project creation
+  - Guest management API: invite, list, update permissions, revoke
 - Microsoft Teams integration
 - Jira two-way sync
 - GitHub/GitLab commit linking

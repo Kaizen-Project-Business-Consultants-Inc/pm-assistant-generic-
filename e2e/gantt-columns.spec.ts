@@ -1,10 +1,13 @@
 import { test, expect } from '@playwright/test';
-
-// TechStart E-Commerce Platform on staging (mike_todo's tenant)
-const PROJECT_ID = '54839f0a-8e9e-4f64-bc96-eef022132444';
+import { login } from './helpers';
 
 async function navigateToGantt(page: import('@playwright/test').Page) {
-  await page.goto(`/project/${PROJECT_ID}?tab=schedule`);
+  // Navigate to first project's schedule tab
+  await page.goto('/projects');
+  const firstProject = page.locator('a[href^="/project/"]').first();
+  await expect(firstProject).toBeVisible({ timeout: 10_000 });
+  const href = await firstProject.getAttribute('href');
+  await page.goto(`${href}?tab=schedule`);
   // Wait for the Gantt table to load
   await expect(
     page.locator('table, [class*="gantt"], canvas, svg').first()
@@ -23,6 +26,9 @@ async function openColumnPicker(page: import('@playwright/test').Page) {
 }
 
 test.describe('Gantt Table — MPP Columns', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
 
   test('column picker shows Actual Start and Actual Finish', async ({ page }) => {
     await navigateToGantt(page);

@@ -77,6 +77,42 @@ export async function setupMockApi(page: Page) {
       });
     }
 
+    // Project summary (used by ProjectDetailPage)
+    if (/\/projects\/[^/]+\/summary/.test(url) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          project: {
+            id: 'proj-1',
+            name: 'Demo Project',
+            status: 'active',
+            methodology: 'agile',
+            health: 75,
+            description: 'A demo project for testing',
+            startDate: '2026-01-01',
+            endDate: '2026-12-31',
+          },
+          schedules: [
+            { id: 'sched-1', name: 'Main Schedule', projectId: 'proj-1', status: 'active' },
+          ],
+          tasks: [],
+          members: [],
+          riskStats: { total: 0, open: 0, closed: 0, bySeverity: {} },
+          sprints: [],
+        }),
+      });
+    }
+
+    // Templates
+    if (url.includes('/templates') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ templates: [], data: [] }),
+      });
+    }
+
     // Other project sub-routes (risks, members, etc.)
     if (/\/projects\/[^/]+\/(risks|members|goals|health)/.test(url) && method === 'GET') {
       return route.fulfill({

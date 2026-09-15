@@ -126,6 +126,17 @@ const configSchema = z.object({
   // Slack Configuration
   SLACK_SIGNING_SECRET: z.string().optional().default(''),
   SLACK_BOT_TOKEN: z.string().optional().default(''),
+  SLACK_CLIENT_ID: z.string().optional().default(''),
+  SLACK_CLIENT_SECRET: z.string().optional().default(''),
+
+  // Web Push (VAPID)
+  VAPID_PUBLIC_KEY: z.string().optional().default(''),
+  VAPID_PRIVATE_KEY: z.string().optional().default(''),
+  VAPID_EMAIL: z.string().optional().default(''),
+
+  // Google Calendar
+  GOOGLE_CALENDAR_CLIENT_ID: z.string().optional().default(''),
+  GOOGLE_CALENDAR_CLIENT_SECRET: z.string().optional().default(''),
 
   // File Upload Configuration
   UPLOAD_DIR: z.string().default(process.env['HOME'] || process.env['USERPROFILE'] ? `${process.env['HOME'] || process.env['USERPROFILE']}/uploads/pm-assistant` : './uploads/pm-assistant'),
@@ -259,6 +270,13 @@ export function validateConfiguration() {
       MULTI_TENANT_ENABLED: process.env['MULTI_TENANT_ENABLED'],
       SLACK_SIGNING_SECRET: process.env['SLACK_SIGNING_SECRET'],
       SLACK_BOT_TOKEN: process.env['SLACK_BOT_TOKEN'],
+      SLACK_CLIENT_ID: process.env['SLACK_CLIENT_ID'],
+      SLACK_CLIENT_SECRET: process.env['SLACK_CLIENT_SECRET'],
+      VAPID_PUBLIC_KEY: process.env['VAPID_PUBLIC_KEY'],
+      VAPID_PRIVATE_KEY: process.env['VAPID_PRIVATE_KEY'],
+      VAPID_EMAIL: process.env['VAPID_EMAIL'],
+      GOOGLE_CALENDAR_CLIENT_ID: process.env['GOOGLE_CALENDAR_CLIENT_ID'],
+      GOOGLE_CALENDAR_CLIENT_SECRET: process.env['GOOGLE_CALENDAR_CLIENT_SECRET'],
       UPLOAD_DIR: process.env['UPLOAD_DIR'],
       MAX_UPLOAD_SIZE_MB: process.env['MAX_UPLOAD_SIZE_MB'],
       MICROSOFT_CLIENT_ID: process.env['MICROSOFT_CLIENT_ID'],

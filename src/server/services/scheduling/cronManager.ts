@@ -26,6 +26,7 @@ export interface CronTasks {
   utilizationCoachingTask: cron.ScheduledTask | null;
   scheduledAutomationTask: cron.ScheduledTask | null;
   dreamingTask: cron.ScheduledTask | null;
+  calendarSyncTask: cron.ScheduledTask | null;
 }
 
 export function startCronTasks(
@@ -47,6 +48,7 @@ export function startCronTasks(
     utilizationCoachingTask: null,
     scheduledAutomationTask: null,
     dreamingTask: null,
+    calendarSyncTask: null,
   };
 
   // Agent-specific jobs: gated by AGENT_ENABLED
@@ -356,6 +358,30 @@ export function startCronTasks(
     });
   }
 
+  // Google Calendar sync — every 15 minutes
+  logger.info('[cron] Starting calendar sync (every 15 min)');
+  tasks.calendarSyncTask = cron.schedule('*/15 * * * *', async () => {
+    await forEachTenant(async (tenant) => {
+      const label = tenant?.slug ?? 'default';
+      const start = Date.now();
+      try {
+        const { calendarSyncService } = await import('../integrations/CalendarSyncService');
+        const result = await calendarSyncService.syncAllUsers();
+        if (result.synced > 0) {
+          logger.info(`[cron:calendar-sync] ${label} completed`, {
+            cronJob: 'calendar-sync', tenant: label, durationMs: Date.now() - start,
+            result,
+          });
+        }
+      } catch (error) {
+        logger.error(`[cron:calendar-sync] ${label} FAILED`, {
+          cronJob: 'calendar-sync', tenant: label, durationMs: Date.now() - start,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  });
+
   return tasks;
 }
 
@@ -374,6 +400,7 @@ export function stopCronTasks(tasks: CronTasks): void {
   if (tasks.utilizationCoachingTask) { tasks.utilizationCoachingTask.stop(); tasks.utilizationCoachingTask = null; }
   if (tasks.scheduledAutomationTask) { tasks.scheduledAutomationTask.stop(); tasks.scheduledAutomationTask = null; }
   if (tasks.dreamingTask) { tasks.dreamingTask.stop(); tasks.dreamingTask = null; }
+  if (tasks.calendarSyncTask) { tasks.calendarSyncTask.stop(); tasks.calendarSyncTask = null; }
   logger.info('[Agent] Stopped agent scheduler');
 }
 

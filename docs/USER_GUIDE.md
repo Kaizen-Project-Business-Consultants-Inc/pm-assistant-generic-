@@ -1856,6 +1856,7 @@ Connect PM Assistant to external tools for bidirectional synchronization.
 | **GitHub** | Link GitHub issues and pull requests to project tasks. Track development progress. |
 | **Slack** | Event notifications, `/kovarti status` slash command, interactive proposal approval buttons. |
 | **Trello** | Sync cards with project tasks. |
+| **Google Calendar** | Bi-directional sync between task deadlines and calendar events. OAuth connect flow. |
 
 ### Setting Up an Integration
 
@@ -1875,6 +1876,14 @@ Connect PM Assistant to external tools for bidirectional synchronization.
 - Integrations can be enabled/disabled with a toggle without deleting the configuration.
 
 ### Slack Setup
+
+#### One-Click OAuth Install (Recommended)
+
+1. Navigate to **Integrations** in the sidebar.
+2. Click **Install to Slack** on the Slack card.
+3. Authorize the Kovarti app in the Slack OAuth popup.
+4. After install, use the **channel picker** to select which channel receives notifications.
+5. The bot token is stored automatically — no manual webhook configuration needed.
 
 #### Connecting Slack to a Project
 
@@ -1922,6 +1931,31 @@ When the AI agent creates a proposal, a Slack message is sent with **Approve** a
 #### Sending Messages from Agents or Workflows
 
 Agents and workflow actions can push ad-hoc messages to a project's Slack channels using the `send-slack-message` MCP tool or the internal `POST /api/v1/slack/send` endpoint. This is also available as `test-slack-connection` (sends a ping to verify the webhook is live) and `list-slack-channels` (lists all configured channels for a project) via MCP.
+
+---
+
+### Google Calendar
+
+#### Connecting Google Calendar
+
+1. Navigate to **Integrations** in the sidebar and click **Connect** on the Google Calendar card.
+2. Sign in with your Google account and authorize calendar access.
+3. Select which calendar to sync with (defaults to your primary calendar).
+4. Choose a sync direction:
+   - **Push** — Task deadlines appear as Google Calendar events.
+   - **Pull** — Moving events in Google Calendar updates task dates.
+   - **Both** — Full bi-directional sync (recommended).
+
+#### Syncing Tasks
+
+- Tasks with due dates are automatically synced as calendar events.
+- To manually link a specific task, use the task's context menu and select "Link to Calendar".
+- Click **Sync Now** on the integration card to trigger an immediate sync.
+- Background sync runs automatically every 15 minutes.
+
+#### Disconnecting
+
+Click **Disconnect** on the Google Calendar card in Integrations to remove the connection. This does not delete events already created in Google Calendar.
 
 ---
 
@@ -2362,6 +2396,44 @@ Paid plan users (Consultant Basic, Consultant Pro, SME, and Enterprise) can invi
 
 Viewer accounts do not count against your paid seat count and cannot be upgraded to full seats from the viewer invitation flow. Viewers never consume a seat regardless of how many RAID items they manage.
 
+### Guest Collaborators
+
+Invite external stakeholders (clients, contractors, auditors) to access specific projects without consuming a paid seat.
+
+#### Inviting a Guest
+
+1. Go to **Settings > Team**.
+2. Scroll down to the **Guests** section.
+3. Enter the guest's email address.
+4. Select which project they should access.
+5. Click **Invite Guest**.
+
+The guest receives an email invitation and can log in with their own credentials.
+
+#### Managing Guest Permissions
+
+Each guest has configurable per-project permissions:
+
+- **Can comment** — Post comments on tasks and RAID items (default: on).
+- **Can update assigned** — Edit tasks assigned to them (default: on).
+- **Can view budget** — See project budget information (default: off).
+- **Can view risks** — Access RAID items (default: off).
+- **Can upload files** — Upload file attachments (default: off).
+
+To update permissions, find the guest in the Guests table and click **Edit**.
+
+#### Guest Restrictions
+
+Guests can only see the project(s) they were invited to. They cannot:
+- Create new projects
+- Access organization settings or billing
+- Invite other users
+- View other projects
+
+#### Revoking Access
+
+Click **Revoke** next to any guest in the Guests table to immediately remove their access. Guests can also have an expiry date — access is automatically revoked when the date passes.
+
 Destructive actions throughout the application (deleting integrations, change requests, intake forms, report templates, goals, lessons, API keys, and webhooks) use a consistent styled confirmation modal instead of the browser's native dialog, providing a cleaner experience that respects the application's design and dark mode.
 
 ### User Roles
@@ -2688,6 +2760,28 @@ Each notification entry displays:
 - Click the **mark read** button on any individual notification to dismiss it. The read state is saved to the server so it persists across page refreshes and sessions.
 - Click **"Mark all read"** at the top of the list to mark all notifications as read at once.
 - Click **"Load More"** at the bottom of the list to fetch additional notifications. The list loads in pages so the initial view stays fast even on accounts with many notifications.
+
+### Browser Push Notifications
+
+Receive native browser notifications even when the PM Assistant tab is closed.
+
+#### Enabling Push Notifications
+
+1. Go to **Settings > Notifications**.
+2. Under **Browser Notifications**, toggle "Enable push notifications" on.
+3. Accept the browser permission prompt when it appears.
+
+#### How It Works
+
+- Notifications appear as native browser popups with the Kovarti icon.
+- Click a notification to open the app and navigate directly to the relevant item (task, project, etc.).
+- Push notifications are sent alongside in-app and email notifications — they follow the same category preferences.
+- Each device has its own subscription. Enable push on each browser/device you use.
+
+#### Troubleshooting
+
+- If the toggle is grayed out, your browser may have blocked notifications. Check your browser's site settings to allow notifications for this site.
+- Push notifications require a service worker, which is registered automatically when you first visit the app.
 
 ---
 

@@ -130,6 +130,8 @@ export async function authRoutes(fastify: FastifyInstance) {
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
           isFounder: user.isFounder || false,
           mustChangePassword: user.mustChangePassword || false,
+          isGuest: user.isGuest || false,
+          guestExpiresAt: user.guestExpiresAt ? String(user.guestExpiresAt) : null,
         },
       };
     } catch (error) {
@@ -505,6 +507,8 @@ export async function authRoutes(fastify: FastifyInstance) {
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
           isFounder: user.isFounder || false,
           mustChangePassword: user.mustChangePassword || false,
+          isGuest: user.isGuest || false,
+          guestExpiresAt: user.guestExpiresAt ? String(user.guestExpiresAt) : null,
           organization,
         },
       };

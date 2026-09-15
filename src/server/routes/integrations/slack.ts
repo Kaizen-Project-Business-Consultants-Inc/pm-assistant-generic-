@@ -16,6 +16,90 @@ const sendSlackSchema = z.object({
 });
 
 export async function slackRoutes(fastify: FastifyInstance) {
+  // GET /install — returns OAuth URL for Slack app install
+  fastify.get('/install', {
+    preHandler: [authMiddleware, requireScope('write')],
+    schema: { description: 'Get Slack OAuth install URL', tags: ['slack'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      if (!config.SLACK_CLIENT_ID) {
+        return reply.status(501).send({ error: 'Slack OAuth not configured (SLACK_CLIENT_ID missing)' });
+      }
+      const state = require('crypto').randomBytes(16).toString('hex') + ':' + request.user!.userId;
+      const url = slackAdapter.buildOAuthUrl(state);
+      return { url, state };
+    } catch (error: any) {
+      return reply.status(500).send({ error: error.message || 'Failed to generate install URL' });
+    }
+  });
+
+  // GET /callback — OAuth callback (called by Slack redirect, no auth)
+  fastify.get('/callback', {
+    schema: { description: 'Slack OAuth callback', tags: ['slack'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { code, state, error } = request.query as { code?: string; state?: string; error?: string };
+
+    if (error) {
+      return reply.redirect(`${config.APP_URL}/oauth/callback?error=${encodeURIComponent(error)}`);
+    }
+    if (!code || !state) {
+      return reply.redirect(`${config.APP_URL}/oauth/callback?error=missing_params`);
+    }
+
+    try {
+      const userId = state.split(':')[1];
+      if (!userId) throw new Error('Invalid state');
+
+      const data = await slackAdapter.exchangeCode(code);
+      const integConfig: Record<string, any> = {
+        botToken: data.access_token,
+        teamId: data.team?.id,
+        teamName: data.team?.name,
+        botUserId: data.bot_user_id,
+      };
+      if (data.incoming_webhook) {
+        integConfig.webhookUrl = data.incoming_webhook.url;
+        integConfig.channel = data.incoming_webhook.channel;
+      }
+
+      await integrationRepository.create(userId, 'slack', integConfig);
+      return reply.redirect(`${config.APP_URL}/oauth/callback?success=true&provider=slack`);
+    } catch (err: any) {
+      logger.error('Slack OAuth callback failed', { error: err.message });
+      return reply.redirect(`${config.APP_URL}/oauth/callback?error=${encodeURIComponent(err.message)}`);
+    }
+  });
+
+  // GET /channels — list channels for connected Slack workspace
+  fastify.get('/channels', {
+    preHandler: [authMiddleware, requireScope('read')],
+    schema: { description: 'List Slack channels', tags: ['slack'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userId = request.user!.userId;
+      const integrations = await integrationRepository.findByUser(userId);
+      const slackInteg = integrations.find(i => i.provider === 'slack' && i.isActive);
+      if (!slackInteg) {
+        return reply.status(404).send({ error: 'No active Slack integration' });
+      }
+
+      const raw = await integrationRepository.findRawById(slackInteg.id);
+      if (!raw) return reply.status(404).send({ error: 'Integration not found' });
+
+      const cfg = parseConfig(raw.config);
+      const botToken = cfg.botToken || config.SLACK_BOT_TOKEN;
+      if (!botToken) {
+        return reply.status(400).send({ error: 'No bot token available' });
+      }
+
+      const channels = await slackAdapter.listChannels(botToken);
+      return { channels };
+    } catch (error: any) {
+      logger.error('List Slack channels error', { error: error.message });
+      return reply.status(500).send({ error: 'Failed to list channels' });
+    }
+  });
+
   // POST /commands — Slack slash command handler
   fastify.post('/commands', {
     config: { rawBody: true },

@@ -19,11 +19,12 @@ test.describe('Project CRUD', () => {
     await page.goto('/projects');
     await page.getByRole('button', { name: /New Project/i }).click();
 
-    // Template picker modal should open
-    await expect(page.getByRole('heading', { name: /New Project/i })).toBeVisible();
+    // Wait for the template picker modal to appear
+    const modal = page.locator('[role="dialog"][aria-modal="true"]');
+    await expect(modal).toBeVisible({ timeout: 15_000 });
 
-    // Click "Start from Scratch" (blank project option)
-    const scratchBtn = page.getByText(/Start from Scratch|Blank Project/i);
+    // Click "Blank Project" option
+    const scratchBtn = page.getByText(/Blank Project/i);
     if ((await scratchBtn.count()) === 0) {
       test.skip();
       return;
@@ -57,6 +58,6 @@ test.describe('Project CRUD', () => {
     await expect(page).toHaveURL(/\/project\//);
 
     // Should have tabs (Overview, Schedule, etc.)
-    await expect(page.getByText('Overview')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('tab', { name: 'Overview' })).toBeVisible({ timeout: 10_000 });
   });
 });

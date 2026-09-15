@@ -12,6 +12,8 @@ export interface User {
   trialEndsAt?: string | null;
   isFounder?: boolean;
   mustChangePassword?: boolean;
+  isGuest?: boolean;
+  guestExpiresAt?: string | null;
 }
 
 interface AuthState {

@@ -3780,6 +3780,97 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     const response = await this.api.get(`/skills/${id}`);
     return response.data;
   }
+
+  // -------------------------------------------------------------------------
+  // Slack OAuth
+  // -------------------------------------------------------------------------
+
+  async getSlackInstallUrl() {
+    const response = await this.api.get('/slack/install');
+    return response.data;
+  }
+
+  async getSlackChannels() {
+    const response = await this.api.get('/slack/channels');
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
+  // Web Push Notifications
+  // -------------------------------------------------------------------------
+
+  async getVapidKey() {
+    const response = await this.api.get('/notifications/push/vapid-key');
+    return response.data;
+  }
+
+  async subscribeToPush(subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) {
+    const response = await this.api.post('/notifications/push/subscribe', subscription);
+    return response.data;
+  }
+
+  async unsubscribeFromPush(endpoint: string) {
+    const response = await this.api.delete('/notifications/push/subscribe', { data: { endpoint } });
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
+  // Google Calendar
+  // -------------------------------------------------------------------------
+
+  async getCalendarConnectUrl() {
+    const response = await this.api.get('/calendar/connect');
+    return response.data;
+  }
+
+  async getCalendarList() {
+    const response = await this.api.get('/calendar/calendars');
+    return response.data;
+  }
+
+  async syncCalendar() {
+    const response = await this.api.post('/calendar/sync');
+    return response.data;
+  }
+
+  async updateCalendarSettings(settings: { calendarId?: string; syncDirection?: string }) {
+    const response = await this.api.post('/calendar/settings', settings);
+    return response.data;
+  }
+
+  async disconnectCalendar() {
+    const response = await this.api.delete('/calendar/disconnect');
+    return response.data;
+  }
+
+  async linkTaskToCalendar(data: { taskId: string; name: string; startDate?: string; endDate?: string; dueDate?: string; description?: string }) {
+    const response = await this.api.post('/calendar/link-task', data);
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
+  // Guest Collaborators
+  // -------------------------------------------------------------------------
+
+  async inviteGuest(data: { email: string; projectId: string; permissions?: Record<string, boolean>; expiresAt?: string }) {
+    const response = await this.api.post('/org/invite-guest', data);
+    return response.data;
+  }
+
+  async getGuests() {
+    const response = await this.api.get('/org/guests');
+    return response.data;
+  }
+
+  async updateGuest(guestId: string, data: Record<string, unknown>) {
+    const response = await this.api.patch(`/org/guests/${guestId}`, data);
+    return response.data;
+  }
+
+  async revokeGuest(guestId: string) {
+    const response = await this.api.delete(`/org/guests/${guestId}`);
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();

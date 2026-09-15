@@ -42,6 +42,9 @@ function rowToUser(row: any): User {
     isFounder: Boolean(row.is_founder),
     founderAt: row.founder_at ?? null,
     refundCount: Number(row.refund_count) || 0,
+    isGuest: Boolean(row.is_guest),
+    guestInvitedBy: row.guest_invited_by ?? null,
+    guestExpiresAt: row.guest_expires_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -82,6 +85,9 @@ const USER_COLUMN_MAP: Record<string, string> = {
   isFounder: 'is_founder',
   founderAt: 'founder_at',
   refundCount: 'refund_count',
+  isGuest: 'is_guest',
+  guestInvitedBy: 'guest_invited_by',
+  guestExpiresAt: 'guest_expires_at',
 };
 
 export class UserRepository extends BaseRepository<User> {

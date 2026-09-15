@@ -90,20 +90,26 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       role: decoded.role,
     };
 
-    // Enforce password change for auto-created users
+    // Fetch extra user flags (must_change_password, is_guest)
     const url = request.url;
     const isPasswordChangeAllowed = url.includes('/auth/change-password') || url.includes('/auth/logout') || url.includes('/auth/me');
-    if (!isPasswordChangeAllowed) {
-      const rows = await databaseService.queryControlPlane<{ must_change_password: number }>(
-        'SELECT must_change_password FROM users WHERE id = ? LIMIT 1',
-        [decoded.userId],
-      );
-      if (rows.length > 0 && rows[0].must_change_password) {
+    const rows = await databaseService.queryControlPlane<{ must_change_password: number; is_guest: number; guest_expires_at: string | null }>(
+      'SELECT must_change_password, is_guest, guest_expires_at FROM users WHERE id = ? LIMIT 1',
+      [decoded.userId],
+    );
+
+    if (rows.length > 0) {
+      if (!isPasswordChangeAllowed && rows[0].must_change_password) {
         return reply.status(403).send({
           error: 'Password change required',
           code: 'PASSWORD_CHANGE_REQUIRED',
           message: 'You must change your password before continuing.',
         });
+      }
+
+      if (rows[0].is_guest) {
+        request.user!.isGuest = true;
+        request.user!.guestExpiresAt = rows[0].guest_expires_at;
       }
     }
 

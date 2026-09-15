@@ -13,7 +13,7 @@ test.describe('Landing Page', () => {
     await expect(page.getByText('smarter with AI')).toBeVisible();
 
     // Primary CTA
-    await expect(page.getByRole('link', { name: /Get Started Free/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Get Started/i }).first()).toBeVisible();
 
     // Secondary CTA links to proof section
     const secondaryCta = page.getByRole('link', { name: /See how it works/i });
@@ -87,10 +87,10 @@ test.describe('Landing Page', () => {
     const pricingSection = page.locator('#pricing');
     await pricingSection.scrollIntoViewIfNeeded();
 
-    // Tier descriptors in comparison table
-    await expect(pricingSection.getByText('(Free)')).toBeVisible();
-    await expect(pricingSection.getByText('(Solo)')).toBeVisible();
-    await expect(pricingSection.getByText('(Team)')).toBeVisible();
+    // Tier names in pricing cards
+    await expect(pricingSection.getByText('Free Trial').first()).toBeVisible();
+    await expect(pricingSection.getByText('Consultant Basic').first()).toBeVisible();
+    await expect(pricingSection.getByText('Consultant Pro').first()).toBeVisible();
   });
 
   test('refund policy is in a collapsible accordion', async ({ page }) => {

@@ -160,7 +160,7 @@ export class OrganizationRepository {
 
   async countNonViewerUsers(orgId: string): Promise<number> {
     const rows = await databaseService.queryControlPlane(
-      "SELECT COUNT(*) AS cnt FROM users WHERE organization_id = ? AND role != 'viewer' AND is_active = 1",
+      "SELECT COUNT(*) AS cnt FROM users WHERE organization_id = ? AND role != 'viewer' AND is_active = 1 AND (is_guest = 0 OR is_guest IS NULL)",
       [orgId],
     );
     return Number(rows[0].cnt);

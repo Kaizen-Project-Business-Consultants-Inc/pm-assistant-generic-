@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Shield, Send, X } from 'lucide-react';
+import { UserPlus, Shield, Send, X, UserCheck, Clock, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { apiService } from '../../services/api';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
@@ -228,10 +228,171 @@ export const TeamTab: React.FC = () => {
         />
       )}
 
+      {/* Guest Collaborators */}
+      <GuestSection />
+
       {/* Viewer Invites — invite clients as free viewers */}
       <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
         <ViewerInvitePanel />
       </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Guest Collaborators Section
+// ---------------------------------------------------------------------------
+interface Guest {
+  id: string;
+  username: string;
+  email: string;
+  fullName: string;
+  isActive: boolean;
+  guestExpiresAt: string | null;
+  permissions: { project_id: string; can_comment: number; can_update_assigned: number; can_view_budget: number; can_view_risks: number; can_upload_files: number }[];
+}
+
+const GuestSection: React.FC = () => {
+  const queryClient = useQueryClient();
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestProjectId, setGuestProjectId] = useState('');
+  const [guestMsg, setGuestMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState<Guest | null>(null);
+
+  const { data: guestsData } = useQuery({
+    queryKey: ['org-guests'],
+    queryFn: () => apiService.getGuests(),
+  });
+
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => apiService.getProjects(),
+  });
+
+  const guests: Guest[] = guestsData?.guests ?? [];
+  const projects: { id: string; name: string }[] = projectsData?.projects || projectsData?.data || [];
+
+  const inviteGuestMutation = useMutation({
+    mutationFn: (data: { email: string; projectId: string }) => apiService.inviteGuest(data),
+    onSuccess: (data: any) => {
+      setGuestMsg({ type: 'success', text: data.message || 'Guest invited' });
+      setGuestEmail('');
+      queryClient.invalidateQueries({ queryKey: ['org-guests'] });
+    },
+    onError: (err: unknown) => {
+      setGuestMsg({ type: 'error', text: getApiErrorMessage(err, 'Failed to invite guest') });
+    },
+  });
+
+  const revokeGuestMutation = useMutation({
+    mutationFn: (guestId: string) => apiService.revokeGuest(guestId),
+    onSuccess: () => {
+      setConfirmRevoke(null);
+      queryClient.invalidateQueries({ queryKey: ['org-guests'] });
+    },
+  });
+
+  return (
+    <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+        <UserCheck className="w-5 h-5" /> Guest Collaborators
+      </h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Invite external stakeholders (clients, contractors) with limited access. Guests don't consume paid seats.
+      </p>
+
+      {/* Invite Form */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="email"
+            placeholder="guest@example.com"
+            value={guestEmail}
+            onChange={(e) => setGuestEmail(e.target.value)}
+            className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+          />
+          <select
+            value={guestProjectId}
+            onChange={(e) => setGuestProjectId(e.target.value)}
+            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">Select project...</option>
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => inviteGuestMutation.mutate({ email: guestEmail, projectId: guestProjectId })}
+            disabled={!guestEmail || !guestProjectId || inviteGuestMutation.isPending}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 disabled:opacity-50"
+          >
+            <Send className="w-4 h-4" />
+            {inviteGuestMutation.isPending ? 'Inviting…' : 'Invite Guest'}
+          </button>
+        </div>
+        {guestMsg && (
+          <p className={`mt-2 text-sm ${guestMsg.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            {guestMsg.text}
+          </p>
+        )}
+      </div>
+
+      {/* Guests Table */}
+      {guests.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Guest</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Projects</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Expires</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {guests.map((g) => (
+                <tr key={g.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{g.fullName || g.username}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{g.email}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                    {g.permissions.length} project{g.permissions.length !== 1 ? 's' : ''}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                    {g.guestExpiresAt ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(g.guestExpiresAt).toLocaleDateString()}
+                      </span>
+                    ) : 'Never'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right">
+                    <button
+                      onClick={() => setConfirmRevoke(g)}
+                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                      title="Revoke access"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {confirmRevoke && (
+        <ConfirmModal
+          title="Revoke Guest Access"
+          message={`Revoke access for ${confirmRevoke.fullName || confirmRevoke.email}? They will lose access to all projects.`}
+          confirmLabel="Revoke"
+          variant="danger"
+          onConfirm={() => revokeGuestMutation.mutate(confirmRevoke.id)}
+          onCancel={() => setConfirmRevoke(null)}
+          isPending={revokeGuestMutation.isPending}
+        />
+      )}
     </div>
   );
 };

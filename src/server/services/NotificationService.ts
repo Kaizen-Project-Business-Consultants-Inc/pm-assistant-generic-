@@ -4,6 +4,7 @@ import { WebSocketService } from './WebSocketService';
 import { emailService } from './EmailService';
 import { userService, NotificationCategoryPref } from './UserService';
 import { slackEventDispatcher } from './integrations/SlackEventDispatcher';
+import { webPushService } from './WebPushService';
 import logger from '../utils/logger';
 import { config } from '../config';
 
@@ -140,6 +141,21 @@ export class NotificationService {
           logger.error('[NotificationService] Failed to send email notification:', err);
         }
       })();
+    }
+
+    // Fire-and-forget push notification delivery
+    if (shouldInApp && webPushService.isConfigured) {
+      const linkUrl = data.linkType && data.linkId
+        ? `/${data.linkType}s/${data.linkId}`
+        : undefined;
+      webPushService.sendPush(data.userId, {
+        title: data.title,
+        body: data.message,
+        url: linkUrl,
+        tag: type,
+      }).catch(err => {
+        logger.error('[NotificationService] Push delivery failed:', err);
+      });
     }
 
     // Fire-and-forget Slack delivery (project-scoped only, skip types already dispatched inline)
