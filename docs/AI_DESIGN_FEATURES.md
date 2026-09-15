@@ -714,7 +714,7 @@ Agent detects issue
 ## Non-Functional Requirements
 
 - **Graceful degradation:** All AI features check `claudeService.isAvailable()` before calling the API. When unavailable, fallback logic provides non-AI responses or the feature is skipped.
-- **Cost control:** Every AI request is logged with token counts and cost estimates. Per-model pricing is tracked automatically. Per-tier monthly token budgets (Free: 25K, Pro: 500K, Business: 1.5M, Consultant: 3M) are enforced before every AI call. Purchasable token top-ups ($5/500K) extend budgets on demand.
+- **Cost control:** Every AI request is logged with token counts and cost estimates. Per-model pricing is tracked automatically. Per-tier monthly token budgets (Free: 25K, Pro: 500K, Business: 1.5M, Consultant: 3M) are enforced before every AI call. Purchasable token top-ups ($10/500K) extend budgets on demand.
 - **Latency:** Interactive features target sub-5-second responses. Background agent tasks run asynchronously on cron schedules.
 - **Audit trail:** Every AI interaction is logged (who asked, what context, what was returned). Mutating actions go through the policy engine and audit ledger.
 - **Schema validation:** All AI outputs are validated against Zod schemas before being returned to clients, preventing malformed or hallucinated data from reaching the UI.

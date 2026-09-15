@@ -22,7 +22,7 @@ const {
     STRIPE_TOPUP_PRICE_ID: 'price_topup',
     APP_URL: 'https://app.test',
     AI_TOPUP_TOKENS: 500000,
-    AI_TOPUP_PRICE_CENTS: 500,
+    AI_TOPUP_PRICE_CENTS: 1000,
     LAUNCH_OFFER_ENABLED: false,
     STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID: 'price_cb_mo',
     STRIPE_CONSULTANT_BASIC_ANNUAL_PRICE_ID: 'price_cb_yr',
@@ -691,10 +691,10 @@ describe('StripeService', () => {
         await service.handleWebhookEvent(payload, signature);
 
         expect(tokenTopUpRepository.create).toHaveBeenCalledWith(
-          'user-1', 1000000, 1000, 'cs_topup', // 500000 * 2, 500 * 2
+          'user-1', 1000000, 2000, 'cs_topup', // 500000 * 2, 1000 * 2
         );
         expect(subscriptionEventRepository.create).toHaveBeenCalledWith(
-          'user-1', 'topup_purchased', null, null, 1000, 'evt_cs_2',
+          'user-1', 'topup_purchased', null, null, 2000, 'evt_cs_2',
           { tokens: 1000000, quantity: 2 },
         );
       });

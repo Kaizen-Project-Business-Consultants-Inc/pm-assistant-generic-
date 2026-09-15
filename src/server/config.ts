@@ -108,7 +108,7 @@ const configSchema = z.object({
 
   // Token top-up pricing
   AI_TOPUP_TOKENS: z.coerce.number().min(0).default(500000),
-  AI_TOPUP_PRICE_CENTS: z.coerce.number().min(0).default(500),
+  AI_TOPUP_PRICE_CENTS: z.coerce.number().min(0).default(1000),
 
   // Metrics
   METRICS_ENABLED: z.preprocess((val) => val === 'true' || val === '1' || val === true || val === undefined, z.boolean().default(true)),

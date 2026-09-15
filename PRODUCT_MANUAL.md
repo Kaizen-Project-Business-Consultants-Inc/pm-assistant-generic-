@@ -1886,7 +1886,7 @@ The `AIBudgetService` enforces per-user monthly AI token limits with tier-aware 
 
 - **Per-tier defaults**: Trial — 25,000 tokens/mo; Consultant Basic — 0 (no AI); Consultant Pro — 500,000; SME — 1,500,000; Enterprise — 5,000,000. Configurable via `AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_ENTERPRISE` env vars.
 - **Budget resolution chain**: per-user override (`users.ai_monthly_token_budget`) → subscription tier default → global fallback (`AI_MONTHLY_TOKEN_BUDGET`)
-- **Token top-ups**: Users can purchase additional token packs ($5 per 500K tokens) via Stripe one-time payment. Top-up tokens are added instantly, do not expire, and are consumed only after the monthly tier allowance is exhausted. FIFO consumption (oldest packs first). Managed by `TokenTopUpRepository`.
+- **Token top-ups**: Users can purchase additional token packs ($10 per 500K tokens) via Stripe one-time payment. Top-up tokens are added instantly, do not expire, and are consumed only after the monthly tier allowance is exhausted. FIFO consumption (oldest packs first). Managed by `TokenTopUpRepository`.
 - Tracks all AI usage in the `ai_usage_log` table (input/output tokens, cost, latency, feature, model)
 - Budget checked before every AI call in `claudeService` — throws `AIBudgetExceededError` (HTTP 429) with `code: 'AI_BUDGET_EXCEEDED'`, `resetDate`, `used`, and `budget` fields when exceeded
 - **Graceful degradation**: When the budget is exhausted, AI features are blocked but all non-AI features (scheduling, task management, reporting, collaboration) remain fully operational. The Mjuzi chat displays an actionable message with the reset date and a link to purchase more tokens.
@@ -1968,7 +1968,7 @@ The `StripeService` manages subscription billing:
 
 - **Customer creation**: linked to user accounts
 - **Multi-tier checkout**: Consultant Basic ($19/mo or $190/yr), Consultant Pro ($29/mo or $290/yr), SME ($39/mo or $390/yr), Enterprise ($79/mo or $790/yr). Price IDs configured via `STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID`, `STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID`, `STRIPE_SME_MONTHLY_PRICE_ID`, `STRIPE_ENTERPRISE_MONTHLY_PRICE_ID` (and annual variants).
-- **Token top-up checkout**: One-time payment for 500K token packs ($5 each, 1-20 packs per purchase). Price ID via `STRIPE_TOPUP_PRICE_ID`. Webhook prevents double-processing via `findByStripeSession()`.
+- **Token top-up checkout**: One-time payment for 500K token packs ($10 each, 1-20 packs per purchase). Price ID via `STRIPE_TOPUP_PRICE_ID`. Webhook prevents double-processing via `findByStripeSession()`.
 - **Billing portal**: self-service subscription management via Stripe's portal
 - **Webhook handling**: processes Stripe events for subscription lifecycle (created, updated, cancelled, payment succeeded/failed) and top-up completion. Every event is written to the `subscription_events` table and logged to the audit ledger.
 - **Tier resolution**: `resolveTierFromPriceId()` maps Stripe price IDs to app tiers (trial, consultant, sme, enterprise) with legacy fallback support
@@ -2101,7 +2101,7 @@ Below the plan cards, a **Feature Comparison Matrix** provides a side-by-side ta
 | Price (monthly) | Free | $19/mo | $29/mo | $39/mo | $79/mo |
 | Price (annual) | Free | $190/yr | $290/yr | $390/yr | $790/yr |
 
-A **Token Top-Up CTA** below the comparison table lets users purchase additional token packs ($5 per 500K).
+A **Token Top-Up CTA** below the comparison table lets users purchase additional token packs ($10 per 500K).
 
 **Checkout Error Display:** When a Stripe Checkout session fails to initialize (network error, invalid price ID, Stripe API error), the Pricing page displays an **inline error banner** in a styled red alert box.
 

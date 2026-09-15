@@ -156,7 +156,7 @@ export const COMPARISON: FeatureRow[] = [
   { feature: 'DAG Workflow Automation', desc: 'Automated task pipelines triggered by project events', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
   { feature: 'Cross-Project Intelligence', desc: 'AI insights across your entire portfolio', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
   { feature: 'MCP Integration', desc: 'Connect Kovarti PM to Claude and other AI tools', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Token Top-Up Packs', desc: 'Buy extra AI tokens anytime — $5 per 500K', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Token Top-Up Packs', desc: 'Buy extra AI tokens anytime — $10 per 500K', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
 ];
 
 interface PricingCardsProps {
@@ -512,7 +512,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
             <h3 className="text-lg font-bold text-white">Need more AI tokens?</h3>
           </div>
           <p className="text-sm text-gray-300 mb-4">
-            Top up anytime. <strong className="text-white">500K tokens for $5</strong> — added instantly to your balance.
+            Top up anytime. <strong className="text-white">500K tokens for $10</strong> — added instantly to your balance.
           </p>
           <button
             onClick={handleBuyTokens}

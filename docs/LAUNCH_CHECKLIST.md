@@ -16,7 +16,7 @@ The production `.env` currently uses **test keys** (`sk_test_*`, `pk_test_*`). B
    - **Consultant Pro:** $29/mo, $290/yr
    - (Optional) **SME:** $33/seat/mo, $330/seat/yr
    - (Optional) **Enterprise:** $79/mo, $790/yr
-   - **Token Top-Up:** $5 one-time (500K tokens)
+   - **Token Top-Up:** $10 one-time (500K tokens)
 3. Create the **20% launch coupon** in live mode (if using founder offer)
 4. Set up a **webhook endpoint** in live mode:
    - URL: `https://kovarti.com/api/v1/stripe/webhook`
