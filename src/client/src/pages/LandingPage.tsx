@@ -346,7 +346,7 @@ function HeroMockup() {
           <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
           <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-          <span className="ml-2.5 text-xs text-slate-500" style={{ fontFamily: "'JetBrains Mono', monospace" }}>portfolio · health</span>
+          <span className="ml-2.5 text-xs text-slate-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>portfolio · health</span>
           <span className="ml-auto inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-green-400 px-2 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.12)' }}>
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" style={{ animation: 'hpulse 1.6s ease-in-out infinite' }} />
             Live
@@ -361,7 +361,7 @@ function HeroMockup() {
             { label: 'CPI', value: '0.94', color: '#fbbf24' },
           ].map((kpi) => (
             <div key={kpi.label} className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <p className="text-[11px] text-slate-500 m-0">{kpi.label}</p>
+              <p className="text-[11px] text-slate-400 m-0">{kpi.label}</p>
               <p className="text-[22px] font-extrabold mt-1 m-0 tabular-nums" style={{ color: kpi.color }}>{kpi.value}</p>
             </div>
           ))}
@@ -949,7 +949,7 @@ export const LandingPage: React.FC = () => {
               </table>
             </div>
             <div className="px-6 py-4 border-t border-white/5">
-              <p className="text-xs text-slate-500">"Typical PM Tool" represents the common feature set across tools like Monday.com, Asana, ClickUp, and Wrike. Individual tools may vary.</p>
+              <p className="text-xs text-slate-400">"Typical PM Tool" represents the common feature set across tools like Monday.com, Asana, ClickUp, and Wrike. Individual tools may vary.</p>
             </div>
           </div>
 
@@ -993,7 +993,7 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 text-slate-500">
+      <footer className="border-t border-white/5 text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center mb-4 md:mb-0">

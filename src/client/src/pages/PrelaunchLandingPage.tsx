@@ -135,7 +135,7 @@ function Countdown({ target }: { target: Date }) {
 
   return (
     <div className="mt-10">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">Launching in</p>
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Launching in</p>
       <div className="flex justify-center lg:justify-start gap-3 sm:gap-4">
         <CountdownUnit value={countdown.days} label="Days" />
         <CountdownUnit value={countdown.hours} label="Hours" />
@@ -182,7 +182,7 @@ function HeroMockup() {
           <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
           <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-          <span className="ml-2.5 text-xs text-slate-500" style={{ fontFamily: "'JetBrains Mono', monospace" }}>portfolio · health</span>
+          <span className="ml-2.5 text-xs text-slate-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>portfolio · health</span>
           <span className="ml-auto inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-green-400 px-2 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.12)' }}>
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" style={{ animation: 'hpulse 1.6s ease-in-out infinite' }} />
             Preview
@@ -195,7 +195,7 @@ function HeroMockup() {
             { label: 'CPI', value: '0.94', color: '#fbbf24' },
           ].map((kpi) => (
             <div key={kpi.label} className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <p className="text-[11px] text-slate-500 m-0">{kpi.label}</p>
+              <p className="text-[11px] text-slate-400 m-0">{kpi.label}</p>
               <p className="text-[22px] font-extrabold mt-1 m-0 tabular-nums" style={{ color: kpi.color }}>{kpi.value}</p>
             </div>
           ))}
@@ -610,7 +610,7 @@ function MjuziFaqBot() {
 
             {/* Question buttons */}
             <div className="space-y-2 pt-1">
-              <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{selectedQ !== null ? 'Ask another question' : 'Pick a question'}</div>
+              <div className="text-xs text-slate-400 font-medium uppercase tracking-wide">{selectedQ !== null ? 'Ask another question' : 'Pick a question'}</div>
               {faqItems.map((item, i) => (
                 <button
                   key={i}
@@ -802,7 +802,7 @@ export const PrelaunchLandingPage: React.FC = () => {
           ].map(stat => (
             <div key={stat.label}>
               <div className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">{stat.value}</div>
-              <div className="text-xs text-slate-500 mt-1 uppercase tracking-wide">{stat.label}</div>
+              <div className="text-xs text-slate-400 mt-1 uppercase tracking-wide">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -919,12 +919,12 @@ export const PrelaunchLandingPage: React.FC = () => {
             </div>
             <span className="text-sm font-semibold text-white">Kovarti</span>
           </div>
-          <div className="flex gap-6 text-sm text-slate-500">
+          <div className="flex gap-6 text-sm text-slate-400">
             <a href={`mailto:${SALES_EMAIL}`} className="hover:text-white transition-colors">{SALES_EMAIL}</a>
             <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
           </div>
-          <div className="text-xs text-slate-500">&copy; {new Date().getFullYear()} Kovarti. All rights reserved.</div>
+          <div className="text-xs text-slate-400">&copy; {new Date().getFullYear()} Kovarti. All rights reserved.</div>
         </div>
       </footer>
 
