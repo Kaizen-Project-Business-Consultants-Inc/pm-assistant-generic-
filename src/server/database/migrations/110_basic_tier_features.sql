@@ -8,5 +8,5 @@ WHERE tier = 'consultant_basic'
 
 -- Update pricing_config features JSON for consultant_basic
 UPDATE pricing_config
-SET features = '["Unlimited projects","Gantt, Kanban, Sprint boards","RAID management","Resource management & heatmaps","Custom report builder","Workflow automation","All exports (CSV, PDF, XML)","API access & integrations","5 free viewer invites","Stakeholder portal"]'
+SET features_json = '["Unlimited projects","Gantt, Kanban, Sprint boards","RAID management","Resource management & heatmaps","Custom report builder","Workflow automation","All exports (CSV, PDF, XML)","API access & integrations","5 free viewer invites","Stakeholder portal"]'
 WHERE tier = 'consultant_basic';
