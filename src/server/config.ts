@@ -84,8 +84,8 @@ const configSchema = z.object({
   AI_PRICING_OUTPUT: z.coerce.number().min(0).default(15.0),
 
   // Per-tier AI budget defaults (tokens/month)
-  AI_TIER_BUDGET_TRIAL: z.coerce.number().min(0).default(25000),
-  AI_TIER_BUDGET_CONSULTANT_BASIC: z.coerce.number().min(0).default(25000),
+  AI_TIER_BUDGET_TRIAL: z.coerce.number().min(0).default(0),
+  AI_TIER_BUDGET_CONSULTANT_BASIC: z.coerce.number().min(0).default(0),
   AI_TIER_BUDGET_CONSULTANT_PRO: z.coerce.number().min(0).default(500000),
   AI_TIER_BUDGET_SME: z.coerce.number().min(0).default(1500000),
   AI_TIER_BUDGET_ENTERPRISE: z.coerce.number().min(0).default(5000000),

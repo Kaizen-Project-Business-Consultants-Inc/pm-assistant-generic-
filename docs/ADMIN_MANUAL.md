@@ -199,7 +199,7 @@ Three paid tiers are available, each with monthly and annual billing:
 | SME | $39 | ~$390 | 1,500,000 | 20 |
 | Enterprise | $79 | ~$790 | 5,000,000 | Unlimited |
 
-Trial accounts are free, limited to 14 days, 3 projects, and 25,000 AI tokens/month (basic PM features only). All paid tiers include the full feature set. Annual billing saves ~17%.
+Trial accounts are free, limited to 14 days, 3 projects, and no AI token budget (sample responses only — no real AI calls). All paid tiers include the full feature set. Annual billing saves ~17%.
 
 > **Viewer invites:** Viewer accounts are free — invited viewers do not need a subscription. The invite limit is per paid account (5/20/unlimited depending on tier).
 
