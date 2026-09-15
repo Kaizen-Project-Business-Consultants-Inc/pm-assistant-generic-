@@ -286,7 +286,8 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 ### Billing (Stripe)
 - Subscription management with tiered pricing (Trial / Consultant / SME / Enterprise), feature comparison matrix, usage equivalents, and sidebar token usage indicator
   - **Trial:** Free, 14 days, 3 projects, no AI (sample responses only), basic PM features only
-  - **Consultant:** $19/mo ($190/yr), unlimited projects, 500K AI tokens/month, all features, 5 viewer invites
+  - **Consultant Basic:** $19/mo ($190/yr), unlimited projects, no AI, core PM + resources + reports + workflows, 5 viewer invites
+  - **Consultant Pro:** $29/mo ($290/yr), unlimited projects, 500K AI tokens/month, all features including AI, 5 viewer invites
   - **SME:** $39/mo ($390/yr), unlimited projects, 1.5M AI tokens/month, all features, 20 viewer invites
   - **Enterprise:** $79/mo ($790/yr), unlimited projects, 5M AI tokens/month, all features, unlimited viewer invites
 - Usage-based billing support

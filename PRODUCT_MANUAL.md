@@ -1884,7 +1884,7 @@ The `PolicyEngineService` enforces configurable governance rules:
 
 The `AIBudgetService` enforces per-user monthly AI token limits with tier-aware budget resolution:
 
-- **Per-tier defaults**: Trial — 0 (sample responses only, no real AI calls); Consultant Basic — 0 (no AI); Consultant Pro — 500,000; SME — 1,500,000; Enterprise — 5,000,000. Configurable via `AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_ENTERPRISE` env vars.
+- **Per-tier defaults**: Trial — 0 (sample responses only); Consultant Basic — 0 (no AI, but includes resources, reports, workflows); Consultant Pro — 500,000; SME — 1,500,000; Enterprise — 5,000,000. Configurable via `AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_ENTERPRISE` env vars.
 - **Budget resolution chain**: per-user override (`users.ai_monthly_token_budget`) → subscription tier default → global fallback (`AI_MONTHLY_TOKEN_BUDGET`)
 - **Token top-ups**: Users can purchase additional token packs ($10 per 500K tokens) via Stripe one-time payment. Top-up tokens are added instantly, do not expire, and are consumed only after the monthly tier allowance is exhausted. FIFO consumption (oldest packs first). Managed by `TokenTopUpRepository`.
 - Tracks all AI usage in the `ai_usage_log` table (input/output tokens, cost, latency, feature, model)
