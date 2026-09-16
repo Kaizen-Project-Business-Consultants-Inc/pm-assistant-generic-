@@ -867,6 +867,11 @@ class ApiService {
     return response.data;
   }
 
+  async getScenarioBaseline(projectId: string) {
+    const response = await this.api.get(`/intelligence/scenarios/baseline/${projectId}`);
+    return response.data;
+  }
+
   async getScenarioHistory(projectId: string) {
     const response = await this.api.get(`/intelligence/scenarios/history/${projectId}`);
     return response.data;

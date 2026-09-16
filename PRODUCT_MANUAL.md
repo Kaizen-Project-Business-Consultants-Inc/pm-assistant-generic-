@@ -1274,12 +1274,20 @@ The **What-If Scenario Modeling** panel lives on the Intelligence & Scenarios pa
 **UI flow:**
 
 1. **Project selector** — choose the project to model from a dropdown of all accessible projects.
-2. **Quick presets** — five one-click preset buttons populate a standard scenario description: "Cut budget by 20%", "Add 30 days", "Lose 2 team members", "Increase scope 25%", "Compress timeline 2 weeks".
+2. **Quick presets** — five one-click preset buttons populate a standard scenario description: "Cut budget by 20%", "Add 30 days", "Lose 2 team members", "Increase scope 25%", "Compress timeline 2 weeks". Presets also set the interactive sliders to matching values.
 3. **Scenario description** — free-text field for natural language what-if questions. Presets pre-fill this field; users can also type their own.
-4. **Optional parameters** (collapsible section) — four numeric inputs for precise control: Budget Change (%), Timeline Change (days), Resource Change (workers ±), Scope Change (%). Leave blank to rely on the text description alone.
-5. **Run Scenario** — submits the request. The backend computes a deterministic baseline impact, then optionally enhances it with Claude AI.
+4. **Interactive sliders** — four always-visible slider controls (Budget %, Days +/-, Workers +/-, Scope %) with synced numeric inputs and per-slider reset buttons. Sliders update impact visualizations in real-time as the user drags — no network call needed for the preview. A "Reset All" button clears all sliders to zero.
+5. **Live Impact Preview** — appears automatically when any slider is non-zero. Shows four real-time visualizations in a 2×2 grid:
+   - **Risk Gauge** — semi-circle arc gauge with green/amber/red zones, a baseline needle, and the projected score. Shows delta from baseline.
+   - **Timeline Bar** — horizontal comparison bar showing original vs projected days with color-coded delta.
+   - **Budget Bar** — horizontal comparison bar showing original vs projected budget with percentage delta.
+   - **Resource Dots** — person icons representing the team. Retained workers are blue, gained workers are green, lost workers are faded red.
+6. **Sensitivity Chart** — a line chart below the gauges showing how risk score varies across the full range of the selected parameter (other sliders held constant). Tab buttons switch between Budget, Days, Workers, and Scope. Current slider position is marked with a vertical dashed line and dot.
+7. **Enhance with AI** — submits the request for full AI-powered analysis with affected tasks, risks, and recommendations. The deterministic slider preview gives instant feedback; the AI enhancement adds depth.
 
-**Results display** (shown after a successful run):
+**Architecture:** When a project is selected, the client fetches baseline data and risk coefficients via `GET /api/v1/intelligence/scenarios/baseline/:projectId`. All slider interactions compute locally using these coefficients — zero network latency. The server remains the single source of truth for the coefficient values.
+
+**Results display** (shown after clicking "Enhance with AI"):
 
 - **AI-Enhanced badge** — shown when Claude contributed to the analysis; omitted for deterministic-only results.
 - **Confidence score** — percentage confidence in the projected outcome.
@@ -1295,6 +1303,7 @@ The **What-If Scenario Modeling** panel lives on the Intelligence & Scenarios pa
 Each scenario run is automatically persisted to the `scenario_analyses` table (tenant DB, migration T027). A collapsible history panel beneath the results shows all past scenarios for the selected project, ordered newest first. Each history entry displays the scenario text, date, confidence, AI badge, and a mini impact summary (schedule %, budget %, risk score). Users can pin history entries for comparison or delete them.
 
 **API endpoints:**
+- `GET /api/v1/intelligence/scenarios/baseline/:projectId` — get project baseline data and risk coefficients for client-side slider calculations.
 - `POST /api/v1/intelligence/scenarios` — run a scenario. Fields: `projectId` (required), `scenario` (string), `parameters` (optional: `budgetChangePct`, `daysExtension`, `workerChange`, `scopeChangePct`).
 - `GET /api/v1/intelligence/scenarios/history/:projectId` — get saved scenarios for a project.
 - `DELETE /api/v1/intelligence/scenarios/:id` — delete a saved scenario.

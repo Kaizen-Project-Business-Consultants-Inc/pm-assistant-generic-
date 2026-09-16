@@ -2048,14 +2048,19 @@ Navigate to **Intelligence** in the sidebar to access:
 
 The What-If Scenario Modeling panel on the Intelligence & Scenarios page lets you model hypothetical changes and see their projected impact on schedule, budget, resources, and risk — without touching live project data.
 
-**To run a scenario:**
+**To explore a scenario:**
 
 1. Select a **project** from the dropdown.
 2. Either click a **quick preset** (e.g., "Lose 2 team members") to populate a standard description, or type your own **scenario description** in the text field.
-3. Optionally expand **Parameters** and enter numeric values for Budget Change (%), Timeline Change (days), Resource Change (workers ±), and Scope Change (%). Leave these blank to rely on the text description alone.
-4. Click **Run Scenario**.
+3. Use the **interactive sliders** (Budget %, Days +/-, Workers +/-, Scope %) to adjust parameters. As you drag, the **Live Impact Preview** updates in real-time showing:
+   - **Risk Gauge** — a semi-circle meter with green/amber/red zones showing current vs projected risk.
+   - **Timeline Bar** — original vs projected days side by side.
+   - **Budget Bar** — original vs projected budget with percentage delta.
+   - **Resource Dots** — visual team representation (blue = retained, green = gained, red = lost).
+   - **Sensitivity Chart** — a line chart showing how risk score changes across the full range of one parameter. Switch between Budget, Days, Workers, and Scope tabs.
+4. Click **Enhance with AI** to get the full AI-powered analysis.
 
-**Reading the results:**
+**Reading the AI results:**
 
 - **Confidence score** — how certain the analysis is of the projected outcome.
 - **AI-Enhanced badge** — shown when Claude AI contributed to the analysis.

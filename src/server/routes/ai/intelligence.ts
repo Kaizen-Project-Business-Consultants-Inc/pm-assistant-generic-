@@ -92,6 +92,42 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // What-If Scenarios — baseline for client-side slider calculations (#12)
+  fastify.get('/scenarios/baseline/:projectId', {
+    preHandler: [requireScope('read'), requireFeature('cross_project_intelligence')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      if (await isTrialUser(request)) {
+        return reply.send({
+          data: {
+            projectType: 'software',
+            budgetAllocated: 250000,
+            budgetSpent: 112000,
+            totalDays: 180,
+            daysElapsed: 85,
+            daysRemaining: 95,
+            currentWorkers: 5,
+            currentRiskScore: 35,
+            completionRate: 45,
+            totalTasks: 48,
+            completedTasks: 22,
+            overdueTasks: 3,
+            scheduleVariance: -2.5,
+            budgetUtilization: 44.8,
+            coefficients: { budgetCutRiskPerPct: 0.4, budgetAddRiskPerPct: 0.2, timelineExtRiskPerDay: 0.25, timelineCompressRiskPerDay: 0.5, scopeRiskPerPct: 0.5, scopeBudgetMultiplier: 0.6 },
+          },
+          sample: true,
+        });
+      }
+      const { projectId } = request.params as { projectId: string };
+      const baseline = await scenarioService.getProjectBaseline(projectId);
+      return reply.send({ data: baseline });
+    } catch (err) {
+      fastify.log.error({ err }, 'Failed to get scenario baseline');
+      return reply.status(500).send({ error: 'Failed to get project baseline' });
+    }
+  });
+
   // What-If Scenarios — run scenario
   fastify.post('/scenarios', {
     preHandler: [requireScope('write'), requireFeature('cross_project_intelligence')],

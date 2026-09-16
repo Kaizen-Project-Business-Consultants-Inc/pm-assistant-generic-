@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Brain,
@@ -15,7 +15,6 @@ import {
   FlaskConical,
   Clock,
   Users,
-  Target,
   ChevronDown,
   ChevronUp,
   Lightbulb,
@@ -26,8 +25,12 @@ import {
   Dice5,
   Pin,
   X,
+  Sparkles,
 } from 'lucide-react';
 import { apiService } from '../services/api';
+import { ScenarioSliderPanel, type SliderValues } from '../components/scenarios/ScenarioSliderPanel';
+import { ScenarioImpactGauges } from '../components/scenarios/ScenarioImpactGauges';
+import { SensitivityChart } from '../components/scenarios/SensitivityChart';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -698,15 +701,107 @@ function severityBadge(severity: string) {
   return colors[severity] || 'bg-gray-100 text-gray-700';
 }
 
+// ---------------------------------------------------------------------------
+// Client-side deterministic preview (mirrors server logic)
+// ---------------------------------------------------------------------------
+
+interface BaselineData {
+  projectType: string;
+  budgetAllocated: number;
+  budgetSpent: number;
+  totalDays: number;
+  daysElapsed: number;
+  daysRemaining: number;
+  currentWorkers: number;
+  currentRiskScore: number;
+  completionRate: number;
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  scheduleVariance: number;
+  budgetUtilization: number;
+  coefficients: {
+    budgetCutRiskPerPct: number;
+    budgetAddRiskPerPct: number;
+    timelineExtRiskPerDay: number;
+    timelineCompressRiskPerDay: number;
+    scopeRiskPerPct: number;
+    scopeBudgetMultiplier: number;
+  };
+}
+
+function computePreviewFromBaseline(baseline: BaselineData, values: SliderValues) {
+  const coeff = baseline.coefficients;
+  let projectedBudget = baseline.budgetAllocated;
+  let projectedDays = baseline.totalDays;
+  let projectedWorkers = baseline.currentWorkers;
+  let projectedRiskScore = baseline.currentRiskScore;
+
+  if (values.budgetChangePct !== 0) {
+    projectedBudget = baseline.budgetAllocated * (1 + values.budgetChangePct / 100);
+  }
+  if (values.daysExtension !== 0) {
+    projectedDays = baseline.totalDays + values.daysExtension;
+  }
+  if (values.workerChange !== 0) {
+    projectedWorkers = Math.max(1, projectedWorkers + values.workerChange);
+  }
+  if (values.scopeChangePct !== 0) {
+    const taskCount = baseline.totalTasks;
+    const newTasksEstimate = Math.round(taskCount * Math.abs(values.scopeChangePct) / 100);
+    const velocity = baseline.completedTasks > 0 && baseline.daysElapsed > 0
+      ? baseline.completedTasks / baseline.daysElapsed
+      : 0.5;
+    const additionalDays = velocity > 0 ? Math.round(newTasksEstimate / velocity) : 0;
+
+    projectedBudget *= (1 + Math.abs(values.scopeChangePct) / 100 * coeff.scopeBudgetMultiplier);
+    projectedRiskScore = Math.min(100, baseline.currentRiskScore + Math.abs(values.scopeChangePct) * coeff.scopeRiskPerPct);
+
+    if (values.scopeChangePct > 0 && values.daysExtension === 0) {
+      projectedDays += additionalDays;
+    }
+  }
+
+  // Budget risk
+  if (values.budgetChangePct < 0) {
+    projectedRiskScore = Math.min(100, baseline.currentRiskScore + Math.abs(values.budgetChangePct) * coeff.budgetCutRiskPerPct);
+  } else if (values.budgetChangePct > 0) {
+    projectedRiskScore = Math.max(0, baseline.currentRiskScore - values.budgetChangePct * coeff.budgetAddRiskPerPct);
+  }
+
+  // Timeline risk
+  if (values.daysExtension > 0) {
+    projectedRiskScore = Math.max(0, projectedRiskScore - values.daysExtension * coeff.timelineExtRiskPerDay);
+  } else if (values.daysExtension < 0) {
+    projectedRiskScore = Math.min(100, projectedRiskScore + Math.abs(values.daysExtension) * coeff.timelineCompressRiskPerDay);
+  }
+
+  projectedRiskScore = Math.round(projectedRiskScore);
+
+  const budgetChangePctResult = baseline.budgetAllocated > 0
+    ? parseFloat(((projectedBudget - baseline.budgetAllocated) / baseline.budgetAllocated * 100).toFixed(1))
+    : 0;
+  const scheduleChangePct = baseline.totalDays > 0
+    ? parseFloat(((projectedDays - baseline.totalDays) / baseline.totalDays * 100).toFixed(1))
+    : 0;
+
+  return {
+    projectedBudget: Math.round(projectedBudget),
+    budgetChangePct: budgetChangePctResult,
+    projectedDays: Math.round(projectedDays),
+    scheduleChangePct,
+    projectedWorkers,
+    projectedRiskScore,
+  };
+}
+
+const INITIAL_SLIDER: SliderValues = { budgetChangePct: 0, daysExtension: 0, workerChange: 0, scopeChangePct: 0 };
+
 const WhatIfScenario: React.FC = () => {
   const queryClient = useQueryClient();
   const [projectId, setProjectId] = useState('');
   const [scenario, setScenario] = useState('');
-  const [showParams, setShowParams] = useState(false);
-  const [budgetChangePct, setBudgetChangePct] = useState<number | ''>('');
-  const [daysExtension, setDaysExtension] = useState<number | ''>('');
-  const [workerChange, setWorkerChange] = useState<number | ''>('');
-  const [scopeChangePct, setScopeChangePct] = useState<number | ''>('');
+  const [sliderValues, setSliderValues] = useState<SliderValues>(INITIAL_SLIDER);
   const [showHistory, setShowHistory] = useState(false);
   const [pinnedResults, setPinnedResults] = useState<Array<{ label: string; result: ScenarioResult; confidence: number }>>([]);
 
@@ -720,6 +815,26 @@ const WhatIfScenario: React.FC = () => {
     scheduleId: p.scheduleId || p.schedule_id,
   }));
 
+  // Baseline data for client-side preview
+  const { data: baselineData } = useQuery({
+    queryKey: ['scenario-baseline', projectId],
+    queryFn: () => apiService.getScenarioBaseline(projectId),
+    enabled: !!projectId,
+  });
+  const baseline: BaselineData | undefined = baselineData?.data;
+
+  // Client-side preview calculation
+  const computePreview = useCallback(
+    (values: SliderValues) => {
+      if (!baseline) return { projectedBudget: 0, budgetChangePct: 0, projectedDays: 0, scheduleChangePct: 0, projectedWorkers: 0, projectedRiskScore: 0 };
+      return computePreviewFromBaseline(baseline, values);
+    },
+    [baseline],
+  );
+
+  const preview = useMemo(() => computePreview(sliderValues), [computePreview, sliderValues]);
+  const hasSliderChanges = Object.values(sliderValues).some(v => v !== 0);
+
   // Scenario history for the selected project
   const { data: historyData } = useQuery({
     queryKey: ['scenario-history', projectId],
@@ -731,10 +846,10 @@ const WhatIfScenario: React.FC = () => {
   const mutation = useMutation({
     mutationFn: async () => {
       const params: Record<string, number> = {};
-      if (budgetChangePct !== '') params.budgetChangePct = budgetChangePct;
-      if (daysExtension !== '') params.daysExtension = daysExtension;
-      if (workerChange !== '') params.workerChange = workerChange;
-      if (scopeChangePct !== '') params.scopeChangePct = scopeChangePct;
+      if (sliderValues.budgetChangePct !== 0) params.budgetChangePct = sliderValues.budgetChangePct;
+      if (sliderValues.daysExtension !== 0) params.daysExtension = sliderValues.daysExtension;
+      if (sliderValues.workerChange !== 0) params.workerChange = sliderValues.workerChange;
+      if (sliderValues.scopeChangePct !== 0) params.scopeChangePct = sliderValues.scopeChangePct;
       return await apiService.modelScenario({
         projectId,
         scenario,
@@ -768,11 +883,12 @@ const WhatIfScenario: React.FC = () => {
 
   const applyPreset = (preset: typeof PRESETS[0]) => {
     setScenario(preset.scenario);
-    setBudgetChangePct(preset.params.budgetChangePct ?? '');
-    setDaysExtension(preset.params.daysExtension ?? '');
-    setWorkerChange(preset.params.workerChange ?? '');
-    setScopeChangePct(preset.params.scopeChangePct ?? '');
-    setShowParams(true);
+    setSliderValues({
+      budgetChangePct: preset.params.budgetChangePct ?? 0,
+      daysExtension: preset.params.daysExtension ?? 0,
+      workerChange: preset.params.workerChange ?? 0,
+      scopeChangePct: preset.params.scopeChangePct ?? 0,
+    });
   };
 
   return (
@@ -787,7 +903,7 @@ const WhatIfScenario: React.FC = () => {
         <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Project</label>
         <select
           value={projectId}
-          onChange={(e) => { setProjectId(e.target.value); mutation.reset(); setShowHistory(false); setPinnedResults([]); }}
+          onChange={(e) => { setProjectId(e.target.value); mutation.reset(); setShowHistory(false); setPinnedResults([]); setSliderValues(INITIAL_SLIDER); }}
           className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
         >
           <option value="">Select a project...</option>
@@ -828,79 +944,61 @@ const WhatIfScenario: React.FC = () => {
         />
       </div>
 
-      {/* Numeric Parameters (collapsible) */}
-      <div className="mb-4">
-        <button
-          type="button"
-          onClick={() => setShowParams(!showParams)}
-          className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-        >
-          {showParams ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          Numeric parameters (optional)
-        </button>
-        {showParams && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-            <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
-                <DollarSign className="w-3 h-3" /> Budget %
-              </label>
-              <input
-                type="number"
-                value={budgetChangePct}
-                onChange={(e) => setBudgetChangePct(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="e.g. -20"
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-sm text-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Days +/-
-              </label>
-              <input
-                type="number"
-                value={daysExtension}
-                onChange={(e) => setDaysExtension(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="e.g. 30"
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-sm text-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
-                <Users className="w-3 h-3" /> Workers +/-
-              </label>
-              <input
-                type="number"
-                value={workerChange}
-                onChange={(e) => setWorkerChange(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="e.g. -2"
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-sm text-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
-                <Target className="w-3 h-3" /> Scope %
-              </label>
-              <input
-                type="number"
-                value={scopeChangePct}
-                onChange={(e) => setScopeChangePct(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="e.g. 25"
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-sm text-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Interactive Sliders */}
+      {projectId && baseline && (
+        <div className="mb-4">
+          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Adjust parameters:</p>
+          <ScenarioSliderPanel values={sliderValues} onChange={setSliderValues} disabled={mutation.isPending} />
+        </div>
+      )}
 
-      {/* Run button */}
-      <button
-        onClick={() => mutation.mutate()}
-        disabled={!projectId || !scenario.trim() || mutation.isPending}
-        className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 disabled:opacity-50 transition-colors"
-      >
-        <Play className="w-4 h-4" />
-        {mutation.isPending ? 'Analyzing...' : 'Run Scenario'}
-      </button>
+      {/* Live Impact Preview */}
+      {projectId && baseline && hasSliderChanges && (
+        <div className="mb-5 space-y-3">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5 text-violet-500" />
+            Live Impact Preview
+          </h3>
+          <ScenarioImpactGauges
+            baseline={{
+              budgetAllocated: baseline.budgetAllocated,
+              totalDays: baseline.totalDays,
+              currentWorkers: baseline.currentWorkers,
+              currentRiskScore: baseline.currentRiskScore,
+            }}
+            preview={preview}
+          />
+          <SensitivityChart
+            baseline={baseline}
+            sliderValues={sliderValues}
+            computePreview={computePreview}
+          />
+        </div>
+      )}
+
+      {/* Enhance with AI button */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => mutation.mutate()}
+          disabled={!projectId || !scenario.trim() || mutation.isPending}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 disabled:opacity-50 transition-colors"
+        >
+          {mutation.isPending ? (
+            <>
+              <Play className="w-4 h-4 animate-spin" />
+              Analyzing...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4" />
+              Enhance with AI
+            </>
+          )}
+        </button>
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          Get AI-powered analysis with affected tasks, risks, and recommendations
+        </span>
+      </div>
 
       {mutation.isError && (
         <p className="text-red-500 text-sm mt-3">

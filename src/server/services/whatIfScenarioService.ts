@@ -507,6 +507,42 @@ export class WhatIfScenarioService {
   }
 
   // -------------------------------------------------------------------------
+  // #12: Get project baseline for client-side slider calculations
+  // -------------------------------------------------------------------------
+
+  async getProjectBaseline(projectId: string) {
+    const context = await this.contextBuilder.buildProjectContext(projectId);
+    const metrics = computeMetricsFromContext(context);
+    const { project } = context;
+    const projectType = project.projectType || 'other';
+    const coeff = getCoefficients(projectType);
+
+    const budgetAllocated = project.budgetAllocated || 0;
+    const budgetSpent = project.budgetSpent || 0;
+    const totalDays = metrics.daysElapsed + metrics.daysRemaining;
+    const currentWorkers = await this.getProjectWorkerCount(projectId);
+    const { score: currentRiskScore } = computeDeterministicRiskScore(metrics, metrics.budgetUtilization);
+
+    return {
+      projectType,
+      budgetAllocated,
+      budgetSpent,
+      totalDays,
+      daysElapsed: metrics.daysElapsed,
+      daysRemaining: metrics.daysRemaining,
+      currentWorkers,
+      currentRiskScore,
+      completionRate: metrics.completionRate,
+      totalTasks: metrics.totalTasks,
+      completedTasks: metrics.completedTasks,
+      overdueTasks: metrics.overdueTasks,
+      scheduleVariance: metrics.scheduleVariance,
+      budgetUtilization: metrics.budgetUtilization,
+      coefficients: coeff,
+    };
+  }
+
+  // -------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------
 
