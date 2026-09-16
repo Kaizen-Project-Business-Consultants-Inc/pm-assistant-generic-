@@ -304,7 +304,7 @@ export const RegisterPage: React.FC = () => {
                     className="input w-24"
                   />
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    ${(seatCount * 33).toLocaleString()}/mo ({seatCount} seats x $33)
+                    ${(seatCount * 19).toLocaleString()}/mo ({seatCount} seats x $19)
                   </span>
                 </div>
               </div>

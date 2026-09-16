@@ -390,7 +390,7 @@ export const AccountBillingPage: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Need a team plan?</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                    Upgrade to SME for per-seat billing, unlimited viewer invites, 5GB storage, and pooled AI tokens for your whole team. Starting at $33/seat/month (min 3 seats).
+                    Upgrade to SME for per-seat billing, unlimited viewer invites, 5GB storage, and pooled AI tokens for your whole team. Starting at $19/seat/month (min 3 seats).
                   </p>
                   <button
                     onClick={async () => {
