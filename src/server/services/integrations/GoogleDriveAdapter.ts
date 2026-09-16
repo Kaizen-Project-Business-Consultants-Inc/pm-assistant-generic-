@@ -106,7 +106,7 @@ class GoogleDriveAdapter implements StorageAdapter {
       throw new Error(`Token refresh failed: ${resp.status}`);
     }
 
-    const data = await resp.json();
+    const data: any = await resp.json();
     return {
       access_token: data.access_token,
       refresh_token: data.refresh_token || params.refreshToken, // Google may not return refresh_token on refresh
@@ -120,7 +120,7 @@ class GoogleDriveAdapter implements StorageAdapter {
     });
 
     if (!resp.ok) throw new Error(`Connection test failed: ${resp.status}`);
-    const data = await resp.json();
+    const data: any = await resp.json();
     return { displayName: data.name || data.email, email: data.email };
   }
 
@@ -135,7 +135,7 @@ class GoogleDriveAdapter implements StorageAdapter {
     });
 
     if (!resp.ok) throw new Error(`List folder failed: ${resp.status}`);
-    const data = await resp.json();
+    const data: any = await resp.json();
     return (data.files || []).map(toStorageItem);
   }
 
@@ -151,7 +151,7 @@ class GoogleDriveAdapter implements StorageAdapter {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!tokenResp.ok) throw new Error(`Failed to get start page token: ${tokenResp.status}`);
-      const tokenData = await tokenResp.json();
+      const tokenData: any = await tokenResp.json();
       startPageToken = tokenData.startPageToken;
 
       // On first sync, return empty — caller should use listFolderFiles instead
@@ -228,7 +228,7 @@ class GoogleDriveAdapter implements StorageAdapter {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!metaResp.ok) throw new Error(`File metadata failed: ${metaResp.status}`);
-    const meta = await metaResp.json();
+    const meta: any = await metaResp.json();
 
     let url: string;
     if (MIME_MAP[meta.mimeType]) {

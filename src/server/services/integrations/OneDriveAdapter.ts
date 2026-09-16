@@ -118,7 +118,7 @@ class OneDriveAdapter implements StorageAdapter {
     });
 
     if (!resp.ok) throw new Error(`Connection test failed: ${resp.status}`);
-    const data = await resp.json();
+    const data: any = await resp.json();
     return { displayName: data.displayName, email: data.mail || data.userPrincipalName };
   }
 
@@ -138,7 +138,7 @@ class OneDriveAdapter implements StorageAdapter {
     });
 
     if (!resp.ok) throw new Error(`List folder failed: ${resp.status}`);
-    const data = await resp.json();
+    const data: any = await resp.json();
     return (data.value || []).map(toStorageItem);
   }
 

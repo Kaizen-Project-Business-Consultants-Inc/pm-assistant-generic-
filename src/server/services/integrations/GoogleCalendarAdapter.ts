@@ -83,7 +83,7 @@ class GoogleCalendarAdapter {
     });
 
     if (!resp.ok) throw new Error(`Token refresh failed: ${resp.status}`);
-    const data = await resp.json();
+    const data: any = await resp.json();
     return {
       access_token: data.access_token,
       refresh_token: data.refresh_token || refreshToken,
@@ -96,7 +96,7 @@ class GoogleCalendarAdapter {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!resp.ok) throw new Error(`List calendars failed: ${resp.status}`);
-    const data = await resp.json();
+    const data: any = await resp.json();
     return (data.items || []).map((c: any) => ({
       id: c.id,
       summary: c.summary,
@@ -122,7 +122,7 @@ class GoogleCalendarAdapter {
       return this.listEvents(accessToken, calendarId);
     }
     if (!resp.ok) throw new Error(`List events failed: ${resp.status}`);
-    const data = await resp.json();
+    const data: any = await resp.json();
     return {
       events: (data.items || []).map((e: any) => ({
         id: e.id,
@@ -147,7 +147,7 @@ class GoogleCalendarAdapter {
       body: JSON.stringify(event),
     });
     if (!resp.ok) throw new Error(`Create event failed: ${resp.status}`);
-    return resp.json();
+    return resp.json() as Promise<CalendarEvent>;
   }
 
   async updateEvent(accessToken: string, calendarId: string, eventId: string, event: CalendarEvent): Promise<CalendarEvent> {
@@ -160,7 +160,7 @@ class GoogleCalendarAdapter {
       body: JSON.stringify(event),
     });
     if (!resp.ok) throw new Error(`Update event failed: ${resp.status}`);
-    return resp.json();
+    return resp.json() as Promise<CalendarEvent>;
   }
 
   async deleteEvent(accessToken: string, calendarId: string, eventId: string): Promise<void> {

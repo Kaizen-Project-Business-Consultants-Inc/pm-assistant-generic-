@@ -66,7 +66,7 @@ class DropboxAdapter implements StorageAdapter {
       throw new Error(`Token exchange failed: ${resp.status}`);
     }
 
-    const data = await resp.json();
+    const data: any = await resp.json();
     return {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
@@ -98,7 +98,7 @@ class DropboxAdapter implements StorageAdapter {
       throw new Error(`Token refresh failed: ${resp.status}`);
     }
 
-    const data = await resp.json();
+    const data: any = await resp.json();
     return {
       access_token: data.access_token,
       refresh_token: params.refreshToken, // Dropbox keeps the same refresh token
@@ -117,7 +117,7 @@ class DropboxAdapter implements StorageAdapter {
     });
 
     if (!resp.ok) throw new Error(`Connection test failed: ${resp.status}`);
-    const data = await resp.json();
+    const data: any = await resp.json();
     return {
       displayName: data.name?.display_name || data.email,
       email: data.email,
@@ -136,7 +136,7 @@ class DropboxAdapter implements StorageAdapter {
     });
 
     if (!resp.ok) throw new Error(`List folder failed: ${resp.status}`);
-    const data = await resp.json();
+    const data: any = await resp.json();
     return (data.entries || []).map(toStorageItem);
   }
 
@@ -182,7 +182,7 @@ class DropboxAdapter implements StorageAdapter {
     });
 
     if (!resp.ok) throw new Error(`Get latest cursor failed: ${resp.status}`);
-    const data = await resp.json();
+    const data: any = await resp.json();
     return { items: [], deltaToken: data.cursor };
   }
 
