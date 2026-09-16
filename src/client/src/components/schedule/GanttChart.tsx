@@ -91,6 +91,9 @@ export function GanttChart({
   showCriticalPath: showCriticalPathProp,
   onCriticalPathChange,
   scheduleOverflowMenu,
+  onOpenReview,
+  reviewActive,
+  reviewFlagMap,
 }: {
   tasks: GanttTask[];
   scheduleName?: string;
@@ -155,6 +158,11 @@ export function GanttChart({
   onCriticalPathChange?: (value: boolean) => void;
   /** Schedule overflow menu ReactNode (baselines, scenarios, import, etc.) */
   scheduleOverflowMenu?: React.ReactNode;
+  /** Opens the Schedule Review panel (toolbar button) */
+  onOpenReview?: () => void;
+  reviewActive?: boolean;
+  /** taskId → tooltip for rows flagged Critical/High by Schedule Review */
+  reviewFlagMap?: Map<string, string>;
 }) {
   const criticalSet = useMemo(() => new Set(criticalPathTaskIds || []), [criticalPathTaskIds]);
   const baselineMap = useMemo(() => {
@@ -2309,6 +2317,8 @@ export function GanttChart({
         showCriticalPath={showCriticalPathProp}
         onCriticalPathChange={onCriticalPathChange}
         overflowMenu={scheduleOverflowMenu}
+        onOpenReview={onOpenReview}
+        reviewActive={reviewActive}
       />
 
       {/* Filter panel */}
@@ -2454,6 +2464,7 @@ export function GanttChart({
                 minRowWidth={minRowWidth}
                 shouldVirtualize={shouldVirtualize}
                 rowNumMap={rowNumMap}
+                reviewFlagMap={reviewFlagMap}
                 successorMap={successorMap}
                 tasks={tasks}
                 sortField={sortField}

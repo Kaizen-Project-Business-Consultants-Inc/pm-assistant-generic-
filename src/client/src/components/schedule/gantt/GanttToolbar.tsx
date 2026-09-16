@@ -66,6 +66,8 @@ interface GanttToolbarProps {
   showCriticalPath?: boolean;
   onCriticalPathChange?: (value: boolean) => void;
   overflowMenu?: React.ReactNode;
+  onOpenReview?: () => void;
+  reviewActive?: boolean;
 }
 
 export const GanttToolbar = React.memo(function GanttToolbar({
@@ -117,6 +119,8 @@ export const GanttToolbar = React.memo(function GanttToolbar({
   showCriticalPath,
   onCriticalPathChange,
   overflowMenu,
+  onOpenReview,
+  reviewActive,
 }: GanttToolbarProps) {
   const [showColPicker, setShowColPicker] = useState(false);
   const colPickerRef = useRef<HTMLDivElement>(null);
@@ -367,6 +371,19 @@ export const GanttToolbar = React.memo(function GanttToolbar({
             </div>
           )}
         </div>
+        )}
+        {onOpenReview && (
+          <button
+            onClick={onOpenReview}
+            aria-pressed={!!reviewActive}
+            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors border ${reviewActive ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 border-primary-300 dark:border-primary-700' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+            title="Review schedule quality"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+            </svg>
+            Review
+          </button>
         )}
         {onAddTask && (
           <button

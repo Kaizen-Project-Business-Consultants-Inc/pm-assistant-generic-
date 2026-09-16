@@ -10,6 +10,7 @@ import { claudeService } from '../../services/claudeService';
 import { config } from '../../config';
 import logger from '../../utils/logger';
 import { resolveAssigneeResources, assigneeToResourceId } from '../../utils/assigneeResources';
+import { scheduleReviewService } from '../../services/ScheduleReviewService';
 
 const importCsvSchema = z.object({
   csv: z.string().min(1).max(5 * 1024 * 1024),
@@ -361,11 +362,29 @@ export async function importRoutes(fastify: FastifyInstance) {
         }
       }
 
+      // Schedule Review runs on what just landed so the summary can show the score.
+      // A review failure never fails the import.
+      let review: { score: number; band: string; counts: Record<string, number>; topFindings: Array<{ ruleId: string; rule: string; severity: string; message: string; taskIds: string[] }> } | null = null;
+      if (succeeded.length > 0) {
+        try {
+          const r = await scheduleReviewService.run(scheduleId, 'import', userId);
+          review = {
+            score: r.score,
+            band: r.band,
+            counts: r.counts,
+            topFindings: r.findings.slice(0, 5).map(f => ({ ruleId: f.ruleId, rule: f.rule, severity: f.severity, message: f.message, taskIds: f.taskIds })),
+          };
+        } catch (reviewErr: any) {
+          logger.warn('Schedule review after import failed', { scheduleId, error: reviewErr?.message });
+        }
+      }
+
       return {
         succeeded: succeeded.length,
         failed,
         total: records.length,
         resourcesCreated,
+        review,
       };
     } catch (error: any) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
@@ -545,11 +564,27 @@ Return a JSON object mapping unmapped headers to target fields.`;
         }
       }
 
+      let review: { score: number; band: string; counts: Record<string, number>; topFindings: Array<{ ruleId: string; rule: string; severity: string; message: string; taskIds: string[] }> } | null = null;
+      if (succeeded.length > 0) {
+        try {
+          const r = await scheduleReviewService.run(scheduleId, 'import', userId);
+          review = {
+            score: r.score,
+            band: r.band,
+            counts: r.counts,
+            topFindings: r.findings.slice(0, 5).map(f => ({ ruleId: f.ruleId, rule: f.rule, severity: f.severity, message: f.message, taskIds: f.taskIds })),
+          };
+        } catch (reviewErr: any) {
+          logger.warn('Schedule review after structured import failed', { scheduleId, error: reviewErr?.message });
+        }
+      }
+
       return {
         succeeded: succeeded.length,
         failed,
         total: body.tasks.length,
         dependenciesCreated: depsCreated,
+        review,
       };
     } catch (error: any) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });

@@ -22,7 +22,7 @@ import {
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
 
-export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap }: TableViewProps) {
+export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
@@ -1531,7 +1531,19 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       }
 
       case 'rowNum':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-500 font-mono text-center w-12">{rowNumMap.get(task.id) || '\u2014'}</td>;
+        return (
+          <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-500 font-mono text-center w-12">
+            {rowNumMap.get(task.id) || '\u2014'}
+            {reviewFlagMap?.has(task.id) && (
+              <span
+                className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-orange-500 align-middle"
+                role="img"
+                aria-label={`Schedule Review: ${reviewFlagMap.get(task.id)}`}
+                title={`Schedule Review: ${reviewFlagMap.get(task.id)}`}
+              />
+            )}
+          </td>
+        );
 
       case 'notes': {
         const notesField: EditableField = 'notes';

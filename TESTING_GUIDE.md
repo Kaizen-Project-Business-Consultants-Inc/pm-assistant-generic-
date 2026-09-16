@@ -1229,3 +1229,41 @@ Five MS Project-parity features added to the scheduling engine: Task-Level Budge
 - [ ] Task with constraint + multiple assignments → all fields save and display correctly together
 - [ ] Column Picker shows all new column groups (Cost, Scheduling additions) and they persist via view preferences
 - [ ] Gantt chart renders summary tasks, constraint indicators, and assignment data without visual glitches
+
+---
+
+## 29. Schedule Review (Phase 1)
+
+Deterministic schedule quality check. All routes are under `/api/v1/schedules/:scheduleId/review` and require project access (editor to run, viewer to read).
+
+### Unit tests
+
+```bash
+npx vitest run src/server/__tests__/services/scheduleReviewRules.test.ts     # 28 rules, scoring, DBJ golden case
+npx vitest run src/client/src/__tests__/components/ScheduleReviewPanel.test.tsx
+```
+
+### Run a review and read it back
+
+```bash
+SCHED=<schedule id>
+curl -s -b cookies.txt -X POST "https://pm.kpbc.ca/api/v1/schedules/$SCHED/review" | jq '{score, band, counts, findings: [.findings[] | {ruleId, severity, taskCount: (.taskIds|length), message}]}'
+curl -s -b cookies.txt "https://pm.kpbc.ca/api/v1/schedules/$SCHED/review/latest" | jq '{score, band, createdAt}'
+curl -s -b cookies.txt "https://pm.kpbc.ca/api/v1/schedules/$SCHED/review/history?limit=8" | jq '.runs[] | {score, band, trigger, createdAt}'
+```
+
+Expected on an unlinked import (e.g. the DBJ schedule): band `tracking_sheet`, score under 20, findings including `R03` (no logic), `R04` (milestone with duration), `R06` (dates outside window), `R08`/`R09` (status vs progress, overdue), `R10` (no owner), `R18` (no baseline); `skippedRules` lists `R01`, `R02` (covered by R03) and `R15`, `R16`, `R20` (need logic).
+
+Running the same review twice on an unchanged schedule must return identical `score` and `findings`.
+
+### Import summary
+
+Import any CSV through the Import modal. The result panel shows the score chip, the top five findings and **Review and fix**. The import response carries `review: { score, band, counts, topFindings[] }`; a review failure never fails the import (the field is `null`).
+
+### UI checks
+
+- **Review** button appears after Columns in both Table and Gantt toolbars.
+- Panel: Critical/High groups open by default; **Show rows** filters the grid and shows an orange "Schedule Review: <rule>" bar with **Clear**; rows flagged Critical/High show an orange dot beside the row number.
+- Keyboard: Tab cycles inside the panel, Escape closes it; the score chip has `role="status"`.
+- Viewers see the latest run but no **Re-run review** button.
+

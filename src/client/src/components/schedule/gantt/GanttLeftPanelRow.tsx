@@ -49,6 +49,7 @@ export interface GanttLeftPanelRowProps {
   shouldVirtualize: boolean;
   // Data lookups
   rowNumMap: Map<string, number>;
+  reviewFlagMap?: Map<string, string>;
   successorMap: Map<string, Array<{ successorId: string; type: string; lag: number }>>;
   tasks: GanttTask[]; // for dependency name tooltips
   // Feature flags
@@ -149,6 +150,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   minRowWidth,
   shouldVirtualize,
   rowNumMap,
+  reviewFlagMap,
   successorMap,
   tasks,
   sortField,
@@ -248,6 +250,14 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         {!(someSelected && hasOnBulkUpdate) && !(hasOnTaskReorder && !editingField && !sortField) && (rowIdx + 1)}
         {!(someSelected && hasOnBulkUpdate) && hasOnTaskReorder && !editingField && !sortField && (
           <span className="group-hover:hidden">{rowIdx + 1}</span>
+        )}
+        {reviewFlagMap?.has(task.id) && (
+          <span
+            className="ml-0.5 inline-block w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"
+            role="img"
+            aria-label={`Schedule Review: ${reviewFlagMap.get(task.id)}`}
+            title={`Schedule Review: ${reviewFlagMap.get(task.id)}`}
+          />
         )}
       </div>
 

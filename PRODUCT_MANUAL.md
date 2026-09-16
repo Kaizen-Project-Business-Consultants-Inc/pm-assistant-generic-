@@ -2660,6 +2660,46 @@ The column mapping component (`ColumnMapper`) is shared between the "From File" 
 
 **Notes column** — both Table view and Gantt chart support a **Notes** column (hidden by default, toggle via column picker). The column maps to the task's `description` field. Clicking any Notes cell opens a floating popup editor with a full textarea, Save and Cancel buttons, and auto-save on click-away. Press Escape to dismiss without saving.
 
+### Schedule Review (automatic after import, on demand from the toolbar)
+
+Schedule Review is a deterministic quality check that tells a PM whether a schedule can predict and control delivery, or is still a tracking sheet. It runs automatically after every CSV/Excel/XML import and on demand from the **Review** button (placed after Columns in both Table and Gantt toolbars). No AI is involved in this phase: the same schedule always produces the same findings and the same score.
+
+**Schedule Health Score (0–100).** Start at 100; each rule that fires deducts points scaled by the share of leaf tasks it affects (full deduction at 20% or more), capped per rule at Critical 25, High 12, Medium 6, Low 2, Info 0. Bands: 0–39 *Tracking sheet*, 40–69 *Needs work*, 70–89 *Controllable*, 90–100 *Fit for control*. The panel shows the points each finding cost, so the number is reproducible.
+
+**Rule catalogue (rules v1.0).** Where a DCMA 14-point threshold exists it is used (e.g. a rule fires only when more than 5% of tasks are affected).
+
+| ID | Rule | Severity |
+|---|---|---|
+| R01 / R02 | Missing predecessor / successor (excluding the first and last task) | Critical / High |
+| R03 | No logic at all — emitted once; suppresses R01/R02 | Critical |
+| R04 / R05 | Milestone with duration / milestone named but not flagged | High / Medium |
+| R06 | Dates outside the project window | High |
+| R07 | Placeholder dates (3+ tasks with identical start and end) | Medium |
+| R08 / R09 | Status contradicts progress / overdue and still open | High |
+| R10 / R11 | No owner / owner is an organisation, not a person | Medium / Low |
+| R12 / R13 / R28 | Duration fields disagree / task over 44 working days / sub-day estimate over multiple days | Medium |
+| R14 | Hard date constraints (MSO, MFO, SNLT, FNLT) | Medium |
+| R15 / R16 / R20 | Negative float / excessive float / no buffer before a gate — need dependency logic | High / Low / Medium |
+| R17 | Leads and lags over 10 days | Low |
+| R18 / R19 | No baseline / baseline drift | Medium / Info |
+| R21 | Over-allocated owner (from resource leveling) | Medium |
+| R22 | Spreadsheet leftovers: legend words, cell references | Low |
+| R23 | Flat hierarchy (more than 15 tasks, no phases) | Low |
+| R24 | Stale in-progress task (14+ days untouched) | Low |
+| R25 / R26 / R27 | Phase without children / duplicate task name / no description | Medium / Medium / Info |
+
+Rules that need dependency logic are listed under **Unlocks when dependencies exist** rather than counted, so the PM can see what becomes visible once predecessors are added.
+
+**Findings panel.** Score chip with an eight-run trend, findings grouped by severity (Critical and High open by default), each with the rule, the plain-English message, the points deducted and a **Show rows** button that filters the grid to exactly those tasks. Rows flagged Critical or High carry a small indicator in the row-number column in both Table and Gantt views. **Re-run review** is available to editors; viewers can read the latest run. The panel traps focus, closes on Escape, and announces score changes via a live region.
+
+**Import summary.** After "N tasks imported", the summary shows the score chip, the top five findings and a **Review and fix** button that opens the panel.
+
+**Storage.** One row per run in the tenant table `schedule_reviews` (score, band, counts, findings JSON, skipped rules, trigger, rules version). The last 50 runs per schedule are kept.
+
+**API** (mounted under `/api/v1/schedules`): `POST /:scheduleId/review` (editor) runs and stores a review; `GET /:scheduleId/review/latest` (viewer, 204 when none); `GET /:scheduleId/review/history?limit=8` (viewer) returns the score trend newest first.
+
+Phases 2–4 of the Schedule Review Spec (import leak fixes, AI-drafted fix proposals with approve-and-recompute, weekly agent runs and MCP tools) are not yet built.
+
 ---
 
 ## 31. Gantt PDF/Image Export

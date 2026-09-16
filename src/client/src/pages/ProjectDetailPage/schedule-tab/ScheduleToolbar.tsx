@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, X, Download } from 'lucide-react';
+import { Search, Filter, X, Download, ClipboardCheck } from 'lucide-react';
 import { ColumnPickerDropdown } from '../../../components/schedule/ColumnPickerDropdown';
 import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS } from '../../../components/schedule/tableColumns';
 import type { ColumnState } from '../../../hooks/useColumnState';
@@ -13,6 +13,8 @@ interface ScheduleToolbarProps {
   hasActiveFilters: boolean;
   activeFilterCount: number;
   columnState: ColumnState;
+  onOpenReview?: () => void;
+  reviewActive?: boolean;
   showCriticalPath: boolean;
   onCriticalPathChange: (value: boolean) => void;
   overflowMenu: React.ReactNode;
@@ -30,6 +32,8 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
   hasActiveFilters,
   activeFilterCount,
   columnState,
+  onOpenReview,
+  reviewActive,
   showCriticalPath,
   onCriticalPathChange,
   overflowMenu,
@@ -90,6 +94,23 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
         onResetVisibility={() => columnState.setVisibleKeys(new Set(DEFAULT_VISIBLE_KEYS))}
         onResetOrder={() => columnState.setColumnOrder([])}
       />
+
+      {onOpenReview && (
+        <button
+          type="button"
+          onClick={onOpenReview}
+          aria-pressed={!!reviewActive}
+          className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+            reviewActive
+              ? 'border-primary-300 dark:border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
+              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+          }`}
+          title="Review schedule quality"
+        >
+          <ClipboardCheck className="w-3 h-3" />
+          Review
+        </button>
+      )}
 
       {viewMode === 'gantt' && (
         <button

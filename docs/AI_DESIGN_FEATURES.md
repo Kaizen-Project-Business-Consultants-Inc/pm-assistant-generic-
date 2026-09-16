@@ -640,6 +640,7 @@ PM Assistant's agentic system evolves from reactive alerts to autonomous reasoni
 - **Reasoning:** Claude analyzes hygiene indicators and recommends cleanup actions
 - **Output:** Notification listing hygiene issues and recommendations
 - **Risk level:** Low
+- **Related:** Schedule *structure* checks (missing logic, milestones with duration, dates outside the project window, status vs progress, placeholder dates, and 20 more) live in the rules-based **Schedule Review** (`ScheduleReviewService`, see PRODUCT_MANUAL §30). It is deterministic and runs after every import; the AI proposal layer that drafts fixes from its findings is a later phase of the Schedule Review Spec.
 
 ### Dependency Risk Agent (`DependencyRiskAgent.ts`)
 

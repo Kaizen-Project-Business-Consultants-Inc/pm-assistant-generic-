@@ -639,7 +639,8 @@ All API endpoints are versioned under `/api/v1/`. Endpoint groups (50+ route mod
 | WebSocket | `/api/v1/ws` | Real-time updates |
 | MCP | `/mcp` | MCP HTTP transport proxy |
 | Goals / OKR | `/api/v1/goals` | Objectives and Key Results CRUD |
-| Task Import | `/api/v1/schedules/:id/import` | Bulk CSV task import |
+| Task Import | `/api/v1/schedules/:id/import` | Bulk CSV task import (response includes a Schedule Review summary) |
+| Schedule Review | `/api/v1/schedules/:id/review` | Deterministic schedule quality check: run (POST), latest, history |
 | User Preferences | `/api/v1/users/me/preferences` | Timezone and locale preferences |
 | Admin Tenants | `/api/v1/admin/tenants` | Multi-tenant org management (list, update, provision, migrate) |
 | Admin Users | `/api/v1/admin/users` | User listing with login status, unlock stuck login tokens, subscription status |

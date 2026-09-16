@@ -7,6 +7,8 @@ import { parseMspdi } from '../../utils/mspdiParser';
 import { ColumnMapper, TARGET_COLUMNS } from './ColumnMapper';
 import { useModal } from '../../hooks/useModal';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
+import { ScheduleScoreChip, type ReviewBand } from './review/ScheduleScoreChip';
+import { severityColor } from '../../utils/severityColors';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -17,6 +19,8 @@ interface ImportModalProps {
   onClose: () => void;
   scheduleId: string;
   onImported?: () => void;
+  /** Opens the Schedule Review panel (the modal closes itself first). */
+  onOpenReview?: () => void;
 }
 
 interface ParsedCSV {
@@ -24,10 +28,18 @@ interface ParsedCSV {
   rows: string[][];
 }
 
+interface ImportReviewSummary {
+  score: number;
+  band: ReviewBand;
+  counts: Record<string, number>;
+  topFindings: Array<{ ruleId: string; rule: string; severity: string; message: string; taskIds: string[] }>;
+}
+
 interface ImportResult {
   succeeded: number;
   failed: { row: number; error: string }[];
   resourcesCreated?: number;
+  review?: ImportReviewSummary | null;
 }
 
 interface ExtractedTask {
@@ -85,7 +97,7 @@ function parseCSV(text: string): ParsedCSV {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportModalProps) {
+export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenReview }: ImportModalProps) {
   const [csvText, setCsvText] = useState('');
   const [parsed, setParsed] = useState<ParsedCSV | null>(null);
   const [columnMap, setColumnMap] = useState<Record<number, string>>({});
@@ -176,7 +188,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
         outlineLevel: (t.wbs.split('.').length - 1) + 1, // "1" → 1, "1.1" → 2, "1.1.1" → 3
       }));
       const res = await apiService.importStructured(scheduleId, tasks);
-      setResult({ succeeded: res.succeeded ?? 0, failed: res.failed ?? [] });
+      setResult({ succeeded: res.succeeded ?? 0, failed: res.failed ?? [], review: res.review ?? null });
       if ((res.succeeded ?? 0) > 0) onImported?.();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Import failed'));
@@ -210,7 +222,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
           if (mspdiTasks.length === 0) { setError('No tasks found in XML file.'); return; }
           setImporting(true);
           const res = await apiService.importStructured(scheduleId, mspdiTasks);
-          setResult({ succeeded: res.succeeded ?? 0, failed: res.failed ?? [] });
+          setResult({ succeeded: res.succeeded ?? 0, failed: res.failed ?? [], review: res.review ?? null });
           if ((res.succeeded ?? 0) > 0) onImported?.();
         } catch (err: unknown) {
           setError(getApiErrorMessage(err, 'Failed to parse XML file'));
@@ -283,7 +295,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
       }
       const res = await apiService.importTasks(scheduleId, csvText, headerMap);
       const data = res?.data ?? res;
-      setResult({ succeeded: data.succeeded ?? 0, failed: data.failed ?? [], resourcesCreated: data.resourcesCreated ?? 0 });
+      setResult({ succeeded: data.succeeded ?? 0, failed: data.failed ?? [], resourcesCreated: data.resourcesCreated ?? 0, review: data.review ?? null });
       if ((data.succeeded ?? 0) > 0) onImported?.();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Import failed'));
@@ -327,6 +339,35 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported }: ImportM
                       <li key={i}>Row {f.row}: {f.error}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+              {result.review && (
+                <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 space-y-2" data-testid="import-review-summary">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Schedule Review</span>
+                      <ScheduleScoreChip score={result.review.score} band={result.review.band} />
+                    </div>
+                    {onOpenReview && (
+                      <button
+                        type="button"
+                        onClick={() => { reset(); onOpenReview(); }}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"
+                      >
+                        Review and fix
+                      </button>
+                    )}
+                  </div>
+                  {result.review.topFindings.length > 0 && (
+                    <ul className="space-y-1">
+                      {result.review.topFindings.map((f, i) => (
+                        <li key={`${f.ruleId}-${i}`} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
+                          <span className={`shrink-0 mt-px px-1.5 py-0 rounded-full font-semibold ${severityColor(f.severity)}`}>{f.severity}</span>
+                          <span className="min-w-0"><span className="font-medium">{f.rule}.</span> {f.message}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
               <button onClick={reset} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Import more</button>

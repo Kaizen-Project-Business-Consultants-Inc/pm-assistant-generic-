@@ -969,6 +969,23 @@ class ApiService {
     return response.data;
   }
 
+  // Schedule Review — deterministic schedule quality check
+  async reviewSchedule(scheduleId: string) {
+    const response = await this.api.post(`/schedules/${scheduleId}/review`);
+    return response.data;
+  }
+
+  async getScheduleReviewLatest(scheduleId: string) {
+    const response = await this.api.get(`/schedules/${scheduleId}/review/latest`);
+    // 204 when no review has run yet
+    return response.status === 204 || !response.data ? null : response.data;
+  }
+
+  async getScheduleReviewHistory(scheduleId: string, limit = 8) {
+    const response = await this.api.get(`/schedules/${scheduleId}/review/history`, { params: { limit } });
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Baselines
   // -------------------------------------------------------------------------

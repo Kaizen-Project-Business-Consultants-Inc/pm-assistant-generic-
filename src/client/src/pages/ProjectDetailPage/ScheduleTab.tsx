@@ -26,6 +26,7 @@ import { NetworkDiagramView } from '../../components/network/NetworkDiagramView'
 import { BurndownPanel } from '../../components/burndown/BurndownPanel';
 import { AutoReschedulePanel } from '../../components/schedule/AutoReschedulePanel';
 import { ImportModal } from '../../components/schedule/ImportModal';
+import { ScheduleReviewPanel, type ScheduleReview } from '../../components/schedule/review/ScheduleReviewPanel';
 import { TaskListMobile } from '../../components/tasks/TaskListMobile';
 import { useColumnState } from '../../hooks/useColumnState';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
@@ -367,6 +368,9 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   const [selectedBaselineId, setSelectedBaselineId] = useState<string>('');
   const [showComparison, setShowComparison] = useState(false);
   const [showReschedulePanel, setShowReschedulePanel] = useState(false);
+  // Schedule Review panel + "Show rows" filter from a finding
+  const [showReviewPanel, setShowReviewPanel] = useState(false);
+  const [reviewRowFilter, setReviewRowFilter] = useState<{ taskIds: Set<string>; label: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterPriority, setFilterPriority] = useState<string>('');
@@ -869,11 +873,12 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   }, [dropdownFilteredTasks, taskRiskMap, user?.id, dueWeeks]);
 
   const filteredTasks = useMemo(() => {
-    if (quickFilter === 'all') return dropdownFilteredTasks;
+    const base = reviewRowFilter ? dropdownFilteredTasks.filter(t => reviewRowFilter.taskIds.has(t.id)) : dropdownFilteredTasks;
+    if (quickFilter === 'all') return base;
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     const userId = user?.id;
-    return dropdownFilteredTasks.filter(t => {
+    return base.filter(t => {
       const risk = taskRiskMap.get(t.id);
       const status = t.status?.toLowerCase();
       const isFinished = status === 'completed' || status === 'done' || status === 'cancelled';
@@ -891,9 +896,27 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         default: return true;
       }
     });
-  }, [dropdownFilteredTasks, quickFilter, taskRiskMap, user?.id, dueWeeks]);
+  }, [dropdownFilteredTasks, quickFilter, taskRiskMap, user?.id, dueWeeks, reviewRowFilter]);
 
-  const hasActiveFilters = !!(searchQuery || filterStatus || filterPriority || filterAssignee || quickFilter !== 'all');
+  const hasActiveFilters = !!(searchQuery || filterStatus || filterPriority || filterAssignee || quickFilter !== 'all' || reviewRowFilter);
+
+  // Latest Schedule Review → row indicators for Critical/High findings
+  const { data: latestReview } = useQuery<ScheduleReview | null>({
+    queryKey: ['schedule-review', schedule.id, 'latest'],
+    queryFn: () => apiService.getScheduleReviewLatest(schedule.id),
+    staleTime: 60_000,
+  });
+  const reviewFlagMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const f of latestReview?.findings ?? []) {
+      if (f.severity !== 'critical' && f.severity !== 'high') continue;
+      for (const id of f.taskIds) if (!m.has(id)) m.set(id, f.rule);
+    }
+    return m;
+  }, [latestReview]);
+  const handleShowReviewRows = useCallback((taskIds: string[] | null, label: string | null) => {
+    setReviewRowFilter(taskIds && taskIds.length > 0 && label ? { taskIds: new Set(taskIds), label } : null);
+  }, []);
 
   // Announce filter result count to screen readers
   const prevFilteredRef = useRef(filteredTasks.length);
@@ -965,6 +988,8 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           hasActiveFilters={hasActiveFilters}
           activeFilterCount={[filterStatus, filterPriority, filterAssignee].filter(Boolean).length}
           columnState={columnState}
+          onOpenReview={() => setShowReviewPanel(true)}
+          reviewActive={showReviewPanel || !!reviewRowFilter}
           showCriticalPath={showCriticalPath}
           onCriticalPathChange={setShowCriticalPath}
           overflowMenu={null}
@@ -1007,6 +1032,14 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           {filteredTasks.length > 0 && (
             <ScheduleSummaryBar stats={taskStats} />
           )}
+        </div>
+      )}
+
+      {reviewRowFilter && (
+        <div className="flex items-center gap-3 px-3 py-1.5 mb-2 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-lg text-xs" role="status">
+          <span className="font-medium text-orange-800 dark:text-orange-300">Schedule Review: {reviewRowFilter.label}</span>
+          <span className="text-orange-700 dark:text-orange-300">{filteredTasks.length} flagged row{filteredTasks.length === 1 ? '' : 's'}</span>
+          <button type="button" onClick={() => setReviewRowFilter(null)} className="ml-auto text-orange-800 dark:text-orange-300 hover:underline font-medium">Clear</button>
         </div>
       )}
 
@@ -1073,6 +1106,9 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           taskRiskMap={taskRiskMap}
           showCriticalPath={showCriticalPath}
           onCriticalPathChange={setShowCriticalPath}
+          onOpenReview={() => setShowReviewPanel(true)}
+          reviewActive={showReviewPanel || !!reviewRowFilter}
+          reviewFlagMap={reviewFlagMap}
           scheduleOverflowMenu={canEdit ?
             <ScheduleOverflowMenu
               schedule={schedule}
@@ -1131,6 +1167,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         <TableView
           tasks={filteredTasks}
           scheduleId={schedule.id}
+          reviewFlagMap={reviewFlagMap}
           onTaskSelect={(task) => setActiveTaskId(task.id)}
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}
@@ -1243,8 +1280,23 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         scheduleId={schedule.id}
-        onImported={() => queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] })}
+        onImported={() => {
+          queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+          queryClient.invalidateQueries({ queryKey: ['schedule-review', schedule.id] });
+        }}
+        onOpenReview={() => { setShowImportModal(false); setShowReviewPanel(true); }}
       />
+
+      {/* Schedule Review panel */}
+      {showReviewPanel && (
+        <ScheduleReviewPanel
+          scheduleId={schedule.id}
+          canEdit={canEdit}
+          onClose={() => setShowReviewPanel(false)}
+          onShowRows={handleShowReviewRows}
+          activeRowFilterLabel={reviewRowFilter?.label ?? null}
+        />
+      )}
 
       {/* AI Reschedule Panel */}
       {showReschedulePanel && (

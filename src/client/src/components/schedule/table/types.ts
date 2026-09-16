@@ -52,6 +52,8 @@ export interface TableViewProps {
   onRedo?: () => void;
   onDuplicateTasks?: (tasks: GanttTask[]) => void;
   taskRiskMap?: Map<string, import('../../../utils/taskRiskAssessment').TaskRiskLevel>;
+  /** taskId → tooltip for rows flagged Critical/High by Schedule Review */
+  reviewFlagMap?: Map<string, string>;
 }
 
 export const barColors: Record<string, { bg: string; text: string }> = {
