@@ -117,6 +117,13 @@ vi.mock('../../services/agents/InterAgentQueryService', () => ({
   },
 }));
 
+vi.mock('../../services/context/ContextConfigService', () => ({
+  contextConfigService: {
+    resolveContext: vi.fn().mockResolvedValue({}),
+    formatForPrompt: vi.fn().mockReturnValue(''),
+  },
+}));
+
 vi.mock('../../services/AIBudgetService', () => ({
   AIBudgetExceededError: class AIBudgetExceededError extends Error {
     public statusCode = 429;
