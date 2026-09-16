@@ -129,7 +129,7 @@ export const OnboardingPage: React.FC = () => {
       } else {
         try {
           const tmplData = await apiService.getTemplates();
-          const list = tmplData.templates || tmplData || [];
+          const list = tmplData.data || tmplData.templates || tmplData || [];
           setTemplates(Array.isArray(list) ? list : []);
         } catch {
           setTemplates([]);
@@ -215,7 +215,7 @@ export const OnboardingPage: React.FC = () => {
       // Load templates for project step
       try {
         const tmplData = await apiService.getTemplates();
-        const list = tmplData.templates || tmplData || [];
+        const list = tmplData.data || tmplData.templates || tmplData || [];
         setTemplates(Array.isArray(list) ? list : []);
       } catch {
         setTemplates([]);
@@ -233,7 +233,7 @@ export const OnboardingPage: React.FC = () => {
     // Load templates for project step
     try {
       const tmplData = await apiService.getTemplates();
-      const list = tmplData.templates || tmplData || [];
+      const list = tmplData.data || tmplData.templates || tmplData || [];
       setTemplates(Array.isArray(list) ? list : []);
     } catch {
       setTemplates([]);
