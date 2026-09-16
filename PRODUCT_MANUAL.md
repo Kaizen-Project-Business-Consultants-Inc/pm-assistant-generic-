@@ -2692,7 +2692,7 @@ Rules that need dependency logic are listed under **Unlocks when dependencies ex
 
 **Findings panel.** Score chip with an eight-run trend, findings grouped by severity (Critical and High open by default), each with the rule, the plain-English message, the points deducted and a **Show rows** button that filters the grid to exactly those tasks. Rows flagged Critical or High carry a small indicator in the row-number column in both Table and Gantt views. **Re-run review** is available to editors; viewers can read the latest run. The panel traps focus, closes on Escape, and announces score changes via a live region.
 
-**Import summary.** After "N tasks imported", the summary shows the score chip, the top five findings and a **Review and fix** button that opens the panel.
+**Import summary.** After "N tasks imported", the summary shows the score chip, the top five findings and an **Open review** button that opens the panel. (The button will become "Review and fix" once Phase 3 adds AI-drafted, approvable fixes.)
 
 **Storage.** One row per run in the tenant table `schedule_reviews` (score, band, counts, findings JSON, skipped rules, trigger, rules version). The last 50 runs per schedule are kept.
 

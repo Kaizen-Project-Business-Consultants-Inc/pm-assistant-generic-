@@ -403,7 +403,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
                         onClick={() => { reset(); onOpenReview(); }}
                         className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"
                       >
-                        Review and fix
+                        Open review
                       </button>
                     )}
                   </div>

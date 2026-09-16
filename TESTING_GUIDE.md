@@ -1260,7 +1260,7 @@ Running the same review twice on an unchanged schedule must return identical `sc
 
 ### Import summary
 
-Import any CSV through the Import modal. The result panel shows the score chip, the top five findings and **Review and fix**. The import response carries `review: { score, band, counts, topFindings[] }`; a review failure never fails the import (the field is `null`).
+Import any CSV through the Import modal. The result panel shows the score chip, the top five findings and **Open review**. The import response carries `review: { score, band, counts, topFindings[] }`; a review failure never fails the import (the field is `null`).
 
 ### Import leak fixes (Phase 2)
 

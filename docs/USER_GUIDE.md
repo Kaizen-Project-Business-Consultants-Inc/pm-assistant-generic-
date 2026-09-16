@@ -2552,7 +2552,7 @@ You can import tasks into any schedule from a CSV, Excel, or Microsoft Project X
 
 Accepted date formats: `YYYY-MM-DD` and `MM/DD/YYYY`. Unrecognised status or priority values default to `pending` and `medium` respectively.
 
-**Schedule Review:** As soon as an import finishes, Kovarti checks the schedule the way a PMO would and shows a **Schedule Health Score** from 0 to 100 with the top findings, for example "None of the 28 tasks are linked" or "Gate 1 spans 10 days. A milestone is a decision on a single day." Click **Review and fix** to open the full list. You can also run it any time from the **Review** button in the schedule toolbar (next to Columns).
+**Schedule Review:** As soon as an import finishes, Kovarti checks the schedule the way a PMO would and shows a **Schedule Health Score** from 0 to 100 with the top findings, for example "None of the 28 tasks are linked" or "Gate 1 spans 10 days. A milestone is a decision on a single day." Click **Open review** to see the full list. You can also run it any time from the **Review** button in the schedule toolbar (next to Columns).
 
 In the panel, findings are grouped by severity. Each one says what is wrong in plain English and has a **Show rows** button that filters the grid to exactly the tasks involved; use **Clear** in the orange bar above the grid to see everything again. Tasks with a Critical or High finding show a small orange dot beside their row number. **Re-run review** refreshes the score after you make changes, and the small bar chart shows how the score has moved over the last eight runs.
 
