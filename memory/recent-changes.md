@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-16 (later — Phase 2)
+
+- **Schedule Review Phase 2 — import leak fixes** (commit 3f67501, on master, deployed to staging). Import now preserves predecessors (resolve by real MSP UID / WBS / name; CSV predecessor columns; unresolved reported as warnings), milestone flags, an auto "Imported baseline", hours-vs-days, and skips legend rows / cleans owner cell-refs. Import responses gained `dependenciesCreated`, `baselineCreated`, `durationNote`, `skipped[]`, `warnings[]`. Details + staging smoke-test result in `memory/schedule-review.md`. **Not on prod** (awaiting explicit approval). Next: Phase 3 (AI fix proposals).
+- Verified Phase 1 on staging from the CLI: `schedule_reviews` table + `T047` present in tenant DBs; DBJ-Loans review scored 19 (tracking_sheet), R03 critical. Auth note: API JWT is a cookie (`access_token`), not a Bearer header — Bearer is treated as an API key.
+
 ## 2026-09-16
 
 **Fixed and live on staging (pm.kpbc.ca). Not on production.**

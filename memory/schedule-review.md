@@ -24,7 +24,15 @@ Design principles the user agreed to:
 - Score: start 100; per rule deduct max (Critical 25 / High 12 / Medium 6 / Low 2 / Info 0) × min(1, affectedFraction/0.2); schedule-scoped rules (R03, R18, R23) deduct in full. Bands 0–39 tracking_sheet, 40–69 needs_work, 70–89 controllable, 90–100 fit_for_control.
 - **Not verified from the remote session:** that `schedule_reviews` actually exists on staging after the restart (no SSH there). First thing to check from the CLI: `SELECT name FROM _migrations WHERE name LIKE 'T047%'` in the tenant DB, and `POST /review` on the DBJ schedule (`a90a9b02-e1a4-418b-a43e-3711954208f2`, project `f93fef8c-f147-49ad-bf19-4db9bb59857e`).
 
-## Phase 2 — Import leak fixes (next; 2–3 days)
+## Phase 2 — Import leak fixes — DONE (commit 3f67501; deployed to staging 2026-09-16)
+
+Shipped: predecessor parse/resolve (by real MS Project UID, WBS, or task name; CSV predecessor column aliases; 20/row cap; cycles rejected; unresolved → `warnings`), milestone flag (`is_milestone`/`type=Milestone`/zero duration), auto "Imported baseline" when baseline/actual columns present, hours-vs-days heuristic (decided once per schedule), legend-row skip + cell-ref cleanup on owners. Import responses now carry `dependenciesCreated`, `baselineCreated`, `durationNote`, `skipped[]`, `warnings[]`; ImportModal renders them.
+- New pure helpers: `src/server/utils/importPredecessors.ts`, `src/server/utils/importHeuristics.ts` (+ unit tests, 22 cases). Route changes in `src/server/routes/scheduling/import.ts` (both `/import` CSV and `/import-structured`). Client: `api.ts` importStructured signature (+uid, +isMilestone), `ImportModal.tsx` summary. No migration (all fields already existed).
+- **Staging smoke test passed:** throwaway schedule + crafted CSV → 3 imported / 1 legend row skipped, 2 deps linked, baseline captured, duration read as days, owner cell-ref cleaned; review score 86 (controllable), no R03, no R04. Throwaway schedule + its 2 resources deleted after.
+- **Key gotcha:** a CSV column literally named `Milestone` still maps to the task **name** (DBJ files use it that way); only `is_milestone`/`ismilestone`/`milestone_flag`/`milestone_yn`, a `type=Milestone`, or zero duration set the flag.
+- **Not deployed to prod** (standing rule — awaiting explicit approval). Docs updated: PRODUCT_MANUAL §30, TESTING_GUIDE §29, USER_GUIDE, WORLD_CLASS_FEATURES.
+
+### Original Phase 2 spec (for reference)
 
 The importer drops structure the file already holds. Close the leak so the review starts from what the customer had.
 
