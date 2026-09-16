@@ -14,6 +14,7 @@
 - The `test` job gates the deploy: any `tsc --noEmit` error or failing vitest test blocks staging. From ~Sep 10 to Sep 16 2026 the pipeline was red on every push because of type errors in the storage/calendar adapters, so nothing merged reached staging until they were fixed (a4a9001).
 - "Restart & verify" polls `systemctl is-active` and `/health` for up to ~60s and fails the job if the app does not come back healthy (before 0d4c666 the health check could not fail).
 - Deploys are serialised with a `deploy-staging` concurrency group; in-flight deploys are never cancelled.
+- **Tenant migrations** (`src/server/database/tenant-migrations/T0NN_*.sql`) hold the core schedule tables (tasks, schedules, baselines, schedule_reviews…). The app runs them for every provisioned tenant at startup (`runAllTenantMigrations`, needs `MULTI_TENANT_ENABLED=true`), reading `dist/server/database/tenant-migrations`. Until 2026-09-16 the pipeline copied only `migrations/*.sql` into dist, so tenant migrations pushed via the pipeline were never applied on staging; the copy step now ships both folders (deploy.sh already did).
 - Claude Code remote sessions have **no SSH client or SSH key** and cannot reach either server. They can trigger a staging deploy only by pushing to `master`, and can watch runs via the GitHub Actions API.
 
 ## Verifying a deploy landed in the browser

@@ -68,7 +68,12 @@ jobs:
         run: npm run build
 
       - name: Copy migration SQL files
-        run: mkdir -p dist/server/database/migrations && cp src/server/database/migrations/*.sql dist/server/database/migrations/
+        # tsc does not copy .sql. Tenant migrations must ship too: the core
+        # schedule tables live there and the app applies them at startup.
+        run: |
+          mkdir -p dist/server/database/migrations dist/server/database/tenant-migrations
+          cp src/server/database/migrations/*.sql dist/server/database/migrations/
+          cp src/server/database/tenant-migrations/*.sql dist/server/database/tenant-migrations/
 
       - name: Setup SSH key
         run: |
