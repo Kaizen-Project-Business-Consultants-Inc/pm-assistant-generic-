@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { findResourceForAssignee } from '../../utils/resourceLookup';
 import { Avatar } from '../ui/Avatar';
 import { PROFICIENCY_LABELS } from '../../constants/proficiency';
 
@@ -62,8 +63,8 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
     return list;
   }, [resources, search, skillFilter]);
 
-  // Find current resource by userId match
-  const currentResource = value ? resources.find(r => r.userId === value || r.id === value) : null;
+  // Find current resource by ID, falling back to a name match for imported schedules
+  const currentResource = findResourceForAssignee(resources, value);
 
   useEffect(() => {
     inputRef.current?.focus();

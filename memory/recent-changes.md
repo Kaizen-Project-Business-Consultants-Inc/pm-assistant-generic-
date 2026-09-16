@@ -9,6 +9,7 @@
 - **CI type errors** (a4a9001) — Dropbox/GoogleDrive/GoogleCalendar/OneDrive adapters: `Response.json()` is `unknown`; annotated as `any` per surrounding style. This unblocked the staging pipeline.
 - **TimeAnomalyService weekend tests** (88cfd42) — test used wrong calendar dates (2026-09-13 is a Sunday).
 - **Deploy pipeline hardened** (0d4c666) — see memory/deployment.md.
+- **Imported tasks not linked to resources** — CSV/Excel import stored the assignee *name* in `tasks.assigned_to`, while the UI expects a resource ID; the task modal's Assigned To dropdown showed blank for every imported schedule (seen on DBJ). Import now resolves names → resource IDs up front (`src/server/utils/assigneeResources.ts`, creating missing resources as before) and stores the ID. Client pickers (`TaskFormModal`, `ResourcePickerDropdown`) fall back to a case-insensitive name match via `src/client/src/utils/resourceLookup.ts`, so already-imported schedules resolve too. Data note: DBJ import produced a stray resource named "DBJ & JV+D9:D27" (Excel cell ref) and one named "Completed"; not cleaned up yet.
 - **Gantt Columns picker missing** (a82d245, 7d4622a) — hidden since c0885ab hid ScheduleToolbar in Gantt mode. GanttToolbar now renders the shared `ColumnPickerDropdown` when `columnState` is provided (same per-schedule state as Table view), placed directly after Filter to match Table view order. Legacy built-in picker remains only as a fallback when no shared state is passed.
 
 **Open / follow-ups**
@@ -16,7 +17,7 @@
 - Production deploy of all of the above: **deliberately not done yet** — user said "deploy to prod — not as yet". Run `bash deploy.sh prod` when ready.
 - Gantt vs Table toolbars are separate components that have drifted; a proper merge into one shared toolbar (with Gantt-only timeline controls on top) is a worthwhile follow-up.
 - The Gantt's legacy built-in column picker (`!columnState` branch in GanttToolbar) is effectively dead code once every caller passes `columnState`; candidate for removal.
-- User's data question pending: **who is assigned to task #1 in the "DBJ" schedule on staging** — could not be answered because the `kovarti-stage` MCP connector failed to connect for the whole session (502). Needs a session where that connector is up.
+- DBJ task #1 ("Kick-Off Meeting & Project Governance") is assigned to "DBJ & JV+D9:D27" — answered via kovarti-stage MCP once the user reconnected the connector. Optional cleanup: rename that resource to "DBJ & JV", delete the "Completed" resource, relink tasks.
 
 **Context**
 

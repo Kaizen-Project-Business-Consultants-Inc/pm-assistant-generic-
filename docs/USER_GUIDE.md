@@ -2544,7 +2544,9 @@ You can import tasks into any schedule from a CSV, Excel, or Microsoft Project X
 
 **Phase/Group as summary tasks:** If your spreadsheet has a Phase, Group, Category, or WBS column, the import creates summary (parent) tasks for each unique phase and nests the corresponding tasks underneath them.
 
-**Resource auto-creation:** Any assignee names found in the imported data are automatically added to the Resources table if they don't already exist. New resources are created with default settings (40 hrs/week capacity, no role or department). The import summary shows how many resources were added (e.g. "15 tasks imported successfully. 4 resources added.").
+**Resource auto-creation:** Any assignee names found in the imported data are automatically added to the Resources table if they don't already exist (matching ignores case and surrounding spaces). New resources are created with default settings (40 hrs/week capacity, no role or department), and every imported task is linked to its resource, so the Assigned To dropdown in the task editor shows the right person straight away. The import summary shows how many resources were added (e.g. "15 tasks imported successfully. 4 resources added.").
+
+> **Tip:** Check the Resources page after an import. Spreadsheet quirks such as a stray cell reference (e.g. "DBJ & JV+D9:D27") become resource names, and you can rename or remove them there.
 
 **Encoding:** Files exported from Excel in Windows-1252 encoding (common on Windows machines) are automatically corrected. Characters like em dashes, smart quotes, and bullets that appear garbled in other tools will import correctly.
 

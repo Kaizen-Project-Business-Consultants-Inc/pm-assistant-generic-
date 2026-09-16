@@ -9,6 +9,7 @@ import { requireFeature } from '../../middleware/requireTier';
 import { claudeService } from '../../services/claudeService';
 import { config } from '../../config';
 import logger from '../../utils/logger';
+import { resolveAssigneeResources, assigneeToResourceId } from '../../utils/assigneeResources';
 
 const importCsvSchema = z.object({
   csv: z.string().min(1).max(5 * 1024 * 1024),
@@ -185,7 +186,46 @@ export async function importRoutes(fastify: FastifyInstance) {
 
       const succeeded: number[] = [];
       const failed: { row: number; error: string }[] = [];
-      const importedAssignees = new Set<string>(); // collect unique assignee names
+
+      // Resolve assignee names to resource IDs up front so imported tasks are
+      // linked to real resources (creating any that don't exist yet).
+      const importedAssignees = new Set<string>();
+      for (const rawRow of records) {
+        for (const [header, value] of Object.entries(rawRow)) {
+          if (mapColumn(header, columnMap) === 'assignedTo' && value && value.trim()) {
+            importedAssignees.add(value.trim());
+          }
+        }
+      }
+      let assigneeIdByName = new Map<string, string>();
+      let resourcesCreated = 0;
+      if (importedAssignees.size > 0) {
+        try {
+          const existingResources = await resourceService.findAllResources();
+          const resolution = await resolveAssigneeResources(
+            importedAssignees,
+            existingResources,
+            (name) => resourceService.createResource({
+              name,
+              role: '',
+              email: '',
+              capacityHoursPerWeek: 40,
+              skills: [],
+              isActive: true,
+              costRateHourly: null,
+              overtimeRateHourly: null,
+              resourceGroup: null,
+              userId: null,
+              calendarTemplateId: null,
+            }),
+          );
+          assigneeIdByName = resolution.idByName;
+          resourcesCreated = resolution.created;
+        } catch (resErr: any) {
+          // Fall back to storing raw names on the tasks
+          logger.warn('Failed to auto-create resources during import', { error: resErr.message });
+        }
+      }
 
       // Track phase/group summary tasks so child tasks get parentTaskId
       const phaseTaskIds = new Map<string, string>(); // phase name → taskId
@@ -296,7 +336,7 @@ export async function importRoutes(fastify: FastifyInstance) {
             description: row.description || undefined,
             status: status as CreateTaskData['status'],
             priority: priority as CreateTaskData['priority'],
-            assignedTo: row.assignedTo || undefined,
+            assignedTo: assigneeToResourceId(row.assignedTo, assigneeIdByName),
             startDate: startDate || undefined,
             endDate: endDate || undefined,
             dueDate: dueDate || undefined,
@@ -315,45 +355,9 @@ export async function importRoutes(fastify: FastifyInstance) {
           // Add to dedup set to catch intra-batch duplicates
           existingKeys.add(dedupKey);
 
-          // Track assignee for resource auto-creation
-          if (row.assignedTo && row.assignedTo.trim()) {
-            importedAssignees.add(row.assignedTo.trim());
-          }
-
           succeeded.push(rowNum);
         } catch (rowErr: any) {
           failed.push({ row: rowNum, error: rowErr.message || 'Unknown error' });
-        }
-      }
-
-      // Auto-create resources for new assignees
-      let resourcesCreated = 0;
-      if (importedAssignees.size > 0) {
-        try {
-          const existingResources = await resourceService.findAllResources();
-          const existingNames = new Set(existingResources.map(r => r.name.toLowerCase().trim()));
-
-          for (const assignee of importedAssignees) {
-            if (!existingNames.has(assignee.toLowerCase().trim())) {
-              await resourceService.createResource({
-                name: assignee,
-                role: '',
-                email: '',
-                capacityHoursPerWeek: 40,
-                skills: [],
-                isActive: true,
-                costRateHourly: null,
-                overtimeRateHourly: null,
-                resourceGroup: null,
-                userId: null,
-                calendarTemplateId: null,
-              });
-              existingNames.add(assignee.toLowerCase().trim());
-              resourcesCreated++;
-            }
-          }
-        } catch (resErr: any) {
-          logger.warn('Failed to auto-create resources during import', { error: resErr.message });
         }
       }
 

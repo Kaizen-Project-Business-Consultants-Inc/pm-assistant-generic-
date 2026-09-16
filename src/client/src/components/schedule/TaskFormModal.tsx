@@ -10,6 +10,7 @@ import { AttachmentPanel } from '../attachments/AttachmentPanel';
 import { TaskChecklistPanel } from '../sprints/TaskChecklistPanel';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { apiService } from '../../services/api';
+import { findResourceForAssignee } from '../../utils/resourceLookup';
 import { useModal } from '../../hooks/useModal';
 
 // ---------------------------------------------------------------------------
@@ -93,7 +94,7 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
   });
   const resources: { id: string; name: string; role: string; userId?: string | null }[] = data?.resources || [];
 
-  const current = value ? resources.find(r => r.userId === value || r.id === value) : null;
+  const current = findResourceForAssignee(resources, value);
 
   const filtered = resources.filter(r =>
     search === '' ||
