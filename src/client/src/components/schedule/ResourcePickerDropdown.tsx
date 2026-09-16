@@ -1,14 +1,21 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { Avatar } from '../ui/Avatar';
+import { PROFICIENCY_LABELS } from '../../constants/proficiency';
+
+interface SkillWithProficiency {
+  name: string;
+  level: number;
+}
 
 interface Resource {
   id: string;
   name: string;
   role: string;
   userId?: string | null;
+  skills?: SkillWithProficiency[];
 }
 
 interface ResourcePickerDropdownProps {
@@ -20,6 +27,7 @@ interface ResourcePickerDropdownProps {
 
 export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: ResourcePickerDropdownProps) {
   const [search, setSearch] = useState('');
+  const [skillFilter, setSkillFilter] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -30,11 +38,29 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
   });
   const resources: Resource[] = data?.resources || [];
 
-  const filtered = resources.filter(r =>
-    search === '' ||
-    r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.role.toLowerCase().includes(search.toLowerCase())
-  );
+  const allSkills = useMemo(() => {
+    const names = new Set<string>();
+    resources.forEach(r => (r.skills || []).forEach(s => { if (s.name.trim()) names.add(s.name.trim()); }));
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [resources]);
+
+  const filtered = useMemo(() => {
+    let list = resources.filter(r =>
+      search === '' ||
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.role.toLowerCase().includes(search.toLowerCase())
+    );
+    if (skillFilter) {
+      const lower = skillFilter.toLowerCase();
+      list = list.filter(r => (r.skills || []).some(s => s.name.toLowerCase() === lower));
+      list = [...list].sort((a, b) => {
+        const aLevel = (a.skills || []).find(s => s.name.toLowerCase() === lower)?.level ?? 0;
+        const bLevel = (b.skills || []).find(s => s.name.toLowerCase() === lower)?.level ?? 0;
+        return bLevel - aLevel;
+      });
+    }
+    return list;
+  }, [resources, search, skillFilter]);
 
   // Find current resource by userId match
   const currentResource = value ? resources.find(r => r.userId === value || r.id === value) : null;
@@ -70,7 +96,7 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
       )}
 
       {/* Search */}
-      <div className="p-1.5">
+      <div className="p-1.5 space-y-1">
         <input
           ref={inputRef}
           type="text"
@@ -84,6 +110,17 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
             e.stopPropagation();
           }}
         />
+        {allSkills.length > 0 && (
+          <select
+            value={skillFilter}
+            onChange={e => { e.stopPropagation(); setSkillFilter(e.target.value); }}
+            className="w-full text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:border-primary-400"
+            onClick={e => e.stopPropagation()}
+          >
+            <option value="">Filter by skill...</option>
+            {allSkills.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Resource list */}
@@ -95,6 +132,7 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
         ) : (
           filtered.slice(0, 30).map(r => {
             const isSelected = currentResource?.id === r.id;
+            const matchedSkill = skillFilter ? (r.skills || []).find(s => s.name.toLowerCase() === skillFilter.toLowerCase()) : null;
             return (
               <button
                 key={r.id}
@@ -109,6 +147,11 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
                   <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
                   <div className="text-gray-500 dark:text-gray-500 truncate">{r.role}</div>
                 </div>
+                {matchedSkill && (
+                  <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
+                    {PROFICIENCY_LABELS[matchedSkill.level] || matchedSkill.level}
+                  </span>
+                )}
                 {isSelected && <span className="text-primary-600 text-xs font-medium">Current</span>}
               </button>
             );

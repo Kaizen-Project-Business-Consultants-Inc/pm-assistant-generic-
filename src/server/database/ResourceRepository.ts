@@ -130,6 +130,38 @@ export class ResourceRepository extends BaseRepository<Resource> {
     return result.affectedRows ?? 0;
   }
 
+  // --- Skill-based search ---
+
+  async findAllDistinctSkillNames(): Promise<string[]> {
+    const rows = await this.queryRaw('SELECT skills FROM resources WHERE skills IS NOT NULL AND skills != \'[]\' AND skills != \'\'');
+    const nameSet = new Set<string>();
+    for (const row of rows) {
+      const skills = parseSkills(row.skills);
+      for (const s of skills) {
+        if (s.name.trim()) nameSet.add(s.name.trim());
+      }
+    }
+    return [...nameSet].sort((a, b) => a.localeCompare(b));
+  }
+
+  async findBySkill(skillName: string, minLevel?: number): Promise<Resource[]> {
+    const rows = await this.queryRaw('SELECT * FROM resources WHERE skills IS NOT NULL AND skills != \'[]\' AND skills != \'\'');
+    const resources = this.mapRows(rows);
+    const lowerSkill = skillName.toLowerCase();
+    const filtered = resources.filter(r =>
+      r.skills.some(s =>
+        s.name.toLowerCase() === lowerSkill && (minLevel == null || s.level >= minLevel)
+      )
+    );
+    // Sort by proficiency descending for the matched skill
+    filtered.sort((a, b) => {
+      const aLevel = a.skills.find(s => s.name.toLowerCase() === lowerSkill)?.level ?? 0;
+      const bLevel = b.skills.find(s => s.name.toLowerCase() === lowerSkill)?.level ?? 0;
+      return bLevel - aLevel;
+    });
+    return filtered;
+  }
+
   // --- Assignments ---
 
   async findAssignmentsBySchedule(scheduleId: string): Promise<ResourceAssignment[]> {

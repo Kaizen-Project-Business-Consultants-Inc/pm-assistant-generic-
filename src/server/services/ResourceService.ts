@@ -147,6 +147,16 @@ export class ResourceService {
     return resourceRepository.deleteResources(ids);
   }
 
+  // --- Skill-based search ---
+
+  async findAllDistinctSkillNames(): Promise<string[]> {
+    return resourceRepository.findAllDistinctSkillNames();
+  }
+
+  async findBySkill(skillName: string, minLevel?: number): Promise<Resource[]> {
+    return resourceRepository.findBySkill(skillName, minLevel);
+  }
+
   // --- Assignment CRUD ---
 
   async findAssignmentsBySchedule(scheduleId: string): Promise<ResourceAssignment[]> {

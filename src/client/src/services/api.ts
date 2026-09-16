@@ -1001,6 +1001,18 @@ class ApiService {
     return response.data;
   }
 
+  async getResourceSkills() {
+    const response = await this.api.get('/resources/skills');
+    return response.data as { skills: string[] };
+  }
+
+  async getResourcesBySkill(skill: string, minLevel?: number) {
+    const params = new URLSearchParams({ skill });
+    if (minLevel != null) params.set('minLevel', String(minLevel));
+    const response = await this.api.get(`/resources/by-skill?${params}`);
+    return response.data;
+  }
+
   async createResource(data: {
     name: string;
     role: string;

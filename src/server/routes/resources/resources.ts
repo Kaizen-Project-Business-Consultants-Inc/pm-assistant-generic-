@@ -66,6 +66,21 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     return result;
   });
 
+  // GET /resources/skills — Distinct skill names for autocomplete
+  fastify.get('/skills', { preHandler: [requireScope('read')] }, async (_request: FastifyRequest, _reply: FastifyReply) => {
+    const skills = await resourceService.findAllDistinctSkillNames();
+    return { skills };
+  });
+
+  // GET /resources/by-skill — Find resources by skill name + optional min level
+  fastify.get('/by-skill', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { skill, minLevel } = request.query as { skill?: string; minLevel?: string };
+    if (!skill || !skill.trim()) return reply.status(400).send({ error: 'skill query parameter is required' });
+    const min = minLevel ? Math.min(Math.max(parseInt(minLevel) || 1, 1), 5) : undefined;
+    const resources = await resourceService.findBySkill(skill.trim(), min);
+    return { resources };
+  });
+
   // POST /resources - Create a resource
   fastify.post('/', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

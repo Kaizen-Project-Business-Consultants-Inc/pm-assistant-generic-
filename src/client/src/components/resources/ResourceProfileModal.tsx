@@ -3,15 +3,12 @@ import { X, User, Briefcase, Clock, TrendingUp } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { UtilizationTrendChart } from './UtilizationTrendChart';
 import { getInitials, getAvatarColor } from '../ui/Avatar';
+import { PROFICIENCY_LABELS } from '../../constants/proficiency';
 
 interface ResourceProfileModalProps {
   resourceId: string;
   onClose: () => void;
 }
-
-const PROFICIENCY_LABELS: Record<number, string> = {
-  1: 'Junior', 2: 'Intermediate', 3: 'Mid', 4: 'Senior', 5: 'Expert',
-};
 
 function formatDate(dateStr: string): string {
   try {

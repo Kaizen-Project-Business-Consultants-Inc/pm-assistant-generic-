@@ -117,9 +117,7 @@ const RESOURCE_GROUPS = [
   'Engineering', 'Design', 'QA', 'Management', 'Operations', 'Marketing', 'Sales', 'Support',
 ];
 
-const PROFICIENCY_LABELS: Record<number, string> = {
-  1: 'Junior', 2: 'Intermediate', 3: 'Mid', 4: 'Senior', 5: 'Expert',
-};
+import { PROFICIENCY_LABELS } from '../../constants/proficiency';
 
 // ---------------------------------------------------------------------------
 // Component

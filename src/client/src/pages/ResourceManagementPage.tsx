@@ -85,9 +85,7 @@ const RESOURCE_GROUPS = [
   'Engineering', 'Design', 'QA', 'Management', 'Operations', 'Marketing', 'Sales', 'Support',
 ];
 
-const PROFICIENCY_LABELS: Record<number, string> = {
-  1: 'Junior', 2: 'Intermediate', 3: 'Mid', 4: 'Senior', 5: 'Expert',
-};
+import { PROFICIENCY_LABELS } from '../constants/proficiency';
 
 const UTIL_COLORS = {
   low: '#22c55e',      // green — under 80%
@@ -132,6 +130,7 @@ export function ResourceManagementPage() {
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillLevel, setNewSkillLevel] = useState(3);
   const [groupFilter, setGroupFilter] = useState('');
+  const [skillFilter, setSkillFilter] = useState('');
   const [trendResourceId, setTrendResourceId] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [removeAccessOnDelete, setRemoveAccessOnDelete] = useState(false);
@@ -330,10 +329,26 @@ export function ResourceManagementPage() {
     return [...groups].sort();
   }, [resources]);
 
+  const allSkills = useMemo(() => {
+    const names = new Set<string>();
+    resources.forEach(r => { (r.skills || []).forEach(s => { if (s.name.trim()) names.add(s.name.trim()); }); });
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [resources]);
+
   const filteredResources = useMemo(() => {
-    if (!groupFilter) return resources;
-    return resources.filter(r => r.resourceGroup === groupFilter);
-  }, [resources, groupFilter]);
+    let list = resources;
+    if (groupFilter) list = list.filter(r => r.resourceGroup === groupFilter);
+    if (skillFilter) {
+      const lower = skillFilter.toLowerCase();
+      list = list.filter(r => (r.skills || []).some(s => s.name.toLowerCase() === lower));
+      list = [...list].sort((a, b) => {
+        const aLevel = (a.skills || []).find(s => s.name.toLowerCase() === lower)?.level ?? 0;
+        const bLevel = (b.skills || []).find(s => s.name.toLowerCase() === lower)?.level ?? 0;
+        return bLevel - aLevel;
+      });
+    }
+    return list;
+  }, [resources, groupFilter, skillFilter]);
 
   const stats = useMemo(() => {
     if (!workload.length) return { total: 0, overAllocated: 0, avgUtil: 0, totalCost: 0 };
@@ -435,6 +450,16 @@ export function ResourceManagementPage() {
                 >
                   <option value="">All Departments</option>
                   {allGroups.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              )}
+              {allSkills.length > 0 && (
+                <select
+                  value={skillFilter}
+                  onChange={(e) => setSkillFilter(e.target.value)}
+                  className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-xs focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">All Skills</option>
+                  {allSkills.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               )}
             </div>
