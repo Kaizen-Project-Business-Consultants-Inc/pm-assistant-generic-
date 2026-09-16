@@ -80,6 +80,12 @@ export const OnboardingPage: React.FC = () => {
       localStorage.removeItem('pendingCheckout');
       return false;
     }
+    // If subscription is already active (e.g. Stripe webhook processed during email verification),
+    // the checkout clearly succeeded — clear the stale flag
+    if (user?.subscriptionStatus === 'active') {
+      localStorage.removeItem('pendingCheckout');
+      return false;
+    }
     return localStorage.getItem('pendingCheckout') === 'true';
   });
 
