@@ -15,6 +15,11 @@
 
 **Open / follow-ups**
 
+- **Schedule Review**: Phase 1 live on staging; Phases 2–4 and open questions in `memory/schedule-review.md`. Verify from a machine with SSH that `schedule_reviews` exists on staging (see that file). Next: Phase 2 (import leak fixes).
+- **Two staging bugs seen during data cleanup** (details in `memory/schedule-review.md`): task PUT resets status to pending when only assignedTo is sent; task PUT takes >30 s.
+- **DBJ data state on staging**: legend row 29 and all 11 resources (4 imported + 5 demo + 2 artefacts) were deleted at the user's request. Tasks 1–6 keep assignees as text (DBJ, JV, DBJ / JV, DBJ & JV); modal dropdown shows blank for them until resources exist again.
+- **User preferences**: short, plain answers; they are a PM, not deeply technical; frustrated by long explanations and by slowness. They moved to the Claude Code CLI on 2026-09-16 (has the SSH key there; can run `deploy.sh prod` and check the DB).
+
 - Production deploy of all of the above: **deliberately not done yet** — user said "deploy to prod — not as yet". Run `bash deploy.sh prod` when ready.
 - Gantt vs Table toolbars are separate components that have drifted; a proper merge into one shared toolbar (with Gantt-only timeline controls on top) is a worthwhile follow-up.
 - The Gantt's legacy built-in column picker (`!columnState` branch in GanttToolbar) is effectively dead code once every caller passes `columnState`; candidate for removal.
