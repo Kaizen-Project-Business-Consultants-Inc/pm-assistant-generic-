@@ -2840,7 +2840,8 @@ The application targets WCAG 2.2 Level AA. A comprehensive 20-finding audit (Ser
 
 **Modal accessibility:**
 - `AccessibleModal` renders via `createPortal(document.body)` so `inert` on `#main-content` doesn't affect the modal itself
-- App content marked `inert` + `aria-hidden="true"` while any modal is open (prevents virtual cursor browsing behind dialogs)
+- App content marked `inert` + `aria-hidden="true"` while a portaled modal is open (prevents virtual cursor browsing behind dialogs)
+- `useModal` skips the `inert` marking when the dialog is rendered inline inside `#main-content` (e.g. TemplatePicker, TaskFormModal) — otherwise the dialog itself would be frozen and unclickable
 - Document-level Escape listener as defense-in-depth alongside the dialog's own `onKeyDown`
 - `ariaLabel` is a required prop on `AccessibleModal`
 

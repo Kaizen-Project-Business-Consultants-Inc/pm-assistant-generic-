@@ -52,19 +52,22 @@ export function useModal(isOpen: boolean, onClose: () => void) {
     }
   }, [isOpen]);
 
-  // Gap A: Mark main content inert so screen readers cannot browse behind the dialog
+  // Gap A: Mark main content inert so screen readers cannot browse behind the dialog.
+  // Only safe when the dialog lives outside #main-content (e.g. AccessibleModal, which
+  // portals to document.body). Modals rendered inline inside the page tree would be
+  // frozen along with the page — inert blocks clicks and focus for the dialog itself.
   useEffect(() => {
     if (!isOpen) return;
     const mainContent = document.getElementById('main-content');
-    if (mainContent) {
-      mainContent.setAttribute('inert', '');
-      mainContent.setAttribute('aria-hidden', 'true');
-    }
+    if (!mainContent) return;
+    const dialog = dialogRef.current;
+    if (!dialog || mainContent.contains(dialog)) return;
+
+    mainContent.setAttribute('inert', '');
+    mainContent.setAttribute('aria-hidden', 'true');
     return () => {
-      if (mainContent) {
-        mainContent.removeAttribute('inert');
-        mainContent.removeAttribute('aria-hidden');
-      }
+      mainContent.removeAttribute('inert');
+      mainContent.removeAttribute('aria-hidden');
     };
   }, [isOpen]);
 

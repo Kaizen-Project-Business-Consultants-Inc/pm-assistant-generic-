@@ -225,7 +225,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
       ),
       databaseService.query<any>(
         `SELECT ri.id, ri.title AS name, ri.type AS itemType, ri.status,
-                ri.priority, ri.due_date AS dueDate,
+                ri.severity AS priority, ri.due_date AS dueDate,
                 ri.project_id AS projectId, p.name AS projectName
          FROM project_risks ri
          JOIN projects p ON ri.project_id = p.id
