@@ -11,6 +11,7 @@ export interface User {
   subscriptionStatus?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'none';
   trialEndsAt?: string | null;
   isFounder?: boolean;
+  emailVerified?: boolean;
   mustChangePassword?: boolean;
   isGuest?: boolean;
   guestExpiresAt?: string | null;

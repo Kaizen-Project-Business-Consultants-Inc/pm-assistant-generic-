@@ -200,16 +200,15 @@ export async function authRoutes(fastify: FastifyInstance) {
       // Create Stripe customer (if configured) — skip for invited viewers
       const stripeCustomerId = isInvitedViewer ? null : await stripeService.createCustomer(email, fullName || email, 'pending');
 
-      // For plan signup, auto-verify email (they'll verify via Stripe payment)
       const user = await userService.create({
         username,
         email,
         passwordHash,
         fullName,
         role: isInvitedViewer ? 'viewer' : 'project_manager',
-        emailVerified: isPlanSignup ? true : false,
-        emailVerificationToken: isPlanSignup ? undefined : verificationToken,
-        emailVerificationExpires: isPlanSignup ? undefined : verificationExpires,
+        emailVerified: false,
+        emailVerificationToken: verificationToken,
+        emailVerificationExpires: verificationExpires,
         stripeCustomerId: stripeCustomerId || undefined,
       });
 
@@ -346,6 +345,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             email: user.email,
             fullName: user.fullName,
             role: user.role,
+            emailVerified: false,
             subscriptionTier: 'trial',
             subscriptionStatus: 'trialing',
           },
@@ -506,6 +506,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
           isFounder: user.isFounder || false,
+          emailVerified: user.emailVerified || false,
           mustChangePassword: user.mustChangePassword || false,
           isGuest: user.isGuest || false,
           guestExpiresAt: user.guestExpiresAt ? String(user.guestExpiresAt) : null,

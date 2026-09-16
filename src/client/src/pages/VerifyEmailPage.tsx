@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
+import { useAuthStore } from '../stores/authStore';
+import { ROUTES } from '../routes';
 
 export const VerifyEmailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
+  const { isAuthenticated, setUser } = useAuthStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const token = searchParams.get('token');
@@ -16,16 +20,31 @@ export const VerifyEmailPage: React.FC = () => {
     }
 
     apiService.verifyEmail(token)
-      .then((data) => {
+      .then(async (data) => {
         setStatus('success');
         setMessage(data.message || 'Email verified successfully!');
+        // If already logged in, refresh user data so emailVerified updates
+        if (isAuthenticated) {
+          try {
+            const me = await apiService.getMe();
+            if (me.user) setUser(me.user);
+          } catch { /* ignore */ }
+        }
       })
       .catch((err) => {
         setStatus('error');
         const axiosError = err as { response?: { data?: { message?: string } } };
         setMessage(axiosError.response?.data?.message || 'Verification failed. The link may be expired.');
       });
-  }, [searchParams]);
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleContinue() {
+    if (isAuthenticated) {
+      navigate(ROUTES.dashboard, { replace: true });
+    } else {
+      navigate(ROUTES.login, { replace: true });
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 py-12 px-4">
@@ -46,12 +65,12 @@ export const VerifyEmailPage: React.FC = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Email Verified!</h2>
             <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
-            <Link
-              to="/login"
+            <button
+              onClick={handleContinue}
               className="inline-block px-6 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
             >
-              Sign In
-            </Link>
+              {isAuthenticated ? 'Continue to Dashboard' : 'Sign In'}
+            </button>
           </>
         )}
 

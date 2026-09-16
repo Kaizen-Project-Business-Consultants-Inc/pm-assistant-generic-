@@ -111,6 +111,11 @@ class ApiService {
     return response.data;
   }
 
+  async resendVerificationEmail(email: string) {
+    const response = await this.api.post('/auth/resend-verification', { email });
+    return response.data;
+  }
+
   async forgotPassword(email: string) {
     const response = await this.api.post('/auth/forgot-password', { email });
     return response.data;

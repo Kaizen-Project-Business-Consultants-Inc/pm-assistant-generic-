@@ -17,6 +17,7 @@ const isPrelaunch = import.meta.env.VITE_PRELAUNCH === 'true';
 // Lazy-loaded pages (split into separate chunks)
 const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
+const VerifyEmailPendingPage = lazy(() => import('./pages/VerifyEmailPendingPage').then(m => ({ default: m.VerifyEmailPendingPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const PricingPage = lazy(() => import('./pages/PricingPage').then(m => ({ default: m.PricingPage })));
@@ -97,6 +98,7 @@ function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { childre
   }, []);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user && user.emailVerified === false) return <Navigate to={ROUTES.verifyEmailPending} replace />;
   if (user?.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!skipOnboardingCheck && !user?.fullName) return <Navigate to="/onboarding" replace />;
   if (requiredRole && user?.role !== requiredRole) return <Navigate to="/dashboard" replace />;
@@ -104,7 +106,7 @@ function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { childre
 }
 
 function App() {
-  const { isAuthenticated, isLoading, setUser, setLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, user, setUser, setLoading } = useAuthStore();
 
   useEffect(() => {
     // Hydrate auth from cookies on mount (handles page refresh + verify-login redirect)
@@ -145,6 +147,7 @@ function App() {
         <Route path={ROUTES.login} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : <LoginPage />)} />
         <Route path={ROUTES.register} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated && !window.location.search.includes('invite=') ? <Navigate to={ROUTES.dashboard} replace /> : <RegisterPage />)} />
         <Route path={ROUTES.verifyEmail} element={<VerifyEmailPage />} />
+        <Route path={ROUTES.verifyEmailPending} element={isAuthenticated ? <VerifyEmailPendingPage /> : <Navigate to={ROUTES.login} replace />} />
         <Route path={ROUTES.forgotPassword} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <ForgotPasswordPage />} />
         <Route path={ROUTES.resetPassword} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <ResetPasswordPage />} />
         <Route path={ROUTES.pricing} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <PricingPage />} />
@@ -157,7 +160,7 @@ function App() {
         <Route path={ROUTES.waitlistAdmin} element={<Navigate to={ROUTES.adminWaitlist} replace />} />
         <Route path={ROUTE_PATTERNS.portal} element={<PortalViewPage />} />
         <Route path={ROUTES.changePassword} element={isAuthenticated ? <ChangePasswordPage /> : <Navigate to={ROUTES.login} replace />} />
-        <Route path={ROUTES.onboarding} element={isAuthenticated ? <OnboardingPage /> : <Navigate to={ROUTES.login} replace />} />
+        <Route path={ROUTES.onboarding} element={isAuthenticated ? (user?.emailVerified === false ? <Navigate to={ROUTES.verifyEmailPending} replace /> : <OnboardingPage />) : <Navigate to={ROUTES.login} replace />} />
 
         {/* Protected routes */}
         <Route path={ROUTES.dashboard} element={<PrivateRoute><DashboardPM /></PrivateRoute>} />

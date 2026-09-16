@@ -9,6 +9,7 @@ export const ROUTES = {
   login: '/login',
   register: '/register',
   verifyEmail: '/verify-email',
+  verifyEmailPending: '/verify-email-pending',
   forgotPassword: '/forgot-password',
   resetPassword: '/reset-password',
   pricing: '/pricing',
