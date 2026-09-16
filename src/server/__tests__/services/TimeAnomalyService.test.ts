@@ -139,11 +139,11 @@ describe('TimeAnomalyService', () => {
     });
 
     it('detects weekend work (Saturday)', async () => {
-      // 2026-09-13 is a Saturday
+      // 2026-09-12 is a Saturday
       mockQuery.mockResolvedValueOnce([
-        makeEntry({ id: 'e1', date: '2026-09-13', hours: 4 }),
+        makeEntry({ id: 'e1', date: '2026-09-12', hours: 4 }),
       ]);
-      const result = await timeAnomalyService.detectAnomalies('proj-1', '2026-09-13', '2026-09-13');
+      const result = await timeAnomalyService.detectAnomalies('proj-1', '2026-09-12', '2026-09-12');
       const weekend = result.filter(a => a.type === 'weekend_work');
       expect(weekend).toHaveLength(1);
       expect(weekend[0].severity).toBe('low');
@@ -151,11 +151,11 @@ describe('TimeAnomalyService', () => {
     });
 
     it('detects weekend work (Sunday)', async () => {
-      // 2026-09-14 is a Sunday
+      // 2026-09-13 is a Sunday
       mockQuery.mockResolvedValueOnce([
-        makeEntry({ id: 'e1', date: '2026-09-14', hours: 3 }),
+        makeEntry({ id: 'e1', date: '2026-09-13', hours: 3 }),
       ]);
-      const result = await timeAnomalyService.detectAnomalies('proj-1', '2026-09-14', '2026-09-14');
+      const result = await timeAnomalyService.detectAnomalies('proj-1', '2026-09-13', '2026-09-13');
       const weekend = result.filter(a => a.type === 'weekend_work');
       expect(weekend).toHaveLength(1);
       expect(weekend[0].details.dayName).toBe('Sunday');
