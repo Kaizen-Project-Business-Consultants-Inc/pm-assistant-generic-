@@ -29,6 +29,7 @@ function renderToolbar(columnState?: ColumnState) {
   return render(
     <GanttToolbar
       scheduleName="Test schedule"
+      onAddTask={() => {}}
       rowCount={3}
       baseRowCount={3}
       parentTaskCount={0}
@@ -94,6 +95,16 @@ describe('GanttToolbar column picker', () => {
     const firstCheckbox = screen.getAllByRole('checkbox')[0];
     fireEvent.click(firstCheckbox);
     expect(toggleColumn.mock.calls.length + toggleGroup.mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it('places Columns directly after Filter and before Add Task, matching Table view', () => {
+    renderToolbar(makeColumnState());
+    const filter = screen.getByTitle('Filter tasks');
+    const columns = screen.getByTitle('Choose columns');
+    const add = screen.getByText('Add Task');
+    // DOCUMENT_POSITION_FOLLOWING (4): the argument comes after the node
+    expect(filter.compareDocumentPosition(columns) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(columns.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('falls back to the legacy built-in picker when no shared columnState is provided', () => {

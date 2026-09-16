@@ -33,7 +33,7 @@ When a project has more than one schedule, a **pill/tab strip** renders at the t
 In **Gantt mode**, the GanttToolbar is the sole toolbar — the outer ScheduleToolbar is hidden to avoid duplication. The GanttToolbar is a compact single row:
 
 ```
-[Schedule Name] [Task Count] [Critical Path] [Expand/Collapse] | [Zoom D|W|M|Q|Y] [Fit] [Undo|Redo] | [Search] [Filters] [Add] [Delete] [Columns] [Export] [Overalloc] [Minimap] [Views] [⋯] [Table|Split|Gantt]
+[Schedule Name] [Task Count] [Critical Path] [Expand/Collapse] | [Zoom D|W|M|Q|Y] [Fit] [Undo|Redo] | [Search] [Filters] [Columns] [Add] [Delete] [Export] [Overalloc] [Minimap] [Views] [⋯] [Table|Split|Gantt]
 ```
 
 The **[Columns]** control in Gantt mode is the same shared column picker used by Table view (`ColumnPickerDropdown`), bound to the same per-schedule column state — hiding, reordering, or resetting columns in one view applies to the other.
