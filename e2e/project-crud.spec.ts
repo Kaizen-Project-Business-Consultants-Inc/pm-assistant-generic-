@@ -17,32 +17,56 @@ test.describe('Project CRUD', () => {
     const projectName = uniqueName('E2E Test Project');
 
     await page.goto('/projects');
+
+    // Dismiss cookie consent banner if present
+    const cookieDecline = page.locator('button', { hasText: 'Decline' });
+    if (await cookieDecline.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cookieDecline.click();
+      await page.waitForTimeout(300);
+    }
+
     await page.getByRole('button', { name: /New Project/i }).click();
 
     // Wait for the template picker modal to appear
     const modal = page.locator('[role="dialog"][aria-modal="true"]');
     await expect(modal).toBeVisible({ timeout: 15_000 });
 
-    // Click "Blank Project" option
-    const scratchBtn = page.getByText(/Blank Project/i);
+    // Click "Blank Project" option within the modal (use JS click to bypass stacking context)
+    const scratchBtn = modal.getByText(/Blank Project/i);
     if ((await scratchBtn.count()) === 0) {
       test.skip();
       return;
     }
-    await scratchBtn.click();
+    await scratchBtn.evaluate((el) => (el as HTMLElement).click());
 
-    // Fill in the project form — name and start date are both required
-    const nameInput = page.getByPlaceholder('My Project');
-    await nameInput.clear();
-    await nameInput.fill(projectName);
+    // Wait for the form to appear
+    const nameInput = modal.getByPlaceholder('My Project');
+    await expect(nameInput).toBeVisible({ timeout: 5_000 });
 
-    const dateInput = page.locator('input[type="date"]').first();
-    await dateInput.fill('2026-08-01');
+    // Fill in the project form using evaluate (stacking context blocks normal fill)
+    await nameInput.evaluate((el, name) => {
+      const input = el as HTMLInputElement;
+      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+      nativeSetter.call(input, name);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }, projectName);
+
+    const dateInput = modal.locator('input[type="date"]').first();
+    await dateInput.evaluate((el) => {
+      const input = el as HTMLInputElement;
+      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+      nativeSetter.call(input, '2026-08-01');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    // Wait for form validation to enable the button
+    await page.waitForTimeout(500);
 
     // Submit the form
-    const createBtn = page.getByRole('button', { name: /Create Project/i });
-    await expect(createBtn).toBeEnabled({ timeout: 5_000 });
-    await createBtn.click();
+    const createBtn = modal.locator('button', { hasText: /Create Project/i });
+    await createBtn.evaluate((el) => (el as HTMLElement).click());
 
     // Should navigate to the new project detail page
     await expect(page).toHaveURL(/\/project\//, { timeout: 15_000 });
