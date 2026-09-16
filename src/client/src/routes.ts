@@ -8,6 +8,8 @@ export const ROUTES = {
   home: '/',
   login: '/login',
   register: '/register',
+  /** Shortcut to SME-tier registration (SME is hidden from public pricing until launch) */
+  smeRegister: '/login/sme',
   verifyEmail: '/verify-email',
   verifyEmailPending: '/verify-email-pending',
   forgotPassword: '/forgot-password',
