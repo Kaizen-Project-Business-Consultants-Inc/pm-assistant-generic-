@@ -2556,6 +2556,8 @@ Accepted date formats: `YYYY-MM-DD` and `MM/DD/YYYY`. Unrecognised status or pri
 
 In the panel, findings are grouped by severity. Each one says what is wrong in plain English and has a **Show rows** button that filters the grid to exactly the tasks involved; use **Clear** in the orange bar above the grid to see everything again. Tasks with a Critical or High finding show a small orange dot beside their row number. **Re-run review** refreshes the score after you make changes, and the small bar chart shows how the score has moved over the last eight runs.
 
+**What the import keeps from your file:** Kovarti now preserves the structure your spreadsheet or MS Project file already has, so the review reflects real gaps rather than things lost on the way in. It links tasks from a **predecessors** column (or from MS Project links), marks **milestones** (a milestone column or a zero-duration row), captures an **imported baseline** when the file has baseline or actual dates, reads a duration column as **days** when the numbers match the calendar span, and skips **legend or note rows** and stray spreadsheet cell references. The import summary tells you how many links it made, whether a baseline was captured, and which rows it skipped.
+
 The score bands are: 0–39 *Tracking sheet* (the schedule can report but not predict), 40–69 *Needs work*, 70–89 *Controllable*, 90–100 *Fit for control*. Some rules, such as float and buffer checks, only apply once tasks have predecessors; they are listed under **Unlocks when dependencies exist**.
 
 ---

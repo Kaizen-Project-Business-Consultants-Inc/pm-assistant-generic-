@@ -369,7 +369,7 @@ class ApiService {
     return response.data;
   }
 
-  async importStructured(scheduleId: string, tasks: Array<{ name: string; wbs?: string; startDate?: string; endDate?: string; duration?: number; predecessors?: string; percentComplete?: number; outlineLevel?: number }>) {
+  async importStructured(scheduleId: string, tasks: Array<{ name: string; uid?: number; wbs?: string; startDate?: string; endDate?: string; duration?: number; predecessors?: string; isMilestone?: boolean; percentComplete?: number; outlineLevel?: number }>) {
     const response = await this.api.post(`/schedules/${scheduleId}/import-structured`, { tasks });
     return response.data;
   }

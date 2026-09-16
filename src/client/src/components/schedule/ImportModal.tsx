@@ -38,7 +38,12 @@ interface ImportReviewSummary {
 interface ImportResult {
   succeeded: number;
   failed: { row: number; error: string }[];
+  skipped?: { row: number; name: string; reason: string }[];
+  warnings?: string[];
   resourcesCreated?: number;
+  dependenciesCreated?: number;
+  baselineCreated?: boolean;
+  durationNote?: string | null;
   review?: ImportReviewSummary | null;
 }
 
@@ -54,6 +59,21 @@ interface ExtractedTask {
 }
 
 const DOCUMENT_EXTS = ['pdf', 'docx', 'doc', 'txt'];
+
+/** Normalise any import response into the shape the result panel renders. */
+function toImportResult(res: any): ImportResult {
+  return {
+    succeeded: res?.succeeded ?? 0,
+    failed: res?.failed ?? [],
+    skipped: res?.skipped ?? [],
+    warnings: res?.warnings ?? [],
+    resourcesCreated: res?.resourcesCreated ?? 0,
+    dependenciesCreated: res?.dependenciesCreated ?? 0,
+    baselineCreated: res?.baselineCreated ?? false,
+    durationNote: res?.durationNote ?? null,
+    review: res?.review ?? null,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // CSV helpers
@@ -178,17 +198,19 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
     setError('');
     try {
       // Convert to import-structured format using WBS for hierarchy
-      const tasks = included.map(t => ({
+      const tasks = included.map((t, idx) => ({
         name: t.name,
+        uid: idx + 1,
         wbs: t.wbs,
         startDate: t.startDate || undefined,
         endDate: t.endDate || undefined,
         duration: t.duration || undefined,
         predecessors: t.predecessors || undefined,
+        isMilestone: !t.isSummary && t.duration === 0,
         outlineLevel: (t.wbs.split('.').length - 1) + 1, // "1" → 1, "1.1" → 2, "1.1.1" → 3
       }));
       const res = await apiService.importStructured(scheduleId, tasks);
-      setResult({ succeeded: res.succeeded ?? 0, failed: res.failed ?? [], review: res.review ?? null });
+      setResult(toImportResult(res));
       if ((res.succeeded ?? 0) > 0) onImported?.();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Import failed'));
@@ -222,7 +244,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
           if (mspdiTasks.length === 0) { setError('No tasks found in XML file.'); return; }
           setImporting(true);
           const res = await apiService.importStructured(scheduleId, mspdiTasks);
-          setResult({ succeeded: res.succeeded ?? 0, failed: res.failed ?? [], review: res.review ?? null });
+          setResult(toImportResult(res));
           if ((res.succeeded ?? 0) > 0) onImported?.();
         } catch (err: unknown) {
           setError(getApiErrorMessage(err, 'Failed to parse XML file'));
@@ -295,7 +317,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
       }
       const res = await apiService.importTasks(scheduleId, csvText, headerMap);
       const data = res?.data ?? res;
-      setResult({ succeeded: data.succeeded ?? 0, failed: data.failed ?? [], resourcesCreated: data.resourcesCreated ?? 0, review: data.review ?? null });
+      setResult(toImportResult(data));
       if ((data.succeeded ?? 0) > 0) onImported?.();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Import failed'));
@@ -331,6 +353,33 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
                 {result.succeeded} task{result.succeeded !== 1 ? 's' : ''} imported successfully.
                 {result.resourcesCreated ? ` ${result.resourcesCreated} resource${result.resourcesCreated !== 1 ? 's' : ''} added.` : ''}
               </div>
+              {(result.dependenciesCreated || result.baselineCreated || result.durationNote || (result.skipped && result.skipped.length > 0)) && (
+                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-sm space-y-1">
+                  {result.dependenciesCreated ? (
+                    <p>{result.dependenciesCreated} {result.dependenciesCreated === 1 ? 'dependency' : 'dependencies'} linked from predecessors.</p>
+                  ) : null}
+                  {result.baselineCreated ? <p>Captured an &ldquo;Imported baseline&rdquo; from the file.</p> : null}
+                  {result.durationNote ? <p>{result.durationNote}</p> : null}
+                  {result.skipped && result.skipped.length > 0 ? (
+                    <p>
+                      {result.skipped.length} row{result.skipped.length !== 1 ? 's' : ''} skipped as legend/artefacts
+                      {`: ${result.skipped.slice(0, 5).map(s => s.name).join(', ')}`}
+                      {result.skipped.length > 5 ? '…' : '.'}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+              {result.warnings && result.warnings.length > 0 && (
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-sm space-y-1">
+                  <p className="font-medium">{result.warnings.length} predecessor warning{result.warnings.length !== 1 ? 's' : ''}:</p>
+                  <ul className="list-disc list-inside">
+                    {result.warnings.slice(0, 8).map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                    {result.warnings.length > 8 && <li>…and {result.warnings.length - 8} more.</li>}
+                  </ul>
+                </div>
+              )}
               {result.failed.length > 0 && (
                 <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-sm space-y-1">
                   <p className="font-medium">{result.failed.length} row{result.failed.length !== 1 ? 's' : ''} failed:</p>

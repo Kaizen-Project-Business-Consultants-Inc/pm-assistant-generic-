@@ -2698,7 +2698,17 @@ Rules that need dependency logic are listed under **Unlocks when dependencies ex
 
 **API** (mounted under `/api/v1/schedules`): `POST /:scheduleId/review` (editor) runs and stores a review; `GET /:scheduleId/review/latest` (viewer, 204 when none); `GET /:scheduleId/review/history?limit=8` (viewer) returns the score trend newest first.
 
-Phases 2–4 of the Schedule Review Spec (import leak fixes, AI-drafted fix proposals with approve-and-recompute, weekly agent runs and MCP tools) are not yet built.
+**Import leak fixes (Phase 2).** The importer used to drop structure the file already held, so a freshly imported schedule scored in the lowest band for reasons the customer never introduced. The import now preserves it:
+
+- **Predecessors.** CSV files map `predecessors / predecessor / depends_on / dependency` columns; MS Project XML and document imports carry their predecessor links through. Tokens are parsed (`3`, `3FS+2d`, `3,5SS`, a WBS code, or a task name) and resolved to real tasks in a second pass after every row exists — MS Project references now resolve by the task's real UID, not its position. Up to 20 predecessors per row; cycles are rejected; anything unresolvable is reported as a warning rather than dropped. This is the change that clears the critical **R03 "no logic at all"** finding.
+- **Milestone flag.** A milestone column (`is_milestone`, a `type` of "Milestone") or a zero-duration row sets the milestone flag on import, so gates land on the milestone timeline instead of showing as multi-day bars.
+- **Imported baseline.** When the file carries baseline or actual columns, an "Imported baseline" is captured automatically so baseline-drift checks have something to compare against.
+- **Hours vs days.** If a duration column tracks the working-day span for most rows, it is read as days rather than hours (decided once per schedule), fixing the "hours and days were swapped" finding.
+- **Legend and artefact rows.** Rows whose name is a lone status word with empty cells are skipped, and spreadsheet cell references glued to an owner (e.g. `DBJ & JV+D9:D27`) are cleaned off. Skipped rows are listed in the import summary.
+
+The import summary reports how many dependencies were linked, whether a baseline was captured, any duration re-interpretation, skipped rows and predecessor warnings, alongside the score chip.
+
+Phases 3–4 of the Schedule Review Spec (AI-drafted fix proposals with approve-and-recompute, weekly agent runs and MCP tools) are not yet built.
 
 ---
 

@@ -11,6 +11,26 @@ import { config } from '../../config';
 import logger from '../../utils/logger';
 import { resolveAssigneeResources, assigneeToResourceId } from '../../utils/assigneeResources';
 import { scheduleReviewService } from '../../services/ScheduleReviewService';
+import { baselineService } from '../../services/BaselineService';
+import {
+  parsePredecessorTokens,
+  resolvePredecessor,
+  MAX_PREDECESSORS_PER_ROW,
+  type PredecessorLookups,
+} from '../../utils/importPredecessors';
+import {
+  isLegendRow,
+  cleanAssignee,
+  workingDaySpan,
+  decideDurationUnit,
+  type DurationSample,
+} from '../../utils/importHeuristics';
+
+/** Truthy string test for boolean-ish import columns (yes/y/true/1/x). */
+function isTruthyFlag(v: string | undefined | null): boolean {
+  if (!v) return false;
+  return /^(y|yes|true|1|x|✓|milestone)$/i.test(v.trim());
+}
 
 const importCsvSchema = z.object({
   csv: z.string().min(1).max(5 * 1024 * 1024),
@@ -123,6 +143,18 @@ function mapColumn(header: string, columnMap: Record<string, string> | undefined
     baselineduration: 'baselineDurationDays',
     baseline_cost: 'baselineCost',
     baselinecost: 'baselineCost',
+    predecessors: '_predecessors',
+    predecessor: '_predecessors',
+    depends_on: '_predecessors',
+    dependson: '_predecessors',
+    dependency: '_predecessors',
+    dependencies: '_predecessors',
+    is_milestone: '_milestone',
+    ismilestone: '_milestone',
+    milestone_flag: '_milestone',
+    milestone_yn: '_milestone',
+    type: '_type',
+    task_type: '_type',
     phase: '_phase',
     group: '_phase',
     category: '_phase',
@@ -187,14 +219,18 @@ export async function importRoutes(fastify: FastifyInstance) {
 
       const succeeded: number[] = [];
       const failed: { row: number; error: string }[] = [];
+      const skipped: { row: number; name: string; reason: string }[] = [];
+      const warnings: string[] = [];
 
       // Resolve assignee names to resource IDs up front so imported tasks are
-      // linked to real resources (creating any that don't exist yet).
+      // linked to real resources (creating any that don't exist yet). Cell-ref
+      // artefacts (e.g. "DBJ & JV+D9:D27") are cleaned before resolution.
       const importedAssignees = new Set<string>();
       for (const rawRow of records) {
         for (const [header, value] of Object.entries(rawRow)) {
-          if (mapColumn(header, columnMap) === 'assignedTo' && value && value.trim()) {
-            importedAssignees.add(value.trim());
+          if (mapColumn(header, columnMap) === 'assignedTo') {
+            const cleaned = cleanAssignee(value);
+            if (cleaned) importedAssignees.add(cleaned);
           }
         }
       }
@@ -228,52 +264,56 @@ export async function importRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Track phase/group summary tasks so child tasks get parentTaskId
-      const phaseTaskIds = new Map<string, string>(); // phase name → taskId
+      // Normalise a raw CSV row into a validated, prepared task. Legend/artefact
+      // rows are dropped here; unit (hours vs days) is decided across all rows
+      // before any task is created.
+      interface PreparedRow {
+        rowNum: number;
+        name: string;
+        description?: string;
+        status: string;
+        priority: string;
+        assignedTo: string | null;
+        startDate: string | null;
+        endDate: string | null;
+        dueDate: string | null;
+        actualStartDate: string | null;
+        actualEndDate: string | null;
+        baselineStartDate: string | null;
+        baselineFinishDate: string | null;
+        baselineDurationDays: number | null;
+        baselineCost: number | null;
+        progressPercentage: number;
+        durationValue: number | null;
+        isMilestone: boolean;
+        phase?: string;
+        predecessors: string | null;
+      }
 
+      const prepared: PreparedRow[] = [];
+      let sawBaselineColumn = false;
+      let sawActualColumn = false;
+
+      // ---- Pass 1: map + validate each row ----
       for (let i = 0; i < records.length; i++) {
         const rawRow = records[i];
         const rowNum = i + 1; // 1-based row number (excluding header)
 
         try {
-          // Map CSV columns to task fields
           const row: Record<string, string> = {};
           for (const [header, value] of Object.entries(rawRow)) {
             const field = mapColumn(header, columnMap);
-            if (field) {
-              row[field] = value;
-            }
+            if (field) row[field] = value;
           }
 
-          if (!row.name || row.name.trim() === '') {
-            throw new Error('name is required');
-          }
+          const name = (row.name || '').trim();
+          if (!name) throw new Error('name is required');
 
-          // Handle phase/group column → create summary task if new phase
-          let parentTaskId: string | undefined;
-          const phase = row._phase?.trim();
-          if (phase) {
-            if (!phaseTaskIds.has(phase)) {
-              // Create a summary task for this phase
-              const phaseDedupKey = `${phase.toLowerCase()}|`;
-              if (!existingKeys.has(phaseDedupKey)) {
-                const phaseTask = await scheduleService.createTask({
-                  scheduleId,
-                  name: phase,
-                  status: 'in_progress' as CreateTaskData['status'],
-                  priority: 'medium' as CreateTaskData['priority'],
-                  createdBy: userId,
-                });
-                const phaseId = phaseTask.id;
-                phaseTaskIds.set(phase, phaseId);
-                existingKeys.add(phaseDedupKey);
-              } else {
-                // Phase task already exists — find its ID
-                const existing = existingTasks.find(t => t.name.toLowerCase().trim() === phase.toLowerCase());
-                if (existing) phaseTaskIds.set(phase, existing.id);
-              }
-            }
-            parentTaskId = phaseTaskIds.get(phase);
+          // Drop legend/artefact rows (a lone status word with empty cells).
+          const otherValues = Object.entries(row).filter(([k]) => k !== 'name').map(([, v]) => v);
+          if (isLegendRow(name, otherValues)) {
+            skipped.push({ row: rowNum, name, reason: 'legend or artefact row' });
+            continue;
           }
 
           // Validate and default status (normalize common Gantt labels)
@@ -288,11 +328,8 @@ export async function importRoutes(fastify: FastifyInstance) {
               delayed: 'in_progress',
             };
             const mapped = statusAliases[s];
-            if (mapped) {
-              status = mapped;
-            } else if (VALID_STATUSES.includes(s)) {
-              status = s;
-            }
+            if (mapped) status = mapped;
+            else if (VALID_STATUSES.includes(s)) status = s;
             // If unrecognized, silently default to 'pending' rather than failing
           }
 
@@ -308,57 +345,174 @@ export async function importRoutes(fastify: FastifyInstance) {
 
           const startDate = toDateStr(row.startDate);
           const endDate = toDateStr(row.endDate);
-          const dueDate = toDateStr(row.dueDate);
-          const actualStartDate = toDateStr(row.actualStartDate);
-          const actualEndDate = toDateStr(row.actualEndDate);
-          const baselineStartDate = toDateStr(row.baselineStartDate);
-          const baselineFinishDate = toDateStr(row.baselineFinishDate);
-          const baselineDurationDays = row.baselineDurationDays ? parseFloat(row.baselineDurationDays) : null;
-          const baselineCost = row.baselineCost ? parseFloat(row.baselineCost) : null;
           const progressPercentage = row.progressPercentage ? parseFloat(row.progressPercentage) : 0;
-          const estimatedDurationHours = row.estimatedDurationHours ? parseFloat(row.estimatedDurationHours) : null;
+          const durationValue = row.estimatedDurationHours ? parseFloat(row.estimatedDurationHours) : null;
 
           if (row.progressPercentage && isNaN(progressPercentage)) {
             throw new Error(`Invalid progress value "${row.progressPercentage}"`);
           }
-          if (row.estimatedDurationHours && estimatedDurationHours !== null && isNaN(estimatedDurationHours)) {
-            throw new Error(`Invalid estimated_hours value "${row.estimatedDurationHours}"`);
+          if (row.estimatedDurationHours && durationValue !== null && isNaN(durationValue)) {
+            throw new Error(`Invalid duration value "${row.estimatedDurationHours}"`);
           }
 
-          // Duplicate detection
-          const dedupKey = `${row.name.trim().toLowerCase()}|${startDate || ''}`;
-          if (existingKeys.has(dedupKey)) {
-            throw new Error(`Duplicate task: "${row.name.trim()}" with start date ${startDate || '(none)'} already exists`);
+          if (row.baselineStartDate || row.baselineFinishDate || row.baselineDurationDays || row.baselineCost) {
+            sawBaselineColumn = true;
           }
+          if (row.actualStartDate || row.actualEndDate) sawActualColumn = true;
 
-          await scheduleService.createTask({
-            scheduleId,
-            name: row.name.trim(),
+          const isMilestone =
+            isTruthyFlag(row._milestone) ||
+            row._type?.trim().toLowerCase() === 'milestone' ||
+            durationValue === 0;
+
+          prepared.push({
+            rowNum,
+            name,
             description: row.description || undefined,
-            status: status as CreateTaskData['status'],
-            priority: priority as CreateTaskData['priority'],
-            assignedTo: assigneeToResourceId(row.assignedTo, assigneeIdByName),
-            startDate: startDate || undefined,
-            endDate: endDate || undefined,
-            dueDate: dueDate || undefined,
-            actualStartDate: actualStartDate || undefined,
-            actualEndDate: actualEndDate || undefined,
-            baselineStartDate: baselineStartDate || undefined,
-            baselineFinishDate: baselineFinishDate || undefined,
-            baselineDurationDays: baselineDurationDays ?? undefined,
-            baselineCost: baselineCost ?? undefined,
+            status,
+            priority,
+            assignedTo: cleanAssignee(row.assignedTo),
+            startDate,
+            endDate,
+            dueDate: toDateStr(row.dueDate),
+            actualStartDate: toDateStr(row.actualStartDate),
+            actualEndDate: toDateStr(row.actualEndDate),
+            baselineStartDate: toDateStr(row.baselineStartDate),
+            baselineFinishDate: toDateStr(row.baselineFinishDate),
+            baselineDurationDays: row.baselineDurationDays ? parseFloat(row.baselineDurationDays) : null,
+            baselineCost: row.baselineCost ? parseFloat(row.baselineCost) : null,
             progressPercentage,
-            estimatedDurationHours: estimatedDurationHours ?? undefined,
+            durationValue,
+            isMilestone,
+            phase: row._phase?.trim() || undefined,
+            predecessors: row._predecessors?.trim() || null,
+          });
+        } catch (rowErr: any) {
+          failed.push({ row: rowNum, error: rowErr.message || 'Unknown error' });
+        }
+      }
+
+      // ---- Decide hours vs days once, across the whole schedule ----
+      const durationUnit = decideDurationUnit(
+        prepared.map(p => ({
+          span: p.startDate && p.endDate ? workingDaySpan(p.startDate, p.endDate) : null,
+          value: p.durationValue,
+        }) as DurationSample),
+      );
+      const durationNote = durationUnit === 'days'
+        ? 'Interpreted the duration column as days, not hours.'
+        : null;
+
+      // ---- Pass 2: create tasks ----
+      const phaseTaskIds = new Map<string, string>(); // phase name → taskId
+      const rowNumToTaskId = new Map<string, string>(); // 1-based row number → taskId
+      const nameToTaskId = new Map<string, string>();
+      for (const t of existingTasks) nameToTaskId.set(t.name.toLowerCase().trim(), t.id);
+
+      for (const p of prepared) {
+        try {
+          // Phase/group column → create (or reuse) a summary parent task
+          let parentTaskId: string | undefined;
+          if (p.phase) {
+            const phase = p.phase;
+            if (!phaseTaskIds.has(phase)) {
+              const phaseDedupKey = `${phase.toLowerCase()}|`;
+              if (!existingKeys.has(phaseDedupKey)) {
+                const phaseTask = await scheduleService.createTask({
+                  scheduleId,
+                  name: phase,
+                  status: 'in_progress' as CreateTaskData['status'],
+                  priority: 'medium' as CreateTaskData['priority'],
+                  createdBy: userId,
+                });
+                phaseTaskIds.set(phase, phaseTask.id);
+                nameToTaskId.set(phase.toLowerCase(), phaseTask.id);
+                existingKeys.add(phaseDedupKey);
+              } else {
+                const existing = existingTasks.find(t => t.name.toLowerCase().trim() === phase.toLowerCase());
+                if (existing) phaseTaskIds.set(phase, existing.id);
+              }
+            }
+            parentTaskId = phaseTaskIds.get(phase);
+          }
+
+          const dedupKey = `${p.name.toLowerCase()}|${p.startDate || ''}`;
+          if (existingKeys.has(dedupKey)) {
+            throw new Error(`Duplicate task: "${p.name}" with start date ${p.startDate || '(none)'} already exists`);
+          }
+
+          const estimatedDays = durationUnit === 'days' ? (p.durationValue ?? undefined) : undefined;
+          const estimatedDurationHours = durationUnit === 'days' ? undefined : (p.durationValue ?? undefined);
+
+          const created = await scheduleService.createTask({
+            scheduleId,
+            name: p.name,
+            description: p.description,
+            status: p.status as CreateTaskData['status'],
+            priority: p.priority as CreateTaskData['priority'],
+            assignedTo: assigneeToResourceId(p.assignedTo || undefined, assigneeIdByName),
+            startDate: p.startDate || undefined,
+            endDate: p.endDate || undefined,
+            dueDate: p.dueDate || undefined,
+            actualStartDate: p.actualStartDate || undefined,
+            actualEndDate: p.actualEndDate || undefined,
+            baselineStartDate: p.baselineStartDate || undefined,
+            baselineFinishDate: p.baselineFinishDate || undefined,
+            baselineDurationDays: p.baselineDurationDays ?? undefined,
+            baselineCost: p.baselineCost ?? undefined,
+            progressPercentage: p.progressPercentage,
+            estimatedDays,
+            estimatedDurationHours,
+            isMilestone: p.isMilestone || undefined,
             parentTaskId,
             createdBy: userId,
           });
 
-          // Add to dedup set to catch intra-batch duplicates
           existingKeys.add(dedupKey);
-
-          succeeded.push(rowNum);
+          rowNumToTaskId.set(String(p.rowNum), created.id);
+          nameToTaskId.set(p.name.toLowerCase(), created.id);
+          succeeded.push(p.rowNum);
         } catch (rowErr: any) {
-          failed.push({ row: rowNum, error: rowErr.message || 'Unknown error' });
+          failed.push({ row: p.rowNum, error: rowErr.message || 'Unknown error' });
+        }
+      }
+
+      // ---- Pass 3: resolve predecessors into dependencies ----
+      let dependenciesCreated = 0;
+      const predLookups: PredecessorLookups = { byRef: rowNumToTaskId, byName: nameToTaskId };
+      for (const p of prepared) {
+        if (!p.predecessors) continue;
+        const selfId = rowNumToTaskId.get(String(p.rowNum));
+        if (!selfId) continue;
+
+        const tokens = parsePredecessorTokens(p.predecessors);
+        if (tokens.length > MAX_PREDECESSORS_PER_ROW) {
+          warnings.push(`Row ${p.rowNum} ("${p.name}") lists ${tokens.length} predecessors; only the first ${MAX_PREDECESSORS_PER_ROW} were applied.`);
+        }
+        for (const tok of tokens.slice(0, MAX_PREDECESSORS_PER_ROW)) {
+          const res = resolvePredecessor(tok, predLookups);
+          if (!res) {
+            warnings.push(`Row ${p.rowNum} ("${p.name}"): could not resolve predecessor "${tok.raw}".`);
+            continue;
+          }
+          if (res.taskId === selfId) continue; // ignore self-reference
+          try {
+            await scheduleService.addDependency(selfId, res.taskId, res.type, res.lagDays);
+            dependenciesCreated++;
+          } catch {
+            warnings.push(`Row ${p.rowNum} ("${p.name}"): predecessor "${tok.raw}" was rejected (cycle or duplicate).`);
+          }
+        }
+      }
+
+      // ---- Create an imported baseline when the file carried baseline/actual data ----
+      let baselineCreated = false;
+      if (succeeded.length > 0 && (sawBaselineColumn || sawActualColumn)) {
+        try {
+          await baselineService.create(scheduleId, 'Imported baseline', userId);
+          baselineCreated = true;
+        } catch (blErr: any) {
+          logger.warn('Imported baseline creation failed', { scheduleId, error: blErr?.message });
         }
       }
 
@@ -382,8 +536,13 @@ export async function importRoutes(fastify: FastifyInstance) {
       return {
         succeeded: succeeded.length,
         failed,
+        skipped,
+        warnings,
         total: records.length,
         resourcesCreated,
+        dependenciesCreated,
+        baselineCreated,
+        durationNote,
         review,
       };
     } catch (error: any) {
@@ -465,11 +624,13 @@ Return a JSON object mapping unmapped headers to target fields.`;
   // POST /:scheduleId/import-structured — import tasks from structured JSON (used by MSPDI parser)
   const structuredTaskSchema = z.object({
     name: z.string().min(1),
+    uid: z.number().optional(), // real MS Project UID, used to resolve predecessors
     wbs: z.string().optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
     duration: z.number().optional(),
     predecessors: z.string().optional(), // "3FS+2d,5SS"
+    isMilestone: z.boolean().optional(),
     percentComplete: z.number().min(0).max(100).optional(),
     outlineLevel: z.number().int().min(0).optional(),
   });
@@ -486,11 +647,20 @@ Return a JSON object mapping unmapped headers to target fields.`;
       if (!schedule) return reply.status(404).send({ error: 'Schedule not found' });
 
       const userId = request.user!.userId;
-      const uidToTaskId = new Map<number, string>();
+      // Predecessor refs may point at a task's real MS Project UID, its WBS code,
+      // or its name — build a lookup for each. Falls back to 1-based position when
+      // no UID is supplied.
+      const byRef = new Map<string, string>();   // uid / row number → taskId
+      const byWbs = new Map<string, string>();    // wbs code → taskId
+      const nameToTaskId = new Map<string, string>();
       const levelStack: { level: number; taskId: string }[] = [];
+
+      const existingTasks = await scheduleService.findTasksByScheduleId(scheduleId);
+      for (const t of existingTasks) nameToTaskId.set(t.name.toLowerCase().trim(), t.id);
 
       const succeeded: number[] = [];
       const failed: { row: number; error: string }[] = [];
+      const warnings: string[] = [];
 
       for (let i = 0; i < body.tasks.length; i++) {
         const t = body.tasks[i];
@@ -514,6 +684,8 @@ Return a JSON object mapping unmapped headers to target fields.`;
             endDate = s.toISOString().slice(0, 10);
           }
 
+          const isMilestone = t.isMilestone === true || t.duration === 0;
+
           const task = await scheduleService.createTask({
             scheduleId,
             name: t.name.trim(),
@@ -521,11 +693,15 @@ Return a JSON object mapping unmapped headers to target fields.`;
             endDate: endDate || undefined,
             estimatedDays: t.duration || undefined,
             progressPercentage: t.percentComplete || 0,
+            isMilestone: isMilestone || undefined,
             parentTaskId,
             createdBy: userId,
           });
 
-          uidToTaskId.set(i + 1, task.id); // Use 1-based index as UID proxy
+          // Key by the real UID when present, else by 1-based position.
+          byRef.set(String(t.uid ?? i + 1), task.id);
+          if (t.wbs) byWbs.set(t.wbs.trim(), task.id);
+          nameToTaskId.set(t.name.trim().toLowerCase(), task.id);
           levelStack.push({ level, taskId: task.id });
           succeeded.push(i + 1);
         } catch (rowErr: any) {
@@ -533,33 +709,32 @@ Return a JSON object mapping unmapped headers to target fields.`;
         }
       }
 
-      // Second pass: create dependencies
+      // Second pass: resolve predecessors (uid, WBS, or name) into dependencies
       let depsCreated = 0;
+      const predLookups: PredecessorLookups = { byRef, byWbs, byName: nameToTaskId };
       for (let i = 0; i < body.tasks.length; i++) {
         const t = body.tasks[i];
         if (!t.predecessors) continue;
 
-        const taskId = uidToTaskId.get(i + 1);
+        const taskId = byRef.get(String(t.uid ?? i + 1));
         if (!taskId) continue;
 
-        const predParts = t.predecessors.split(',').map(s => s.trim()).filter(Boolean);
-        for (const pred of predParts) {
-          // Parse "3FS+2d" or "3" or "3SS-1d"
-          const m = pred.match(/^(\d+)(FS|FF|SS|SF)?([+-]\d+d)?$/);
-          if (!m) continue;
-
-          const predUid = parseInt(m[1]);
-          const depType = (m[2] || 'FS') as 'FS' | 'FF' | 'SS' | 'SF';
-          const lagDays = m[3] ? parseInt(m[3].replace('d', '')) : 0;
-
-          const depId = uidToTaskId.get(predUid);
-          if (!depId) continue;
-
+        const tokens = parsePredecessorTokens(t.predecessors);
+        if (tokens.length > MAX_PREDECESSORS_PER_ROW) {
+          warnings.push(`Task "${t.name}" lists ${tokens.length} predecessors; only the first ${MAX_PREDECESSORS_PER_ROW} were applied.`);
+        }
+        for (const tok of tokens.slice(0, MAX_PREDECESSORS_PER_ROW)) {
+          const res = resolvePredecessor(tok, predLookups);
+          if (!res) {
+            warnings.push(`Task "${t.name}": could not resolve predecessor "${tok.raw}".`);
+            continue;
+          }
+          if (res.taskId === taskId) continue; // ignore self-reference
           try {
-            await scheduleService.addDependency(taskId, depId, depType, lagDays);
+            await scheduleService.addDependency(taskId, res.taskId, res.type, res.lagDays);
             depsCreated++;
           } catch {
-            // Skip invalid dependencies silently
+            warnings.push(`Task "${t.name}": predecessor "${tok.raw}" was rejected (cycle or duplicate).`);
           }
         }
       }
@@ -582,6 +757,7 @@ Return a JSON object mapping unmapped headers to target fields.`;
       return {
         succeeded: succeeded.length,
         failed,
+        warnings,
         total: body.tasks.length,
         dependenciesCreated: depsCreated,
         review,

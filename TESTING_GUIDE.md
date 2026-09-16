@@ -1232,7 +1232,7 @@ Five MS Project-parity features added to the scheduling engine: Task-Level Budge
 
 ---
 
-## 29. Schedule Review (Phase 1)
+## 29. Schedule Review (Phase 1 + Phase 2)
 
 Deterministic schedule quality check. All routes are under `/api/v1/schedules/:scheduleId/review` and require project access (editor to run, viewer to read).
 
@@ -1241,6 +1241,8 @@ Deterministic schedule quality check. All routes are under `/api/v1/schedules/:s
 ```bash
 npx vitest run src/server/__tests__/services/scheduleReviewRules.test.ts     # 28 rules, scoring, DBJ golden case
 npx vitest run src/client/src/__tests__/components/ScheduleReviewPanel.test.tsx
+npx vitest run src/server/__tests__/utils/importPredecessors.test.ts         # Phase 2: predecessor parse + resolve
+npx vitest run src/server/__tests__/utils/importHeuristics.test.ts           # Phase 2: legend rows, cell refs, hours-vs-days
 ```
 
 ### Run a review and read it back
@@ -1259,6 +1261,18 @@ Running the same review twice on an unchanged schedule must return identical `sc
 ### Import summary
 
 Import any CSV through the Import modal. The result panel shows the score chip, the top five findings and **Review and fix**. The import response carries `review: { score, band, counts, topFindings[] }`; a review failure never fails the import (the field is `null`).
+
+### Import leak fixes (Phase 2)
+
+Re-import a file that carries structure and confirm it survives:
+
+- **Predecessors.** Import a CSV with a `predecessors` column (values like `2`, `3FS+2d`, or a task name), or an MS Project XML with linked tasks. The response reports `dependenciesCreated > 0`, the links appear on the Gantt, and a re-run review no longer shows the critical `R03`. Unresolvable refs come back in `warnings`, not silently dropped.
+- **Milestone flag.** A row with a zero duration, an `is_milestone` truthy column, or `type = Milestone` imports as a milestone (zero-length marker on the timeline), so `R04` (milestone with duration) does not fire for it.
+- **Imported baseline.** Import a file with baseline or actual columns and confirm an "Imported baseline" appears in the schedule's baselines list (`baselineCreated: true`), clearing `R18` (no baseline).
+- **Hours vs days.** Import where the duration column equals the working-day span; the summary shows "Interpreted the duration column as days, not hours" (`durationNote`) and `R28` does not fire.
+- **Legend / artefact rows.** A row named only "Completed" (or "Legend"/"Notes") with empty cells, and an owner like `DBJ & JV+D9:D27`, are cleaned: the row appears under `skipped`, the owner is stored as `DBJ & JV`.
+
+Expected response fields on `/import` and `/import-structured`: `dependenciesCreated`, `baselineCreated`, `durationNote`, `skipped[]`, `warnings[]`.
 
 ### UI checks
 

@@ -129,6 +129,8 @@ describe('R03 / R01 / R02 — logic', () => {
     expect(rule(findings, 'R01')[0].taskIds).toEqual(['c']);
     // a feeds b, b feeds d, d is last; c feeds nothing
     expect(rule(findings, 'R02')[0].taskIds).toEqual(['c']);
+    // Once predecessors exist (the Phase 2 import goal) the critical R03 clears.
+    expect(rule(findings, 'R03')).toHaveLength(0);
   });
 });
 
