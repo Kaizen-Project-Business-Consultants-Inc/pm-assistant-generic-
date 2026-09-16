@@ -2,7 +2,8 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { ColumnState } from '../../../hooks/useColumnState';
 import { SavedViewsDropdown } from '../SavedViewsDropdown';
 import type { SavedView } from '../SavedViewsDropdown';
-import type { ColumnKey } from '../tableColumns';
+import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS, type ColumnKey } from '../tableColumns';
+import { ColumnPickerDropdown } from '../ColumnPickerDropdown';
 import { GanttExportDropdown } from './GanttExportDropdown';
 import {
   type GanttTask,
@@ -315,7 +316,22 @@ export const GanttToolbar = React.memo(function GanttToolbar({
             </svg>
           </button>
         )}
-        {/* Column picker -- only shown if no external columnState is provided */}
+        {/* Shared column picker -- same control and column state as Table view, so
+            visibility/order stay in sync across views (the outer ScheduleToolbar is
+            hidden in Gantt mode). */}
+        {columnState && (
+          <ColumnPickerDropdown
+            columns={COLUMN_DEFS}
+            visibleKeys={columnState.visibleKeys}
+            onToggle={columnState.toggleColumn}
+            onToggleGroup={columnState.toggleGroup}
+            onMoveColumn={columnState.moveColumn}
+            columnOrder={columnState.columnOrder}
+            onResetVisibility={() => columnState.setVisibleKeys(new Set(DEFAULT_VISIBLE_KEYS))}
+            onResetOrder={() => columnState.setColumnOrder([])}
+          />
+        )}
+        {/* Legacy built-in picker -- only when no shared columnState is provided */}
         {!columnState && (
         <div className="relative" ref={colPickerRef}>
           <button

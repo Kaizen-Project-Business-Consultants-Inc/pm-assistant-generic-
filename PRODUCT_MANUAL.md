@@ -36,6 +36,8 @@ In **Gantt mode**, the GanttToolbar is the sole toolbar — the outer ScheduleTo
 [Schedule Name] [Task Count] [Critical Path] [Expand/Collapse] | [Zoom D|W|M|Q|Y] [Fit] [Undo|Redo] | [Search] [Filters] [Add] [Delete] [Columns] [Export] [Overalloc] [Minimap] [Views] [⋯] [Table|Split|Gantt]
 ```
 
+The **[Columns]** control in Gantt mode is the same shared column picker used by Table view (`ColumnPickerDropdown`), bound to the same per-schedule column state — hiding, reordering, or resetting columns in one view applies to the other.
+
 In **Table**, **Kanban**, and **Calendar** modes, the ScheduleToolbar is shown instead (with search, filters, column picker, and CSV export).
 
 When **Critical Path** is enabled, a styled banner appears below the toolbar showing total project duration (days) and the number of critical tasks.
