@@ -10,14 +10,18 @@ jobs:
   test:
     name: Type Check & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            src/client/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -35,15 +39,24 @@ jobs:
     name: Build & Deploy
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    # Serialize deploys so two rapid pushes to master cannot land on the
+    # server out of order. In-progress deploys are never cancelled.
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            src/client/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -79,6 +92,44 @@ jobs:
       - name: Restart & verify
         run: |
           ssh ubuntu@147.5.127.99 "sudo systemctl restart pm-app"
-          sleep 5
-          ssh ubuntu@147.5.127.99 "sudo systemctl is-active pm-app"
-          ssh ubuntu@147.5.127.99 "curl -sf http://127.0.0.1:3001/health | head -c 200"
+
+          # The verification script runs on the server via stdin. The heredoc
+          # delimiter is quoted so nothing below is expanded on the runner;
+          # every $variable is evaluated on the remote host.
+          ssh ubuntu@147.5.127.99 'bash -s' <<'REMOTE'
+          set -euo pipefail
+
+          HEALTH_URL="http://127.0.0.1:3001/health"
+          MAX_ATTEMPTS=20   # 20 attempts x 3s = up to ~60s
+          INTERVAL=3
+
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+            state="$(sudo systemctl is-active pm-app || true)"
+
+            if [ "$state" = "failed" ]; then
+              echo "::error::pm-app entered 'failed' state after restart"
+              break
+            fi
+
+            if [ "$state" = "active" ]; then
+              # No pipe here: curl's exit status is what decides success.
+              if body="$(curl -sf --max-time 5 "$HEALTH_URL")"; then
+                echo "pm-app is active and healthy after ${attempt} attempt(s)"
+                echo "Health response: ${body:0:200}"
+                exit 0
+              fi
+              echo "Attempt ${attempt}/${MAX_ATTEMPTS}: service active, health endpoint not ready yet"
+            else
+              echo "Attempt ${attempt}/${MAX_ATTEMPTS}: service state is '${state}'"
+            fi
+
+            sleep "$INTERVAL"
+          done
+
+          echo "::error::pm-app did not become healthy within $((MAX_ATTEMPTS * INTERVAL))s (last state: '${state}')"
+          echo "--- systemctl status ---"
+          sudo systemctl status pm-app --no-pager -l || true
+          echo "--- last 50 journal lines ---"
+          sudo journalctl -u pm-app -n 50 --no-pager || true
+          exit 1
+          REMOTE
