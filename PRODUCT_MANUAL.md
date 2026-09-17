@@ -2723,16 +2723,23 @@ pre-ticked. **Propose fixes** returns instantly using deterministic rules; a **D
 re-drafts the same kinds of fix with richer, Claude-written reasons (slower, validated against the
 real task graph, and only for schedules small enough to draft in one pass). Every paid tier gets
 working proposals even without AI. **Apply selected** captures a "Pre-review baseline"
-first, applies the ticked fixes, and re-scores so the jump is visible; **Undo** reverses the whole
-batch in one click. Dismissing a proposal records it as a negative example that informs future
-suggestions. Proposals are stored per schedule in the tenant table `schedule_fix_proposals` and are
-never executed autonomously — a person always approves.
+first, applies the ticked fixes, **re-flows the task dates** to respect the new logic, and re-scores
+so the jump is visible; **Undo** reverses the whole batch in one click. Dismissing a proposal records
+it as a negative example that informs future suggestions. Proposals are stored per schedule in the
+tenant table `schedule_fix_proposals` and are never executed autonomously — a person always approves.
+
+**Date recompute after apply.** Once the structural fixes land, a forward pass moves each task so it
+starts after the predecessors it now depends on. Tasks that are **completed or carry actual dates are
+pinned** and never move; other tasks only move *later* to satisfy a link, never earlier. Dates are
+computed in calendar days, matching the rest of the app's scheduling. The panel reports how many tasks
+moved and how far the project finish shifted, shows a per-task before/after table, and raises an amber
+warning when more than 30% of tasks move by more than 10 days. **Undo** restores every task's original
+dates (from a "Pre-review baseline" captured before apply) along with the structural changes.
 
 API (under `/api/v1/schedules`): `POST /:id/review/propose`, `POST
 /:id/review/proposals/:pid/apply` (`{fixIds}`), `.../undo`, `.../reject`, `GET /:id/review/proposal`.
 
-Automatic date recomputation after apply is handled by the existing **Auto-Reschedule** flow;
-buffer-task insertion and the weekly living-document agent are later phases and not yet built.
+Buffer-task insertion and the weekly living-document agent are later phases and not yet built.
 
 ---
 

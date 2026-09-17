@@ -28,11 +28,25 @@ interface FixProposal {
   proposalData: { fixes: ProposedFix[]; summary?: string };
 }
 
+interface DateDelta {
+  taskId: string;
+  name: string;
+  oldEnd: string | null;
+  newEnd: string;
+  movedDays: number;
+}
+
 interface ApplyResult {
   beforeScore: number | null;
   afterScore: number;
   appliedCount: number;
   skipped: Array<{ fixId: string; reason: string }>;
+  datesMoved?: number;
+  projectEndBefore?: string | null;
+  projectEndAfter?: string | null;
+  projectEndShiftDays?: number;
+  warning?: string | null;
+  dateDeltas?: DateDelta[];
 }
 
 interface Props {
@@ -184,11 +198,51 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
 
           {/* Result state */}
           {applied && !undone && (
-            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm space-y-1">
-              <p className="font-medium">Applied {result!.appliedCount} fix{result!.appliedCount !== 1 ? 'es' : ''}.</p>
-              <p>Score {result!.beforeScore ?? '—'} → <span className="font-semibold">{result!.afterScore}</span>.</p>
-              {result!.skipped.length > 0 && (
-                <p className="text-amber-700 dark:text-amber-300">{result!.skipped.length} skipped (cycle or duplicate).</p>
+            <div className="space-y-2">
+              <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm space-y-1">
+                <p className="font-medium">Applied {result!.appliedCount} fix{result!.appliedCount !== 1 ? 'es' : ''}.</p>
+                <p>Score {result!.beforeScore ?? '—'} → <span className="font-semibold">{result!.afterScore}</span>.</p>
+                {result!.datesMoved ? (
+                  <p>
+                    Dates re-flowed: {result!.datesMoved} task{result!.datesMoved !== 1 ? 's' : ''} moved
+                    {result!.projectEndShiftDays ? `, project finish ${result!.projectEndShiftDays > 0 ? '+' : ''}${result!.projectEndShiftDays} day${Math.abs(result!.projectEndShiftDays) !== 1 ? 's' : ''}` : ''}.
+                  </p>
+                ) : <p>No task dates needed to move.</p>}
+                {result!.skipped.length > 0 && (
+                  <p className="text-amber-700 dark:text-amber-300">{result!.skipped.length} skipped (cycle or duplicate).</p>
+                )}
+              </div>
+
+              {result!.warning && (
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-sm">
+                  {result!.warning}
+                </div>
+              )}
+
+              {result!.dateDeltas && result!.dateDeltas.length > 0 && (
+                <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-left">
+                        <th className="px-2 py-1.5 font-semibold">Task</th>
+                        <th className="px-2 py-1.5 font-semibold">Finish</th>
+                        <th className="px-2 py-1.5 font-semibold">Moved</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {result!.dateDeltas.slice(0, 12).map(d => (
+                        <tr key={d.taskId}>
+                          <td className="px-2 py-1 text-gray-900 dark:text-gray-100 truncate max-w-[140px]" title={d.name}>{d.name}</td>
+                          <td className="px-2 py-1 text-gray-600 dark:text-gray-300 whitespace-nowrap">{d.oldEnd ?? '—'} → {d.newEnd}</td>
+                          <td className={`px-2 py-1 whitespace-nowrap ${d.movedDays > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500'}`}>{d.movedDays > 0 ? `+${d.movedDays}d` : `${d.movedDays}d`}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {result!.dateDeltas.length > 12 && (
+                    <p className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">…and {result!.dateDeltas.length - 12} more.</p>
+                  )}
+                </div>
               )}
             </div>
           )}

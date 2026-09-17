@@ -1,7 +1,9 @@
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { scheduleService } from './ScheduleService';
+import { taskRepository } from '../database/TaskRepository';
 import { baselineService } from './BaselineService';
+import { scheduleRecomputeService, type DateDelta } from './ScheduleRecomputeService';
 import { scheduleReviewService } from './ScheduleReviewService';
 import { claudeService } from './claudeService';
 import { config } from '../config';
@@ -44,6 +46,13 @@ export interface ApplyResult {
   afterScore: number;
   appliedCount: number;
   skipped: Array<{ fixId: string; reason: string }>;
+  // Date recompute summary (SR1)
+  datesMoved: number;
+  projectEndBefore: string | null;
+  projectEndAfter: string | null;
+  projectEndShiftDays: number;
+  warning: string | null;
+  dateDeltas: DateDelta[];
 }
 
 /** Minimal ReviewTask projection the proposer needs. */
@@ -247,6 +256,19 @@ export class ScheduleFixProposerService {
       }
     }
 
+    // Re-flow dates so the schedule respects the new logic (SR1). Pinned tasks
+    // (completed / actual-dated) stay put. Never fails the apply.
+    let recompute = { deltas: [] as DateDelta[], tasksMoved: 0, leafCount: 0, projectEndBefore: null as string | null, projectEndAfter: null as string | null, projectEndShiftDays: 0 };
+    try {
+      recompute = await scheduleRecomputeService.recompute(scheduleId);
+    } catch (err: any) {
+      logger.warn('[ScheduleFix] date recompute failed', { scheduleId, error: err?.message });
+    }
+    const movedFar = recompute.deltas.filter(d => Math.abs(d.movedDays) > 10).length;
+    const warning = recompute.leafCount > 0 && movedFar / recompute.leafCount > 0.30
+      ? `${movedFar} of ${recompute.leafCount} tasks moved more than 10 days. Review before keeping, or undo.`
+      : null;
+
     const after = await scheduleReviewService.run(scheduleId, 'post_proposal', userId, proposalId);
     await scheduleFixProposalRepository.markApplied(proposalId, applied, baselineId);
 
@@ -257,11 +279,22 @@ export class ScheduleFixProposerService {
       entityType: 'schedule',
       entityId: scheduleId,
       projectId: proposal.projectId,
-      payload: { proposalId, appliedCount, beforeScore: before?.score ?? null, afterScore: after.score, actions: applied, skipped, baselineId },
+      payload: { proposalId, appliedCount, beforeScore: before?.score ?? null, afterScore: after.score, actions: applied, skipped, baselineId, datesMoved: recompute.tasksMoved, projectEndShiftDays: recompute.projectEndShiftDays },
       source: 'web',
     }).catch(err => logger.warn('[ScheduleFix] audit append (apply) failed', { proposalId, error: err?.message }));
 
-    return { beforeScore: before?.score ?? null, afterScore: after.score, appliedCount, skipped };
+    return {
+      beforeScore: before?.score ?? null,
+      afterScore: after.score,
+      appliedCount,
+      skipped,
+      datesMoved: recompute.tasksMoved,
+      projectEndBefore: recompute.projectEndBefore,
+      projectEndAfter: recompute.projectEndAfter,
+      projectEndShiftDays: recompute.projectEndShiftDays,
+      warning,
+      dateDeltas: recompute.deltas.slice(0, 50),
+    };
   }
 
   /** Reverse an applied proposal, then re-score. */
@@ -307,9 +340,20 @@ export class ScheduleFixProposerService {
       }
     }
 
-    // Remove the Pre-review baseline this apply created, so undo restores the
-    // exact prior state (otherwise the schedule keeps a baseline it did not have).
+    // Restore every task's dates from the Pre-review baseline (the recompute on
+    // apply moved them), then remove that baseline so undo returns the exact prior
+    // state. Read the baseline BEFORE deleting it.
     if (proposal.baselineId) {
+      try {
+        const baseline = await baselineService.findById(proposal.baselineId);
+        for (const bt of baseline?.tasks ?? []) {
+          const start = bt.startDate ? new Date(bt.startDate).toISOString().slice(0, 10) : null;
+          const end = bt.endDate ? new Date(bt.endDate).toISOString().slice(0, 10) : null;
+          await taskRepository.updateDates(bt.taskId, start, end).catch(() => { /* task may have been removed */ });
+        }
+      } catch (err: any) {
+        logger.warn('[ScheduleFix] undo date restore failed', { proposalId, error: err?.message });
+      }
       await baselineService.delete(proposal.baselineId).catch((err: any) =>
         logger.warn('[ScheduleFix] undo baseline delete failed', { proposalId, error: err?.message }));
     }

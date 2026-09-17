@@ -18,6 +18,26 @@ vi.mock('../../services/BaselineService', () => ({
   baselineService: {
     create: vi.fn().mockResolvedValue({ id: 'baseline-1' }),
     delete: vi.fn().mockResolvedValue(true),
+    findById: vi.fn().mockResolvedValue({
+      id: 'baseline-1',
+      tasks: [
+        { taskId: 'b', startDate: '2026-10-05', endDate: '2026-10-09' },
+        { taskId: 'x', startDate: '2026-10-10', endDate: '2026-10-12' },
+      ],
+    }),
+  },
+}));
+
+vi.mock('../../database/TaskRepository', () => ({
+  taskRepository: { updateDates: vi.fn().mockResolvedValue(undefined) },
+}));
+
+vi.mock('../../services/ScheduleRecomputeService', () => ({
+  scheduleRecomputeService: {
+    recompute: vi.fn().mockResolvedValue({
+      deltas: [{ taskId: 'b', name: 'Build', oldStart: '2026-10-05', oldEnd: '2026-10-09', newStart: '2026-10-10', newEnd: '2026-10-14', movedDays: 5 }],
+      tasksMoved: 1, leafCount: 4, projectEndBefore: '2026-10-16', projectEndAfter: '2026-10-21', projectEndShiftDays: 5,
+    }),
   },
 }));
 
@@ -100,7 +120,7 @@ describe('ScheduleFixProposerService', () => {
 
     const appliedLog = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
     expect(appliedLog.map(a => a.op)).toEqual(['remove_dependency', 'restore_milestone', 'delete_task', 'restore_parent']);
-    expect(result).toEqual({ beforeScore: 19, afterScore: 63, appliedCount: 3, skipped: [] });
+    expect(result).toMatchObject({ beforeScore: 19, afterScore: 63, appliedCount: 3, skipped: [], datesMoved: 1, projectEndShiftDays: 5, warning: null });
 
     const { auditLedgerService } = await import('../../services/AuditLedgerService');
     expect(auditLedgerService.append).toHaveBeenCalledWith(expect.objectContaining({ action: 'schedule.fix.apply', entityId: 's1' }));
@@ -146,6 +166,10 @@ describe('ScheduleFixProposerService', () => {
     expect(scheduleService.updateTask).toHaveBeenCalledWith('g1', { isMilestone: false });
     expect(scheduleService.removeDependency).toHaveBeenCalledWith('b', 'a');
     const { baselineService } = await import('../../services/BaselineService');
+    const { taskRepository } = await import('../../database/TaskRepository');
+    // dates restored from the baseline snapshot, then the baseline removed
+    expect(taskRepository.updateDates).toHaveBeenCalledWith('b', '2026-10-05', '2026-10-09');
+    expect(taskRepository.updateDates).toHaveBeenCalledWith('x', '2026-10-10', '2026-10-12');
     expect(baselineService.delete).toHaveBeenCalledWith('baseline-1');
     expect(repo.setStatus).toHaveBeenCalledWith('prop-1', 'undone');
     expect(res.score).toBe(63);

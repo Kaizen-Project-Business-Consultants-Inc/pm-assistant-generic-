@@ -1279,7 +1279,14 @@ Expected response fields on `/import` and `/import-structured`: `dependenciesCre
 ```bash
 npx vitest run src/server/__tests__/services/scheduleFixProposer.test.ts          # pure proposer
 npx vitest run src/server/__tests__/services/ScheduleFixProposerService.test.ts    # apply / undo / reject
+npx vitest run src/server/__tests__/services/ScheduleRecomputeService.test.ts      # date recompute + pinning
 ```
+
+**Date recompute (SR1).** After applying an FS chain, confirm each task now starts the day after its
+predecessor ends (calendar days), the apply response carries `datesMoved` / `projectEndShiftDays` /
+`dateDeltas` / `warning`, and the panel shows the moved-tasks summary + a before→after finish table.
+A **completed** or actual-dated task stays put while its successors still re-flow off it. **Undo**
+restores every task's original dates from the "Pre-review baseline".
 
 End-to-end on staging, on a schedule imported flat (no dependencies):
 
