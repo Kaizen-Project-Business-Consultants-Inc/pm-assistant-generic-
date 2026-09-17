@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-16 (later — Phase 3 slice A + fix-button honesty)
+
+- **Schedule Review Phase 3 slice A — structural fix engine** (commits 82681ab, 655bc04; deployed to staging). **Propose fixes** in the review panel drafts add_dependency / set_milestone / set_parent, PM ticks + applies, score re-computes, one-click Undo (removes its own Pre-review baseline so the score returns exactly), Dismiss records a negative example. AI drafts reasons+confidence when budget allows, deterministic rules otherwise. Self-contained tenant table `schedule_fix_proposals` (T048, applied to all 17 staging tenant DBs), NOT the shared agent proposal system. Full detail + smoke-test result in `memory/schedule-review.md`. **Not on prod.** Deferred: auto date-recompute (use Auto-Reschedule), buffers, Phase 4.
+- **Import "Review and fix" button** was renamed "Open review" (commit c454ad0) while no fix existed, then restored to **Review and fix** once Phase 3 shipped the fix.
+- **deploy.sh `--server-only` is flaky** — a run failed at upload (`/tmp/server-dist.tar.gz: Cannot open`) under `set -e`; a full `deploy.sh staging --skip-tests` worked. Prefer full deploy. `--skip-tests` is needed locally because 2 `TimeAnomalyService` weekend tests fail on this Windows box's timezone (pass in UTC/CI).
+
 ## 2026-09-16 (later — Phase 2)
 
 - **Schedule Review Phase 2 — import leak fixes** (commit 3f67501, on master, deployed to staging). Import now preserves predecessors (resolve by real MSP UID / WBS / name; CSV predecessor columns; unresolved reported as warnings), milestone flags, an auto "Imported baseline", hours-vs-days, and skips legend rows / cleans owner cell-refs. Import responses gained `dependenciesCreated`, `baselineCreated`, `durationNote`, `skipped[]`, `warnings[]`. Details + staging smoke-test result in `memory/schedule-review.md`. **Not on prod** (awaiting explicit approval). Next: Phase 3 (AI fix proposals).

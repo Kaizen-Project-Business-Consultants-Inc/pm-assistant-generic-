@@ -48,7 +48,26 @@ The importer drops structure the file already holds. Close the leak so the revie
 
 Fixtures to add: DBJ spreadsheet as exported, MS Project XML with predecessors, CSV with planned vs actual columns.
 
-## Phase 3 — Proposals (4–5 days)
+## Phase 3 slice A — Structural fixes — DONE (commits 82681ab, 655bc04; staging 2026-09-16)
+
+Shipped: **Propose fixes** in the review panel drafts structural repairs the PM ticks and applies —
+`add_dependency` (FS chain), `set_milestone`, `set_parent` (group under a new phase). AI drafts
+reasons + confidence via `claudeService.completeWithJsonSchema` (validated against the real task
+graph), deterministic `proposeFixesDeterministic` otherwise. Apply captures a Pre-review baseline,
+applies in order, re-scores; **Undo** replays a recorded reversal log AND deletes that baseline so
+the score returns exactly; **Dismiss** records an `ai_feedback` negative example. One-click.
+- **Architecture (deviates from spec):** self-contained tenant table `schedule_fix_proposals`
+  (T048) + `ScheduleFixProposerService` + repo + routes `/schedules/:id/review/propose|proposals/:pid/apply|undo|reject` + `GET .../proposal`. NOT extending `ActionProposalService` (its
+  action_type is a per-tenant ENUM + shared 16-agent executor + updateTask-only). Never wired to autonomy.
+- Route gate `requireScope('write')` only; AI attempted when budget allows, else deterministic — so
+  Basic tier (0 budget) gets rules-based fixes with no error. Files: `services/scheduleReview/fixProposer.ts` (pure), `services/ScheduleFixProposerService.ts`, `database/ScheduleFixProposalRepository.ts`, `routes/scheduling/scheduleFix.ts`, client `components/schedule/review/ScheduleFixProposalPanel.tsx` (+ Propose fixes button in ScheduleReviewPanel). 10 unit tests.
+- **Staging smoke test passed** (throwaway flat schedule, michaela tenant, AI path): import 51 →
+  propose (source ai, 4 fixes) → apply 82 (R03 cleared) → undo back to 51 exactly. Throwaways deleted.
+- Import summary button label restored to **Review and fix** (now real).
+- **Deferred (next slices):** automatic date recompute after apply (use existing Auto-Reschedule for now; no CPM-with-pinning writer exists yet), buffer-task insertion, Phase 4 living-document/MCP tools.
+- **Not on prod** (awaiting explicit approval). T048 applied to all 17 staging tenant DBs manually.
+
+### Original Phase 3 spec (for reference)
 
 - `ScheduleFixProposer`: one ReasoningEngine call with findings + task list (id, name, phase, dates, owner, status) + project window; zod-validated; retry once then rules-only fallback (sequential chain within phase by sort order, milestone flags from name). Output: dependency links with confidence + reason, milestone flags, phase parents, buffer tasks before gates (named "Buffer before Gate N", working days + reason), duration plausibility questions. Links < 0.6 confidence unticked.
 - New ActionProposalService action types: `set_milestone`, `set_parent`, `insert_buffer` (plus existing `update_dependency`).
