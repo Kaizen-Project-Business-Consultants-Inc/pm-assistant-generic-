@@ -54,11 +54,17 @@ function ymd(d: Date): string { return d.toISOString().slice(0, 10); }
 function addDays(d: Date, n: number): Date { return new Date(d.getTime() + n * DAY_MS); }
 function diffDays(a: Date, b: Date): number { return Math.round((a.getTime() - b.getTime()) / DAY_MS); }
 
-/** Duration in calendar days; milestones are zero. */
+/**
+ * Duration in calendar days; milestones are zero. Prefer the task's own date span
+ * when it has both dates — imported schedules carry real start/finish dates but a
+ * defaulted estimatedDays of 1, so trusting the span keeps each task's real length
+ * and the re-flow only shifts its start.
+ */
 function durationOf(n: Node): number {
-  if (n.isMilestone || n.estimatedDays === 0) return 0;
-  if (n.estimatedDays && n.estimatedDays > 0) return n.estimatedDays;
+  if (n.isMilestone) return 0;
   if (n.start && n.end) return Math.max(0, diffDays(n.end, n.start));
+  if (n.estimatedDays && n.estimatedDays > 0) return n.estimatedDays;
+  if (n.estimatedDays === 0) return 0;
   return 1;
 }
 

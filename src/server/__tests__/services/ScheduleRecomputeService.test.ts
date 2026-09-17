@@ -66,6 +66,16 @@ describe('ScheduleRecomputeService', () => {
     expect(updateDates).toHaveBeenCalledWith('C', '2026-10-05', expect.any(String)); // SS = A start
   });
 
+  it('preserves the date-span duration even when estimatedDays disagrees (imported =1)', async () => {
+    // Imported task: dates span 4 days but estimatedDays defaulted to 1.
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09', estimatedDays: 1 });
+    const B = task({ id: 'B', startDate: '2026-10-05', endDate: '2026-10-09', estimatedDays: 1, dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    await run([A, B]);
+    // A keeps its 4-day span (unchanged); B pushed to 10-10 and keeps 4-day span → 10-14
+    expect(updateDates).not.toHaveBeenCalledWith('A', expect.anything(), expect.anything());
+    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-10', '2026-10-14');
+  });
+
   it('keeps a milestone zero-duration when it re-flows', async () => {
     const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' });
     const M = task({ id: 'M', isMilestone: true, estimatedDays: 0, startDate: '2026-10-01', endDate: '2026-10-01', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
