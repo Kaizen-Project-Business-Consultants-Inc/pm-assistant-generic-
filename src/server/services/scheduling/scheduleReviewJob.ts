@@ -79,7 +79,9 @@ export async function runScheduleReview(): Promise<number> {
       if (redisService.isConnected()) {
         redisService.set(redisKey, '1', 86400 * 3).catch(() => {});
       }
-    } catch (err) {
+    } catch (err: any) {
+      // Stale/demo schedule rows that no longer resolve — skip quietly, don't spam error logs.
+      if (err?.name === 'ScheduleReviewNotFoundError') continue;
       logger.error('[ScheduleReviewJob] Failed for schedule', { scheduleId: row.id, error: err });
     }
   }
