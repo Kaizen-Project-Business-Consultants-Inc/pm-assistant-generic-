@@ -38,6 +38,10 @@ vi.mock('../../services/aiLearningService', () => ({
   AILearningServiceV2: class { recordFeedback = recordFeedback; },
 }));
 
+vi.mock('../../services/AuditLedgerService', () => ({
+  auditLedgerService: { append: vi.fn().mockResolvedValue({}) },
+}));
+
 vi.mock('../../database/ScheduleFixProposalRepository', () => ({
   scheduleFixProposalRepository: {
     findById: vi.fn(),
@@ -97,6 +101,9 @@ describe('ScheduleFixProposerService', () => {
     const appliedLog = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
     expect(appliedLog.map(a => a.op)).toEqual(['remove_dependency', 'restore_milestone', 'delete_task', 'restore_parent']);
     expect(result).toEqual({ beforeScore: 19, afterScore: 63, appliedCount: 3, skipped: [] });
+
+    const { auditLedgerService } = await import('../../services/AuditLedgerService');
+    expect(auditLedgerService.append).toHaveBeenCalledWith(expect.objectContaining({ action: 'schedule.fix.apply', entityId: 's1' }));
   });
 
   it('skips a dependency that is rejected (cycle) without failing the apply', async () => {

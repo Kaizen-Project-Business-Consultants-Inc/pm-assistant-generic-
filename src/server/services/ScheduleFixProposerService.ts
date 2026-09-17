@@ -6,6 +6,7 @@ import { scheduleReviewService } from './ScheduleReviewService';
 import { claudeService } from './claudeService';
 import { config } from '../config';
 import { AILearningServiceV2 } from './aiLearningService';
+import { auditLedgerService } from './AuditLedgerService';
 import logger from '../utils/logger';
 import {
   proposeFixesDeterministic,
@@ -249,6 +250,17 @@ export class ScheduleFixProposerService {
     const after = await scheduleReviewService.run(scheduleId, 'post_proposal', userId, proposalId);
     await scheduleFixProposalRepository.markApplied(proposalId, applied, baselineId);
 
+    auditLedgerService.append({
+      actorId: userId ?? 'system',
+      actorType: userId ? 'user' : 'system',
+      action: 'schedule.fix.apply',
+      entityType: 'schedule',
+      entityId: scheduleId,
+      projectId: proposal.projectId,
+      payload: { proposalId, appliedCount, beforeScore: before?.score ?? null, afterScore: after.score, actions: applied, skipped, baselineId },
+      source: 'web',
+    }).catch(err => logger.warn('[ScheduleFix] audit append (apply) failed', { proposalId, error: err?.message }));
+
     return { beforeScore: before?.score ?? null, afterScore: after.score, appliedCount, skipped };
   }
 
@@ -304,6 +316,18 @@ export class ScheduleFixProposerService {
 
     const review = await scheduleReviewService.run(scheduleId, 'post_proposal', userId);
     await scheduleFixProposalRepository.setStatus(proposalId, 'undone');
+
+    auditLedgerService.append({
+      actorId: userId ?? 'system',
+      actorType: userId ? 'user' : 'system',
+      action: 'schedule.fix.undo',
+      entityType: 'schedule',
+      entityId: scheduleId,
+      projectId: proposal.projectId,
+      payload: { proposalId, restored: log, score: review.score },
+      source: 'web',
+    }).catch(err => logger.warn('[ScheduleFix] audit append (undo) failed', { proposalId, error: err?.message }));
+
     return { score: review.score };
   }
 
@@ -323,6 +347,17 @@ export class ScheduleFixProposerService {
       }, userId);
     }
     await scheduleFixProposalRepository.setStatus(proposalId, 'rejected');
+
+    auditLedgerService.append({
+      actorId: userId ?? 'system',
+      actorType: userId ? 'user' : 'system',
+      action: 'schedule.fix.reject',
+      entityType: 'schedule',
+      entityId: scheduleId,
+      projectId: proposal.projectId,
+      payload: { proposalId, feedback: feedback ?? null },
+      source: 'web',
+    }).catch(err => logger.warn('[ScheduleFix] audit append (reject) failed', { proposalId, error: err?.message }));
   }
 
   async getLatest(scheduleId: string): Promise<ScheduleFixProposal | null> {
