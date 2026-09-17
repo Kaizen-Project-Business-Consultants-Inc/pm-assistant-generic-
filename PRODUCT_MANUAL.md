@@ -2692,7 +2692,7 @@ Rules that need dependency logic are listed under **Unlocks when dependencies ex
 
 **Findings panel.** Score chip with an eight-run trend, findings grouped by severity (Critical and High open by default), each with the rule, the plain-English message, the points deducted and a **Show rows** button that filters the grid to exactly those tasks. Rows flagged Critical or High carry a small indicator in the row-number column in both Table and Gantt views. **Re-run review** is available to editors; viewers can read the latest run. The panel traps focus, closes on Escape, and announces score changes via a live region.
 
-**Import summary.** After "N tasks imported", the summary shows the score chip, the top five findings and an **Open review** button that opens the panel. (The button will become "Review and fix" once Phase 3 adds AI-drafted, approvable fixes.)
+**Import summary.** After "N tasks imported", the summary shows the score chip, the top five findings and a **Review and fix** button that opens the panel.
 
 **Storage.** One row per run in the tenant table `schedule_reviews` (score, band, counts, findings JSON, skipped rules, trigger, rules version). The last 50 runs per schedule are kept.
 
@@ -2708,7 +2708,29 @@ Rules that need dependency logic are listed under **Unlocks when dependencies ex
 
 The import summary reports how many dependencies were linked, whether a baseline was captured, any duration re-interpretation, skipped rows and predecessor warnings, alongside the score chip.
 
-Phases 3–4 of the Schedule Review Spec (AI-drafted fix proposals with approve-and-recompute, weekly agent runs and MCP tools) are not yet built.
+**Fix proposals (Phase 3, structural).** The review no longer only diagnoses — it drafts the
+repair. From the findings panel an editor clicks **Propose fixes**; the system proposes concrete
+structural changes and the PM ticks which to apply:
+
+- **Add link** — a finish-to-start dependency between two existing tasks (a sequential chain
+  within each phase, so critical path and float become available). Clears the "no logic" finding.
+- **Flag milestone** — mark a zero-work task named like a gate as a milestone.
+- **Group under phase** — gather ungrouped tasks that share a name prefix under a new phase parent.
+
+Each proposed fix carries a confidence and a one-sentence plain-English reason; higher-confidence
+fixes are pre-ticked. When AI is available the proposals (and their reasons) are drafted by Claude
+and validated against the real task graph; otherwise deterministic rules produce the same kinds of
+fix, so every paid tier gets working proposals. **Apply selected** captures a "Pre-review baseline"
+first, applies the ticked fixes, and re-scores so the jump is visible; **Undo** reverses the whole
+batch in one click. Dismissing a proposal records it as a negative example that informs future
+suggestions. Proposals are stored per schedule in the tenant table `schedule_fix_proposals` and are
+never executed autonomously — a person always approves.
+
+API (under `/api/v1/schedules`): `POST /:id/review/propose`, `POST
+/:id/review/proposals/:pid/apply` (`{fixIds}`), `.../undo`, `.../reject`, `GET /:id/review/proposal`.
+
+Automatic date recomputation after apply is handled by the existing **Auto-Reschedule** flow;
+buffer-task insertion and the weekly living-document agent are later phases and not yet built.
 
 ---
 

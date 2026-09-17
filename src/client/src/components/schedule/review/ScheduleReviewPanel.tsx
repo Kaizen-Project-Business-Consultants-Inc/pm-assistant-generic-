@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, RefreshCw, Loader2, ChevronDown, ChevronRight, Lock, ListFilter } from 'lucide-react';
+import { X, RefreshCw, Loader2, ChevronDown, ChevronRight, Lock, ListFilter, Wrench } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { severityColor } from '../../../utils/severityColors';
 import { announce } from '../../../utils/announce';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 import { ScheduleScoreChip, BAND_LABELS, type ReviewBand } from './ScheduleScoreChip';
+import { ScheduleFixProposalPanel } from './ScheduleFixProposalPanel';
 
 // ---------------------------------------------------------------------------
 // Types (mirror the server's ScheduleReviewRecord)
@@ -78,6 +79,7 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
   const panelRef = useRef<HTMLDivElement>(null);
   const [openGroups, setOpenGroups] = useState<Set<ReviewSeverity>>(new Set(OPEN_BY_DEFAULT));
   const [error, setError] = useState<string | null>(null);
+  const [showFixes, setShowFixes] = useState(false);
 
   const latestQuery = useQuery<ScheduleReview | null>({
     queryKey: ['schedule-review', scheduleId, 'latest'],
@@ -282,18 +284,42 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
             </button>
           ) : <span />}
           {canEdit && (
-            <button
-              type="button"
-              onClick={() => runMutation.mutate()}
-              disabled={runMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60"
-            >
-              {runMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              Re-run review
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => runMutation.mutate()}
+                disabled={runMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60"
+              >
+                {runMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                Re-run review
+              </button>
+              {review && review.findings.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowFixes(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"
+                >
+                  <Wrench className="w-3.5 h-3.5" />
+                  Propose fixes
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
+
+      {showFixes && (
+        <ScheduleFixProposalPanel
+          scheduleId={scheduleId}
+          onClose={() => setShowFixes(false)}
+          onChanged={() => {
+            queryClient.invalidateQueries({ queryKey: ['schedule-review', scheduleId, 'latest'] });
+            queryClient.invalidateQueries({ queryKey: ['schedule-review', scheduleId, 'history'] });
+            queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
+          }}
+        />
+      )}
     </>
   );
 }

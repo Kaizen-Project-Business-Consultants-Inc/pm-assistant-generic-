@@ -1260,7 +1260,7 @@ Running the same review twice on an unchanged schedule must return identical `sc
 
 ### Import summary
 
-Import any CSV through the Import modal. The result panel shows the score chip, the top five findings and **Open review**. The import response carries `review: { score, band, counts, topFindings[] }`; a review failure never fails the import (the field is `null`).
+Import any CSV through the Import modal. The result panel shows the score chip, the top five findings and **Review and fix**. The import response carries `review: { score, band, counts, topFindings[] }`; a review failure never fails the import (the field is `null`).
 
 ### Import leak fixes (Phase 2)
 
@@ -1273,6 +1273,26 @@ Re-import a file that carries structure and confirm it survives:
 - **Legend / artefact rows.** A row named only "Completed" (or "Legend"/"Notes") with empty cells, and an owner like `DBJ & JV+D9:D27`, are cleaned: the row appears under `skipped`, the owner is stored as `DBJ & JV`.
 
 Expected response fields on `/import` and `/import-structured`: `dependenciesCreated`, `baselineCreated`, `durationNote`, `skipped[]`, `warnings[]`.
+
+### Fix proposals (Phase 3, structural)
+
+```bash
+npx vitest run src/server/__tests__/services/scheduleFixProposer.test.ts          # pure proposer
+npx vitest run src/server/__tests__/services/ScheduleFixProposerService.test.ts    # apply / undo / reject
+```
+
+End-to-end on staging, on a schedule imported flat (no dependencies):
+
+1. Open the review, click **Propose fixes**. Expect an "Add link" chain (unticked — sequence guess),
+   milestone flags (ticked), and phase-group suggestions when task names share a prefix.
+2. Tick the dependency chain and **Apply selected**. Confirm `dependenciesCreated`, the links appear
+   on the Gantt, and the panel shows the score rising (e.g. 19 → 63) with `R03` gone on re-run.
+3. Click **Undo**: dependencies/flags/parents revert and the score returns.
+4. **Dismiss** records a negative example (`ai_feedback`, `feature='schedule_fix'`).
+
+REST: `POST /schedules/:id/review/propose` → `{ id, source, proposalData:{fixes[]} }`;
+`POST /schedules/:id/review/proposals/:pid/apply {fixIds}` → `{ beforeScore, afterScore, appliedCount, skipped }`;
+`.../undo`, `.../reject`. A Basic-tier user (zero AI budget) gets rules-based fixes with no error.
 
 ### UI checks
 

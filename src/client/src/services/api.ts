@@ -986,6 +986,32 @@ class ApiService {
     return response.data;
   }
 
+  // Schedule Review Phase 3 — structural fix proposals
+  async proposeScheduleFixes(scheduleId: string) {
+    const response = await this.api.post(`/schedules/${scheduleId}/review/propose`);
+    return response.data;
+  }
+
+  async getScheduleFixProposal(scheduleId: string) {
+    const response = await this.api.get(`/schedules/${scheduleId}/review/proposal`);
+    return response.status === 204 || !response.data ? null : response.data;
+  }
+
+  async applyScheduleFixes(scheduleId: string, proposalId: string, fixIds: string[]) {
+    const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/apply`, { fixIds });
+    return response.data;
+  }
+
+  async undoScheduleFixProposal(scheduleId: string, proposalId: string) {
+    const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/undo`);
+    return response.data;
+  }
+
+  async rejectScheduleFixProposal(scheduleId: string, proposalId: string, feedback?: string) {
+    const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/reject`, { feedback });
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // Baselines
   // -------------------------------------------------------------------------
