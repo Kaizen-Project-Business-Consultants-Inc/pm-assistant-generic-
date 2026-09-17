@@ -38,7 +38,8 @@ export async function scheduleFixRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
-      return await scheduleFixProposerService.propose(scheduleId, request.user!.userId);
+      const useAi = (request.query as { ai?: string })?.ai === 'true' || (request.query as { ai?: string })?.ai === '1';
+      return await scheduleFixProposerService.propose(scheduleId, request.user!.userId, useAi);
     } catch (error: any) {
       if (error instanceof ScheduleFixNotFoundError) return reply.status(404).send({ error: 'Schedule not found' });
       const handled = handleAiError(error, reply);

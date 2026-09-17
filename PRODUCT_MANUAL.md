@@ -2714,13 +2714,15 @@ structural changes and the PM ticks which to apply:
 
 - **Add link** — a finish-to-start dependency between two existing tasks (a sequential chain
   within each phase, so critical path and float become available). Clears the "no logic" finding.
-- **Flag milestone** — mark a zero-work task named like a gate as a milestone.
+- **Flag milestone** — mark a task named like a gate as a milestone; this also zeroes its duration
+  and collapses it to a single day, so it does not then trip the "milestone with duration" rule.
 - **Group under phase** — gather ungrouped tasks that share a name prefix under a new phase parent.
 
-Each proposed fix carries a confidence and a one-sentence plain-English reason; higher-confidence
-fixes are pre-ticked. When AI is available the proposals (and their reasons) are drafted by Claude
-and validated against the real task graph; otherwise deterministic rules produce the same kinds of
-fix, so every paid tier gets working proposals. **Apply selected** captures a "Pre-review baseline"
+Each proposed fix carries a confidence and a short plain-English reason; higher-confidence fixes are
+pre-ticked. **Propose fixes** returns instantly using deterministic rules; a **Draft with AI** action
+re-drafts the same kinds of fix with richer, Claude-written reasons (slower, validated against the
+real task graph, and only for schedules small enough to draft in one pass). Every paid tier gets
+working proposals even without AI. **Apply selected** captures a "Pre-review baseline"
 first, applies the ticked fixes, and re-scores so the jump is visible; **Undo** reverses the whole
 batch in one click. Dismissing a proposal records it as a negative example that informs future
 suggestions. Proposals are stored per schedule in the tenant table `schedule_fix_proposals` and are

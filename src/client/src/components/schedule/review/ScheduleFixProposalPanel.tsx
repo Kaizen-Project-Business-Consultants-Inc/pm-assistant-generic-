@@ -68,10 +68,12 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
   const generated = useRef(false);
 
   const proposeMutation = useMutation({
-    mutationFn: () => apiService.proposeScheduleFixes(scheduleId),
+    mutationFn: (useAi: boolean) => apiService.proposeScheduleFixes(scheduleId, useAi),
     onSuccess: (data: FixProposal) => {
       setError(null);
       setProposal(data);
+      setResult(null);
+      setUndone(false);
       setSelected(new Set(data.proposalData.fixes.filter(f => f.defaultChecked).map(f => f.id)));
       announce(`${data.proposalData.fixes.length} fixes proposed`);
     },
@@ -101,9 +103,9 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
     onError: (err: unknown) => setError(getApiErrorMessage(err, 'Could not dismiss')),
   });
 
-  // Generate a proposal as soon as the panel opens.
+  // Generate a proposal instantly (rules) as soon as the panel opens.
   useEffect(() => {
-    if (!generated.current) { generated.current = true; proposeMutation.mutate(); }
+    if (!generated.current) { generated.current = true; proposeMutation.mutate(false); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Focus + Escape
@@ -162,6 +164,19 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
           )}
 
           {error && <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm">{error}</div>}
+
+          {/* Opt-in AI drafting: rules are instant; AI is slower but writes richer reasons. */}
+          {proposal && !applied && proposal.source === 'rules' && fixes.length > 0 && (
+            <button
+              type="button"
+              onClick={() => proposeMutation.mutate(true)}
+              disabled={proposeMutation.isPending}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 hover:underline disabled:opacity-60"
+            >
+              {proposeMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+              {proposeMutation.isPending ? 'Drafting with AI…' : 'Draft with AI (slower, richer reasons)'}
+            </button>
+          )}
 
           {proposal && !proposeMutation.isPending && fixes.length === 0 && (
             <p className="text-sm text-gray-700 dark:text-gray-300">Nothing to propose. The schedule already has the structure the review checks for.</p>

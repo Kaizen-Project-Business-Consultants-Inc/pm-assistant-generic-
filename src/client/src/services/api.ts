@@ -987,8 +987,10 @@ class ApiService {
   }
 
   // Schedule Review Phase 3 — structural fix proposals
-  async proposeScheduleFixes(scheduleId: string) {
-    const response = await this.api.post(`/schedules/${scheduleId}/review/propose`);
+  async proposeScheduleFixes(scheduleId: string, useAi = false) {
+    const response = await this.api.post(`/schedules/${scheduleId}/review/propose`, undefined, {
+      params: useAi ? { ai: '1' } : undefined,
+    });
     return response.data;
   }
 

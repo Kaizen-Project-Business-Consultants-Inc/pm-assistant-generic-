@@ -65,7 +65,7 @@ const PROPOSAL = {
 const TASKS = [
   { id: 'a', name: 'Design', isMilestone: false, parentTaskId: undefined, dependencies: [] },
   { id: 'b', name: 'Build', isMilestone: false, parentTaskId: undefined, dependencies: [] },
-  { id: 'g1', name: 'Gate 1', isMilestone: false, parentTaskId: undefined, dependencies: [] },
+  { id: 'g1', name: 'Gate 1', isMilestone: false, parentTaskId: undefined, startDate: '2026-10-19', endDate: '2026-10-25', estimatedDays: 4, dependencies: [] },
   { id: 'x', name: 'T1 Task', isMilestone: false, parentTaskId: undefined, dependencies: [] },
 ];
 
@@ -89,7 +89,7 @@ describe('ScheduleFixProposerService', () => {
 
     expect(baselineService.create).toHaveBeenCalledWith('s1', 'Pre-review baseline', 'u1');
     expect(scheduleService.addDependency).toHaveBeenCalledWith('b', 'a', 'FS', 0);
-    expect(scheduleService.updateTask).toHaveBeenCalledWith('g1', { isMilestone: true });
+    expect(scheduleService.updateTask).toHaveBeenCalledWith('g1', { isMilestone: true, estimatedDays: 0, endDate: '2026-10-19' });
     expect(scheduleService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'Phase 1', scheduleId: 's1' }));
     expect(scheduleService.updateTask).toHaveBeenCalledWith('x', { parentTaskId: 'phase-new' });
     expect(scheduleReviewService.run).toHaveBeenCalledWith('s1', 'post_proposal', 'u1', 'prop-1');

@@ -67,7 +67,7 @@ export class ScheduleFixProposerService {
    * reasons + confidence), deterministic rules otherwise. Supersedes any older
    * pending proposal so there is at most one live proposal per schedule.
    */
-  async propose(scheduleId: string, userId: string | null): Promise<ScheduleFixProposal> {
+  async propose(scheduleId: string, userId: string | null, useAi = false): Promise<ScheduleFixProposal> {
     const schedule = await scheduleService.findById(scheduleId);
     if (!schedule) throw new ScheduleFixNotFoundError(scheduleId);
 
@@ -76,19 +76,24 @@ export class ScheduleFixProposerService {
     if (!review) review = await scheduleReviewService.run(scheduleId, 'manual', userId);
 
     const tasks = (await scheduleService.findTasksByScheduleId(scheduleId)).map(toReviewTask);
+    const leafCount = tasks.filter(t => !t.isSummary).length;
 
+    // Deterministic is instant and is the default, so the button never blocks on
+    // the model. AI is opt-in (a "Draft with AI" action) and only for schedules
+    // small enough to fit one response.
     let fixes: ProposedFix[];
     let source: 'ai' | 'rules';
-    try {
-      if (config.AI_ENABLED && claudeService.isAvailable()) {
+    const aiUsable = useAi && config.AI_ENABLED && claudeService.isAvailable() && leafCount <= 60;
+    if (aiUsable) {
+      try {
         fixes = await this.aiPropose(review.findings, tasks, schedule, userId);
         source = 'ai';
-      } else {
+      } catch (err: any) {
+        logger.warn('[ScheduleFix] AI proposer failed, using deterministic rules', { scheduleId, error: err?.message });
         fixes = proposeFixesDeterministic(review.findings, tasks);
         source = 'rules';
       }
-    } catch (err: any) {
-      logger.warn('[ScheduleFix] AI proposer failed, using deterministic rules', { scheduleId, error: err?.message });
+    } else {
       fixes = proposeFixesDeterministic(review.findings, tasks);
       source = 'rules';
     }
@@ -119,7 +124,7 @@ export class ScheduleFixProposerService {
     const systemPrompt = `You are a scheduling expert helping a project manager fix an imported schedule. ` +
       `Propose only STRUCTURAL fixes of these types: add_dependency (finish-to-start link between two existing tasks), ` +
       `set_milestone (flag an existing zero-work task as a milestone), set_parent (group tasks under a new phase, via newParentName). ` +
-      `Never invent tasks or dates. Only reference task ids that exist. Give each fix a confidence 0..1 and a one-sentence plain-English reason a PM understands. ` +
+      `Never invent tasks or dates. Only reference task ids that exist. Give each fix a confidence 0..1 and a SHORT reason (max 12 words). ` +
       `Return JSON: { "fixes": [ { "type", "confidence", "reason", "taskId?", "dependsOnTaskId?", "dependencyType?", "lagDays?", "newParentName?" } ], "summary"? }.`;
 
     const userMessage = `Project window: ${schedule.startDate ?? '?'} to ${schedule.endDate ?? '?'}.\n\n` +
@@ -129,7 +134,7 @@ export class ScheduleFixProposerService {
       systemPrompt,
       userMessage,
       schema: AiFixProposalSchema,
-      maxTokens: 1500,
+      maxTokens: 4000,
       temperature: 0.2,
       userId: userId ?? undefined,
     });
@@ -196,12 +201,20 @@ export class ScheduleFixProposerService {
       }
     }
 
-    // 2) milestones
+    // 2) milestones — a milestone is a point in time: also zero its duration and
+    // collapse its end date to its start, else it trips R04 (milestone with duration).
     for (const f of fixes.filter(f => f.type === 'set_milestone')) {
-      const old = taskById.get(f.taskId!)?.isMilestone ?? false;
+      const t = taskById.get(f.taskId!);
+      const oldValue = {
+        isMilestone: t?.isMilestone ?? false,
+        estimatedDays: t?.estimatedDays ?? null,
+        endDate: t?.endDate ?? null,
+      };
+      const update: Record<string, unknown> = { isMilestone: true, estimatedDays: 0 };
+      if (t?.startDate) update.endDate = t.startDate.slice(0, 10);
       try {
-        await scheduleService.updateTask(f.taskId!, { isMilestone: true });
-        applied.push({ op: 'restore_milestone', taskId: f.taskId!, oldValue: old });
+        await scheduleService.updateTask(f.taskId!, update as any);
+        applied.push({ op: 'restore_milestone', taskId: f.taskId!, oldValue });
         appliedCount++;
       } catch (err: any) {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not flag milestone' });
@@ -252,9 +265,22 @@ export class ScheduleFixProposerService {
           case 'remove_dependency':
             await scheduleService.removeDependency(action.taskId!, action.dependencyId!);
             break;
-          case 'restore_milestone':
-            await scheduleService.updateTask(action.taskId!, { isMilestone: Boolean(action.oldValue) });
+          case 'restore_milestone': {
+            // oldValue may be a plain boolean (older applied logs) or the richer
+            // { isMilestone, estimatedDays, endDate } snapshot — handle both.
+            const ov = action.oldValue;
+            if (ov && typeof ov === 'object') {
+              const o = ov as { isMilestone?: boolean; estimatedDays?: number | null; endDate?: string | null };
+              await scheduleService.updateTask(action.taskId!, {
+                isMilestone: Boolean(o.isMilestone),
+                estimatedDays: o.estimatedDays ?? undefined,
+                endDate: o.endDate ?? undefined,
+              } as any);
+            } else {
+              await scheduleService.updateTask(action.taskId!, { isMilestone: Boolean(ov) });
+            }
             break;
+          }
           case 'restore_parent':
             // null clears parent_task_id at the DB level (updateTask writes val ?? null);
             // the Task type models parentTaskId as string|undefined, so cast to allow null.
