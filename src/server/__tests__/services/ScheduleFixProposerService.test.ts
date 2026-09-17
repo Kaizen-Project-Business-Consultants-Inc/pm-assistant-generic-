@@ -15,7 +15,10 @@ vi.mock('../../services/ScheduleService', () => ({
 }));
 
 vi.mock('../../services/BaselineService', () => ({
-  baselineService: { create: vi.fn().mockResolvedValue({ id: 'baseline-1' }) },
+  baselineService: {
+    create: vi.fn().mockResolvedValue({ id: 'baseline-1' }),
+    delete: vi.fn().mockResolvedValue(true),
+  },
 }));
 
 vi.mock('../../services/ScheduleReviewService', () => ({
@@ -118,7 +121,7 @@ describe('ScheduleFixProposerService', () => {
     const { scheduleService } = await import('../../services/ScheduleService');
     const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
     vi.mocked(repo.findById).mockResolvedValue({
-      ...PROPOSAL, status: 'applied',
+      ...PROPOSAL, status: 'applied', baselineId: 'baseline-1',
       appliedData: [
         { op: 'remove_dependency', taskId: 'b', dependencyId: 'a' },
         { op: 'restore_milestone', taskId: 'g1', oldValue: false },
@@ -135,6 +138,8 @@ describe('ScheduleFixProposerService', () => {
     expect(scheduleService.deleteTask).toHaveBeenCalledWith('phase-new');
     expect(scheduleService.updateTask).toHaveBeenCalledWith('g1', { isMilestone: false });
     expect(scheduleService.removeDependency).toHaveBeenCalledWith('b', 'a');
+    const { baselineService } = await import('../../services/BaselineService');
+    expect(baselineService.delete).toHaveBeenCalledWith('baseline-1');
     expect(repo.setStatus).toHaveBeenCalledWith('prop-1', 'undone');
     expect(res.score).toBe(63);
     void calls;

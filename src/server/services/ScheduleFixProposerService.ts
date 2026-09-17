@@ -269,6 +269,13 @@ export class ScheduleFixProposerService {
       }
     }
 
+    // Remove the Pre-review baseline this apply created, so undo restores the
+    // exact prior state (otherwise the schedule keeps a baseline it did not have).
+    if (proposal.baselineId) {
+      await baselineService.delete(proposal.baselineId).catch((err: any) =>
+        logger.warn('[ScheduleFix] undo baseline delete failed', { proposalId, error: err?.message }));
+    }
+
     const review = await scheduleReviewService.run(scheduleId, 'post_proposal', userId);
     await scheduleFixProposalRepository.setStatus(proposalId, 'undone');
     return { score: review.score };
