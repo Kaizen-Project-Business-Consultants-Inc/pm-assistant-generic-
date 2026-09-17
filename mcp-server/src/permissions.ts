@@ -38,6 +38,8 @@ const READ_TOOLS = new Set([
   'list-change-requests',
   // auto-reschedule & agent proposals (read)
   'detect-delays', 'list-proposals', 'get-proposal',
+  // schedule review (read: runs the deterministic review)
+  'review-schedule',
   // custom fields (read)
   'list-custom-fields',
   // intake (read)
@@ -125,6 +127,7 @@ const LESSONS_WRITE_TOOLS = new Set([
 const APPROVAL_WRITE_TOOLS = new Set([
   'create-change-request', 'submit-for-approval', 'act-on-approval',
   'propose-reschedule', 'accept-proposal', 'reject-proposal',
+  'propose-schedule-fixes',
 ]);
 
 // Time logging: team_member, scrum_master, project_manager, ba, qa, tester, devops, admin

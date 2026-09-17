@@ -26,7 +26,7 @@ const JOB_NAME = process.argv[2];
 
 if (!JOB_NAME) {
   console.error('Usage: node dist/server/scripts/runCronJob.js <job-name>');
-  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, alert-check, deadline-check, data-retention');
+  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, alert-check, deadline-check, schedule-review, data-retention');
   process.exit(1);
 }
 
@@ -128,6 +128,15 @@ async function run() {
         await forEachTenant(async (tenant) => {
           const count = await runDeadlineNotifications();
           console.log(`[cron-runner] Deadline check: ${count} notifications sent (${tenant?.slug ?? 'default'})`);
+        });
+        break;
+      }
+
+      case 'schedule-review': {
+        const { runScheduleReview } = await import('../services/scheduling/scheduleReviewJob');
+        await forEachTenant(async (tenant) => {
+          const count = await runScheduleReview();
+          console.log(`[cron-runner] Schedule review: ${count} notifications sent (${tenant?.slug ?? 'default'})`);
         });
         break;
       }

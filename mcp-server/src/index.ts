@@ -15,6 +15,7 @@ import { registerApprovalTools } from './tools/approvals.js';
 import { registerReportTools } from './tools/reports.js';
 import { registerAIInsightTools } from './tools/ai-insights.js';
 import { registerAutoRescheduleTools } from './tools/auto-reschedule.js';
+import { registerScheduleReviewTools } from './tools/schedule-review.js';
 import { registerIntakeTools } from './tools/intake.js';
 import { registerCustomFieldTools } from './tools/custom-fields.js';
 import { registerIntegrationTools } from './tools/integrations.js';
@@ -145,6 +146,7 @@ function createMcpServer(userContext?: McpUserContext): McpServer {
   registerReportTools(registrationTarget);
   registerAIInsightTools(registrationTarget);
   registerAutoRescheduleTools(registrationTarget);
+  registerScheduleReviewTools(registrationTarget);
   registerIntakeTools(registrationTarget);
   registerCustomFieldTools(registrationTarget);
   registerIntegrationTools(registrationTarget);

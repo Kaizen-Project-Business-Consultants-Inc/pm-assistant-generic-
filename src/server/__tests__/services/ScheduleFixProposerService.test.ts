@@ -126,6 +126,24 @@ describe('ScheduleFixProposerService', () => {
     expect(auditLedgerService.append).toHaveBeenCalledWith(expect.objectContaining({ action: 'schedule.fix.apply', entityId: 's1' }));
   });
 
+  it('applies set_duration to match the date span and records a duration reversal', async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const prop = { ...PROPOSAL, proposalData: { fixes: [
+      { id: 'dur1', type: 'set_duration', confidence: 0.7, reason: 'x', defaultChecked: true, taskId: 'b', newDuration: 14 },
+    ] } };
+    vi.mocked(repo.findById).mockResolvedValue({ ...prop } as any);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue([
+      { id: 'b', name: 'Build', isMilestone: false, parentTaskId: undefined, estimatedDays: 1, dependencies: [] },
+    ] as any);
+
+    const res = await (await svc()).apply('s1', 'prop-1', ['dur1'], 'u1');
+    expect(scheduleService.updateTask).toHaveBeenCalledWith('b', { estimatedDays: 14 });
+    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    expect(log.find((a: any) => a.op === 'restore_duration')).toMatchObject({ taskId: 'b', oldValue: 1 });
+    expect(res.appliedCount).toBe(1);
+  });
+
   it('skips a dependency that is rejected (cycle) without failing the apply', async () => {
     const { scheduleService } = await import('../../services/ScheduleService');
     const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');

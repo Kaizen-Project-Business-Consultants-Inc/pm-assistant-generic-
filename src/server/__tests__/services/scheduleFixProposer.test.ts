@@ -60,6 +60,17 @@ describe('proposeFixesDeterministic', () => {
     expect(parents.every(p => p.newParentName === 'T1')).toBe(true);
   });
 
+  it('proposes set_duration when estimatedDays disagrees with the date span, not when it agrees', () => {
+    seq = 0;
+    const wrong = task({ id: 'w', name: 'Build', startDate: '2026-10-05', endDate: '2026-10-19', estimatedDays: 1 });
+    const right = task({ id: 'r', name: 'Design', startDate: '2026-10-05', endDate: '2026-10-19', estimatedDays: 14 });
+    const fixes = proposeFixesDeterministic([], [wrong, right]);
+    const dur = fixes.filter(f => f.type === 'set_duration');
+    expect(dur.map(d => d.taskId)).toEqual(['w']);
+    expect(dur[0].newDuration).toBe(14);
+    expect(dur[0].defaultChecked).toBe(true);
+  });
+
   it('produces stable, unique fix ids', () => {
     seq = 0;
     const a = task({ id: 'a', name: 'Design' });

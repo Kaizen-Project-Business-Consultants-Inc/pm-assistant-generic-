@@ -8,7 +8,7 @@
  * where one exists.
  */
 
-export const RULES_VERSION = '1.0';
+export const RULES_VERSION = '1.1';
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 export type Band = 'tracking_sheet' | 'needs_work' | 'controllable' | 'fit_for_control';
@@ -129,7 +129,7 @@ export const RULES: Record<string, RuleMeta> = {
   R20: { id: 'R20', name: 'No buffer before gate', severity: 'medium', scope: 'task' },
   R21: { id: 'R21', name: 'Over-allocated owner', severity: 'medium', scope: 'task' },
   R22: { id: 'R22', name: 'Suspicious names', severity: 'low', scope: 'task' },
-  R23: { id: 'R23', name: 'Flat hierarchy', severity: 'low', scope: 'schedule' },
+  R23: { id: 'R23', name: 'Flat hierarchy', severity: 'medium', scope: 'schedule' },
   R24: { id: 'R24', name: 'Stale task', severity: 'low', scope: 'task' },
   R25: { id: 'R25', name: 'Phase without children', severity: 'medium', scope: 'task' },
   R26: { id: 'R26', name: 'Duplicate task name', severity: 'medium', scope: 'task' },
@@ -523,7 +523,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   }
 
   // R23 — Flat hierarchy
-  if (n > 15 && g.summaries.length === 0) {
+  if (n > 8 && g.summaries.length === 0) {
     findings.push(make('R23', [], `${n} tasks with no phases. Group them under summary tasks so the plan can be read at a glance.`));
   }
 

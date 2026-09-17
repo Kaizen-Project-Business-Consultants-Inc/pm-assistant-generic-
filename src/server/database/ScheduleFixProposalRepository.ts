@@ -6,10 +6,10 @@ export type FixProposalSource = 'ai' | 'rules';
 
 /** One recorded reversal step, written at apply time so undo can replay it. */
 export interface AppliedAction {
-  op: 'remove_dependency' | 'restore_milestone' | 'restore_parent' | 'delete_task';
+  op: 'remove_dependency' | 'restore_milestone' | 'restore_parent' | 'delete_task' | 'restore_duration';
   taskId?: string;
   dependencyId?: string;
-  oldValue?: unknown; // prior isMilestone / prior parentTaskId
+  oldValue?: unknown; // prior isMilestone / prior parentTaskId / prior estimatedDays
 }
 
 export interface FixProposalData {

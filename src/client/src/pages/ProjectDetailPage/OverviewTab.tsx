@@ -36,6 +36,7 @@ import { CustomFieldsSection } from '../../components/customfields/CustomFieldsS
 import { CustomFieldManager } from '../../components/customfields/CustomFieldManager';
 import { PortalLinkManager } from '../../components/portal/PortalLinkManager';
 import { ProjectLinksCard } from '../../components/project/ProjectLinksCard';
+import { ScheduleHealthCard } from '../../components/schedule/review/ScheduleHealthCard';
 
 interface ProjectOverview {
   id: string;
@@ -58,12 +59,12 @@ interface ProjectOverview {
   updated_at?: string;
 }
 
-type CardId = 'brief' | 'links' | 'task-summary' | 'timeline' | 'milestones' | 'health' | 'evm' | 'budget' | 'due-soon' | 'raid' | 'sprint' | 'activity' | 'blocked' | 'comments' | 'goals' | 'attachments' | 'latest-meeting';
+type CardId = 'brief' | 'links' | 'task-summary' | 'timeline' | 'milestones' | 'health' | 'schedule-health' | 'evm' | 'budget' | 'due-soon' | 'raid' | 'sprint' | 'activity' | 'blocked' | 'comments' | 'goals' | 'attachments' | 'latest-meeting';
 
 const DEFAULT_CARD_ORDER: CardId[] = [
   'brief', 'links',
   'task-summary', 'timeline', 'milestones',
-  'health', 'evm', 'budget',
+  'health', 'schedule-health', 'evm', 'budget',
   'due-soon', 'raid', 'sprint',
   'activity', 'blocked', 'comments',
   'goals', 'attachments', 'latest-meeting',
@@ -385,6 +386,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     'timeline': { icon: <Clock className="w-4 h-4" />, title: 'Timeline Progress' },
     'milestones': { icon: <Target className="w-4 h-4" />, title: 'Key Milestones' },
     'health': { icon: <Heart className="w-4 h-4" />, title: 'Project Health' },
+    'schedule-health': { icon: <CalendarClock className="w-4 h-4" />, title: 'Schedule Health' },
     'evm': { icon: <TrendingUp className="w-4 h-4" />, title: 'Earned Value' },
     'budget': { icon: <DollarSign className="w-4 h-4" />, title: 'Budget' },
     'due-soon': { icon: <CalendarClock className="w-4 h-4" />, title: 'Due This Week' },
@@ -400,6 +402,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
 
   const isCardVisible = (id: CardId): boolean => {
     switch (id) {
+      case 'schedule-health': return !!primaryScheduleId;
       case 'sprint': return methodology !== 'waterfall';
       case 'blocked': return blockedTasks.length > 0;
       case 'comments': return recentComments.length > 0;
@@ -429,6 +432,9 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     'links': (
       <ProjectLinksCard projectId={project.id} canEdit={canEdit} />
     ),
+    'schedule-health': primaryScheduleId ? (
+      <ScheduleHealthCard scheduleId={primaryScheduleId} onOpen={() => onNavigateToTab?.('schedule')} />
+    ) : null,
     'task-summary': analyticsLoading ? (
       <div className="grid grid-cols-2 gap-3">
         {[1, 2, 3, 4].map((i) => <div key={i} className={`h-16 ${skeletonPulse}`} />)}

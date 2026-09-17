@@ -7,9 +7,9 @@
  * when the AI proposer is unavailable, so it must stand on its own.
  */
 
-import type { Finding, ReviewTask } from './rules';
+import { calendarDaySpan, type Finding, type ReviewTask } from './rules';
 
-export type FixType = 'add_dependency' | 'set_milestone' | 'set_parent';
+export type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration';
 
 export interface ProposedFix {
   id: string;
@@ -27,6 +27,8 @@ export interface ProposedFix {
   // set_parent
   parentTaskId?: string;   // existing task to reparent under (unused in slice A)
   newParentName?: string;  // create this phase parent and group under it
+  // set_duration
+  newDuration?: number;    // estimatedDays to set so it matches the task's dates
 }
 
 /** Fixes at or above this confidence are pre-ticked in the UI. */
@@ -140,6 +142,30 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
         taskName: t.name,
       }));
     }
+  }
+
+  // --- set_duration: task's stored duration disagrees with its dates (R12/R28) ---
+  for (const t of leaves) {
+    const s = t.startDate ? String(t.startDate).slice(0, 10) : '';
+    const e = t.endDate ? String(t.endDate).slice(0, 10) : '';
+    if (!s || !e) continue;
+    const span = calendarDaySpan(s, e); // inclusive count, matches R12's detection
+    if (span < 2) continue;
+    const days = Number(t.estimatedDays ?? 0);
+    // Disagrees if estimatedDays is off the span by >50%, or is a sub-day value over a multi-day span.
+    const disagrees = (days > 0 && Math.abs(days - span) / span > 0.5) || (days > 0 && days < 1);
+    if (!disagrees) continue;
+    // The app stores duration as end - start (exclusive), so target = span - 1.
+    const target = Math.max(1, span - 1);
+    fixes.push(build({
+      id: `set_duration:${t.id}`,
+      type: 'set_duration',
+      confidence: 0.7,
+      reason: `Duration is ${days} day${days === 1 ? '' : 's'} but the task runs ${target} days; set it to ${target} to match its dates.`,
+      taskId: t.id,
+      taskName: t.name,
+      newDuration: target,
+    }));
   }
 
   // --- set_parent: only when the schedule is flat (R23) and names share a prefix ---

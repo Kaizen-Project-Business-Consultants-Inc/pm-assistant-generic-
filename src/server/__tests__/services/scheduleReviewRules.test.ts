@@ -290,10 +290,18 @@ describe('R22 / R23 / R25 / R26 / R27 — hygiene', () => {
     expect(f.message).toContain("'DBJ & JV+D9:D27'");
   });
 
-  it('R23 fires for more than 15 leaf tasks with no summaries', () => {
+  it('R23 fires above 8 leaf tasks with no summaries, and is medium severity', () => {
     seq = 0;
-    const many = Array.from({ length: 16 }, (_, i) => task({ name: `T${i}`, startDate: '2026-10-01', endDate: `2026-10-${String(2 + (i % 20)).padStart(2, '0')}`, dependencies: i ? [{ dependencyId: `t${i}` }] : [] }));
-    expect(ids(evaluateRules(input(many)).findings)).toContain('R23');
+    const nine = Array.from({ length: 9 }, (_, i) => task({ name: `T${i}`, startDate: '2026-10-01', endDate: `2026-10-${String(2 + (i % 20)).padStart(2, '0')}`, dependencies: i ? [{ dependencyId: `t${i}` }] : [] }));
+    const r23 = rule(evaluateRules(input(nine)).findings, 'R23');
+    expect(r23).toHaveLength(1);
+    expect(r23[0].severity).toBe('medium');
+  });
+
+  it('R23 does not fire at 8 or fewer leaf tasks', () => {
+    seq = 0;
+    const eight = Array.from({ length: 8 }, (_, i) => task({ name: `T${i}`, startDate: '2026-10-01', endDate: `2026-10-${String(2 + i).padStart(2, '0')}`, dependencies: i ? [{ dependencyId: `t${i}` }] : [] }));
+    expect(ids(evaluateRules(input(eight)).findings)).not.toContain('R23');
   });
 
   it('R25 flags a summary with no children; R26 duplicate names; R27 missing or phase-code descriptions', () => {

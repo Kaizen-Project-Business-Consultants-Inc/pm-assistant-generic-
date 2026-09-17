@@ -227,6 +227,18 @@ export class ScheduleFixProposerService {
       }
     }
 
+    // 4) durations — correct estimatedDays to match the task's dates
+    for (const f of fixes.filter(f => f.type === 'set_duration')) {
+      const old = taskById.get(f.taskId!)?.estimatedDays ?? null;
+      try {
+        await scheduleService.updateTask(f.taskId!, { estimatedDays: f.newDuration });
+        applied.push({ op: 'restore_duration', taskId: f.taskId!, oldValue: old });
+        appliedCount++;
+      } catch (err: any) {
+        skipped.push({ fixId: f.id, reason: err?.message || 'could not set duration' });
+      }
+    }
+
     // Re-flow dates so the schedule respects the new logic (SR1). Pinned tasks
     // (completed / actual-dated) stay put. Never fails the apply.
     let recompute = { deltas: [] as DateDelta[], tasksMoved: 0, leafCount: 0, projectEndBefore: null as string | null, projectEndAfter: null as string | null, projectEndShiftDays: 0 };
@@ -301,6 +313,9 @@ export class ScheduleFixProposerService {
             // null clears parent_task_id at the DB level (updateTask writes val ?? null);
             // the Task type models parentTaskId as string|undefined, so cast to allow null.
             await scheduleService.updateTask(action.taskId!, { parentTaskId: (action.oldValue as string | null) ?? null } as any);
+            break;
+          case 'restore_duration':
+            await scheduleService.updateTask(action.taskId!, { estimatedDays: (action.oldValue as number | null) ?? undefined } as any);
             break;
           case 'delete_task':
             await scheduleService.deleteTask(action.taskId!);

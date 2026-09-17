@@ -20,6 +20,7 @@ const NOTIFICATION_TYPE_TO_CATEGORY: Record<string, string> = {
   agent_rollback: 'agent_proposals',
   raid_item: 'risks_issues',
   reschedule_proposal: 'risks_issues',
+  schedule_review: 'risks_issues',
   budget_alert: 'budget_finance',
   ai_budget_warning: 'budget_finance',
   monte_carlo_alert: 'budget_finance',

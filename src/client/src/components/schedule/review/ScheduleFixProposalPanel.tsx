@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { X, Loader2, CheckCircle2, Undo2, Link2, Flag, FolderTree, Sparkles } from 'lucide-react';
+import { X, Loader2, CheckCircle2, Undo2, Link2, Flag, FolderTree, Clock, Sparkles } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { announce } from '../../../utils/announce';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
@@ -9,7 +9,7 @@ import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 // Types (mirror the server ProposedFix / proposal shape)
 // ---------------------------------------------------------------------------
 
-type FixType = 'add_dependency' | 'set_milestone' | 'set_parent';
+type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration';
 
 interface ProposedFix {
   id: string;
@@ -20,6 +20,7 @@ interface ProposedFix {
   taskName?: string;
   dependsOnTaskName?: string;
   newParentName?: string;
+  newDuration?: number;
 }
 
 interface FixProposal {
@@ -60,11 +61,13 @@ const TYPE_META: Record<FixType, { label: string; Icon: typeof Link2 }> = {
   add_dependency: { label: 'Add link', Icon: Link2 },
   set_milestone: { label: 'Flag milestone', Icon: Flag },
   set_parent: { label: 'Group under phase', Icon: FolderTree },
+  set_duration: { label: 'Fix duration', Icon: Clock },
 };
 
 function fixText(f: ProposedFix): string {
   if (f.type === 'add_dependency') return `Link '${f.taskName}' after '${f.dependsOnTaskName}'`;
   if (f.type === 'set_milestone') return `Flag '${f.taskName}' as a milestone`;
+  if (f.type === 'set_duration') return `Set '${f.taskName}' duration to ${f.newDuration} day${f.newDuration === 1 ? '' : 's'}`;
   return `Group '${f.taskName}' under phase '${f.newParentName}'`;
 }
 
@@ -132,7 +135,7 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
 
   const fixes = proposal?.proposalData.fixes ?? [];
   const grouped = useMemo(() => {
-    const order: FixType[] = ['add_dependency', 'set_milestone', 'set_parent'];
+    const order: FixType[] = ['add_dependency', 'set_milestone', 'set_parent', 'set_duration'];
     return order.map(type => ({ type, items: fixes.filter(f => f.type === type) })).filter(g => g.items.length > 0);
   }, [fixes]);
 

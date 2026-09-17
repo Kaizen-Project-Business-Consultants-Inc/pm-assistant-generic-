@@ -23,6 +23,7 @@ export interface CronTasks {
   storageSyncTask: cron.ScheduledTask | null;
   timesheetComplianceTask: cron.ScheduledTask | null;
   weeklyReviewTask: cron.ScheduledTask | null;
+  scheduleReviewTask: cron.ScheduledTask | null;
   utilizationCoachingTask: cron.ScheduledTask | null;
   scheduledAutomationTask: cron.ScheduledTask | null;
   dreamingTask: cron.ScheduledTask | null;
@@ -45,6 +46,7 @@ export function startCronTasks(
     storageSyncTask: null,
     timesheetComplianceTask: null,
     weeklyReviewTask: null,
+    scheduleReviewTask: null,
     utilizationCoachingTask: null,
     scheduledAutomationTask: null,
     dreamingTask: null,
@@ -291,6 +293,28 @@ export function startCronTasks(
     });
   });
 
+  // Schedule Review (living document) — Mondays at 04:00
+  logger.info('[cron] Starting weekly Schedule Review (Mondays at 04:00)');
+  tasks.scheduleReviewTask = cron.schedule('0 4 * * 1', async () => {
+    await forEachTenant(async (tenant) => {
+      const label = tenant?.slug ?? 'default';
+      const start = Date.now();
+      try {
+        const { runScheduleReview } = await import('./scheduleReviewJob');
+        const count = await runScheduleReview();
+        logger.info(`[cron:schedule-review] ${label} completed`, {
+          cronJob: 'schedule-review', tenant: label, durationMs: Date.now() - start,
+          result: { notified: count },
+        });
+      } catch (error) {
+        logger.error(`[cron:schedule-review] ${label} FAILED`, {
+          cronJob: 'schedule-review', tenant: label, durationMs: Date.now() - start,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  });
+
   // Utilization coaching — Mondays at 09:00
   logger.info('[cron] Starting utilization coaching sender (Mondays at 09:00)');
   tasks.utilizationCoachingTask = cron.schedule('0 9 * * 1', async () => {
@@ -397,6 +421,7 @@ export function stopCronTasks(tasks: CronTasks): void {
   if (tasks.storageSyncTask) { tasks.storageSyncTask.stop(); tasks.storageSyncTask = null; }
   if (tasks.timesheetComplianceTask) { tasks.timesheetComplianceTask.stop(); tasks.timesheetComplianceTask = null; }
   if (tasks.weeklyReviewTask) { tasks.weeklyReviewTask.stop(); tasks.weeklyReviewTask = null; }
+  if (tasks.scheduleReviewTask) { tasks.scheduleReviewTask.stop(); tasks.scheduleReviewTask = null; }
   if (tasks.utilizationCoachingTask) { tasks.utilizationCoachingTask.stop(); tasks.utilizationCoachingTask = null; }
   if (tasks.scheduledAutomationTask) { tasks.scheduledAutomationTask.stop(); tasks.scheduledAutomationTask = null; }
   if (tasks.dreamingTask) { tasks.dreamingTask.stop(); tasks.dreamingTask = null; }
