@@ -188,7 +188,7 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
               className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 hover:underline disabled:opacity-60"
             >
               {proposeMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-              {proposeMutation.isPending ? 'Drafting with AI…' : 'Draft with AI (slower, richer reasons)'}
+              {proposeMutation.isPending ? 'Grouping into phases…' : 'Suggest phases with AI'}
             </button>
           )}
 

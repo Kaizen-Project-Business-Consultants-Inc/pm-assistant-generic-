@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proposeFixesDeterministic } from '../../services/scheduleReview/fixProposer';
+import { proposeFixesDeterministic, buildGroupingFixes } from '../../services/scheduleReview/fixProposer';
 import type { Finding, ReviewTask } from '../../services/scheduleReview/rules';
 
 let seq = 0;
@@ -67,5 +67,35 @@ describe('proposeFixesDeterministic', () => {
     const fixes = proposeFixesDeterministic([], [a, b]);
     const ids = fixes.map(f => f.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe('buildGroupingFixes (AI phase grouping → set_parent)', () => {
+  const tasks = [
+    task({ id: 'a', name: 'Kick-off' }),
+    task({ id: 'b', name: 'Onboarding' }),
+    task({ id: 'c', name: 'Build config' }),
+    task({ id: 'd', name: 'Integration' }),
+  ];
+
+  it('turns groups into set_parent fixes under the phase name', () => {
+    const fixes = buildGroupingFixes([
+      { phaseName: 'Initiation', taskIds: ['a', 'b'] },
+      { phaseName: 'Build', taskIds: ['c', 'd'] },
+    ], tasks);
+    expect(fixes.map(f => [f.taskId, f.newParentName])).toEqual([
+      ['a', 'Initiation'], ['b', 'Initiation'], ['c', 'Build'], ['d', 'Build'],
+    ]);
+    expect(fixes.every(f => f.type === 'set_parent' && f.defaultChecked)).toBe(true);
+  });
+
+  it('drops unknown ids and single-member groups, and never groups a task twice', () => {
+    const fixes = buildGroupingFixes([
+      { phaseName: 'Solo', taskIds: ['a'] },              // single member → dropped
+      { phaseName: 'Ghost', taskIds: ['zzz', 'yyy'] },    // unknown ids → dropped
+      { phaseName: 'Real', taskIds: ['a', 'b', 'a'] },    // 'a' de-duped within group
+    ], tasks);
+    expect(fixes.map(f => f.taskId)).toEqual(['a', 'b']);
+    expect(fixes.every(f => f.newParentName === 'Real')).toBe(true);
   });
 });

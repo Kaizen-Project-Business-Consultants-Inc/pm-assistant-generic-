@@ -36,6 +36,40 @@ function build(partial: Omit<ProposedFix, 'defaultChecked'>): ProposedFix {
   return { ...partial, defaultChecked: partial.confidence >= DEFAULT_CHECK_THRESHOLD };
 }
 
+/**
+ * Convert AI-proposed phase groups into set_parent fixes. Pure and reusable so it
+ * can be unit-tested without the model. Drops unknown ids, ignores a task named in
+ * two groups after the first, and skips a group with fewer than two real members.
+ */
+export function buildGroupingFixes(
+  groups: Array<{ phaseName: string; taskIds: string[] }>,
+  candidates: ReviewTask[],
+): ProposedFix[] {
+  const byId = new Map(candidates.map(t => [t.id, t]));
+  const used = new Set<string>();
+  const out: ProposedFix[] = [];
+  for (const g of groups) {
+    const name = (g.phaseName || '').trim();
+    if (!name) continue;
+    const members = [...new Set(g.taskIds.filter(id => byId.has(id) && !used.has(id)))];
+    if (members.length < 2) continue; // a phase needs at least two distinct tasks
+    for (const id of members) {
+      used.add(id);
+      out.push({
+        id: `set_parent:${id}:${name}`,
+        type: 'set_parent',
+        confidence: 0.7,
+        reason: `Part of the '${name}' phase.`,
+        defaultChecked: true,
+        taskId: id,
+        taskName: byId.get(id)!.name,
+        newParentName: name,
+      });
+    }
+  }
+  return out;
+}
+
 /** Leading phase-code prefix, e.g. "T1", "PG2", "Phase 2", "Gate 3". */
 const PREFIX = /^\s*(phase\s*\d+|gate\s*\d+|stage\s*\d+|[A-Z]{1,3}\d+)\b/i;
 

@@ -12,11 +12,10 @@ import { auditLedgerService } from './AuditLedgerService';
 import logger from '../utils/logger';
 import {
   proposeFixesDeterministic,
-  DEFAULT_CHECK_THRESHOLD,
+  buildGroupingFixes,
   type ProposedFix,
-  type FixType,
 } from './scheduleReview/fixProposer';
-import { RULES_VERSION, type Finding, type ReviewTask } from './scheduleReview/rules';
+import { RULES_VERSION, type ReviewTask } from './scheduleReview/rules';
 import {
   scheduleFixProposalRepository,
   type ScheduleFixProposal,
@@ -25,20 +24,17 @@ import {
 
 const aiLearning = new AILearningServiceV2();
 
-/** Shape the AI returns; server normalises ids/defaultChecked and validates targets. */
-const AiFixSchema = z.object({
-  type: z.enum(['add_dependency', 'set_milestone', 'set_parent']),
-  confidence: z.number().min(0).max(1),
-  reason: z.string().min(1).max(300),
-  taskId: z.string().optional(),
-  dependsOnTaskId: z.string().optional(),
-  dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional(),
-  lagDays: z.number().optional(),
-  newParentName: z.string().max(80).optional(),
-});
-const AiFixProposalSchema = z.object({
-  fixes: z.array(AiFixSchema).max(100),
-  summary: z.string().max(400).optional(),
+/**
+ * The AI is asked ONLY to group tasks into phases — a small, fast reply that does
+ * not truncate on large schedules. The deterministic engine still produces the
+ * dependency chain and milestone flags (instant and reliable); the model does the
+ * one thing rules cannot: read the meaning of task names to infer sequential phases.
+ */
+const AiGroupingSchema = z.object({
+  groups: z.array(z.object({
+    phaseName: z.string().min(1).max(80),
+    taskIds: z.array(z.string()).min(1).max(200),
+  })).max(20),
 });
 
 export interface ApplyResult {
@@ -88,24 +84,22 @@ export class ScheduleFixProposerService {
     const tasks = (await scheduleService.findTasksByScheduleId(scheduleId)).map(toReviewTask);
     const leafCount = tasks.filter(t => !t.isSummary).length;
 
-    // Deterministic is instant and is the default, so the button never blocks on
-    // the model. AI is opt-in (a "Draft with AI" action) and only for schedules
-    // small enough to fit one response.
-    let fixes: ProposedFix[];
-    let source: 'ai' | 'rules';
-    const aiUsable = useAi && config.AI_ENABLED && claudeService.isAvailable() && leafCount <= 60;
-    if (aiUsable) {
+    // Deterministic fixes (dependency chain + milestone flags) are instant and are
+    // always the base. When the PM opts into AI, we ask it ONLY for phase groupings
+    // and merge them in (replacing any prefix-based grouping guesses). This keeps
+    // the AI reply small so it returns fast and never truncates on big schedules.
+    let fixes: ProposedFix[] = proposeFixesDeterministic(review.findings, tasks);
+    let source: 'ai' | 'rules' = 'rules';
+    if (useAi && config.AI_ENABLED && claudeService.isAvailable() && leafCount <= 80) {
       try {
-        fixes = await this.aiPropose(review.findings, tasks, schedule, userId);
-        source = 'ai';
+        const groupings = await this.aiGroupings(tasks, userId);
+        if (groupings.length > 0) {
+          fixes = [...fixes.filter(f => f.type !== 'set_parent'), ...groupings];
+          source = 'ai';
+        }
       } catch (err: any) {
-        logger.warn('[ScheduleFix] AI proposer failed, using deterministic rules', { scheduleId, error: err?.message });
-        fixes = proposeFixesDeterministic(review.findings, tasks);
-        source = 'rules';
+        logger.warn('[ScheduleFix] AI grouping failed, keeping deterministic fixes', { scheduleId, error: err?.message });
       }
-    } else {
-      fixes = proposeFixesDeterministic(review.findings, tasks);
-      source = 'rules';
     }
 
     await scheduleFixProposalRepository.supersedePending(scheduleId);
@@ -123,55 +117,32 @@ export class ScheduleFixProposerService {
     });
   }
 
-  /** One Claude call; validated + normalised against the real task graph. Falls back to rules. */
-  private async aiPropose(findings: Finding[], tasks: ReviewTask[], schedule: any, userId: string | null): Promise<ProposedFix[]> {
-    const byId = new Map(tasks.map(t => [t.id, t]));
-    const taskLines = tasks.map(t =>
-      `- id=${t.id} | "${t.name}" | order=${t.sortOrder ?? 0} | parent=${t.parentTaskId ?? 'none'} | milestone=${t.isMilestone ? 'yes' : 'no'} | deps=${(t.dependencies || []).length}`,
-    ).join('\n');
-    const findingLines = findings.map(f => `- ${f.ruleId} (${f.severity}): ${f.message}`).join('\n');
+  /**
+   * Ask the model to group ungrouped leaf tasks into sequential phases. Small,
+   * focused reply (a few groups), so it returns fast and does not truncate on
+   * large schedules. Returns set_parent fixes; empty when there is nothing to group.
+   */
+  private async aiGroupings(tasks: ReviewTask[], userId: string | null): Promise<ProposedFix[]> {
+    const candidates = tasks.filter(t => !t.isSummary && !t.parentTaskId);
+    if (candidates.length < 6) return []; // too small to benefit from phases
 
-    const systemPrompt = `You are a scheduling expert helping a project manager fix an imported schedule. ` +
-      `Propose only STRUCTURAL fixes of these types: add_dependency (finish-to-start link between two existing tasks), ` +
-      `set_milestone (flag an existing zero-work task as a milestone), set_parent (group tasks under a new phase, via newParentName). ` +
-      `Never invent tasks or dates. Only reference task ids that exist. Give each fix a confidence 0..1 and a SHORT reason (max 12 words). ` +
-      `Return JSON: { "fixes": [ { "type", "confidence", "reason", "taskId?", "dependsOnTaskId?", "dependencyType?", "lagDays?", "newParentName?" } ], "summary"? }.`;
-
-    const userMessage = `Project window: ${schedule.startDate ?? '?'} to ${schedule.endDate ?? '?'}.\n\n` +
-      `Review findings:\n${findingLines || '(none)'}\n\nTasks:\n${taskLines}`;
+    const taskLines = candidates.map(t => `- id=${t.id} | "${t.name}"`).join('\n');
+    const systemPrompt = `You are a scheduling expert. Group these project tasks into 3-8 sequential PHASES ` +
+      `(for example: Initiation, Analysis & Design, Build/Configuration, Testing, Migration, Go-Live) based on what each task does. ` +
+      `Only group tasks that clearly belong together; omit any you are unsure about. Do not invent tasks. ` +
+      `Return JSON: { "groups": [ { "phaseName": string, "taskIds": string[] } ] } using only ids from the list.`;
+    const userMessage = `Tasks:\n${taskLines}`;
 
     const { data } = await claudeService.completeWithJsonSchema({
       systemPrompt,
       userMessage,
-      schema: AiFixProposalSchema,
-      maxTokens: 4000,
+      schema: AiGroupingSchema,
+      maxTokens: 1500,
       temperature: 0.2,
       userId: userId ?? undefined,
     });
 
-    // Post-validate against the real graph; drop anything that references unknown
-    // tasks or is internally inconsistent, and compute ids + defaultChecked here.
-    const out: ProposedFix[] = [];
-    for (const f of data.fixes) {
-      if (!f.taskId || !byId.has(f.taskId)) continue;
-      const t = byId.get(f.taskId)!;
-      const confidence = Math.max(0, Math.min(1, f.confidence));
-      const base = { confidence, reason: f.reason, defaultChecked: confidence >= DEFAULT_CHECK_THRESHOLD };
-      if (f.type === 'add_dependency') {
-        if (!f.dependsOnTaskId || !byId.has(f.dependsOnTaskId) || f.dependsOnTaskId === f.taskId) continue;
-        out.push({ ...base, id: `add_dependency:${f.taskId}:${f.dependsOnTaskId}`, type: 'add_dependency',
-          taskId: f.taskId, taskName: t.name, dependsOnTaskId: f.dependsOnTaskId, dependsOnTaskName: byId.get(f.dependsOnTaskId)!.name,
-          dependencyType: (f.dependencyType ?? 'FS'), lagDays: f.lagDays ?? 0 });
-      } else if (f.type === 'set_milestone') {
-        if (t.isMilestone) continue;
-        out.push({ ...base, id: `set_milestone:${f.taskId}`, type: 'set_milestone', taskId: f.taskId, taskName: t.name });
-      } else if (f.type === 'set_parent') {
-        if (!f.newParentName) continue;
-        out.push({ ...base, id: `set_parent:${f.taskId}:${f.newParentName}`, type: 'set_parent', taskId: f.taskId, taskName: t.name, newParentName: f.newParentName });
-      }
-    }
-    // If the model returned nothing usable, fall back to deterministic rules.
-    return out.length > 0 ? out : proposeFixesDeterministic(findings, tasks);
+    return buildGroupingFixes(data.groups, candidates);
   }
 
   /** Apply the selected fixes, recording a reversal log, then re-score. */
