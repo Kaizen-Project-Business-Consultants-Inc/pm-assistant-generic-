@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-17
+
+- **Schedule Review Phases 1+2+3 DEPLOYED TO PRODUCTION (kovarti.com)** — user gave explicit approval. Applied tenant migrations `T047` (schedule_reviews) + `T048` (schedule_fix_proposals) to both prod tenant DBs (`pmassist_t_org_477881c5`, `pmassist_t_parra_owais`) — 2/2 tables each — then `deploy.sh prod --skip-tests`. Service RUNNING, health ok. Prod now has: health score + findings (Phase 1), import leak fixes (Phase 2), and the fix engine (propose/apply/undo, 3 fix types, SR1 date recompute, SR4 audit trail, AI phase grouping). No prod smoke-test run (would write into real customer data).
+- Prod prelaunch note: `deploy.sh prod` (no `--prelaunch`) builds the live app; only 2 real tenant orgs on prod so far.
+
 ## 2026-09-16 (later — Phase 3 slice A + fix-button honesty)
 
 - **AI proposer reworked to phase-grouping only** (commit 1907951; staging). The AI path used to ask Claude for every fix (chain + milestones + grouping); on DBJ (28 tasks) that overflowed the token cap, truncated, and fell back to rules after ~68s with NO grouping. Now the deterministic engine always makes the chain + milestone flags instantly, and the AI is asked ONLY to group tasks into sequential phases (small, fast reply). New pure `buildGroupingFixes()` in fixProposer.ts. Verified on DBJ: **14s** (was 68s), source ai, 27 links + 4 milestones + **28 groupings into 8 sensible phases** (Initiation, Analysis & Design, Build & Configuration, Data Migration, Testing, Pre-Production, Go-Live, Post-Production). Button relabeled "Suggest phases with AI". This is why the deterministic prefix-based grouping found nothing on DBJ (23/28 names have no phase-code prefix) — semantic grouping is an AI job.
