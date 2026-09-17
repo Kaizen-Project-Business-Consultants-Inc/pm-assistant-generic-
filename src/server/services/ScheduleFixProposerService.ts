@@ -59,6 +59,7 @@ function toReviewTask(t: Awaited<ReturnType<typeof scheduleService.findTasksBySc
     status: t.status,
     startDate: t.startDate,
     endDate: t.endDate,
+    estimatedDays: t.estimatedDays,
     isMilestone: t.isMilestone,
     isSummary: t.isSummary,
     parentTaskId: t.parentTaskId,
