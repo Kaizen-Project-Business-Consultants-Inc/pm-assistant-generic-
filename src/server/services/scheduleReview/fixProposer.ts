@@ -7,9 +7,9 @@
  * when the AI proposer is unavailable, so it must stand on its own.
  */
 
-import { calendarDaySpan, type Finding, type ReviewTask } from './rules';
+import { calendarDaySpan, isMilestoneLike, BUFFER_NAME, type Finding, type ReviewTask } from './rules';
 
-export type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration';
+export type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration' | 'insert_buffer';
 
 export interface ProposedFix {
   id: string;
@@ -29,6 +29,10 @@ export interface ProposedFix {
   newParentName?: string;  // create this phase parent and group under it
   // set_duration
   newDuration?: number;    // estimatedDays to set so it matches the task's dates
+  // insert_buffer
+  gateTaskId?: string;     // the gate/milestone to protect
+  gateName?: string;
+  bufferDays?: number;     // size of the buffer task to insert before the gate
 }
 
 /** Fixes at or above this confidence are pre-ticked in the UI. */
@@ -84,6 +88,15 @@ function isLeaf(t: ReviewTask, hasChildren: Set<string>): boolean {
   return !t.isSummary && !hasChildren.has(t.id);
 }
 
+/** A task's duration in calendar days (end - start), falling back to estimatedDays. */
+function durationDays(t: ReviewTask): number {
+  const s = t.startDate ? String(t.startDate).slice(0, 10) : '';
+  const e = t.endDate ? String(t.endDate).slice(0, 10) : '';
+  if (s && e) return Math.max(1, calendarDaySpan(s, e) - 1);
+  if (t.estimatedDays && t.estimatedDays > 0) return t.estimatedDays;
+  return 1;
+}
+
 /**
  * Propose structural fixes from a review's findings and task list.
  * Order is stable: dependencies, then milestones, then phase parents.
@@ -112,11 +125,19 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
       const prev = ordered[i - 1];
       // Only propose when the task has no logic of its own yet.
       if ((cur.dependencies || []).length > 0) continue;
+      // Confidence from a task-order signal: if the dates already run in sequence
+      // (prev finishes on or before cur starts), the link is near-certain and is
+      // pre-ticked; when they overlap it is more of a guess, so it stays unticked.
+      const prevEnd = prev.endDate ? String(prev.endDate).slice(0, 10) : '';
+      const curStart = cur.startDate ? String(cur.startDate).slice(0, 10) : '';
+      const alreadySequential = !!prevEnd && !!curStart && prevEnd <= curStart;
       fixes.push(build({
         id: `add_dependency:${cur.id}:${prev.id}`,
         type: 'add_dependency',
-        confidence: 0.55,
-        reason: `Runs after '${prev.name}' in sequence.`,
+        confidence: alreadySequential ? 0.75 : 0.5,
+        reason: alreadySequential
+          ? `Runs right after '${prev.name}'; the dates already line up.`
+          : `Likely runs after '${prev.name}' in sequence.`,
         taskId: cur.id,
         taskName: cur.name,
         dependsOnTaskId: prev.id,
@@ -192,6 +213,25 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
         }));
       }
     }
+  }
+
+  // --- insert_buffer: protect a gate/milestone that already has predecessors ---
+  for (const t of leaves) {
+    if (!isMilestoneLike(t)) continue;
+    const preds = (t.dependencies || []).map(d => byId.get(d.dependencyId)).filter(Boolean) as ReviewTask[];
+    if (preds.length === 0) continue;                                   // nothing feeding it yet
+    if (preds.some(p => BUFFER_NAME.test(p.name || ''))) continue;      // already buffered
+    const longest = Math.max(...preds.map(durationDays));
+    const bufferDays = Math.max(1, Math.round(0.15 * longest));
+    fixes.push(build({
+      id: `insert_buffer:${t.id}`,
+      type: 'insert_buffer',
+      confidence: 0.5,
+      reason: `Add a ${bufferDays}-day buffer before '${t.name}' to protect it from upstream slippage.`,
+      gateTaskId: t.id,
+      gateName: t.name,
+      bufferDays,
+    }));
   }
 
   return fixes;

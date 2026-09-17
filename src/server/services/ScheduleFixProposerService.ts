@@ -240,6 +240,39 @@ export class ScheduleFixProposerService {
       }
     }
 
+    // 5) buffers — insert a protective task between a gate and its predecessors.
+    // Rewire: preds → buffer → gate. Record readd_dependency so undo restores the
+    // gate's original links, plus delete_task for the created buffer.
+    for (const f of fixes.filter(f => f.type === 'insert_buffer')) {
+      try {
+        const gate = taskById.get(f.gateTaskId!);
+        if (!gate) { skipped.push({ fixId: f.id, reason: 'gate not found' }); continue; }
+        const preds = (gate.dependencies || []).map(d => ({ id: d.dependencyId, type: (d.dependencyType || 'FS') as 'FS' | 'SS' | 'FF' | 'SF', lag: d.lagDays ?? 0 }));
+        if (preds.length === 0) { skipped.push({ fixId: f.id, reason: 'gate has no predecessor to buffer' }); continue; }
+
+        const buffer = await scheduleService.createTask({
+          scheduleId,
+          name: `Buffer before ${f.gateName ?? gate.name}`,
+          estimatedDays: f.bufferDays ?? 1,
+          createdBy: userId ?? 'system',
+        });
+        applied.push({ op: 'delete_task', taskId: buffer.id });
+
+        // Move the gate's incoming links onto the buffer.
+        for (const p of preds) {
+          await scheduleService.addDependency(buffer.id, p.id, p.type, p.lag);
+          await scheduleService.removeDependency(f.gateTaskId!, p.id);
+          applied.push({ op: 'readd_dependency', taskId: f.gateTaskId!, dependencyId: p.id, dependencyType: p.type, lagDays: p.lag });
+        }
+        // Gate now depends on the buffer.
+        await scheduleService.addDependency(f.gateTaskId!, buffer.id, 'FS', 0);
+        applied.push({ op: 'remove_dependency', taskId: f.gateTaskId!, dependencyId: buffer.id });
+        appliedCount++;
+      } catch (err: any) {
+        skipped.push({ fixId: f.id, reason: err?.message || 'could not insert buffer' });
+      }
+    }
+
     // Re-flow dates so the schedule respects the new logic (SR1). Pinned tasks
     // (completed / actual-dated) stay put. Never fails the apply.
     let recompute = { deltas: [] as DateDelta[], tasksMoved: 0, leafCount: 0, projectEndBefore: null as string | null, projectEndAfter: null as string | null, projectEndShiftDays: 0 };
@@ -317,6 +350,9 @@ export class ScheduleFixProposerService {
             break;
           case 'restore_duration':
             await scheduleService.updateTask(action.taskId!, { estimatedDays: (action.oldValue as number | null) ?? undefined } as any);
+            break;
+          case 'readd_dependency':
+            await scheduleService.addDependency(action.taskId!, action.dependencyId!, action.dependencyType ?? 'FS', action.lagDays ?? 0);
             break;
           case 'delete_task':
             await scheduleService.deleteTask(action.taskId!);

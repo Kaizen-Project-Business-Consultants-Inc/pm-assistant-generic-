@@ -144,6 +144,29 @@ describe('ScheduleFixProposerService', () => {
     expect(res.appliedCount).toBe(1);
   });
 
+  it('applies insert_buffer: creates a buffer, rewires deps, and records a reversible log', async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const prop = { ...PROPOSAL, proposalData: { fixes: [
+      { id: 'buf1', type: 'insert_buffer', confidence: 0.5, reason: 'x', defaultChecked: false, gateTaskId: 'g', gateName: 'Gate 1', bufferDays: 3 },
+    ] } };
+    vi.mocked(repo.findById).mockResolvedValue({ ...prop } as any);
+    vi.mocked(scheduleService.createTask).mockResolvedValue({ id: 'buf-1' } as any);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue([
+      { id: 'g', name: 'Gate 1', isMilestone: true, parentTaskId: undefined, dependencies: [{ dependencyId: 'p', dependencyType: 'FS', lagDays: 0 }] },
+    ] as any);
+
+    const res = await (await svc()).apply('s1', 'prop-1', ['buf1'], 'u1');
+
+    expect(scheduleService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'Buffer before Gate 1', estimatedDays: 3, scheduleId: 's1' }));
+    expect(scheduleService.addDependency).toHaveBeenCalledWith('buf-1', 'p', 'FS', 0); // buffer depends on old predecessor
+    expect(scheduleService.removeDependency).toHaveBeenCalledWith('g', 'p');           // gate no longer depends on it directly
+    expect(scheduleService.addDependency).toHaveBeenCalledWith('g', 'buf-1', 'FS', 0); // gate depends on buffer
+    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    expect(log.map(a => a.op)).toEqual(['delete_task', 'readd_dependency', 'remove_dependency']);
+    expect(res.appliedCount).toBe(1);
+  });
+
   it('skips a dependency that is rejected (cycle) without failing the apply', async () => {
     const { scheduleService } = await import('../../services/ScheduleService');
     const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { X, Loader2, CheckCircle2, Undo2, Link2, Flag, FolderTree, Clock, Sparkles } from 'lucide-react';
+import { X, Loader2, CheckCircle2, Undo2, Link2, Flag, FolderTree, Clock, Shield, Sparkles } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { announce } from '../../../utils/announce';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
@@ -9,7 +9,7 @@ import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 // Types (mirror the server ProposedFix / proposal shape)
 // ---------------------------------------------------------------------------
 
-type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration';
+type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration' | 'insert_buffer';
 
 interface ProposedFix {
   id: string;
@@ -21,6 +21,8 @@ interface ProposedFix {
   dependsOnTaskName?: string;
   newParentName?: string;
   newDuration?: number;
+  gateName?: string;
+  bufferDays?: number;
 }
 
 interface FixProposal {
@@ -62,12 +64,14 @@ const TYPE_META: Record<FixType, { label: string; Icon: typeof Link2 }> = {
   set_milestone: { label: 'Flag milestone', Icon: Flag },
   set_parent: { label: 'Group under phase', Icon: FolderTree },
   set_duration: { label: 'Fix duration', Icon: Clock },
+  insert_buffer: { label: 'Add buffer', Icon: Shield },
 };
 
 function fixText(f: ProposedFix): string {
   if (f.type === 'add_dependency') return `Link '${f.taskName}' after '${f.dependsOnTaskName}'`;
   if (f.type === 'set_milestone') return `Flag '${f.taskName}' as a milestone`;
   if (f.type === 'set_duration') return `Set '${f.taskName}' duration to ${f.newDuration} day${f.newDuration === 1 ? '' : 's'}`;
+  if (f.type === 'insert_buffer') return `Add a ${f.bufferDays}-day buffer before '${f.gateName}'`;
   return `Group '${f.taskName}' under phase '${f.newParentName}'`;
 }
 
@@ -135,7 +139,7 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
 
   const fixes = proposal?.proposalData.fixes ?? [];
   const grouped = useMemo(() => {
-    const order: FixType[] = ['add_dependency', 'set_milestone', 'set_parent', 'set_duration'];
+    const order: FixType[] = ['add_dependency', 'set_milestone', 'set_parent', 'set_duration', 'insert_buffer'];
     return order.map(type => ({ type, items: fixes.filter(f => f.type === type) })).filter(g => g.items.length > 0);
   }, [fixes]);
 

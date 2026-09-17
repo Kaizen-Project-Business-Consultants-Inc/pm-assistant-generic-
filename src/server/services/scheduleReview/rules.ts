@@ -146,7 +146,7 @@ const MILESTONE_NAME = /\bmilestone\b|\bgate\s*-?\s*\d/i;
 /** Weaker signals that only count when the task is not also described as work. */
 const MILESTONE_EVENT = /\b(sign[\s-]?off|acceptance|go[\s-]?live|approval)\b/i;
 const WORK_VERB = /\b(review|test|testing|execution|cutover|preparation|remediation|configuration|migration|training|support|development|build)\b/i;
-const BUFFER_NAME = /\b(buffer|reserve|contingency|float)\b/i;
+export const BUFFER_NAME = /\b(buffer|reserve|contingency|float)\b/i;
 const LEGEND_WORDS = new Set(['delayed', 'ahead', 'completed', 'complete', 'not started', 'on track', 'in progress', 'pending', 'done', 'status', 'legend']);
 const CELL_REF = /\b[A-Z]{1,3}\d{1,5}(:[A-Z]{1,3}\d{1,5})?\b/;
 const PHASE_CODE = /^[A-Za-z]{1,3}\d{0,3}$/;
@@ -211,7 +211,7 @@ function nameSaysMilestone(name?: string | null): boolean {
   return MILESTONE_EVENT.test(n) && !WORK_VERB.test(n);
 }
 
-function isMilestoneLike(t: ReviewTask): boolean {
+export function isMilestoneLike(t: ReviewTask): boolean {
   return !!t.isMilestone || nameSaysMilestone(t.name);
 }
 

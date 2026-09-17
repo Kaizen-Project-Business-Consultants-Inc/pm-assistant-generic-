@@ -2717,6 +2717,12 @@ structural changes and the PM ticks which to apply:
 - **Flag milestone** — mark a task named like a gate as a milestone; this also zeroes its duration
   and collapses it to a single day, so it does not then trip the "milestone with duration" rule.
 - **Group under phase** — gather ungrouped tasks that share a name prefix under a new phase parent.
+- **Fix duration** — when a task's stored duration disagrees with its start/finish dates, set the
+  duration to match the dates.
+- **Add buffer** — insert a protective buffer task before a gate/milestone that already has
+  predecessors (sized ~15% of the feeding work), so upstream slippage does not immediately move the
+  gate. The gate's incoming links move onto the buffer, and the date recompute pushes the gate out by
+  the buffer length.
 
 Each proposed fix carries a confidence and a short plain-English reason; higher-confidence fixes are
 pre-ticked. **Propose fixes** returns instantly using deterministic rules; a **Draft with AI** action

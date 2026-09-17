@@ -71,6 +71,40 @@ describe('proposeFixesDeterministic', () => {
     expect(dur[0].defaultChecked).toBe(true);
   });
 
+  it('proposes a buffer before a gate that already has a predecessor, sized ~15% of the feeder', () => {
+    seq = 0;
+    const work = task({ id: 'p', name: 'Build work', startDate: '2026-10-01', endDate: '2026-10-21' }); // ~20 days
+    const gate = task({ id: 'g', name: 'Gate 1', isMilestone: true, dependencies: [{ dependencyId: 'p' }] });
+    const buf = proposeFixesDeterministic([], [work, gate]).filter(f => f.type === 'insert_buffer');
+    expect(buf).toHaveLength(1);
+    expect(buf[0]).toMatchObject({ gateTaskId: 'g', bufferDays: 3 });
+    expect(buf[0].defaultChecked).toBe(false); // advisory
+  });
+
+  it('does not propose a buffer for a gate with no predecessor or one already buffered', () => {
+    seq = 0;
+    const lone = task({ id: 'g1', name: 'Gate 1', isMilestone: true });
+    const buffer = task({ id: 'b', name: 'Buffer before Gate 2', startDate: '2026-10-01', endDate: '2026-10-03' });
+    const g2 = task({ id: 'g2', name: 'Gate 2', isMilestone: true, dependencies: [{ dependencyId: 'b' }] });
+    const buf = proposeFixesDeterministic([], [lone, buffer, g2]).filter(f => f.type === 'insert_buffer');
+    expect(buf).toHaveLength(0);
+  });
+
+  it('pre-ticks a dependency when the dates already run in sequence, unticks it when they overlap', () => {
+    seq = 0;
+    const a = task({ id: 'a', name: 'A', startDate: '2026-10-01', endDate: '2026-10-05' });
+    const b = task({ id: 'b', name: 'B', startDate: '2026-10-06', endDate: '2026-10-10' }); // starts after A ends
+    const seqFix = proposeFixesDeterministic([], [a, b]).find(f => f.type === 'add_dependency' && f.taskId === 'b')!;
+    expect(seqFix.defaultChecked).toBe(true);
+    expect(seqFix.confidence).toBeGreaterThanOrEqual(0.7);
+
+    seq = 0;
+    const c = task({ id: 'c', name: 'C', startDate: '2026-10-01', endDate: '2026-10-10' });
+    const d = task({ id: 'd', name: 'D', startDate: '2026-10-03', endDate: '2026-10-08' }); // overlaps C
+    const overFix = proposeFixesDeterministic([], [c, d]).find(f => f.type === 'add_dependency' && f.taskId === 'd')!;
+    expect(overFix.defaultChecked).toBe(false);
+  });
+
   it('produces stable, unique fix ids', () => {
     seq = 0;
     const a = task({ id: 'a', name: 'Design' });
