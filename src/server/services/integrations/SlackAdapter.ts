@@ -248,13 +248,18 @@ export class SlackAdapter {
         const owner = risk.ownerName || 'Unassigned';
         const ref = risk.recordId ? `${risk.recordId} · ` : '';
         const due = risk.dueDate ? ` | Due: ${String(risk.dueDate).slice(0, 10)}` : '';
+        // Link straight to the project's RAID tab, and name the project — one
+        // channel often watches several.
+        const url = payload.projectId ? `${config.APP_URL}/project/${payload.projectId}?tab=raid` : '';
+        const heading = url ? `<${url}|${ref}${risk.title}>` : `${ref}${risk.title}`;
+        const project = payload.projectName ? `Project: *${payload.projectName}* | ` : '';
         const text = `New ${kind} (${owner}): ${risk.title}`;
         return {
           text,
           blocks: [
-            { type: 'section', text: { type: 'mrkdwn', text: `*New ${kindLabel}* ${emoji}\n*${ref}${risk.title}*` } },
+            { type: 'section', text: { type: 'mrkdwn', text: `*New ${kindLabel}* ${emoji}\n*${heading}*` } },
             { type: 'context', elements: [
-              { type: 'mrkdwn', text: `Owner: *${owner}* | Severity: *${risk.severity || 'N/A'}* | Category: ${risk.category || 'N/A'}${due}` },
+              { type: 'mrkdwn', text: `${project}Owner: *${owner}* | Severity: *${risk.severity || 'N/A'}* | Category: ${risk.category || 'N/A'}${due}` },
             ] },
           ],
         };
