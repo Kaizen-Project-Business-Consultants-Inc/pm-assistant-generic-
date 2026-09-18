@@ -227,17 +227,23 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
     super('project_risks', mapRow);
   }
 
-  async nextSequenceId(type: string): Promise<{ sequenceNumber: number; recordId: string }> {
+  /**
+   * Next RAID reference for a project, e.g. R-001. Numbering is PER PROJECT and
+   * is derived from that project's own rows rather than a shared counter: the
+   * old tenant-wide `raid_sequence_counter` drifted out of step with seeded demo
+   * data and handed out ids that already existed, making RAID creation fail.
+   */
+  async nextSequenceId(type: string, projectId: string): Promise<{ sequenceNumber: number; recordId: string }> {
     const prefix: Record<string, string> = { risk: 'R', issue: 'I', action: 'A', decision: 'D', assumption: 'AS', dependency: 'DP' };
     const p = prefix[type] || 'X';
     return databaseService.transaction(async (conn) => {
-      const rows = await databaseService.queryOn<{ next_val: number }>(conn,
-        'SELECT next_val FROM raid_sequence_counter WHERE type = ? FOR UPDATE', [type],
+      const rows = await databaseService.queryOn<{ sequence_number: number | null }>(conn,
+        `SELECT sequence_number FROM project_risks
+          WHERE project_id = ? AND type = ? AND sequence_number IS NOT NULL
+          ORDER BY sequence_number DESC LIMIT 1 FOR UPDATE`,
+        [projectId, type],
       );
-      const seqNum = rows[0].next_val;
-      await databaseService.queryOn(conn,
-        'UPDATE raid_sequence_counter SET next_val = next_val + 1 WHERE type = ?', [type],
-      );
+      const seqNum = (rows[0]?.sequence_number ?? 0) + 1;
       return { sequenceNumber: seqNum, recordId: `${p}-${String(seqNum).padStart(3, '0')}` };
     });
   }
@@ -327,7 +333,7 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
     ownerName?: string;
   }): Promise<ProjectRisk> {
     const id = uuidv4();
-    const { sequenceNumber, recordId } = await this.nextSequenceId(data.type);
+    const { sequenceNumber, recordId } = await this.nextSequenceId(data.type, data.projectId);
 
     const defaultStatus: Record<string, string> = {
       decision: 'pending_decision',
