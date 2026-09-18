@@ -4,6 +4,7 @@ import { apiService } from '../../services/api';
 import { UtilizationTrendChart } from './UtilizationTrendChart';
 import { getInitials, getAvatarColor } from '../ui/Avatar';
 import { PROFICIENCY_LABELS } from '../../constants/proficiency';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface ResourceProfileModalProps {
   resourceId: string;
@@ -12,7 +13,7 @@ interface ResourceProfileModalProps {
 
 function formatDate(dateStr: string): string {
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return formatCalendarDate(dateStr, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
   } catch {
     return dateStr;
   }

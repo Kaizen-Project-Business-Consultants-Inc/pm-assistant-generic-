@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, X, ChevronDown, ChevronRight, Clock } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface Submission {
   id: string;
@@ -80,9 +81,9 @@ export function TimesheetApprovalPanel() {
                   {sub.userName || sub.userId}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Week of {new Date(sub.weekStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  Week of {formatCalendarDate(sub.weekStart + 'T00:00:00', { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US')}
                   {' '}&middot;{' '}{sub.totalHours}h
-                  {' '}&middot;{' '}Submitted {new Date(sub.submittedAt).toLocaleDateString()}
+                  {' '}&middot;{' '}Submitted {new Date(sub.submittedAt).toLocaleDateString('en-US')}
                 </div>
               </div>
             </div>

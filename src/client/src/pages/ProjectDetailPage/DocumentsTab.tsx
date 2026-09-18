@@ -510,7 +510,7 @@ function DetailPanel({
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-sm truncate">{doc.originalFilename}</h3>
           <p className="text-xs text-gray-500 mt-0.5">
-            {formatFileSize(doc.fileSize)} &middot; {new Date(doc.createdAt).toLocaleDateString()}
+            {formatFileSize(doc.fileSize)} &middot; {new Date(doc.createdAt).toLocaleDateString('en-US')}
           </p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">

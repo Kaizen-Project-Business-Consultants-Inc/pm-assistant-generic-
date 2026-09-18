@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Users } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface RoleWeek {
   weekStart: string;
@@ -19,7 +20,7 @@ interface RoleData {
 
 function formatWeek(dateStr: string): string {
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return formatCalendarDate(dateStr, { month: 'short', day: 'numeric' }, 'en-US');
   } catch {
     return dateStr;
   }

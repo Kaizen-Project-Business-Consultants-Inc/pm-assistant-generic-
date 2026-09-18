@@ -132,7 +132,7 @@ export function ViewerInvitePanel() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{invite.email}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Invited {new Date(invite.createdAt || invite.created_at).toLocaleDateString()}
+                    Invited {new Date(invite.createdAt || invite.created_at).toLocaleDateString('en-US')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

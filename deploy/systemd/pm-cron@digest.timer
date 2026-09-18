@@ -1,8 +1,8 @@
 [Unit]
-Description=PM Assistant Email Digests (daily 07:00)
+Description=PM Assistant Email Digests (hourly; each user gets theirs at their own preferred hour)
 
 [Timer]
-OnCalendar=*-*-* 07:00:00
+OnCalendar=*-*-* *:00:00
 Persistent=true
 
 [Install]

@@ -10,6 +10,7 @@ import { TemplatePicker } from '../components/templates/TemplatePicker';
 import { ProjectGroupManager } from '../components/projects/ProjectGroupManager';
 import { getViewPref, setViewPref } from '../hooks/useViewPreferences';
 import type { ProjectSummaryPM } from '../types/pm';
+import { formatCalendarDate } from '../utils/dateUtils';
 
 const VIEW_MODE_KEY = 'pm-projects-view-mode';
 
@@ -437,7 +438,7 @@ export function ProjectsPM() {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 capitalize">{p.methodology || '—'}</td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-                      {p.endDate ? new Date(p.endDate).toLocaleDateString() : '—'}
+                      {p.endDate ? formatCalendarDate(p.endDate) : '—'}
                     </td>
                   </tr>
                 );

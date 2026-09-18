@@ -12,6 +12,7 @@ import {
   Shuffle,
 } from 'lucide-react';
 import { ResourceHistogram } from './ResourceHistogram';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -77,11 +78,11 @@ interface NormalizedLevelingResult {
 function formatDate(dateStr: string): string {
   if (!dateStr) return '--';
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    return formatCalendarDate(dateStr, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-    });
+    }, 'en-US');
   } catch {
     return dateStr;
   }

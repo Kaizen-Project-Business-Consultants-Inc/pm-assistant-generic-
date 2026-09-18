@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,10 +23,10 @@ interface CapacityChartProps {
 
 function formatWeek(dateStr: string): string {
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    return formatCalendarDate(dateStr, {
       month: 'short',
       day: 'numeric',
-    });
+    }, 'en-US');
   } catch {
     return dateStr;
   }

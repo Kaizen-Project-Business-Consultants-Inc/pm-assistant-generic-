@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,7 +26,7 @@ interface EVMTrendChartProps {
 // ---------------------------------------------------------------------------
 function formatShortDate(s: string): string {
   try {
-    return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return formatCalendarDate(s, { month: 'short', day: 'numeric' }, 'en-US');
   } catch {
     return s;
   }

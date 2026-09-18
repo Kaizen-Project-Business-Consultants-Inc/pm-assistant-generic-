@@ -4,6 +4,7 @@ import { Plus, Trash2, Play, CheckCircle2, Target, GripVertical, Search } from '
 import { apiService } from '../../services/api';
 import { announce } from '../../utils/announce';
 import { LessonsPanel } from '../lessons/LessonsPanel';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface Task {
   id: string;
@@ -296,10 +297,10 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
             <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-500 flex-wrap">
               {sprint.start_date && (
                 <span>
-                  {new Date(sprint.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {formatCalendarDate(sprint.start_date, { month: 'short', day: 'numeric' }, 'en-US')}
                   {' - '}
                   {sprint.end_date
-                    ? new Date(sprint.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    ? formatCalendarDate(sprint.end_date, { month: 'short', day: 'numeric' }, 'en-US')
                     : '?'}
                 </span>
               )}

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useState, useMemo } from 'react';
+import { formatCalendarDate } from '../utils/dateUtils';
 
 type DrillInType = 'health' | 'overdue' | 'risks' | 'at-risk' | 'budget-variance' | 'budget-utilization';
 
@@ -446,7 +447,7 @@ export function KPIDrillInPage() {
               return <span className={`text-xs font-medium ${cls}`}>{p}</span>;
             },
           },
-          { key: 'dueDate', label: 'Due Date', sortable: true, render: (r: any) => r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '-' },
+          { key: 'dueDate', label: 'Due Date', sortable: true, render: (r: any) => r.dueDate ? formatCalendarDate(r.dueDate) : '-' },
           {
             key: 'daysOverdue', label: 'Days Overdue', sortable: true,
             render: (r: any) => <span className="text-red-600 font-medium">{r.daysOverdue}</span>,

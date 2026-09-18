@@ -22,6 +22,7 @@ import {
   History,
   AlertTriangle,
 } from 'lucide-react';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface AdminUser {
   id: string;
@@ -60,11 +61,11 @@ type SortDir = 'asc' | 'desc';
 
 function fmt(date: string | null) {
   if (!date) return '\u2014';
-  return new Date(date).toLocaleDateString('en-CA', {
+  return formatCalendarDate(date, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  });
+  }, 'en-CA');
 }
 
 function formatTokens(n: number) {

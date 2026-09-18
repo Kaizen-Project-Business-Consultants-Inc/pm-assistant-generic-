@@ -127,9 +127,16 @@ export function startCronTasks(
     });
   });
 
-  // Email digest — daily at 07:00
-  logger.info('[cron] Starting digest email sender (daily at 07:00)');
-  tasks.digestTask = cron.schedule('0 7 * * *', async () => {
+  // Email digest — checked HOURLY, not daily.
+  //
+  // DigestService already honours each user's timezone and preferred hour, but that only
+  // works if the job actually runs at that hour. Running once a day at 07:00 UTC meant
+  // the gate could only ever match users whose local hour at 07:00 UTC equalled their
+  // preferred hour — so a North American user received their first digest (the gate is
+  // skipped when there is no previous send) and then never another one. Checking every
+  // hour lets each user's own preferred hour come round.
+  logger.info('[cron] Starting digest email sender (hourly; each user gets theirs at their own preferred hour)');
+  tasks.digestTask = cron.schedule('0 * * * *', async () => {
     await forEachTenant(async (tenant) => {
       const label = tenant?.slug ?? 'default';
       const start = Date.now();

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TrendingUp } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface SprintBurnupChartProps {
   sprintId: string;
@@ -9,7 +10,7 @@ interface SprintBurnupChartProps {
 
 function formatDateShort(s: string): string {
   try {
-    return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return formatCalendarDate(s + 'T00:00:00', { month: 'short', day: 'numeric' }, 'en-US');
   } catch {
     return s;
   }

@@ -135,7 +135,7 @@ export function AdminWaitlistPage() {
                   <td className="px-4 py-3 text-gray-500">{i + 1}</td>
                   <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{entry.email}</td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                    {new Date(entry.created_at).toLocaleDateString()}
+                    {new Date(entry.created_at).toLocaleDateString('en-US')}
                   </td>
                   <td className="px-4 py-3">
                     {entry.launch_email_sent ? (

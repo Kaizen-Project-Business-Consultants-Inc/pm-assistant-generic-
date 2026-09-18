@@ -15,6 +15,7 @@ import {
 } from '../utils/statusReportRenderer';
 import { userService } from './UserService';
 import logger from '../utils/logger';
+import { isOverdue } from '../utils/calendarDate';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -249,7 +250,7 @@ export class ProjectStatusReportService {
         dueDate: mDate ? this.formatShortDate(mDate) : 'TBD',
         status: m.status === 'completed' ? 'Complete'
           : m.status === 'in_progress' ? 'In Progress'
-          : (mDate && mDate < new Date()) ? 'Delayed' : 'On Track',
+          : isOverdue(mDate) ? 'Delayed' : 'On Track',
         comments: m.progressPercentage ? `${m.progressPercentage}% complete` : '',
       };
     });

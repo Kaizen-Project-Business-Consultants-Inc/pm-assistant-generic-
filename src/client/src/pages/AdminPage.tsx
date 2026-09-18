@@ -21,6 +21,7 @@ import {
   CheckCircle,
   XCircle,
 } from 'lucide-react';
+import { formatCalendarDate } from '../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -80,11 +81,11 @@ type Tab = 'users' | 'system' | 'ai-usage' | 'tenants';
 // ---------------------------------------------------------------------------
 function fmt(date: string | null) {
   if (!date) return '—';
-  return new Date(date).toLocaleDateString('en-CA', {
+  return formatCalendarDate(date, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  });
+  }, 'en-CA');
 }
 
 function fmtCost(cost: number) {

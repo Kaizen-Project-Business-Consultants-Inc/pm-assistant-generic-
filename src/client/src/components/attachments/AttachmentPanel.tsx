@@ -151,7 +151,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{att.originalName}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-500">
-                  {formatSize(att.fileSize)} &middot; v{att.version} &middot; {new Date(att.createdAt).toLocaleDateString()}
+                  {formatSize(att.fileSize)} &middot; v{att.version} &middot; {new Date(att.createdAt).toLocaleDateString('en-US')}
                 </p>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

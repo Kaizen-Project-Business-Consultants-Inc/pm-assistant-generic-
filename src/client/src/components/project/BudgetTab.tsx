@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DollarSign, Plus, Trash2, X, TrendingUp, AlertTriangle, PieChart, Search, Download } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { toLocalDate } from '../../utils/dateUtils';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 const EXPENSE_CATEGORIES = [
   'labor', 'materials', 'software', 'hardware', 'travel',
@@ -337,7 +338,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                   <div className="flex items-end gap-2 h-40">
                     {monthly.map((m) => {
                       const h = Math.max(4, (m.total / maxMonthly) * 100);
-                      const label = new Date(m.month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                      const label = formatCalendarDate(m.month + '-01', { month: 'short', year: '2-digit' }, 'en-US');
                       return (
                         <div key={m.month} className="flex-1 flex flex-col items-center gap-1 relative z-10">
                           <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{formatCurrency(m.total, currency)}</span>
@@ -473,7 +474,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                 <tbody>
                   {filteredExpenses.map((e: any) => (
                     <tr key={e.id} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{formatCalendarDate(e.date, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US')}</td>
                       <td className="px-4 py-3">
                         <span className="flex items-center gap-1.5">
                           <span className="w-2.5 h-2.5 rounded" style={{ backgroundColor: CATEGORY_COLORS[e.category] || '#6b7280' }} />
@@ -522,7 +523,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                     <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(e.amount, currency)}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
-                    <span>{new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    <span>{formatCalendarDate(e.date, { month: 'short', day: 'numeric' }, 'en-US')}</span>
                     <span>{e.vendor || ''}</span>
                   </div>
                   {e.description && <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 truncate">{e.description}</p>}

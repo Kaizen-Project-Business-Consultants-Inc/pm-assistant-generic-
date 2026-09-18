@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Flag } from 'lucide-react';
 import { apiService } from '../../../services/api';
+import { formatCalendarDate } from '../../../utils/dateUtils';
 
 interface Props {
   scope?: 'portfolio';
@@ -74,7 +75,7 @@ export function MilestonesWidget({ scope }: Props) {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs text-gray-500">
-                    {new Date(m.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {formatCalendarDate(m.endDate, { month: 'short', day: 'numeric', year: 'numeric' }, undefined)}
                   </span>
                   <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${overdue ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'}`}>
                     {overdue ? `${Math.abs(m.daysUntil)}d late` : `${m.daysUntil}d`}

@@ -118,6 +118,7 @@ const RESOURCE_GROUPS = [
 ];
 
 import { PROFICIENCY_LABELS } from '../../constants/proficiency';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -742,7 +743,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {histogram.overAllocations.slice(0, 6).map((oa, i) => (
                       <div key={i} className="text-xs text-red-600 dark:text-red-400">
-                        <span className="font-medium">{oa.resourceName}</span> on {new Date(oa.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — {oa.demand}h / {oa.capacity}h
+                        <span className="font-medium">{oa.resourceName}</span> on {formatCalendarDate(oa.date, { month: 'short', day: 'numeric' }, 'en-US')} — {oa.demand}h / {oa.capacity}h
                       </div>
                     ))}
                     {histogram.overAllocations.length > 6 && (
@@ -781,7 +782,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                               />
                               {i % Math.max(1, Math.floor(res.demand.length / 10)) === 0 && (
                                 <text x={30 + i * (barW + 2)} y={chartH + 14} fontSize={8} fill="#9ca3af" textAnchor="start" transform={`rotate(45, ${30 + i * (barW + 2)}, ${chartH + 14})`}>
-                                  {new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                  {formatCalendarDate(d.date, { month: 'short', day: 'numeric' }, 'en-US')}
                                 </text>
                               )}
                             </g>

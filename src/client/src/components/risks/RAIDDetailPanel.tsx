@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Send, Ban, RotateCcw, Clock, MessageSquare, ArrowRightLeft, Pencil, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface RAIDDetailPanelProps {
   projectId: string;
@@ -64,7 +65,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
 
 function formatDate(d: string | null | undefined) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return formatCalendarDate(d, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
 }
 
 function formatTimestamp(d: string) {

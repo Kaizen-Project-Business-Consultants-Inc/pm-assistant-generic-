@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Plus, Trash2, Calendar } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { toLocalDate } from '../../utils/dateUtils';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface AvailabilityEntry {
   id: string;
@@ -242,9 +243,9 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
                   {colors.label}
                 </span>
                 <span className="text-gray-600 dark:text-gray-400">
-                  {new Date(e.dateFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {formatCalendarDate(e.dateFrom, { month: 'short', day: 'numeric' }, 'en-US')}
                   {' — '}
-                  {new Date(e.dateTo).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {formatCalendarDate(e.dateTo, { month: 'short', day: 'numeric' }, 'en-US')}
                 </span>
                 {e.note && <span className="text-gray-500 dark:text-gray-500 truncate">{e.note}</span>}
                 <button

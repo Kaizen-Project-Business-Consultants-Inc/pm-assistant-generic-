@@ -37,6 +37,7 @@ import { CustomFieldManager } from '../../components/customfields/CustomFieldMan
 import { PortalLinkManager } from '../../components/portal/PortalLinkManager';
 import { ProjectLinksCard } from '../../components/project/ProjectLinksCard';
 import { ScheduleHealthCard } from '../../components/schedule/review/ScheduleHealthCard';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface ProjectOverview {
   id: string;
@@ -191,7 +192,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
   const summary = analyticsData?.summary || analyticsData;
 
   const formatDate = (d: string | undefined) =>
-    d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+    d ? formatCalendarDate(d, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US') : null;
 
   const priorityColors: Record<string, string> = {
     urgent: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
@@ -891,7 +892,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               </div>
               {g.targetDate && (
                 <p className="text-xs text-gray-500 dark:text-gray-500">
-                  Target: {new Date(g.targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  Target: {formatCalendarDate(g.targetDate, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US')}
                 </p>
               )}
             </div>
@@ -923,7 +924,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
                 <p className="text-sm text-gray-900 dark:text-white truncate">{name}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {size ? `${(size / 1024).toFixed(0)} KB · ` : ''}
-                  {date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
+                  {date ? formatCalendarDate(date, { month: 'short', day: 'numeric' }, 'en-US') : ''}
                 </p>
               </div>
             </div>

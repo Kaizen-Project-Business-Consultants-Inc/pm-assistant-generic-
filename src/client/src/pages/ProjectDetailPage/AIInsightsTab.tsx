@@ -18,6 +18,7 @@ import { apiService } from '../../services/api';
 import { SCurveChart } from '../../components/evm/SCurveChart';
 import { TaskPrioritizationPanel } from '../../components/ai/TaskPrioritizationPanel';
 import { severityColor as sharedSeverityColor } from '../../utils/severityColors';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -658,7 +659,7 @@ function BudgetForecastSection({ projectId }: { projectId: string }) {
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-500 dark:text-gray-400">Projected Completion:</span>
                 <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {new Date(budget.projectedCompletion).toLocaleDateString()}
+                  {formatCalendarDate(budget.projectedCompletion)}
                 </span>
               </div>
             )}

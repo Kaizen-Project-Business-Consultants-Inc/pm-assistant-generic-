@@ -323,7 +323,7 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
             <p className="text-xs text-gray-500 dark:text-gray-500">
               Reviewed by {submission.reviewed_by_name}
               {submission.reviewed_at &&
-                ` on ${new Date(submission.reviewed_at).toLocaleDateString()}`}
+                ` on ${new Date(submission.reviewed_at).toLocaleDateString('en-US')}`}
             </p>
           )}
         </div>

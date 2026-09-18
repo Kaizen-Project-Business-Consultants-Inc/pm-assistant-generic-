@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, User, Users } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { toLocalDate } from '../../utils/dateUtils';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 function getMonday(date: Date): Date {
   const d = new Date(date);
@@ -89,7 +90,7 @@ export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
           <ChevronLeft className="w-4 h-4" />
         </button>
         <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          Week of {new Date(weekStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          Week of {formatCalendarDate(weekStart + 'T00:00:00', { month: 'long', day: 'numeric', year: 'numeric' }, 'en-US')}
         </div>
         <button onClick={() => navigateWeek(1)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Next week">
           <ChevronRight className="w-4 h-4" />

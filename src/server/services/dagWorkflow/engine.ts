@@ -4,6 +4,7 @@ import { Task, ScheduleService } from '../ScheduleService';
 import { WorkflowNode, WorkflowEdge, DefinitionWithGraph } from './types';
 import { resolveTemplates } from './templateResolver';
 import logger from '../../utils/logger';
+import { isOverdue } from '../../utils/calendarDate';
 
 // ── Trigger matching ──────────────────────────────────────────────────────
 
@@ -25,7 +26,11 @@ export function matchesTrigger(config: Record<string, any>, task: Task, oldTask:
     }
     case 'date_passed': {
       if (!task.endDate) return false;
-      return new Date(task.endDate) < new Date();
+      // Compare calendar days, not a date against the current instant. `new Date(endDate)`
+      // is midnight UTC, so the old test fired from 8pm the previous evening in Toronto —
+      // this trigger runs automations, so it was acting a day early for every North
+      // American customer. A task due today has not passed until tomorrow.
+      return isOverdue(task.endDate);
     }
     case 'task_created':
       if (oldTask !== null) return false;

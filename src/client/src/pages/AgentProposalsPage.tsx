@@ -29,6 +29,7 @@ import { timeAgo } from '../utils/timeAgo';
 import { MetaPill } from '../components/ui/MetaPill';
 import { RiskBadge as RiskBadgePrimitive } from '../components/ui/RiskBadge';
 import { ConfidenceGauge as ConfidenceGaugePrimitive, ConfidenceBar } from '../components/ui/ConfidenceGauge';
+import { formatCalendarDate } from '../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -129,7 +130,7 @@ function formatValue(val: unknown): string {
   if (typeof val === 'string') {
     // ISO date
     if (/^\d{4}-\d{2}-\d{2}/.test(val)) {
-      return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return formatCalendarDate(val, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
     }
     return val;
   }
@@ -421,7 +422,7 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
               </span>
               {proposal.expires_at && (
                 <span className="text-amber-600">
-                  Expires {new Date(proposal.expires_at).toLocaleDateString()}
+                  Expires {new Date(proposal.expires_at).toLocaleDateString('en-US')}
                 </span>
               )}
             </div>
@@ -718,7 +719,7 @@ function AgentEligibilityCard({ agentId, config, isAdmin }: {
                 <div className="text-sm">
                   <span className="font-medium text-emerald-800 dark:text-emerald-300">Active Tier 3</span>
                   <div className="text-emerald-700 dark:text-emerald-400 text-xs mt-1">
-                    Min confidence: {config.minConfidenceThreshold}% | Max risk: {config.maxRiskLevel} | Since: {new Date(config.enabledAt).toLocaleDateString()}
+                    Min confidence: {config.minConfidenceThreshold}% | Max risk: {config.maxRiskLevel} | Since: {new Date(config.enabledAt).toLocaleDateString('en-US')}
                   </div>
                 </div>
                 {isAdmin && (

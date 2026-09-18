@@ -27,6 +27,7 @@ import {
   XCircle,
   AlertOctagon,
 } from 'lucide-react';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface SystemData {
   uptime: number;
@@ -766,7 +767,7 @@ export function AdminOperationsPage() {
                         <div className="h-full bg-violet-400 dark:bg-violet-500 rounded transition-all" style={{ width: `${pct}%` }} />
                       </div>
                       <span className="text-xs font-medium text-gray-700 dark:text-gray-300 w-12 text-right">{a.totalRuns}</span>
-                      <span className="text-xs text-gray-500 w-28 text-right">{a.lastRun ? new Date(a.lastRun).toLocaleDateString() : '--'}</span>
+                      <span className="text-xs text-gray-500 w-28 text-right">{a.lastRun ? formatCalendarDate(a.lastRun) : '--'}</span>
                     </div>
                   );
                 })}

@@ -3,6 +3,7 @@ import { Calendar, ExternalLink, Star, Archive, ArchiveRestore } from 'lucide-re
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import type { ProjectSummaryPM } from '../../types/pm';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface ProjectCardPMProps {
   project: ProjectSummaryPM;
@@ -61,7 +62,7 @@ function priorityChipColor(priority: string): string {
 function formatDate(dateStr?: string): string {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+    return formatCalendarDate(dateStr, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-CA');
   } catch {
     return dateStr;
   }

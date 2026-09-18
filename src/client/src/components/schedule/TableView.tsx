@@ -21,6 +21,7 @@ import {
   type TableViewProps, type SortDir, type GroupByField, type EditableField,
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
@@ -573,8 +574,8 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
       case 'name': return task.name || '';
       case 'status': return task.status?.replace('_', ' ') || '';
       case 'priority': return task.priority || 'medium';
-      case 'startDate': return task.startDate ? new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '\u2014';
-      case 'endDate': return task.endDate ? new Date(task.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '\u2014';
+      case 'startDate': return task.startDate ? formatCalendarDate(task.startDate, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US') : '\u2014';
+      case 'endDate': return task.endDate ? formatCalendarDate(task.endDate, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US') : '\u2014';
       case 'progressPercentage': return `${task.progressPercentage ?? 0}%`;
       case 'assignedTo': return task.assignedTo || '\u2014';
       case 'duration': {
@@ -1669,7 +1670,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
                 onKeyDown={e => handleKeyDown(e, task.id, 'constraintDate' as EditableField)}
                 onBlur={() => saveEdit(task.id, 'constraintDate' as EditableField, editValue)}
               />
-            ) : cd ? new Date(cd + 'T00:00').toLocaleDateString() : (needsDate ? '\u2014' : '')}
+            ) : cd ? formatCalendarDate(cd + 'T00:00') : (needsDate ? '\u2014' : '')}
           </td>
         );
       }

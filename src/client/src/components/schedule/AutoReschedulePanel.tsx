@@ -4,6 +4,7 @@ import { apiService } from '../../services/api';
 import { X, AlertTriangle, Loader2, CheckCircle2, XCircle, Pencil, Flag, Lock } from 'lucide-react';
 import { severityColor } from '../../utils/severityColors';
 import { announce } from '../../utils/announce';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,11 +56,11 @@ interface Proposal {
 function formatDate(dateStr: string): string {
   if (!dateStr) return '--';
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    return formatCalendarDate(dateStr, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-    });
+    }, 'en-US');
   } catch {
     return dateStr;
   }

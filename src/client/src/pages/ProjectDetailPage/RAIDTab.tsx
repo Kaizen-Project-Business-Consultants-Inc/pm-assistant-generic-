@@ -12,6 +12,7 @@ import { AIScanReviewModal } from '../../components/risks/AIScanReviewModal';
 import { RAIDDetailPanel } from '../../components/risks/RAIDDetailPanel';
 import { RAIDReportModal } from '../../components/risks/RAIDReportModal';
 import { RAIDImportModal } from '../../components/raids/RAIDImportModal';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 type RaidType = 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency';
 type ViewMode = 'table' | 'board' | 'matrix';
@@ -272,7 +273,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   };
 
   const formatDate = (d: string | undefined) =>
-    d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    d ? formatCalendarDate(d, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US') : '';
 
   function memberName(userId: string | null) {
     if (!userId) return '';

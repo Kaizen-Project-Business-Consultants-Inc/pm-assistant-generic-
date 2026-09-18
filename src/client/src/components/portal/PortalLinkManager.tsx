@@ -304,7 +304,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
                 <span>{permissionSummary(link.permissions)}</span>
                 {link.expires_at && (
                   <span>
-                    Expires: {new Date(link.expires_at).toLocaleDateString()}
+                    Expires: {new Date(link.expires_at).toLocaleDateString('en-US')}
                   </span>
                 )}
               </div>

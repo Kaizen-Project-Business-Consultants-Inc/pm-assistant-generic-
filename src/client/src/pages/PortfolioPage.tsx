@@ -5,6 +5,7 @@ import { Layers, DollarSign, TrendingUp, CheckCircle, AlertTriangle, FolderKanba
 import { HealthTrendsWidget } from '../components/dashboard/widgets/HealthTrendsWidget';
 import { apiService } from '../services/api';
 import { GanttChart, type GanttTask } from '../components/schedule/GanttChart';
+import { formatCalendarDate } from '../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -326,7 +327,7 @@ export function PortfolioPage() {
                           <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                             <span>{item.completedTasks}/{item.totalTasks} tasks</span>
                             {item.budgetAllocated > 0 && <span>{formatCurrency(item.budgetSpent)} / {formatCurrency(item.budgetAllocated)}</span>}
-                            {item.endDate && <span>Due {new Date(item.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+                            {item.endDate && <span>Due {formatCalendarDate(item.endDate, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US')}</span>}
                           </div>
                         </div>
                         <div className="text-right shrink-0">

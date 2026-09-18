@@ -1,5 +1,6 @@
 import React from 'react';
 import { BarChart3 } from 'lucide-react';
+import { formatCalendarDate } from '../../../utils/dateUtils';
 
 interface BaselineVarianceReportProps {
   comparison: any;
@@ -16,7 +17,7 @@ export const BaselineVarianceReport = React.memo(function BaselineVarianceReport
             Baseline Variance Report — {comparison.baselineName}
           </h3>
           <span className="text-xs text-gray-500 dark:text-gray-500">
-            Saved {new Date(comparison.baselineDate).toLocaleDateString()}
+            Saved {formatCalendarDate(comparison.baselineDate)}
           </span>
         </div>
         <button

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { AdminPageWrapper } from './AdminPageWrapper';
 import { Brain, Zap, DollarSign, BarChart3, Activity, MessageSquare, GitBranch, ArrowRight, Bot } from 'lucide-react';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface AiUsageRow {
   username: string;
@@ -64,7 +65,7 @@ const PERIODS = [
 
 function fmt(date: string | null) {
   if (!date) return '\u2014';
-  return new Date(date).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatCalendarDate(date, { year: 'numeric', month: 'short', day: 'numeric' }, 'en-CA');
 }
 
 function fmtCost(cost: number) {
@@ -102,7 +103,7 @@ function MiniBarChart({ data, valueKey = 'cost', label = 'Cost' }: { data: any[]
               style={{ height: `${h}%` }}
             />
             <div className="absolute bottom-full mb-1 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-              {new Date(d.day).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}: {label === 'Cost' ? fmtCost(Number(d[valueKey])) : Number(d[valueKey]).toLocaleString()}
+              {formatCalendarDate(d.day, { month: 'short', day: 'numeric' }, 'en-CA')}: {label === 'Cost' ? fmtCost(Number(d[valueKey])) : Number(d[valueKey]).toLocaleString()}
             </div>
           </div>
         );

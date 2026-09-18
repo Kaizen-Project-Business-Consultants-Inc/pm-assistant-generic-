@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { toLocalDate } from '../../utils/dateUtils';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface BurndownDataPoint {
   date: string;
@@ -50,7 +51,7 @@ export function BurndownChart({ dataPoints, totalScope, height = 300 }: Burndown
     const xLabels = dataPoints
       .filter((_, i) => i % step === 0 || i === dataPoints.length - 1)
       .map((p) => ({
-        label: new Date(p.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        label: formatCalendarDate(p.date + 'T00:00:00', { month: 'short', day: 'numeric' }, 'en-US'),
         x: scaleX(dataPoints.indexOf(p)),
       }));
 
@@ -153,7 +154,7 @@ export function BurndownChart({ dataPoints, totalScope, height = 300 }: Burndown
           className="fixed z-50 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg"
           style={{ left: tooltip.x + 10, top: tooltip.y - 50 }}
         >
-          <p className="font-medium">{new Date(tooltip.point.date + 'T00:00:00').toLocaleDateString()}</p>
+          <p className="font-medium">{formatCalendarDate(tooltip.point.date + 'T00:00:00')}</p>
           <p>Ideal: {tooltip.point.ideal} tasks remaining</p>
           {tooltip.point.actual >= 0 && <p>Actual: {tooltip.point.actual} tasks remaining</p>}
           {tooltip.point.completed >= 0 && <p>Completed: {tooltip.point.completed} tasks</p>}

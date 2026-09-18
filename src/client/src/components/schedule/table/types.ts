@@ -1,6 +1,7 @@
 import type { GanttTask } from '../GanttChart';
 import type { ColumnKey, ColumnDef } from '../tableColumns';
 import type { ColumnState } from '../../../hooks/useColumnState';
+import { formatCalendarDate } from '../../../utils/dateUtils';
 
 export type SortDir = 'asc' | 'desc';
 export type GroupByField = '' | 'status' | 'priority' | 'assignedTo';
@@ -83,7 +84,7 @@ export function addDaysToDate(baseDate: string, days: number): string {
 
 export function formatDate(d?: string): string {
   if (!d) return '-';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return formatCalendarDate(d, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
 }
 
 export type { GanttTask, ColumnKey, ColumnDef, ColumnState };

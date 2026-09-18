@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface VelocityDataPoint {
   weekStart: string;
@@ -41,7 +42,7 @@ export function VelocityChart({ weeks, averageVelocity, height = 250 }: Velocity
     const xLabels = weeks
       .filter((_, i) => i % step === 0 || i === weeks.length - 1)
       .map(w => ({
-        label: new Date(w.weekStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        label: formatCalendarDate(w.weekStart + 'T00:00:00', { month: 'short', day: 'numeric' }, 'en-US'),
         x: padding.left + weeks.indexOf(w) * (barWidth + gap) + gap / 2 + barWidth / 2,
       }));
 
@@ -101,7 +102,7 @@ export function VelocityChart({ weeks, averageVelocity, height = 250 }: Velocity
       {/* Hover tooltip */}
       {hoverIndex !== null && bars[hoverIndex] && (
         <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Week of {new Date(bars[hoverIndex].week.weekStart + 'T00:00:00').toLocaleDateString()} — {bars[hoverIndex].week.completed} tasks completed
+          Week of {formatCalendarDate(bars[hoverIndex].week.weekStart + 'T00:00:00')} — {bars[hoverIndex].week.completed} tasks completed
         </div>
       )}
 

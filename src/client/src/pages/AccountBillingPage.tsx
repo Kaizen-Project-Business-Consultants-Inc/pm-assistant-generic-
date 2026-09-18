@@ -17,6 +17,7 @@ import {
   Users,
 } from 'lucide-react';
 import { apiService } from '../services/api';
+import { formatCalendarDate } from '../utils/dateUtils';
 
 interface SubscriptionStatus {
   tier: string;
@@ -29,11 +30,11 @@ interface SubscriptionStatus {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '--';
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  return formatCalendarDate(dateStr, {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
-  });
+  }, 'en-US');
 }
 
 function daysUntil(dateStr: string | null): number | null {

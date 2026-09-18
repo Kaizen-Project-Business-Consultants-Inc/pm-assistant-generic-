@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface TrendWeek {
   weekStart: string;
@@ -104,7 +105,7 @@ export function TimeTrendChart({ projectId }: { projectId: string }) {
           <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Peak Week</p>
             <p className="text-lg font-bold text-gray-900 dark:text-white">{trends.peakWeek.hours.toFixed(1)}h</p>
-            <p className="text-xs text-gray-500">{new Date(trends.peakWeek.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+            <p className="text-xs text-gray-500">{formatCalendarDate(trends.peakWeek.weekStart, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US')}</p>
           </div>
         )}
       </div>
@@ -148,7 +149,7 @@ export function TimeTrendChart({ projectId }: { projectId: string }) {
                     className="fill-gray-400 text-[9px]"
                     transform={`rotate(-30, ${chart.pad.left + chart.gap * i + chart.gap / 2}, ${chart.H - 15})`}
                   >
-                    {new Date(w.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {formatCalendarDate(w.weekStart, { month: 'short', day: 'numeric' }, 'en-US')}
                   </text>
                 </g>
               );

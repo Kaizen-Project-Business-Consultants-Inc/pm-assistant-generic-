@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 const barColors: Record<string, string> = {
   completed: 'bg-green-500',
@@ -341,7 +342,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
                       )}
                       {task.startDate && task.endDate && (
                         <span className="text-xs text-gray-500 dark:text-gray-500">
-                          {new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(task.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {formatCalendarDate(task.startDate, { month: 'short', day: 'numeric' }, 'en-US')} – {formatCalendarDate(task.endDate, { month: 'short', day: 'numeric' }, 'en-US')}
                         </span>
                       )}
                     </div>

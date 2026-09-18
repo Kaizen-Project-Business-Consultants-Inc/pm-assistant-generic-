@@ -362,7 +362,7 @@ const GuestSection: React.FC = () => {
                     {g.guestExpiresAt ? (
                       <span className="inline-flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {new Date(g.guestExpiresAt).toLocaleDateString()}
+                        {new Date(g.guestExpiresAt).toLocaleDateString('en-US')}
                       </span>
                     ) : 'Never'}
                   </td>

@@ -159,7 +159,7 @@ export function ChangeRequestList({ projectId, onSelect, onNew }: ChangeRequestL
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                     <div className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" />
-                      {new Date(cr.createdAt).toLocaleDateString()}
+                      {new Date(cr.createdAt).toLocaleDateString('en-US')}
                     </div>
                   </td>
                 </tr>

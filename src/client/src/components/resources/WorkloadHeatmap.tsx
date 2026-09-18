@@ -1,4 +1,5 @@
 import { Avatar } from '../ui/Avatar';
+import { formatCalendarDate } from '../../utils/dateUtils';
 // WorkloadHeatmap component
 
 interface WeeklyUtilization {
@@ -52,7 +53,7 @@ function getHeatColor(utilization: number): { bg: string; text: string } {
 
 function formatWeek(dateStr: string): string {
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return formatCalendarDate(dateStr, { month: 'short', day: 'numeric' }, 'en-US');
   } catch {
     return dateStr;
   }

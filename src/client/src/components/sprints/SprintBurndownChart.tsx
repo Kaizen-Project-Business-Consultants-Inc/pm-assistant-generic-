@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TrendingDown } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface BurndownPoint {
   date: string;
@@ -24,7 +25,7 @@ interface SprintBurndownChartProps {
 
 function formatDateShort(s: string): string {
   try {
-    return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return formatCalendarDate(s + 'T00:00:00', { month: 'short', day: 'numeric' }, 'en-US');
   } catch {
     return s;
   }

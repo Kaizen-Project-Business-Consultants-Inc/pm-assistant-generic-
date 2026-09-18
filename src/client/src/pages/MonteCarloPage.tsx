@@ -18,6 +18,7 @@ import { apiService } from '../services/api';
 import { MonteCarloHistogram } from '../components/montecarlo/MonteCarloHistogram';
 import { TornadoDiagram } from '../components/montecarlo/TornadoDiagram';
 import { CriticalityIndex } from '../components/montecarlo/CriticalityIndex';
+import { formatCalendarDate } from '../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -94,11 +95,11 @@ interface SimulationResult {
 
 function formatDate(dateStr: string): string {
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    return formatCalendarDate(dateStr, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-    });
+    }, 'en-US');
   } catch {
     return dateStr;
   }

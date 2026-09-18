@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Target, Kanban, BookOpen, ArrowUpDown } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface SprintTaskStats {
   totalTasks: number;
@@ -43,7 +44,7 @@ const STATUS_ORDER: Record<string, number> = { active: 0, planning: 1, completed
 function formatDate(s?: string): string {
   if (!s) return '--';
   try {
-    return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return formatCalendarDate(s, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
   } catch {
     return '--';
   }

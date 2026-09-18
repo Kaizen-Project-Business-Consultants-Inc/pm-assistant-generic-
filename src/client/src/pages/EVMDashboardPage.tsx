@@ -6,7 +6,7 @@ import { EVMMetricTooltip } from '../components/evm/EVMMetricTooltip';
 import type { MetricValues } from '../components/evm/EVMMetricTooltip';
 import { SCurveChart } from '../components/evm/SCurveChart';
 import { AgileEVMSection } from '../components/evm/AgileEVMSection';
-import { toLocalDate } from '../utils/dateUtils';
+import { toLocalDate, formatCalendarDate } from '../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -832,7 +832,7 @@ export function EVMDashboardPage() {
                             fill={a.direction === 'up' ? '#22c55e' : '#ef4444'}
                             opacity={0.8}
                           />
-                          <title>{`${a.metric} crossed ${a.direction === 'up' ? 'above' : 'below'} 1.0 on ${new Date(a.date).toLocaleDateString()}`}</title>
+                          <title>{`${a.metric} crossed ${a.direction === 'up' ? 'above' : 'below'} 1.0 on ${formatCalendarDate(a.date)}`}</title>
                         </g>
                       ))}
 
@@ -841,7 +841,7 @@ export function EVMDashboardPage() {
                         if (i % Math.max(1, Math.floor(activeData.length / 6)) !== 0) return null;
                         return (
                           <text key={i} x={activeLines.toX(i)} y={CHART_H - 5} fontSize={8} className="fill-gray-400 dark:fill-gray-500" textAnchor="middle">
-                            {new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {formatCalendarDate(d.date, { month: 'short', day: 'numeric' }, 'en-US')}
                           </text>
                         );
                       })}

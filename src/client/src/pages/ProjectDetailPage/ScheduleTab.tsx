@@ -43,6 +43,7 @@ import { QuickFilterPills, type QuickFilterType } from './schedule-tab/QuickFilt
 import { buildTaskRiskMap, DEFAULT_RISK_THRESHOLDS, type RiskThresholds } from '../../utils/taskRiskAssessment';
 import { useAuthStore } from '../../stores/authStore';
 import { announce } from '../../utils/announce';
+import { isCalendarOverdue } from '../../utils/dateUtils';
 
 
 export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt' }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string }) {
@@ -944,7 +945,9 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     const overdue = filteredTasks.filter(t => {
       if (t.status === 'completed' || t.status === 'done' || t.status === 'cancelled') return false;
       const due = t.endDate;
-      return due && new Date(due) < new Date();
+      // Calendar-day comparison: a task due today is not overdue. `new Date(due)` is
+      // midnight UTC, so the old test marked today's work late from the previous evening.
+      return !!due && isCalendarOverdue(due);
     }).length;
     const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { total, completed, inProgress, pending, overdue, pct };
@@ -1512,7 +1515,7 @@ function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
                 <option value="">No baseline overlay</option>
                 {props.baselines.map((b: any) => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({new Date(b.createdAt).toLocaleDateString()})
+                    {b.name} ({new Date(b.createdAt).toLocaleDateString('en-US')})
                   </option>
                 ))}
               </select>

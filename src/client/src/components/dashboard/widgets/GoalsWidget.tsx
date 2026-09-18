@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, Link } from 'react-router-dom';
 import { Target } from 'lucide-react';
 import { apiService } from '../../../services/api';
+import { formatCalendarDate } from '../../../utils/dateUtils';
 
 interface Goal {
   id: string;
@@ -106,7 +107,7 @@ export function GoalsWidget() {
                     </span>
                     {g.dueDate && (
                       <span className="text-xs text-gray-500">
-                        {new Date(g.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {formatCalendarDate(g.dueDate, { month: 'short', day: 'numeric', year: 'numeric' }, undefined)}
                       </span>
                     )}
                   </div>

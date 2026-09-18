@@ -195,7 +195,7 @@ export const ReportBuilderPage: React.FC = () => {
               )}
 
               <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">
-                Created {new Date(template.createdAt).toLocaleDateString()}
+                Created {new Date(template.createdAt).toLocaleDateString('en-US')}
                 {template.sections && ` \u00b7 ${template.sections.length} section${template.sections.length !== 1 ? 's' : ''}`}
               </p>
 

@@ -368,7 +368,7 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
               <div key={a.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-gray-900 dark:text-white line-clamp-1">{a.summary || 'Analysis'}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{a.created_at ? new Date(a.created_at).toLocaleDateString() : ''}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{a.created_at ? new Date(a.created_at).toLocaleDateString('en-US') : ''}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button

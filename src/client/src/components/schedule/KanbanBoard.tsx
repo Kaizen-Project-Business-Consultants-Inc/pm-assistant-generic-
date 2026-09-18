@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Avatar } from '../ui/Avatar';
+import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
 
 export interface KanbanTask {
   id: string;
@@ -54,7 +55,7 @@ const priorityBadge: Record<string, { bg: string; text: string }> = {
 function formatDate(s?: string): string {
   if (!s) return '';
   try {
-    return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return formatCalendarDate(s, { month: 'short', day: 'numeric' }, 'en-US');
   } catch {
     return '';
   }
@@ -63,7 +64,8 @@ function formatDate(s?: string): string {
 function isOverdue(s?: string): boolean {
   if (!s) return false;
   try {
-    return new Date(s).getTime() < Date.now();
+    // A task due today is not overdue — compare calendar days, not a date against now.
+    return isCalendarOverdue(s);
   } catch {
     return false;
   }

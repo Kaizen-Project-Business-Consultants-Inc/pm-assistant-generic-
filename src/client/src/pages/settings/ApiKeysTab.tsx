@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Copy, Check, Lock } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 export const ApiKeysTab: React.FC = () => {
   const queryClient = useQueryClient();
@@ -159,7 +160,7 @@ export const ApiKeysTab: React.FC = () => {
                     </span>
                     {key.lastUsedAt && (
                       <span className="text-xs text-gray-500 dark:text-gray-500">
-                        Last used: {new Date(key.lastUsedAt).toLocaleDateString()}
+                        Last used: {formatCalendarDate(key.lastUsedAt)}
                       </span>
                     )}
                   </div>

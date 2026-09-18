@@ -321,7 +321,7 @@ export const IntakeFormsPage: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
                         {sub.created_at
-                          ? new Date(sub.created_at).toLocaleDateString()
+                          ? new Date(sub.created_at).toLocaleDateString('en-US')
                           : ''}
                       </td>
                       <td className="px-4 py-3 text-right">

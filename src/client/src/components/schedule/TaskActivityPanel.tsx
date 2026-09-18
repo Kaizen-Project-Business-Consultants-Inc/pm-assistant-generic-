@@ -4,6 +4,7 @@ import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
 import { MessageSquare, Activity, Send, Trash2 } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface TaskActivityPanelProps {
   scheduleId: string;
@@ -33,7 +34,7 @@ function formatValue(field: string | undefined, value: string | undefined): stri
   if (field === 'progressPercentage') return `${value}%`;
   if (field === 'startDate' || field === 'endDate') {
     try {
-      return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return formatCalendarDate(value, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
     } catch {
       return value;
     }

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { timeAgo } from '../utils/timeAgo';
+import { formatCalendarDate } from '../utils/dateUtils';
 
 interface PortalData {
   project: {
@@ -85,11 +86,11 @@ function daysRemaining(endDate: string): number {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'TBD';
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  return formatCalendarDate(dateStr, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  });
+  }, 'en-US');
 }
 
 function formatCurrency(amount: number): string {

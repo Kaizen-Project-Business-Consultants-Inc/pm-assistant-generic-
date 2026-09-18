@@ -11,6 +11,7 @@ import { UtilizationHeatmap } from '../timetracking/UtilizationHeatmap';
 import { ProjectTimesheetGrid } from '../timetracking/ProjectTimesheetGrid';
 import { TimeAnomalyPanel } from './TimeAnomalyPanel';
 import { WeeklyReviewPanel } from './WeeklyReviewPanel';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface TimeEntry {
   id: string;
@@ -403,7 +404,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
               <tbody>
                 {entries.map(e => (
                   <tr key={e.id} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{formatCalendarDate(e.date, { month: 'short', day: 'numeric' }, 'en-US')}</td>
                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{e.taskName || e.taskId}</td>
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{e.userName || '\u2014'}</td>
                     <td className="px-4 py-3">

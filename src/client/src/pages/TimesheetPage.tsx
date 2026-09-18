@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, BarChart3, Plus, ChevronLeft, ChevronRight, X, ClipboardCheck } from 'lucide-react';
 import { apiService } from '../services/api';
-import { toLocalDate } from '../utils/dateUtils';
+import { toLocalDate, formatCalendarDate } from '../utils/dateUtils';
 import { TimesheetGrid } from '../components/timetracking/TimesheetGrid';
 import { TimesheetApprovalPanel } from '../components/timetracking/TimesheetApprovalPanel';
 import { ActualVsEstimatedChart } from '../components/timetracking/ActualVsEstimatedChart';
@@ -307,7 +307,7 @@ function MobileTimesheetView() {
           <ChevronLeft className="w-4 h-4" />
         </button>
         <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-          Week of {new Date(weekStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          Week of {formatCalendarDate(weekStart + 'T00:00:00', { month: 'short', day: 'numeric' }, 'en-US')}
         </span>
         <button onClick={() => navigateWeek(1)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200" aria-label="Next week">
           <ChevronRight className="w-4 h-4" />

@@ -10,6 +10,7 @@ import {
   CheckCircle,
   XCircle,
 } from 'lucide-react';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface AdminTenant {
   id: string;
@@ -29,11 +30,11 @@ interface AdminTenant {
 
 function fmt(date: string | null) {
   if (!date) return '\u2014';
-  return new Date(date).toLocaleDateString('en-CA', {
+  return formatCalendarDate(date, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  });
+  }, 'en-CA');
 }
 
 export function AdminTenantsPage() {

@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { List, Download, ArrowUp, ArrowDown } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface Epic {
   id: string;
@@ -27,7 +28,7 @@ const statusBadge: Record<string, { bg: string; text: string }> = {
 
 function formatDate(d: string | null): string {
   if (!d) return '-';
-  return new Date(d).toLocaleDateString('en-CA');
+  return formatCalendarDate(d, undefined, 'en-CA');
 }
 
 export function EpicList({ scheduleId }: { scheduleId: string }) {

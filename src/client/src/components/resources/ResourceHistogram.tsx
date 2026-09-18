@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BarChart3 } from 'lucide-react';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,10 +38,10 @@ const CAPACITY_HOURS = 8;
 
 function formatDate(dateStr: string): string {
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    return formatCalendarDate(dateStr, {
       month: 'short',
       day: 'numeric',
-    });
+    }, 'en-US');
   } catch {
     return dateStr;
   }

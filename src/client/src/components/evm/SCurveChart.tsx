@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface SCurveDataPoint {
   date: string;
@@ -20,7 +21,7 @@ function formatDollar(value: number): string {
 
 function formatShortDate(s: string): string {
   try {
-    return new Date(s).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    return formatCalendarDate(s, { month: 'short', year: '2-digit' }, 'en-US');
   } catch {
     return s;
   }

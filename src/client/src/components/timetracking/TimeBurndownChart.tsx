@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TrendingDown, AlertTriangle } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface BurndownForecast {
   dataPoints: { date: string; cumulative: number }[];
@@ -114,7 +115,7 @@ export function TimeBurndownChart({ projectId }: { projectId: string }) {
         <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
           <p className="text-xs text-gray-500 uppercase tracking-wide">Projected End</p>
           <p className="text-lg font-bold text-gray-900 dark:text-white">
-            {forecast.projectedFinishDate ? new Date(forecast.projectedFinishDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+            {forecast.projectedFinishDate ? formatCalendarDate(forecast.projectedFinishDate, { month: 'short', day: 'numeric' }, 'en-US') : '—'}
           </p>
         </div>
       </div>
