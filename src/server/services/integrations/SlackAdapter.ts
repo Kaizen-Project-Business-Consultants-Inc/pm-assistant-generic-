@@ -21,7 +21,9 @@ export class SlackAdapter {
     const clientId = config.SLACK_CLIENT_ID;
     if (!clientId) throw new Error('SLACK_CLIENT_ID not configured');
     const redirectUri = `${config.APP_URL}/api/v1/slack/callback`;
-    const scopes = 'chat:write,channels:read,commands,incoming-webhook';
+    // groups:read lets the channel picker show private channels too; installs
+    // that predate it still work (listChannels falls back to public-only).
+    const scopes = 'chat:write,channels:read,groups:read,commands,incoming-webhook';
     const params = new URLSearchParams({
       client_id: clientId,
       scope: scopes,
@@ -55,10 +57,19 @@ export class SlackAdapter {
   }
 
   async listChannels(botToken: string): Promise<{ id: string; name: string; isPrivate: boolean }[]> {
-    const response = await fetch('https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=200', {
-      headers: { Authorization: `Bearer ${botToken}` },
-    });
-    const data = await response.json() as any;
+    // Private channels need groups:read, which an older install may not have
+    // granted. Rather than failing the whole listing, fall back to public only.
+    const fetchTypes = async (types: string) => {
+      const res = await fetch(`https://slack.com/api/conversations.list?types=${types}&limit=200`, {
+        headers: { Authorization: `Bearer ${botToken}` },
+      });
+      return res.json() as Promise<any>;
+    };
+
+    let data = await fetchTypes('public_channel,private_channel');
+    if (!data.ok && data.error === 'missing_scope') {
+      data = await fetchTypes('public_channel');
+    }
     if (!data.ok) throw new Error(data.error || 'Failed to list channels');
     return (data.channels || []).map((ch: any) => ({
       id: ch.id,
