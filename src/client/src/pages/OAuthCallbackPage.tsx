@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
+/** Friendly text for error codes the server sends back. */
+const ERROR_MESSAGES: Record<string, string> = {
+  missing_params: 'Missing authorization parameters',
+  slack_no_state: "Please start from inside Kovarti: open Integrations and click Connect Slack. Installing from Slack's own page doesn't tell us which account to link it to.",
+};
+
 export function OAuthCallbackPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
@@ -14,7 +20,7 @@ export function OAuthCallbackPage() {
 
     if (error) {
       setStatus('error');
-      setMessage(error === 'missing_params' ? 'Missing authorization parameters' : error);
+      setMessage(ERROR_MESSAGES[error] ?? error);
     } else if (success === 'true') {
       setStatus('success');
       setMessage(`${provider || 'Storage'} connected successfully`);
@@ -43,8 +49,11 @@ export function OAuthCallbackPage() {
       setTimeout(() => localStorage.removeItem('oauth-callback-result'), 500);
     } catch { /* localStorage may be unavailable */ }
 
-    // Close after a short delay so user sees the status
-    setTimeout(() => window.close(), 1500);
+    // Close after a short delay on success; on failure leave the window open so
+    // the person can actually read what went wrong (there is a Close button).
+    if (!error) {
+      setTimeout(() => window.close(), 1500);
+    }
   }, []);
 
   return (

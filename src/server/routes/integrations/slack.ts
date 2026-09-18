@@ -42,6 +42,13 @@ export async function slackRoutes(fastify: FastifyInstance) {
     if (error) {
       return reply.redirect(`${config.APP_URL}/oauth/callback?error=${encodeURIComponent(error)}`);
     }
+    // Slack sends no state when the install is started from Slack's own side
+    // ("Add to Slack" / App Directory), so we can't tell which Kovarti account
+    // it belongs to. Flag that case specifically — it's a common user mistake
+    // once the app is publicly distributed.
+    if (code && !state) {
+      return reply.redirect(`${config.APP_URL}/oauth/callback?error=slack_no_state&provider=slack`);
+    }
     if (!code || !state) {
       return reply.redirect(`${config.APP_URL}/oauth/callback?error=missing_params`);
     }
