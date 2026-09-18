@@ -12,6 +12,7 @@ import { Bot, X } from 'lucide-react';
 import { AIChatPanel } from '../ai/AIChatPanel';
 import { useUIStore } from '../../stores/uiStore';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { useCheckoutReturn } from '../../hooks/useCheckoutReturn';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useViewPreferences, ViewPreferences } from '../../hooks/useViewPreferences';
 import { useThemeStore } from '../../stores/themeStore';
@@ -43,6 +44,9 @@ const GO_SHORTCUTS: Record<string, string> = {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   useWebSocket();
+  // Returning from Stripe checkout — confirm the payment landed without waiting on
+  // the webhook, so a paying customer is never shown a "complete your payment" screen.
+  useCheckoutReturn();
   const breakpoint = useBreakpoint();
   const navigate = useNavigate();
   const { aiPanelContext } = useUIStore();

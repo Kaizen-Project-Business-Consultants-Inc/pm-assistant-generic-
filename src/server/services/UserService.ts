@@ -23,6 +23,13 @@ export interface User {
   passwordResetExpires: Date | null;
   stripeCustomerId: string | null;
   subscriptionTier: 'trial' | 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise';
+  /**
+   * The paid plan an unpaid signup is trying to buy. Set while they sit in
+   * 'incomplete' (awaiting payment) and cleared the moment their payment confirms.
+   * Never grants feature access — subscriptionTier does that, and it stays 'trial'
+   * until the money actually lands.
+   */
+  pendingTier: 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise' | null;
   subscriptionStatus: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'none';
   trialEndsAt: Date | null;
   trialStartedAt: Date | null;

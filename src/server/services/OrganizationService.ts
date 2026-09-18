@@ -51,6 +51,7 @@ export class OrganizationService {
     name: string,
     ownerUserId: string,
     stripeCustomerId?: string,
+    options?: { awaitingPayment?: boolean },
   ): Promise<Organization> {
     const id = crypto.randomUUID();
     const slug = slugify(name) || `org-${id.slice(0, 8)}`;
@@ -71,11 +72,15 @@ export class OrganizationService {
       stripeSubscriptionId: null,
       stripeSubscriptionItemId: null,
       subscriptionTier: 'trial',
-      subscriptionStatus: 'trialing',
+      // An org created for a paid signup is awaiting payment, not on trial. A trial
+      // belongs to the free tier only, so it gets no trial date.
+      subscriptionStatus: options?.awaitingPayment ? 'incomplete' : 'trialing',
       billingModel: 'flat',
       seatCount: 1,
       seatPriceCents: 3300,
-      trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' '),
+      trialEndsAt: options?.awaitingPayment
+        ? null
+        : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' '),
       maxUsers: 10,
       viewerLimit: 5,
       isActive: true,

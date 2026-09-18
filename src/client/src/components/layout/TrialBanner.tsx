@@ -16,6 +16,23 @@ export function TrialBanner() {
   if (user.role === 'admin') return null;
   if (user.role === 'viewer') return null;
 
+  // Awaiting payment: they chose a paid plan and never finished checkout. Nothing has
+  // expired — they simply have not paid — so this must not read as a lapsed trial.
+  if (status === 'incomplete') {
+    return (
+      <div className="bg-amber-500 text-white text-center py-2.5 px-4 text-sm font-medium flex items-center justify-center gap-3">
+        <span>Your account is not active yet. Complete your payment to start using Kovarti PM.</span>
+        <Link
+          to="/pricing"
+          className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-amber-700 text-xs font-semibold rounded-full hover:bg-amber-50 transition-colors"
+        >
+          <Crown className="w-3 h-3" />
+          Complete Checkout
+        </Link>
+      </div>
+    );
+  }
+
   const trialEnd = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
   const now = new Date();
   const trialActive = trialEnd && trialEnd > now;

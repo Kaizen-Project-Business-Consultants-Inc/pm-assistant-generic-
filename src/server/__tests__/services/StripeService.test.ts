@@ -517,11 +517,16 @@ describe('StripeService', () => {
           subscriptionTier: 'sme',
           billingModel: 'per_seat',
           seatCount: 5,
+          // Paying clears the trial: a subscriber never carries a trial date.
+          trialEndsAt: null,
         }));
-        expect(databaseService.queryControlPlane).toHaveBeenCalledWith(
-          expect.stringContaining('UPDATE users SET subscription_tier'),
-          ['sme', 'active', 'org-1'],
+        const [sql, params] = (databaseService.queryControlPlane as any).mock.calls.find(
+          (c: any[]) => typeof c[0] === 'string' && c[0].includes('UPDATE users'),
         );
+        expect(sql).toContain('subscription_tier = ?');
+        expect(sql).toContain('trial_ends_at = NULL');
+        expect(sql).toContain('pending_tier = NULL');
+        expect(params).toEqual(['sme', 'active', 'org-1']);
       });
 
       it('routes to org subscription via customer lookup fallback', async () => {

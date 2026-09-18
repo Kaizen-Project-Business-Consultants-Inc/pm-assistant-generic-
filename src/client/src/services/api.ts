@@ -61,10 +61,13 @@ class ApiService {
           return Promise.reject(error);
         }
 
-        // Handle 403 subscription-required errors
+        // Handle 403 subscription-required errors. 'Payment required' is the
+        // awaiting-payment case — a paid signup that never completed checkout. It is
+        // not a trial and not a free account, so it gets its own message.
         if (
           error.response?.status === 403 &&
-          error.response?.data?.error === 'Subscription required'
+          (error.response?.data?.error === 'Subscription required' ||
+            error.response?.data?.error === 'Payment required')
         ) {
           // Dispatch custom event for UI components to handle
           window.dispatchEvent(new CustomEvent('subscription-required', {
@@ -195,6 +198,12 @@ class ApiService {
 
   async getSubscriptionStatus() {
     const response = await this.api.get('/stripe/subscription-status');
+    return response.data;
+  }
+
+  /** Re-check this account's subscription directly with Stripe, bypassing the webhook. */
+  async reconcileSubscription() {
+    const response = await this.api.post('/stripe/reconcile');
     return response.data;
   }
 

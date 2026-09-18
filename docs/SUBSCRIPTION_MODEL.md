@@ -45,6 +45,50 @@ Single paid tier targeting individual consultants. No free tier — full-feature
 
 ---
 
+## Account States
+
+There are exactly three, and an account is always in one of them. **A trial belongs to
+the free tier only — no paid tier ever carries one.**
+
+| State | `subscription_tier` | `subscription_status` | `trial_ends_at` | What they get |
+|---|---|---|---|---|
+| **Free (on trial)** | `trial` | `trialing` | set, 14 days out | Everything, until the date passes |
+| **Free (trial spent)** | `trial` | `none` | in the past | Read-only |
+| **Awaiting payment** | `trial` | `incomplete` | NULL | Nothing but their checkout |
+| **Subscriber** | a paid tier | `active` | NULL | Everything on their plan |
+
+### Awaiting payment is not the free tier
+
+Someone who chose a paid plan and has not paid is **not** a free-tier customer — they
+never chose free. They are held in `incomplete` with no trial and no access, and the
+plan they were buying is remembered in `pending_tier` so their checkout can be resumed.
+`subscription_tier` deliberately stays `trial` while they wait, because that column
+grants feature access and an unpaid signup must not receive features it has not paid
+for.
+
+The account still exists rather than being refused outright, because Stripe needs
+something to attach the payment to, a late confirmation needs somewhere to land, and
+someone returning an hour later should not have to register again.
+
+`PendingPaymentJob` (daily, 09:30) looks after these: it asks Stripe whether they in
+fact paid, reminds them after 2 days, and deactivates the empty account after 14.
+
+### Never strand a paying customer
+
+The webhook is the normal way a payment is confirmed, but it can be late, dropped, or
+fail. If that happens the customer has paid and the app does not know it — the worst
+state in the system. Two guards:
+
+1. **On return from checkout** the client calls `POST /stripe/reconcile`, which asks
+   Stripe directly instead of waiting.
+2. **The daily sweep** repeats that check for anything still `incomplete`.
+
+The trial downgrade job is also restricted to `subscription_tier = 'trial'`, so it
+cannot downgrade an account that has paid, and the trial reminder emails carry the same
+restriction so a subscriber is never told their trial is expiring.
+
+---
+
 ## Post-Trial / Unpaid Experience (Read-Only Mode)
 
 When trial expires and user has no active subscription:
@@ -128,7 +172,9 @@ When trial expires and user has no active subscription:
 ### Phase 3: Database Changes
 - Update `subscription_tier` ENUM: `'free' | 'consultant'` (drop 'pro' and 'business')
 - Migration to rename existing 'pro' users to 'consultant'
-- Add `trial_started_at` field if not already tracked (for accurate trial expiry)
+- ~~Add `trial_started_at` field if not already tracked (for accurate trial expiry)~~
+  Column added by migration 047 but never written; registration now sets it (migration
+  116 backfills running trials and clears the stale trial stamp off paid accounts).
 
 ### Phase 4: Frontend Updates
 - Redesign PricingPage: single tier with monthly/annual toggle

@@ -266,6 +266,25 @@ export async function stripeRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Called when someone returns from the payment page. Asks Stripe directly what
+  // their subscription is rather than waiting for the webhook, which can be late or
+  // lost — and a customer who has paid but whose confirmation went missing would
+  // otherwise be locked out of what they just bought.
+  fastify.post('/reconcile', {
+    preHandler: [authMiddleware, requireScope('read')],
+    schema: { description: 'Re-check this account\'s subscription directly with Stripe', tags: ['stripe'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userId = request.user!.userId;
+      const applied = await stripeService.reconcileFromStripe(userId);
+      const status = await stripeService.getSubscriptionStatus(userId);
+      return { reconciled: applied, ...status };
+    } catch (error) {
+      logger.error('Reconcile subscription error', { error });
+      return reply.status(500).send({ error: 'Failed to reconcile subscription' });
+    }
+  });
+
   // Public endpoint to get the publishable key
   fastify.get('/config', {
     schema: { description: 'Get Stripe publishable key', tags: ['stripe'] },

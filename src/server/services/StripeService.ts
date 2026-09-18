@@ -365,11 +365,15 @@ export class StripeService {
     const periodStart = item?.current_period_start ?? sub.current_period_start;
     const periodEnd = item?.current_period_end ?? sub.current_period_end;
 
-    // Update user
+    // Update user. Paying clears the trial outright — a trial belongs to the free
+    // tier only, so a subscriber never carries one. pendingTier is cleared too: they
+    // are no longer waiting to buy anything.
     await this.userService.update(user.id, {
       subscriptionTier: tier,
+      pendingTier: null,
       subscriptionStatus: status,
-      trialEndsAt: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
+      trialEndsAt: null,
+      trialStartedAt: null,
     });
 
     // Upsert subscription record
@@ -454,6 +458,55 @@ export class StripeService {
     return statusMap[stripeStatus] || 'none';
   }
 
+  /**
+   * Ask Stripe directly what this account's subscription actually is, and apply it.
+   *
+   * The webhook is the normal path, but it can be late, dropped, or fail. If that
+   * happens the customer has paid and we do not know it — the worst state in the
+   * system, because they get locked out of something they bought. This closes the
+   * gap: it is called when they return from checkout, and again by a daily sweep.
+   *
+   * Safe to call repeatedly — it reuses the same upsert the webhook uses.
+   * Returns true if an active-or-trialing subscription was found and applied.
+   */
+  async reconcileFromStripe(userId: string): Promise<boolean> {
+    if (!this.isConfigured) return false;
+
+    try {
+      const stripe = this.getClient();
+      const user = await this.userService.findById(userId);
+      if (!user) return false;
+
+      // Check the user's own customer record and their organization's — SME bills the
+      // org, flat-rate bills the user, and we do not know which one this is.
+      const customerIds: string[] = [];
+      if (user.stripeCustomerId) customerIds.push(user.stripeCustomerId);
+      const org = await organizationRepository.findByUserId(userId);
+      if (org?.stripeCustomerId && !customerIds.includes(org.stripeCustomerId)) {
+        customerIds.push(org.stripeCustomerId);
+      }
+      if (customerIds.length === 0) return false;
+
+      let applied = false;
+      for (const customerId of customerIds) {
+        const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 });
+        for (const subscription of subs.data) {
+          if (!['active', 'trialing', 'past_due'].includes(subscription.status)) continue;
+          await this.upsertSubscription(subscription, `reconcile:${subscription.id}`);
+          applied = true;
+        }
+      }
+
+      if (applied) {
+        logger.info('[StripeService] Reconciled subscription from Stripe', { userId });
+      }
+      return applied;
+    } catch (err) {
+      logger.error('[StripeService] Reconcile failed', { userId, error: err instanceof Error ? err.message : String(err) });
+      return false;
+    }
+  }
+
   private async upsertOrgSubscription(subscription: Stripe.Subscription, stripeEventId: string, orgId: string): Promise<void> {
     const org = await organizationRepository.findById(orgId);
     if (!org) {
@@ -471,7 +524,10 @@ export class StripeService {
     const interval = item?.price?.recurring?.interval as 'month' | 'year' | undefined;
     const previousTier = org.subscriptionTier || 'trial';
 
-    // Update organization record
+    // Update organization record. Note trialEndsAt is cleared: this is the per-seat
+    // (SME) activation path, and it used to leave the registration trial stamp in
+    // place while the flat-rate path cleared it. That stale date made a paying
+    // customer look like an expired trial if the Stripe confirmation was ever late.
     await organizationRepository.update(orgId, {
       subscriptionTier: tier,
       subscriptionStatus: status,
@@ -479,12 +535,17 @@ export class StripeService {
       seatCount,
       stripeSubscriptionId: subscription.id,
       stripeSubscriptionItemId: item?.id ?? null,
+      trialEndsAt: null,
       viewerLimit: 999999,
     });
 
-    // Sync all non-viewer users in org to this tier/status
+    // Sync all non-viewer users in org to this tier/status, and clear any trial or
+    // pending-plan marker — they are subscribers now.
     await databaseService.queryControlPlane(
-      "UPDATE users SET subscription_tier = ?, subscription_status = ? WHERE organization_id = ? AND role != 'viewer'",
+      `UPDATE users
+          SET subscription_tier = ?, subscription_status = ?,
+              trial_ends_at = NULL, trial_started_at = NULL, pending_tier = NULL
+        WHERE organization_id = ? AND role != 'viewer'`,
       [tier, status, orgId],
     );
 

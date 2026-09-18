@@ -14,10 +14,15 @@ export async function runTrialReminders(): Promise<void> {
   try {
     // --- Step 1: Downgrade expired trials ---
     // Set subscription_status = 'none' for users whose trial has passed
+    // Only free-tier trials are ever downgraded. The tier check is the safety catch:
+    // without it, a paid account whose Stripe confirmation was late or lost still
+    // looks like a plain expiring trial, and this query would lock out a customer who
+    // had actually paid.
     const downgraded = await databaseService.queryControlPlane(
       `UPDATE users
        SET subscription_status = 'none'
        WHERE subscription_status = 'trialing'
+         AND subscription_tier = 'trial'
          AND trial_ends_at IS NOT NULL
          AND trial_ends_at < NOW()`,
     );
@@ -31,6 +36,8 @@ export async function runTrialReminders(): Promise<void> {
       `UPDATE organizations
        SET subscription_status = 'none'
        WHERE subscription_status = 'trialing'
+         AND subscription_tier = 'trial'
+         AND stripe_subscription_id IS NULL
          AND trial_ends_at IS NOT NULL
          AND trial_ends_at < NOW()`,
     );
@@ -41,13 +48,17 @@ export async function runTrialReminders(): Promise<void> {
 
     // --- Step 2: Send reminder/expired emails ---
     // Find trialing users with trial ending in the next 3 days or already expired
+    // Free-tier trials only. `subscription_tier = 'trial'` keeps these emails away
+    // from paying customers — telling a subscriber their trial is expiring is both
+    // alarming and wrong. The window reaches 8 days out for the first nudge.
     const rows = await databaseService.queryControlPlane(
       `SELECT id, email, full_name, trial_ends_at, subscription_status
        FROM users
        WHERE subscription_status IN ('trialing', 'none')
+         AND subscription_tier = 'trial'
          AND trial_ends_at IS NOT NULL
          AND trial_ends_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
-         AND trial_ends_at <= DATE_ADD(NOW(), INTERVAL 4 DAY)
+         AND trial_ends_at <= DATE_ADD(NOW(), INTERVAL 8 DAY)
        LIMIT 500`,
     );
 
@@ -61,6 +72,8 @@ export async function runTrialReminders(): Promise<void> {
       const msLeft = trialEnd.getTime() - now.getTime();
       const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
 
+      // Four touches: a week out (while they are still actively using it and have
+      // time to get a budget approved), then 3 days, 1 day, and the day it ends.
       let reminderKey: string;
       if (daysLeft <= 0) {
         reminderKey = `trial-reminder:${row.id}:expired`;
@@ -68,6 +81,8 @@ export async function runTrialReminders(): Promise<void> {
         reminderKey = `trial-reminder:${row.id}:1day`;
       } else if (daysLeft <= 3) {
         reminderKey = `trial-reminder:${row.id}:3day`;
+      } else if (daysLeft <= 7) {
+        reminderKey = `trial-reminder:${row.id}:7day`;
       } else {
         continue;
       }

@@ -9,6 +9,8 @@ export interface User {
   role: 'admin' | 'executive' | 'project_manager' | 'team_member' | 'scrum_master' | 'finance_officer' | 'risk_manager' | 'pmo' | 'ba' | 'qa' | 'tester' | 'devops' | 'claude_sme' | 'viewer';
   subscriptionTier?: 'trial' | 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise';
   subscriptionStatus?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'none';
+  /** Plan an unpaid signup is buying. Set while 'incomplete', cleared once they pay. */
+  pendingTier?: 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise' | null;
   trialEndsAt?: string | null;
   isFounder?: boolean;
   emailVerified?: boolean;

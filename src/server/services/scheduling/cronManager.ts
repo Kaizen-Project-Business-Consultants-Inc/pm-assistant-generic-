@@ -19,6 +19,7 @@ export interface CronTasks {
   reportScheduleTask: cron.ScheduledTask | null;
   healthSnapshotTask: cron.ScheduledTask | null;
   trialReminderTask: cron.ScheduledTask | null;
+  pendingPaymentTask: cron.ScheduledTask | null;
   deadlineTask: cron.ScheduledTask | null;
   storageSyncTask: cron.ScheduledTask | null;
   timesheetComplianceTask: cron.ScheduledTask | null;
@@ -42,6 +43,7 @@ export function startCronTasks(
     reportScheduleTask: null,
     healthSnapshotTask: null,
     trialReminderTask: null,
+    pendingPaymentTask: null,
     deadlineTask: null,
     storageSyncTask: null,
     timesheetComplianceTask: null,
@@ -201,6 +203,26 @@ export function startCronTasks(
     } catch (error) {
       logger.error('[cron:trial-reminder] FAILED', {
         cronJob: 'trial-reminder', durationMs: Date.now() - start,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  // Unpaid signups — daily at 09:30. Rescues anyone who paid but whose Stripe
+  // confirmation never reached us, then chases and eventually closes the rest.
+  // Control-plane only, so no tenant loop.
+  logger.info('[cron] Starting pending payment sweep (daily at 09:30)');
+  tasks.pendingPaymentTask = cron.schedule('30 9 * * *', async () => {
+    const start = Date.now();
+    try {
+      const { runPendingPaymentSweep } = await import('./pendingPaymentJob');
+      const result = await runPendingPaymentSweep();
+      logger.info('[cron:pending-payment] completed', {
+        cronJob: 'pending-payment', durationMs: Date.now() - start, ...result,
+      });
+    } catch (error) {
+      logger.error('[cron:pending-payment] FAILED', {
+        cronJob: 'pending-payment', durationMs: Date.now() - start,
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -417,6 +439,7 @@ export function stopCronTasks(tasks: CronTasks): void {
   if (tasks.reportScheduleTask) { tasks.reportScheduleTask.stop(); tasks.reportScheduleTask = null; }
   if (tasks.healthSnapshotTask) { tasks.healthSnapshotTask.stop(); tasks.healthSnapshotTask = null; }
   if (tasks.trialReminderTask) { tasks.trialReminderTask.stop(); tasks.trialReminderTask = null; }
+  if (tasks.pendingPaymentTask) { tasks.pendingPaymentTask.stop(); tasks.pendingPaymentTask = null; }
   if (tasks.deadlineTask) { tasks.deadlineTask.stop(); tasks.deadlineTask = null; }
   if (tasks.storageSyncTask) { tasks.storageSyncTask.stop(); tasks.storageSyncTask = null; }
   if (tasks.timesheetComplianceTask) { tasks.timesheetComplianceTask.stop(); tasks.timesheetComplianceTask = null; }

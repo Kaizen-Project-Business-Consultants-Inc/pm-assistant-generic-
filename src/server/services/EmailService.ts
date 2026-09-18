@@ -598,6 +598,54 @@ export class EmailService {
     await this.sendEmail({ from: config.RESEND_FROM_EMAIL, to, subject: 'Your Kovarti PM trial has ended', html });
   }
 
+  /**
+   * For someone who chose a paid plan and never finished paying. Deliberately not a
+   * trial email — they have no trial, and telling them one is expiring would be wrong.
+   */
+  async sendPendingPaymentEmail(to: string, name: string, pendingTier: string | null): Promise<void> {
+    if (!this.isConfigured) {
+      logger.info(`[EmailService] Pending payment email would be sent to ${maskPii(to)}`);
+      return;
+    }
+
+    const escapedName = escapeHtml(name);
+    // Mirrors TIER_LABELS in src/client/src/constants/branding.ts. Kept local because
+    // the server cannot import from the client bundle and there is no shared module.
+    const tierLabels: Record<string, string> = {
+      consultant_basic: 'Consultant Basic',
+      consultant_pro: 'Consultant Pro',
+      sme: 'SME',
+      enterprise: 'Enterprise',
+    };
+    const planLabel = pendingTier ? escapeHtml(tierLabels[pendingTier] || pendingTier) : null;
+    const planPhrase = planLabel ? `your <strong style="color:#e8ecf1;">${planLabel}</strong> subscription` : 'your subscription';
+    const pricingUrl = `${config.APP_URL}/pricing`;
+
+    const html = this.buildTrialEmailHtml({
+      preheader: 'Your Kovarti PM account is ready — it just needs payment to activate.',
+      badgeText: 'Payment needed',
+      badgeColor: '#f59e0b',
+      accentGradient: 'linear-gradient(90deg,#0d9488,#14b8a6,#0d9488)',
+      headline: 'Your account is waiting',
+      bodyParagraphs: [
+        `Hi ${escapedName}, you created a <strong style="color:#e8ecf1;">Kovarti PM</strong> account but ${planPhrase} was never completed, so it has not been activated yet.`,
+        'Nothing has been charged. Finish checkout and your account opens immediately, exactly where you left off.',
+        'If you changed your mind, you can ignore this — we will close the empty account in a couple of weeks.',
+      ],
+      ctaText: 'Complete Checkout →',
+      ctaUrl: pricingUrl,
+      ctaGradient: 'linear-gradient(135deg,#14b8a6,#0d9488)',
+      ctaShadow: 'rgba(20,184,166,0.3)',
+      infoPoints: [
+        { emoji: '🔒', title: 'Nothing charged', text: 'No payment has been taken. You are not on a plan and there is no balance owing.' },
+        { emoji: '⚡', title: 'Instant access', text: 'The moment your payment clears, your workspace is ready to use.' },
+        { emoji: '💬', title: 'Trouble paying?', text: 'Reply to this email or reach us at support@kovarti.com and we will sort it out.' },
+      ],
+    });
+
+    await this.sendEmail({ from: config.RESEND_FROM_EMAIL, to, subject: 'Your Kovarti PM account needs payment to activate', html });
+  }
+
   private buildTrialEmailHtml(opts: {
     preheader: string;
     badgeText: string;

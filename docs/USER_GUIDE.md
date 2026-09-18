@@ -61,7 +61,7 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 
 > **Note:** Each email address is eligible for one free 14-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
 
-> **Trial reminders:** You'll receive email reminders at 3 days and 1 day before your trial ends, plus a final notice when it expires. These emails include a direct link to the pricing page so you can upgrade with one click. After your trial ends, your account becomes read-only — all your data is preserved and you can subscribe at any time to restore full access.
+> **Trial reminders:** You'll receive email reminders at 7 days, 3 days and 1 day before your trial ends, plus a final notice when it expires. These emails include a direct link to the pricing page so you can upgrade with one click. After your trial ends, your account becomes read-only — all your data is preserved and you can subscribe at any time to restore full access.
 
 ### Logging In
 
@@ -116,7 +116,9 @@ SME accounts get an extended **4-step wizard** with an additional Team Setup ste
 
 The wizard only appears once. After you complete or dismiss it, it will not show again.
 
-> **Abandoned checkout:** If you started a paid subscription checkout but did not complete the Stripe payment, you will see a notice on the onboarding page letting you know. Your free trial is still active — you can subscribe at any time from the **Pricing** page without losing any trial time.
+> **Abandoned checkout:** If you chose a paid plan but did not complete payment, your account is created but not activated, and a banner invites you to finish checking out. You are not placed on the free trial — the trial is for people who chose the free plan, and choosing a paid plan is a different decision. Nothing is charged until you complete payment. Finish checkout at any time from the **Pricing** page and your account opens immediately. If you never do, we send one reminder after two days and close the empty account after two weeks.
+>
+> If you did pay but the confirmation was delayed, the app re-checks with Stripe the moment you return, and again once a day, so a completed payment is always picked up.
 
 > **Starter templates:** Every new account comes with 6 project templates pre-loaded in your library (Software Development, Construction Project, Marketing Campaign, Product Launch, IT Infrastructure, and Event Planning), so you can create a structured project immediately without building from scratch.
 

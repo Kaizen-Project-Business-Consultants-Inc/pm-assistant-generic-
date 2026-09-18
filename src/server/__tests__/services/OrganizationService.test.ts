@@ -341,6 +341,21 @@ describe('OrganizationService', () => {
       expect(diffDays).toBeGreaterThan(13.5);
       expect(diffDays).toBeLessThan(14.5);
     });
+
+    it('gives a paid signup no trial at all — it is awaiting payment, not on trial', async () => {
+      mockRepo.findBySlug.mockResolvedValueOnce(null);
+      mockRepo.create.mockImplementationOnce(async (data: any) => ({
+        ...data,
+        createdAt: '2026-01-01 00:00:00',
+        updatedAt: '2026-01-01 00:00:00',
+      }));
+
+      await service.createOrganization('Paid Org', 'owner-8', undefined, { awaitingPayment: true });
+
+      const createArg = mockRepo.create.mock.calls[0][0];
+      expect(createArg.trialEndsAt).toBeNull();
+      expect(createArg.subscriptionStatus).toBe('incomplete');
+    });
   });
 
   // ---------------------------------------------------------------

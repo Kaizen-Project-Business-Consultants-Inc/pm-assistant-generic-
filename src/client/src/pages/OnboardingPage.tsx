@@ -645,7 +645,18 @@ export const OnboardingPage: React.FC = () => {
                       <p>Manage your team anytime in Settings → Team.</p>
                     </div>
                   </div>
-                ) : user?.subscriptionTier === 'trial' && (
+                ) : user?.subscriptionStatus === 'incomplete' ? (
+                  // Chose a paid plan, never finished paying. They are not on a trial,
+                  // so telling them one is active would be wrong.
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6 text-left">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                      Your account is not active yet
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                      Complete your payment to unlock Kovarti PM. Nothing has been charged yet.
+                    </p>
+                  </div>
+                ) : user?.subscriptionTier === 'trial' && user?.subscriptionStatus === 'trialing' && (
                   <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-4 mb-6 text-left">
                     <p className="text-sm font-medium text-primary-800 dark:text-primary-300">
                       Your 14-day free trial is active

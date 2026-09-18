@@ -38,14 +38,31 @@ export async function requireActiveSubscription(request: FastifyRequest, reply: 
       return reply.status(401).send({ error: 'User not found' });
     }
 
-    const { subscriptionStatus, subscriptionTier, trialEndsAt } = fullUser;
+    const { subscriptionStatus, subscriptionTier, trialEndsAt, pendingTier } = fullUser;
 
     // Active paid subscription — allow
     if (subscriptionStatus === 'active' && subscriptionTier !== 'trial') {
       return;
     }
 
-    // Active trial — check expiry
+    // Awaiting payment: they chose a paid plan and have not paid yet. They are NOT a
+    // free-tier customer and have no trial, so they get nothing but their checkout.
+    // Answered separately from an expired trial because the message and the next
+    // action are different — "finish paying", not "your trial ended".
+    if (subscriptionStatus === 'incomplete') {
+      return reply.status(403).send({
+        error: 'Payment required',
+        message: 'Complete your subscription to start using Kovarti PM.',
+        upgradeUrl: '/pricing',
+        subscriptionStatus,
+        pendingTier: pendingTier ?? null,
+        awaitingPayment: true,
+        trialExpired: false,
+      });
+    }
+
+    // Active trial — check expiry. Free tier only: a paid account never has a trial
+    // date, so this branch cannot strand a subscriber.
     if (subscriptionStatus === 'trialing' || (subscriptionStatus === 'none' && trialEndsAt)) {
       if (trialEndsAt && new Date(trialEndsAt) > new Date()) {
         return;
@@ -69,7 +86,9 @@ export async function requireActiveSubscription(request: FastifyRequest, reply: 
 
     return reply.status(403).send({
       error: 'Subscription required',
-      message: 'Your trial has ended. Subscribe to continue using this feature.',
+      message: subscriptionStatus === 'canceled'
+        ? 'Your subscription has ended. Resubscribe to continue.'
+        : 'Your trial has ended. Subscribe to continue using this feature.',
       upgradeUrl: '/pricing',
       subscriptionStatus,
       trialExpired: trialEndsAt ? new Date(trialEndsAt) <= new Date() : false,

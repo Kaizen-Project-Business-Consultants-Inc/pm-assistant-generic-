@@ -126,6 +126,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           fullName: user.fullName,
           role: user.role,
           subscriptionTier: user.role === 'admin' ? 'enterprise' : user.subscriptionTier,
+          pendingTier: user.role === 'admin' ? null : (user.pendingTier ?? null),
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
           isFounder: user.isFounder || false,
@@ -234,6 +235,26 @@ export async function authRoutes(fastify: FastifyInstance) {
         }
       }).catch((err: any) => logger.error('Failed to link pending memberships/resources', { userId: user.id, error: err }));
 
+      // Multi-tenant: create the organization and provision its database. Shared by
+      // the free-trial and awaiting-payment paths — SME checkout needs the org to
+      // exist, so a paid signup must get one too, just without a trial stamp.
+      const createOrgForNewUser = async () => {
+        if (!config.MULTI_TENANT_ENABLED) return;
+        const orgName = organizationName || fullName || email.split('@')[0];
+        try {
+          const org = await organizationService.createOrganization(orgName, user.id, stripeCustomerId || undefined, {
+            awaitingPayment: isPlanSignup,
+          });
+          await userService.update(user.id, { organizationId: org.id } as any);
+          // Provision tenant DB in background — don't block registration
+          provisionTenantDatabase(org.id).catch((err) => {
+            logger.error('Tenant provisioning failed', { orgId: org.id, error: err });
+          });
+        } catch (orgError) {
+          logger.error('Organization creation failed during registration', { userId: user.id, error: orgError });
+        }
+      };
+
       if (isInvitedViewer) {
         // Viewer: no trial, no subscription, accept the invite
         await userService.update(user.id, {
@@ -250,28 +271,32 @@ export async function authRoutes(fastify: FastifyInstance) {
         await userService.update(user.id, {
           subscriptionStatus: 'none',
         });
+      } else if (isPlanSignup) {
+        // Paid signup: NO TRIAL. A trial belongs to the free tier only.
+        // They are not a free-tier customer — they never chose free — so they sit in
+        // 'incomplete' (awaiting payment) with no trial date and no feature access
+        // until their payment confirms. subscriptionTier deliberately stays 'trial'
+        // (the "no paid plan" default) because that column grants features; the plan
+        // they are buying is remembered in pendingTier so we can resume their checkout.
+        await userService.update(user.id, {
+          subscriptionStatus: 'incomplete',
+          pendingTier: tier as any,
+          trialEndsAt: null,
+          trialStartedAt: null,
+        });
+
+        await createOrgForNewUser();
       } else {
-        // New user: start 14-day trial
-        const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+        // Free signup: 14-day trial on the free tier — the only place a trial belongs.
+        const now = new Date();
+        const trialEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
         await userService.update(user.id, {
           subscriptionStatus: 'trialing',
+          trialStartedAt: now,
           trialEndsAt,
         });
 
-        // Multi-tenant: create organization and provision tenant database
-        if (config.MULTI_TENANT_ENABLED) {
-          const orgName = organizationName || fullName || email.split('@')[0];
-          try {
-            const org = await organizationService.createOrganization(orgName, user.id, stripeCustomerId || undefined);
-            await userService.update(user.id, { organizationId: org.id } as any);
-            // Provision tenant DB in background — don't block registration
-            provisionTenantDatabase(org.id).catch((err) => {
-              logger.error('Tenant provisioning failed', { orgId: org.id, error: err });
-            });
-          } catch (orgError) {
-            logger.error('Organization creation failed during registration', { userId: user.id, error: orgError });
-          }
-        }
+        await createOrgForNewUser();
       }
 
       // Plan signup flow: auto-login + create Stripe checkout session + return URL
@@ -346,8 +371,10 @@ export async function authRoutes(fastify: FastifyInstance) {
             fullName: user.fullName,
             role: user.role,
             emailVerified: false,
+            // Awaiting payment — not a trial, and not a free-tier customer.
             subscriptionTier: 'trial',
-            subscriptionStatus: 'trialing',
+            pendingTier: tier,
+            subscriptionStatus: 'incomplete',
           },
         });
       }
@@ -503,6 +530,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           fullName: user.fullName,
           role: user.role,
           subscriptionTier: user.role === 'admin' ? 'enterprise' : user.subscriptionTier,
+          pendingTier: user.role === 'admin' ? null : (user.pendingTier ?? null),
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
           isFounder: user.isFounder || false,
