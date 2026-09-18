@@ -1,8 +1,8 @@
 [Unit]
-Description=PM Assistant Deadline Notifications (daily 08:00)
+Description=PM Assistant Deadline Notifications (hourly; sent at 08:00 in each recipient's time zone)
 
 [Timer]
-OnCalendar=*-*-* 08:00:00
+OnCalendar=*-*-* *:05:00
 Persistent=true
 
 [Install]

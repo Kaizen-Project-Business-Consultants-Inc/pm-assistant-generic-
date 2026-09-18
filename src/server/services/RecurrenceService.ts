@@ -42,8 +42,11 @@ export function getNextOccurrence(rule: ParsedRule, lastDate: Date): Date {
         // Find the next matching day
         for (let i = 1; i <= increment; i++) {
           const candidate = new Date(lastDate);
-          candidate.setDate(candidate.getDate() + i);
-          const dayName = DAY_NAMES[candidate.getDay()];
+          // UTC getters throughout: lastDate comes from a DATE column, so it is midnight
+          // UTC. Reading the day locally made "every Monday" generate Sundays on a server
+          // west of UTC.
+          candidate.setUTCDate(candidate.getUTCDate() + i);
+          const dayName = DAY_NAMES[candidate.getUTCDay()];
           if (rule.byDay.includes(dayName)) {
             return candidate;
           }

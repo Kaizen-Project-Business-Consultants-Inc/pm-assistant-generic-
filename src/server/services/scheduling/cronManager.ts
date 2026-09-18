@@ -235,9 +235,9 @@ export function startCronTasks(
     }
   });
 
-  // Deadline approaching notifications — daily at 08:00
-  logger.info('[cron] Starting deadline notification sender (daily at 08:00)');
-  tasks.deadlineTask = cron.schedule('0 8 * * *', async () => {
+  // Deadline notifications — checked HOURLY, sent at 08:00 in each recipient's zone.
+  logger.info('[cron] Starting deadline notification sender (hourly; 08:00 local per recipient)');
+  tasks.deadlineTask = cron.schedule('5 * * * *', async () => {
     await forEachTenant(async (tenant) => {
       const label = tenant?.slug ?? 'default';
       const start = Date.now();

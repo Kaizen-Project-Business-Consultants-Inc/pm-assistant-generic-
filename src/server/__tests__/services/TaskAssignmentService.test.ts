@@ -508,17 +508,13 @@ describe('TaskAssignmentService', () => {
 
     it('handles multiple resources reducing duration', async () => {
       const startDate = '2026-01-07'; // Wednesday
-      const start = new Date(startDate);
-      // Two resources: 8+8 = 16 hrs/day. 40/16 = 2.5 → ceil = 3 days
+      // Two resources: 8+8 = 16 hrs/day. 40/16 = 2.5 → ceil = 3 working days.
+      // Wed 7 + Thu 8, Fri 9, Mon 12 (the weekend is skipped).
+      // Asserted as a literal on purpose: this test used to recompute the answer with
+      // the same local-getter arithmetic as the code, so it reproduced the bug rather
+      // than catching it, and expected Sat 10 Jan as a task end date.
       const durationDays = 3;
-      let remaining = durationDays;
-      const expectedEnd = new Date(start);
-      while (remaining > 0) {
-        expectedEnd.setDate(expectedEnd.getDate() + 1);
-        const dow = expectedEnd.getDay();
-        if (dow !== 0 && dow !== 6) remaining--;
-      }
-      const expectedEndStr = expectedEnd.toISOString().slice(0, 10);
+      const expectedEndStr = '2026-01-12';
 
       mockQuery.mockResolvedValueOnce([{
         work_hours: 40,
@@ -544,17 +540,9 @@ describe('TaskAssignmentService', () => {
 
     it('skips weekends when calculating end date', async () => {
       const startDate = '2026-01-07'; // Wednesday
-      const start = new Date(startDate);
-      // 48 / 8 = 6 working days — must span at least one weekend
+      // 48 / 8 = 6 working days: Thu 8, Fri 9, Mon 12, Tue 13, Wed 14, Thu 15.
       const durationDays = 6;
-      let remaining = durationDays;
-      const expectedEnd = new Date(start);
-      while (remaining > 0) {
-        expectedEnd.setDate(expectedEnd.getDate() + 1);
-        const dow = expectedEnd.getDay();
-        if (dow !== 0 && dow !== 6) remaining--;
-      }
-      const expectedEndStr = expectedEnd.toISOString().slice(0, 10);
+      const expectedEndStr = '2026-01-15';
 
       mockQuery.mockResolvedValueOnce([{
         work_hours: 48,

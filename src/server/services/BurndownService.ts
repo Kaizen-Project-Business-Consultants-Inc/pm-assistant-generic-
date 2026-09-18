@@ -1,4 +1,5 @@
 import { scheduleService, Task } from './ScheduleService';
+import { startOfWeek, addDays, toDateString, today as todayDate } from '../utils/calendarDate';
 
 export interface BurndownDataPoint {
   date: string;
@@ -116,27 +117,34 @@ export class BurndownService {
     const DAY_MS = 86_400_000;
     const WEEK_MS = 7 * DAY_MS;
 
-    // Get the Monday of the start week
-    const startDay = startDate.getDay();
-    const mondayOffset = startDay === 0 ? -6 : 1 - startDay;
-    const firstMonday = new Date(startDate.getTime() + mondayOffset * DAY_MS);
+    // Get the Monday of the start week. startOfWeek reads the day from the calendar
+    // date itself; `startDate.getDay()` read it in the server's local zone, so west of
+    // UTC every weekly bucket was shifted a day and Monday's work landed in the
+    // previous week.
+    // Bucket by calendar week, comparing calendar dates rather than instants. Task end
+    // dates are plain days; turning them into instants meant a task completed on the
+    // Monday could fall into the previous bucket, and the whole grid shifted a day west
+    // of UTC.
+    const firstMonday = startOfWeek(schedule.startDate)!;
+    const todayStr = todayDate();
 
     const weeks: VelocityDataPoint[] = [];
-    let weekStart = new Date(firstMonday);
+    let weekStart = firstMonday;
 
-    while (weekStart <= today) {
-      const weekEnd = new Date(weekStart.getTime() + WEEK_MS);
+    // Only whole weeks count toward velocity. A partial current week always looks slow
+    // and would drag the average down for no real reason. (The previous code excluded it
+    // by accident, because the week markers carried the schedule's time-of-day; that
+    // happened to work and stopped working once dates became plain dates.)
+    while (addDays(weekStart, 7)! <= todayStr) {
+      const weekEnd = addDays(weekStart, 7)!;
       const completed = completedTasks.filter(t => {
-        const endDate = t.endDate ? new Date(t.endDate) : null;
-        return endDate && endDate >= weekStart && endDate < weekEnd;
+        const endDate = toDateString(t.endDate);
+        return endDate !== null && endDate >= weekStart && endDate < weekEnd;
       }).length;
 
-      weeks.push({
-        weekStart: weekStart.toISOString().slice(0, 10),
-        completed,
-      });
+      weeks.push({ weekStart, completed });
 
-      weekStart = new Date(weekStart.getTime() + WEEK_MS);
+      weekStart = weekEnd;
     }
 
     const totalCompleted = weeks.reduce((sum, w) => sum + w.completed, 0);

@@ -2,32 +2,35 @@ import { databaseService } from '../../database/connection';
 import { notificationService } from '../NotificationService';
 import { redisService } from '../RedisService';
 import logger from '../../utils/logger';
+import { isLocalHour, timezonesFor } from '../../utils/recipientTime';
+import { today as todayIn, dayOfWeekFor, startOfWeek, addDays } from '../../utils/calendarDate';
 
 /**
  * Checks for users who haven't logged sufficient time on weekdays.
  * On Thursday/Friday, also checks earlier weekdays in the current week.
  * Sends reminders and escalates to managers if 3+ consecutive days are missing.
+ *
+ * Runs HOURLY and reminds each person at SEND_HOUR in THEIR zone. It used to run once
+ * at 16:00 UTC — noon in Toronto, 8am in Los Angeles — so a "log your time before you
+ * finish" nudge arrived halfway through the morning.
  */
+const SEND_HOUR = 16; // late afternoon, local to each person
+
 export async function runTimesheetCompliance(): Promise<number> {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
+  const todayStr = todayIn('UTC');
+  const dayOfWeek = dayOfWeekFor(todayStr);
 
   // Only run on weekdays (Mon=1 .. Fri=5)
-  if (dayOfWeek === 0 || dayOfWeek === 6) return 0;
-
-  const todayStr = today.toISOString().slice(0, 10);
+  if (dayOfWeek === null || dayOfWeek === 0 || dayOfWeek === 6) return 0;
 
   // Determine which dates to check
   const datesToCheck: string[] = [todayStr];
 
   // On Thursday (4) or Friday (5), also check earlier weekdays
   if (dayOfWeek >= 4) {
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (dayOfWeek - 1));
+    const monday = startOfWeek(todayStr)!;
     for (let i = 0; i < dayOfWeek - 1; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      const ds = d.toISOString().slice(0, 10);
+      const ds = addDays(monday, i)!;
       if (!datesToCheck.includes(ds)) datesToCheck.push(ds);
     }
   }
@@ -81,6 +84,9 @@ export async function runTimesheetCompliance(): Promise<number> {
     uniqueUsers.get(m.user_id)!.projectIds.push(m.project_id);
   }
 
+  // Each person's zone, looked up once.
+  const zones = await timezonesFor(Array.from(uniqueUsers.keys()));
+
   for (const [userId, userData] of uniqueUsers) {
     let consecutive = 0;
 
@@ -100,6 +106,9 @@ export async function runTimesheetCompliance(): Promise<number> {
     // Only notify about today's missing hours
     const todayHours = entryMap.get(`${userId}:${todayStr}`) || 0;
     if (todayHours >= 1) continue;
+
+    // Only nudge when it is late afternoon where this person is.
+    if (!isLocalHour(zones.get(userId) || 'UTC', SEND_HOUR)) continue;
 
     // Redis dedup — don't remind same user for same date twice
     const redisKey = `compliance:reminder:${userId}:${todayStr}`;

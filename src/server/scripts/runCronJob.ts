@@ -13,6 +13,9 @@
  *   health-snapshot  — Record daily project health scores
  *   trial-reminder   — Send trial expiry reminder emails (free tier only)
  *   pending-payment  — Rescue/remind/close accounts stuck awaiting payment
+ *   timesheet-compliance — Nudge people who have not logged time (recipient's 16:00)
+ *   utilization-coaching — Weekly utilization coaching tips
+ *   weekly-review-pack   — Friday review pack for project owners
  *   alert-check      — Run infrastructure health checks
  *   deadline-check   — Send deadline approaching notifications (2-day warning)
  *   data-retention   — Purge stale data from webhook_deliveries, dead_letter_queue, etc.
@@ -27,7 +30,7 @@ const JOB_NAME = process.argv[2];
 
 if (!JOB_NAME) {
   console.error('Usage: node dist/server/scripts/runCronJob.js <job-name>');
-  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, pending-payment, alert-check, deadline-check, schedule-review, data-retention');
+  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, pending-payment, timesheet-compliance, utilization-coaching, weekly-review-pack, alert-check, deadline-check, schedule-review, data-retention');
   process.exit(1);
 }
 
@@ -114,6 +117,33 @@ async function run() {
         const { runTrialReminders } = await import('../services/scheduling/trialReminderJob');
         await runTrialReminders();
         console.log('[cron-runner] Trial reminders sent');
+        break;
+      }
+
+      case 'timesheet-compliance': {
+        const { runTimesheetCompliance } = await import('../services/scheduling/timesheetComplianceJob');
+        await forEachTenant(async (tenant) => {
+          const count = await runTimesheetCompliance();
+          console.log(`[cron-runner] Timesheet compliance: ${count} reminders (${tenant?.slug ?? 'default'})`);
+        });
+        break;
+      }
+
+      case 'utilization-coaching': {
+        const { runUtilizationCoaching } = await import('../services/scheduling/utilizationCoachingJob');
+        await forEachTenant(async (tenant) => {
+          const count = await runUtilizationCoaching();
+          console.log(`[cron-runner] Utilization coaching: ${count} sent (${tenant?.slug ?? 'default'})`);
+        });
+        break;
+      }
+
+      case 'weekly-review-pack': {
+        const { runWeeklyReviewPack } = await import('../services/scheduling/weeklyReviewPackJob');
+        await forEachTenant(async (tenant) => {
+          const count = await runWeeklyReviewPack();
+          console.log(`[cron-runner] Weekly review pack: ${count} sent (${tenant?.slug ?? 'default'})`);
+        });
         break;
       }
 

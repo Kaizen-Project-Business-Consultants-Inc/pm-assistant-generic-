@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from '../database/connection';
+import { CalendarDate, toDateString, dayOfWeekFor, addDays } from '../utils/calendarDate';
 
 export interface ProjectCalendar {
   id: string;
@@ -172,39 +173,52 @@ export class CalendarService {
     workingExceptionCache.delete(calendarId);
   }
 
-  isWorkingDay(date: Date, calendar: ProjectCalendar, holidays: Set<string>, workingExceptions: Set<string>): boolean {
-    const dateStr = date.toISOString().slice(0, 10);
+  /**
+   * Is this calendar day a working day?
+   *
+   * Takes a calendar date ('YYYY-MM-DD'), not a Date. It used to take a Date built at
+   * LOCAL midnight, read its day-of-week with a local getter, but look holidays up by
+   * `toISOString()` — which converts to UTC. West of UTC that key was the previous day,
+   * so holidays were missed, and `addWorkingDays` could return the date it was given.
+   * That wrote wrong dates into schedules. A calendar day has no time zone, so the
+   * ambiguity is removed by not having a Date at all.
+   */
+  isWorkingDay(date: CalendarDate, calendar: ProjectCalendar, holidays: Set<string>, workingExceptions: Set<string>): boolean {
+    const dateStr = toDateString(date);
+    if (!dateStr) return false;
     // Exception overrides
     if (holidays.has(dateStr)) return false;
     if (workingExceptions.has(dateStr)) return true;
     // Regular working day check
-    return calendar.workingDays.includes(date.getDay());
+    const day = dayOfWeekFor(dateStr);
+    return day !== null && calendar.workingDays.includes(day);
   }
 
   async addWorkingDays(startDate: string, days: number, calendar: ProjectCalendar): Promise<string> {
     const { holidays, workingDays } = await this.loadExceptions(calendar.id);
-    const d = new Date(startDate + 'T00:00:00');
+    let cursor = toDateString(startDate);
+    if (!cursor) return startDate;
     let remaining = Math.abs(days);
     const direction = days >= 0 ? 1 : -1;
 
     while (remaining > 0) {
-      d.setDate(d.getDate() + direction);
-      if (this.isWorkingDay(d, calendar, holidays, workingDays)) {
+      cursor = addDays(cursor, direction)!;
+      if (this.isWorkingDay(cursor, calendar, holidays, workingDays)) {
         remaining--;
       }
     }
-    return d.toISOString().slice(0, 10);
+    return cursor;
   }
 
   async countWorkingDays(startDate: string, endDate: string, calendar: ProjectCalendar): Promise<number> {
     const { holidays, workingDays } = await this.loadExceptions(calendar.id);
-    const start = new Date(startDate + 'T00:00:00');
-    const end = new Date(endDate + 'T00:00:00');
+    let cursor = toDateString(startDate);
+    const end = toDateString(endDate);
+    if (!cursor || !end) return 0;
     let count = 0;
-    const d = new Date(start);
-    while (d <= end) {
-      if (this.isWorkingDay(d, calendar, holidays, workingDays)) count++;
-      d.setDate(d.getDate() + 1);
+    while (cursor <= end) {
+      if (this.isWorkingDay(cursor, calendar, holidays, workingDays)) count++;
+      cursor = addDays(cursor, 1)!;
     }
     return count;
   }
@@ -214,13 +228,14 @@ export class CalendarService {
     const calendar = await this.getOrCreateDefault(projectId);
     const { holidays, workingDays } = await this.loadExceptions(calendar.id);
     const result: string[] = [];
-    const d = new Date(startDate + 'T00:00:00');
-    const end = new Date(endDate + 'T00:00:00');
-    while (d <= end) {
-      if (!this.isWorkingDay(d, calendar, holidays, workingDays)) {
-        result.push(d.toISOString().slice(0, 10));
+    let cursor = toDateString(startDate);
+    const end = toDateString(endDate);
+    if (!cursor || !end) return result;
+    while (cursor <= end) {
+      if (!this.isWorkingDay(cursor, calendar, holidays, workingDays)) {
+        result.push(cursor);
       }
-      d.setDate(d.getDate() + 1);
+      cursor = addDays(cursor, 1)!;
     }
     return result;
   }

@@ -1,0 +1,9 @@
+[Unit]
+Description=PM Assistant Timesheet Compliance (hourly; nudge sent at 16:00 in each person's time zone)
+
+[Timer]
+OnCalendar=*-*-* *:10:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

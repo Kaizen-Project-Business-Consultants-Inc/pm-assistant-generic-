@@ -355,31 +355,31 @@ describe('CalendarService', () => {
 
     it('returns true for a regular weekday (Mon-Fri)', () => {
       // 2026-01-05 is a Monday
-      const monday = new Date('2026-01-05T00:00:00');
+      const monday = '2026-01-05';
       expect(service.isWorkingDay(monday, calendar, emptyHolidays, emptyWorkingExc)).toBe(true);
     });
 
     it('returns false for a weekend day', () => {
       // 2026-01-03 is a Saturday
-      const saturday = new Date('2026-01-03T00:00:00');
+      const saturday = '2026-01-03';
       expect(service.isWorkingDay(saturday, calendar, emptyHolidays, emptyWorkingExc)).toBe(false);
     });
 
     it('returns false when date is a holiday exception', () => {
-      const monday = new Date('2026-01-05T00:00:00');
+      const monday = '2026-01-05';
       const hols = new Set(['2026-01-05']);
       expect(service.isWorkingDay(monday, calendar, hols, emptyWorkingExc)).toBe(false);
     });
 
     it('returns true when weekend date is a working exception', () => {
       // 2026-01-03 is a Saturday
-      const saturday = new Date('2026-01-03T00:00:00');
+      const saturday = '2026-01-03';
       const workExc = new Set(['2026-01-03']);
       expect(service.isWorkingDay(saturday, calendar, emptyHolidays, workExc)).toBe(true);
     });
 
     it('holiday exception takes priority over working exception', () => {
-      const monday = new Date('2026-01-05T00:00:00');
+      const monday = '2026-01-05';
       const hols = new Set(['2026-01-05']);
       const workExc = new Set(['2026-01-05']);
       // holidays are checked first
@@ -389,10 +389,10 @@ describe('CalendarService', () => {
     it('respects custom working days (e.g., Sat-Wed)', () => {
       const customCalendar = makeCalendar({ workingDays: [0, 1, 2, 3, 6] }); // Sun, Mon, Tue, Wed, Sat
       // 2026-01-03 is Saturday (day 6) - should be working
-      const saturday = new Date('2026-01-03T00:00:00');
+      const saturday = '2026-01-03';
       expect(service.isWorkingDay(saturday, customCalendar, emptyHolidays, emptyWorkingExc)).toBe(true);
       // 2026-01-08 is Thursday (day 4) - should NOT be working
-      const thursday = new Date('2026-01-08T00:00:00');
+      const thursday = '2026-01-08';
       expect(service.isWorkingDay(thursday, customCalendar, emptyHolidays, emptyWorkingExc)).toBe(false);
     });
   });

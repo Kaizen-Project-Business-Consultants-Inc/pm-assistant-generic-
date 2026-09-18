@@ -507,16 +507,19 @@ export class InstantReportService {
         const hoursPerDay = (a.hoursPlanned || 0) / totalDays;
 
         // Walk through each week the task spans
+        // UTC getters throughout: taskStart comes from a DATE column, so it is midnight
+        // UTC, and the week key is serialised with toISOString(). Mixing a local
+        // day-of-week with a UTC key shifted every weekly bucket west of UTC.
         const cursor = new Date(taskStart);
-        cursor.setDate(cursor.getDate() - cursor.getDay() + 1); // Align to Monday
+        cursor.setUTCDate(cursor.getUTCDate() - ((cursor.getUTCDay() + 6) % 7)); // Align to Monday
         while (cursor <= taskEnd) {
           const weekKey = cursor.toISOString().slice(0, 10);
           // Count working days this week that overlap with the task
           let daysThisWeek = 0;
           for (let d = 0; d < 7; d++) {
             const day = new Date(cursor);
-            day.setDate(day.getDate() + d);
-            if (day >= taskStart && day <= taskEnd && day.getDay() !== 0 && day.getDay() !== 6) {
+            day.setUTCDate(day.getUTCDate() + d);
+            if (day >= taskStart && day <= taskEnd && day.getUTCDay() !== 0 && day.getUTCDay() !== 6) {
               daysThisWeek++;
             }
           }
@@ -525,7 +528,7 @@ export class InstantReportService {
             if (!weekMap.has(weekKey)) weekMap.set(weekKey, []);
             weekMap.get(weekKey)!.push({ taskName: task.name, hours: hoursThisWeek });
           }
-          cursor.setDate(cursor.getDate() + 7);
+          cursor.setUTCDate(cursor.getUTCDate() + 7);
         }
       }
     }

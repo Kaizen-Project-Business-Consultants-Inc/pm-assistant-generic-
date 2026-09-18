@@ -2,11 +2,21 @@ import { databaseService } from '../../database/connection';
 import { notificationService } from '../NotificationService';
 import { redisService } from '../RedisService';
 import logger from '../../utils/logger';
+import { isLocalHour, timezonesFor } from '../../utils/recipientTime';
+import { today as todayIn } from '../../utils/calendarDate';
+
+/** Local hour at which to send. */
+const SEND_HOUR = 8;
 
 /**
- * Scans for tasks with deadlines approaching within 2 days and notifies
- * the assignee (or creator if unassigned). Uses Redis to deduplicate
- * so the same task isn't re-notified on the same date.
+ * Scans for tasks with deadlines approaching within 2 days and notifies the assignee
+ * (or creator if unassigned). Uses Redis to deduplicate so the same task isn't
+ * re-notified on the same date.
+ *
+ * Runs HOURLY and sends to each person at SEND_HOUR in THEIR time zone. It used to run
+ * once at 08:00 UTC, which is 3am in Toronto and midnight in Los Angeles — a
+ * "deadline approaching" note that arrives in the middle of the night is not a
+ * notification, it is an alarm clock.
  */
 export async function runDeadlineNotifications(): Promise<number> {
   let rows: any[];
@@ -28,11 +38,24 @@ export async function runDeadlineNotifications(): Promise<number> {
     return 0;
   }
 
-  const today = new Date().toISOString().slice(0, 10);
   let notified = 0;
 
+  // Work out each recipient's zone once, rather than per task.
+  const recipientIds = Array.from(new Set(
+    rows.map((r: any) => r.assigned_to || r.created_by).filter(Boolean),
+  ));
+  const zones = await timezonesFor(recipientIds);
+
   for (const row of rows) {
-    const redisKey = `deadline-notified:${row.id}:${today}`;
+    const recipient = row.assigned_to || row.created_by;
+    if (!recipient) continue;
+
+    // Only send when it is SEND_HOUR where this person is.
+    const zone = zones.get(recipient) || 'UTC';
+    if (!isLocalHour(zone, SEND_HOUR)) continue;
+
+    // Dedup by the recipient's own day, so someone who changes zone is not notified twice.
+    const redisKey = `deadline-notified:${row.id}:${todayIn(zone)}`;
 
     // Check Redis dedup (skip if already notified today)
     if (redisService.isConnected()) {
@@ -40,8 +63,7 @@ export async function runDeadlineNotifications(): Promise<number> {
       if (existing) continue;
     }
 
-    const recipientId = row.assigned_to || row.created_by;
-    if (!recipientId) continue;
+    const recipientId = recipient;
 
     const deadline = row.due_date || row.end_date;
     const deadlineStr = deadline instanceof Date

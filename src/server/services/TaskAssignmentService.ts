@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from '../database/connection';
 import { resourceRepository } from '../database/ResourceRepository';
+import { toDateString, addDays, isWeekend } from '../utils/calendarDate';
 
 export interface TaskAssignment {
   id: string;
@@ -139,18 +140,19 @@ export class TaskAssignmentService {
     const startDate = new Date(task.start_date);
     if (isNaN(startDate.getTime())) return;
 
-    // Calculate end date (skip weekends)
+    // Calculate end date (skip weekends). Walk calendar days: the old version read the
+    // day-of-week in the server's local zone but wrote the result back via
+    // toISOString(), so west of UTC it could skip the wrong days and store a Saturday.
     let remaining = durationDays;
-    const endDate = new Date(startDate);
+    let endDate = toDateString(task.start_date)!;
     while (remaining > 0) {
-      endDate.setDate(endDate.getDate() + 1);
-      const dow = endDate.getDay();
-      if (dow !== 0 && dow !== 6) remaining--;
+      endDate = addDays(endDate, 1)!;
+      if (!isWeekend(endDate)) remaining--;
     }
 
     await databaseService.query(
       'UPDATE tasks SET end_date = ?, estimated_days = ? WHERE id = ?',
-      [endDate.toISOString().slice(0, 10), durationDays, taskId],
+      [endDate, durationDays, taskId],
     );
   }
 

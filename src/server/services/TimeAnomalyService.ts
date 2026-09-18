@@ -3,6 +3,7 @@ import { projectMemberService } from './ProjectMemberService';
 import { timeEntryRepository } from '../database/TimeEntryRepository';
 import { config } from '../config';
 import logger from '../utils/logger';
+import { toDateString, addDays, today as todayDate } from '../utils/calendarDate';
 
 /**
  * Read a timesheet date as a plain calendar day, independent of the server's time zone.
@@ -283,10 +284,10 @@ class TimeAnomalyService {
    * Get per-user compliance status for a given week.
    */
   async getComplianceStatus(projectId: string, weekStart: string): Promise<ComplianceStatus[]> {
-    const start = new Date(weekStart);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 4); // Mon-Fri
-    const endStr = end.toISOString().slice(0, 10);
+    // Calendar-day arithmetic: weekStart is a plain date, so building the window with
+    // local getters and serialising with toISOString() shifted it a day west of UTC.
+    const startStr = toDateString(weekStart)!;
+    const endStr = addDays(startStr, 4)!; // Mon-Fri
 
     // Get project members
     let memberRows: any[];
@@ -324,8 +325,7 @@ class TimeAnomalyService {
       entryMap.set(key, Number(e.total_hours));
     }
 
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
+    const todayStr = todayDate();
     const results: ComplianceStatus[] = [];
 
     for (const member of memberRows) {
@@ -336,9 +336,7 @@ class TimeAnomalyService {
       let currentStreak = 0;
 
       for (let i = 0; i < 5; i++) {
-        const d = new Date(start);
-        d.setDate(start.getDate() + i);
-        const dateStr = d.toISOString().slice(0, 10);
+        const dateStr = addDays(startStr, i)!;
 
         // Only check days up to today
         if (dateStr > todayStr) break;
@@ -373,10 +371,8 @@ class TimeAnomalyService {
    * Generate a weekly review pack for a project.
    */
   async generateWeeklyReview(projectId: string, weekStart: string): Promise<WeeklyReview> {
-    const start = new Date(weekStart);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6); // Mon-Sun
-    const endStr = end.toISOString().slice(0, 10);
+    const startStr = toDateString(weekStart)!;
+    const endStr = addDays(startStr, 6)!; // Mon-Sun
 
     // Get all entries for the week
     let entries: any[];
