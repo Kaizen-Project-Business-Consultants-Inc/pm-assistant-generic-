@@ -40,6 +40,8 @@ export interface ProjectDTO {
   locationLon?: number;
   startDate?: string;
   endDate?: string;
+  /** The day progress is measured as at. Absent means "measure against today". */
+  statusDate?: string;
   projectManagerId?: string;
   createdBy: string;
   createdAt: string;
@@ -66,6 +68,7 @@ export function toProjectDTO(row: Record<string, any>): ProjectDTO {
     locationLon: row.locationLon ?? row.location_lon ?? undefined,
     startDate: row.startDate ?? row.start_date ?? undefined,
     endDate: row.endDate ?? row.end_date ?? undefined,
+    statusDate: row.statusDate ?? row.status_date ?? undefined,
     projectManagerId: row.projectManagerId ?? row.project_manager_id ?? undefined,
     createdBy: row.createdBy ?? row.created_by,
     createdAt: String(row.createdAt ?? row.created_at),
