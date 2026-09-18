@@ -11,7 +11,8 @@
  *   digest           — Send daily/weekly email digests
  *   reports          — Execute due scheduled report deliveries
  *   health-snapshot  — Record daily project health scores
- *   trial-reminder   — Send trial expiry reminder emails
+ *   trial-reminder   — Send trial expiry reminder emails (free tier only)
+ *   pending-payment  — Rescue/remind/close accounts stuck awaiting payment
  *   alert-check      — Run infrastructure health checks
  *   deadline-check   — Send deadline approaching notifications (2-day warning)
  *   data-retention   — Purge stale data from webhook_deliveries, dead_letter_queue, etc.
@@ -26,7 +27,7 @@ const JOB_NAME = process.argv[2];
 
 if (!JOB_NAME) {
   console.error('Usage: node dist/server/scripts/runCronJob.js <job-name>');
-  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, alert-check, deadline-check, schedule-review, data-retention');
+  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, pending-payment, alert-check, deadline-check, schedule-review, data-retention');
   process.exit(1);
 }
 
@@ -113,6 +114,13 @@ async function run() {
         const { runTrialReminders } = await import('../services/scheduling/trialReminderJob');
         await runTrialReminders();
         console.log('[cron-runner] Trial reminders sent');
+        break;
+      }
+
+      case 'pending-payment': {
+        const { runPendingPaymentSweep } = await import('../services/scheduling/pendingPaymentJob');
+        const res = await runPendingPaymentSweep();
+        console.log(`[cron-runner] Pending payment sweep: ${res.rescued} rescued, ${res.reminded} reminded, ${res.purged} closed`);
         break;
       }
 
