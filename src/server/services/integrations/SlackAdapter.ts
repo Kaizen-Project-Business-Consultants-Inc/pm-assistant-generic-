@@ -241,13 +241,20 @@ export class SlackAdapter {
         if (!risk) return null;
         const severityEmoji: Record<string, string> = { critical: ':red_circle:', high: ':large_orange_circle:', medium: ':large_yellow_circle:', low: ':white_circle:' };
         const emoji = severityEmoji[risk.severity] || ':warning:';
-        const text = `New ${risk.type || 'risk'}: ${risk.title}`;
+        const kind = (risk.type || 'risk');
+        const kindLabel = kind.charAt(0).toUpperCase() + kind.slice(1);
+        // Who it lands on matters most in a notification — say so explicitly
+        // rather than leaving the reader to open the app to find out.
+        const owner = risk.ownerName || 'Unassigned';
+        const ref = risk.recordId ? `${risk.recordId} · ` : '';
+        const due = risk.dueDate ? ` | Due: ${String(risk.dueDate).slice(0, 10)}` : '';
+        const text = `New ${kind} (${owner}): ${risk.title}`;
         return {
           text,
           blocks: [
-            { type: 'section', text: { type: 'mrkdwn', text: `*New ${(risk.type || 'Risk').charAt(0).toUpperCase() + (risk.type || 'risk').slice(1)}* ${emoji}\n*${risk.title}*` } },
+            { type: 'section', text: { type: 'mrkdwn', text: `*New ${kindLabel}* ${emoji}\n*${ref}${risk.title}*` } },
             { type: 'context', elements: [
-              { type: 'mrkdwn', text: `Severity: *${risk.severity || 'N/A'}* | Category: ${risk.category || 'N/A'}` },
+              { type: 'mrkdwn', text: `Owner: *${owner}* | Severity: *${risk.severity || 'N/A'}* | Category: ${risk.category || 'N/A'}${due}` },
             ] },
           ],
         };
