@@ -19,12 +19,15 @@ class SlackEventDispatcher {
           if (!integrationConfig.notifyEvents.includes(event)) continue;
         }
 
-        const message = slackAdapter.buildEventBlocks(event, payload);
+        // Only this workspace's own OAuth token can post interactively.
+        const workspaceBotToken = integrationConfig.botToken;
+        const message = slackAdapter.buildEventBlocks(event, payload, !!workspaceBotToken);
         if (!message) continue;
 
-        // Use bot token for messages with actions (proposals), webhook for everything else
-        if (event === 'proposal.created' && config.SLACK_BOT_TOKEN && integrationConfig.channel) {
-          slackAdapter.postWithBotToken(integrationConfig.channel, message.blocks || [], message.text).catch(err => {
+        // Use the workspace's bot token for messages with actions (proposals),
+        // webhook for everything else.
+        if (event === 'proposal.created' && workspaceBotToken && integrationConfig.channel) {
+          slackAdapter.postWithBotToken(workspaceBotToken, integrationConfig.channel, message.blocks || [], message.text).catch(err => {
             logger.warn('SlackEventDispatcher: bot token post failed', { event, error: err.message });
           });
         } else {

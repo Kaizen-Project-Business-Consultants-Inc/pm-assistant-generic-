@@ -103,7 +103,8 @@ export async function slackRoutes(fastify: FastifyInstance) {
       }
       if (!cfg) return reply.status(404).send({ error: 'Integration not found' });
 
-      const botToken = cfg.botToken || config.SLACK_BOT_TOKEN;
+      // No app-wide token fallback: each workspace uses its own OAuth token.
+      const botToken = cfg.botToken;
       if (!botToken) {
         return reply.status(400).send({ error: 'No bot token available' });
       }

@@ -125,7 +125,9 @@ const configSchema = z.object({
 
   // Slack Configuration
   SLACK_SIGNING_SECRET: z.string().optional().default(''),
-  SLACK_BOT_TOKEN: z.string().optional().default(''),
+  // No SLACK_BOT_TOKEN: this is a distributed app, so every workspace posts with
+  // its own OAuth token stored on its integration. A shared app-wide token would
+  // breach Slack's distribution rules and cross customer boundaries.
   SLACK_CLIENT_ID: z.string().optional().default(''),
   SLACK_CLIENT_SECRET: z.string().optional().default(''),
 
@@ -269,7 +271,6 @@ export function validateConfiguration() {
       ALERT_COOLDOWN_MINUTES: process.env['ALERT_COOLDOWN_MINUTES'],
       MULTI_TENANT_ENABLED: process.env['MULTI_TENANT_ENABLED'],
       SLACK_SIGNING_SECRET: process.env['SLACK_SIGNING_SECRET'],
-      SLACK_BOT_TOKEN: process.env['SLACK_BOT_TOKEN'],
       SLACK_CLIENT_ID: process.env['SLACK_CLIENT_ID'],
       SLACK_CLIENT_SECRET: process.env['SLACK_CLIENT_SECRET'],
       VAPID_PUBLIC_KEY: process.env['VAPID_PUBLIC_KEY'],

@@ -2,9 +2,15 @@ import crypto from 'crypto';
 import { config } from '../../config';
 
 export interface SlackConfig {
+  /** Present on webhook-style integrations; OAuth installs also receive one. */
   webhookUrl: string;
   channel?: string;
   notifyEvents?: string[];
+  // Stored by the OAuth callback — this workspace's own credentials.
+  botToken?: string;
+  teamId?: string;
+  teamName?: string;
+  botUserId?: string;
 }
 
 function isValidSlackWebhookUrl(url: string): boolean {
@@ -182,10 +188,15 @@ export class SlackAdapter {
     }
   }
 
-  async postWithBotToken(channel: string, blocks: any[], text: string): Promise<{ success: boolean; message: string }> {
-    const botToken = config.SLACK_BOT_TOKEN;
+  /**
+   * Post as the bot using the token from THAT customer's own Slack install.
+   * There is deliberately no global/app-wide token fallback — every workspace
+   * must post with its own OAuth token (Slack requires this for distributed
+   * apps, and a shared token would send one customer's data to another's Slack).
+   */
+  async postWithBotToken(botToken: string, channel: string, blocks: any[], text: string): Promise<{ success: boolean; message: string }> {
     if (!botToken) {
-      return { success: false, message: 'SLACK_BOT_TOKEN not configured' };
+      return { success: false, message: 'No Slack bot token for this workspace' };
     }
 
     try {
@@ -205,7 +216,8 @@ export class SlackAdapter {
     }
   }
 
-  buildEventBlocks(event: string, payload: Record<string, any>): { text: string; blocks?: any[] } | null {
+  /** `canUseInteractive` should be true only when that workspace has its own bot token. */
+  buildEventBlocks(event: string, payload: Record<string, any>, canUseInteractive = false): { text: string; blocks?: any[] } | null {
     switch (event) {
       case 'task.completed':
       case 'task.updated': {
@@ -289,8 +301,8 @@ export class SlackAdapter {
         const blocks: any[] = [
           { type: 'section', text: { type: 'mrkdwn', text: `*Agent Proposal* :robot_face:\n*${proposal.title || proposal.actionType}*\n${proposal.description || ''}` } },
         ];
-        // Add interactive buttons if bot token is available
-        if (config.SLACK_BOT_TOKEN) {
+        // Interactive buttons need a bot token, which only OAuth installs have
+        if (canUseInteractive) {
           blocks.push({
             type: 'actions',
             elements: [
