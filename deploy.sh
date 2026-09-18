@@ -276,14 +276,23 @@ esac
 # build step failed can still restart the old code and look successful.
 if [ "$CLIENT_ONLY" = false ]; then
   echo "  Verifying the running build is the one just uploaded..."
-  LOCAL_MARK=$(node -e "process.stdout.write(require('crypto').createHash('sha1').update(require('fs').readFileSync('dist/server/index.js')).digest('hex').slice(0,12))" 2>/dev/null || echo "")
-  REMOTE_MARK=$(do_ssh "sha1sum /opt/pm-app/dist/server/index.js 2>/dev/null | cut -c1-12" || echo "")
-  if [ -n "$LOCAL_MARK" ] && [ "$LOCAL_MARK" != "$REMOTE_MARK" ]; then
+  # Hash EVERY compiled file, not just index.js. The first version of this check
+  # compared index.js alone and passed a deploy whose only change was in auth.js —
+  # right answer, wrong reason. A check that can succeed while the change is missing is
+  # not a check.
+  # Hash relative to each tree root, and normalise sha1sum's output format: Git Bash on
+  # Windows prints "hash *path" (binary marker) where Linux prints "hash  path". Without
+  # stripping that, every file looks different and the check cries wolf on every deploy.
+  TREE_CMD='find . -name "*.js" -type f -print0 | xargs -0 sha1sum | awk "{h=\$1; p=\$2; sub(/^\\*/, \"\", p); print h, p}" | LC_ALL=C sort | sha1sum | cut -c1-12'
+  LOCAL_MARK=$(cd dist/server && eval "$TREE_CMD")
+  REMOTE_MARK=$(do_ssh "cd /opt/pm-app/dist/server && $TREE_CMD")
+  if [ -z "$LOCAL_MARK" ] || [ "$LOCAL_MARK" != "$REMOTE_MARK" ]; then
     echo "  ✗ RUNNING BUILD DOES NOT MATCH THE ONE JUST BUILT"
     echo "    local=$LOCAL_MARK server=$REMOTE_MARK — the upload did not take effect."
+    echo "    Compare with: find dist/server -name '*.js' | wc -l"
     exit 1
   fi
-  echo "  ✓ Running build matches ($LOCAL_MARK)"
+  echo "  ✓ Running build matches across all compiled files ($LOCAL_MARK)"
 fi
 
 echo ""
