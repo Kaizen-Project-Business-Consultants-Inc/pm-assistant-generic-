@@ -248,11 +248,42 @@ else
   exit 1
 fi
 
-HEALTH=$(curl -sf --max-time 5 "https://$DOMAIN/api/v1/health" 2>/dev/null) || true
-if [ -n "$HEALTH" ]; then
-  echo "  ✓ Health: $HEALTH"
-else
-  echo "  Health: (verified via systemctl)"
+# Wait for the app to actually serve. It runs migrations on boot, so it is normal for
+# this to take 30-60s; a curl straight after restart gives 502. Poll rather than sleep.
+HEALTH=""
+for _ in $(seq 1 30); do
+  HEALTH=$(curl -sf --max-time 5 "https://$DOMAIN/api/v1/health" 2>/dev/null) || HEALTH=""
+  [ -n "$HEALTH" ] && break
+  sleep 5
+done
+
+if [ -z "$HEALTH" ]; then
+  echo "  ✗ Health: no response from https://$DOMAIN after 150s"
+  do_ssh "sudo journalctl -u pm-app --no-pager -n 30"
+  exit 1
+fi
+
+case "$HEALTH" in
+  *'"status":"degraded"'*)
+    echo "  ⚠ Health: DEGRADED — $HEALTH"
+    echo "    The app is serving but something is wrong. Do not treat this deploy as clean."
+    ;;
+  *) echo "  ✓ Health: $HEALTH" ;;
+esac
+
+# Confirm the build that is now running is the one just built. Comparing a known marker
+# is the only way to tell "deployed" from "the script reached the end": a deploy whose
+# build step failed can still restart the old code and look successful.
+if [ "$CLIENT_ONLY" = false ]; then
+  echo "  Verifying the running build is the one just uploaded..."
+  LOCAL_MARK=$(node -e "process.stdout.write(require('crypto').createHash('sha1').update(require('fs').readFileSync('dist/server/index.js')).digest('hex').slice(0,12))" 2>/dev/null || echo "")
+  REMOTE_MARK=$(do_ssh "sha1sum /opt/pm-app/dist/server/index.js 2>/dev/null | cut -c1-12" || echo "")
+  if [ -n "$LOCAL_MARK" ] && [ "$LOCAL_MARK" != "$REMOTE_MARK" ]; then
+    echo "  ✗ RUNNING BUILD DOES NOT MATCH THE ONE JUST BUILT"
+    echo "    local=$LOCAL_MARK server=$REMOTE_MARK — the upload did not take effect."
+    exit 1
+  fi
+  echo "  ✓ Running build matches ($LOCAL_MARK)"
 fi
 
 echo ""
