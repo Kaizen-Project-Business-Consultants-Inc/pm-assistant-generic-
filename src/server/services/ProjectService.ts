@@ -30,6 +30,8 @@ export interface Project {
   locationLon?: number;
   startDate?: string;
   endDate?: string;
+  /** The day progress is measured as at. Null = today in the organisation's zone. */
+  statusDate?: string | null;
   projectManagerId?: string;
   createdBy: string;
   createdAt: string;

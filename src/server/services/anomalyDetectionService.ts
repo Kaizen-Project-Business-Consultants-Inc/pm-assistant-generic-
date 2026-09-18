@@ -3,6 +3,8 @@ import { AIContextBuilder, ProjectContext } from './aiContextBuilder';
 import { claudeService, PromptTemplate } from './claudeService';
 import { logAIUsage } from './aiUsageLogger';
 import type { AIAnomaly, AIAnomalyReport } from '../schemas/phase5Schemas';
+import { isOverdue, toCalendarDate, CalendarDate } from '../utils/calendarDate';
+import { statusDateFor } from './StatusDateService';
 
 // ---------------------------------------------------------------------------
 // Prompt Template
@@ -28,7 +30,12 @@ Return a JSON object with:
 // Helper: compute metrics from ProjectContext
 // ---------------------------------------------------------------------------
 
-function computeMetricsFromContext(ctx: ProjectContext): {
+/**
+ * Metrics are measured as at the project's status date, not the clock — so the figures
+ * in a report do not change while someone is reading it, and two people in different
+ * countries see the same answer. See services/StatusDateService.ts.
+ */
+function computeMetricsFromContext(ctx: ProjectContext, statusDate: CalendarDate): {
   completionRate: number;
   budgetUtilization: number;
   totalTasks: number;
@@ -41,11 +48,11 @@ function computeMetricsFromContext(ctx: ProjectContext): {
   const completedTasks = allTasks.filter(t => t.status === 'completed').length;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const now = new Date();
   const overdueTasks = allTasks.filter(
-    t => t.status !== 'completed' && t.dueDate && new Date(t.dueDate) < now,
+    t => t.status !== 'completed' && t.dueDate && isOverdue(t.dueDate, statusDate),
   ).length;
 
+  const now = toCalendarDate(statusDate) ?? new Date();
   const startDate = ctx.project.startDate ? new Date(ctx.project.startDate) : now;
   const endDate = ctx.project.endDate
     ? new Date(ctx.project.endDate)
@@ -181,7 +188,7 @@ export class AnomalyDetectionService {
 
     try {
       const context = await this.contextBuilder.buildProjectContext(projectId);
-      const metrics = computeMetricsFromContext(context);
+      const metrics = computeMetricsFromContext(context, await statusDateFor(projectId));
 
       // 1. Budget spike: budget >90% utilized but project <50% complete
       if (metrics.daysElapsed > 14 && (context.project.budgetSpent || 0) > 0) {

@@ -26,6 +26,8 @@ function rowToProject(row: any): Project {
     locationLon: row.location_lon != null ? Number(row.location_lon) : undefined,
     startDate: row.start_date ? String(row.start_date) : undefined,
     endDate: row.end_date ? String(row.end_date) : undefined,
+    // The day progress is measured "as at" — see services/StatusDateService.ts.
+    statusDate: row.status_date ? String(row.status_date).slice(0, 10) : undefined,
     projectManagerId: row.project_manager_id ?? undefined,
     createdBy: row.created_by,
     createdAt: String(row.created_at),
@@ -53,6 +55,7 @@ const PROJECT_COLUMN_MAP: Record<string, string> = {
   locationLon: 'location_lon',
   startDate: 'start_date',
   endDate: 'end_date',
+  statusDate: 'status_date',
   projectManagerId: 'project_manager_id',
 };
 
@@ -166,7 +169,7 @@ export class ProjectRepository extends BaseRepository<Project> {
 
   async update(id: string, data: Record<string, any>): Promise<Project | null> {
     const result = this.buildUpdate(data, PROJECT_COLUMN_MAP, (key, val) => {
-      if ((key === 'startDate' || key === 'endDate') && val) {
+      if ((key === 'startDate' || key === 'endDate' || key === 'statusDate') && val) {
         return toDateStr(val);
       }
       return val;

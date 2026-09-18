@@ -14,6 +14,8 @@ interface ProjectData {
   currency?: string;
   startDate?: string | null;
   endDate?: string | null;
+  statusDate?: string | null;
+  status_date?: string | null;
   location?: string;
 }
 
@@ -46,6 +48,9 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
   const [endDate, setEndDate] = useState(
     (project.endDate || project.end_date || '').slice(0, 10)
   );
+  const [statusDate, setStatusDate] = useState(
+    (project.statusDate || project.status_date || '').slice(0, 10)
+  );
   const [location, setLocation] = useState(project.location || '');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -70,6 +75,9 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
 
     const origEnd = (project.endDate || project.end_date || '').slice(0, 10);
     if (endDate !== origEnd) data.endDate = endDate || null;
+
+    const origStatus = (project.statusDate || project.status_date || '').slice(0, 10);
+    if (statusDate !== origStatus) data.statusDate = statusDate || null;
 
     if (location !== (project.location || '')) data.location = location;
 
@@ -174,6 +182,24 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
             <label className={labelClass}>End Date</label>
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
           </div>
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="project-status-date">Status Date</label>
+          <input
+            id="project-status-date"
+            type="date"
+            value={statusDate}
+            onChange={(e) => setStatusDate(e.target.value)}
+            className={inputClass}
+            aria-describedby="project-status-date-help"
+          />
+          <p id="project-status-date-help" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            The day progress is measured as at, the same idea as Microsoft Project.
+            Milestones and tasks are judged late against this date, so a report says the
+            same thing to everyone and its figures do not drift. Leave blank to measure
+            against today.
+          </p>
         </div>
 
         <div>

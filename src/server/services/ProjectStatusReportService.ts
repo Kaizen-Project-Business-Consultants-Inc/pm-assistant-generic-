@@ -16,6 +16,7 @@ import {
 import { userService } from './UserService';
 import logger from '../utils/logger';
 import { isOverdue } from '../utils/calendarDate';
+import { statusDateFor } from './StatusDateService';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -232,7 +233,13 @@ export class ProjectStatusReportService {
 
     const areas: RAGArea[] = [overallArea, ...dimensionAreas];
 
-    // Milestones from data (not AI)
+    // Milestones from data (not AI).
+    //
+    // Lateness is measured against the project's status date, the way Microsoft Project
+    // does it — not against the clock. A milestone due today is On Track, and the report
+    // says the same thing to a reader in Toronto and a reader in Shanghai. This used to
+    // print "Delayed" for a milestone due today, from 8pm the previous evening.
+    const statusDate = await statusDateFor(projectId);
     const projectStartDate = srContext?.projectContext.project.startDate
       ? new Date(srContext.projectContext.project.startDate) : null;
     const milestones: MilestoneRow[] = (srContext?.milestones || []).map((m, i) => {
@@ -250,7 +257,7 @@ export class ProjectStatusReportService {
         dueDate: mDate ? this.formatShortDate(mDate) : 'TBD',
         status: m.status === 'completed' ? 'Complete'
           : m.status === 'in_progress' ? 'In Progress'
-          : isOverdue(mDate) ? 'Delayed' : 'On Track',
+          : isOverdue(mDate, statusDate) ? 'Delayed' : 'On Track',
         comments: m.progressPercentage ? `${m.progressPercentage}% complete` : '',
       };
     });

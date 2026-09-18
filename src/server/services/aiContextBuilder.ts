@@ -5,6 +5,11 @@ import { sanitizeForPrompt } from '../utils/promptSanitizer';
 import { riskRepository, type ProjectRisk } from '../database/RiskRepository';
 import { approvalWorkflowRepository } from '../database/ApprovalWorkflowRepository';
 import type { ChangeRequest } from './ApprovalWorkflowService';
+// NOTE: compares calendar days against today in UTC. These are sync helpers with no
+// project in scope, so they do not yet use the project's status date
+// (services/StatusDateService.ts). Still correct in the way that mattered: something due
+// today is no longer 'late' from the previous evening.
+import { isOverdue } from '../utils/calendarDate';
 
 export interface ProjectContext {
   project: {
@@ -240,7 +245,7 @@ export class AIContextBuilder {
         const overdue = sched.tasks.filter(t => {
           if (t.status === 'completed') return false;
           const due = t.dueDate;
-          return due && new Date(due) < new Date();
+          return !!due && isOverdue(due);
         }).length;
         s += `  - ${sched.name} (${sched.startDate} to ${sched.endDate}) — ${total} tasks, ${completed} completed, ${overdue} overdue\n`;
       }

@@ -8,6 +8,11 @@ import {
   type LessonLearned,
 } from '../../schemas/lessonsLearnedSchemas';
 import { lessonsExtractionPrompt } from './prompts';
+// NOTE: compares calendar days against today in UTC. These are sync helpers with no
+// project in scope, so they do not yet use the project's status date
+// (services/StatusDateService.ts). Still correct in the way that mattered: something due
+// today is no longer 'late' from the previous evening.
+import { isOverdue } from '../../utils/calendarDate';
 
 export async function extractLessons(
   projectId: string,
@@ -203,7 +208,7 @@ async function extractLessonsDeterministic(
 
   if (totalTasks > 0) {
     const overdueTasks = allTasks.filter(
-      (t: any) => t.status !== 'completed' && t.dueDate && new Date(t.dueDate) < new Date(),
+      (t: any) => t.status !== 'completed' && t.dueDate && isOverdue(t.dueDate),
     );
     if (overdueTasks.length > 0) {
       newLessons.push(makeDeterministicLesson({

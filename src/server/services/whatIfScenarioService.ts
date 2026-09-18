@@ -9,6 +9,11 @@ import { criticalPathService, type CPMTaskResult } from './CriticalPathService';
 import { databaseService } from '../database/connection';
 import type { AIScenarioRequest, AIScenarioResult } from '../schemas/phase5Schemas';
 import { AIScenarioResultSchema } from '../schemas/phase5Schemas';
+// NOTE: compares calendar days against today in UTC. These are sync helpers with no
+// project in scope, so they do not yet use the project's status date
+// (services/StatusDateService.ts). Still correct in the way that mattered: something due
+// today is no longer 'late' from the previous evening.
+import { isOverdue } from '../utils/calendarDate';
 
 // ---------------------------------------------------------------------------
 // Prompt Template
@@ -231,7 +236,7 @@ export class WhatIfScenarioService {
       }
 
       // Overdue tasks are always highly affected
-      if (t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed') {
+      if (t.dueDate && isOverdue(t.dueDate) && t.status !== 'completed') {
         score += 25;
       }
 
@@ -250,7 +255,7 @@ export class WhatIfScenarioService {
       } else if (isCritical) {
         impact = 'On critical path — any delay here extends the project end date.';
         severity = 'high';
-      } else if (t.dueDate && new Date(t.dueDate) < new Date()) {
+      } else if (t.dueDate && isOverdue(t.dueDate)) {
         impact = 'Already overdue — scenario change compounds existing delay.';
         severity = 'high';
       } else if (params?.budgetChangePct !== undefined && params.budgetChangePct < -10) {

@@ -11,6 +11,11 @@ import { scheduleService, Task } from '../ScheduleService';
 import { lessonsLearnedService } from '../LessonsLearnedService';
 import { databaseService } from '../../database/connection';
 import { MS_PER_DAY } from '../../utils/constants';
+// NOTE: compares calendar days against today in UTC. These are sync helpers with no
+// project in scope, so they do not yet use the project's status date
+// (services/StatusDateService.ts). Still correct in the way that mattered: something due
+// today is no longer 'late' from the previous evening.
+import { isOverdue } from '../../utils/calendarDate';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,7 +98,7 @@ export class LessonsLearnedAgentClass {
 
     // 7. Compute project data for reasoning
     const overdueTasks = allTasks.filter(t =>
-      t.endDate && new Date(t.endDate) < new Date() && t.status !== 'completed' && t.status !== 'cancelled'
+      t.endDate && isOverdue(t.endDate) && t.status !== 'completed' && t.status !== 'cancelled'
     ).length;
 
     const now = new Date();

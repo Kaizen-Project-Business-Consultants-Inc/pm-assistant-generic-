@@ -2,6 +2,11 @@ import { databaseService } from '../../database/connection';
 import { projectService } from '../ProjectService';
 import { scheduleService } from '../ScheduleService';
 import { type LessonLearned } from '../../schemas/lessonsLearnedSchemas';
+// NOTE: compares calendar days against today in UTC. These are sync helpers with no
+// project in scope, so they do not yet use the project's status date
+// (services/StatusDateService.ts). Still correct in the way that mattered: something due
+// today is no longer 'late' from the previous evening.
+import { isOverdue } from '../../utils/calendarDate';
 
 /** Creates a seed lesson with common fields pre-filled */
 function seedLesson(base: Omit<LessonLearned, 'status' | 'sourceType' | 'createdBy' | 'tags' | 'appliedCount' | 'effectivenessRating' | 'rootCause' | 'severity' | 'recurrenceScore' | 'isElevated' | 'sourceArtifacts' | 'helpfulCount' | 'dismissedCount'>): LessonLearned {
@@ -45,7 +50,7 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
     const totalTasks = projectTasks.length;
     const completedTasks = projectTasks.filter((t) => t.status === 'completed').length;
     const overdueTasks = projectTasks.filter(
-      (t) => t.status !== 'completed' && t.dueDate && new Date(t.dueDate) < new Date(),
+      (t) => t.status !== 'completed' && t.dueDate && isOverdue(t.dueDate),
     ).length;
     const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 

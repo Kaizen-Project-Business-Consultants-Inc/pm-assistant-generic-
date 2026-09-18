@@ -39,6 +39,12 @@ const createProjectSchema = z.object({
 
 const updateProjectSchema = createProjectSchema.partial().extend({
   expectedUpdatedAt: z.string().optional(),
+  /**
+   * The day this project's progress is measured as at, like Microsoft Project's status
+   * date. Null clears it, and the app falls back to today in the organisation's zone.
+   * A plain calendar date — never a timestamp.
+   */
+  statusDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Status date must be YYYY-MM-DD').nullable().optional(),
 });
 
 const statusUpdateSchema = z.object({
