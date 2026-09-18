@@ -235,6 +235,47 @@ export async function authRoutes(fastify: FastifyInstance) {
         }
       }).catch((err: any) => logger.error('Failed to link pending memberships/resources', { userId: user.id, error: err }));
 
+      /**
+       * Give the account owner a resource record, so the person who signed up can
+       * actually be scheduled.
+       *
+       * Everyone they invite already gets one — `org.ts` does it in two places and
+       * `InviteService.acceptInvite` in a third, all with these same defaults. The
+       * owner was the one person who never got one, which made them the only member of
+       * their own team who could not be assigned to a task, and left them missing from
+       * workload, capacity and resource reports.
+       *
+       * Fire-and-forget and never fatal: a missing resource is a nuisance, a failed
+       * registration is not.
+       */
+      const createOwnerResource = async (orgId: string, dbName: string, ownerId: string) => {
+        try {
+          const owner = await userService.findById(ownerId);
+          if (!owner) return;
+          await runWithTenantContext(dbName, orgId, async () => {
+            const { resourceService } = await import('../../services/ResourceService');
+            await resourceService.createResource({
+              name: owner.fullName || owner.username || owner.email.split('@')[0],
+              role: owner.role,
+              email: owner.email,
+              capacityHoursPerWeek: 40,
+              skills: [],
+              isActive: true,
+              costRateHourly: null,
+              overtimeRateHourly: null,
+              resourceGroup: null,
+              userId: ownerId,
+              calendarTemplateId: null,
+            });
+          });
+          logger.info('Created owner resource', { orgId, userId: ownerId });
+        } catch (err) {
+          logger.error('Failed to create owner resource', {
+            orgId, userId: ownerId, error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      };
+
       // Multi-tenant: create the organization and provision its database. Shared by
       // the free-trial and awaiting-payment paths — SME checkout needs the org to
       // exist, so a paid signup must get one too, just without a trial stamp.
@@ -246,10 +287,14 @@ export async function authRoutes(fastify: FastifyInstance) {
             awaitingPayment: isPlanSignup,
           });
           await userService.update(user.id, { organizationId: org.id } as any);
-          // Provision tenant DB in background — don't block registration
-          provisionTenantDatabase(org.id).catch((err) => {
-            logger.error('Tenant provisioning failed', { orgId: org.id, error: err });
-          });
+          // Provision tenant DB in background — don't block registration. The owner's
+          // resource is created once provisioning finishes, because the tenant database
+          // has to exist first.
+          provisionTenantDatabase(org.id)
+            .then(() => createOwnerResource(org.id, org.dbName, user.id))
+            .catch((err) => {
+              logger.error('Tenant provisioning failed', { orgId: org.id, error: err });
+            });
         } catch (orgError) {
           logger.error('Organization creation failed during registration', { userId: user.id, error: orgError });
         }
