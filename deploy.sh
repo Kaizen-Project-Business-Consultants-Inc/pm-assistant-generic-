@@ -123,17 +123,59 @@ echo "  ✓ OK"
 
 # --- Step 4: Copy non-tsc files into dist (SQL migrations, tenant migrations) ---
 echo "[4/7] Copying migration SQL files to dist..."
-cp src/server/database/migrations/*.sql dist/server/database/migrations/ 2>/dev/null || true
+# mkdir -p is essential: tsc creates no migrations directory (there are no .ts files in
+# it), so without this the copy below silently failed and the uploaded build contained
+# NO control-plane migrations at all. Combined with the symlink in step 5, that is how
+# production quietly stopped applying migrations after 109.
+mkdir -p dist/server/database/migrations
+cp src/server/database/migrations/*.sql dist/server/database/migrations/
 mkdir -p dist/server/database/tenant-migrations
-cp src/server/database/tenant-migrations/*.sql dist/server/database/tenant-migrations/ 2>/dev/null || true
-echo "  ✓ OK"
+cp src/server/database/tenant-migrations/*.sql dist/server/database/tenant-migrations/
+LOCAL_MIG_COUNT=$(ls dist/server/database/migrations/*.sql 2>/dev/null | wc -l)
+LOCAL_TENANT_COUNT=$(ls dist/server/database/tenant-migrations/*.sql 2>/dev/null | wc -l)
+if [ "$LOCAL_MIG_COUNT" -eq 0 ] || [ "$LOCAL_TENANT_COUNT" -eq 0 ]; then
+  echo "  ✗ No migration files were staged into dist — aborting."
+  exit 1
+fi
+echo "  ✓ OK ($LOCAL_MIG_COUNT control-plane, $LOCAL_TENANT_COUNT tenant)"
 
 # --- Step 5: Upload server ---
 if [ "$CLIENT_ONLY" = false ]; then
   echo "[5/7] Uploading server dist..."
   tar czf /tmp/server-dist.tar.gz -C dist/server .
   do_scp /tmp/server-dist.tar.gz "$SSH_HOST":/tmp/
-  do_ssh "sudo rm -rf /opt/pm-app/dist/server && sudo mkdir -p /opt/pm-app/dist/server && sudo tar xzf /tmp/server-dist.tar.gz -C /opt/pm-app/dist/server/ && sudo ln -sf /opt/pm-app/migrations /opt/pm-app/dist/server/database/migrations && sudo chown -R ubuntu:ubuntu /opt/pm-app/dist && rm /tmp/server-dist.tar.gz"
+  # /opt/pm-app/migrations is the canonical migrations folder on the server, and
+  # dist/server/database/migrations is a symlink to it so the app reads one place.
+  #
+  # The freshly built migrations MUST be copied into that canonical folder BEFORE the
+  # symlink is made. Previously the symlink was created straight over the extracted
+  # directory, which silently discarded every newly uploaded migration. It did not fail
+  # loudly: on staging `ln -sf` landed the link *inside* the existing directory (so the
+  # real files were still read and migrations appeared to work), while on production it
+  # replaced the directory outright — so production quietly stopped applying
+  # control-plane migrations after 109 and nobody noticed for six releases.
+  do_ssh "sudo rm -rf /opt/pm-app/dist/server \
+    && sudo mkdir -p /opt/pm-app/dist/server /opt/pm-app/migrations \
+    && sudo tar xzf /tmp/server-dist.tar.gz -C /opt/pm-app/dist/server/ \
+    && sudo cp -f /opt/pm-app/dist/server/database/migrations/*.sql /opt/pm-app/migrations/ \
+    && sudo rm -rf /opt/pm-app/dist/server/database/migrations \
+    && sudo ln -s /opt/pm-app/migrations /opt/pm-app/dist/server/database/migrations \
+    && sudo chown -R ubuntu:ubuntu /opt/pm-app/dist /opt/pm-app/migrations \
+    && rm /tmp/server-dist.tar.gz"
+
+  # Fail the deploy loudly if a migration built locally did not reach the server,
+  # rather than letting it go missing for another six releases.
+  echo "  Verifying migrations reached the server..."
+  LOCAL_LATEST=$(ls src/server/database/migrations/*.sql 2>/dev/null | xargs -n1 basename | sort | tail -1)
+  if [ -n "$LOCAL_LATEST" ]; then
+    if do_ssh "test -f /opt/pm-app/migrations/$LOCAL_LATEST"; then
+      echo "  ✓ Migrations present (latest: $LOCAL_LATEST)"
+    else
+      echo "  ✗ MIGRATION MISSING ON SERVER: $LOCAL_LATEST"
+      echo "    The app will start without it. Investigate before trusting this deploy."
+      exit 1
+    fi
+  fi
   rm -f /tmp/server-dist.tar.gz
 
   # Upload doc files for Knowledge Base reindexing
