@@ -126,13 +126,23 @@ import { operationsRoutes } from './routes/admin/operations';
 import { revenueRoutes } from './routes/admin/revenue';
 import { mcpAnalyticsRoutes } from './routes/admin/mcpAnalytics';
 import { knowledgeBaseRoutes } from './routes/admin/knowledgeBase';
+import { getDegraded } from './utils/degradedState';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Guest guard — restrict guest users to allowed routes
   fastify.addHook('onRequest', guestGuard);
 
   // Health check — unauthenticated, for uptime monitors
-  fastify.get('/api/v1/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+  // Health reports 'degraded' when the server started despite a real problem — today
+  // that means a migration failed, so the schema may not match this build. Still 200:
+  // the service is up and usable, and monitoring should read the body, not just the
+  // status line. See utils/degradedState.ts for why this exists.
+  fastify.get('/api/v1/health', async () => {
+    const degraded = getDegraded();
+    return degraded
+      ? { status: 'degraded', reason: degraded.reason, detail: degraded.detail, since: degraded.since, timestamp: new Date().toISOString() }
+      : { status: 'ok', timestamp: new Date().toISOString() };
+  });
 
   // Core
   await fastify.register(authRoutes, { prefix: '/api/v1/auth' });

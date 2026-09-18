@@ -71,6 +71,10 @@ vi.mock('../../database/connection', () => ({
   },
 }));
 
+vi.mock('../../utils/degradedState', () => ({
+  getDegraded: vi.fn().mockReturnValue(null),
+}));
+
 vi.mock('../../utils/logger', () => ({
   default: {
     info: vi.fn(),
@@ -96,6 +100,7 @@ import { aiBudgetService } from '../../services/AIBudgetService';
 import { notificationService } from '../../services/NotificationService';
 import { databaseService } from '../../database/connection';
 import logger from '../../utils/logger';
+import { getDegraded } from '../../utils/degradedState';
 
 // ── Typed references ───────────────────────────────────────────────────────
 
@@ -791,6 +796,37 @@ describe('AlertService', () => {
       await alertService.runChecks();
 
       expect(alertsRaised()).toHaveLength(0);
+    });
+  });
+  describe('checkDegradedStart() — degraded server', () => {
+    const alertsRaised = () =>
+      ((logger.warn as any).mock.calls as any[][])
+        .filter((c) => typeof c[0] === 'string' && c[0].includes('Server running in degraded mode'))
+        .map((c) => c[0] as string);
+
+    it('stays quiet when the server started cleanly', async () => {
+      (getDegraded as any).mockReturnValue(null);
+
+      await alertService.runChecks();
+
+      expect(alertsRaised()).toHaveLength(0);
+    });
+
+    it('raises a critical alert when a migration failed at startup', async () => {
+      // The server now starts instead of crash-looping, so this alert is the only
+      // thing that makes the problem visible.
+      (getDegraded as any).mockReturnValue({
+        reason: 'migration_failed',
+        detail: 'Migration 106_feedback_enhancements.sql failed: Duplicate column name.',
+        since: new Date().toISOString(),
+      });
+
+      await alertService.runChecks();
+
+      const raised = alertsRaised();
+      expect(raised).toHaveLength(1);
+      expect(raised[0]).toContain('106_feedback_enhancements.sql');
+      expect(raised[0]).toContain('serving requests');
     });
   });
 });

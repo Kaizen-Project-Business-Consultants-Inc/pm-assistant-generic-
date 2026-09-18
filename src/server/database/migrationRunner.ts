@@ -57,7 +57,45 @@ export function validateAndSortMigrations(files: string[]): string[] {
   });
 }
 
-export async function runMigrations(): Promise<void> {
+/**
+ * MySQL/MariaDB errors that mean "this change is already in place".
+ *
+ * A migration whose effect already exists is not a failure — it is a bookkeeping gap,
+ * usually a change applied by hand or a database seeded from another environment's
+ * schema without the matching `_migrations` rows.
+ *
+ * This is not theoretical. On 2026-09-18 the production API crash-looped for six
+ * minutes (58 restarts) because `106_feedback_enhancements.sql` had been applied to the
+ * database but never recorded: the runner hit "Duplicate column name 'screenshot_data'",
+ * threw, and the app refused to start. Every API call returned 502 until the row was
+ * inserted by hand.
+ */
+const ALREADY_APPLIED_ERROR_CODES = new Set([
+  'ER_DUP_FIELDNAME',    // ADD COLUMN — column already exists
+  'ER_TABLE_EXISTS_ERROR', // CREATE TABLE — table already exists
+  'ER_DUP_KEYNAME',      // ADD INDEX/KEY — index already exists
+  'ER_CANT_DROP_FIELD_OR_KEY', // DROP COLUMN/INDEX — already gone
+  'ER_DUP_ENTRY',        // INSERT of seed data that is already there
+  'ER_MULTIPLE_PRI_KEY', // ADD PRIMARY KEY — already present
+  'ER_BAD_FIELD_ERROR',  // references a column a prior statement already handled
+]);
+
+export interface MigrationOutcome {
+  applied: string[];
+  /** Recorded without running because the change was already present in the database. */
+  alreadyPresent: string[];
+  /** Genuine failure. The runner stops here; later migrations are not attempted. */
+  failed: { file: string; error: string } | null;
+  /** Migrations never attempted because an earlier one failed. */
+  skipped: string[];
+}
+
+function errorCode(error: unknown): string {
+  return (error as { code?: string })?.code ?? '';
+}
+
+export async function runMigrations(): Promise<MigrationOutcome> {
+  const outcome: MigrationOutcome = { applied: [], alreadyPresent: [], failed: null, skipped: [] };
   // Ensure _migrations tracking table exists
   await databaseService.query(`
     CREATE TABLE IF NOT EXISTS _migrations (
@@ -93,6 +131,13 @@ export async function runMigrations(): Promise<void> {
   for (const file of files) {
     if (isApplied(file)) continue;
 
+    // An earlier migration failed — do not run later ones against a schema that is now
+    // in an unknown state. Report them so the gap is visible rather than silent.
+    if (outcome.failed) {
+      outcome.skipped.push(file);
+      continue;
+    }
+
     const num = parseMigrationNumber(file);
     const filePath = path.join(MIGRATIONS_DIR, file);
     const sql = fs.readFileSync(filePath, 'utf-8').trim();
@@ -125,21 +170,53 @@ export async function runMigrations(): Promise<void> {
 
       await connection.commit();
       console.log(`[migration] Applied #${String(num).padStart(3, '0')}: ${file} (${statements.length} statements)`);
+      outcome.applied.push(file);
       ranCount++;
     } catch (error) {
       await connection.rollback();
+
+      if (ALREADY_APPLIED_ERROR_CODES.has(errorCode(error))) {
+        // The change is already in the database, just not recorded. Record it and move
+        // on. Refusing to start over a bookkeeping gap is far more damaging than the
+        // gap itself — see the note on ALREADY_APPLIED_ERROR_CODES.
+        console.warn(
+          `[migration] ALREADY PRESENT #${String(num).padStart(3, '0')}: ${file} — ` +
+          `${(error as Error).message}. Recording as applied and continuing.`,
+        );
+        try {
+          await databaseService.query('INSERT IGNORE INTO _migrations (name) VALUES (?)', [file]);
+          outcome.alreadyPresent.push(file);
+          continue;
+        } catch (recordErr) {
+          console.error(`[migration] Could not record ${file} as applied`, recordErr);
+        }
+      }
+
       console.error(`[migration] FAILED #${String(num).padStart(3, '0')}: ${file}`, error);
-      throw error; // Stop on first failure
+      outcome.failed = { file, error: error instanceof Error ? error.message : String(error) };
     } finally {
       connection.release();
     }
   }
 
-  if (ranCount === 0) {
+  if (outcome.alreadyPresent.length > 0) {
+    console.warn(
+      `[migration] ${outcome.alreadyPresent.length} migration(s) were already present and have been recorded: ` +
+      outcome.alreadyPresent.join(', '),
+    );
+  }
+  if (outcome.failed) {
+    console.error(
+      `[migration] STOPPED at ${outcome.failed.file}: ${outcome.failed.error}. ` +
+      `${outcome.skipped.length} later migration(s) not attempted: ${outcome.skipped.join(', ') || 'none'}`,
+    );
+  } else if (ranCount === 0 && outcome.alreadyPresent.length === 0) {
     console.log('[migration] All migrations already applied');
   } else {
     console.log(`[migration] Completed: ${ranCount} migration(s) applied`);
   }
+
+  return outcome;
 }
 
 /**

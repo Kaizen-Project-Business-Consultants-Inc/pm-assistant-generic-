@@ -5,6 +5,7 @@ import { registerPlugins } from './plugins';
 import { registerRoutes } from './routes';
 import { databaseService } from './database/connection';
 import { runMigrations } from './database/migrationRunner';
+import { setDegraded } from './utils/degradedState';
 import { runAllTenantMigrations } from './database/tenantMigrationRunner';
 import './services/agentCapabilities';
 import { redisService } from './services/RedisService';
@@ -30,7 +31,26 @@ async function start() {
       fastify.log.warn('Database connection failed - running in offline mode');
     } else {
       fastify.log.info('Database connection successful');
-      await runMigrations();
+
+      // A failed migration used to be fatal, which turned one stale bookkeeping row
+      // into a crash loop: on 2026-09-18 the production API was down for six minutes
+      // across 58 restarts because a migration's columns already existed. A crash loop
+      // is strictly worse than starting — it takes every feature down instead of the
+      // ones touching the missing change, and it tells nobody why. Start, record the
+      // state, and shout.
+      const migrationOutcome = await runMigrations();
+      if (migrationOutcome.failed) {
+        setDegraded({
+          reason: 'migration_failed',
+          detail: `Migration ${migrationOutcome.failed.file} failed: ${migrationOutcome.failed.error}. ` +
+            `${migrationOutcome.skipped.length} later migration(s) were not attempted. ` +
+            `The database schema may not match this build.`,
+        });
+        fastify.log.error(
+          { migration: migrationOutcome.failed, skipped: migrationOutcome.skipped },
+          'MIGRATION FAILED — starting in DEGRADED mode. Schema may not match this build.',
+        );
+      }
 
       // Run pending tenant migrations if multi-tenant is enabled
       if (config.MULTI_TENANT_ENABLED) {

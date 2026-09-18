@@ -6,6 +6,7 @@ import { degradationHandler } from './agents/DegradationHandler';
 import { aiBudgetService } from './AIBudgetService';
 import { notificationService } from './NotificationService';
 import { databaseService } from '../database/connection';
+import { getDegraded } from '../utils/degradedState';
 import logger from '../utils/logger';
 
 type AlertType =
@@ -15,7 +16,8 @@ type AlertType =
   | 'circuit_breaker_open'
   | 'db_latency_high'
   | 'db_connection_lost'
-  | 'cron_job_stalled';
+  | 'cron_job_stalled'
+  | 'migration_failed';
 
 /**
  * Scheduled jobs that must have run recently, and how long is too long (hours).
@@ -62,12 +64,30 @@ class AlertService {
         this.checkCircuitBreakers(),
         this.checkDatabaseHealth(),
         this.checkCronJobsRunning(),
+        this.checkDegradedStart(),
       ]);
     } catch (err) {
       logger.error('[AlertService] Check cycle failed', {
         error: err instanceof Error ? err.message : String(err),
       });
     }
+  }
+
+  /**
+   * A failed migration no longer stops the server — it degrades it. That is only an
+   * improvement if somebody finds out, so it is alerted on every check cycle rather
+   * than left as one line in a startup log nobody reads.
+   */
+  private async checkDegradedStart(): Promise<void> {
+    const degraded = getDegraded();
+    if (!degraded) return;
+
+    await this.fire({
+      type: 'migration_failed',
+      severity: 'critical',
+      title: 'Server running in degraded mode',
+      message: `${degraded.detail} Degraded since ${degraded.since}. The app is serving requests, but features relying on the missing schema change will fail.`,
+    });
   }
 
   /**
