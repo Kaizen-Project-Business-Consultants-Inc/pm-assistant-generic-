@@ -157,14 +157,17 @@ if [ "$CLIENT_ONLY" = false ]; then
   do_ssh "sudo rm -rf /opt/pm-app/dist/server \
     && sudo mkdir -p /opt/pm-app/dist/server /opt/pm-app/migrations \
     && sudo tar xzf /tmp/server-dist.tar.gz -C /opt/pm-app/dist/server/ \
-    && sudo cp -f /opt/pm-app/dist/server/database/migrations/*.sql /opt/pm-app/migrations/ \
+    && sudo find /opt/pm-app/dist/server/database/migrations -maxdepth 1 -name '*.sql' -exec cp -f {} /opt/pm-app/migrations/ ';' \
     && sudo rm -rf /opt/pm-app/dist/server/database/migrations \
     && sudo ln -s /opt/pm-app/migrations /opt/pm-app/dist/server/database/migrations \
     && sudo chown -R ubuntu:ubuntu /opt/pm-app/dist /opt/pm-app/migrations \
     && rm /tmp/server-dist.tar.gz"
 
-  # Fail the deploy loudly if a migration built locally did not reach the server,
-  # rather than letting it go missing for another six releases.
+  # The copy above uses find rather than a shell glob on purpose: a glob makes the
+  # whole deploy die on an odd or empty expansion, which is the wrong failure. The
+  # check below is the strict part — tolerant action, strict verification. Fail the
+  # deploy loudly if a migration built locally did not reach the server, rather than
+  # letting it go missing for another six releases.
   echo "  Verifying migrations reached the server..."
   LOCAL_LATEST=$(ls src/server/database/migrations/*.sql 2>/dev/null | xargs -n1 basename | sort | tail -1)
   if [ -n "$LOCAL_LATEST" ]; then
