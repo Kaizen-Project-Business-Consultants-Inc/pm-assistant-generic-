@@ -90,6 +90,26 @@ class DatabaseService {
     return conn;
   }
 
+  /**
+   * Run a statement on a connection that has just had `USE <db>` applied.
+   *
+   * MUST use conn.query(), never conn.execute(). mysql2 caches prepared statements per
+   * connection keyed by SQL text, and a prepared statement stays bound to the database
+   * it was prepared against. On a pooled connection that has since switched tenants,
+   * conn.execute() therefore runs against the PREVIOUS tenant's database and silently
+   * ignores the USE — proven on staging 2026-09-18, where `SELECT DATABASE()` itself
+   * reported the stale database, and a backfill inserted one customer's rows into
+   * another customer's tenant.
+   *
+   * conn.query() with placeholders is still parameterised (client-side escaping), so
+   * this is not a SQL-injection regression. It gives up prepared-statement reuse, which
+   * is the correct trade for guaranteed tenant isolation.
+   */
+  private async runOnConnection<T>(conn: mysql.PoolConnection, sql: string, params: any[]): Promise<T[]> {
+    const [rows] = await conn.query(sql, params);
+    return rows as T[];
+  }
+
   public async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
     if (!this.pool) {
       throw new Error('Database pool not initialized');
@@ -106,8 +126,7 @@ class DatabaseService {
       const conn = await this.pool.getConnection();
       try {
         await conn.query(`USE \`${tenantDb}\``);
-        const [rows] = await conn.execute(sql, params);
-        return rows as T[];
+        return this.runOnConnection<T>(conn, sql, params);
       } finally {
         conn.release();
       }
@@ -116,9 +135,15 @@ class DatabaseService {
     return rows as T[];
   }
 
+  /**
+   * Run a statement on a caller-supplied connection (transactions).
+   *
+   * Also query(), not execute(): getConnection() applies `USE <tenant>` before handing
+   * the connection over, so the same stale prepared-statement problem applies. See
+   * runOnConnection above.
+   */
   public async queryOn<T = any>(connection: mysql.PoolConnection, sql: string, params: any[] = []): Promise<T[]> {
-    const [rows] = await connection.execute(sql, params);
-    return rows as T[];
+    return this.runOnConnection<T>(connection, sql, params);
   }
 
   /**
@@ -133,8 +158,7 @@ class DatabaseService {
       const conn = await this.pool.getConnection();
       try {
         await conn.query(`USE \`${config.DB_NAME}\``);
-        const [rows] = await conn.execute(sql, params);
-        return rows as T[];
+        return this.runOnConnection<T>(conn, sql, params);
       } finally {
         conn.release();
       }
