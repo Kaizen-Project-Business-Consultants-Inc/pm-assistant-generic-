@@ -213,6 +213,9 @@ export async function projectRoutes(fastify: FastifyInstance) {
         ...updateData,
         startDate: updateData.startDate || undefined,
         endDate: updateData.endDate || undefined,
+        // null is meaningful here — it clears the status date, meaning "measure
+        // against today" — so it must not be collapsed to undefined like the others.
+        ...(updateData.statusDate !== undefined ? { statusDate: updateData.statusDate } : {}),
       }, userId);
       if (!project) {
         return reply.status(404).send({ error: 'Project not found', message: 'Project does not exist or you do not have access' });
@@ -222,6 +225,16 @@ export async function projectRoutes(fastify: FastifyInstance) {
       slackEventDispatcher.dispatchToSlack('project.updated', { project }, id);
       return { project: toProjectDTO(project) };
     } catch (error) {
+      // A rejected field is the caller's mistake, not a server fault. Saying
+      // "Internal server error" for "last Tuesday" is both wrong and unhelpful.
+      if (error instanceof z.ZodError) {
+        const first = error.issues[0];
+        return reply.status(400).send({
+          error: 'Invalid project data',
+          message: first ? `${first.path.join('.')}: ${first.message}` : 'Invalid request body',
+          issues: error.issues.map(i => ({ field: i.path.join('.'), message: i.message })),
+        });
+      }
       logger.error('Update project error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to update project' });
     }
