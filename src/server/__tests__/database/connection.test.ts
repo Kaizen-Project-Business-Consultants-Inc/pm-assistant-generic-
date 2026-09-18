@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// queryOn must use the NON-PREPARED form. mysql2 caches prepared statements per
+// connection bound to the database they were prepared against, so on a pooled
+// connection that has switched tenants the prepared form silently runs against the
+// previous tenant's database. These mocks assert query() is used, and that execute()
+// is never reached — the prepared form here leaked data between customers on
+// 2026-09-18. See __tests__/database/tenantIsolation.test.ts.
+const mockQuery = vi.fn();
 const mockExecute = vi.fn();
-const mockConnection = { execute: mockExecute };
+const mockConnection = { query: mockQuery, execute: mockExecute };
 
 vi.mock('mysql2/promise', () => ({
   default: { createPool: vi.fn(() => ({ execute: vi.fn(), getConnection: vi.fn(), end: vi.fn() })) },
@@ -27,26 +34,34 @@ describe('DatabaseService.queryOn', () => {
     vi.clearAllMocks();
   });
 
-  it('executes SQL on the provided connection and returns rows', async () => {
+  it('runs SQL on the provided connection and returns rows', async () => {
     const rows = [{ id: '1', name: 'test' }];
-    mockExecute.mockResolvedValueOnce([rows, []]);
+    mockQuery.mockResolvedValueOnce([rows, []]);
 
     const result = await databaseService.queryOn(mockConnection as any, 'SELECT * FROM t WHERE id = ?', ['1']);
 
-    expect(mockExecute).toHaveBeenCalledWith('SELECT * FROM t WHERE id = ?', ['1']);
+    expect(mockQuery).toHaveBeenCalledWith('SELECT * FROM t WHERE id = ?', ['1']);
     expect(result).toEqual(rows);
   });
 
-  it('defaults params to empty array', async () => {
-    mockExecute.mockResolvedValueOnce([[], []]);
+  it('never uses the prepared form, which ignores a tenant switch', async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
 
     await databaseService.queryOn(mockConnection as any, 'SELECT 1');
 
-    expect(mockExecute).toHaveBeenCalledWith('SELECT 1', []);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('defaults params to empty array', async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await databaseService.queryOn(mockConnection as any, 'SELECT 1');
+
+    expect(mockQuery).toHaveBeenCalledWith('SELECT 1', []);
   });
 
   it('propagates errors from the connection', async () => {
-    mockExecute.mockRejectedValueOnce(new Error('deadlock'));
+    mockQuery.mockRejectedValueOnce(new Error('deadlock'));
 
     await expect(
       databaseService.queryOn(mockConnection as any, 'UPDATE t SET x = 1')
