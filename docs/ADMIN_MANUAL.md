@@ -168,6 +168,28 @@ Key variables in `.env` (never commit secrets):
 - Static assets are served directly by LiteSpeed; API routes proxy to Fastify.
 - CSP headers are managed by Helmet (currently in report-only mode).
 - **Health Snapshot Cron** — When `AGENT_ENABLED=true`, a daily cron job runs at 03:00 to snapshot each active project's health score into the `project_health_history` table (migration 038). This data powers the Health Trends sparklines on the dashboard. A manual trigger is available at `POST /api/v1/predictions/health/snapshot` (admin only).
+### Scheduled jobs — where they are defined
+
+Scheduled work does **not** run inside the app. It runs as systemd timers on each
+server, invoked as `node dist/server/scripts/runCronJob.js <job-name>`. The in-process
+scheduler in `cronManager.ts` is dead code — `startCronTasks` is called from nowhere.
+
+The unit files live in **`deploy/systemd/`** in the repository and are installed and
+enabled by every `deploy.sh` run, which then fails the deploy if any expected job is not
+enabled afterwards. Adding a job needs three things: the job module, a `case` in
+`runCronJob.ts`, and a `.timer` file in `deploy/systemd/`.
+
+> **History.** Before 2026-09-18 these were set up by hand, once per machine, and
+> recorded nowhere. Staging was configured when the move to systemd happened on
+> 2026-07-14; production never was, so production ran **no scheduled jobs at all** for
+> two months. Nothing reported it: the app logs "Cron jobs managed externally via
+> systemd timers" on startup and never checked. `AlertService.checkCronJobsRunning()`
+> is now the standing check — every job records `cron:last:<job>` in Redis when it runs,
+> and a job that goes quiet, or has no record at all, raises an alert.
+
+Run one by hand: `sudo systemctl start pm-cron@<name>.service`
+Inspect: `systemctl list-timers 'pm-cron@*'` and `journalctl -u pm-cron@<name>.service`
+
 - **Trial Reminder Cron** — When `AGENT_ENABLED=true`, a daily cron job runs at 09:00 to send trial expiry reminder emails. It sends emails at the 7-day, 3-day and 1-day warnings, and on expiry. It only ever touches free-tier trials (`subscription_tier = 'trial'`) — a paying customer is never told their trial is expiring, and the expired-trial downgrade in the same job carries the same restriction so it cannot lock out an account that has paid. Emails use a polished dark-themed HTML template matching the Kovarti brand (teal accent bar, logo, status badge, gradient CTA button, reassurance info points, responsive layout, dark-mode CSS, Outlook VML fallback). Redis-backed deduplication prevents repeat sends: each reminder is keyed as `trial-reminder:{userId}:{type}` with a 30-day TTL. Implementation: `src/server/services/scheduling/trialReminderJob.ts`, template: `buildTrialEmailHtml()` in `EmailService.ts`.
 - **Pending Payment Sweep** — Daily at 09:30, `src/server/services/scheduling/pendingPaymentJob.ts`. Looks after accounts stuck in `incomplete` (chose a paid plan, never completed checkout). For each one it asks Stripe directly whether the payment in fact succeeded and activates the account if so — this is the backstop behind `POST /stripe/reconcile`, which the client calls when someone returns from checkout, and it exists because a dropped webhook would otherwise lock out a customer who has paid. Genuinely unpaid signups get one reminder email after 2 days (Redis key `pending-payment-reminded:{userId}`) and the empty account is deactivated after 14 days, unless it already owns a provisioned workspace, in which case it is left for a human. An account that cannot be verified with Stripe is never acted on.
 

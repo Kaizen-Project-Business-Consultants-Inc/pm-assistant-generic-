@@ -117,7 +117,14 @@ describe('AlertService', () => {
     vi.clearAllMocks();
     // Reset defaults
     mockRedisIsConnected.mockReturnValue(true);
-    mockRedisGet.mockResolvedValue(null);
+    // Default: every scheduled job ran a moment ago, so the cron-stall check stays
+    // quiet and the other checks can be asserted in isolation. Cooldown keys (any
+    // other key) still return null so alerts are allowed to fire.
+    mockRedisGet.mockImplementation(async (key: string) =>
+      key?.startsWith('cron:last:')
+        ? JSON.stringify({ status: 'ok', finishedAt: new Date().toISOString() })
+        : null,
+    );
     mockRedisSet.mockResolvedValue(undefined);
     mockGetSnapshot.mockReturnValue({
       requests: { total: 0 },
@@ -689,6 +696,101 @@ describe('AlertService', () => {
         .map((c: any[]) => c[0]);
 
       expect(alertMessages.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+  describe('checkCronJobsRunning() — scheduled jobs', () => {
+    const hoursAgo = (h: number) => JSON.stringify({
+      status: 'ok',
+      finishedAt: new Date(Date.now() - h * 60 * 60 * 1000).toISOString(),
+    });
+
+    const alertsRaised = () =>
+      ((logger.warn as any).mock.calls as any[][])
+        .filter((c) => typeof c[0] === 'string' && c[0].includes('Scheduled jobs not running'))
+        .map((c) => c[0] as string);
+
+    it('stays quiet when every job has run recently', async () => {
+      await alertService.runChecks();
+
+      expect(alertsRaised()).toHaveLength(0);
+    });
+
+    it('raises a critical alert when a job has never run on this server', async () => {
+      // Exactly the production failure: the timer was never created, so the job has
+      // no record at all and nothing ever complained.
+      mockRedisGet.mockImplementation(async (key: string) => {
+        if (key === 'cron:last:digest') return null;
+        if (key?.startsWith('cron:last:')) return hoursAgo(0);
+        return null;
+      });
+
+      await alertService.runChecks();
+
+      const raised = alertsRaised();
+      expect(raised).toHaveLength(1);
+      expect(raised[0]).toContain('Never run on this server');
+      expect(raised[0]).toContain('digest');
+    });
+
+    it('raises an alert when a job has stopped running', async () => {
+      mockRedisGet.mockImplementation(async (key: string) => {
+        if (key === 'cron:last:overdue-scan') return hoursAgo(9);
+        if (key?.startsWith('cron:last:')) return hoursAgo(0);
+        return null;
+      });
+
+      await alertService.runChecks();
+
+      const raised = alertsRaised();
+      expect(raised).toHaveLength(1);
+      expect(raised[0]).toContain('Stopped running');
+      expect(raised[0]).toContain('overdue-scan');
+    });
+
+    it('tolerates a job that is merely late', async () => {
+      // overdue-scan runs every 15 minutes but is allowed 2 quiet hours — this check
+      // is for "has stopped entirely", not for lateness.
+      mockRedisGet.mockImplementation(async (key: string) => {
+        if (key === 'cron:last:overdue-scan') return hoursAgo(1);
+        if (key?.startsWith('cron:last:')) return hoursAgo(0);
+        return null;
+      });
+
+      await alertService.runChecks();
+
+      expect(alertsRaised()).toHaveLength(0);
+    });
+
+    it('allows a weekly job a full week of quiet', async () => {
+      mockRedisGet.mockImplementation(async (key: string) => {
+        if (key === 'cron:last:schedule-review') return hoursAgo(6 * 24);
+        if (key?.startsWith('cron:last:')) return hoursAgo(0);
+        return null;
+      });
+
+      await alertService.runChecks();
+
+      expect(alertsRaised()).toHaveLength(0);
+    });
+
+    it('says nothing when Redis is unavailable, rather than alerting on its own blind spot', async () => {
+      mockRedisIsConnected.mockReturnValue(false);
+
+      await alertService.runChecks();
+
+      expect(alertsRaised()).toHaveLength(0);
+    });
+
+    it('ignores an unreadable record instead of alerting on a formatting problem', async () => {
+      mockRedisGet.mockImplementation(async (key: string) => {
+        if (key === 'cron:last:reports') return 'not json';
+        if (key?.startsWith('cron:last:')) return hoursAgo(0);
+        return null;
+      });
+
+      await alertService.runChecks();
+
+      expect(alertsRaised()).toHaveLength(0);
     });
   });
 });

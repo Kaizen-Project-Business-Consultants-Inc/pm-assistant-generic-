@@ -184,6 +184,29 @@ if [ "$CLIENT_ONLY" = false ]; then
   do_ssh "mkdir -p /opt/pm-app/docs"
   do_scp docs/USER_GUIDE.md docs/ADMIN_MANUAL.md docs/AI_DESIGN_FEATURES.md "$SSH_HOST":/opt/pm-app/docs/
 
+  # Install the scheduled-job definitions. These used to be set up by hand, once per
+  # machine, and recorded nowhere — which is why production ran NO scheduled jobs at
+  # all from mid-July until 2026-09-18. They are now in deploy/systemd/ and installed
+  # on every deploy, so a server cannot silently be missing one.
+  echo "  Installing scheduled jobs..."
+  do_ssh "mkdir -p /tmp/pm-systemd"
+  do_scp deploy/systemd/pm-cron@.service deploy/systemd/*.timer "$SSH_HOST":/tmp/pm-systemd/
+  EXPECTED_TIMERS=$(ls deploy/systemd/*.timer | xargs -n1 basename | sed 's/pm-cron@//;s/\.timer//' | tr '\n' ' ')
+  do_ssh "sudo cp /tmp/pm-systemd/pm-cron@.service /tmp/pm-systemd/*.timer /etc/systemd/system/ \
+    && rm -rf /tmp/pm-systemd \
+    && sudo systemctl daemon-reload \
+    && for j in $EXPECTED_TIMERS; do sudo systemctl enable --now pm-cron@\$j.timer >/dev/null 2>&1; done"
+
+  # Verify every expected job is actually scheduled. The original failure was not that
+  # a step was skipped — it is that skipping it produced no error anywhere.
+  MISSING=$(do_ssh "for j in $EXPECTED_TIMERS; do systemctl is-enabled pm-cron@\$j.timer >/dev/null 2>&1 || echo \$j; done")
+  if [ -n "$MISSING" ]; then
+    echo "  ✗ SCHEDULED JOBS NOT ENABLED:" $MISSING
+    echo "    These will never run on this server. Investigate before trusting this deploy."
+    exit 1
+  fi
+  echo "  ✓ OK ($(echo $EXPECTED_TIMERS | wc -w) jobs scheduled)"
+
   # Sync dependencies — upload package files and install production deps
   echo "  Syncing dependencies..."
   do_scp package.json "$SSH_HOST":/tmp/pkg.json

@@ -14,7 +14,34 @@ type AlertType =
   | 'ai_budget_critical'
   | 'circuit_breaker_open'
   | 'db_latency_high'
-  | 'db_connection_lost';
+  | 'db_connection_lost'
+  | 'cron_job_stalled';
+
+/**
+ * Scheduled jobs that must have run recently, and how long is too long (hours).
+ *
+ * This exists because production ran NO scheduled jobs at all from mid-July until
+ * 2026-09-18 and nothing noticed. The timers are set up by the deploy now, but a
+ * deploy-time check only proves a job was scheduled — not that it still runs. This is
+ * the standing check: every job records its last run, and anything that goes quiet for
+ * longer than it should raises an alert.
+ *
+ * Deliberately generous windows — this is for "has stopped entirely", not lateness.
+ * alert-check itself is excluded: it is the thing doing the checking.
+ */
+const EXPECTED_CRON_JOBS: Array<{ job: string; maxQuietHours: number }> = [
+  { job: 'overdue-scan', maxQuietHours: 2 },
+  { job: 'reports', maxQuietHours: 2 },
+  { job: 'agent-scan', maxQuietHours: 30 },
+  { job: 'recurrence', maxQuietHours: 30 },
+  { job: 'health-snapshot', maxQuietHours: 30 },
+  { job: 'data-retention', maxQuietHours: 30 },
+  { job: 'digest', maxQuietHours: 30 },
+  { job: 'deadline-check', maxQuietHours: 30 },
+  { job: 'trial-reminder', maxQuietHours: 30 },
+  { job: 'pending-payment', maxQuietHours: 30 },
+  { job: 'schedule-review', maxQuietHours: 8 * 24 },
+];
 
 interface Alert {
   type: AlertType;
@@ -34,12 +61,73 @@ class AlertService {
         this.checkAIBudget(),
         this.checkCircuitBreakers(),
         this.checkDatabaseHealth(),
+        this.checkCronJobsRunning(),
       ]);
     } catch (err) {
       logger.error('[AlertService] Check cycle failed', {
         error: err instanceof Error ? err.message : String(err),
       });
     }
+  }
+
+  /**
+   * Raise an alert for any scheduled job that has gone quiet, or has never run at all.
+   *
+   * `runCronJob.ts` writes `cron:last:<job>` to Redis after every run. A job that is
+   * not scheduled on this server writes nothing, so a missing key means the job has
+   * never run here — exactly the state production was in for two months.
+   *
+   * Needs Redis; skips silently without it rather than alerting on its own blind spot.
+   */
+  private async checkCronJobsRunning(): Promise<void> {
+    if (!redisService.isConnected()) return;
+
+    const now = Date.now();
+    const neverRan: string[] = [];
+    const stalled: string[] = [];
+
+    for (const { job, maxQuietHours } of EXPECTED_CRON_JOBS) {
+      let raw: string | null = null;
+      try {
+        raw = await redisService.get(`cron:last:${job}`);
+      } catch {
+        return; // Redis unreliable — do not guess.
+      }
+
+      if (!raw) {
+        neverRan.push(job);
+        continue;
+      }
+
+      try {
+        const { finishedAt } = JSON.parse(raw) as { finishedAt?: string };
+        const last = finishedAt ? new Date(finishedAt).getTime() : NaN;
+        if (!Number.isFinite(last)) continue;
+        const quietHours = (now - last) / (60 * 60 * 1000);
+        if (quietHours > maxQuietHours) {
+          stalled.push(`${job} (${Math.round(quietHours)}h ago)`);
+        }
+      } catch {
+        // Unparseable record — ignore rather than alert on a formatting problem.
+      }
+    }
+
+    if (neverRan.length === 0 && stalled.length === 0) return;
+
+    const parts: string[] = [];
+    if (neverRan.length > 0) {
+      parts.push(`Never run on this server: ${neverRan.join(', ')}. These are probably not scheduled at all.`);
+    }
+    if (stalled.length > 0) {
+      parts.push(`Stopped running: ${stalled.join(', ')}.`);
+    }
+
+    await this.fire({
+      type: 'cron_job_stalled',
+      severity: neverRan.length > 0 ? 'critical' : 'warning',
+      title: 'Scheduled jobs not running',
+      message: `${parts.join(' ')} Check the timers on this server: systemctl list-timers 'pm-cron@*'.`,
+    });
   }
 
   private async checkErrorRate(): Promise<void> {

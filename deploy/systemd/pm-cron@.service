@@ -1,0 +1,11 @@
+[Unit]
+Description=PM Assistant Cron Job (%i)
+After=network.target mariadb.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/pm-app
+EnvironmentFile=/opt/pm-app/.env
+ExecStart=/usr/bin/node dist/server/scripts/runCronJob.js %i
+TimeoutStartSec=300
+User=ubuntu
