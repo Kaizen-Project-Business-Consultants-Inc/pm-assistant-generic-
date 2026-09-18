@@ -78,15 +78,24 @@ export async function slackRoutes(fastify: FastifyInstance) {
     try {
       const userId = request.user!.userId;
       const integrations = await integrationRepository.findByUser(userId);
-      const slackInteg = integrations.find(i => i.provider === 'slack' && i.isActive);
-      if (!slackInteg) {
+      // A user can end up with more than one Slack entry — e.g. the full OAuth
+      // install plus a webhook-only one. Prefer whichever actually carries a bot
+      // token, otherwise the newest would shadow a perfectly good connection.
+      const slackIntegs = integrations.filter(i => i.provider === 'slack' && i.isActive);
+      if (slackIntegs.length === 0) {
         return reply.status(404).send({ error: 'No active Slack integration' });
       }
 
-      const raw = await integrationRepository.findRawById(slackInteg.id);
-      if (!raw) return reply.status(404).send({ error: 'Integration not found' });
+      let cfg: Record<string, any> | null = null;
+      for (const si of slackIntegs) {
+        const candidate = await integrationRepository.findRawById(si.id);
+        if (!candidate) continue;
+        const parsed = parseConfig(candidate.config);
+        if (parsed.botToken) { cfg = parsed; break; }
+        if (!cfg) cfg = parsed; // remember the first as a fallback
+      }
+      if (!cfg) return reply.status(404).send({ error: 'Integration not found' });
 
-      const cfg = parseConfig(raw.config);
       const botToken = cfg.botToken || config.SLACK_BOT_TOKEN;
       if (!botToken) {
         return reply.status(400).send({ error: 'No bot token available' });
