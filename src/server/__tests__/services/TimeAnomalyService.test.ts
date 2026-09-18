@@ -138,6 +138,24 @@ describe('TimeAnomalyService', () => {
       expect(dupes).toHaveLength(0);
     });
 
+    it('reads the day of week from the date itself, not the server time zone', async () => {
+      // A timesheet date has no time zone: '2026-09-19' is that Saturday everywhere.
+      // new Date('2026-09-19').getDay() converts to LOCAL time, so west of UTC it
+      // reports Friday and weekend work goes undetected. It only ever looked correct
+      // because the servers run UTC. These tests run in whatever zone the machine is
+      // set to, so this assertion is the guard.
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      mockQuery.mockResolvedValueOnce([
+        makeEntry({ id: 'e1', user_id: 'u1', date: '2026-09-19', hours: 4 }),
+      ]);
+
+      const result = await timeAnomalyService.detectAnomalies('proj-1', '2026-09-19', '2026-09-19');
+      const weekend = result.filter(a => a.type === 'weekend_work');
+
+      expect(weekend, `weekend work missed when running in ${tz}`).toHaveLength(1);
+      expect(weekend[0].details.dayName).toBe('Saturday');
+    });
+
     it('detects weekend work (Saturday)', async () => {
       // 2026-09-12 is a Saturday
       mockQuery.mockResolvedValueOnce([

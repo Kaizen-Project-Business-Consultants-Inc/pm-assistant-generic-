@@ -4,6 +4,27 @@ import { timeEntryRepository } from '../database/TimeEntryRepository';
 import { config } from '../config';
 import logger from '../utils/logger';
 
+/**
+ * Read a timesheet date as a plain calendar day, independent of the server's time zone.
+ *
+ * A timesheet date has no time zone: "2026-09-19" means that Saturday, wherever the
+ * server happens to be. But `new Date('2026-09-19')` parses it as midnight UTC, and the
+ * local-time getters then shift it — on a server in Toronto that is 8pm on the Friday,
+ * so Saturday's work was reported as Friday and weekend work went undetected. It looked
+ * correct only because both servers run UTC.
+ *
+ * Always use this and the UTC getters for timesheet dates.
+ */
+function toCalendarDate(value: unknown): Date {
+  const [y, m, d] = String(value).slice(0, 10).split('-').map(Number);
+  return new Date(Date.UTC(y, (m || 1) - 1, d || 1));
+}
+
+/** Day of week for a timesheet date: 0 = Sunday … 6 = Saturday. */
+function dayOfWeekFor(value: unknown): number {
+  return toCalendarDate(value).getUTCDay();
+}
+
 export interface TimeAnomaly {
   id: string;
   type: 'excessive_hours' | 'duplicate_entry' | 'weekend_work' | 'over_estimate' | 'missing_hours';
@@ -139,10 +160,10 @@ class TimeAnomalyService {
     // 2. Excessive weekly hours (>50h/week)
     const byUserWeek = new Map<string, { hours: number; userName: string; userId: string; weekStart: string }>();
     for (const e of entries) {
-      const d = new Date(e.date);
-      const dayOfWeek = d.getDay();
+      const d = toCalendarDate(e.date);
+      const dayOfWeek = d.getUTCDay();
       const monday = new Date(d);
-      monday.setDate(d.getDate() - ((dayOfWeek + 6) % 7));
+      monday.setUTCDate(d.getUTCDate() - ((dayOfWeek + 6) % 7));
       const weekKey = `${e.user_id}:${monday.toISOString().slice(0, 10)}`;
       if (!byUserWeek.has(weekKey)) {
         byUserWeek.set(weekKey, { hours: 0, userName: e.user_name, userId: e.user_id, weekStart: monday.toISOString().slice(0, 10) });
@@ -191,8 +212,7 @@ class TimeAnomalyService {
 
     // 4. Weekend work
     for (const e of entries) {
-      const d = new Date(e.date);
-      const day = d.getDay();
+      const day = dayOfWeekFor(e.date);
       if (day === 0 || day === 6) {
         anomalies.push({
           id: `weekend-${e.id}`,
@@ -238,8 +258,7 @@ class TimeAnomalyService {
     // 6. Missing hours: <6h on a weekday with entries
     for (const [key, dayEntries] of byUserDate) {
       const e = dayEntries[0];
-      const d = new Date(e.date);
-      const day = d.getDay();
+      const day = dayOfWeekFor(e.date);
       if (day === 0 || day === 6) continue; // skip weekends
 
       const totalHours = dayEntries.reduce((sum: number, entry: any) => sum + Number(entry.hours), 0);
