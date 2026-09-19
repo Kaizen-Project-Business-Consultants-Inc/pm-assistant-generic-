@@ -9,6 +9,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { isCalendarOverdue } from '../../utils/dateUtils';
 
 interface ActionItem {
   id: string;
@@ -120,7 +121,7 @@ export const MeetingActionItemList: React.FC<MeetingActionItemListProps> = ({
   });
 
   const isOverdue = (item: ActionItem) =>
-    item.dueDate && new Date(item.dueDate) < new Date() && !['completed', 'cancelled'].includes(item.status);
+    item.dueDate && isCalendarOverdue(item.dueDate) && !['completed', 'cancelled'].includes(item.status);
 
   const toggleComplete = (item: ActionItem) => {
     if (item.status === 'completed') {

@@ -1,5 +1,9 @@
 import { actionProposalService } from './ActionProposalService';
 import { databaseService } from '../../database/connection';
+// Lateness compares calendar days: a date is not late until the following day.
+// `new Date(dateColumn) < now` was true from midnight UTC — the previous evening
+// for anyone west of UTC.
+import { isOverdue } from '../../utils/calendarDate';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,7 +97,7 @@ export class AgentFeedbackService {
           // Don't count cancelled
         } else {
           // For active/pending tasks, check if end_date is past
-          if (row.end_date && new Date(row.end_date) < now) {
+          if (row.end_date && isOverdue(row.end_date)) {
             overdue += cnt;
           } else {
             onTrack += cnt;

@@ -17,6 +17,10 @@ import type { WeatherForecast } from './dataProviders';
 import { projectService } from './ProjectService';
 import { redisService } from './RedisService';
 import logger from '../utils/logger';
+// Lateness compares calendar days: a date is not late until the following day.
+// `new Date(dateColumn) < now` was true from midnight UTC — the previous evening
+// for anyone west of UTC.
+import { isOverdue } from '../utils/calendarDate';
 
 const DASHBOARD_CACHE_KEY = 'predictions:dashboard';
 const DASHBOARD_CACHE_TTL = 300; // 5 minutes
@@ -46,7 +50,7 @@ function computeProjectMetrics(ctx: ProjectContext, budgetSpent?: number): Proje
   // overdue = not completed and has a dueDate in the past
   const now = new Date();
   const overdueTasks = allTasks.filter(
-    (t) => t.status !== 'completed' && t.dueDate && new Date(t.dueDate) < now,
+    (t) => t.status !== 'completed' && t.dueDate && isOverdue(t.dueDate),
   ).length;
 
   // schedule variance: expected % complete vs actual

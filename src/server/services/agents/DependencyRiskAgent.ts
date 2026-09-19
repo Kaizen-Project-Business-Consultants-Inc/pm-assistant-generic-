@@ -8,6 +8,10 @@ import { degradationHandler } from './DegradationHandler';
 import { notificationService } from '../NotificationService';
 import { scheduleService, Task } from '../ScheduleService';
 import { MS_PER_DAY } from '../../utils/constants';
+// Lateness compares calendar days: a date is not late until the following day.
+// `new Date(dateColumn) < now` was true from midnight UTC — the previous evening
+// for anyone west of UTC.
+import { isOverdue } from '../../utils/calendarDate';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -224,7 +228,7 @@ export class DependencyRiskAgent {
       const blocker = taskMap.get(dep.dependencyId);
       if (!blocker) continue;
 
-      const isBlockerOverdue = blocker.endDate && new Date(blocker.endDate) < now &&
+      const isBlockerOverdue = blocker.endDate && isOverdue(blocker.endDate) &&
         blocker.status !== 'completed' && blocker.status !== 'cancelled';
       const isBlockerStalled = blocker.status === 'in_progress' &&
         (!blocker.progressPercentage || blocker.progressPercentage === 0) &&

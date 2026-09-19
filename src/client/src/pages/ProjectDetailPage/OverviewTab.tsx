@@ -37,7 +37,7 @@ import { CustomFieldManager } from '../../components/customfields/CustomFieldMan
 import { PortalLinkManager } from '../../components/portal/PortalLinkManager';
 import { ProjectLinksCard } from '../../components/project/ProjectLinksCard';
 import { ScheduleHealthCard } from '../../components/schedule/review/ScheduleHealthCard';
-import { formatCalendarDate } from '../../utils/dateUtils';
+import { formatCalendarDate, isCalendarOverdue } from '../../utils/dateUtils';
 
 interface ProjectOverview {
   id: string;
@@ -529,7 +529,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         {milestones.map((m: any) => {
           const mDate = m.endDate || m.end_date || m.startDate || m.start_date;
           const mStatus = m.status || 'not_started';
-          const isPast = mDate && new Date(mDate) < now;
+          const isPast = mDate && isCalendarOverdue(mDate);
           const isDone = mStatus === 'completed' || mStatus === 'done';
           return (
             <div

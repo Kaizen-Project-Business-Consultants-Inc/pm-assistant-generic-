@@ -1,6 +1,8 @@
 import { sprintRepository } from '../database/SprintRepository';
 import { auditLedgerService } from './AuditLedgerService';
 import { deadLetterService } from './DeadLetterService';
+import { statusDateFor } from './StatusDateService';
+import { toCalendarDate } from '../utils/calendarDate';
 
 export interface Sprint {
   id: string;
@@ -186,8 +188,10 @@ export class SprintService {
 
     const startDate = new Date(sprint.startDate);
     const endDate = new Date(sprint.endDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Measured as at the project's status date, not the clock, so a burndown chart shows
+    // the same thing to everyone and does not shift while it is being read.
+    const asOf = await statusDateFor(sprint.projectId);
+    const today = toCalendarDate(asOf) ?? new Date();
 
     const DAY_MS = 86_400_000;
     const totalDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / DAY_MS));
@@ -260,8 +264,8 @@ export class SprintService {
     const rows = await sprintRepository.getCumulativeFlowData(id);
     const startDate = new Date(sprint.startDate);
     const endDate = new Date(sprint.endDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const asOf = await statusDateFor(sprint.projectId);
+    const today = toCalendarDate(asOf) ?? new Date();
     const cutoff = today < endDate ? today : endDate;
 
     const DAY_MS = 86_400_000;

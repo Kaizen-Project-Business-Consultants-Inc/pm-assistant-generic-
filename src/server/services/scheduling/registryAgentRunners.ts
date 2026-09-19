@@ -4,6 +4,7 @@ import { notificationService } from '../NotificationService';
 import { AgentActivityLogService } from '../AgentActivityLogService';
 import type { Project } from '../ProjectService';
 import logger from '../../utils/logger';
+import { isOverdue } from '../../utils/calendarDate';
 
 // ---------------------------------------------------------------------------
 // Agent 2 — Budget Burn-Rate
@@ -200,7 +201,7 @@ export async function runMeetingFollowUpAgent(
     const now = new Date();
     const overdueItems = analysis.actionItems.filter((item: any) => {
       if (!item.dueDate) return false;
-      return new Date(item.dueDate) < now;
+      return isOverdue(item.dueDate);
     });
     if (overdueItems.length > 0) {
       problems.push(`${overdueItems.length} overdue action item(s)`);

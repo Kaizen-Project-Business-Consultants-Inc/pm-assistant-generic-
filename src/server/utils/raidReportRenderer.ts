@@ -116,7 +116,7 @@ export function renderRAIDReportHtml(data: RAIDReportData): string {
     const dueDateStr = item.dueDate
       ? new Date(item.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       : '—';
-    const isOverdue = item.type === 'action' && item.dueDate && new Date(item.dueDate) < new Date() && !['completed', 'closed'].includes(item.status);
+    const isOverdue = item.type === 'action' && item.dueDate && isPastStatusDate(item.dueDate) && !['completed', 'closed'].includes(item.status);
 
     return `
       <tr${isOverdue ? ' style="background:#fef2f2;"' : ''}>

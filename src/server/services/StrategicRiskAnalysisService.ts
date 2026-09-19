@@ -6,6 +6,7 @@ import { projectService, Project } from './ProjectService';
 import { evmForecastService } from './EVMForecastService';
 import { claudeService } from './claudeService';
 import logger from '../utils/logger';
+import { isOverdue } from '../utils/calendarDate';
 
 // ---------------------------------------------------------------------------
 // Interfaces
@@ -54,7 +55,7 @@ function detectScheduleRisks(tasks: Task[], cpm: CriticalPathResult | null): Str
   // Zero-float tasks at risk (past due or stalled)
   const atRiskCritical: Task[] = [];
   for (const t of criticalTasks) {
-    const pastDue = t.endDate && new Date(t.endDate) < now && t.status !== 'completed';
+    const pastDue = t.endDate && isOverdue(t.endDate) && t.status !== 'completed';
     const stalled = t.status === 'in_progress' && t.progressPercentage != null && t.progressPercentage < 20
       && t.startDate && (now.getTime() - new Date(t.startDate).getTime()) > 7 * 86_400_000;
     if (pastDue || stalled) atRiskCritical.push(t);

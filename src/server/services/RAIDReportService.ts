@@ -11,6 +11,7 @@ import {
   type SeverityBreakdown,
 } from '../utils/raidReportRenderer';
 import logger from '../utils/logger';
+import { isOverdue } from '../utils/calendarDate';
 
 export interface RAIDReportOptions {
   filters?: RAIDReportFilters;
@@ -110,7 +111,7 @@ export class RAIDReportService {
 
     // Overdue actions
     const overdueActions = reportItems.filter(
-      item => item.type === 'action' && item.dueDate && new Date(item.dueDate) < now && !['completed', 'closed'].includes(item.status),
+      item => item.type === 'action' && item.dueDate && isOverdue(item.dueDate) && !['completed', 'closed'].includes(item.status),
     );
 
     // Critical/high risks with mitigation plans

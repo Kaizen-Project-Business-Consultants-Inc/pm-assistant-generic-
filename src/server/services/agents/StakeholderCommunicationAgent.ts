@@ -10,6 +10,10 @@ import { projectService, Project } from '../ProjectService';
 import { scheduleService, Task } from '../ScheduleService';
 import { computeEVMMetrics } from '../predictiveIntelligence';
 import { MS_PER_DAY } from '../../utils/constants';
+// Lateness compares calendar days: a date is not late until the following day.
+// `new Date(dateColumn) < now` was true from midnight UTC — the previous evening
+// for anyone west of UTC.
+import { isOverdue } from '../../utils/calendarDate';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -194,7 +198,7 @@ export class StakeholderCommunicationAgent {
     const completedTasks = allTasks.filter(t => t.status === 'completed');
     const inProgressTasks = allTasks.filter(t => t.status === 'in_progress');
     const overdueTasks = allTasks.filter(t =>
-      t.endDate && new Date(t.endDate) < now && t.status !== 'completed' && t.status !== 'cancelled'
+      t.endDate && isOverdue(t.endDate) && t.status !== 'completed' && t.status !== 'cancelled'
     );
 
     const completionRate = allTasks.length > 0

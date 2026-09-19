@@ -6,6 +6,8 @@ import { sprintRepository } from '../database/SprintRepository';
 import { redisService } from './RedisService';
 import { config } from '../config';
 import logger from '../utils/logger';
+import { statusDateFor } from './StatusDateService';
+import { CalendarDate, isOverdue } from '../utils/calendarDate';
 import {
   EVMForecastAIResponseSchema,
   type EVMForecastResult,
@@ -75,10 +77,11 @@ export class EVMForecastService {
 
     // 3. Compute current EVM metrics
     const BAC = project.budgetAllocated || 0;
-    const currentMetrics = this.computeCurrentMetrics(BAC, sCurveData);
+    const asOf = await statusDateFor(projectId);
+    const currentMetrics = this.computeCurrentMetrics(BAC, sCurveData, asOf);
 
     // 4. Compute historical weekly CPI/SPI trends
-    const weeklyData = this.computeHistoricalTrends(BAC, sCurveData);
+    const weeklyData = this.computeHistoricalTrends(BAC, sCurveData, asOf);
 
     // 5. Generate early warnings
     const earlyWarnings = this.generateEarlyWarnings(currentMetrics);
@@ -174,8 +177,9 @@ export class EVMForecastService {
 
     const sCurveData = await sCurveService.computeSCurveData(projectId);
     const BAC = project.budgetAllocated || 0;
-    const currentMetrics = this.computeCurrentMetrics(BAC, sCurveData);
-    const weeklyData = this.computeHistoricalTrends(BAC, sCurveData);
+    const asOf = await statusDateFor(projectId);
+    const currentMetrics = this.computeCurrentMetrics(BAC, sCurveData, asOf);
+    const weeklyData = this.computeHistoricalTrends(BAC, sCurveData, asOf);
     const earlyWarnings = this.generateEarlyWarnings(currentMetrics);
     const traditionalForecasts = this.computeTraditionalForecasts(currentMetrics);
 
@@ -238,8 +242,9 @@ export class EVMForecastService {
 
     const sCurveData = await sCurveService.computeSCurveData(projectId);
     const BAC = project.budgetAllocated || 0;
-    const currentMetrics = this.computeCurrentMetrics(BAC, sCurveData);
-    const weeklyData = this.computeHistoricalTrends(BAC, sCurveData);
+    const asOf = await statusDateFor(projectId);
+    const currentMetrics = this.computeCurrentMetrics(BAC, sCurveData, asOf);
+    const weeklyData = this.computeHistoricalTrends(BAC, sCurveData, asOf);
     const earlyWarnings = this.generateEarlyWarnings(currentMetrics);
     const traditionalForecasts = this.computeTraditionalForecasts(currentMetrics);
 
@@ -313,10 +318,12 @@ export class EVMForecastService {
   private computeCurrentMetrics(
     BAC: number,
     sCurveData: SCurveDataPoint[],
+    asOf: CalendarDate,
   ): EVMCurrentMetrics {
-    // Use the latest data point that is on or before today
-    const today = new Date().toISOString().slice(0, 10);
-    const pastPoints = sCurveData.filter((d) => d.date <= today);
+    // Use the latest data point on or before the project's status date. Reading the
+    // clock here meant the figures in an earned-value report could change while someone
+    // was reading it, and differed by reader. See services/StatusDateService.ts.
+    const pastPoints = sCurveData.filter((d) => d.date <= asOf);
     const latest = pastPoints.length > 0
       ? pastPoints[pastPoints.length - 1]
       : sCurveData.length > 0
@@ -350,13 +357,12 @@ export class EVMForecastService {
   private computeHistoricalTrends(
     BAC: number,
     sCurveData: SCurveDataPoint[],
+    asOf: CalendarDate,
   ): { date: string; cpi: number; spi: number }[] {
     if (BAC <= 0) return [];
 
-    const today = new Date().toISOString().slice(0, 10);
-
     return sCurveData
-      .filter((d) => d.date <= today)
+      .filter((d) => d.date <= asOf)
       .map((d) => {
         const cpi = d.ac > 0 ? parseFloat((d.ev / d.ac).toFixed(4)) : 1;
         const spi = d.pv > 0 ? parseFloat((d.ev / d.pv).toFixed(4)) : 1;
@@ -669,7 +675,7 @@ export class EVMForecastService {
 
       // --- Overdue tasks (past end date, not complete) ---
       const overdue = allTasks.filter(t =>
-        t.endDate && new Date(t.endDate).getTime() < now &&
+        t.endDate && isOverdue(t.endDate) &&
         t.status !== 'completed' && t.status !== 'cancelled' && !t.isSummary
       );
 

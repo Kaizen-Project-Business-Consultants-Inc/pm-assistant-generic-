@@ -47,6 +47,7 @@ import type { PanelMode } from './gantt/GanttToolbar';
 import { GanttLeftPanelHeader } from './gantt/GanttLeftPanelHeader';
 import { GanttLeftPanelRow } from './gantt/GanttLeftPanelRow';
 import { GanttTimelineBar } from './gantt/GanttTimelineBar';
+import { isCalendarOverdue } from '../../utils/dateUtils';
 
 // Re-export types for external consumers
 export type { TaskDependencyRef, GanttTask } from './gantt/types';
@@ -910,7 +911,8 @@ export function GanttChart({
     if (!depTask) return 'at_risk';
     if (depTask.status === 'completed') return 'satisfied';
     if (depTask.status === 'in_progress') return 'in_progress';
-    if (depTask.endDate && new Date(depTask.endDate) < new Date()) return 'at_risk';
+    // Calendar-day comparison: a dependency due today is not yet at risk.
+    if (depTask.endDate && isCalendarOverdue(depTask.endDate)) return 'at_risk';
     return 'in_progress';
   }, [taskMap]);
 

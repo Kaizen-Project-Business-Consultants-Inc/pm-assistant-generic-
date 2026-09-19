@@ -21,7 +21,7 @@ import {
   type TableViewProps, type SortDir, type GroupByField, type EditableField,
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
-import { formatCalendarDate } from '../../utils/dateUtils';
+import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
 
 export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
@@ -515,7 +515,8 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
     if (!depTask) return 'at_risk';
     if (depTask.status === 'completed') return 'satisfied';
     if (depTask.status === 'in_progress') return 'in_progress';
-    if (depTask.endDate && new Date(depTask.endDate) < new Date()) return 'at_risk';
+    // Calendar-day comparison: a dependency due today is not yet at risk.
+    if (depTask.endDate && isCalendarOverdue(depTask.endDate)) return 'at_risk';
     return 'in_progress';
   }, [tasks]);
 

@@ -100,7 +100,7 @@ function computeMetricsFromContext(ctx: ProjectContext): {
 
   const now = new Date();
   const overdueTasks = allTasks.filter(
-    t => t.status !== 'completed' && t.dueDate && new Date(t.dueDate) < now,
+    t => t.status !== 'completed' && t.dueDate && isOverdue(t.dueDate),
   ).length;
 
   const startDate = ctx.project.startDate ? new Date(ctx.project.startDate) : now;

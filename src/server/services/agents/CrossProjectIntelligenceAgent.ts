@@ -11,6 +11,10 @@ import { scheduleService } from '../ScheduleService';
 import { resourceService } from '../ResourceService';
 import { computeEVMMetrics } from '../predictiveIntelligence';
 import { MS_PER_DAY } from '../../utils/constants';
+// Lateness compares calendar days: a date is not late until the following day.
+// `new Date(dateColumn) < now` was true from midnight UTC — the previous evening
+// for anyone west of UTC.
+import { isOverdue } from '../../utils/calendarDate';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -273,7 +277,7 @@ export class CrossProjectIntelligenceAgent {
     const allTasks = await scheduleService.findTasksByScheduleIds(schedules.map(s => s.id));
     const taskCount = allTasks.length;
     const overdueTasks = allTasks.filter(t =>
-      t.endDate && new Date(t.endDate) < now && t.status !== 'completed' && t.status !== 'cancelled'
+      t.endDate && isOverdue(t.endDate) && t.status !== 'completed' && t.status !== 'cancelled'
     ).length;
     const completed = allTasks.filter(t => t.status === 'completed').length;
     const completionRate = taskCount > 0 ? Math.round((completed / taskCount) * 100) : 0;
