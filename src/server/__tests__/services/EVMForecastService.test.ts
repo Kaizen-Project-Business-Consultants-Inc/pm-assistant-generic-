@@ -3,6 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockFindById = vi.fn();
+const mockStatusDateFor = vi.fn(async () => '2099-12-31');
+vi.mock('../../services/StatusDateService', () => ({
+  statusDateFor: (...args: any[]) => mockStatusDateFor(...args as []),
+}));
+
 vi.mock('../../services/ProjectService', () => ({
   projectService: { findById: (...args: any[]) => mockFindById(...args) },
 }));
@@ -501,10 +506,11 @@ describe('EVMForecastService', () => {
       expect(result.currentMetrics.SPI).toBe(1);
     });
 
-    it('should use the first data point when no points are on or before today', async () => {
+    it('should use the first data point when none is on or before the status date', async () => {
       const project = makeProject({ budgetAllocated: 100000 });
       mockFindById.mockResolvedValue(project);
-      // All dates in the far future
+      mockStatusDateFor.mockResolvedValue('2026-01-01');
+      // All dates after the status date
       mockComputeSCurveData.mockResolvedValue([
         { date: '2099-01-01', pv: 5000, ev: 4000, ac: 4500 },
         { date: '2099-06-01', pv: 50000, ev: 45000, ac: 48000 },
@@ -512,7 +518,7 @@ describe('EVMForecastService', () => {
 
       const result = await service.generateForecast('proj-1');
 
-      // Should use first point since none are <= today
+      // Should use the first point since none are on or before the status date
       expect(result.currentMetrics.PV).toBe(5000);
       expect(result.currentMetrics.EV).toBe(4000);
       expect(result.currentMetrics.AC).toBe(4500);
@@ -567,9 +573,10 @@ describe('EVMForecastService', () => {
       expect(result.historicalTrends.weeklyData).toEqual([]);
     });
 
-    it('should only include data points on or before today', async () => {
+    it('should only include data points on or before the status date', async () => {
       const project = makeProject({ budgetAllocated: 100000 });
       mockFindById.mockResolvedValue(project);
+      mockStatusDateFor.mockResolvedValue('2026-06-30');
       mockComputeSCurveData.mockResolvedValue([
         { date: '2026-01-01', pv: 10000, ev: 9000, ac: 9500 },
         { date: '2099-12-31', pv: 90000, ev: 85000, ac: 88000 },
@@ -577,7 +584,7 @@ describe('EVMForecastService', () => {
 
       const result = await service.generateForecast('proj-1');
 
-      // Only the past point should be in trends
+      // Only the point on or before the status date should be in trends
       expect(result.historicalTrends.weeklyData).toHaveLength(1);
       expect(result.historicalTrends.weeklyData[0].date).toBe('2026-01-01');
     });
@@ -936,6 +943,51 @@ describe('EVMForecastService', () => {
 
       expect(result.sprintContext).toBeDefined();
       expect(result.sprintContext!.avgVelocity).toBe(0);
+    });
+  });
+  describe('status date', () => {
+    it('cuts the S-curve at the project status date, not the clock', async () => {
+      // Everything after 1 February is ignored when the manager says "as at 1 Feb".
+      mockStatusDateFor.mockResolvedValue('2026-02-01');
+      mockComputeSCurveData.mockResolvedValue(pastSCurveData);
+
+      const result = await service.generateMetricsOnly('proj-1');
+
+      expect(result.currentMetrics.PV).toBe(25000);
+      expect(result.currentMetrics.EV).toBe(24000);
+      expect(result.currentMetrics.AC).toBe(26000);
+    });
+
+    it('moves the cutoff when the status date moves', async () => {
+      mockComputeSCurveData.mockResolvedValue(pastSCurveData);
+
+      mockStatusDateFor.mockResolvedValue('2026-01-01');
+      const early = await service.generateMetricsOnly('proj-1');
+
+      mockStatusDateFor.mockResolvedValue('2026-03-01');
+      const late = await service.generateMetricsOnly('proj-1');
+
+      expect(early.currentMetrics.EV).toBe(9000);
+      expect(late.currentMetrics.EV).toBe(38000);
+    });
+
+    it('trims the historical trend to the status date too', async () => {
+      mockComputeSCurveData.mockResolvedValue(pastSCurveData);
+
+      mockStatusDateFor.mockResolvedValue('2026-02-01');
+      const result = await service.generateMetricsOnly('proj-1');
+
+      // Only the points on or before 1 February.
+      expect(result.historicalTrends.weeklyData.length).toBe(2);
+    });
+
+    it('asks for the status date of the project being measured', async () => {
+      mockStatusDateFor.mockResolvedValue('2026-02-01');
+      mockComputeSCurveData.mockResolvedValue(pastSCurveData);
+
+      await service.generateMetricsOnly('proj-42');
+
+      expect(mockStatusDateFor).toHaveBeenCalledWith('proj-42');
     });
   });
 });
