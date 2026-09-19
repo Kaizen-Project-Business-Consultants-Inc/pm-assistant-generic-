@@ -37,6 +37,40 @@ const createProjectSchema = z.object({
   endDate: z.string().optional(),
 });
 
+/**
+ * Turn a unique-constraint violation into a message a person can act on.
+ *
+ * T052 made project names unique among LIVE projects and project codes unique outright.
+ * Without this, both surface as "Internal server error", which tells the user nothing and
+ * makes a perfectly ordinary mistake look like a fault in the app.
+ *
+ * Archived projects deliberately do not hold their name, so the advice differs: a clash
+ * means a *live* project already has it.
+ */
+function duplicateProjectReply(error: unknown, reply: FastifyReply, name?: string) {
+  const code = (error as { code?: string })?.code;
+  const message = (error as { message?: string })?.message ?? '';
+  if (code !== 'ER_DUP_ENTRY') return null;
+
+  if (message.includes('idx_projects_live_name')) {
+    return reply.status(409).send({
+      error: 'Duplicate project name',
+      message: name
+        ? `A project called "${name}" already exists. Open it, or archive it first if you are replacing it.`
+        : 'A project with that name already exists. Open it, or archive it first if you are replacing it.',
+      field: 'name',
+    });
+  }
+  if (message.includes('idx_projects_code')) {
+    return reply.status(409).send({
+      error: 'Duplicate project code',
+      message: 'That project code is already in use.',
+      field: 'projectCode',
+    });
+  }
+  return null;
+}
+
 const updateProjectSchema = createProjectSchema.partial().extend({
   expectedUpdatedAt: z.string().optional(),
   /**
@@ -177,6 +211,15 @@ export async function projectRoutes(fastify: FastifyInstance) {
       automationEventBus.emit({ type: 'project.created', entityType: 'project', entityId: project.id, projectId: project.id, userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});
       return reply.status(201).send({ project: toProjectDTO(project) });
     } catch (error) {
+      const dup = duplicateProjectReply(error, reply, (request.body as { name?: string })?.name);
+      if (dup) return dup;
+      if (error instanceof z.ZodError) {
+        const first = error.issues[0];
+        return reply.status(400).send({
+          error: 'Invalid project data',
+          message: first ? `${first.path.join('.')}: ${first.message}` : 'Invalid request body',
+        });
+      }
       logger.error('Create project error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to create project' });
     }
@@ -225,6 +268,8 @@ export async function projectRoutes(fastify: FastifyInstance) {
       slackEventDispatcher.dispatchToSlack('project.updated', { project }, id);
       return { project: toProjectDTO(project) };
     } catch (error) {
+      const dup = duplicateProjectReply(error, reply, (request.body as { name?: string })?.name);
+      if (dup) return dup;
       // A rejected field is the caller's mistake, not a server fault. Saying
       // "Internal server error" for "last Tuesday" is both wrong and unhelpful.
       if (error instanceof z.ZodError) {
