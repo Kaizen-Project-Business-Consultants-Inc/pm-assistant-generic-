@@ -117,6 +117,17 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       });
       return reply.status(201).send({ schedule });
     } catch (error) {
+      // A missing or malformed field is the caller's mistake. Returning "Internal server
+      // error" for it hides which field was wrong and makes an ordinary mistake look
+      // like a fault in the app. (Third time this pattern has bitten today.)
+      if (error instanceof z.ZodError) {
+        const first = error.issues[0];
+        return reply.status(400).send({
+          error: 'Invalid schedule data',
+          message: first ? `${first.path.join('.')}: ${first.message}` : 'Invalid request body',
+          issues: error.issues.map(i => ({ field: i.path.join('.'), message: i.message })),
+        });
+      }
       logger.error('Create schedule error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to create schedule' });
     }

@@ -175,6 +175,33 @@ function toDateStr(val: string | undefined | null): string | null {
 export async function importRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
+/**
+ * A schedule is imported once. After that it is maintained in the app.
+ *
+ * Importing into a schedule that already has tasks used to MERGE: rows matching an
+ * existing task on name AND start date were rejected one by one, everything else was
+ * added. That is the one pairing guaranteed to fail on a revised plan, because a
+ * revision is a change of dates — so every moved task arrived as a brand new task and
+ * the schedule quietly doubled.
+ *
+ * Rather than guess which row is which, the second import is refused and the message
+ * says what to do instead. A "show me what would change and let me approve it" flow is
+ * the better long-term answer, but nobody has needed it yet and a wrong guess silently
+ * corrupts a plan.
+ */
+async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) {
+  const existing = await scheduleService.findTasksByScheduleId(scheduleId);
+  if (existing.length === 0) return null;
+  return reply.status(409).send({
+    error: 'Schedule already has tasks',
+    message:
+      `This schedule already contains ${existing.length} task${existing.length === 1 ? '' : 's'}, ` +
+      `so importing again would duplicate them. Edit the schedule here, or archive the project ` +
+      `and import the revised plan into a fresh one.`,
+    taskCount: existing.length,
+  });
+}
+
   // POST /:scheduleId/import — bulk import tasks from CSV
   fastify.post('/:scheduleId/import', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -210,6 +237,9 @@ export async function importRoutes(fastify: FastifyInstance) {
       if (records.length > MAX_BULK) {
         return reply.status(400).send({ error: `Too many rows (${records.length}). Maximum is ${MAX_BULK}.` });
       }
+
+      const alreadyImported = await refuseIfAlreadyImported(scheduleId, reply);
+      if (alreadyImported) return alreadyImported;
 
       // Build dedup set from existing tasks
       const existingTasks = await scheduleService.findTasksByScheduleId(scheduleId);
@@ -654,6 +684,9 @@ Return a JSON object mapping unmapped headers to target fields.`;
       const byWbs = new Map<string, string>();    // wbs code → taskId
       const nameToTaskId = new Map<string, string>();
       const levelStack: { level: number; taskId: string }[] = [];
+
+      const alreadyImportedStructured = await refuseIfAlreadyImported(scheduleId, reply);
+      if (alreadyImportedStructured) return alreadyImportedStructured;
 
       const existingTasks = await scheduleService.findTasksByScheduleId(scheduleId);
       for (const t of existingTasks) nameToTaskId.set(t.name.toLowerCase().trim(), t.id);
