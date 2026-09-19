@@ -70,7 +70,7 @@ export function validateAndSortMigrations(files: string[]): string[] {
  * threw, and the app refused to start. Every API call returned 502 until the row was
  * inserted by hand.
  */
-const ALREADY_APPLIED_ERROR_CODES = new Set([
+export const ALREADY_APPLIED_ERROR_CODES = new Set([
   'ER_DUP_FIELDNAME',    // ADD COLUMN — column already exists
   'ER_TABLE_EXISTS_ERROR', // CREATE TABLE — table already exists
   'ER_DUP_KEYNAME',      // ADD INDEX/KEY — index already exists

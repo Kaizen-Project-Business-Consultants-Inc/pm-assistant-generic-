@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { databaseService } from './connection';
 import logger from '../utils/logger';
+import { ALREADY_APPLIED_ERROR_CODES } from './migrationRunner';
 
 const TENANT_MIGRATIONS_DIR = path.join(__dirname, 'tenant-migrations');
 
@@ -37,6 +38,7 @@ export async function runTenantMigrations(dbName: string): Promise<number> {
       .sort();
 
     let ranCount = 0;
+    const alreadyPresent: string[] = [];
     for (const file of files) {
       if (appliedSet.has(file)) continue;
 
@@ -62,12 +64,46 @@ export async function runTenantMigrations(dbName: string): Promise<number> {
         ranCount++;
       } catch (error) {
         await conn.rollback();
-        logger.error(`[tenant-migration] FAILED ${file} on ${dbName}`, { error });
+
+        if (ALREADY_APPLIED_ERROR_CODES.has((error as { code?: string })?.code ?? '')) {
+          // The change is already in this tenant's database, just not recorded. Record
+          // it and carry on. Refusing to continue over a bookkeeping gap is far more
+          // damaging: because this threw, the tenant stopped at the first such file and
+          // every LATER migration was skipped too. Seven staging tenants sat frozen
+          // seven migrations behind for weeks, missing columns the app expects.
+          logger.warn(
+            `[tenant-migration] ALREADY PRESENT ${file} on ${dbName} — ${(error as Error).message}. Recording and continuing.`,
+          );
+          try {
+            await conn.query('INSERT IGNORE INTO _migrations (name) VALUES (?)', [file]);
+            alreadyPresent.push(file);
+            continue;
+          } catch (recordErr) {
+            logger.error(`[tenant-migration] Could not record ${file} on ${dbName}`, {
+              error: recordErr instanceof Error ? recordErr.message : String(recordErr),
+            });
+          }
+        }
+
+        // Log the actual reason. This used to log the error object, which serialised to
+        // {"name":"Error"} — no message, no SQL, no code — which is why nobody ever
+        // diagnosed why these tenants were stuck.
+        logger.error(`[tenant-migration] FAILED ${file} on ${dbName}`, {
+          message: error instanceof Error ? error.message : String(error),
+          code: (error as { code?: string })?.code,
+          sqlState: (error as { sqlState?: string })?.sqlState,
+        });
         throw error;
       }
     }
 
-    if (ranCount === 0) {
+    if (alreadyPresent.length > 0) {
+      logger.warn(
+        `[tenant-migration] ${dbName}: ${alreadyPresent.length} migration(s) were already present and have been recorded: ${alreadyPresent.join(', ')}`,
+      );
+    }
+
+    if (ranCount === 0 && alreadyPresent.length === 0) {
       logger.info(`[tenant-migration] ${dbName}: all migrations applied`);
     } else {
       logger.info(`[tenant-migration] ${dbName}: ${ranCount} migration(s) applied`);
