@@ -6,11 +6,20 @@ export const SALES_EMAIL = 'sales@kovarti.com';
 export const PRIVACY_EMAIL = 'privacy@kovarti.com';
 
 // ── Tier helpers ─────────────────────────────────────────────────────
+/**
+ * What each tier is CALLED. The keys are the stored tier values and never change —
+ * renaming a label must not touch a subscription, a Stripe record or a permission check.
+ *
+ * 'sme' shows as "Team" because the buyer is a consultant: a six-person consultancy
+ * reads "SME" as a description of its CLIENT, not itself, and buys the solo plan and
+ * shares a login. "Team" sits on the same ladder as Basic and Pro, so a firm sees where
+ * it belongs. (Decided 2026-09-20.)
+ */
 export const TIER_LABELS: Record<string, string> = {
   trial: 'Trial',
   consultant_basic: 'Consultant Basic',
   consultant_pro: 'Consultant Pro',
-  sme: 'SME',
+  sme: 'Team',
   enterprise: 'Enterprise',
 };
 

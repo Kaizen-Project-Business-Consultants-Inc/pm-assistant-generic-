@@ -87,7 +87,7 @@ const FALLBACK_PLANS: PlanDef[] = [
   },
   {
     tier: 'sme',
-    name: 'SME',
+    name: 'Team',
     monthly: 19,
     annual: 190,
     tokens: '500K',

@@ -1,0 +1,12 @@
+-- The per-seat tier shows as "Team", not "SME".
+--
+-- The buyer is a solo PM consultant; a firm of consultants buys the per-seat tier. A
+-- six-person consultancy reads "SME" as a description of its CLIENT rather than itself,
+-- so it buys the solo plan and shares a login — worse for them and for us. "Team" sits on
+-- the same ladder as Consultant Basic and Consultant Pro, so a firm can see where it
+-- belongs.
+--
+-- The stored tier value stays 'sme'. Only the label changes, so no subscription, Stripe
+-- record or permission check is affected. The tier also remains hidden from the public
+-- pricing page (filtered in PricingCards.tsx) until it is launched.
+UPDATE pricing_config SET display_name = 'Team' WHERE tier = 'sme';

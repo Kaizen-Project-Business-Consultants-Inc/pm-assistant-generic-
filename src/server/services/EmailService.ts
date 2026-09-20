@@ -614,7 +614,7 @@ export class EmailService {
     const tierLabels: Record<string, string> = {
       consultant_basic: 'Consultant Basic',
       consultant_pro: 'Consultant Pro',
-      sme: 'SME',
+      sme: 'Team',
       enterprise: 'Enterprise',
     };
     const planLabel = pendingTier ? escapeHtml(tierLabels[pendingTier] || pendingTier) : null;
