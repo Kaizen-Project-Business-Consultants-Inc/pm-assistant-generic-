@@ -48,13 +48,87 @@ export async function provisionTenantDatabase(orgId: string): Promise<void> {
   logger.info(`[provisioner] Tenant ${org.slug} provisioned successfully`);
 }
 
+/**
+ * What a new account is given on day one.
+ *
+ * These used to be generic internal-project starters — Software Development, Marketing
+ * Campaign, Event Planning — which describe work inside an ordinary company. That is not
+ * who this product is for. The buyer is a PM consultant delivering engagements for
+ * clients, so the starters are engagement shapes: staged acceptance, gates that usually
+ * coincide with payment, and a hypercare period rather than a cliff edge at handover.
+ *
+ * These are the simple phase-and-task starters shown in onboarding. The richer built-in
+ * templates in services/templates/consultingEngagements.ts carry the full scaffold —
+ * dependencies, gate milestones, starter RAID items and a report cadence — and are what
+ * a consultant should graduate to.
+ */
 const STARTER_TEMPLATES = [
-  { name: 'Software Development', description: 'Standard SDLC with planning, development, testing, and deployment phases', category: 'software', projectType: 'agile', defaultDuration: 90, phases: JSON.stringify([{name:'Planning',tasks:[{name:'Requirements gathering'},{name:'Technical design'},{name:'Sprint planning'}]},{name:'Development',tasks:[{name:'Backend development'},{name:'Frontend development'},{name:'API integration'}]},{name:'Testing',tasks:[{name:'Unit testing'},{name:'Integration testing'},{name:'UAT'}]},{name:'Deployment',tasks:[{name:'Staging deploy'},{name:'Production deploy'},{name:'Post-deploy verification'}]}]) },
-  { name: 'Construction Project', description: 'Construction project with design, procurement, build, and handover phases', category: 'construction', projectType: 'waterfall', defaultDuration: 180, phases: JSON.stringify([{name:'Design',tasks:[{name:'Architectural design'},{name:'Engineering plans'},{name:'Permits & approvals'}]},{name:'Procurement',tasks:[{name:'Material sourcing'},{name:'Vendor contracts'},{name:'Equipment rental'}]},{name:'Build',tasks:[{name:'Site preparation'},{name:'Foundation'},{name:'Structure'},{name:'Finishing'}]},{name:'Handover',tasks:[{name:'Inspection'},{name:'Punch list'},{name:'Client handover'}]}]) },
-  { name: 'Marketing Campaign', description: 'End-to-end marketing campaign from strategy to execution and analysis', category: 'marketing', projectType: 'hybrid', defaultDuration: 60, phases: JSON.stringify([{name:'Strategy',tasks:[{name:'Market research'},{name:'Campaign brief'},{name:'Budget allocation'}]},{name:'Creative',tasks:[{name:'Content creation'},{name:'Design assets'},{name:'Review & approval'}]},{name:'Execution',tasks:[{name:'Channel setup'},{name:'Launch campaign'},{name:'Monitor performance'}]},{name:'Analysis',tasks:[{name:'Collect metrics'},{name:'ROI analysis'},{name:'Final report'}]}]) },
-  { name: 'Product Launch', description: 'Product launch from planning through go-to-market and post-launch review', category: 'product', projectType: 'hybrid', defaultDuration: 120, phases: JSON.stringify([{name:'Planning',tasks:[{name:'Market analysis'},{name:'Pricing strategy'},{name:'Launch timeline'}]},{name:'Preparation',tasks:[{name:'Sales enablement'},{name:'Marketing collateral'},{name:'Partner coordination'}]},{name:'Launch',tasks:[{name:'Press release'},{name:'Launch event'},{name:'Social campaign'}]},{name:'Post-Launch',tasks:[{name:'Customer feedback'},{name:'Performance review'},{name:'Iteration plan'}]}]) },
-  { name: 'IT Infrastructure', description: 'Infrastructure upgrade or migration project', category: 'infrastructure', projectType: 'waterfall', defaultDuration: 90, phases: JSON.stringify([{name:'Assessment',tasks:[{name:'Current state audit'},{name:'Requirements analysis'},{name:'Risk assessment'}]},{name:'Design',tasks:[{name:'Architecture design'},{name:'Security review'},{name:'Capacity planning'}]},{name:'Implementation',tasks:[{name:'Environment setup'},{name:'Data migration'},{name:'Configuration'}]},{name:'Cutover',tasks:[{name:'Testing'},{name:'Go-live'},{name:'Monitoring & support'}]}]) },
-  { name: 'Event Planning', description: 'Corporate event or conference planning template', category: 'events', projectType: 'hybrid', defaultDuration: 45, phases: JSON.stringify([{name:'Planning',tasks:[{name:'Define objectives'},{name:'Budget planning'},{name:'Venue selection'}]},{name:'Logistics',tasks:[{name:'Vendor coordination'},{name:'Catering'},{name:'AV setup'}]},{name:'Promotion',tasks:[{name:'Invitations'},{name:'Social media'},{name:'Registration'}]},{name:'Execution',tasks:[{name:'Day-of coordination'},{name:'Post-event survey'},{name:'Wrap-up report'}]}]) },
+  {
+    name: 'System Implementation Engagement',
+    description: 'Implementing a system for a client with staged acceptance: discovery, design sign-off, build, testing, go-live and hypercare.',
+    category: 'engagement',
+    projectType: 'waterfall',
+    defaultDuration: 300,
+    phases: JSON.stringify([
+      { name: 'Inception', tasks: [{ name: 'Kick-off and governance setup' }, { name: 'Desk review of existing documentation' }, { name: 'Inception report and baselined plan' }, { name: 'Gate 1 — Inception accepted' }] },
+      { name: 'Study and design', tasks: [{ name: 'Detailed system study and gap analysis' }, { name: 'Solution design specification' }, { name: 'Design walkthrough and sign-off' }, { name: 'Gate 2 — Design accepted' }] },
+      { name: 'Configuration and build', tasks: [{ name: 'Environment setup' }, { name: 'Core configuration' }, { name: 'Integrations' }, { name: 'Data migration preparation and trial run' }] },
+      { name: 'Testing', tasks: [{ name: 'Test plan and scripts agreed' }, { name: 'System integration testing' }, { name: 'Defect remediation and regression' }, { name: 'Client user acceptance testing' }, { name: 'Gate 3 — Acceptance testing signed off' }] },
+      { name: 'Go-live and transition', tasks: [{ name: 'Training and user manuals' }, { name: 'Production cutover' }, { name: 'Hypercare' }, { name: 'Knowledge transfer and formal closure' }, { name: 'Gate 4 — Engagement closed' }] },
+    ]),
+  },
+  {
+    name: 'Discovery and Assessment Engagement',
+    description: 'A short diagnostic producing findings and a recommendation. Fixed scope, fixed price.',
+    category: 'engagement',
+    projectType: 'waterfall',
+    defaultDuration: 45,
+    phases: JSON.stringify([
+      { name: 'Mobilisation', tasks: [{ name: 'Agree scope, access and interviewees' }] },
+      { name: 'Evidence gathering', tasks: [{ name: 'Stakeholder interviews' }, { name: 'Document and data review' }] },
+      { name: 'Analysis', tasks: [{ name: 'Findings, options and recommendation' }] },
+      { name: 'Reporting', tasks: [{ name: 'Draft report and client review' }, { name: 'Final report and presentation' }, { name: 'Gate — Report accepted' }] },
+    ]),
+  },
+  {
+    name: 'Process Improvement Engagement',
+    description: 'Baseline the current process, design the improved one, pilot it, then embed it with measurement to evidence the benefit.',
+    category: 'engagement',
+    projectType: 'hybrid',
+    defaultDuration: 120,
+    phases: JSON.stringify([
+      { name: 'Mobilisation', tasks: [{ name: 'Scope confirmation and success measures' }] },
+      { name: 'Baseline', tasks: [{ name: 'Process mapping with the people who do the work' }, { name: 'Baseline measurement' }, { name: 'Gate — Baseline agreed' }] },
+      { name: 'Design', tasks: [{ name: 'Target process, controls and roles' }] },
+      { name: 'Pilot', tasks: [{ name: 'Run the pilot' }, { name: 'Measure against the baseline' }, { name: 'Gate — Pilot accepted' }] },
+      { name: 'Roll out and embed', tasks: [{ name: 'Train and document' }, { name: 'Transfer ownership' }, { name: 'Gate — Engagement closed' }] },
+    ]),
+  },
+  {
+    name: 'PMO / Project Management Support',
+    description: 'You are the PM on the client\'s delivery: establish governance and controls, then run the reporting, risk and change cadence.',
+    category: 'engagement',
+    projectType: 'waterfall',
+    defaultDuration: 180,
+    phases: JSON.stringify([
+      { name: 'Establish controls', tasks: [{ name: 'Governance and reporting structure' }, { name: 'Integrated plan and baseline' }, { name: 'Risk and issue process stood up' }, { name: 'Gate — Controls established' }] },
+      { name: 'Run the delivery cadence', tasks: [{ name: 'Reporting and steering committee cycle' }, { name: 'Risk, issue and change control' }, { name: 'Mid-point health check and re-baseline if needed' }] },
+      { name: 'Closure', tasks: [{ name: 'Handover of controls' }, { name: 'Lessons learned' }, { name: 'Gate — Engagement closed' }] },
+    ]),
+  },
+  {
+    name: 'Programme of Works',
+    description: 'Several related engagements under one programme, with a shared plan and one set of governance.',
+    category: 'engagement',
+    projectType: 'waterfall',
+    defaultDuration: 365,
+    phases: JSON.stringify([
+      { name: 'Programme setup', tasks: [{ name: 'Programme governance and reporting' }, { name: 'Integrated programme plan' }, { name: 'Benefits and success measures agreed' }] },
+      { name: 'Tranche 1', tasks: [{ name: 'Deliver tranche 1' }, { name: 'Tranche 1 acceptance' }] },
+      { name: 'Tranche 2', tasks: [{ name: 'Deliver tranche 2' }, { name: 'Tranche 2 acceptance' }] },
+      { name: 'Programme closure', tasks: [{ name: 'Benefits realisation review' }, { name: 'Handover and closure' }] },
+    ]),
+  },
 ];
 
 /**

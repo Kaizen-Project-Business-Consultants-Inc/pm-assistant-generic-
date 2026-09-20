@@ -1,6 +1,11 @@
 import { ProjectTemplate, TemplateTask, CreateFromTemplate, SaveAsTemplate } from '../schemas/templateSchemas';
 import { projectService } from './ProjectService';
 import { scheduleService } from './ScheduleService';
+import { consultingEngagementTemplates } from './templates/consultingEngagements';
+import logger from '../utils/logger';
+
+/** The RAID log scores 1-5; templates express probability and impact in words. */
+const SCORE = { low: 2, medium: 3, high: 4 } as const;
 
 // ─── Built-in Templates ──────────────────────────────────────────────────────
 
@@ -464,6 +469,9 @@ const officeRelocationTemplate: ProjectTemplate = {
 
 export class TemplateService {
   private static templates: ProjectTemplate[] = [
+    // Engagement scaffolds first: this is a consultant's product, so these are what the
+    // buyer should see at the top of the list.
+    ...consultingEngagementTemplates,
     webAppTemplate,
     cloudMigrationTemplate,
     erpUpgradeTemplate,
@@ -538,7 +546,7 @@ export class TemplateService {
     location?: string;
     selectedTaskRefIds?: string[];
     userId: string;
-  }): Promise<{ project: any; schedule: any; tasks: any[] }> {
+  }): Promise<{ project: any; schedule: any; tasks: any[]; raidItemIds: string[]; reportTaskId: string | null }> {
     const template = await this.findById(input.templateId);
     if (!template) throw new Error('Template not found');
 
@@ -648,9 +656,12 @@ export class TemplateService {
         description: tt.description,
         status: 'pending',
         priority: tt.priority,
-        estimatedDays: tt.estimatedDays,
+        estimatedDays: tt.isMilestone ? 0 : tt.estimatedDays,
         startDate: taskStart,
-        endDate: taskEnd,
+        // A milestone is a moment, not a span: start and finish on the same day, and a
+        // duration of zero. The schedule review flags a milestone that carries duration.
+        endDate: tt.isMilestone ? taskStart : taskEnd,
+        isMilestone: tt.isMilestone ?? false,
         parentTaskId: tt.parentRefId ? refIdToTaskId.get(tt.parentRefId) : undefined,
         dependencies: depId ? [{ dependencyId: depId, dependencyType: (tt.dependencyType as 'FS' | 'FF' | 'SS' | 'SF') || 'FS', lagDays: 0 }] : [],
         createdBy: input.userId,
@@ -660,7 +671,76 @@ export class TemplateService {
       createdTasks.push(task);
     }
 
-    return { project, schedule, tasks: createdTasks };
+    // ── 5. The governance scaffold ──
+    //
+    // A template that produces only a task list leaves the governance to be remembered.
+    // An engagement scaffold gives the consultant the plan AND the things they are
+    // expected to be managing alongside it, on day one.
+    //
+    // Both parts are best-effort: a project with a schedule is far more valuable than no
+    // project at all, so a failure here is logged and swallowed rather than losing the
+    // whole apply.
+    const raidCreated: string[] = [];
+    if (template.raidItems?.length) {
+      const { riskService } = await import('./RiskService');
+      for (const item of template.raidItems) {
+        try {
+          const created = await riskService.create({
+            projectId: project.id,
+            type: item.type,
+            title: item.title,
+            description: item.description,
+            // The RAID log scores probability and impact numerically; the template
+            // expresses them in words because that is how a person writes them down.
+            probability: item.probability ? SCORE[item.probability] : undefined,
+            impact: item.impact ? SCORE[item.impact] : undefined,
+            status: 'open',
+            source: 'imported',
+            createdBy: input.userId,
+          });
+          raidCreated.push(created.id);
+        } catch (err) {
+          logger.warn('[TemplateService] Could not create a template RAID item', {
+            templateId: template.id, title: item.title,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    }
+
+    // The report cadence becomes a recurring task in the schedule rather than a report
+    // delivery schedule: a delivery schedule needs a report template and a recipient
+    // list, neither of which exists when a project is first created. A recurring task is
+    // visible in the plan, and the consultant can wire it to an actual report later.
+    let reportTaskId: string | null = null;
+    if (template.reportCadence) {
+      try {
+        const { frequency, dayOfWeek, description } = template.reportCadence;
+        const dayCode = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'][(dayOfWeek ?? 5) - 1] ?? 'FR';
+        const reportTask = await scheduleService.createTask({
+          scheduleId: schedule.id,
+          name: frequency === 'monthly' ? 'Issue monthly status report' : `Issue ${frequency} status report`,
+          description: description || 'Status report to the client.',
+          status: 'pending',
+          priority: 'high',
+          estimatedDays: 1,
+          startDate: input.startDate,
+          endDate: input.startDate,
+          recurrenceRule: frequency === 'monthly'
+            ? 'FREQ=MONTHLY'
+            : `FREQ=${frequency === 'biweekly' ? 'BIWEEKLY' : 'WEEKLY'};BYDAY=${dayCode}`,
+          createdBy: input.userId,
+        } as any);
+        reportTaskId = reportTask.id;
+      } catch (err) {
+        logger.warn('[TemplateService] Could not create the report cadence task', {
+          templateId: template.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    return { project, schedule, tasks: createdTasks, raidItemIds: raidCreated, reportTaskId };
   }
 
   async saveFromProject(input: {
