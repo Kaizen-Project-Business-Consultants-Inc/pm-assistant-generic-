@@ -502,8 +502,15 @@ export class ScheduleService {
         : new Date().toISOString().split('T')[0];
     }
 
-    // Default estimatedDays to 1 if missing — like MS Project's "1 day?" default
-    if (!data.estimatedDays) {
+    // Default estimatedDays to 1 if missing — like MS Project's "1 day?" default.
+    //
+    // A milestone is the exception: it is a moment, not a span, so its duration is zero.
+    // The `!data.estimatedDays` test treated an explicit 0 as "missing" and promoted it
+    // to 1, which turned every engagement gate into a one-day task — precisely what the
+    // schedule review penalises. Distinguish "not supplied" from "supplied as zero".
+    if (data.isMilestone) {
+      data.estimatedDays = 0;
+    } else if (data.estimatedDays == null) {
       data.estimatedDays = 1;
     }
 
