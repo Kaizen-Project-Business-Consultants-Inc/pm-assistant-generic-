@@ -16,6 +16,58 @@ import logger from '../utils/logger';
  *
  * Read-only routes should NOT use this middleware — only apply to write routes.
  */
+
+/**
+ * The trial has to actually end.
+ *
+ * `requireActiveSubscription` below was written in July and applied to nothing —
+ * zero call sites — so an expired trial kept full write access indefinitely.
+ * Verified on staging: an account whose trial ended the previous day created a
+ * project without complaint. Nobody ever had to pay.
+ *
+ * This runs once, globally, rather than being added to 282 write routes. Editing
+ * every route is how a paying customer gets blocked by an oversight nobody can
+ * review; one list can be read in full and argued with.
+ *
+ * Reading is always allowed. What someone built during their trial is the reason
+ * to subscribe, so locking them out of their own work would be self-defeating.
+ */
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/**
+ * Paths that must work even when the subscription is dead.
+ *
+ * Getting this list wrong in the generous direction costs a little revenue;
+ * getting it wrong in the strict direction traps a customer who is trying to
+ * pay, which is far worse. When in doubt, it is on the list.
+ */
+const ALWAYS_ALLOWED = [
+  '/api/v1/auth',          // sign in and out, verify, reset a password
+  '/api/v1/stripe',        // checkout and Stripe's own callbacks — they must be able to pay
+  '/api/v1/pricing',
+  '/api/v1/seats',         // buying seats is buying
+  '/api/v1/org',           // managing the subscription lives here
+  '/api/v1/users',         // your own profile and password
+  '/api/v1/notifications', // marking things read, so the app is not visibly broken
+  '/api/v1/exports',       // your data stays yours when you stop paying
+  '/api/v1/feedback',      // let them tell us it is wrong
+  '/api/v1/admin',
+  '/api/v1/health',
+];
+
+export async function subscriptionGuard(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  if (!WRITE_METHODS.has(request.method)) return;
+
+  const url = request.url.split('?')[0];
+  if (ALWAYS_ALLOWED.some((prefix) => url.startsWith(prefix))) return;
+
+  // Unauthenticated writes are someone else's problem — auth runs after this and
+  // will reject them. Answering here would turn a 401 into a confusing 403.
+  if (!request.user) return;
+
+  return requireActiveSubscription(request, reply);
+}
+
 export async function requireActiveSubscription(request: FastifyRequest, reply: FastifyReply) {
   const user = request.user;
   if (!user) {

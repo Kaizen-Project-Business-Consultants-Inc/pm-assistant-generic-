@@ -5,6 +5,7 @@ import type { JwtPayload } from '../types/fastify';
 import { apiKeyService } from '../services/ApiKeyService';
 import { databaseService } from '../database/connection';
 import { redisService } from '../services/RedisService';
+import { subscriptionGuard } from './requireSubscription';
 
 const ACTIVE_CHECK_TTL = 300; // 5 minutes
 
@@ -53,7 +54,8 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       request.apiKeyId = keyInfo.keyId;
       request.apiKeyScopes = keyInfo.scopes;
       request.apiKeyRateLimit = keyInfo.rateLimit;
-      return;
+      // An expired trial cannot write through the API either.
+      return subscriptionGuard(request, reply);
     } catch (error) {
       return reply.status(401).send({
         error: 'Invalid API key',
@@ -112,6 +114,13 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
         request.user!.guestExpiresAt = rows[0].guest_expires_at;
       }
     }
+
+    // The trial has to actually end. This sits here, rather than on each of the
+    // 282 write routes, because this is the one place the user becomes known —
+    // global hooks run before route authentication, so they see nobody. The
+    // guard itself decides what is exempt; see middleware/requireSubscription.
+    await subscriptionGuard(request, reply);
+    if (reply.sent) return;
 
   } catch (error) {
     if ((error as any)?.error === 'Account deactivated') {
