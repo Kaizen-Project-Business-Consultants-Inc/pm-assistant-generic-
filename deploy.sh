@@ -248,7 +248,24 @@ if [ "$SERVER_ONLY" = false ]; then
   do_scp /tmp/client-dist.tar.gz "$SSH_HOST":/tmp/
   do_ssh "sudo rm -rf /opt/pm-app/client-dist/assets && sudo tar xzf /tmp/client-dist.tar.gz -C /opt/pm-app/client-dist && sudo chown -R www-data:www-data /opt/pm-app/client-dist/ && rm /tmp/client-dist.tar.gz"
   rm -f /tmp/client-dist.tar.gz
-  echo "  ✓ OK"
+
+  # This directory is served to the public by Nginx. Only untarring over it means
+  # anything ever put here by mistake stays here forever: staging was serving a
+  # 1,546-file copy of the SERVER source (Feb-Jul 2026) at https://…/server/*.js
+  # — downloadable by anyone, no login. Nothing referenced it, so nothing ever
+  # complained. Fail the deploy rather than quietly publish application internals.
+  # Server code only. Client source maps also sit here and are a separate,
+  # deliberate decision (see SECURITY_GUIDE.md) — they must not make this check
+  # noisy, or it will be ignored like every other permanently-red signal.
+  LEAKED=$(do_ssh "find /opt/pm-app/client-dist -type f \( -path '*/client-dist/server/*' -o -name '*.d.ts' \) 2>/dev/null | head -20")
+  if [ -n "$LEAKED" ]; then
+    echo "  ✗ SERVER CODE IS PUBLICLY READABLE in /opt/pm-app/client-dist:"
+    echo "$LEAKED" | sed 's/^/      /'
+    echo "    Anyone can download these. Move them out, then redeploy:"
+    echo "      ssh $SSH_HOST 'sudo mkdir -p /root/quarantine && sudo mv /opt/pm-app/client-dist/server /root/quarantine/'"
+    exit 1
+  fi
+  echo "  ✓ OK (no server code in the public folder)"
 else
   echo "[6/7] Client upload skipped (--server-only)"
 fi
