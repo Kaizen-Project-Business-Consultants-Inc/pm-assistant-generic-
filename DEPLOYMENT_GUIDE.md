@@ -200,12 +200,55 @@ sudo mariadb pmassist < /opt/pm-app/dist/server/database/migrations/NNN_name.sql
 
 ### Backups
 
-- **Schedule:** Daily at 3am UTC (cron)
-- **Location:** `/opt/pm-app/backups/`
-- **Retention:** 14 days
-- **Format:** gzipped SQL dump (`pmassist_YYYYMMDD_HHMMSS.sql.gz`)
-- **Script:** `/opt/pm-app/backup.sh`
-- **Log:** `/opt/pm-app/backups/backup.log`
+> This section described a `/opt/pm-app/backup.sh` cron that did not exist on
+> either server. Until 2026-09-21 the only backups taken were manual ones before
+> a migration. What follows is what actually runs.
+
+- **Schedule:** nightly 02:30 UTC — `pm-backup.timer` (systemd, `Persistent=true`
+  so a missed night is caught up rather than skipped)
+- **Script:** `/usr/local/bin/pm-backup.sh`, from `deploy/backup/pm-backup.sh`;
+  installed and enabled by `deploy.sh` on every deploy
+- **Covers:** every `pmassist*` database — control plane plus one per customer
+- **Format:** gzipped SQL dump per database, plus a `MANIFEST.txt` recording the
+  host, timestamp and table count per database
+- **Local:** `/var/backups/pm-app/<YYYY-MM-DD>/`, kept 7 days
+- **Off-machine:** rsync'd to the *other* server (prod → staging, staging → prod)
+  at `/var/backups/pm-<env>/<YYYY-MM-DD>/`, kept 30 days. The database runs on the
+  same machine as the app, so a local-only copy protects against very little.
+- **Verified, not assumed:** each dump is tested for gzip integrity *and* for the
+  `Dump completed` marker (a truncated dump can still be valid gzip). The remote is
+  then asked how many files actually arrived. Any shortfall fails the unit.
+- **Pruning happens last**, so a failure never costs you yesterday's good backup.
+- **Monitored:** a clean run writes `cron:last:db-backup` to Redis;
+  `AlertService.checkCronJobsRunning()` alerts if it goes quiet for 30 hours.
+
+**Set up the off-machine destination** (one time per server):
+```bash
+bash scripts/setup-offsite-backup.sh prod      # or: staging
+```
+Creates a dedicated ed25519 key on the source (private half never leaves it),
+authorises it on the destination restricted by source address with no pty or
+forwarding, writes `/etc/pm-backup.env`, and test-writes before claiming success.
+`deploy.sh` warns on every deploy if a server has no destination configured.
+
+**Run one now, and prove it restores:**
+```bash
+ssh ubuntu@<host> 'sudo systemctl start pm-backup.service'    # take one
+ssh ubuntu@<host> 'sudo /usr/local/bin/pm-backup.sh --verify' # restore into a scratch DB
+```
+`--verify` restores the control plane into a throwaway database and counts its
+tables and users. Nobody had ever proven a restore worked until 2026-09-18, and
+then only by hand.
+
+**Restoring for real:**
+```bash
+zcat /var/backups/pm-app/<date>/pmassist.sql.gz | sudo mariadb pmassist
+# or, from the off-machine copy held on the other server:
+ssh ubuntu@<other> 'cat /var/backups/pm-prod/<date>/pmassist.sql.gz' | zcat | sudo mariadb pmassist
+```
+
+**Not yet covered:** both copies live within the same hosting account. A copy to
+object storage (e.g. Backblaze B2) would survive losing the account itself.
 
 ## MCP Server
 

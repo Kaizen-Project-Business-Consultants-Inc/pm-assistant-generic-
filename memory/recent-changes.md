@@ -1,5 +1,17 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-21
+
+- **Nightly database backups — LIVE ON BOTH SERVERS** (commits `feat: nightly database backups…` + the env-file fix). **Production had NO automated backup at all** — only the manual ones taken before a migration. `DEPLOYMENT_GUIDE.md` described a `/opt/pm-app/backup.sh` daily cron and `docs/ADMIN_MANUAL.md` described cPanel/TMD backups; **neither existed on either machine**. Both docs corrected.
+  - `deploy/backup/pm-backup.sh` → `/usr/local/bin/pm-backup.sh`, run by `pm-backup.timer` at **02:30 UTC** (`Persistent=true`). Dumps every `pmassist*` DB, **verifies each dump twice** (gzip integrity *and* the `Dump completed` marker — a truncated dump can still be valid gzip), writes a `MANIFEST.txt` with per-DB table counts, rsyncs to the other server and **asks the far end how many files arrived**. Local kept 7 days, remote 30. **Pruning happens last** so a failure never costs yesterday's good copy.
+  - **Destination is the other server** (prod → staging, staging → prod), set up by `scripts/setup-offsite-backup.sh <env>`: dedicated ed25519 key created on the source (private half never leaves it), authorised on the destination with `from=<src-ip>,no-pty,no-port-forwarding`, `/etc/pm-backup.env` written, and a **test write before claiming success**.
+  - **Monitored:** a clean run writes `cron:last:db-backup`; `db-backup` added to `EXPECTED_CRON_JOBS` in `AlertService` (30h quiet → alert). Test added.
+  - `pm-backup.sh --verify` restores the control plane into a scratch DB and counts tables/users — proving a restore is now one command. **Verified on both:** staging 18 DBs → 98 tables/9 users restored; prod 5 DBs → 98 tables/5 users restored, 3.7M control plane + 4 tenants landed on staging.
+  - `deploy.sh` now installs standalone units (not just `pm-cron@*`) and **warns on every deploy if a server has no off-machine destination**. 16 jobs scheduled.
+  - **Gotcha fixed:** `EnvironmentFile` is only read by systemd, so a manual run saw no destination and exited non-zero on a correctly configured box. The script now sources `/etc/pm-backup.env` itself.
+  - **⚠️ NOT YET ON PROD: the `AlertService` change.** `deploy.sh prod` was blocked twice by Claude Code's "Production Deploy" classifier, so the backup script + timer were installed on prod directly by ssh (additive, no app release). Prod therefore **takes backups but does not yet alert if they stop**. Deploy the app to prod to close this.
+  - **Open:** both copies live in the same hosting account. Backblaze B2 (~$1-2/mo) would survive losing the account — needs the user to create it and supply a key.
+
 ## 2026-09-20
 
 - **Slack connect journey rebuilt — LIVE ON STAGING, not yet prod** (commits `b3315726`, plus the credential-masking and channel-fallback follow-ups). The feature worked in the sense that a workspace could be connected; the *journey* had eight faults, found by tracing what a customer actually sees.

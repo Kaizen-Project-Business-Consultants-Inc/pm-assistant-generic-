@@ -698,13 +698,34 @@ All endpoints require admin role authentication.
 ## 21. Backup and Maintenance
 
 ### Database Backups
-- Use your hosting provider's backup tools (e.g., cPanel MySQL backup) or `mysqldump` via SSH.
-- Schedule daily backups via cron or your hosting provider's scheduler.
-- TMD Hosting provides automated daily backups with point-in-time recovery via cPanel.
+Backups are automatic — nothing to arrange with a hosting provider, and no cPanel
+involved (the database runs on the application servers themselves).
+
+- Every night at 02:30 UTC, every database is dumped, checked for readability, and
+  copied to a second machine.
+- Local copies are kept 7 days; the off-machine copies 30 days.
+- A backup that stops running raises an alert, so silence is not mistaken for health.
+- Full detail, including how to set up the off-machine destination on a new server:
+  see **Backups** in `DEPLOYMENT_GUIDE.md`.
 
 ### Restoring
-- Restore via cPanel backup restore or `mysql` CLI import via SSH.
-- Test restores periodically in a staging environment.
+```bash
+# From the copy held on the machine itself
+zcat /var/backups/pm-app/<date>/pmassist.sql.gz | sudo mariadb pmassist
+
+# From the off-machine copy, if that machine is gone
+ssh ubuntu@<other-server> 'cat /var/backups/pm-prod/<date>/pmassist.sql.gz' \
+  | zcat | sudo mariadb pmassist
+```
+Each customer has their own database (`pmassist_t_*`), backed up and restorable
+individually — one customer's data can be recovered without touching anyone else's.
+
+**Check a restore actually works** — do this occasionally rather than assuming:
+```bash
+sudo /usr/local/bin/pm-backup.sh --verify
+```
+This restores into a throwaway database and reports what came back. Until
+2026-09-18 nobody had ever confirmed a restore worked.
 
 ### Secret Rotation
 - Rotate `JWT_SECRET` and `COOKIE_SECRET` periodically per your security policy.
