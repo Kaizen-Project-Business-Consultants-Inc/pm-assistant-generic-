@@ -726,6 +726,15 @@ class ApiService {
     return response.data;
   }
 
+  /**
+   * The schedule review as a Word document — the one form of it that can be
+   * attached to a proposal or sent to a sponsor who has no login.
+   */
+  async exportScheduleReviewDocx(scheduleId: string): Promise<Blob> {
+    const response = await this.api.get(`/schedules/${scheduleId}/review/export/docx`, { responseType: 'blob' });
+    return response.data;
+  }
+
   async exportStatusReportDocx(data: Record<string, unknown>): Promise<Blob> {
     const response = await this.api.post('/status-reports/export/docx', data, { responseType: 'blob' });
     return response.data;

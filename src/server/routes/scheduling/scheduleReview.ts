@@ -4,6 +4,10 @@ import { scheduleReviewService, ScheduleReviewNotFoundError } from '../../servic
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { scheduleService } from '../../services/ScheduleService';
+import { projectService } from '../../services/ProjectService';
+import { organizationRepository } from '../../database/OrganizationRepository';
+import { buildScheduleReviewDocx } from '../../utils/scheduleReviewDocxBuilder';
 import logger from '../../utils/logger';
 
 const historyQuerySchema = z.object({
@@ -47,6 +51,60 @@ export async function scheduleReviewRoutes(fastify: FastifyInstance) {
     } catch (error) {
       logger.error('Schedule review latest error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to load schedule review' });
+    }
+  });
+
+  // GET /:scheduleId/review/export/docx — the review as a Word document
+  //
+  // This is the one artefact that leaves the product: attached to a proposal, or
+  // sent to a sponsor arguing about a plan. The recipient never logs in, so the
+  // document has to carry its own context — see scheduleReviewDocxBuilder.
+  fastify.get('/:scheduleId/review/export/docx', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    schema: { description: 'Schedule Review as a Word document', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const review = await scheduleReviewService.latest(scheduleId);
+      if (!review) {
+        return reply.status(404).send({
+          error: 'No review yet',
+          message: 'Run the schedule review first, then download it.',
+        });
+      }
+
+      const schedule = await scheduleService.findById(scheduleId);
+      const project = schedule ? await projectService.findById(schedule.projectId).catch(() => null) : null;
+      // The consultancy's name, so the document reads as theirs.
+      let preparedBy: string | null = null;
+      try {
+        preparedBy = (await organizationRepository.findByUserId(request.user!.userId))?.name ?? null;
+      } catch { /* a missing name must not stop the download */ }
+
+      const buf = await buildScheduleReviewDocx({
+        projectName: project?.name || 'Project',
+        scheduleName: schedule?.name ?? null,
+        score: review.score,
+        band: review.band,
+        counts: review.counts,
+        leafTaskCount: review.leafTaskCount,
+        findings: review.findings,
+        skippedRules: review.skippedRules,
+        rulesVersion: review.rulesVersion,
+        reviewedAt: review.createdAt,
+        preparedBy,
+      });
+
+      const safeName = (project?.name || 'project')
+        .replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').toLowerCase();
+      const filename = `schedule-review-${safeName}-${String(review.createdAt).slice(0, 10)}.docx`;
+      return reply
+        .header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        .header('Content-Disposition', `attachment; filename="${filename}"`)
+        .send(buf);
+    } catch (error: any) {
+      logger.error('Schedule review export error', { message: error?.message, stack: error?.stack });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to build the document' });
     }
   });
 

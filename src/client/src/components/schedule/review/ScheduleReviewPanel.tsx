@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, RefreshCw, Loader2, ChevronDown, ChevronRight, Lock, ListFilter, Wrench } from 'lucide-react';
+import { X, RefreshCw, Loader2, ChevronDown, ChevronRight, Lock, ListFilter, Wrench, FileDown } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { severityColor } from '../../../utils/severityColors';
 import { announce } from '../../../utils/announce';
@@ -80,6 +80,30 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
   const [openGroups, setOpenGroups] = useState<Set<ReviewSeverity>>(new Set(OPEN_BY_DEFAULT));
   const [error, setError] = useState<string | null>(null);
   const [showFixes, setShowFixes] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  /**
+   * The review as a Word document. This is the only form of it that can leave
+   * the product — attached to a proposal, or sent to a sponsor who has no login.
+   */
+  const handleDownload = async () => {
+    setDownloading(true);
+    setError(null);
+    try {
+      const blob = await apiService.exportScheduleReviewDocx(scheduleId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `schedule-review-${new Date().toISOString().slice(0, 10)}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      announce('Schedule review downloaded');
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Could not build the document. Please try again.'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const latestQuery = useQuery<ScheduleReview | null>({
     queryKey: ['schedule-review', scheduleId, 'latest'],
@@ -165,9 +189,22 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
               {review ? `Last run ${formatWhen(review.createdAt)} · rules v${review.rulesVersion}` : 'No review yet'}
             </p>
           </div>
-          <button onClick={onClose} aria-label="Close Schedule Review" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            {review && (
+              <button
+                onClick={handleDownload}
+                disabled={downloading}
+                title="Download as Word — for a proposal, or to send to a client"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+              >
+                {downloading ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+                Download
+              </button>
+            )}
+            <button onClick={onClose} aria-label="Close Schedule Review" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
