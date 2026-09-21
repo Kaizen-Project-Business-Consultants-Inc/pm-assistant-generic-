@@ -55,10 +55,30 @@ describe('Slack connection', () => {
       expect(fetchMock.mock.calls[0][0]).toBe(WEBHOOK);
     });
 
-    it('knows a token without a channel cannot post as the bot', () => {
+    it('does not treat the install channel as a channel the customer chose', () => {
+      // An OAuth install records the webhook's channel. The bot is not
+      // necessarily a member of it, so posting as the bot would fail where the
+      // webhook succeeds. Only an explicit pick (channelId) switches paths.
       expect(canPostAsBot({ webhookUrl: WEBHOOK, botToken: 'xoxb-1' })).toBe(false);
-      expect(canPostAsBot({ webhookUrl: WEBHOOK, channel: '#x' })).toBe(false);
-      expect(canPostAsBot({ webhookUrl: WEBHOOK, botToken: 'xoxb-1', channel: '#x' })).toBe(true);
+      expect(canPostAsBot({ webhookUrl: WEBHOOK, botToken: 'xoxb-1', channel: '#install-channel' })).toBe(false);
+      expect(canPostAsBot({ webhookUrl: WEBHOOK, channelId: 'C1' })).toBe(false);
+      expect(canPostAsBot({ webhookUrl: WEBHOOK, botToken: 'xoxb-1', channelId: 'C1' })).toBe(true);
+    });
+
+    it('never drops a notification when the chosen channel refuses it', async () => {
+      fetchMock
+        .mockResolvedValueOnce(slackApi({ ok: false, error: 'not_in_channel' }))
+        .mockResolvedValueOnce(slackApi({ ok: false, error: 'missing_scope' }))
+        .mockResolvedValueOnce(slackApi({ ok: false, error: 'not_in_channel' }))
+        .mockResolvedValueOnce({ ok: true } as Response); // webhook
+
+      const result = await adapter.deliver(
+        { webhookUrl: WEBHOOK, botToken: 'xoxb-1', channelId: 'C123', channel: '#delivery' },
+        { text: 'hello' },
+      );
+
+      expect(result.success).toBe(true);
+      expect(fetchMock.mock.calls[3][0]).toBe(WEBHOOK);
     });
   });
 
@@ -129,11 +149,26 @@ describe('Slack connection', () => {
       fetchMock.mockResolvedValue(slackApi({ ok: false, error: 'is_archived' }));
 
       const result = await adapter.testConnection({
-        webhookUrl: WEBHOOK, botToken: 'xoxb-1', channelId: 'C123', channel: '#old',
+        webhookUrl: '', botToken: 'xoxb-1', channelId: 'C123', channel: '#old',
       });
 
       expect(result.success).toBe(false);
       expect(result.message).toMatch(/archived/i);
+    });
+
+    it('does not show a green tick when the chosen channel silently fell back', async () => {
+      fetchMock
+        .mockResolvedValueOnce(slackApi({ ok: false, error: 'not_in_channel' }))
+        .mockResolvedValueOnce(slackApi({ ok: false, error: 'missing_scope' }))
+        .mockResolvedValueOnce(slackApi({ ok: false, error: 'not_in_channel' }))
+        .mockResolvedValueOnce({ ok: true } as Response); // webhook took it
+
+      const result = await adapter.testConnection({
+        webhookUrl: WEBHOOK, botToken: 'xoxb-1', channelId: 'C123', channel: '#delivery',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/still going to the channel/i);
     });
 
     it('asks for a channel instead of failing on a missing webhook', async () => {

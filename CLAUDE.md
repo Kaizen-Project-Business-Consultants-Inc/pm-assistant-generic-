@@ -31,7 +31,7 @@ Before writing any code:
 - **Follow naming convention:** `NNN_descriptive_name.sql` (sequential numbering).
 - **Include seed data** if applicable (reference data, default configurations).
 - **Never modify existing migration files** — always create new ones. Migrations are immutable once applied.
-- **Database is on TMD Hosting** — never attempt local MySQL. Always SSH to server for migrations.
+- **The database runs on the app servers themselves** (`DB_HOST=localhost` on both 147.5.127.99 and 147.5.127.251). Never attempt local MySQL on the dev machine — always SSH to the server for migrations. (This used to say TMD Hosting; nothing at runtime depends on TMD any more. Outbound email goes through Resend.)
 
 ## Phase 4: Implementation
 

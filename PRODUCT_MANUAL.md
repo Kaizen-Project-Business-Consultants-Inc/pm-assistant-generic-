@@ -1841,7 +1841,11 @@ After connecting, **Configure** offers:
 - **Project** — settable on edit as well as create, so a workspace-wide install can be narrowed without being recreated.
 - **Event filters** — always sent, including empty, so clearing every box means "all events".
 
-**Delivery:** `SlackAdapter.deliver()` is the single exit point. With a bot token *and* a chosen channel it posts via `chat.postMessage` (the only path that honours the customer's channel choice and supports interactive buttons); otherwise it falls back to the incoming webhook, which always posts to the channel it was created for. A successful delivery stamps `last_sync_at`, shown as "Last message" on the card. Slack error codes are translated into actionable English before reaching the UI.
+**Delivery:** `SlackAdapter.deliver()` is the single exit point. It posts via `chat.postMessage` only when the customer has explicitly picked a channel (`channelId` set) — the only path that honours that choice and supports interactive buttons. Everything else goes over the incoming webhook.
+
+The distinction matters: an OAuth install also records the channel its *webhook* was created for, and a webhook can post there without the bot being a member. Treating that as a chosen channel turns a working connection into `not_in_channel`, so `canPostAsBot()` requires `channelId`, not just `channel`. If a bot post fails anyway and a valid webhook exists, delivery falls back to it rather than dropping the notification — while Test Connection deliberately reports that as a failure, naming where the message actually went, so the fallback is never hidden behind a green tick.
+
+A successful delivery stamps `last_sync_at`, shown as "Last message" on the card. Slack error codes are translated into actionable English before reaching the UI.
 
 **Config writes are merged, never replaced.** The edit form knows only a few fields and reads sensitive ones back masked; `IntegrationRepository.updateIntegration` merges over the stored config and discards masked values, so saving an event filter cannot destroy the bot token or webhook URL.
 

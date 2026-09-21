@@ -20,9 +20,20 @@ export interface SlackConfig {
   botUserId?: string;
 }
 
-/** True when we can post to a channel of the customer's choosing. */
+/**
+ * True only when the customer picked a channel in the app.
+ *
+ * Deliberately not "has a bot token and any channel": an OAuth install records
+ * the channel its webhook was created for, and a webhook can post there without
+ * the bot being a member of it. Treating that as a bot-token channel turns a
+ * working connection into `not_in_channel`.
+ */
 export function canPostAsBot(config: SlackConfig): boolean {
-  return !!config.botToken && !!(config.channelId || config.channel);
+  return !!config.botToken && !!config.channelId;
+}
+
+function hasUsableWebhook(config: SlackConfig): boolean {
+  return isValidSlackWebhookUrl(config.webhookUrl);
 }
 
 /**
@@ -135,18 +146,28 @@ export class SlackAdapter {
    * token (or the reverse) tells the customer nothing useful.
    */
   async testConnection(config: SlackConfig): Promise<{ success: boolean; message: string }> {
+    const TEST_TEXT = 'Kovarti is connected. Project notifications will appear here.';
+
     if (canPostAsBot(config)) {
       const target = config.channel || config.channelId!;
       const result = await this.postWithBotToken(
         config.botToken!,
-        config.channelId || config.channel!,
-        [{ type: 'section', text: { type: 'mrkdwn', text: ':white_check_mark: *Kovarti is connected.* Project notifications will appear here.' } }],
-        'Kovarti is connected. Project notifications will appear here.',
+        config.channelId!,
+        [{ type: 'section', text: { type: 'mrkdwn', text: `:white_check_mark: *Kovarti is connected.* ${TEST_TEXT.split('. ')[1]}` } }],
+        TEST_TEXT,
         target,
       );
-      return result.success
-        ? { success: true, message: `Test message posted to ${target}` }
-        : result;
+      if (result.success) return { success: true, message: `Test message posted to ${target}` };
+
+      // Say plainly that the chosen channel isn't working and where the message
+      // actually went, rather than a bare tick that hides the fallback.
+      if (hasUsableWebhook(config)) {
+        const viaWebhook = await this.sendNotification(config, { text: TEST_TEXT });
+        if (viaWebhook.success) {
+          return { success: false, message: `${result.message} For now messages are still going to the channel this connection was set up with.` };
+        }
+      }
+      return result;
     }
 
     if (!isValidSlackWebhookUrl(config.webhookUrl)) {
@@ -183,13 +204,20 @@ export class SlackAdapter {
     message: { text: string; blocks?: any[] },
   ): Promise<{ success: boolean; message: string }> {
     if (canPostAsBot(config)) {
-      return this.postWithBotToken(
+      const result = await this.postWithBotToken(
         config.botToken!,
-        config.channelId || config.channel!,
+        config.channelId!,
         message.blocks || [],
         message.text,
         config.channel,
       );
+      // Losing a notification because the bot has not been let into the channel
+      // is worse than posting it in the channel the customer originally chose.
+      // The Configure screen is where they find out the choice isn't taking.
+      if (!result.success && hasUsableWebhook(config)) {
+        return this.sendNotification(config, message);
+      }
+      return result;
     }
     return this.sendNotification(config, message);
   }
