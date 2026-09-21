@@ -8,7 +8,7 @@ import { meetingService } from '../../services/MeetingService';
 import { meetingIntelligenceService } from '../../services/MeetingIntelligenceService';
 import { meetingActionItemService } from '../../services/MeetingActionItemService';
 import { meetingRepository } from '../../database/MeetingRepository';
-import { emailService } from '../../services/EmailService';
+import { emailService, EmailRejectedError } from '../../services/EmailService';
 
 const agendaItemSchema = z.object({
   title: z.string().min(1).max(255),
@@ -276,6 +276,14 @@ export async function meetingRoutes(fastify: FastifyInstance) {
 
       return { success: true, recipientCount: body.recipientEmails.length };
     } catch (err) {
+      // Minutes go to typed-in addresses too, so a refused recipient is the
+      // sender's mistake to fix — not an internal error.
+      if (err instanceof EmailRejectedError) {
+        return reply.status(400).send({
+          error: 'Recipient refused',
+          message: `The minutes could not be sent: ${err.providerMessage}`,
+        });
+      }
       fastify.log.error({ err }, 'Failed to send meeting minutes');
       return reply.status(500).send({ error: 'Failed to send meeting minutes' });
     }

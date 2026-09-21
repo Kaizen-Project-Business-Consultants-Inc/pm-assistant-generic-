@@ -8,7 +8,7 @@ import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAcc
 import { projectStatusReportService } from '../../services/ProjectStatusReportService';
 import { reportScheduleService } from '../../services/ReportScheduleService';
 import { userService } from '../../services/UserService';
-import { emailService } from '../../services/EmailService';
+import { emailService, EmailRejectedError } from '../../services/EmailService';
 import { renderStatusReportHtml, type StructuredStatusReport } from '../../utils/statusReportRenderer';
 import { buildStatusReportDocx } from '../../utils/statusReportDocxBuilder';
 import { WebSocketService } from '../../services/WebSocketService';
@@ -153,7 +153,19 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
       return { success: true };
     } catch (error: any) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
-      logger.error('Email status report error', { error });
+      // A refused recipient is a mistake the sender can fix. Say which.
+      if (error instanceof EmailRejectedError) {
+        return reply.status(400).send({
+          error: 'Recipient refused',
+          message: `The report could not be sent: ${error.providerMessage}`,
+        });
+      }
+      // Logging the raw error object serialises to {"name":"Error"} — no
+      // message, no stack, nothing to act on.
+      logger.error('Email status report error', {
+        message: error?.message,
+        stack: error?.stack,
+      });
       return reply.status(500).send({ error: 'Failed to email report' });
     }
   });

@@ -124,8 +124,11 @@ describe('EmailService', () => {
     it('tracks failure when Resend API returns error object', async () => {
       mockSend.mockResolvedValueOnce(errorResult('Invalid API key'));
 
+      // The provider's own wording is carried through so a caller can show it;
+      // the "Resend API error:" prefix stays in the log, not in what a customer
+      // might read.
       await expect(service.sendVerificationEmail('user@test.com', 'tok'))
-        .rejects.toThrow('Resend API error: Invalid API key');
+        .rejects.toThrow('Invalid API key');
 
       const stats = service.getStats();
       // trackSend(false) called twice: once inside the if(result.error) block, once in the catch
@@ -663,6 +666,22 @@ describe('EmailService', () => {
       const { html } = mockSend.mock.calls[0][0];
       expect(html).not.toContain('View Project Details');
       expect(html).not.toContain('<a href');
+    });
+
+    it('reports a refused recipient as the sender\'s mistake, carrying the reason', async () => {
+      // A typo, or a domain the account cannot send to, is fixable by the person
+      // who typed it — but only if they are told what was wrong. Routes turn
+      // this into a 400; a bare Error would become "internal server error".
+      mockSend.mockResolvedValueOnce({
+        error: { message: 'Invalid `to` field. Please use a verified domain.' },
+      });
+
+      await expect(
+        service.sendStatusReportEmail(['typo@exmaple.com'], 'Alpha', '<p>R</p>'),
+      ).rejects.toMatchObject({
+        name: 'EmailRejectedError',
+        providerMessage: expect.stringContaining('Invalid `to` field'),
+      });
     });
 
     it('escapes a sender name rather than trusting it', async () => {

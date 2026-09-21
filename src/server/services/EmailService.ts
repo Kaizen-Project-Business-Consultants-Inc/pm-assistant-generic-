@@ -3,6 +3,19 @@ import { config } from '../config';
 import logger, { maskPii } from '../utils/logger';
 import { redisService } from './RedisService';
 
+/**
+ * The mail provider refused the message — almost always a recipient it will not
+ * accept (a typo, or a domain this account is not allowed to send to). That is
+ * the caller's mistake, so routes translate it into a 400 naming the problem
+ * rather than an unexplained "internal server error".
+ */
+export class EmailRejectedError extends Error {
+  constructor(public readonly providerMessage: string) {
+    super(providerMessage);
+    this.name = 'EmailRejectedError';
+  }
+}
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -32,9 +45,13 @@ export class EmailService {
       const result = await this.getClient().emails.send(params as any);
       if (result.error) {
         this.trackSend(false);
-        const errMsg = `Resend API error: ${(result.error as any).message || JSON.stringify(result.error)}`;
-        logger.error(errMsg);
-        throw new Error(errMsg);
+        const providerMessage = (result.error as any).message || JSON.stringify(result.error);
+        logger.error(`Resend API error: ${providerMessage}`);
+        // A refused recipient is the caller's mistake — a typo, or a domain the
+        // account cannot send to. Callers need to tell them that, not "internal
+        // server error", so carry the provider's own wording rather than
+        // flattening it into a bare Error.
+        throw new EmailRejectedError(providerMessage);
       }
       this.trackSend(true);
     } catch (err) {
