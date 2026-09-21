@@ -34,7 +34,8 @@ const systemsImplementation: ProjectTemplate = {
   category: 'engagement',
   isBuiltIn: true,
   createdBy: null,
-  estimatedDurationDays: 300,
+  // Inception 20 + design 60 + build 90 + testing 60 + go-live 45, plus four gates.
+  estimatedDurationDays: 290,
   tags: ['engagement', 'implementation', 'client-delivery'],
   usageCount: 0,
   defaultMethodology: 'waterfall',
@@ -105,7 +106,10 @@ const discoveryAssessment: ProjectTemplate = {
   category: 'engagement',
   isBuiltIn: true,
   createdBy: null,
-  estimatedDurationDays: 45,
+  // Covers the full sequence: mobilise 5 + evidence 20 + analysis 12 + draft 8 +
+  // presentation 5, plus the gate. A shorter figure made tasks finish after the project
+  // end date, which the schedule review flags — correctly.
+  estimatedDurationDays: 60,
   tags: ['engagement', 'discovery', 'assessment', 'advisory'],
   usageCount: 0,
   defaultMethodology: 'waterfall',
@@ -146,7 +150,8 @@ const processImprovement: ProjectTemplate = {
   category: 'engagement',
   isBuiltIn: true,
   createdBy: null,
-  estimatedDurationDays: 120,
+  // Mobilise 5 + baseline 25 + design 25 + pilot 30 + embed 30, plus the gates.
+  estimatedDurationDays: 130,
   tags: ['engagement', 'process', 'change', 'advisory'],
   usageCount: 0,
   defaultMethodology: 'hybrid',
@@ -193,7 +198,8 @@ const pmoSupport: ProjectTemplate = {
   category: 'engagement',
   isBuiltIn: true,
   createdBy: null,
-  estimatedDurationDays: 180,
+  // Establish 20 + run 140 + close 20, plus the gates.
+  estimatedDurationDays: 190,
   tags: ['engagement', 'pmo', 'governance', 'interim'],
   usageCount: 0,
   defaultMethodology: 'waterfall',

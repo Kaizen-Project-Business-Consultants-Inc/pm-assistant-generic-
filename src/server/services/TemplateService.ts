@@ -729,6 +729,13 @@ export class TemplateService {
           recurrenceRule: frequency === 'monthly'
             ? 'FREQ=MONTHLY'
             : `FREQ=${frequency === 'biweekly' ? 'BIWEEKLY' : 'WEEKLY'};BYDAY=${dayCode}`,
+          // This is the template the recurring instances are generated from, and marking
+          // it as such matters twice over: RecurrenceService only generates from flagged
+          // templates, and the schedule review excludes them. Without the flag the report
+          // task was counted as a real task with no predecessor and no successor, which
+          // alone dropped every engagement template's score by twenty-odd points — a
+          // recurring admin task legitimately has neither.
+          isRecurrenceTemplate: true,
           createdBy: input.userId,
         } as any);
         reportTaskId = reportTask.id;
