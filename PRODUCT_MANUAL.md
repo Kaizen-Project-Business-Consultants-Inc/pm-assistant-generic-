@@ -2718,7 +2718,17 @@ Rules that need dependency logic are listed under **Unlocks when dependencies ex
 
 **Storage.** One row per run in the tenant table `schedule_reviews` (score, band, counts, findings JSON, skipped rules, trigger, rules version). The last 50 runs per schedule are kept.
 
-**API** (mounted under `/api/v1/schedules`): `POST /:scheduleId/review` (editor) runs and stores a review; `GET /:scheduleId/review/latest` (viewer, 204 when none); `GET /:scheduleId/review/history?limit=8` (viewer) returns the score trend newest first.
+**API** (mounted under `/api/v1/schedules`): `POST /:scheduleId/review` (editor) runs and stores a review; `GET /:scheduleId/review/latest` (viewer, 204 when none); `GET /:scheduleId/review/history?limit=8` (viewer) returns the score trend newest first; `GET /:scheduleId/review/export/docx` (viewer) returns the latest review as a Word document (404 with an actionable message when no review has been run yet).
+
+**Word export — the only form of the review that leaves the product.** `src/server/utils/scheduleReviewDocxBuilder.ts`. A consultant attaches it to a proposal or sends it to a sponsor; the recipient has no account and never opens a web page (showing the score on the client portal was explicitly declined — see todo SD3). Because it carries no surrounding context, it is deliberately *not* the panel rendered to paper:
+
+- **Basis before score.** The document states the assessment method — 28 checks from recognised practice including the DCMA 14-point assessment, applied mechanically — before the number. A score from the party pitching for the work is easy to dismiss; its basis is the argument.
+- **Band → verdict.** `BAND_VERDICT` turns internal shorthand ("Tracking sheet") into a sentence a client can act on.
+- **Findings as consequences.** `finding.message` only; rule ids never appear.
+- **Declared limits.** `skippedRules` are listed with why, so the score is not read as a clean bill of health on points it never examined.
+- **Attribution.** `preparedBy` comes from `organizations.name`.
+
+Tests (`__tests__/utils/scheduleReviewDocxBuilder.test.ts`) assert what a stranger can take from the file, and that the bytes are a real Word document — a corrupt file that downloads fine is the failure a consultant discovers in front of a client.
 
 **Import leak fixes (Phase 2).** The importer used to drop structure the file already held, so a freshly imported schedule scored in the lowest band for reasons the customer never introduced. The import now preserves it:
 

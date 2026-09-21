@@ -2596,6 +2596,30 @@ When you apply fixes that add links between tasks, Kovarti also **re-flows the d
 
 The score bands are: 0–39 *Tracking sheet* (the schedule can report but not predict), 40–69 *Needs work*, 70–89 *Controllable*, 90–100 *Fit for control*. Some rules, such as float and buffer checks, only apply once tasks have predecessors; they are listed under **Unlocks when dependencies exist**.
 
+**Download it as a Word document.** Click **Download** at the top of the review panel to
+get the assessment as a `.docx` file you can attach to an email or a proposal. The
+recipient needs no account and never visits a website — it is an ordinary attachment.
+
+The document is written for somebody who has never seen Kovarti, so it is not the panel
+printed to paper:
+
+- It explains **what the assessment is** before giving the score — 28 checks drawn from
+  recognised practice including the DCMA 14-point assessment, applied mechanically, with
+  no judgement about the project or the team. A number on its own is easy to dismiss;
+  the basis for it is the argument.
+- The band becomes a **verdict in plain words** — for example, *"This is a list of work
+  rather than a schedule. It records what is intended, but it cannot tell you the effect
+  of a delay."*
+- Findings read as **consequences**, not rule names.
+- It states **what could not be assessed** and why, so the score is not mistaken for a
+  clean bill of health on points it never examined.
+- **Your organisation is named** as the author.
+
+Two ways consultants use it: run it over a **prospect's own plan** and attach the result
+to a proposal — an hour's work in place of days spent proving you are worth hiring; or
+run it over **your own plan** and send the score to a sponsor who thinks the schedule
+looks long, which moves the conversation off opinion.
+
 ---
 
 ## 26. Resource Management Page

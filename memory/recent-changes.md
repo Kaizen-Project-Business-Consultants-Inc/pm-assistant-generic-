@@ -2,6 +2,11 @@
 
 ## 2026-09-21
 
+- **Schedule review is now a sendable Word document (SD1) — LIVE ON STAGING, not prod.** We score a plan against recognised practice and no competitor does at any price, but the score lived only on a screen behind a login; showing anyone meant a screenshot. **Download** button in the review panel → `GET /schedules/:id/review/export/docx`.
+  - **Deliberately not the panel printed to paper** (`src/server/utils/scheduleReviewDocxBuilder.ts`): basis stated *before* the score (28 checks, DCMA 14-point, applied mechanically — a number from the party pitching for the work is easy to dismiss); band rendered as a plain verdict via `BAND_VERDICT`; findings as consequences with **no rule ids**; **declared limits** (`skippedRules` with why); consultancy named from `organizations.name`.
+  - **No portal, no client login** — user was firm ("no portal access for now"), SD3 marked declined in todo.
+  - Verified by downloading a real one from staging: DBJ-Loans, **57/100 "Needs work"**, 20 high findings, `file` reports "Microsoft Word 2007+", content-disposition filename correct. Tests assert what a stranger can take from the file *and* that the bytes are a genuine Word doc.
+  - **Still open: SD2** — surface it in the Reports page so it goes out through the client-facing email template rather than by manual attachment.
 - **Reports sent to a consultant's client no longer invite them to log in — LIVE ON STAGING, not prod.** On the consultant tiers the client never has an account (user restated this 2026-09-21); report recipients are free-text addresses, so they *are* those people. Status and RAID report emails ended with an **"Open Dashboard" button** — a button to a login page for a product the recipient has never heard of, sent by a consultant to their own paying customer. One wrapper served every email; outward-facing reports were routed through the template written for our own users.
   - New `EmailService.wrapClientHtml()`: no dashboard/login/pricing link, consultancy named as sender, and `portalButton()` when a live portal link exists.
   - New `src/server/utils/clientReportContext.ts` resolves sender name (`organizations.name`) + portal URL, **skipping inactive/expired links** (a dead link is worse than none) and swallowing every failure — a missing sender name beats an unsent report.
