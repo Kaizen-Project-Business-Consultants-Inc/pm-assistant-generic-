@@ -226,6 +226,13 @@ const PLANS: PlanDef[] = pricingData?.tiers
     ? [FALLBACK_PLANS[0], ...pricingData.tiers.filter((t: { tier: string }) => t.tier !== 'trial').map(mapApiToPlan)]
     : FALLBACK_PLANS;
 
+  const visiblePlans = PLANS.filter((p) => !HIDDEN_TIERS.has(p.tier));
+  // "Most Popular" means nothing if two cards claim it. The flag lives in the
+  // pricing table and drifted — Pro and Team were both set, unnoticed only
+  // because Team was hidden. Honour the first and ignore the rest, so data can
+  // never put two badges on the page again.
+  const popularTier = visiblePlans.find((p) => p.highlight)?.tier;
+
   const currentTier = isAuthenticated ? (user?.subscriptionTier || 'trial') : null;
   const isSubscribed = isPaidTier(currentTier);
 
@@ -297,7 +304,7 @@ const PLANS: PlanDef[] = pricingData?.tiers
 
       {/* Plan cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        {PLANS.filter((p) => !HIDDEN_TIERS.has(p.tier)).map((plan) => {
+        {visiblePlans.map((plan) => {
           const isCurrent = mode === 'checkout' && currentTier === plan.tier;
           const tierDisabled = plan.tier !== 'trial' && enabledTiers.length > 0 && !enabledTiers.includes(plan.tier);
           const seats = plan.perSeat ? smeSeats : 1;
@@ -321,7 +328,7 @@ const PLANS: PlanDef[] = pricingData?.tiers
               key={plan.tier}
               className={`relative rounded-2xl border-2 p-6 shadow-sm transition-all ${cardBorder} ${cardBg}`}
             >
-              {plan.highlight && (
+              {plan.tier === popularTier && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <span className="bg-primary-700 text-white text-xs font-bold px-3 py-1 rounded-full">
                     Most Popular

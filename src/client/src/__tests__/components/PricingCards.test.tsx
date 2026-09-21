@@ -20,7 +20,7 @@ const apiTiers = [
   { tier: 'trial', displayName: 'Free Trial', monthlyPriceCents: 0, annualPriceCents: 0, aiTokensLabel: '5K', storageLabel: '100MB', viewerLimitLabel: '0', featuresJson: [], isPerSeat: false, minSeats: 1 },
   { tier: 'consultant_basic', displayName: 'Consultant Basic', monthlyPriceCents: 1900, annualPriceCents: 19000, aiTokensLabel: '—', storageLabel: '1GB', viewerLimitLabel: '5', featuresJson: ['Full PM'], isPerSeat: false, minSeats: 1 },
   { tier: 'consultant_pro', displayName: 'Consultant Pro', monthlyPriceCents: 2900, annualPriceCents: 29000, aiTokensLabel: '500K', storageLabel: '1GB', viewerLimitLabel: '15', featuresJson: ['AI'], isPerSeat: false, minSeats: 1, highlight: true },
-  { tier: 'sme', displayName: 'Team', monthlyPriceCents: 1900, annualPriceCents: 19000, aiTokensLabel: '500K', storageLabel: '5GB', viewerLimitLabel: 'Unlimited', featuresJson: ['Everything in Pro'], isPerSeat: true, minSeats: 3 },
+  { tier: 'sme', displayName: 'Team', highlight: true, monthlyPriceCents: 1900, annualPriceCents: 19000, aiTokensLabel: '500K', storageLabel: '5GB', viewerLimitLabel: 'Unlimited', featuresJson: ['Everything in Pro'], isPerSeat: true, minSeats: 3 },
   { tier: 'enterprise', displayName: 'Enterprise', monthlyPriceCents: 7900, annualPriceCents: 79000, aiTokensLabel: '2M', storageLabel: '20GB', viewerLimitLabel: 'Unlimited', featuresJson: ['Everything'], isPerSeat: false, minSeats: 1 },
 ];
 
@@ -68,6 +68,16 @@ describe('the pricing page', () => {
 
     await waitFor(() => expect(screen.getByText(/Consultancies with more than one PM/i)).toBeTruthy());
     expect(screen.getByText(/One consultant, with AI/i)).toBeTruthy();
+  });
+
+  it('never shows "Most Popular" on more than one card', async () => {
+    // Both Pro and Team were flagged in the pricing table. It went unnoticed
+    // while Team was hidden; showing Team put two badges on the page, which
+    // tells a buyer nothing and reads as a mistake.
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Team')).toBeTruthy());
+    expect(screen.getAllByText('Most Popular')).toHaveLength(1);
   });
 
   it('prices Team per person and enforces the minimum', async () => {
