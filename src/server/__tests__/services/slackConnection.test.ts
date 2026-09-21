@@ -75,18 +75,32 @@ describe('Slack connection', () => {
       expect(fetchMock.mock.calls[1][0]).toBe('https://slack.com/api/conversations.join');
     });
 
-    it('explains what to do when it still cannot post', async () => {
+    it('tells an older install to reconnect, since it cannot be granted the right', async () => {
       fetchMock
         .mockResolvedValueOnce(slackApi({ ok: false, error: 'not_in_channel' }))
         .mockResolvedValueOnce(slackApi({ ok: false, error: 'missing_scope' }))
         .mockResolvedValueOnce(slackApi({ ok: false, error: 'not_in_channel' }));
 
-      const result = await adapter.postWithBotToken('xoxb-1', '#private-one', [], 'hello');
+      const result = await adapter.postWithBotToken('xoxb-1', 'C0BL123', [], 'hello', '#new-channel');
 
       expect(result.success).toBe(false);
-      // A project manager cannot act on "not_in_channel".
+      // A project manager cannot act on "not_in_channel", and naming the raw
+      // channel id tells them nothing either.
+      expect(result.message).toMatch(/connect Slack again/i);
+      expect(result.message).toContain('#new-channel');
+      expect(result.message).not.toContain('C0BL123');
+    });
+
+    it('asks for an invitation when the channel is simply private', async () => {
+      fetchMock
+        .mockResolvedValueOnce(slackApi({ ok: false, error: 'not_in_channel' }))
+        .mockResolvedValueOnce(slackApi({ ok: false, error: 'channel_not_found' }))
+        .mockResolvedValueOnce(slackApi({ ok: false, error: 'not_in_channel' }));
+
+      const result = await adapter.postWithBotToken('xoxb-1', 'C1', [], 'hello', '#private-one');
+
       expect(result.message).toContain('/invite @Kovarti');
-      expect(result.message).not.toBe('not_in_channel');
+      expect(result.message).toContain('#private-one');
     });
 
     it('translates an expired install into something actionable', async () => {

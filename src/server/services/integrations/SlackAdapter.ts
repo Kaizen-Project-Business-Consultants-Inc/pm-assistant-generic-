@@ -30,11 +30,17 @@ export function canPostAsBot(config: SlackConfig): boolean {
  * about it instead; anything unrecognised falls through as-is so it still shows
  * up in a support conversation.
  */
-function describeSlackError(code: string | undefined, channel: string): string {
+function describeSlackError(code: string | undefined, channel: string, joinError?: string): string {
   switch (code) {
     case 'not_in_channel':
     case 'channel_not_found':
-      return `Kovarti can't post to ${channel}. If it's a private channel, type "/invite @Kovarti" in it, then test again.`;
+      // Which advice is right depends on why we could not add ourselves. An
+      // install made before we asked for permission to join can only be fixed by
+      // reconnecting; a private channel can only be fixed by an invitation.
+      if (joinError === 'missing_scope' || joinError === 'invalid_scope') {
+        return `Kovarti isn't allowed to join ${channel} yet. Disconnect and connect Slack again to grant it, or type "/invite @Kovarti" in the channel.`;
+      }
+      return `Kovarti can't post to ${channel}. Type "/invite @Kovarti" in that channel, then test again.`;
     case 'is_archived':
       return `${channel} is archived. Pick a different channel.`;
     case 'invalid_auth':
@@ -136,6 +142,7 @@ export class SlackAdapter {
         config.channelId || config.channel!,
         [{ type: 'section', text: { type: 'mrkdwn', text: ':white_check_mark: *Kovarti is connected.* Project notifications will appear here.' } }],
         'Kovarti is connected. Project notifications will appear here.',
+        target,
       );
       return result.success
         ? { success: true, message: `Test message posted to ${target}` }
@@ -181,6 +188,7 @@ export class SlackAdapter {
         config.channelId || config.channel!,
         message.blocks || [],
         message.text,
+        config.channel,
       );
     }
     return this.sendNotification(config, message);
@@ -276,7 +284,11 @@ export class SlackAdapter {
    * must post with its own OAuth token (Slack requires this for distributed
    * apps, and a shared token would send one customer's data to another's Slack).
    */
-  async postWithBotToken(botToken: string, channel: string, blocks: any[], text: string): Promise<{ success: boolean; message: string }> {
+  /**
+   * `label` is what the customer calls the channel ("#delivery"). Messages have
+   * to name that, not the "C0BLRHC9TK2" we post to.
+   */
+  async postWithBotToken(botToken: string, channel: string, blocks: any[], text: string, label?: string): Promise<{ success: boolean; message: string }> {
     if (!botToken) {
       return { success: false, message: 'No Slack bot token for this workspace' };
     }
@@ -295,26 +307,31 @@ export class SlackAdapter {
 
     try {
       let data = await post();
+      let joinError: string | undefined;
 
       // Slack refuses to post into a channel the app isn't a member of. Join it
       // and retry once — the customer picked this channel, so being told to go
       // and invite a bot is a pointless detour.
       if (!data.ok && data.error === 'not_in_channel') {
-        await this.joinChannel(botToken, channel);
+        joinError = await this.joinChannel(botToken, channel);
         data = await post();
       }
 
       if (data.ok) return { success: true, message: 'Message sent' };
-      return { success: false, message: describeSlackError(data.error, channel) };
+      return { success: false, message: describeSlackError(data.error, label || channel, joinError) };
     } catch (error: any) {
       return { success: false, message: error.message || 'Failed to post message' };
     }
   }
 
-  /** Best effort — a private channel can only be joined by invitation. */
-  private async joinChannel(botToken: string, channel: string): Promise<void> {
+  /**
+   * Best effort — a private channel can only be joined by invitation, and an
+   * install made before we asked for channels:join cannot join at all. Returns
+   * the reason so the caller can give the right advice.
+   */
+  private async joinChannel(botToken: string, channel: string): Promise<string | undefined> {
     try {
-      await fetch('https://slack.com/api/conversations.join', {
+      const res = await fetch('https://slack.com/api/conversations.join', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -322,7 +339,11 @@ export class SlackAdapter {
         },
         body: JSON.stringify({ channel }),
       });
-    } catch { /* the retry will report the real problem */ }
+      const data = await res.json() as { ok: boolean; error?: string };
+      return data.ok ? undefined : data.error;
+    } catch {
+      return undefined; // the retry will report the real problem
+    }
   }
 
   /** `canUseInteractive` should be true only when that workspace has its own bot token. */

@@ -27,7 +27,18 @@ interface SyncLogRow {
   completed_at: string | null;
 }
 
-const SENSITIVE_FIELDS = ['apiToken', 'token', 'apiKey', 'webhookUrl', 'password', 'secret'];
+/**
+ * Never sent to the browser in full. `botToken`, `accessToken` and
+ * `refreshToken` were missing, so an integration listing handed out a live
+ * Slack workspace token and a Google refresh token — credentials that stay
+ * valid long after the session that fetched them. Nothing in the UI needs
+ * them, and a masked value can no longer overwrite the stored one (see
+ * mergeConfig), so masking them costs nothing.
+ */
+const SENSITIVE_FIELDS = [
+  'apiToken', 'token', 'apiKey', 'webhookUrl', 'password', 'secret',
+  'botToken', 'accessToken', 'refreshToken', 'clientSecret', 'signingSecret',
+];
 
 function maskConfig(config: Record<string, any>): Record<string, any> {
   const masked = { ...config };

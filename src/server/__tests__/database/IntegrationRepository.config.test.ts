@@ -69,6 +69,18 @@ describe('IntegrationRepository — saving settings', () => {
     expect(written.channel).toBe('#new-home');
   });
 
+  it('survives the masked form of every secret it hands out', async () => {
+    // Whatever the listing masks is what the form will send back, so the two
+    // have to stay in step — a new masked field must not become a new way to
+    // destroy a credential.
+    await repo.updateIntegration('i1', {
+      config: { botToken: 'xoxb****', webhookUrl: 'http****', token: 'abcd****' },
+    });
+
+    expect(written.botToken).toBe('xoxb-real-token');
+    expect(written.webhookUrl).toBe(storedConfig.webhookUrl);
+  });
+
   it('lets every event filter be cleared', async () => {
     // Unchecking the last box has to mean "all events", not "leave it as it was".
     await repo.updateIntegration('i1', { config: { notifyEvents: [] } });
