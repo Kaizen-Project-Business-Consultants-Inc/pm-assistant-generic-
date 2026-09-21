@@ -18,9 +18,37 @@ export interface PlanDef {
   viewerInvites: string;
   highlight?: boolean;
   perSeat?: boolean;
+  /** One line saying who the plan is for — the thing a buyer scans for first. */
+  audience?: string;
   minSeats?: number;
   features: string[];
 }
+
+/**
+ * Tiers deliberately kept off the pricing page.
+ *
+ * Team used to be hidden here — which contradicted the positioning: a firm with
+ * more than one PM is meant to buy per-seat, and it could not see the only plan
+ * sold that way. A firm of six landed on a $29 single-user plan and had to guess.
+ *
+ * Enterprise is hidden because the product is not ready to sell it. The tier, its
+ * price and its Stripe wiring all still work, so anyone already on it is
+ * unaffected — it simply is not offered.
+ */
+/**
+ * Who each plan is for, in one line. Held here rather than in the database
+ * because it is positioning, not pricing — and because plans arrive from the
+ * API in production, so a line stored only on the local defaults would never
+ * be seen by a real visitor.
+ */
+const PLAN_AUDIENCE: Record<string, string> = {
+  trial: 'Try everything for 14 days. No card needed.',
+  consultant_basic: 'One consultant. Full project management, no AI.',
+  consultant_pro: 'One consultant, with AI. Most people start here.',
+  sme: 'Consultancies with more than one PM. Priced per person.',
+};
+
+const HIDDEN_TIERS = new Set(['enterprise']);
 
 const FALLBACK_PLANS: PlanDef[] = [
   {
@@ -123,6 +151,7 @@ function mapApiToPlan(t: any): PlanDef {
     perSeat: t.isPerSeat,
     minSeats: t.minSeats,
     features: t.featuresJson || [],
+    audience: PLAN_AUDIENCE[t.tier],
   };
 }
 
@@ -193,7 +222,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
   const launchDiscount = stripeConfig?.launchOfferDiscount || 0;
   const enabledTiers: string[] = stripeConfig?.enabledTiers || [];
 
-  const PLANS: PlanDef[] = pricingData?.tiers
+const PLANS: PlanDef[] = pricingData?.tiers
     ? [FALLBACK_PLANS[0], ...pricingData.tiers.filter((t: { tier: string }) => t.tier !== 'trial').map(mapApiToPlan)]
     : FALLBACK_PLANS;
 
@@ -267,8 +296,8 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
       )}
 
       {/* Plan cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {PLANS.filter((p) => p.tier !== 'sme').map((plan) => {
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {PLANS.filter((p) => !HIDDEN_TIERS.has(p.tier)).map((plan) => {
           const isCurrent = mode === 'checkout' && currentTier === plan.tier;
           const tierDisabled = plan.tier !== 'trial' && enabledTiers.length > 0 && !enabledTiers.includes(plan.tier);
           const seats = plan.perSeat ? smeSeats : 1;
@@ -302,6 +331,9 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
 
               <div className="mb-4">
                 <h3 className={`text-xl font-bold ${textPrimary}`}>{plan.name}</h3>
+                {(plan.audience ?? PLAN_AUDIENCE[plan.tier]) && (
+                  <p className={`text-xs mt-1 ${textTertiary}`}>{plan.audience ?? PLAN_AUDIENCE[plan.tier]}</p>
+                )}
                 {plan.monthly === 0 ? (
                   <div className="mt-3 flex items-baseline gap-1">
                     <span className={`text-4xl font-bold ${textPrimary}`}>Free</span>
@@ -555,6 +587,10 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
                 </th>
                 <th scope="col" className="text-center py-3 px-3 font-semibold text-white w-20">Basic</th>
                 <th scope="col" className="text-center py-3 px-3 font-semibold text-primary-400 w-20">Pro</th>
+                <th scope="col" className="text-center py-3 px-3 font-semibold text-white w-20">
+                  Team
+                  <div className="text-xs font-normal text-gray-400">per seat</div>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -564,7 +600,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
                     <div className="text-gray-300">{row.feature}</div>
                     {row.desc && <div className="text-xs text-gray-400 mt-0.5">{row.desc}</div>}
                   </td>
-                  {(['trial', 'consultant_basic', 'consultant_pro'] as const).map((tier) => {
+                  {(['trial', 'consultant_basic', 'consultant_pro', 'sme'] as const).map((tier) => {
                     const val = row[tier];
                     return (
                       <td key={tier} className="py-2.5 px-3 text-center">
