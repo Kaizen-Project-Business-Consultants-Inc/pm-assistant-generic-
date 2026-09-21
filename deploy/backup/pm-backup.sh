@@ -18,6 +18,13 @@
 #
 set -uo pipefail
 
+# systemd passes these in via EnvironmentFile, but a run by hand would not see
+# them and would wrongly report having nowhere to send the backup. Read the same
+# file directly so both routes behave identically.
+if [ -r /etc/pm-backup.env ]; then
+  set -a; . /etc/pm-backup.env; set +a
+fi
+
 LOCAL_DIR=/var/backups/pm-app
 LOCAL_KEEP_DAYS=7        # local copies are the fast path for a same-day mistake
 REMOTE_KEEP_DAYS=30      # the off-machine copy is the one that matters
