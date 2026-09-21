@@ -778,6 +778,23 @@ describe('AlertService', () => {
       expect(alertsRaised()).toHaveLength(0);
     });
 
+    it('notices when the database backup stops running', async () => {
+      // The backup is not a node job — the nightly script writes this key after a
+      // clean run. A backup that quietly stops is invisible until the one day it
+      // is needed, so it is watched exactly like everything else.
+      mockRedisGet.mockImplementation(async (key: string) => {
+        if (key === 'cron:last:db-backup') return hoursAgo(50);
+        if (key?.startsWith('cron:last:')) return hoursAgo(0);
+        return null;
+      });
+
+      await alertService.runChecks();
+
+      const raised = alertsRaised();
+      expect(raised.length).toBeGreaterThan(0);
+      expect(JSON.stringify(raised)).toContain('db-backup');
+    });
+
     it('says nothing when Redis is unavailable, rather than alerting on its own blind spot', async () => {
       mockRedisIsConnected.mockReturnValue(false);
 

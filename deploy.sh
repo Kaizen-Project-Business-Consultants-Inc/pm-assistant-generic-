@@ -194,21 +194,42 @@ if [ "$CLIENT_ONLY" = false ]; then
   echo "  Installing scheduled jobs..."
   do_ssh "mkdir -p /tmp/pm-systemd"
   do_scp deploy/systemd/pm-cron@.service deploy/systemd/*.timer "$SSH_HOST":/tmp/pm-systemd/
-  EXPECTED_TIMERS=$(ls deploy/systemd/*.timer | xargs -n1 basename | sed 's/pm-cron@//;s/\.timer//' | tr '\n' ' ')
+  # Two kinds of unit live here: the pm-cron@<job> instances that run node jobs,
+  # and standalone units with their own .service (the database backup). They are
+  # enabled by different names, so keep the lists apart.
+  EXPECTED_TIMERS=$(ls deploy/systemd/pm-cron@*.timer | xargs -n1 basename | sed 's/pm-cron@//;s/\.timer//' | tr '\n' ' ')
+  STANDALONE_TIMERS=$(ls deploy/systemd/*.timer | grep -v 'pm-cron@' | xargs -n1 basename | sed 's/\.timer//' | tr '\n' ' ')
+  if [ -n "$STANDALONE_TIMERS" ]; then
+    do_scp deploy/systemd/pm-backup.service "$SSH_HOST":/tmp/pm-systemd/
+    # The backup script itself, and somewhere for it to write.
+    do_scp deploy/backup/pm-backup.sh "$SSH_HOST":/tmp/pm-backup.sh
+    do_ssh "sudo install -m 755 -o root -g root /tmp/pm-backup.sh /usr/local/bin/pm-backup.sh \
+      && rm -f /tmp/pm-backup.sh && sudo mkdir -p /var/backups/pm-app"
+  fi
   do_ssh "sudo cp /tmp/pm-systemd/pm-cron@.service /tmp/pm-systemd/*.timer /etc/systemd/system/ \
+    && if ls /tmp/pm-systemd/pm-backup.service >/dev/null 2>&1; then sudo cp /tmp/pm-systemd/pm-backup.service /etc/systemd/system/; fi \
     && rm -rf /tmp/pm-systemd \
     && sudo systemctl daemon-reload \
-    && for j in $EXPECTED_TIMERS; do sudo systemctl enable --now pm-cron@\$j.timer >/dev/null 2>&1; done"
+    && for j in $EXPECTED_TIMERS; do sudo systemctl enable --now pm-cron@\$j.timer >/dev/null 2>&1; done \
+    && for t in $STANDALONE_TIMERS; do sudo systemctl enable --now \$t.timer >/dev/null 2>&1; done"
 
   # Verify every expected job is actually scheduled. The original failure was not that
   # a step was skipped — it is that skipping it produced no error anywhere.
-  MISSING=$(do_ssh "for j in $EXPECTED_TIMERS; do systemctl is-enabled pm-cron@\$j.timer >/dev/null 2>&1 || echo \$j; done")
+  MISSING=$(do_ssh "for j in $EXPECTED_TIMERS; do systemctl is-enabled pm-cron@\$j.timer >/dev/null 2>&1 || echo \$j; done; \
+    for t in $STANDALONE_TIMERS; do systemctl is-enabled \$t.timer >/dev/null 2>&1 || echo \$t; done")
   if [ -n "$MISSING" ]; then
     echo "  ✗ SCHEDULED JOBS NOT ENABLED:" $MISSING
     echo "    These will never run on this server. Investigate before trusting this deploy."
     exit 1
   fi
-  echo "  ✓ OK ($(echo $EXPECTED_TIMERS | wc -w) jobs scheduled)"
+  echo "  ✓ OK ($(echo $EXPECTED_TIMERS $STANDALONE_TIMERS | wc -w) jobs scheduled)"
+
+  # A backup that only exists on the machine it protects is not a backup. Say so
+  # on every deploy rather than discovering it the night it matters.
+  if ! do_ssh "sudo test -s /etc/pm-backup.env"; then
+    echo "  ⚠ Database backups have no off-machine destination on this server."
+    echo "    Set it up with: bash scripts/setup-offsite-backup.sh $ENV"
+  fi
 
   # Sync dependencies — upload package files and install production deps
   echo "  Syncing dependencies..."

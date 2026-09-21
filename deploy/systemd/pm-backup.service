@@ -1,0 +1,14 @@
+[Unit]
+Description=PM Assistant nightly database backup (local + off-machine copy)
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Reads PM_BACKUP_REMOTE_HOST / PM_BACKUP_REMOTE_PATH / PM_BACKUP_SSH_KEY.
+# Missing file is tolerated so a server without an off-machine destination
+# still takes local backups — the script reports that as a failure itself.
+EnvironmentFile=-/etc/pm-backup.env
+ExecStart=/usr/local/bin/pm-backup.sh
+TimeoutStartSec=3600
+User=root

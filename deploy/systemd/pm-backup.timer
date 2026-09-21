@@ -1,0 +1,13 @@
+[Unit]
+Description=PM Assistant nightly database backup
+
+[Timer]
+# 02:30 UTC — after the overnight jobs, well before anyone in North America
+# or Europe starts work.
+OnCalendar=*-*-* 02:30:00
+# Catches up if the machine was off at 02:30 rather than skipping the night.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

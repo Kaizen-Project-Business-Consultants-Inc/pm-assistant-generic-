@@ -46,6 +46,10 @@ const EXPECTED_CRON_JOBS: Array<{ job: string; maxQuietHours: number }> = [
   { job: 'utilization-coaching', maxQuietHours: 8 * 24 },
   { job: 'weekly-review-pack', maxQuietHours: 8 * 24 },
   { job: 'schedule-review', maxQuietHours: 8 * 24 },
+  // Not a node job — pm-backup.timer writes this key itself after a clean run.
+  // A backup that stops running is invisible until the day it is needed, which
+  // is the worst possible day to find out.
+  { job: 'db-backup', maxQuietHours: 30 },
 ];
 
 interface Alert {
