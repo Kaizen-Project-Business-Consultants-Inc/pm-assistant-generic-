@@ -185,6 +185,50 @@ export class EmailService {
     `;
   }
 
+  /**
+   * Wrapper for mail that leaves the customer's world — a consultant's client
+   * receiving a report.
+   *
+   * On the consultant tiers the client never has a login, by design: they
+   * receive information, they do not use the product. So anything addressed to
+   * them must not invite them in. The ordinary wrapper ends with an "Open
+   * Dashboard" button, which for these recipients is a button to a login page
+   * for a product they have never heard of — it makes the consultant look
+   * careless in front of their own customer.
+   *
+   * `sender` names the consultancy, so the client can see at a glance who the
+   * report is from rather than only which tool produced it. When per-org
+   * branding arrives, this is where the logo goes.
+   */
+  private wrapClientHtml(title: string, bodyHtml: string, sender?: string): string {
+    const from = sender
+      ? `<p style="color:#6b7280;font-size:13px;margin:4px 0 0 0;">Sent by ${escapeHtml(sender)}</p>`
+      : '';
+    return `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <h2 style="color: #1f2937; margin: 0;">${escapeHtml(title)}</h2>
+        ${from}
+        <div style="margin-top: 24px;">${bodyHtml}</div>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
+        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+          Produced with Kovarti PM
+        </p>
+      </div>
+    `;
+  }
+
+  /** A link the client can actually open — no account required. */
+  private portalButton(portalUrl?: string): string {
+    if (!portalUrl) return '';
+    return `
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${escapeHtml(portalUrl)}" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+          View Project Details
+        </a>
+      </div>
+    `;
+  }
+
   async sendNotificationEmail(to: string, subject: string, title: string, message: string, ctaUrl?: string, ctaLabel?: string): Promise<void> {
     if (!this.isConfigured) {
       logger.info(`[EmailService] Notification email would be sent to ${maskPii(to)}: ${subject}`);
@@ -357,7 +401,17 @@ export class EmailService {
     });
   }
 
-  async sendStatusReportEmail(recipients: string[], projectName: string, htmlContent: string): Promise<void> {
+  /**
+   * Reports go outward: recipients are typed in by hand, so they are routinely
+   * the consultant's client, not a colleague. Treated as client mail — see
+   * wrapClientHtml.
+   */
+  async sendStatusReportEmail(
+    recipients: string[],
+    projectName: string,
+    htmlContent: string,
+    opts?: { senderName?: string; portalUrl?: string },
+  ): Promise<void> {
     if (!this.isConfigured) {
       logger.info(`[EmailService] Status report email would be sent to ${recipients.map(r => maskPii(r)).join(', ')}: ${escapeHtml(projectName)}`);
       return;
@@ -366,24 +420,23 @@ export class EmailService {
     const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
     // htmlContent is pre-rendered styled HTML from statusReportRenderer
-    const bodyHtml = `
-      ${htmlContent}
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${config.APP_URL}/dashboard" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-          Open Dashboard
-        </a>
-      </div>
-    `;
+    const bodyHtml = `${htmlContent}${this.portalButton(opts?.portalUrl)}`;
 
     await this.sendEmail({
       from: config.RESEND_FROM_EMAIL,
       to: recipients,
       subject: `Status Report: ${projectName} — ${date}`,
-      html: this.wrapHtml(`Status Report: ${projectName}`, bodyHtml),
+      html: this.wrapClientHtml(`Status Report: ${projectName}`, bodyHtml, opts?.senderName),
     });
   }
 
-  async sendRAIDReportEmail(recipients: string[], projectName: string, htmlContent: string): Promise<void> {
+  /** Also outward-facing — same treatment as the status report. */
+  async sendRAIDReportEmail(
+    recipients: string[],
+    projectName: string,
+    htmlContent: string,
+    opts?: { senderName?: string; portalUrl?: string },
+  ): Promise<void> {
     if (!this.isConfigured) {
       logger.info(`[EmailService] RAID report email would be sent to ${recipients.map(r => maskPii(r)).join(', ')}: ${escapeHtml(projectName)}`);
       return;
@@ -391,20 +444,13 @@ export class EmailService {
 
     const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const bodyHtml = `
-      ${htmlContent}
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${config.APP_URL}/dashboard" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-          Open Dashboard
-        </a>
-      </div>
-    `;
+    const bodyHtml = `${htmlContent}${this.portalButton(opts?.portalUrl)}`;
 
     await this.sendEmail({
       from: config.RESEND_FROM_EMAIL,
       to: recipients,
       subject: `RAID Report: ${projectName} — ${date}`,
-      html: this.wrapHtml(`RAID Report: ${projectName}`, bodyHtml),
+      html: this.wrapClientHtml(`RAID Report: ${projectName}`, bodyHtml, opts?.senderName),
     });
   }
 

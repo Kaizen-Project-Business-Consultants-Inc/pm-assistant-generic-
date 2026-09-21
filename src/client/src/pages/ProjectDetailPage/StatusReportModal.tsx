@@ -135,7 +135,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
   });
 
   const emailMutation = useMutation({
-    mutationFn: (recipients: string[]) => apiService.emailStatusReport(html, projectName, recipients),
+    mutationFn: (recipients: string[]) => apiService.emailStatusReport(html, projectName, recipients, projectId),
     onSuccess: () => setEmailSent(true),
   });
 

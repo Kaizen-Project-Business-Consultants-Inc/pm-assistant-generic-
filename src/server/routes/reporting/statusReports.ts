@@ -15,6 +15,7 @@ import { WebSocketService } from '../../services/WebSocketService';
 import { getTenantContext, runWithTenantContext } from '../../middleware/requestContext';
 import logger from '../../utils/logger';
 import crypto from 'crypto';
+import { clientReportContext } from '../../utils/clientReportContext';
 
 const generateSchema = z.object({
   projectId: z.string().min(1),
@@ -138,9 +139,17 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
         html: z.string().min(1),
         projectName: z.string().min(1),
         recipients: z.array(z.string().email()).min(1),
+        // Optional so existing callers keep working; when present it lets the
+        // mail carry a portal link the recipient can actually open.
+        projectId: z.string().optional(),
       });
       const body = schema.parse(request.body);
-      await emailService.sendStatusReportEmail(body.recipients, body.projectName, body.html);
+      // These recipients are typed in by hand, so they are routinely the
+      // consultant's client rather than a colleague. Address them as such.
+      const clientContext = body.projectId
+        ? await clientReportContext(body.projectId, request.user?.userId)
+        : {};
+      await emailService.sendStatusReportEmail(body.recipients, body.projectName, body.html, clientContext);
       return { success: true };
     } catch (error: any) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });

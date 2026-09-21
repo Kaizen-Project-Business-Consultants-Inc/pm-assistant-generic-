@@ -619,7 +619,74 @@ describe('EmailService', () => {
       const args = mockSend.mock.calls[0][0];
       expect(args.subject).toContain('Status Report: Alpha Project');
       expect(args.html).toContain('Good progress');
-      expect(args.html).toContain('Open Dashboard');
+    });
+
+    /**
+     * On the consultant tiers the client never logs in — they receive
+     * information. A report addressed to them must therefore not send them to a
+     * login page for a product they have never heard of. The previous version
+     * of this suite asserted the opposite, which is how the defect survived.
+     */
+    it('never invites the recipient into the app', async () => {
+      await service.sendStatusReportEmail(['client@theirfirm.com'], 'Alpha Project', '<p>Good progress</p>');
+
+      const { html } = mockSend.mock.calls[0][0];
+      expect(html).not.toContain('Open Dashboard');
+      expect(html).not.toContain('/dashboard');
+      expect(html).not.toContain('/login');
+      expect(html).not.toContain('/pricing');
+    });
+
+    it('names the consultancy the report came from', async () => {
+      await service.sendStatusReportEmail(['client@theirfirm.com'], 'Alpha Project', '<p>Report</p>', {
+        senderName: 'Kaizen Project Consultants',
+      });
+
+      const { html } = mockSend.mock.calls[0][0];
+      // The client knows their consultant, not the tool.
+      expect(html).toContain('Sent by Kaizen Project Consultants');
+    });
+
+    it('offers the portal link, which is the only link a client can open', async () => {
+      await service.sendStatusReportEmail(['client@theirfirm.com'], 'Alpha Project', '<p>Report</p>', {
+        portalUrl: 'https://pm.kpbc.ca/portal/abc123',
+      });
+
+      const { html } = mockSend.mock.calls[0][0];
+      expect(html).toContain('https://pm.kpbc.ca/portal/abc123');
+      expect(html).toContain('View Project Details');
+    });
+
+    it('offers no link at all when the project has no portal', async () => {
+      await service.sendStatusReportEmail(['client@theirfirm.com'], 'Alpha Project', '<p>Report</p>');
+
+      const { html } = mockSend.mock.calls[0][0];
+      expect(html).not.toContain('View Project Details');
+      expect(html).not.toContain('<a href');
+    });
+
+    it('escapes a sender name rather than trusting it', async () => {
+      await service.sendStatusReportEmail(['c@t.com'], 'P', '<p>R</p>', {
+        senderName: '<script>alert(1)</script>',
+      });
+
+      const { html } = mockSend.mock.calls[0][0];
+      expect(html).not.toContain('<script>');
+    });
+  });
+
+  // =========================================================================
+  // sendRAIDReportEmail — also leaves for people outside the product
+  // =========================================================================
+
+  describe('sendRAIDReportEmail', () => {
+    it('never invites the recipient into the app', async () => {
+      await service.sendRAIDReportEmail(['client@theirfirm.com'], 'Alpha Project', '<p>Risks</p>');
+
+      const { html } = mockSend.mock.calls[0][0];
+      expect(html).toContain('Risks');
+      expect(html).not.toContain('Open Dashboard');
+      expect(html).not.toContain('/dashboard');
     });
   });
 

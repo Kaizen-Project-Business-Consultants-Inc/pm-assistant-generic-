@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mocks ────────────────────────────────────────────────────────────
 const mockFindByProject = vi.fn();
+vi.mock('../../utils/clientReportContext', () => ({
+  clientReportContext: vi.fn().mockResolvedValue({}),
+}));
+
 vi.mock('../../database/RiskRepository', () => ({
   riskRepository: {
     findByProject: (...args: any[]) => mockFindByProject(...args),
@@ -525,6 +529,8 @@ describe('RAIDReportService', () => {
         ['test@example.com'],
         'Test Project',
         '<html>report</html>',
+        // Who it is from, and a link the recipient can open without an account.
+        expect.any(Object),
       );
       expect(result.emailSent).toBe(true);
     });

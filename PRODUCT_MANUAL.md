@@ -1143,6 +1143,14 @@ Severity thresholds: critical (10+ new tasks or 20+ days growth), high (5+/10+),
 
 AI-powered executive status report following the DBJ Template Standard with 8 structured sections. Claude analyzes project data and produces a structured JSON response that is rendered as styled HTML for both the UI modal and email delivery.
 
+**Outbound mail is treated differently from internal mail.** Report recipients are free-text email addresses (`z.array(z.string().email())`), so they are routinely the consultant's *client* — and on the consultant tiers a client never has a login, by design: they receive information rather than using the product. Status and RAID report emails therefore use `EmailService.wrapClientHtml()` rather than the ordinary `wrapHtml()`:
+
+- **No route into the app.** The ordinary wrapper ends with an "Open Dashboard" button; for an external recipient that is a button to a login page for a product they have never heard of, which makes the consultant look careless in front of their own customer. Pinned by a test asserting the html contains no `/dashboard`, `/login` or `/pricing`.
+- **The consultancy is named** (`senderName`), resolved from `organizations.name` for the sending user.
+- **A portal link is offered when one exists** (`portalUrl`) — the only link a client can open without an account. `clientReportContext()` (`src/server/utils/clientReportContext.ts`) resolves both, skipping portal links that are inactive or expired, and swallows every failure: a missing sender name is a smaller problem than an unsent report.
+
+This wrapper is also where per-org branding will attach if BR2 is ever built — it is already the one client-facing template.
+
 **Report Format (8 Sections):**
 
 1. **Header Metadata** — Auto-incrementing report number (SR-001, SR-002, …), reporting period (last 14 days with start/end dates), prepared-by name, and generation date. Report numbers are sequential per project.

@@ -719,8 +719,10 @@ class ApiService {
     return response.data;
   }
 
-  async emailStatusReport(html: string, projectName: string, recipients: string[]) {
-    const response = await this.api.post('/status-reports/email', { html, projectName, recipients });
+  async emailStatusReport(html: string, projectName: string, recipients: string[], projectId?: string) {
+    // projectId lets the server attach a portal link — the only link a client
+    // without a login can actually open.
+    const response = await this.api.post('/status-reports/email', { html, projectName, recipients, projectId });
     return response.data;
   }
 

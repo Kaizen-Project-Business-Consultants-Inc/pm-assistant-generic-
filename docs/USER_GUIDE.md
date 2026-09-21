@@ -1394,6 +1394,21 @@ Click any tile marked **AI** to start an AI-powered report:
 
 For **Status Reports** and **RAID Reports**, a modal opens with additional options (editing, email delivery, scheduling, and multi-format export). For **Strategic Risk Scan**, the scan runs in the background and the finished report is delivered via WebSocket.
 
+#### Emailing a report to your client
+
+You can type any email address into the recipient list, so reports are meant to go
+to people outside your account — your client, their sponsor, a steering committee.
+Those people have no login, and the email is written for them accordingly:
+
+- **No sign-in prompt.** They are never sent to a login page for a product they
+  don't have an account for.
+- **Your firm is named** as the sender, so the report reads as coming from you
+  rather than from a tool.
+- **If the project has a client portal link**, the email carries a "View Project
+  Details" button pointing at it — the one link a client can open without an
+  account. Expired or disabled links are left out rather than sent as dead ends.
+  Create one under the project's **Portal** section first if you want this.
+
 ### See Also
 
 The Reports page includes links to the **EVM Dashboard** and **Monte Carlo Simulation** pages for deeper analytical views beyond standard reports.

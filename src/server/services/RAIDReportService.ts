@@ -12,6 +12,7 @@ import {
 } from '../utils/raidReportRenderer';
 import logger from '../utils/logger';
 import { isOverdue } from '../utils/calendarDate';
+import { clientReportContext } from '../utils/clientReportContext';
 
 export interface RAIDReportOptions {
   filters?: RAIDReportFilters;
@@ -147,7 +148,8 @@ export class RAIDReportService {
     let emailSent = false;
     if (options.sendEmail && options.recipients?.length) {
       try {
-        await emailService.sendRAIDReportEmail(options.recipients, projectName, html);
+        const clientContext = await clientReportContext(projectId, userId);
+        await emailService.sendRAIDReportEmail(options.recipients, projectName, html, clientContext);
         emailSent = true;
       } catch (err) {
         logger.error(`Failed to email RAID report: ${err instanceof Error ? err.message : String(err)}`);

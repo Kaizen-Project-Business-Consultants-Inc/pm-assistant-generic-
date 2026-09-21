@@ -17,6 +17,7 @@ import { userService } from './UserService';
 import logger from '../utils/logger';
 import { isOverdue } from '../utils/calendarDate';
 import { statusDateFor } from './StatusDateService';
+import { clientReportContext } from '../utils/clientReportContext';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -306,7 +307,11 @@ export class ProjectStatusReportService {
     let emailSent = false;
     if (options.sendEmail && options.recipients?.length) {
       try {
-        await emailService.sendStatusReportEmail(options.recipients, projectName, html);
+        // Recipients are typed in by hand and are routinely the consultant's
+        // client, who has no login. Give the mail what it needs to address them
+        // properly rather than inviting them into a product they cannot enter.
+        const clientContext = await clientReportContext(projectId, userId);
+        await emailService.sendStatusReportEmail(options.recipients, projectName, html, clientContext);
         emailSent = true;
       } catch (err) {
         logger.error(`Failed to email status report: ${err instanceof Error ? err.message : String(err)}`);

@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies before importing
+
+// Reports now resolve who they are from and whether a client-openable link
+// exists, which reaches config and two repositories. Stub them so this suite
+// keeps testing report generation rather than the environment.
+vi.mock('../../utils/clientReportContext', () => ({
+  clientReportContext: vi.fn().mockResolvedValue({}),
+}));
+
 vi.mock('../../services/claudeService', () => {
   const mockComplete = vi.fn();
   const mockIsAvailable = vi.fn();
@@ -174,6 +182,8 @@ describe('ProjectStatusReportService', () => {
       ['test@example.com'],
       'Test Project',
       expect.stringContaining('EXECUTIVE SUMMARY'),
+      // Who it is from, and a link the recipient can open without an account.
+      expect.any(Object),
     );
   });
 
