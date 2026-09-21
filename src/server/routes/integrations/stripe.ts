@@ -4,7 +4,7 @@ import { config } from '../../config';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { userService } from '../../services/UserService';
-import { stripeService } from '../../services/StripeService';
+import { stripeService, StripeService } from '../../services/StripeService';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import { tokenTopUpRepository } from '../../database/TokenTopUpRepository';
 import { rateLimiter } from '../../middleware/rateLimiter';
@@ -63,28 +63,54 @@ export async function stripeRoutes(fastify: FastifyInstance) {
     config: { rawBody: true },
     schema: { description: 'Stripe webhook endpoint', tags: ['stripe'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const signature = request.headers['stripe-signature'] as string;
+    if (!signature) {
+      return reply.status(400).send({ error: 'Missing stripe-signature header' });
+    }
+
+    const rawBody = request.rawBody;
+    if (!rawBody) {
+      return reply.status(400).send({ error: 'Missing raw body' });
+    }
+
+    // Step 1 — is this really from Stripe? A failure here is not a business
+    // problem: either someone is posting to our endpoint, or STRIPE_WEBHOOK_SECRET
+    // is wrong. Both need to be loud. This used to be swallowed by the same catch
+    // as processing and answered 200.
+    let event;
     try {
-      const signature = request.headers['stripe-signature'] as string;
-      if (!signature) {
-        return reply.status(400).send({ error: 'Missing stripe-signature header' });
-      }
-
-      const rawBody = request.rawBody;
-      if (!rawBody) {
-        return reply.status(400).send({ error: 'Missing raw body' });
-      }
-
-      try {
-        await stripeService.handleWebhookEvent(rawBody as Buffer, signature);
-      } catch (processingError) {
-        // Log but return 200 so Stripe doesn't retry on business logic failures
-        logger.error('Stripe webhook processing error', { error: processingError });
-      }
-      return { received: true };
-    } catch (error) {
-      // Signature verification or missing header — return 400
-      logger.error('Stripe webhook signature error', { error });
+      event = stripeService.verifyWebhook(rawBody as Buffer, signature);
+    } catch (error: any) {
+      logger.error('Stripe webhook signature rejected', {
+        message: error?.message,
+        hint: 'Check STRIPE_WEBHOOK_SECRET matches the endpoint in the Stripe dashboard',
+      });
       return reply.status(400).send({ error: 'Webhook signature verification failed' });
+    }
+
+    // Step 2 — Stripe sends far more than we act on. Acknowledge the rest so it
+    // is not retried forever.
+    if (!StripeService.HANDLED_EVENTS.has(event.type)) {
+      return { received: true, handled: false };
+    }
+
+    try {
+      await stripeService.processWebhookEvent(event);
+      logger.info('Stripe webhook processed', { eventId: event.id, type: event.type });
+      return { received: true, handled: true };
+    } catch (error: any) {
+      // A payment event we could not process is money taken without access
+      // granted. Ask Stripe to retry — it backs off over roughly three days,
+      // which is long enough to survive a restart or a database blip. The old
+      // code answered 200 here, so every failure was lost silently: 16 of 54
+      // deliveries in the 30 days to 2026-09-21.
+      logger.error('Stripe webhook processing failed — asking Stripe to retry', {
+        eventId: event.id,
+        type: event.type,
+        message: error?.message,
+        stack: error?.stack,
+      });
+      return reply.status(500).send({ error: 'Processing failed', eventId: event.id });
     }
   });
 

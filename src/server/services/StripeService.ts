@@ -111,10 +111,38 @@ export class StripeService {
     return session.url;
   }
 
-  async handleWebhookEvent(payload: Buffer, signature: string): Promise<void> {
-    const stripe = this.getClient();
-    const event = stripe.webhooks.constructEvent(payload, signature, config.STRIPE_WEBHOOK_SECRET);
+  /**
+   * The event types we act on. Anything else is acknowledged and ignored —
+   * Stripe sends a great deal we have no opinion about, and retrying those
+   * forever would bury the ones that matter.
+   */
+  static readonly HANDLED_EVENTS = new Set([
+    'customer.subscription.created',
+    'customer.subscription.updated',
+    'customer.subscription.deleted',
+    'checkout.session.completed',
+    'invoice.payment_failed',
+    'invoice.payment_succeeded',
+  ]);
 
+  /**
+   * Prove the message really came from Stripe. Kept separate from processing so
+   * the two failures can be answered differently: a bad signature means someone
+   * is posting to our endpoint, or our secret is wrong — it must not be
+   * acknowledged as though it were handled.
+   */
+  verifyWebhook(payload: Buffer, signature: string): Stripe.Event {
+    const stripe = this.getClient();
+    return stripe.webhooks.constructEvent(payload, signature, config.STRIPE_WEBHOOK_SECRET);
+  }
+
+  /** Verify and process in one step. Kept for callers that want both. */
+  async handleWebhookEvent(payload: Buffer, signature: string): Promise<void> {
+    return this.processWebhookEvent(this.verifyWebhook(payload, signature));
+  }
+
+  async processWebhookEvent(event: Stripe.Event): Promise<void> {
+    const stripe = this.getClient();
     const stripeEventId = event.id;
 
     switch (event.type) {
