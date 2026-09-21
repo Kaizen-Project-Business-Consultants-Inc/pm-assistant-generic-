@@ -43,6 +43,36 @@ const past = new Date(Date.now() - 86400_000);
 describe('the subscription guard', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('blocks when the date arrives as a string, which is how it really arrives', async () => {
+    // The pool is configured with dateStrings: true, so trial_ends_at is a
+    // string, not a Date. The first version of this gate called
+    // trialEndsAt.toISOString() while logging the block — that threw, the catch
+    // treated it as "the check broke, allow it", and the gate never blocked
+    // anyone. Every test used a Date object and all of them passed.
+    users.findById.mockResolvedValue({
+      subscriptionStatus: 'none',
+      subscriptionTier: 'trial',
+      trialEndsAt: '2026-09-20 13:40:54',
+    });
+    const reply = makeReply();
+
+    await subscriptionGuard(makeRequest(), reply);
+
+    expect(reply.statusCode).toBe(403);
+  });
+
+  it('allows a running trial whose date is a string', async () => {
+    const soon = new Date(Date.now() + 3 * 86400_000).toISOString().slice(0, 19).replace('T', ' ');
+    users.findById.mockResolvedValue({
+      subscriptionStatus: 'trialing', subscriptionTier: 'trial', trialEndsAt: soon,
+    });
+    const reply = makeReply();
+
+    await subscriptionGuard(makeRequest(), reply);
+
+    expect(reply.sent).toBe(false);
+  });
+
   it('blocks a write once the trial has ended', async () => {
     users.findById.mockResolvedValue({ subscriptionStatus: 'none', subscriptionTier: 'trial', trialEndsAt: past });
     const reply = makeReply();

@@ -131,7 +131,10 @@ export async function requireActiveSubscription(request: FastifyRequest, reply: 
       userId: user.userId,
       subscriptionTier,
       subscriptionStatus,
-      trialEndsAt: trialEndsAt?.toISOString() ?? null,
+      // Dates arrive as strings from the pool (dateStrings: true), so calling
+      // toISOString() here threw — and the catch below treated that as "the
+      // check broke, let them through". The gate silently never blocked anyone.
+      trialEndsAt: trialEndsAt ? String(trialEndsAt) : null,
       method: request.method,
       url: request.url,
     });
@@ -145,9 +148,16 @@ export async function requireActiveSubscription(request: FastifyRequest, reply: 
       subscriptionStatus,
       trialExpired: trialEndsAt ? new Date(trialEndsAt) <= new Date() : false,
     });
-  } catch (error) {
-    logger.error('Subscription check error', { error, userId: user.userId });
-    // Fail open — don't block users due to internal errors
+  } catch (error: any) {
+    // Failing open is right — an outage must not lock paying customers out —
+    // but it hides bugs in this very function, so the reason has to be legible.
+    // Logging the raw error object serialises to {"name":"TypeError"}: no
+    // message, no stack, which is exactly how the bug above went unnoticed.
+    logger.error('Subscription check error — allowing the request', {
+      userId: user.userId,
+      message: error?.message,
+      stack: error?.stack,
+    });
     return;
   }
 }
