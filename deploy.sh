@@ -246,7 +246,11 @@ if [ "$SERVER_ONLY" = false ]; then
   echo "[6/7] Uploading client dist..."
   tar czf /tmp/client-dist.tar.gz -C src/client/dist .
   do_scp /tmp/client-dist.tar.gz "$SSH_HOST":/tmp/
-  do_ssh "sudo rm -rf /opt/pm-app/client-dist/assets && sudo tar xzf /tmp/client-dist.tar.gz -C /opt/pm-app/client-dist && sudo chown -R www-data:www-data /opt/pm-app/client-dist/ && rm /tmp/client-dist.tar.gz"
+  # Untarring over the directory never removes anything, so a file the build has
+  # stopped producing lives on forever. Clear the two things that matter: the
+  # whole assets folder, and any source map left at the top level (sw.js.map
+  # survived there when client source maps were switched off).
+  do_ssh "sudo rm -rf /opt/pm-app/client-dist/assets && sudo find /opt/pm-app/client-dist -maxdepth 1 -name '*.map' -delete && sudo tar xzf /tmp/client-dist.tar.gz -C /opt/pm-app/client-dist && sudo chown -R www-data:www-data /opt/pm-app/client-dist/ && rm /tmp/client-dist.tar.gz"
   rm -f /tmp/client-dist.tar.gz
 
   # This directory is served to the public by Nginx. Only untarring over it means

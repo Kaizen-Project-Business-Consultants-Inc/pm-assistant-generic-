@@ -3,7 +3,10 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
-export default defineConfig({
+// `mode` is Vite's own — 'production' for `vite build`, 'development' for the
+// dev server. Checking process.env.NODE_ENV here would not be reliable: Vite
+// loads this file before it settles that variable.
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
@@ -58,7 +61,14 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // Source maps carry the original, readable source alongside the compiled
+    // bundle. Published, they put the whole front end up for download — 167
+    // files, 14MB, on both sites until 2026-09-21. Nothing here consumes them
+    // (no error tracker is wired up), so they were pure exposure.
+    //
+    // Keep them for local development, where they are what makes a stack trace
+    // legible; never ship them.
+    sourcemap: mode !== 'production',
     rollupOptions: {
       output: {
         manualChunks: {
@@ -68,4 +78,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
