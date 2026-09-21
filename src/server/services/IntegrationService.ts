@@ -49,7 +49,7 @@ export class IntegrationService {
     return integrationRepository.findById(id);
   }
 
-  async update(id: string, data: { config?: Record<string, any>; isActive?: boolean }): Promise<Integration> {
+  async update(id: string, data: { config?: Record<string, any>; isActive?: boolean; projectId?: string | null }): Promise<Integration> {
     return integrationRepository.updateIntegration(id, data);
   }
 

@@ -122,10 +122,40 @@ export class IntegrationRepository extends BaseRepository<Integration> {
     return rows.length > 0 ? rows[0] : null;
   }
 
-  async updateIntegration(id: string, data: { config?: Record<string, any>; isActive?: boolean }): Promise<Integration> {
+  /**
+   * Settings the edit form never shows must survive a save.
+   *
+   * The form only knows about a handful of fields, and reads back the masked
+   * copy of the ones it does know. Writing that straight back used to replace
+   * the whole config — wiping the Slack bot token and team details that only
+   * the OAuth install can produce, so changing an event filter silently broke
+   * the connection. Merge over what is stored, and never let a mask or an
+   * undefined overwrite a real secret.
+   */
+  private mergeConfig(stored: Record<string, any>, incoming: Record<string, any>): Record<string, any> {
+    const merged = { ...stored };
+    for (const [key, value] of Object.entries(incoming)) {
+      if (value === undefined) continue;
+      const isMask = typeof value === 'string' && value.endsWith('****');
+      if (isMask) continue;
+      merged[key] = value;
+    }
+    return merged;
+  }
+
+  async updateIntegration(
+    id: string,
+    data: { config?: Record<string, any>; isActive?: boolean; projectId?: string | null },
+  ): Promise<Integration> {
     const sets: string[] = [];
     const params: any[] = [];
-    if (data.config !== undefined) { sets.push('config = ?'); params.push(JSON.stringify(data.config)); }
+    if (data.config !== undefined) {
+      const existing = await this.findRawById(id);
+      const stored = existing ? parseConfig(existing.config) : {};
+      sets.push('config = ?');
+      params.push(JSON.stringify(this.mergeConfig(stored, data.config)));
+    }
+    if (data.projectId !== undefined) { sets.push('project_id = ?'); params.push(data.projectId || null); }
     if (data.isActive !== undefined) { sets.push('is_active = ?'); params.push(data.isActive); }
     if (sets.length > 0) {
       params.push(id);

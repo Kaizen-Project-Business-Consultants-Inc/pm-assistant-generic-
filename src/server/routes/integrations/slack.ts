@@ -23,7 +23,10 @@ export async function slackRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       if (!config.SLACK_CLIENT_ID) {
-        return reply.status(501).send({ error: 'Slack OAuth not configured (SLACK_CLIENT_ID missing)' });
+        return reply.status(501).send({
+          error: 'Slack not configured',
+          message: 'Slack is not set up on this site yet. Contact support and we will enable it.',
+        });
       }
       const state = require('crypto').randomBytes(16).toString('hex') + ':' + request.user!.userId;
       const url = slackAdapter.buildOAuthUrl(state);
@@ -84,36 +87,51 @@ export async function slackRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
-      const integrations = await integrationRepository.findByUser(userId);
-      // A user can end up with more than one Slack entry — e.g. the full OAuth
-      // install plus a webhook-only one. Prefer whichever actually carries a bot
-      // token, otherwise the newest would shadow a perfectly good connection.
-      const slackIntegs = integrations.filter(i => i.provider === 'slack' && i.isActive);
-      if (slackIntegs.length === 0) {
-        return reply.status(404).send({ error: 'No active Slack integration' });
-      }
+      const { integrationId } = request.query as { integrationId?: string };
 
+      // The picker is opened against one specific connection, so answer for that
+      // one. Someone with two workspaces connected would otherwise be shown the
+      // wrong list and pick a channel that doesn't exist in their workspace.
       let cfg: Record<string, any> | null = null;
-      for (const si of slackIntegs) {
-        const candidate = await integrationRepository.findRawById(si.id);
-        if (!candidate) continue;
-        const parsed = parseConfig(candidate.config);
-        if (parsed.botToken) { cfg = parsed; break; }
-        if (!cfg) cfg = parsed; // remember the first as a fallback
+      if (integrationId) {
+        const row = await integrationRepository.findRawById(integrationId);
+        if (!row || row.user_id !== userId || row.provider !== 'slack') {
+          return reply.status(404).send({ error: 'Not found', message: 'Slack connection not found' });
+        }
+        cfg = parseConfig(row.config);
+      } else {
+        const integrations = await integrationRepository.findByUser(userId);
+        // A user can end up with more than one Slack entry — e.g. the full OAuth
+        // install plus a webhook-only one. Prefer whichever actually carries a bot
+        // token, otherwise the newest would shadow a perfectly good connection.
+        const slackIntegs = integrations.filter(i => i.provider === 'slack' && i.isActive);
+        if (slackIntegs.length === 0) {
+          return reply.status(404).send({ error: 'Not found', message: 'No Slack workspace is connected yet.' });
+        }
+        for (const si of slackIntegs) {
+          const candidate = await integrationRepository.findRawById(si.id);
+          if (!candidate) continue;
+          const parsed = parseConfig(candidate.config);
+          if (parsed.botToken) { cfg = parsed; break; }
+          if (!cfg) cfg = parsed; // remember the first as a fallback
+        }
       }
-      if (!cfg) return reply.status(404).send({ error: 'Integration not found' });
+      if (!cfg) return reply.status(404).send({ error: 'Not found', message: 'Slack connection not found' });
 
       // No app-wide token fallback: each workspace uses its own OAuth token.
       const botToken = cfg.botToken;
       if (!botToken) {
-        return reply.status(400).send({ error: 'No bot token available' });
+        return reply.status(400).send({
+          error: 'No bot token',
+          message: 'This connection posts to the channel it was set up with. Disconnect and install again to choose a different one.',
+        });
       }
 
       const channels = await slackAdapter.listChannels(botToken);
       return { channels };
     } catch (error: any) {
       logger.error('List Slack channels error', { error: error.message });
-      return reply.status(500).send({ error: 'Failed to list channels' });
+      return reply.status(502).send({ error: 'Slack unavailable', message: `Slack did not return your channels: ${error.message}` });
     }
   });
 
@@ -263,7 +281,7 @@ export async function slackRoutes(fastify: FastifyInstance) {
       const results: { integrationId: string; success: boolean; message: string }[] = [];
       for (const row of rows) {
         const slackConfig = parseConfig(row.config) as SlackConfig;
-        const result = await slackAdapter.sendNotification(slackConfig, { text });
+        const result = await slackAdapter.deliver(slackConfig, { text });
         results.push({ integrationId: row.id, ...result });
       }
       return { sent: results.length, results };

@@ -3866,8 +3866,10 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
-  async getSlackChannels() {
-    const response = await this.api.get('/slack/channels');
+  async getSlackChannels(integrationId?: string) {
+    const response = await this.api.get('/slack/channels', {
+      params: integrationId ? { integrationId } : undefined,
+    });
     return response.data;
   }
 

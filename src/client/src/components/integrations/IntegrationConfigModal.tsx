@@ -81,22 +81,10 @@ const PROVIDER_FIELDS: Record<string, FieldDef[]> = {
       placeholder: 'ghp_...',
     },
   ],
-  slack: [
-    {
-      key: 'webhookUrl',
-      label: 'Webhook URL',
-      type: 'url',
-      required: true,
-      placeholder: 'https://hooks.slack.com/services/...',
-    },
-    {
-      key: 'channel',
-      label: 'Channel',
-      type: 'text',
-      required: false,
-      placeholder: '#project-updates (optional)',
-    },
-  ],
+  // Slack is installed through Slack's own authorisation screen, not by pasting
+  // a URL, so the edit form shows a channel picker instead of credential fields.
+  // The webhook field only appears when there is no workspace token to post with.
+  slack: [],
   trello: [
     {
       key: 'apiKey',
@@ -179,9 +167,11 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
     message: string;
   } | null>(null);
 
-  // Slack-specific: project selector + event filter
+  // Slack-specific: project selector + channel picker + event filter
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [notifyEvents, setNotifyEvents] = useState<string[]>([]);
+  const [channelId, setChannelId] = useState<string>('');
+  const [channelName, setChannelName] = useState<string>('');
 
   const { data: projectsData } = useQuery({
     queryKey: ['projects'],
@@ -195,6 +185,22 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
     queryFn: () => apiService.getIntegration(integrationId!),
     enabled: isEdit,
   });
+
+  // The workspace's own channel list. Only an install that carries a workspace
+  // token can offer a choice, so a failure here is informative, not fatal —
+  // the connection still posts to the channel it was set up with.
+  const {
+    data: channelsData,
+    isLoading: channelsLoading,
+    error: channelsError,
+  } = useQuery({
+    queryKey: ['slack-channels', integrationId],
+    queryFn: () => apiService.getSlackChannels(integrationId),
+    enabled: provider === 'slack' && isEdit,
+    retry: false,
+  });
+
+  const channels: { id: string; name: string; isPrivate: boolean }[] = channelsData?.channels ?? [];
 
   useEffect(() => {
     if (existingData?.integration) {
@@ -213,12 +219,23 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
         if (Array.isArray(config.notifyEvents)) {
           setNotifyEvents(config.notifyEvents);
         }
+        if (config.channelId) setChannelId(String(config.channelId));
+        if (config.channel) setChannelName(String(config.channel));
       }
       if (integration.projectId) {
         setSelectedProjectId(integration.projectId);
       }
     }
   }, [existingData]);
+
+  // Once the list arrives, match the stored channel name to its id so the
+  // dropdown shows the current choice instead of looking unset.
+  useEffect(() => {
+    if (channelId || !channelName || channels.length === 0) return;
+    const bare = channelName.replace(/^#/, '');
+    const match = channels.find((c) => c.name === bare);
+    if (match) setChannelId(match.id);
+  }, [channels, channelId, channelName]);
 
   // Save mutation
   const saveMutation = useMutation({
@@ -227,6 +244,9 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
         return apiService.updateIntegration(integrationId!, {
           provider,
           config,
+          // Sent on edit too, so a workspace-wide Slack install can be narrowed
+          // to one project without disconnecting and starting over.
+          ...(provider === 'slack' ? { projectId: selectedProjectId || null } : {}),
         });
       }
       return apiService.createIntegration({
@@ -244,9 +264,13 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
   const testMutation = useMutation({
     mutationFn: (id: string) => apiService.testIntegrationConnection(id),
     onSuccess: (data) => {
+      // The endpoint answers { result: { success, message } }. Reading the
+      // outer object meant `success` was always undefined, so a failed test
+      // still showed a green tick.
+      const result = data?.result ?? data;
       setTestResult({
-        success: data.success !== false,
-        message: data.message || 'Connection successful!',
+        success: result?.success === true,
+        message: result?.message || (result?.success === true ? 'Connection successful!' : 'Connection test failed'),
       });
     },
     onError: (err: any) => {
@@ -288,8 +312,15 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
   const handleSave = () => {
     if (!validate()) return;
     const configPayload: Record<string, unknown> = { ...formValues };
-    if (provider === 'slack' && notifyEvents.length > 0) {
+    if (provider === 'slack') {
+      // Always sent, including empty — otherwise clearing every checkbox would
+      // leave the previous filter in place and nothing would appear to change.
       configPayload.notifyEvents = notifyEvents;
+      if (channelId) {
+        const picked = channels.find((c) => c.id === channelId);
+        configPayload.channelId = channelId;
+        if (picked) configPayload.channel = `#${picked.name}`;
+      }
     }
     saveMutation.mutate(configPayload);
   };
@@ -357,9 +388,49 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
             </div>
           ))}
 
-          {/* Slack-specific: project selector + event filter */}
+          {/* Slack-specific: channel picker + project selector + event filter */}
           {provider === 'slack' && (
             <>
+              {isEdit && (
+                <div>
+                  <label htmlFor="slack-channel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Channel
+                  </label>
+                  {channelsLoading ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Loading your channels…
+                    </p>
+                  ) : channelsError ? (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2">
+                      {(channelsError as any)?.response?.data?.message ||
+                        'We could not load your channels. Notifications still go to the channel this connection was set up with.'}
+                    </p>
+                  ) : (
+                    <>
+                      <select
+                        id="slack-channel"
+                        value={channelId}
+                        onChange={(e) => { setChannelId(e.target.value); setTestResult(null); }}
+                        className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white"
+                      >
+                        <option value="">
+                          {channelName ? `Keep ${channelName}` : 'Choose a channel…'}
+                        </option>
+                        {channels.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.isPrivate ? '🔒 ' : '#'}{c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Where notifications are posted. For a private channel, type
+                        {' '}<code className="font-mono">/invite @Kovarti</code> in it first.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Project

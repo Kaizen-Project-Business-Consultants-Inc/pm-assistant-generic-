@@ -323,11 +323,12 @@ const sections: Section[] = [
       'Connect with Jira, GitHub, Slack, and Trello to sync tasks and send notifications.',
     items: [
       'Navigate to Integrations from the sidebar',
-      'Click "Connect" on a provider card and enter your API credentials',
-      'Use "Test Connection" to verify your credentials work',
+      'For Jira, GitHub and Trello: click "Connect" and enter your API credentials',
+      'For Slack: click "Connect Slack" and approve access in the Slack window — no credentials to copy',
+      'Then click "Configure" on Slack to choose the channel, the project it covers, and which events get posted',
+      'Use "Test Connection" to post a real test message and confirm it arrives',
       'Trigger a sync to pull issues/cards into your project or push tasks out',
       'View sync history to monitor successful and failed syncs',
-      'Slack integration sends formatted project update notifications',
     ],
   },
   {

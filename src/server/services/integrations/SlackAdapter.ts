@@ -4,13 +4,50 @@ import { config } from '../../config';
 export interface SlackConfig {
   /** Present on webhook-style integrations; OAuth installs also receive one. */
   webhookUrl: string;
+  /** Display name of the channel, e.g. "#project-updates". */
   channel?: string;
+  /**
+   * The channel the customer picked in the app. A webhook always posts to the
+   * channel it was created for, so honouring a different choice needs the bot
+   * token — which is why a picked channel is delivered via chat.postMessage.
+   */
+  channelId?: string;
   notifyEvents?: string[];
   // Stored by the OAuth callback — this workspace's own credentials.
   botToken?: string;
   teamId?: string;
   teamName?: string;
   botUserId?: string;
+}
+
+/** True when we can post to a channel of the customer's choosing. */
+export function canPostAsBot(config: SlackConfig): boolean {
+  return !!config.botToken && !!(config.channelId || config.channel);
+}
+
+/**
+ * Slack's error codes mean nothing to a project manager. Say what they can do
+ * about it instead; anything unrecognised falls through as-is so it still shows
+ * up in a support conversation.
+ */
+function describeSlackError(code: string | undefined, channel: string): string {
+  switch (code) {
+    case 'not_in_channel':
+    case 'channel_not_found':
+      return `Kovarti can't post to ${channel}. If it's a private channel, type "/invite @Kovarti" in it, then test again.`;
+    case 'is_archived':
+      return `${channel} is archived. Pick a different channel.`;
+    case 'invalid_auth':
+    case 'token_revoked':
+    case 'account_inactive':
+      return 'Slack no longer accepts this connection. Disconnect and install again.';
+    case 'missing_scope':
+      return 'This connection was made before we asked for permission to post. Disconnect and install again.';
+    case 'rate_limited':
+      return 'Slack is rate limiting us. Try again in a minute.';
+    default:
+      return code || 'Slack API error';
+  }
 }
 
 function isValidSlackWebhookUrl(url: string): boolean {
@@ -29,7 +66,9 @@ export class SlackAdapter {
     const redirectUri = `${config.APP_URL}/api/v1/slack/callback`;
     // groups:read lets the channel picker show private channels too; installs
     // that predate it still work (listChannels falls back to public-only).
-    const scopes = 'chat:write,channels:read,groups:read,commands,incoming-webhook';
+    // channels:join lets us add ourselves to a public channel the customer picks,
+    // so they don't have to remember to invite the bot first.
+    const scopes = 'chat:write,channels:read,groups:read,channels:join,commands,incoming-webhook';
     const params = new URLSearchParams({
       client_id: clientId,
       scope: scopes,
@@ -84,9 +123,32 @@ export class SlackAdapter {
     }));
   }
 
+  /**
+   * Prove the connection end to end by posting the way real notifications will
+   * be posted. Testing the webhook when events actually go out over the bot
+   * token (or the reverse) tells the customer nothing useful.
+   */
   async testConnection(config: SlackConfig): Promise<{ success: boolean; message: string }> {
+    if (canPostAsBot(config)) {
+      const target = config.channel || config.channelId!;
+      const result = await this.postWithBotToken(
+        config.botToken!,
+        config.channelId || config.channel!,
+        [{ type: 'section', text: { type: 'mrkdwn', text: ':white_check_mark: *Kovarti is connected.* Project notifications will appear here.' } }],
+        'Kovarti is connected. Project notifications will appear here.',
+      );
+      return result.success
+        ? { success: true, message: `Test message posted to ${target}` }
+        : result;
+    }
+
     if (!isValidSlackWebhookUrl(config.webhookUrl)) {
-      return { success: false, message: 'Invalid Slack webhook URL. Must be https://hooks.slack.com/...' };
+      return {
+        success: false,
+        message: config.botToken
+          ? 'Choose a channel first, then test again.'
+          : 'This connection has no channel set. Disconnect and install again to fix it.',
+      };
     }
     try {
       const response = await fetch(config.webhookUrl, {
@@ -102,6 +164,26 @@ export class SlackAdapter {
     } catch (error: any) {
       return { success: false, message: error.message || 'Failed to connect' };
     }
+  }
+
+  /**
+   * The one way notifications leave the product. If the customer picked a
+   * channel we post as the bot so that choice is honoured; otherwise we fall
+   * back to the webhook, which always posts to the channel it was created for.
+   */
+  async deliver(
+    config: SlackConfig,
+    message: { text: string; blocks?: any[] },
+  ): Promise<{ success: boolean; message: string }> {
+    if (canPostAsBot(config)) {
+      return this.postWithBotToken(
+        config.botToken!,
+        config.channelId || config.channel!,
+        message.blocks || [],
+        message.text,
+      );
+    }
+    return this.sendNotification(config, message);
   }
 
   async sendNotification(
@@ -199,7 +281,7 @@ export class SlackAdapter {
       return { success: false, message: 'No Slack bot token for this workspace' };
     }
 
-    try {
+    const post = async () => {
       const response = await fetch('https://slack.com/api/chat.postMessage', {
         method: 'POST',
         headers: {
@@ -208,12 +290,39 @@ export class SlackAdapter {
         },
         body: JSON.stringify({ channel, text, blocks }),
       });
-      const data = await response.json() as { ok: boolean; error?: string };
+      return response.json() as Promise<{ ok: boolean; error?: string }>;
+    };
+
+    try {
+      let data = await post();
+
+      // Slack refuses to post into a channel the app isn't a member of. Join it
+      // and retry once — the customer picked this channel, so being told to go
+      // and invite a bot is a pointless detour.
+      if (!data.ok && data.error === 'not_in_channel') {
+        await this.joinChannel(botToken, channel);
+        data = await post();
+      }
+
       if (data.ok) return { success: true, message: 'Message sent' };
-      return { success: false, message: data.error || 'Slack API error' };
+      return { success: false, message: describeSlackError(data.error, channel) };
     } catch (error: any) {
       return { success: false, message: error.message || 'Failed to post message' };
     }
+  }
+
+  /** Best effort — a private channel can only be joined by invitation. */
+  private async joinChannel(botToken: string, channel: string): Promise<void> {
+    try {
+      await fetch('https://slack.com/api/conversations.join', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${botToken}`,
+        },
+        body: JSON.stringify({ channel }),
+      });
+    } catch { /* the retry will report the real problem */ }
   }
 
   /** `canUseInteractive` should be true only when that workspace has its own bot token. */

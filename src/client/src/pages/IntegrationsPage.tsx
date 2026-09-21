@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plug,
@@ -10,6 +10,7 @@ import {
   History,
   Plus,
   ExternalLink,
+  AlertCircle,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -110,6 +111,11 @@ export const IntegrationsPage: React.FC = () => {
   const [syncLogId, setSyncLogId] = useState<string | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState<{ id: string; name: string } | null>(null);
 
+  // Anything that goes wrong has to be visible. Previously an install that
+  // failed — a provider not configured on the site, or a blocked popup — only
+  // reached the browser console, so the button simply appeared to do nothing.
+  const [banner, setBanner] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
+
   // Fetch integrations
   const {
     data: integrationsData,
@@ -161,6 +167,12 @@ export const IntegrationsPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
     },
+    onError: (err: any) => {
+      setBanner({
+        kind: 'error',
+        text: err?.response?.data?.message || 'We could not disconnect that. Please try again.',
+      });
+    },
   });
 
   const handleDisconnect = (integrationId: string, providerName: string) => {
@@ -170,6 +182,8 @@ export const IntegrationsPage: React.FC = () => {
   const OAUTH_PROVIDERS = new Set(['slack', 'google_calendar']);
 
   const handleOAuthConnect = useCallback(async (provider: string) => {
+    setBanner(null);
+    const label = PROVIDERS[provider]?.name ?? provider;
     try {
       let data;
       if (provider === 'slack') {
@@ -177,13 +191,62 @@ export const IntegrationsPage: React.FC = () => {
       } else if (provider === 'google_calendar') {
         data = await apiService.getCalendarConnectUrl();
       }
-      if (data?.url) {
-        window.open(data.url, '_blank', 'width=600,height=700');
+      if (!data?.url) {
+        setBanner({ kind: 'error', text: `${label} could not be started. Please try again.` });
+        return;
       }
-    } catch (err) {
-      console.error('OAuth connect failed:', err);
+      const popup = window.open(data.url, '_blank', 'width=600,height=700');
+      // A blocked popup is the single most common reason "nothing happens".
+      if (!popup || popup.closed) {
+        setBanner({
+          kind: 'error',
+          text: `Your browser blocked the ${label} window. Allow pop-ups for this site and try again.`,
+        });
+      }
+    } catch (err: any) {
+      setBanner({
+        kind: 'error',
+        text: err?.response?.data?.message || `We could not start the ${label} connection. Please try again.`,
+      });
     }
   }, []);
+
+  /**
+   * The authorisation happens in a separate window, so this page has to be told
+   * when it finished. Without this the customer completes the install and the
+   * card still says "Install" until they reload — which reads as a failure.
+   */
+  useEffect(() => {
+    const handleResult = (data: any) => {
+      if (data?.type !== 'oauth-callback') return;
+      const label = PROVIDERS[data.provider]?.name ?? data.provider ?? 'The service';
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ['integrations'] });
+        setBanner({
+          kind: 'success',
+          text: data.provider === 'slack'
+            ? `${label} is connected. Open Configure to choose the channel and which events get posted.`
+            : `${label} is connected.`,
+        });
+      } else if (data.error) {
+        setBanner({ kind: 'error', text: `${label} was not connected: ${data.error}` });
+      }
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      handleResult(event.data);
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== 'oauth-callback-result' || !event.newValue) return;
+      try { handleResult(JSON.parse(event.newValue)); } catch { /* ignore */ }
+    };
+    window.addEventListener('message', onMessage);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [queryClient]);
 
   // Render action buttons for a single integration
   const renderActions = (integ: Integration, providerKey: string, meta: ProviderMeta, compact = false) => (
@@ -239,6 +302,34 @@ export const IntegrationsPage: React.FC = () => {
           Connect your favorite tools to sync tasks, issues, and notifications.
         </p>
       </div>
+
+      {/* Result of the last action — installs happen in another window, so this
+          is the only place the outcome can be reported. */}
+      {banner && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`mb-6 flex items-start gap-2 rounded-lg px-4 py-3 text-sm ${
+            banner.kind === 'error'
+              ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
+              : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
+          }`}
+        >
+          {banner.kind === 'error' ? (
+            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          ) : (
+            <Check className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          )}
+          <span className="flex-1">{banner.text}</span>
+          <button
+            onClick={() => setBanner(null)}
+            aria-label="Dismiss"
+            className="opacity-60 hover:opacity-100"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Loading / Error */}
       {isLoading && (
@@ -315,15 +406,18 @@ export const IntegrationsPage: React.FC = () => {
                                     <p className="text-sm font-medium text-gray-900 dark:text-white">
                                       {projectName}
                                     </p>
-                                    {channel && (
-                                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        {channel}
-                                      </p>
-                                    )}
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      {channel || 'No channel chosen yet — open Configure'}
+                                    </p>
                                   </div>
+                                  {/* Slack is never "synced" — it's pushed to. Saying
+                                      "Last synced: Never" on a working connection
+                                      reads as broken, so name what it really is. */}
                                   <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-500">
                                     <Clock className="h-3 w-3" />
-                                    {formatRelativeTime(integ.lastSyncAt)}
+                                    {integ.lastSyncAt
+                                      ? `Last message ${formatRelativeTime(integ.lastSyncAt)}`
+                                      : 'No messages yet'}
                                   </div>
                                 </div>
                                 {renderActions(integ, providerKey, meta, true)}
@@ -346,8 +440,16 @@ export const IntegrationsPage: React.FC = () => {
                         }}
                       >
                         {hasAnyConnection ? <Plus className="h-4 w-4" /> : OAUTH_PROVIDERS.has(providerKey) ? <ExternalLink className="h-4 w-4" /> : <Plug className="h-4 w-4" />}
-                        {hasAnyConnection ? 'Add Another Channel' : OAUTH_PROVIDERS.has(providerKey) ? 'Install' : 'Connect'}
+                        {/* This starts a whole new workspace authorisation — it
+                            does not add a channel, which "Add Another Channel"
+                            led people to expect. Channels are picked in Configure. */}
+                        {hasAnyConnection ? 'Connect Another Workspace' : OAUTH_PROVIDERS.has(providerKey) ? 'Connect Slack' : 'Connect'}
                       </button>
+                      {providerKey === 'slack' && !hasAnyConnection && (
+                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                          Opens Slack so you can approve access. Start here, not from Slack&apos;s own app page.
+                        </p>
+                      )}
                     </>
                   ) : (
                     /* Single-connection providers (Jira, GitHub, Trello) */

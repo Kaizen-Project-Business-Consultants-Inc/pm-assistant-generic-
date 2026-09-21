@@ -14,6 +14,10 @@ const createIntegrationSchema = z.object({
 const updateIntegrationSchema = z.object({
   config: z.record(z.string(), z.any()).optional(),
   isActive: z.boolean().optional(),
+  // An OAuth install always starts workspace-wide, so narrowing it to one
+  // project afterwards has to be possible without disconnecting and redoing it.
+  // An empty string means "all projects".
+  projectId: z.string().nullable().optional(),
 });
 
 const syncIntegrationSchema = z.object({

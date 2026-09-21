@@ -1831,16 +1831,26 @@ The Slack integration provides four capabilities:
 4. **POST /slack/send** — Internal API endpoint (`POST /api/v1/slack/send`) that sends a free-form message to all Slack channels configured for a given project. Accepts `{ projectId, text, blocks? }`. Used by agents and workflows to push ad-hoc messages.
 
 **Configuration:**
-Two setup methods are available:
 
-1. **OAuth Install Flow (recommended)** — Click "Install to Slack" on the Integrations page. This initiates a Slack OAuth v2 flow that installs the Kovarti bot into your workspace and stores the bot token automatically. After install, use the channel selector to pick which channel receives notifications. Requires `SLACK_CLIENT_ID` and `SLACK_CLIENT_SECRET` environment variables.
+Slack is connected through OAuth only — there is no credential-entry path for customers. Click "Connect Slack" on the Integrations page; the Slack OAuth v2 flow installs the Kovarti bot into the customer's workspace and stores that workspace's own bot token on the integration row. Requires `SLACK_CLIENT_ID` and `SLACK_CLIENT_SECRET` (set per environment via `scripts/set-slack-credentials.sh`); `SLACK_SIGNING_SECRET` verifies inbound slash commands and interactivity.
 
-2. **Manual Configuration (IntegrationConfigModal)** — For workspaces that prefer manual setup: set `SLACK_SIGNING_SECRET` and `SLACK_BOT_TOKEN` environment variables, create a Slack integration per project, configure webhook URL and event filter checkboxes.
+The Integrations page listens for the OAuth window's `postMessage` / `localStorage` broadcast and refreshes itself, and surfaces failures (provider not configured, blocked popup, denied authorization) in a banner rather than the console.
+
+After connecting, **Configure** offers:
+- **Channel** — populated from `conversations.list` for that workspace. Stored as `channelId` (for delivery) plus `channel` (for display). Public channels are joined automatically via `conversations.join` on a `not_in_channel` error; private channels require `/invite @Kovarti`.
+- **Project** — settable on edit as well as create, so a workspace-wide install can be narrowed without being recreated.
+- **Event filters** — always sent, including empty, so clearing every box means "all events".
+
+**Delivery:** `SlackAdapter.deliver()` is the single exit point. With a bot token *and* a chosen channel it posts via `chat.postMessage` (the only path that honours the customer's channel choice and supports interactive buttons); otherwise it falls back to the incoming webhook, which always posts to the channel it was created for. A successful delivery stamps `last_sync_at`, shown as "Last message" on the card. Slack error codes are translated into actionable English before reaching the UI.
+
+**Config writes are merged, never replaced.** The edit form knows only a few fields and reads sensitive ones back masked; `IntegrationRepository.updateIntegration` merges over the stored config and discards masked values, so saving an event filter cannot destroy the bot token or webhook URL.
 
 **OAuth API endpoints:**
-- `GET /api/v1/slack/install` — returns the Slack OAuth URL
+- `GET /api/v1/slack/install` — returns the Slack OAuth URL (501 with an actionable message when unconfigured)
 - `GET /api/v1/slack/callback` — OAuth callback (exchanges code for bot token)
-- `GET /api/v1/slack/channels` — lists workspace channels for the channel picker
+- `GET /api/v1/slack/channels?integrationId=` — lists that connection's workspace channels for the picker
+
+**Scopes:** `chat:write,channels:read,groups:read,channels:join,commands,incoming-webhook`
 
 **User Notification Preferences:**
 Each notification category now has three independent toggles — **In-App**, **Email**, and **Slack**. The Slack toggle controls whether that category's events are forwarded to the project's Slack channels. The Slack column appears in the Settings → Notifications table alongside In-App and Email. When the Slack toggle for a category is off, `SlackEventDispatcher` skips dispatch for that notification type without affecting in-app or email delivery.

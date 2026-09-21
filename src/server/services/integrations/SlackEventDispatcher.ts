@@ -1,5 +1,5 @@
 import { integrationRepository, parseConfig } from '../../database/IntegrationRepository';
-import { slackAdapter, SlackConfig } from './SlackAdapter';
+import { slackAdapter, SlackConfig, canPostAsBot } from './SlackAdapter';
 import { config } from '../../config';
 import logger from '../../utils/logger';
 
@@ -28,22 +28,22 @@ class SlackEventDispatcher {
           if (!integrationConfig.notifyEvents.includes(event)) continue;
         }
 
-        // Only this workspace's own OAuth token can post interactively.
-        const workspaceBotToken = integrationConfig.botToken;
-        const message = slackAdapter.buildEventBlocks(event, enrichedPayload, !!workspaceBotToken);
+        // Approve/Reject buttons only work on messages posted as the bot, which
+        // is also the only path that honours a channel the customer picked.
+        const message = slackAdapter.buildEventBlocks(event, enrichedPayload, canPostAsBot(integrationConfig));
         if (!message) continue;
 
-        // Use the workspace's bot token for messages with actions (proposals),
-        // webhook for everything else.
-        if (event === 'proposal.created' && workspaceBotToken && integrationConfig.channel) {
-          slackAdapter.postWithBotToken(workspaceBotToken, integrationConfig.channel, message.blocks || [], message.text).catch(err => {
-            logger.warn('SlackEventDispatcher: bot token post failed', { event, error: err.message });
-          });
-        } else {
-          slackAdapter.sendNotification(integrationConfig, message).catch(err => {
-            logger.warn('SlackEventDispatcher: notification failed', { event, error: err.message });
-          });
-        }
+        slackAdapter.deliver(integrationConfig, message).then((result) => {
+          if (result.success) {
+            // Stamps the "Last message" line the customer sees on the
+            // Integrations page, so a working connection doesn't read as idle.
+            integrationRepository.updateLastSyncAt(row.id).catch(() => { /* cosmetic */ });
+          } else {
+            logger.warn('SlackEventDispatcher: delivery failed', { event, integrationId: row.id, reason: result.message });
+          }
+        }).catch(err => {
+          logger.warn('SlackEventDispatcher: notification failed', { event, error: err.message });
+        });
       }
     } catch (err: any) {
       logger.warn('SlackEventDispatcher: dispatch error', { event, projectId, error: err.message });

@@ -1879,21 +1879,31 @@ Connect PM Assistant to external tools for bidirectional synchronization.
 
 ### Slack Setup
 
-#### One-Click OAuth Install (Recommended)
+#### Connecting your Slack workspace
 
 1. Navigate to **Integrations** in the sidebar.
-2. Click **Install to Slack** on the Slack card.
-3. Authorize the Kovarti app in the Slack OAuth popup.
-4. After install, use the **channel picker** to select which channel receives notifications.
-5. The bot token is stored automatically — no manual webhook configuration needed.
+2. Click **Connect Slack** on the Slack card. Start here — installing from Slack's
+   own app page does not tell us which Kovarti account to link the workspace to.
+3. Authorize Kovarti in the Slack window that opens. If nothing appears, your
+   browser has blocked pop-ups for this site; allow them and try again.
+4. The window closes and the Slack card updates on its own. No API keys, tokens or
+   webhook URLs to copy.
 
-#### Connecting Slack to a Project
+If a workspace is already connected, the button reads **Connect Another Workspace**.
+That starts a fresh authorization for a *different* Slack workspace — it is not how
+you change channel. To change channel, use **Configure** below.
 
-1. Navigate to **Integrations** in the sidebar and click **Configure** under Slack.
-2. In the **Slack Configuration** modal:
-   - **Project** — Use the dropdown to select the project this integration applies to. Each Slack integration is scoped to one project; create multiple integrations for multiple projects.
-   - **Webhook URL** — Paste the incoming webhook URL from your Slack App (Settings > Incoming Webhooks in the Slack API portal).
-   - **Event Filters** — Check the event types you want to send to Slack. Available events:
+#### Choosing the channel, project and events
+
+1. On the Slack card, click **Configure**.
+2. In the modal:
+   - **Channel** — Pick from the channels in your workspace. Private channels show a
+     padlock; type `/invite @Kovarti` in the channel first so Kovarti can post there.
+     Public channels are joined automatically.
+   - **Project** — Select the project this connection covers, or leave **All Projects**.
+     This can be changed at any time; you do not have to disconnect and start again.
+   - **Event Filters** — Check the event types you want posted to Slack. Leave every
+     box unchecked to receive all of them. Available events:
      - Task Assigned
      - Task Completed
      - Deadline Approaching
@@ -1906,6 +1916,11 @@ Connect PM Assistant to external tools for bidirectional synchronization.
      - Project Status Changed
      - Agent Proposal Created
 3. Click **Save**.
+4. Click **Test Connection** to post a test message. It goes out exactly the way
+   real notifications do, so a green result means the channel genuinely works.
+
+The card shows the channel each connection posts to and when it last sent a
+message. **Disconnect** removes the connection; Kovarti stops posting immediately.
 
 #### Notification Preferences
 
