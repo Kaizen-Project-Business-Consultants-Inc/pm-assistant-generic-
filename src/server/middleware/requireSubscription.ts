@@ -42,15 +42,30 @@ const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * pay, which is far worse. When in doubt, it is on the list.
  */
 const ALWAYS_ALLOWED = [
-  '/api/v1/auth',          // sign in and out, verify, reset a password
-  '/api/v1/stripe',        // checkout and Stripe's own callbacks — they must be able to pay
+  // --- they must be able to get in, and to pay ---
+  '/api/v1/auth',                 // sign in and out, verify, reset a password
+  '/api/v1/stripe',               // checkout and Stripe's own callbacks
   '/api/v1/pricing',
-  '/api/v1/seats',         // buying seats is buying
-  '/api/v1/org',           // managing the subscription lives here
-  '/api/v1/users',         // your own profile and password
-  '/api/v1/notifications', // marking things read, so the app is not visibly broken
-  '/api/v1/exports',       // your data stays yours when you stop paying
-  '/api/v1/feedback',      // let them tell us it is wrong
+  '/api/v1/seats',                // buying seats is buying
+  '/api/v1/org',                  // managing the subscription lives here
+
+  // --- writes that are really reads ---
+  // These POST because they take a body, not because they change anything.
+  // Blocking them would make the product look broken rather than expired.
+  '/api/v1/nl-query',
+  '/api/v1/meeting-intelligence/analyze',
+  '/api/v1/exports',              // and your data stays yours when you stop paying
+
+  // --- public or machine endpoints that have no subscriber at all ---
+  '/api/v1/portal',               // the client portal: the viewer is not a customer
+  '/api/v1/ws',
+  '/api/v1/waitlist',
+  '/mcp',
+
+  // --- housekeeping ---
+  '/api/v1/users/me',             // your own profile and password, nothing wider
+  '/api/v1/notifications',        // marking things read, so the app is not visibly broken
+  '/api/v1/feedback',             // let them tell us it is wrong
   '/api/v1/admin',
   '/api/v1/health',
 ];

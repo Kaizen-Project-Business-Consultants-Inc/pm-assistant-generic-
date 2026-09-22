@@ -22,7 +22,6 @@ import { tenantResolverHook } from './middleware/tenantResolver';
 import { rateLimiter } from './middleware/rateLimiter';
 import { apiKeyService } from './services/ApiKeyService';
 import { metricsService } from './services/MetricsService';
-import { requireActiveSubscription } from './middleware/requireSubscription';
 import type { JwtPayload } from './types/fastify';
 
 // Standard HTTP status text for error response normalization
@@ -67,31 +66,14 @@ export async function registerPlugins(fastify: FastifyInstance) {
   fastify.addHook('preHandler', tenantResolverHook);
 
   // Subscription gating — block write operations for expired trials / unpaid users
-  // Exempt paths: auth, stripe, portal (public), websocket, waitlist, MCP, and read-only GET/OPTIONS/HEAD
-  const SUBSCRIPTION_EXEMPT_PREFIXES = [
-    '/api/v1/auth',
-    '/api/v1/stripe',
-    '/api/v1/portal',
-    '/api/v1/ws',
-    '/api/v1/waitlist',
-    '/api/v1/users/me/profile',
-    '/api/v1/nl-query',
-    '/api/v1/meeting-intelligence/analyze',
-    '/mcp',
-  ];
-  fastify.addHook('preHandler', async (request, reply) => {
-    // Only gate write methods
-    if (['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return;
-    // Skip non-API routes
-    if (!request.url.startsWith('/api/') && !request.url.startsWith('/mcp')) return;
-    // Skip exempt paths
-    for (const prefix of SUBSCRIPTION_EXEMPT_PREFIXES) {
-      if (request.url.startsWith(prefix)) return;
-    }
-    // Skip if no user (authMiddleware will handle 401)
-    if (!request.user) return;
-    await requireActiveSubscription(request, reply);
-  });
+  // The subscription gate used to live here, as a global preHandler with its own
+  // exempt list. It never blocked anybody: global hooks run BEFORE route-level
+  // authentication, so `request.user` was always empty and the `if (!request.user)
+  // return` at the end of it fired on every single request. It read as correct and
+  // did nothing, which is why an expired trial kept full write access for months.
+  //
+  // It now runs from inside authMiddleware — the one point where the user is
+  // actually known. See middleware/requireSubscription.ts.
 
   if (config.METRICS_ENABLED) {
     fastify.addHook('onRequest', async () => { metricsService.incrementActiveRequests(); });

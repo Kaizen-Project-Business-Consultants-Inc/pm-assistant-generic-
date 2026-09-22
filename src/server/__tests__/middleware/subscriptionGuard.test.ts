@@ -145,14 +145,25 @@ describe('the subscription guard', () => {
       ['/api/v1/stripe/webhook', "Stripe's own callbacks"],
       ['/api/v1/seats/add', 'buying seats'],
       ['/api/v1/org/settings', 'managing the subscription'],
-      ['/api/v1/users/me', 'your own profile'],
+      ['/api/v1/users/me/profile', 'your own profile'],
       ['/api/v1/notifications/read', 'not looking broken'],
       ['/api/v1/exports/project', 'taking your data with you'],
       ['/api/v1/feedback', 'telling us it is wrong'],
+      ['/api/v1/portal/abc/comment', 'a client viewing the portal is not a customer'],
+      ['/api/v1/nl-query', 'a question is a read that happens to POST'],
+      ['/mcp/tools/call', 'machine access'],
     ])('%s — %s', async (url) => {
       const reply = makeReply();
       await subscriptionGuard(makeRequest({ url }), reply);
       expect(reply.sent).toBe(false);
+    });
+
+    it('does not exempt the whole of user management, only your own profile', async () => {
+      // The merged list narrowed '/api/v1/users' to '/api/v1/users/me'. Inviting
+      // or editing other people is not housekeeping — it is using the product.
+      const reply = makeReply();
+      await subscriptionGuard(makeRequest({ url: '/api/v1/users/other-person' }), reply);
+      expect(reply.statusCode).toBe(403);
     });
 
     it('ignores the query string when matching', async () => {
