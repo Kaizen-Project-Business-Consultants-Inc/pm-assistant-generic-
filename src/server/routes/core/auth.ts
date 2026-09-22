@@ -522,8 +522,14 @@ export async function authRoutes(fastify: FastifyInstance) {
       const org = await organizationService.findByUserId(user.id).catch(() => null);
       if (org) await provisionVerifiedTenant(org.id, org.dbName, user.id);
 
-      // Send welcome email
-      await emailService.sendWelcomeEmail(user.email, user.fullName);
+      // Fire-and-forget. The account IS verified and the tenant IS built by this
+      // point; telling someone "verification failed" because a welcome email
+      // bounced would send them away from a working account.
+      emailService.sendWelcomeEmail(user.email, user.fullName).catch((err) => {
+        logger.warn('Welcome email failed after verification', {
+          userId: user.id, message: err instanceof Error ? err.message : String(err),
+        });
+      });
 
       return { message: 'Email verified successfully. You can now log in.' };
     } catch (error) {
