@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
 import { TIER_LABELS } from '../constants/branding';
 import { useSEO } from '../hooks/useSEO';
+import { CheckYourEmail } from '../components/auth/CheckYourEmail';
 
 export const RegisterPage: React.FC = () => {
   useSEO({
@@ -44,7 +45,6 @@ export const RegisterPage: React.FC = () => {
   const [showLoginLink, setShowLoginLink] = useState(false);
   const [seatCount, setSeatCount] = useState(3);
   const [success, setSuccess] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   // Invite context
   const [inviteValid, setInviteValid] = useState<boolean | null>(null);
@@ -107,7 +107,6 @@ export const RegisterPage: React.FC = () => {
       }
 
       // Traditional flow: show success message
-      setSuccessMessage(result.message || 'Registration successful. Please check your email to verify your account.');
       setSuccess(true);
     } catch (err: unknown) {
       const axiosError = err as { response?: { status?: number; data?: { message?: string } } };
@@ -155,22 +154,7 @@ export const RegisterPage: React.FC = () => {
   }
 
   if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
-          <div className="mx-auto w-12 h-12 bg-green-100 dark:bg-green-900/40 rounded-xl flex items-center justify-center mb-4">
-            <svg className="w-7 h-7 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Check your email</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">{successMessage}</p>
-          <Link to="/login" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:text-primary-300 font-medium text-sm">
-            Back to Sign In
-          </Link>
-        </div>
-      </div>
-    );
+    return <CheckYourEmail email={email} onChangeEmail={() => setSuccess(false)} />;
   }
 
   const isInviteFlow = inviteToken && inviteValid;
