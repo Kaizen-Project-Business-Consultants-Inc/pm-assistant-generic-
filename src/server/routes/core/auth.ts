@@ -14,6 +14,7 @@ import { inviteService } from '../../services/InviteService';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import { databaseService } from '../../database/connection';
 import { rateLimiter } from '../../middleware/rateLimiter';
+import { verifyTurnstile } from '../../utils/turnstile';
 import { runWithTenantContext } from '../../middleware/requestContext';
 import { resolvePriceId } from '../integrations/stripe';
 import logger from '../../utils/logger';
@@ -34,6 +35,9 @@ const registerSchema = z.object({
   tier: z.enum(['consultant_basic', 'consultant_pro', 'sme', 'enterprise']).optional(),
   plan: z.enum(['monthly', 'annual']).optional(),
   seats: z.number().int().min(3).max(100).optional(),
+  // Cloudflare Turnstile. Optional so a client built before this, or a server
+  // with no key configured, still registers normally.
+  turnstileToken: z.string().optional(),
 });
 
 const forgotPasswordSchema = z.object({
@@ -44,6 +48,60 @@ const resetPasswordSchema = z.object({
   token: z.string().min(1),
   password: z.string().min(8, 'Password must be at least 8 characters'),
 });
+
+async function createOwnerResource(orgId: string, dbName: string, ownerId: string) {
+  try {
+    const owner = await userService.findById(ownerId);
+    if (!owner) return;
+    await runWithTenantContext(dbName, orgId, async () => {
+      const { resourceService } = await import('../../services/ResourceService');
+      await resourceService.createResource({
+        name: owner.fullName || owner.username || owner.email.split('@')[0],
+        role: owner.role,
+        email: owner.email,
+        capacityHoursPerWeek: 40,
+        skills: [],
+        isActive: true,
+        costRateHourly: null,
+        overtimeRateHourly: null,
+        resourceGroup: null,
+        userId: ownerId,
+        calendarTemplateId: null,
+      });
+    });
+    logger.info('Created owner resource', { orgId, userId: ownerId });
+  } catch (err) {
+    logger.error('Failed to create owner resource', {
+      orgId, userId: ownerId, error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/**
+ * A tenant database is only built once the person has verified their email.
+ *
+ * It used to be built during registration. That made an unverified signup cost
+ * 104 tables and 12MB on disk, before anyone had proved the address was real —
+ * so a script could fill the disk in about eleven hours at the registration
+ * rate limit, and every junk signup left a database behind forever. Five of the
+ * first six accounts on production were never verified and each had one.
+ *
+ * Nothing is lost by waiting: an unverified user cannot log in at all, so there
+ * is nothing for them to use the database for. And if anything ever does reach a
+ * tenant that was never provisioned, tenantResolver repairs it on the spot.
+ */
+export async function provisionVerifiedTenant(orgId: string, dbName: string, ownerId: string): Promise<void> {
+  try {
+    await provisionTenantDatabase(orgId);
+    await createOwnerResource(orgId, dbName, ownerId);
+  } catch (err) {
+    // Never fatal: the person has verified and must be allowed to sign in.
+    // tenantResolver will provision on their first request if this failed.
+    logger.error('Deferred tenant provisioning failed', {
+      orgId, message: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
 
 export async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/login', {
@@ -149,15 +207,35 @@ export async function authRoutes(fastify: FastifyInstance) {
     schema: { description: 'User registration', tags: ['auth'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      // Rate limit: 5 registrations per minute per IP
+      // Registration is the one endpoint a stranger can call repeatedly with
+      // effect, so it carries a burst limit AND an hourly one. Five a minute
+      // alone allowed 300 an hour from a single address — enough to matter back
+      // when each signup built a 12MB database, and still enough to damage our
+      // sending reputation through bounced verification emails.
       const ip = request.ip || 'unknown';
-      const rl = await rateLimiter.checkAsync(`auth:register:${ip}`, 5, 60_000);
-      if (!rl.allowed) {
+      const burst = await rateLimiter.checkAsync(`auth:register:${ip}`, 5, 60_000);
+      if (!burst.allowed) {
+        return reply.status(429).send({ error: 'Too many registration attempts. Please try again later.' });
+      }
+      // Generous enough for an office behind one address; nowhere near enough
+      // for a script.
+      const hourly = await rateLimiter.checkAsync(`auth:register:hourly:${ip}`, 15, 60 * 60_000);
+      if (!hourly.allowed) {
+        logger.warn('Registration hourly limit hit', { ip });
         return reply.status(429).send({ error: 'Too many registration attempts. Please try again later.' });
       }
 
       const parsed = registerSchema.parse(request.body);
       const { email, password, organizationName, inviteToken, tier, plan, seats } = parsed;
+
+      // Prove there is a person here. Skipped entirely when no key is configured.
+      const humanOk = await verifyTurnstile(parsed.turnstileToken, ip);
+      if (!humanOk) {
+        return reply.status(400).send({
+          error: 'Verification failed',
+          message: 'We could not confirm you are a person. Please reload the page and try again.',
+        });
+      }
 
       // Auto-generate username if not provided (plan signup flow)
       const username = parsed.username || email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') + '_' + crypto.randomBytes(3).toString('hex');
@@ -248,33 +326,6 @@ export async function authRoutes(fastify: FastifyInstance) {
        * Fire-and-forget and never fatal: a missing resource is a nuisance, a failed
        * registration is not.
        */
-      const createOwnerResource = async (orgId: string, dbName: string, ownerId: string) => {
-        try {
-          const owner = await userService.findById(ownerId);
-          if (!owner) return;
-          await runWithTenantContext(dbName, orgId, async () => {
-            const { resourceService } = await import('../../services/ResourceService');
-            await resourceService.createResource({
-              name: owner.fullName || owner.username || owner.email.split('@')[0],
-              role: owner.role,
-              email: owner.email,
-              capacityHoursPerWeek: 40,
-              skills: [],
-              isActive: true,
-              costRateHourly: null,
-              overtimeRateHourly: null,
-              resourceGroup: null,
-              userId: ownerId,
-              calendarTemplateId: null,
-            });
-          });
-          logger.info('Created owner resource', { orgId, userId: ownerId });
-        } catch (err) {
-          logger.error('Failed to create owner resource', {
-            orgId, userId: ownerId, error: err instanceof Error ? err.message : String(err),
-          });
-        }
-      };
 
       // Multi-tenant: create the organization and provision its database. Shared by
       // the free-trial and awaiting-payment paths — SME checkout needs the org to
@@ -287,14 +338,10 @@ export async function authRoutes(fastify: FastifyInstance) {
             awaitingPayment: isPlanSignup,
           });
           await userService.update(user.id, { organizationId: org.id } as any);
-          // Provision tenant DB in background — don't block registration. The owner's
-          // resource is created once provisioning finishes, because the tenant database
-          // has to exist first.
-          provisionTenantDatabase(org.id)
-            .then(() => createOwnerResource(org.id, org.dbName, user.id))
-            .catch((err) => {
-              logger.error('Tenant provisioning failed', { orgId: org.id, error: err });
-            });
+          // The tenant database is NOT built here — see provisionVerifiedTenant.
+          // Building it at registration meant an unverified signup cost 104 tables
+          // and 12MB before anyone had proved the address was real. It is built
+          // when they verify, and repaired on first use if that ever misses.
         } catch (orgError) {
           logger.error('Organization creation failed during registration', { userId: user.id, error: orgError });
         }
@@ -469,6 +516,11 @@ export async function authRoutes(fastify: FastifyInstance) {
         emailVerificationToken: null,
         emailVerificationExpires: null,
       });
+
+      // Now that the address is real, give them somewhere to work. Awaited so the
+      // welcome email cannot arrive before the account is usable.
+      const org = await organizationService.findByUserId(user.id).catch(() => null);
+      if (org) await provisionVerifiedTenant(org.id, org.dbName, user.id);
 
       // Send welcome email
       await emailService.sendWelcomeEmail(user.email, user.fullName);
