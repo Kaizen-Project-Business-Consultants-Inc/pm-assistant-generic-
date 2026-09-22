@@ -678,13 +678,23 @@ export async function authRoutes(fastify: FastifyInstance) {
             emailVerificationExpires: verificationExpires,
           });
 
-          await emailService.sendVerificationEmail(email, verificationToken);
+          // A refused address must not become a 500. This endpoint answers the
+          // same way whether or not the account exists, on purpose — reporting
+          // the mail provider's complaint would reveal which addresses are
+          // registered. So log it and answer as usual.
+          try {
+            await emailService.sendVerificationEmail(email, verificationToken);
+          } catch (sendError: any) {
+            logger.warn('Resend verification: the mail provider refused the address', {
+              message: sendError?.message,
+            });
+          }
         }
       }
 
       return { message: 'If an unverified account with that email exists, a new verification link has been sent.' };
-    } catch (error) {
-      logger.error('Resend verification error', { error });
+    } catch (error: any) {
+      logger.error('Resend verification error', { message: error?.message, stack: error?.stack });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to resend verification email' });
     }
   });
