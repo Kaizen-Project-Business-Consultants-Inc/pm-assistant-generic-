@@ -99,6 +99,8 @@ class ApiService {
     tier?: 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise';
     plan?: 'monthly' | 'annual';
     seats?: number;
+    /** Cloudflare Turnstile proof. Absent when the challenge is switched off. */
+    turnstileToken?: string;
   }) {
     const response = await this.api.post('/auth/register', userData);
     return response.data;
@@ -112,6 +114,12 @@ class ApiService {
   async verifyEmail(token: string) {
     const response = await this.api.get(`/auth/verify-email?token=${encodeURIComponent(token)}`);
     return response.data;
+  }
+
+  /** Public CAPTCHA site key, or '' when the challenge is switched off. */
+  async getTurnstileSiteKey(): Promise<string> {
+    const response = await this.api.get('/auth/turnstile');
+    return response.data?.siteKey ?? '';
   }
 
   async resendVerificationEmail(email: string) {

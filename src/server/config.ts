@@ -132,6 +132,10 @@ const configSchema = z.object({
   // with no secret set the check is skipped entirely, so a server without keys
   // still registers people normally.
   TURNSTILE_SECRET_KEY: z.string().optional().default(''),
+  // Public half of the pair. Served to the browser by GET /auth/turnstile rather
+  // than baked in at build time, so the keys can change without a rebuild and
+  // the widget can never be live while the server check is not (or vice versa).
+  TURNSTILE_SITE_KEY: z.string().optional().default(''),
   SLACK_CLIENT_ID: z.string().optional().default(''),
   SLACK_CLIENT_SECRET: z.string().optional().default(''),
 
@@ -276,6 +280,7 @@ export function validateConfiguration() {
       MULTI_TENANT_ENABLED: process.env['MULTI_TENANT_ENABLED'],
       SLACK_SIGNING_SECRET: process.env['SLACK_SIGNING_SECRET'],
       TURNSTILE_SECRET_KEY: process.env['TURNSTILE_SECRET_KEY'],
+      TURNSTILE_SITE_KEY: process.env['TURNSTILE_SITE_KEY'],
       SLACK_CLIENT_ID: process.env['SLACK_CLIENT_ID'],
       SLACK_CLIENT_SECRET: process.env['SLACK_CLIENT_SECRET'],
       VAPID_PUBLIC_KEY: process.env['VAPID_PUBLIC_KEY'],

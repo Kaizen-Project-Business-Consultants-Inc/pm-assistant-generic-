@@ -651,6 +651,16 @@ export async function authRoutes(fastify: FastifyInstance) {
   });
 
   // Resend verification email — strict rate limit to prevent email spam
+  // GET /turnstile — the public site key, or empty when the CAPTCHA is off.
+  //
+  // Served rather than built in, so that turning the CAPTCHA on is a single
+  // change on the server. It also keeps the two halves honest: the widget only
+  // appears when a key exists, and the server only checks when one exists, so
+  // there is no window where the page sends no token and the server demands one.
+  fastify.get('/turnstile', {
+    schema: { description: 'Public CAPTCHA site key', tags: ['auth'] },
+  }, async () => ({ siteKey: config.TURNSTILE_SITE_KEY || '' }));
+
   fastify.post('/resend-verification', {
     schema: { description: 'Resend verification email', tags: ['auth'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {

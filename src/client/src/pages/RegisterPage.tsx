@@ -6,6 +6,7 @@ import { apiService } from '../services/api';
 import { TIER_LABELS } from '../constants/branding';
 import { useSEO } from '../hooks/useSEO';
 import { CheckYourEmail } from '../components/auth/CheckYourEmail';
+import { TurnstileWidget } from '../components/auth/TurnstileWidget';
 
 export const RegisterPage: React.FC = () => {
   useSEO({
@@ -38,6 +39,7 @@ export const RegisterPage: React.FC = () => {
   const [organizationName, setOrganizationName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | undefined>();
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -94,6 +96,7 @@ export const RegisterPage: React.FC = () => {
         tier: isPlanSignup ? tierParam! : undefined,
         plan: isPlanSignup ? billingParam : undefined,
         seats: isPlanSignup && tierParam === 'sme' ? seatCount : undefined,
+        turnstileToken,
       });
 
       // Plan signup flow: auto-login + redirect to Stripe
@@ -302,6 +305,8 @@ export const RegisterPage: React.FC = () => {
                 <Link to="/privacy" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:text-primary-300" target="_blank">Privacy Policy</Link>
               </label>
             </div>
+
+            <TurnstileWidget onToken={setTurnstileToken} />
 
             <button type="submit" disabled={isLoading || !acceptTerms || !password || password !== confirmPassword}
               className="w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
