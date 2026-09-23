@@ -14,7 +14,7 @@ import { inviteService } from '../../services/InviteService';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import { databaseService } from '../../database/connection';
 import { rateLimiter } from '../../middleware/rateLimiter';
-import { verifyTurnstile } from '../../utils/turnstile';
+import { verifyTurnstile, turnstileActive } from '../../utils/turnstile';
 import { runWithTenantContext } from '../../middleware/requestContext';
 import { resolvePriceId } from '../integrations/stripe';
 import logger from '../../utils/logger';
@@ -659,7 +659,7 @@ export async function authRoutes(fastify: FastifyInstance) {
   // there is no window where the page sends no token and the server demands one.
   fastify.get('/turnstile', {
     schema: { description: 'Public CAPTCHA site key', tags: ['auth'] },
-  }, async () => ({ siteKey: config.TURNSTILE_SITE_KEY || '' }));
+  }, async () => ({ siteKey: turnstileActive() ? (config.TURNSTILE_SITE_KEY || '') : '' }));
 
   fastify.post('/resend-verification', {
     schema: { description: 'Resend verification email', tags: ['auth'] },

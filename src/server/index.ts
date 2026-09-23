@@ -12,6 +12,7 @@ import { redisService } from './services/RedisService';
 import { metricsService } from './services/MetricsService';
 import { emailService } from './services/EmailService';
 import { serviceContainer } from './container';
+import { checkTurnstileSecret } from './utils/turnstile';
 
 const fastify = Fastify({
   logger: {
@@ -69,6 +70,9 @@ async function start() {
 
     // Verify external service connections
     await emailService.verifyConnection();
+    // A wrong CAPTCHA secret rejects every signup. Find out now, not from a
+    // customer who cannot register.
+    await checkTurnstileSecret();
 
     // Register service container for DI
     fastify.decorate('services', serviceContainer);
