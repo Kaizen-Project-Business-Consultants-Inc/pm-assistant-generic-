@@ -39,6 +39,9 @@ export function turnstileActive(): boolean {
  */
 export async function checkTurnstileSecret(): Promise<boolean> {
   if (!config.TURNSTILE_SECRET_KEY) return true;
+  // Each check decides afresh, so a re-check after fixing the key re-enables the
+  // challenge rather than staying off until the next restart.
+  secretUsable = true;
   try {
     const body = new URLSearchParams({
       secret: config.TURNSTILE_SECRET_KEY,
