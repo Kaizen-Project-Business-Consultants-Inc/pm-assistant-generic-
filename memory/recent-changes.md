@@ -1,5 +1,14 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24 (4 gaps the user caught in the "done" MCP fix)
+
+- **LIVE ON STAGING ONLY** (commit `7ef2c44d`, main app + MCP server both deployed and verified independently; not deployed to prod). The earlier MCP fix pass this same day was reported done and wasn't, fully — the user re-listed their original bug report and asked "did you fix all," and checking the actual code (not the earlier summary) found real gaps.
+  - **Methodology ignored on create — a separate bug from the one that was actually fixed earlier.** `ProjectRepository.create()`'s `INSERT INTO projects` never included the `methodology` column at all; every new project's methodology stayed NULL in the database, and `rowToProject`'s `row.methodology || 'waterfall'` read-side fallback silently papered over it — a project created as 'hybrid' read back as 'waterfall'. The earlier fix only touched the UPDATE path; this one is CREATE-only and was never caught.
+  - **Zero-day milestones still failed for a single task.** Bulk-create already accepted `estimatedDays: 0` from the earlier pass; the single-task `createTaskSchema` in `schedules.ts` still had `.positive()`, rejecting 0. Relaxed to `.min(0)`.
+  - **Bulk-create couldn't link tasks created in the same batch — never attempted in the first pass at all.** A dependency on a batch-mate can't be a real task ID, since that ID doesn't exist until the batch is saved. `bulk.ts` now resolves `dependency` against the same batch first (exact name match, or a small integer string read as a 0-based array position) via a two-pass insert-then-resolve, before falling back to treating it as a literal external task ID.
+  - Re-verified the two items from the first pass that actually were fixed (project-type-on-update, update-resets-untouched-fields) — those held up.
+  - 180/180 test files, 3725/3725 tests, zero regressions. **Still needs the user's own hands-on check through the MCP tools before any prod decision** — same as the first pass.
+
 ## 2026-09-24 (audit of the flagged partial-update bug)
 
 - **3 more update endpoints silently resetting untouched fields — LIVE ON STAGING ONLY** (commit `d5a1cda4`, verified independently — health check + build-hash cross-check; not deployed to prod). The MCP fix below flagged ~13 `.partial()`+`.default()` locations as worth auditing but out of scope for that pass. Audited all 13 by checking each `create*Schema` for top-level `.default()` fields that would actually leak — only 3 were real bugs, the other 10 have no defaults to leak in the first place.
