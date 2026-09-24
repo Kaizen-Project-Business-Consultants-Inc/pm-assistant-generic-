@@ -2913,13 +2913,13 @@ The unified dashboard supports toggling widget sections on/off and drag-and-drop
 
 Available sections: Morning Briefing, KPI Tiles, Portfolio Intelligence, Projects Table, AI Suggestions, Issues Trend, Sprint Velocity, Milestones, Budget Watch, Activity Feed, Standup Summary.
 
-**Morning Briefing** is the top widget with 4 quadrants:
-- **On Fire** — Overdue tasks and critical/high risks. Each item shows the project name and links to the schedule or RAID tab.
-- **Pending Approvals** — Pending change requests and agent proposals. Hidden for viewer-role users.
-- **Due Soon** — Tasks due today/this week and upcoming milestones, sorted by urgency.
-- **RAID Watch** — Blocked tasks (predecessor overdue), overdue meeting action items, and open issues.
+**Morning Briefing** is the top widget with 4 boxes, laid out two per row (stacked on a phone). Each box heading shows how many items it holds, e.g. "On Fire (14)".
+- **On Fire** — split into two sections: **Overdue tasks** (most overdue first) and **Risks** (critical, then high). Each section shows up to 4 items with its own "+N more".
+- **Pending Approvals** — Pending change requests, agent proposals and unread notifications (broken down into critical / high / other). Hidden for viewer-role users.
+- **Due Soon** — Tasks due today/this week and upcoming milestones, sorted by urgency, with the actual due date (e.g. "Due Fri, Sep 26").
+- **RAID Watch** — Blocked tasks (with what they are waiting on), overdue meeting action items, and open issues. For viewers, this box spans the full row.
 
-All items are clickable and navigate to the relevant project tab. Max 5 items per quadrant with "+N more" overflow. The widget flashes amber on your first daily visit (24h cooldown) and is collapsible.
+Every item shows two lines: the full name with a coloured tag on the right ("5d overdue", "High risk", "Blocked"), and underneath it the project code and name, the row number, and — for admins, PMs and executives — the owner. All items are clickable and navigate to the relevant project tab. Up to 6 items per box with "+N more" overflow. The widget flashes amber on your first daily visit (24h cooldown) and is collapsible.
 
 Opt-in sections (disabled by default): Sprint Snapshot, Goals Progress, Team Workload, Change Requests.
 

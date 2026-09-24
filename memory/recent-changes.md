@@ -1,5 +1,14 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24 (Morning Briefing redesign — 2×2, two-line items, On Fire split)
+
+- **Client-only change** to `MorningBriefingWidget.tsx`; no server or data changes. User asked for two rows with more info per box.
+  - Layout 4-across → 2×2 (`md:grid-cols-2`, single column on phones). Viewers (3 boxes) get RAID Watch spanning the full second row.
+  - Each item: line 1 = full name + coloured tag (overdue days, risk severity, due date, Blocked…); line 2 = project code · name · row · extra · owner (owner only for manager roles, as before). Headings carry counts. 6 items per box (was 5).
+  - **Fixed a real display bug:** On Fire sorted risks (fixed sort 998/999) above every overdue task (sort = overdue days), so any user with ≥5 high risks never saw overdue tasks at all, and the "+N more overdue items" label actually counted risks. Now two sections, Overdue tasks and Risks, 4 each, each with its own "+N more". Chosen by the user.
+  - Uses the data the briefing endpoint already returns (`dueDate`, notification critical/high split, blocked-by text) that was previously dropped.
+  - Both `node_modules` (root and `src/client`) were corrupt again (`MODULE_NOT_FOUND` from tsc); reinstalled. Full suite 3735/3736 — the one failure was `stripeWebhook.test.ts` timing out in `beforeEach` under load; passes 2/2 in isolation. Unrelated.
+
 ## 2026-09-24 (tenant migrations actually auto-apply — memory correction + staging cleanup)
 
 - **Corrected a stale assumption, documented in both `memory/deployment.md` (repo) and the auto-memory `MEMORY.md`:** tenant schema migrations (`tenant-migrations/T0XX_*.sql`) do **not** need manual per-tenant application. `runAllTenantMigrations()` (`src/server/database/tenantMigrationRunner.ts`) runs automatically on every app boot (called from `index.ts`), applying any new tenant migration to every organization where `is_active=1 AND is_provisioned=1` — same idempotent "already applied? record and continue" resilience as the control-plane migration runner. `deploy.sh` already ships `tenant-migrations/` in the uploaded dist, so a normal deploy + its restart is enough on its own.
