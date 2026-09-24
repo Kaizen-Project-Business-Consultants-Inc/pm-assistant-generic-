@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24 (bulk-create summary tasks)
+
+- **`parentTaskId` added to bulk-create-tasks — LIVE ON STAGING ONLY** (commit `bd689a07`, main app + MCP server both deployed and verified independently; not deployed to prod). User imported a bid document via MCP (`1-Final NSWMA_Bid_Response`) and got a schedule with no summary tasks despite the source having phases/sections. Root cause: a task only becomes a summary task once another task's `parentTaskId` points at it — nothing sets it directly — and `bulk-create-tasks` had no `parentTaskId` field on the create side at all (only on update), so nothing created via bulk-create could ever have a parent.
+  - Fixed: `parentTaskId` resolved the same way as `dependency` — exact name match within the batch, 0-based array position, or a literal external task ID — via the same two-pass insert/resolve, since a batch task's real ID doesn't exist until it's inserted.
+  - Also wired `scheduleService.recomputeParentRollup()` for every parent that gains a child — `is_summary` is a rollup-derived flag, not something writing `parent_task_id` alone sets. Bulk-delete already did this when a parent lost its last child; bulk-create never did the equivalent on gain.
+  - 180/180 test files, 3726/3726 tests, zero regressions. **Not yet re-verified against the actual bid document** — next step is the user retrying that import through MCP and confirming summary tasks appear.
+
 ## 2026-09-24 (4 gaps the user caught in the "done" MCP fix)
 
 - **LIVE ON STAGING ONLY** (commit `7ef2c44d`, main app + MCP server both deployed and verified independently; not deployed to prod). The earlier MCP fix pass this same day was reported done and wasn't, fully — the user re-listed their original bug report and asked "did you fix all," and checking the actual code (not the earlier summary) found real gaps.
