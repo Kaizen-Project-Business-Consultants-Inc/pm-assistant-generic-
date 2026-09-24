@@ -166,6 +166,10 @@ A **pill-based quick filter bar** sits above the schedule views with 7 one-click
 
 Bulk create, update, and status-change endpoints allow operating on multiple tasks or projects in a single request.
 
+**Link selected tasks** (September 2026). The schedule's selection bar (Gantt and Table) can add dependencies to many tasks at once: **Link in order** (chain by fixed row number, FS), **All wait on it** (every selected task gets the typed row as predecessor; accepts `3`, `3SS`, `3FS+2d`), and **It waits on all** (the typed row gets every selected task as predecessor). The batch is all-or-nothing: the server checks the whole schedule plus the new links for loops (including loops that only close when two new links combine) and the 20-predecessor cap before writing anything, and names the rows in its message ("These links would create a loop: row 6 → row 9 → row 6. Nothing was linked."). Existing links are kept; duplicates are skipped. One undo removes exactly the links that were added. Adding links does not move dates. Endpoints: `POST /api/v1/schedules/:id/dependencies/bulk` and `.../dependencies/bulk-remove` (editor access).
+
+**Default schedule columns** (September 2026): Duration, Start, End, Predecessor, Assigned To, Status, in that order, in both views. Schedules a user already customised keep their saved columns until they use **Reset visibility / Reset order** in the Columns menu.
+
 ### Search
 
 Full-text search across 9 entity types: projects, tasks, RAID items (risks/issues/actions/decisions), goals, lessons learned, resources, change requests, sprints, and task comments. All queries execute in parallel and return a unified result set; any entity type that fails is silently omitted so a partial outage does not block the entire search.

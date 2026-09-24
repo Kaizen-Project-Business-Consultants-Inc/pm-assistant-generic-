@@ -324,6 +324,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - Up to 20 predecessors per task, each with its own type (FS/FF/SS/SF) and lag days
 - Stored in `task_dependencies` junction table with `ON DELETE CASCADE`
 - API: `dependencies[]` array on create/update payloads (`dependencyId`, `dependencyType`, `lagDays`)
+- Bulk linking: `POST /api/v1/schedules/:id/dependencies/bulk` (`{ links: [{ taskId, dependencyId, dependencyType?, lagDays? }] }`, all-or-nothing, loop-checked, returns `added` for undo) and `POST .../dependencies/bulk-remove`
 - MS Project-style comma-separated row-number notation in Table view and Gantt left panel (e.g. "3FS+2d,5SS,7"); same format in CSV export
 - Dependency health badges per predecessor: green (completed), yellow (in progress), red (overdue)
 - Gantt arrows drawn per predecessor, color-coded by health status

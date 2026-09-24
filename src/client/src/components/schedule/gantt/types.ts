@@ -231,10 +231,15 @@ export const GANTT_COLUMNS: GanttColDef[] = [
 ];
 
 /** Default visible columns -- show only essential columns so the name column isn't squeezed */
-export const DEFAULT_VISIBLE_COLS = new Set(['start', 'end', 'dur', 'pct', 'assigned', 'status']);
+/** Default view (matches tableColumns.ts): Duration, Start, End, Predecessor, Assigned, Status */
+export const DEFAULT_VISIBLE_COLS = new Set(['dur', 'start', 'end', 'pred', 'assigned', 'status']);
 
-/** Default column order */
-export const DEFAULT_COL_ORDER = GANTT_COLUMNS.map(c => c.key);
+/** Default column order — the default view first, then the rest in their usual order */
+const DEFAULT_LEAD_COLS = ['rowNum', 'name', 'dur', 'start', 'end', 'pred', 'assigned', 'status'];
+export const DEFAULT_COL_ORDER = [
+  ...DEFAULT_LEAD_COLS,
+  ...GANTT_COLUMNS.map(c => c.key).filter(k => !DEFAULT_LEAD_COLS.includes(k)),
+];
 
 /** Auto-scroll edge zone width (px) and speed */
 export const AUTO_SCROLL_EDGE = 60;

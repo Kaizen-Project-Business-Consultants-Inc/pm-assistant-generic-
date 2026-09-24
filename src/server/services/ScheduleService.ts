@@ -12,6 +12,8 @@ import { taskAssignmentService } from './TaskAssignmentService';
 import { resourceService } from './ResourceService';
 import { userService } from './UserService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
+import { findDependencyCycle } from '../utils/dependencyCycle';
+import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 
 export interface Schedule {
   id: string;
@@ -362,6 +364,98 @@ export class ScheduleService {
       `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES (?, ?, ?, ?, ?)`,
       [id, taskId, dependencyId, depType, lagDays],
     );
+  }
+
+  /**
+   * Add a batch of links in one go (the schedule's "link selected tasks" actions).
+   * All-or-nothing: every link is checked first — same schedule, not a self-link, the
+   * 20-predecessor cap, and no loop, including loops that only close when links in this
+   * batch are combined — and nothing is written if any check fails. A link that already
+   * exists (any type) is skipped, not duplicated. Existing links are always kept.
+   *
+   * Returns the links actually added, so the caller can undo exactly those.
+   */
+  async bulkAddDependencies(
+    scheduleId: string,
+    links: Array<{ taskId: string; dependencyId: string; dependencyType?: 'FS' | 'SS' | 'FF' | 'SF'; lagDays?: number }>,
+  ): Promise<{ added: Array<{ taskId: string; dependencyId: string; dependencyType: 'FS' | 'SS' | 'FF' | 'SF'; lagDays: number }>; skipped: number }> {
+    const tasks = await this.findTasksByScheduleId(scheduleId);
+    const byId = new Map(tasks.map(t => [t.id, t]));
+    const rows = computeScheduleRowNumbers(tasks);
+    const label = (id: string) => `row ${rows.get(id) ?? '?'} ("${byId.get(id)?.name ?? 'unknown task'}")`;
+
+    const added: Array<{ taskId: string; dependencyId: string; dependencyType: 'FS' | 'SS' | 'FF' | 'SF'; lagDays: number }> = [];
+    const seen = new Set<string>();
+    let skipped = 0;
+    for (const l of links) {
+      if (!byId.has(l.taskId) || !byId.has(l.dependencyId)) {
+        throw new DependencyValidationError('Every task being linked must be in this schedule');
+      }
+      if (l.taskId === l.dependencyId) {
+        throw new DependencyValidationError(`${label(l.taskId)} cannot depend on itself`);
+      }
+      const key = `${l.taskId}|${l.dependencyId}`;
+      const exists = byId.get(l.taskId)!.dependencies.some(d => d.dependencyId === l.dependencyId);
+      if (exists || seen.has(key)) { skipped++; continue; }
+      seen.add(key);
+      added.push({ taskId: l.taskId, dependencyId: l.dependencyId, dependencyType: l.dependencyType ?? 'FS', lagDays: l.lagDays ?? 0 });
+    }
+    if (added.length === 0) return { added, skipped };
+
+    // Per-task cap, counting what the task already has
+    const newPerTask = new Map<string, number>();
+    for (const a of added) newPerTask.set(a.taskId, (newPerTask.get(a.taskId) ?? 0) + 1);
+    for (const [taskId, n] of newPerTask) {
+      if (byId.get(taskId)!.dependencies.length + n > 20) {
+        throw new DependencyValidationError(`${label(taskId)} would have more than 20 predecessors`);
+      }
+    }
+
+    // Loop check over the whole schedule plus the batch
+    const edges = [
+      ...tasks.flatMap(t => t.dependencies.map(d => ({ from: d.dependencyId, to: t.id }))),
+      ...added.map(a => ({ from: a.dependencyId, to: a.taskId })),
+    ];
+    const cycle = findDependencyCycle(edges);
+    if (cycle) {
+      const loop = cycle.map(id => `row ${rows.get(id) ?? '?'}`).join(' → ');
+      throw new DependencyValidationError(`These links would create a loop: ${loop}. Nothing was linked.`);
+    }
+
+    // Write through updateTask so legacy columns, rollups and the audit trail behave exactly
+    // as for a single edit. Everything that could fail validation has been checked above.
+    for (const [taskId] of newPerTask) {
+      const task = byId.get(taskId)!;
+      const merged = [
+        ...task.dependencies.map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType, lagDays: d.lagDays })),
+        ...added.filter(a => a.taskId === taskId).map(a => ({ dependencyId: a.dependencyId, dependencyType: a.dependencyType, lagDays: a.lagDays })),
+      ];
+      await this.updateTask(taskId, { dependencies: merged } as any);
+    }
+    return { added, skipped };
+  }
+
+  /** Undo for bulkAddDependencies: remove exactly these links, leave every other link alone. */
+  async bulkRemoveDependencies(scheduleId: string, links: Array<{ taskId: string; dependencyId: string }>): Promise<number> {
+    const tasks = await this.findTasksByScheduleId(scheduleId);
+    const byId = new Map(tasks.map(t => [t.id, t]));
+    const toRemove = new Map<string, Set<string>>();
+    for (const l of links) {
+      if (!byId.has(l.taskId)) continue;
+      if (!toRemove.has(l.taskId)) toRemove.set(l.taskId, new Set());
+      toRemove.get(l.taskId)!.add(l.dependencyId);
+    }
+    let removed = 0;
+    for (const [taskId, ids] of toRemove) {
+      const task = byId.get(taskId)!;
+      const remaining = task.dependencies.filter(d => !ids.has(d.dependencyId));
+      if (remaining.length === task.dependencies.length) continue;
+      removed += task.dependencies.length - remaining.length;
+      await this.updateTask(taskId, {
+        dependencies: remaining.map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType, lagDays: d.lagDays })),
+      } as any);
+    }
+    return removed;
   }
 
   // -------------------------------------------------------------------------

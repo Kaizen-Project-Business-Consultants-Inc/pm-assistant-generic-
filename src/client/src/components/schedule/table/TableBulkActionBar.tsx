@@ -15,6 +15,8 @@ interface TableBulkActionBarProps {
   onApplyBulkUpdate: (field: string, value: string) => void;
   onBulkDelete: () => void;
   onClear: () => void;
+  /** Link controls (shared BulkLinkControls), shown when the schedule is editable */
+  linkControls?: React.ReactNode;
 }
 
 export const TableBulkActionBar = React.memo(function TableBulkActionBar({
@@ -30,6 +32,7 @@ export const TableBulkActionBar = React.memo(function TableBulkActionBar({
   onApplyBulkUpdate,
   onBulkDelete,
   onClear,
+  linkControls,
 }: TableBulkActionBarProps) {
   return (
     <div className="sticky top-0 z-10 bg-primary-50 border border-primary-200 rounded-lg p-3 m-2 flex items-center gap-3 flex-wrap">
@@ -106,6 +109,13 @@ export const TableBulkActionBar = React.memo(function TableBulkActionBar({
           </button>
         )}
       </div>
+
+      {linkControls && (
+        <>
+          <div className="h-4 w-px bg-primary-200" />
+          {linkControls}
+        </>
+      )}
 
       <div className="h-4 w-px bg-primary-200" />
 

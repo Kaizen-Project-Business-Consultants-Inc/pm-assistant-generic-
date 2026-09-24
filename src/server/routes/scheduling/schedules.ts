@@ -354,6 +354,68 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Link several tasks at once (chain / all wait on one / one waits on all — the client
+  // turns the selection into links). All-or-nothing; returns the links added for undo.
+  const bulkLinkSchema = z.object({
+    links: z.array(z.object({
+      taskId: z.string().min(1),
+      dependencyId: z.string().min(1),
+      dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional(),
+      lagDays: z.number().int().min(-3650).max(3650).optional(),
+    })).min(1).max(500),
+  });
+
+  fastify.post('/:scheduleId/dependencies/bulk', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    schema: { description: 'Add several dependencies at once (all-or-nothing)', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const parsed = bulkLinkSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'Validation error', message: 'Send a list of 1–500 links, each with taskId and dependencyId' });
+      }
+      const schedule = await scheduleService.findById(scheduleId);
+      if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
+      const result = await scheduleService.bulkAddDependencies(scheduleId, parsed.data.links);
+      if (result.added.length > 0) {
+        WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId } }, schedule.projectId);
+      }
+      return result;
+    } catch (error) {
+      if (error instanceof DependencyValidationError) {
+        return reply.status(400).send({ error: 'Validation error', message: error.message });
+      }
+      logger.error('Bulk add dependencies error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to link tasks' });
+    }
+  });
+
+  fastify.post('/:scheduleId/dependencies/bulk-remove', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    schema: { description: 'Remove specific dependencies (undo of a bulk link)', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const parsed = z.object({
+        links: z.array(z.object({ taskId: z.string().min(1), dependencyId: z.string().min(1) })).min(1).max(500),
+      }).safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'Validation error', message: 'Send a list of 1–500 links, each with taskId and dependencyId' });
+      }
+      const schedule = await scheduleService.findById(scheduleId);
+      if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
+      const removed = await scheduleService.bulkRemoveDependencies(scheduleId, parsed.data.links);
+      if (removed > 0) {
+        WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId } }, schedule.projectId);
+      }
+      return { removed };
+    } catch (error) {
+      logger.error('Bulk remove dependencies error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to remove links' });
+    }
+  });
+
   fastify.delete('/:scheduleId/dependencies', {
     preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Remove all dependencies in a schedule', tags: ['schedules'] },

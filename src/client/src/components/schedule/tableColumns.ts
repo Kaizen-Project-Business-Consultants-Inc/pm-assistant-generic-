@@ -23,15 +23,18 @@ export const COLUMN_DEFS: ColumnDef[] = [
   // Row number (always first)
   { key: 'rowNum', label: '#', group: 'standard', defaultVisible: true, editable: false, sortable: false },
 
-  // Standard
+  // Standard — the default view, in this order: Duration, Start, End, Predecessor,
+  // Assigned To, Status (set by the product owner, Sep 2026). Array order is the default
+  // column order.
   { key: 'name', label: 'Task Name', group: 'standard', defaultVisible: true, editable: true, sortable: true },
-  { key: 'status', label: 'Status', group: 'standard', defaultVisible: true, editable: true, sortable: true },
-  { key: 'priority', label: 'Priority', group: 'standard', defaultVisible: true, editable: true, sortable: true },
+  { key: 'duration', label: 'Duration', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'startDate', label: 'Start Date', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'endDate', label: 'End Date', group: 'standard', defaultVisible: true, editable: true, sortable: true },
-  { key: 'progressPercentage', label: 'Progress', group: 'standard', defaultVisible: true, editable: true, sortable: true },
+  { key: 'dependency', label: 'Predecessor', group: 'standard', defaultVisible: true, editable: true, sortable: false },
   { key: 'assignedTo', label: 'Assigned To', group: 'standard', defaultVisible: true, editable: true, sortable: true },
-  { key: 'duration', label: 'Duration', group: 'standard', defaultVisible: true, editable: true, sortable: true },
+  { key: 'status', label: 'Status', group: 'standard', defaultVisible: true, editable: true, sortable: true },
+  { key: 'priority', label: 'Priority', group: 'standard', defaultVisible: false, editable: true, sortable: true },
+  { key: 'progressPercentage', label: 'Progress', group: 'standard', defaultVisible: false, editable: true, sortable: true },
   { key: 'actualStartDate', label: 'Actual Start', group: 'standard', defaultVisible: false, editable: true, sortable: true },
   { key: 'actualEndDate', label: 'Actual Finish', group: 'standard', defaultVisible: false, editable: true, sortable: true },
 
@@ -61,7 +64,6 @@ export const COLUMN_DEFS: ColumnDef[] = [
 
   // Other
   { key: 'notes', label: 'Notes', group: 'standard', defaultVisible: false, editable: true, sortable: true },
-  { key: 'dependency', label: 'Predecessor', group: 'standard', defaultVisible: false, editable: true, sortable: false },
   { key: 'successor', label: 'Successor', group: 'standard', defaultVisible: false, editable: false, sortable: false },
   { key: 'wbs', label: 'WBS', group: 'other', defaultVisible: false, editable: false, sortable: false },
   { key: 'resource', label: 'Resource', group: 'standard', defaultVisible: false, editable: false, sortable: false },

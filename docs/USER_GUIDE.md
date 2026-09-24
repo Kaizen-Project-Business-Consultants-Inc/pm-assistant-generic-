@@ -446,6 +446,11 @@ Select multiple tasks to perform bulk operations:
 
 - **Bulk Status Update** -- Change the status of many tasks at once.
 - **Bulk Update** -- Modify priority, assignee, or dates in batch.
+- **Link selected tasks** -- With two or more tasks selected, the selection bar has a **Link** group (Gantt and Table views):
+  - **Link in order** -- chains the selected tasks by row number: each one waits for the one above it (Finish-to-Start). Selecting rows 4, 5 and 6 makes 5 wait on 4 and 6 wait on 5. The order you clicked them in doesn't matter.
+  - **All wait on it** -- type a row in the **Row #** box (e.g. `3`, or `3SS`, `3FS+2d` for a type and lag) and every selected task waits for that row, e.g. "all of Task 2 waits on Gate 1".
+  - **It waits on all** -- the row you typed waits for every selected task, e.g. "Gate 2 can't happen until these six tasks finish".
+  - Links are **added**: existing links are kept, and a link that already exists isn't duplicated. If the new links would create a loop (e.g. row 6 already leads to row 9), **nothing is linked** and you're told which rows form the loop. A task can have at most 20 predecessors. **Undo** removes the whole batch in one step. Adding links doesn't move any dates.
 
 ---
 
@@ -573,7 +578,7 @@ Toggle between Month / Week / Day using buttons in the calendar header. Navigati
 
 A spreadsheet-like view of all tasks with inline editing. Click the **Columns** button (gear icon) to open the column picker. Choose from 22 columns organized into four groups:
 
-- **Standard** -- # (row number, always visible), Name, Status, Priority, Start Date, End Date, Progress, Assigned To (visible by default, inline-editable), Notes (hidden by default, click to open popup editor)
+- **Standard** -- # (row number, always visible), Name, then the **default view: Duration, Start Date, End Date, Predecessor, Assigned To, Status** (in that order, in both the Gantt and Table views). Priority, Progress, Successor, Resource and Notes are available but hidden by default. A schedule you have already customised keeps your columns: open **Columns** and click **Reset visibility** and **Reset order** to switch it to the default view.
 - **Scheduling (CPM)** -- Duration, Early Start, Early Finish, Late Start, Late Finish, Total Float, Free Float, Critical (read-only; enabling any of these triggers CPM computation automatically)
 - **Baseline** -- Baseline Start, Baseline End, Start Variance, End Variance (read-only; populated when a baseline comparison is active). Baseline Start and Baseline End columns use task-level baseline fields (`baseline_start_date` / `baseline_finish_date`) when available, falling back to the active baseline snapshot. Additional toggleable columns: **Baseline Duration** (days planned at baseline) and **Baseline Cost** (cost planned at baseline), shown in the Baseline/Cost column groups.
 - **Other** -- Predecessor (inline-editable), Successor (read-only; shows which tasks depend on this one), WBS (read-only; auto-computed from task hierarchy)

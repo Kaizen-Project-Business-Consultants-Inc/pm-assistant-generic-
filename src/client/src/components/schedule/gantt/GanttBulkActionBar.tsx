@@ -16,6 +16,8 @@ interface GanttBulkActionBarProps {
   clearBulkState: () => void;
   hasOnBulkUpdate: boolean;
   hasOnBulkDelete: boolean;
+  /** Link controls (shared BulkLinkControls), shown when the schedule is editable */
+  linkControls?: React.ReactNode;
 }
 
 export const GanttBulkActionBar = React.memo(function GanttBulkActionBar({
@@ -32,6 +34,7 @@ export const GanttBulkActionBar = React.memo(function GanttBulkActionBar({
   handleBulkDelete,
   clearBulkState,
   hasOnBulkDelete,
+  linkControls,
 }: GanttBulkActionBarProps) {
   return (
     <div className="sticky top-0 z-10 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-200 dark:border-primary-800 px-4 py-2 flex items-center gap-3 flex-wrap">
@@ -84,6 +87,12 @@ export const GanttBulkActionBar = React.memo(function GanttBulkActionBar({
           <button className="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 disabled:opacity-50" onClick={() => applyBulkUpdate('assignedTo', bulkAssignee)} disabled={bulkLoading}>Apply</button>
         )}
       </div>
+      {linkControls && (
+        <>
+          <div className="h-4 w-px bg-primary-200" />
+          {linkControls}
+        </>
+      )}
       {hasOnBulkDelete && (
         <>
           <div className="h-4 w-px bg-primary-200" />

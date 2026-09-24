@@ -1,3 +1,4 @@
+import type { OnBulkLink } from '../BulkLinkControls';
 import type { GanttTask } from '../GanttChart';
 import type { ColumnKey, ColumnDef } from '../tableColumns';
 import type { ColumnState } from '../../../hooks/useColumnState';
@@ -43,6 +44,8 @@ export interface TableViewProps {
   scheduleStartDate?: string;
   onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
   onBulkDelete?: (taskIds: string[]) => Promise<void>;
+  /** Link the selected tasks (chain / all wait on a row / a row waits on all) */
+  onBulkLink?: OnBulkLink;
   onDeleteTask?: (taskId: string) => void;
   onInsertAfter?: (afterTaskId: string, parentTaskId?: string) => void;
   onInsertBefore?: (beforeTaskId: string, parentTaskId?: string) => void;

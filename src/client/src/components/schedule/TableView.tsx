@@ -13,6 +13,7 @@ import { ResourceQuickAssign } from './ResourceQuickAssign';
 import { ResourcePickerDropdown } from './ResourcePickerDropdown';
 import { TableToolbar } from './table/TableToolbar';
 import { TableBulkActionBar } from './table/TableBulkActionBar';
+import { BulkLinkControls } from './BulkLinkControls';
 import { TableHeaderRow } from './table/TableHeaderRow';
 import { TableContextMenu } from './table/TableContextMenu';
 import { TableNotesPopup } from './table/TableNotesPopup';
@@ -24,7 +25,7 @@ import {
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
 
-export function TableView({ tasks, allTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap }: TableViewProps) {
+export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
@@ -1742,6 +1743,9 @@ export function TableView({ tasks, allTasks, scheduleId, onTaskClick, onTaskSele
           onApplyBulkUpdate={applyBulkUpdate}
           onBulkDelete={handleBulkDelete}
           onClear={clearBulkState}
+          linkControls={onBulkLink ? (
+            <BulkLinkControls selectedIds={Array.from(selectedIds)} onBulkLink={onBulkLink} onLinked={clearBulkState} disabled={bulkLoading} />
+          ) : undefined}
         />
       )}
 

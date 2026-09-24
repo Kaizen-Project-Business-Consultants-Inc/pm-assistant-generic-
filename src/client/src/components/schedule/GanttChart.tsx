@@ -37,6 +37,7 @@ import {
   healthColor,
 } from './gantt/types';
 import { GanttLegend } from './gantt/GanttLegend';
+import { BulkLinkControls, type OnBulkLink } from './BulkLinkControls';
 import { GanttContextMenu } from './gantt/GanttContextMenu';
 import { GanttNotesPopup } from './gantt/GanttNotesPopup';
 import { GanttMinimap } from './gantt/GanttMinimap';
@@ -97,6 +98,7 @@ export function GanttChart({
   reviewActive,
   reviewFlagMap,
   allTasks,
+  onBulkLink,
 }: {
   tasks: GanttTask[];
   /** The schedule's complete task list, when `tasks` is filtered — row numbers come from this */
@@ -134,6 +136,8 @@ export function GanttChart({
   onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
   /** Called when bulk delete is applied to selected tasks */
   onBulkDelete?: (taskIds: string[]) => Promise<void>;
+  /** Link the selected tasks (chain / all wait on a row / a row waits on all) */
+  onBulkLink?: OnBulkLink;
   /** Undo/redo state */
   canUndo?: boolean;
   canRedo?: boolean;
@@ -2351,6 +2355,9 @@ export function GanttChart({
           clearBulkState={clearBulkState}
           hasOnBulkUpdate={!!onBulkUpdate}
           hasOnBulkDelete={!!onBulkDelete}
+          linkControls={onBulkLink ? (
+            <BulkLinkControls selectedIds={Array.from(selectedIds)} onBulkLink={onBulkLink} onLinked={clearBulkState} disabled={bulkLoading} />
+          ) : undefined}
         />
       )}
 

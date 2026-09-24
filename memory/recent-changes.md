@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24 (bulk dependency linking + new default columns)
+
+- **Link selected tasks**: user asked; built all three: chain (`Link in order`), `All wait on it` (fan-out), `It waits on all` (fan-in). Shared `components/schedule/BulkLinkControls.tsx` slotted into both selection bars via a `linkControls` prop; selection to links in `components/schedule/bulkLink.ts` (uses fixed row numbers; accepts `3`, `3SS`, `3FS+2d`). Server `ScheduleService.bulkAddDependencies` is all-or-nothing: whole-schedule + batch loop check (`utils/dependencyCycle.ts`, iterative DFS), 20-pred cap, skips existing, then writes via `updateTask` per task (keeps legacy columns / audit / rollups). Undo = `bulk-remove` of exactly the `added` links. **Does not move dates** (same as single predecessor edits today; only an end-date change cascades).
+- **Default columns** now Duration, Start, End, Predecessor, Assigned To, Status (user chose Assigned, not the formal Resource column). Both views share `useColumnState` (table keys); Gantt fallback `DEFAULT_VISIBLE_COLS`/`DEFAULT_COL_ORDER` updated to match. Saved per-user column prefs (localStorage + server view prefs) still win; Reset visibility/order applies the new default.
+
 ## 2026-09-24 (fixed MS Project-style row numbers on the schedule)
 
 - User saw the briefing's row numbers disagree with the schedule. Cause: Gantt and Table views numbered **visible rows in the current sort** (`rows.forEach((t, i) => i + 1)`), so a column sort, filter, search or collapsed phase renumbered everything — and `rowNumToTaskId` used the same map, so a predecessor typed as `8FS` while sorted could link the wrong task. User chose MS Project behaviour.

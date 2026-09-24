@@ -2893,6 +2893,17 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  /** Add several links at once — all-or-nothing; returns the links actually added (for undo). */
+  async bulkLinkTasks(scheduleId: string, links: Array<{ taskId: string; dependencyId: string; dependencyType?: string; lagDays?: number }>) {
+    const response = await this.api.post(`/schedules/${scheduleId}/dependencies/bulk`, { links });
+    return response.data as { added: Array<{ taskId: string; dependencyId: string; dependencyType: string; lagDays: number }>; skipped: number };
+  }
+
+  async bulkUnlinkTasks(scheduleId: string, links: Array<{ taskId: string; dependencyId: string }>) {
+    const response = await this.api.post(`/schedules/${scheduleId}/dependencies/bulk-remove`, { links });
+    return response.data as { removed: number };
+  }
+
   async bulkUpdateTasks(updates: Array<{ id: string; scheduleId: string; [key: string]: any }>) {
     const response = await this.api.put('/bulk/tasks', { updates });
     return response.data;

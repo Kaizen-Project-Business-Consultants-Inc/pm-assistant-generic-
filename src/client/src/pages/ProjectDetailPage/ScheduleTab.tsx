@@ -30,6 +30,8 @@ import { ScheduleReviewPanel, type ScheduleReview } from '../../components/sched
 import { TaskListMobile } from '../../components/tasks/TaskListMobile';
 import { useColumnState } from '../../hooks/useColumnState';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
+import { buildRowNumberMap } from '../../components/schedule/gantt/types';
+import { buildBulkLinks, type BulkLinkMode } from '../../components/schedule/bulkLink';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { exportTasksCSV } from '../../utils/exportUtils';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
@@ -757,6 +759,31 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
   }, [tasks, schedule.id, pushAction, queryClient]);
 
+  // Link selected tasks (chain / all wait on a row / a row waits on all) with undo.
+  // Rows are the fixed row numbers, so this works the same under any sort or filter.
+  const rowNumbers = useMemo(() => buildRowNumberMap(tasks), [tasks]);
+  const handleBulkLink = useCallback(async (mode: BulkLinkMode, taskIds: string[], target?: string): Promise<string> => {
+    const built = buildBulkLinks(mode, taskIds, rowNumbers, target);
+    if ('error' in built) throw new Error(built.error);
+    let result;
+    try {
+      result = await apiService.bulkLinkTasks(schedule.id, built.links);
+    } catch (e: any) {
+      throw new Error(e?.response?.data?.message || 'Linking failed. Nothing was changed.');
+    }
+    if (result.added.length === 0) throw new Error('Those tasks are already linked — nothing was added');
+    queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+    const added = result.added;
+    const refresh = () => queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+    pushAction({
+      description: built.description,
+      undo: async () => { await apiService.bulkUnlinkTasks(schedule.id, added); refresh(); },
+      redo: async () => { await apiService.bulkLinkTasks(schedule.id, added); refresh(); },
+    });
+    announce(built.description);
+    return built.description;
+  }, [rowNumbers, schedule.id, queryClient, pushAction]);
+
   // Bulk delete with undo
   const handleBulkDelete = useCallback(async (taskIds: string[]) => {
     // Capture full task data before deleting so undo can recreate them
@@ -1058,6 +1085,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         <GanttChart
           tasks={filteredTasks}
           allTasks={tasks}
+          onBulkLink={canEdit ? handleBulkLink : undefined}
           scheduleName={schedule.name}
           scheduleId={schedule.id}
           onTaskSelect={(task) => setActiveTaskId(task.id)}
@@ -1171,6 +1199,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         <TableView
           tasks={filteredTasks}
           allTasks={tasks}
+          onBulkLink={canEdit ? handleBulkLink : undefined}
           scheduleId={schedule.id}
           reviewFlagMap={reviewFlagMap}
           onTaskSelect={(task) => setActiveTaskId(task.id)}
