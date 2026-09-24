@@ -1,5 +1,16 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24 (MCP connector bug report — 5 fixed, 3 already fixed)
+
+- **LIVE ON STAGING ONLY**, main app + MCP server both deployed and verified independently; not deployed to prod. User's connector test against kovarti-stage surfaced 8 open items; worked through them overnight on blanket authorization.
+  - Confirmed already fixed (stale MCP client cache, not new bugs): projectType on update-project, bulk-create-tasks top-level scheduleId, bulk-create intra-batch dependency linking.
+  - **#6 archive-project/unarchive-project added to MCP** (commit `96a47b9a`) — server endpoints already existed, nothing called them; team accounts have no other way to remove a project since delete-project is 403 by design.
+  - **#7 resource create fixed** (commit `2997ad38`) — `role`/`email` were required server-side despite everything else in the code (MCP tool, the route's own invite-email logic) already treating them as optional. Made both genuinely optional, fixed a mysql2 undefined-bind-param trap, fixed two MCP/server field-name mismatches (`maxHoursPerWeek`/`costRate` vs `capacityHoursPerWeek`/`costRateHourly`), added real Zod error detail to replace a bare "Invalid resource data".
+  - **#8 create-sprint fixed** (commit `b711b8bb`) — `scheduleId` was missing from the MCP tool schema entirely, so the server's required field never arrived.
+  - **#10 audit trail can now tell MCP actions from web ones** (commit `2149e370`) — every audit entry hardcoded `source: 'web'`. Added `actorSource` to the app's existing AsyncLocalStorage request context, derived from `request.apiKeyId` (set by a global onRequest hook that reliably runs before the context hook regardless of registration order), replaced all 31 hardcoded call sites across 10 files.
+  - Project `5e4c6b4a-2812-4813-9276-c01ba568b9eb` (flagged as pending archival) was already archived by the time this pass checked — nothing to do there.
+  - 180/180 test files · 3731/3731 tests, zero regressions; mcp-server `tsc`/`build` both clean. **Not yet manually re-verified through the actual MCP tools.**
+
 ## 2026-09-24 (bulk-create summary tasks)
 
 - **`parentTaskId` added to bulk-create-tasks — LIVE ON STAGING ONLY** (commit `bd689a07`, main app + MCP server both deployed and verified independently; not deployed to prod). User imported a bid document via MCP (`1-Final NSWMA_Bid_Response`) and got a schedule with no summary tasks despite the source having phases/sections. Root cause: a task only becomes a summary task once another task's `parentTaskId` points at it — nothing sets it directly — and `bulk-create-tasks` had no `parentTaskId` field on the create side at all (only on update), so nothing created via bulk-create could ever have a parent.
