@@ -1,5 +1,45 @@
 # PM Assistant — Software Development Lifecycle (SDLC)
 
+> ## 🔴 RESUME HERE — handover, 2026-09-24 (laptop restart)
+> **Staging is well ahead of prod again.** Everything below `a3e33a72` (the last
+> commit where both were in sync) is staging-only — nothing since has been
+> promoted, and none of it has had prod even discussed. Full detail is in
+> `memory/recent-changes.md` (repo) and the auto-memory `todo.md`; this is the
+> short version, newest first:
+>
+> - **RAID items can be owned by a resource with no login** (`6e638200`) — e.g.
+>   external subcontractors. New `owner_resource_id` column, wired through the
+>   repository/routes/MCP tools/RAID panel display. Manually verified on staging
+>   (not just unit tests): a real RAID item saved with a login-less resource as
+>   owner, two ways (direct ID and name-auto-resolve).
+> - **Tenant migrations auto-apply on every app restart** — this was
+>   undocumented/assumed-manual until tonight; corrected in `MEMORY.md` and
+>   `memory/deployment.md`. Found and dropped 4 orphaned staging tenant
+>   databases with no organization record and no data while investigating.
+> - **A large MCP connector bug-fixing pass**, done in several rounds after the
+>   user actually drove the `kovarti-stage` MCP connector and reported real
+>   failures: bulk task creation 500ing, zero-day milestones rejected,
+>   methodology/projectType dropped on project create, project updates
+>   silently resetting untouched fields (also true of resources and two other
+>   endpoints — audited and fixed), no way to link tasks in the same bulk-create
+>   batch (dependency **and** parent/summary-task grouping, both by name or
+>   array position), no archive-project MCP tool, resource-create rejecting
+>   name-only payloads, sprint creation missing `scheduleId`, and the audit
+>   trail being unable to tell MCP actions from web UI ones. **First pass was
+>   reported "done" and wasn't** — always re-verify against current code, not
+>   an earlier summary, when the user asks "did you fix all."
+> - **Microsoft Teams notifications** (`9f6bc9f3`), mirroring the Slack
+>   integration. **Cannot actually connect anywhere yet** — needs the Azure AD
+>   app permission change (`ChannelMessage.Send`, `Team.ReadBasic.All`,
+>   `Channel.ReadBasic.All`, `offline_access` on the existing OneDrive app
+>   registration, client ID `64c25378-b4ab-45ae-bc48-43f8472f487d`) and the
+>   `/api/v1/teams/callback` redirect URI registered — both only the user can
+>   do, in the Azure portal.
+>
+> **None of this has been manually driven end-to-end except the RAID fix and
+> the earlier MCP round the user tested directly.** Before considering prod:
+> the user should exercise the rest through the actual MCP tools, then decide.
+>
 > ## ✅ Registration-flood alert — DONE, LIVE ON STAGING + PROD (2026-09-24)
 > The signup-flood alert from the 2026-09-23 handover shipped:
 > `src/server/utils/registrationWatch.ts` counts attempts in Redis;
