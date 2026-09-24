@@ -1,37 +1,44 @@
 # PM Assistant — Software Development Lifecycle (SDLC)
 
-> ## 🔴 RESUME HERE — handover, 2026-09-23
-> Written mid-task. Read `memory/todo.md` (§ "Resume here") for the full picture;
-> this is the short version.
+> ## ✅ Registration-flood alert — DONE, LIVE ON STAGING + PROD (2026-09-24)
+> The signup-flood alert from the 2026-09-23 handover shipped:
+> `src/server/utils/registrationWatch.ts` counts attempts in Redis;
+> `AlertService.checkRegistrationFlood()` emails support@kovarti.com when one
+> address exceeds 20/hour or the site exceeds 50/hour overall. The failing test
+> (`AlertService.test.ts > "registers over and over"`) was a test-scoping bug, not
+> a code bug — three tests were nested inside `checkCronJobsRunning`'s `describe`
+> block and inherited its `alertsRaised` filter, which only matched cron-job
+> messages, so the flood alert's own log line never counted as raised. Moved to
+> their own `describe` block with the right filter.
 >
-> **IN PROGRESS, uncommitted, one test failing.** A signup-flood alert:
-> `src/server/utils/registrationWatch.ts` (new) counts attempts in Redis;
-> `AlertService.checkRegistrationFlood()` emails when one address exceeds 20/hour
-> or the site exceeds 50/hour. **The failing test is
-> `AlertService.test.ts > "registers over and over"` — it asserts an alert fires
-> and none does.** Most likely the alert's Redis cooldown key, or `registrationActivity()`
-> returning zeros because the test's fake clock hour does not match the key it writes.
-> Finish or revert; nothing is deployed.
+> **Also fixed in the same push:** server tests never loaded `.env` (only the real
+> app's entrypoint did via `dotenv/config`), so any test importing `config.ts`
+> unmocked failed config validation — this silently blocked `deploy.sh`'s test gate
+> for *any* change, not just this one. Fixed with `src/server/__tests__/setup.ts`.
 >
-> **CAPTCHA: PARKED at the user's request.** Cloudflare Turnstile is fully built
-> (server check, widget, startup validation, `scripts/set-turnstile-credentials.sh`)
-> but **switched off everywhere** — no keys in either `.env`. It never worked in a
-> real browser: first the site's Content-Security-Policy blocked Cloudflare (fixed
-> in nginx on staging), then Cloudflare rejected the hostname (error 110200), then
-> with new keys the widget rendered nothing at all. **Do not restart this without
-> the user asking.** Turnstile refuses automated browsers, so Playwright can never
-> test the happy path — only a human can.
+> **Staging and production are now IN SYNC** — both running build `ccea36fda5f6`,
+> verified independently (health check + build-hash match on both, not just the
+> deploy script's own success message). This promoted everything staging had
+> queued: no tenant database until email is verified, tighter signup limits, the
+> "Confirm your email" screen, and the CAPTCHA plumbing (still dormant — see below).
+> Full Playwright suite run against staging (never prod — some specs create/delete
+> real data): 59 passed, 1 skipped, 0 failed.
 >
-> **Staging is AHEAD of production** (`48b2efb54a36` vs `62f08489cb2c`). Unpromoted:
-> no tenant database until email is verified, tighter signup limits, the new
-> "Confirm your email" screen, and the CAPTCHA plumbing (dormant). All tested on
-> staging. **The user has not approved promoting these.**
+> **CAPTCHA: still PARKED at the user's request**, despite the code now being on
+> both servers. Cloudflare Turnstile is fully built (server check, widget, startup
+> validation, `scripts/set-turnstile-credentials.sh`) but **switched off
+> everywhere** — no keys in either `.env`. It never worked in a real browser: first
+> the site's Content-Security-Policy blocked Cloudflare (fixed in nginx on staging),
+> then Cloudflare rejected the hostname (error 110200), then with new keys the
+> widget rendered nothing at all. **Do not restart this without the user asking.**
+> Turnstile refuses automated browsers, so Playwright can never test the happy
+> path — only a human can.
 >
 > **⚠️ Two machine-only facts, not in this repo:**
 > 1. nginx config lives ONLY on the servers, and `sites-enabled/pm-app` is a
 >    **separate file, not a symlink** to `sites-available`. Editing the obvious one
 >    changes nothing. Staging's copy now allows `challenges.cloudflare.com`;
->    production's does not.
+>    production's still does not.
 > 2. Production would need the same nginx change before the CAPTCHA could work there.
 
 

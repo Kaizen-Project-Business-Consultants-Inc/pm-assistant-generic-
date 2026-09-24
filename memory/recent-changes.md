@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24
+
+- **Registration-flood alert — LIVE ON STAGING + PROD** (build `ccea36fda5f6`, identical on both, verified independently via health check + build-hash match, not just the deploy script's own message). `src/server/utils/registrationWatch.ts` counts signup attempts per hour and per address in Redis (fire-and-forget, never blocks a signup); `routes/core/auth.ts` records every attempt and both rate-limit rejections; `AlertService.checkRegistrationFlood()` emails support@kovarti.com — critical at 20/hour from one address, warning at 50/hour site-wide.
+  - Carried a failing test from the prior session's handover: `AlertService.test.ts > "registers over and over"`. Root cause was test scoping, not the alert logic — three registration-flood tests were nested inside `checkCronJobsRunning`'s `describe` block and inherited its `alertsRaised` filter (only matched cron-job log messages), so the flood alert's own `logger.warn` line never counted as raised. Fixed by moving them into their own `describe` block with the correct filter.
+  - **Also fixed, same push:** server tests never loaded `.env` — only `src/server/index.ts` does, via `import 'dotenv/config'`, and vitest never goes through that entrypoint. Any server test importing `config.ts` unmocked (e.g. `SprintService.test.ts`) failed config validation, which silently blocked `deploy.sh`'s test gate for *any* deploy, not just this one. Fixed with a new `src/server/__tests__/setup.ts` (`import 'dotenv/config'`) wired into `vitest.config.ts`'s server project.
+  - This deploy promoted everything staging had queued from the prior session: no tenant database until email is verified, tighter signup limits, the "Confirm your email" screen, and the CAPTCHA plumbing (still dormant, no keys set — see CLAUDE.md's handover note). **Staging and production are now in sync** for the first time since 2026-09-22.
+  - Full Playwright suite run against staging only (never prod — `bulk-delete.spec.ts`/`project-crud.spec.ts` create and delete real data, fine on staging, not something to run against the live customer site): 59 passed, 1 skipped, 0 failed.
+
 ## 2026-09-21
 
 - **THE TRIAL NOW ACTUALLY ENDS — LIVE ON PROD 2026-09-22 02:11 UTC** (build `62f08489cb2c`, identical on both). Before this, an expired trial kept **full write access forever**; nobody ever had to pay. Proven on staging by logging in as an account whose trial ended the previous day and creating a project.
