@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24 (audit of the flagged partial-update bug)
+
+- **3 more update endpoints silently resetting untouched fields — LIVE ON STAGING ONLY** (commit `d5a1cda4`, verified independently — health check + build-hash cross-check; not deployed to prod). The MCP fix below flagged ~13 `.partial()`+`.default()` locations as worth auditing but out of scope for that pass. Audited all 13 by checking each `create*Schema` for top-level `.default()` fields that would actually leak — only 3 were real bugs, the other 10 have no defaults to leak in the first place.
+  - `resources.ts`: `isActive`/`skills`/`capacityHoursPerWeek`/cost rates silently reset to their create defaults on any update that omitted them — `isActive: true` could silently reactivate a deactivated resource. Highest-stakes of the three.
+  - `calendarTemplates.ts`: `isDefault` silently reset to `false` on omission.
+  - `collaboration/templates.ts`: `tags` silently wiped to `[]` on omission.
+  - Same fix as the project/task bugs: override each defaulted field with a bare `.optional()` copy. 6 new regression tests, full suite 179/179 files · 3717/3717 tests, zero regressions.
+
 ## 2026-09-24 (later same day)
 
 - **MCP task/project bugs — LIVE ON STAGING ONLY** (build `275bf289b8f4`, verified independently — health check + build-hash cross-check; not deployed to prod). Fixed overnight on the user's explicit blanket authorization, with the standing staging→prod gate kept regardless. Found by the user actually driving the MCP tools against staging: bulk-create a task, update a project's methodology, try to set a start-to-start dependency.
