@@ -1,4 +1,5 @@
 import { databaseService } from '../database/connection';
+import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 
 const globalRoles = ['admin', 'executive', 'pmo'];
 const managerRoles = ['admin', 'pmo', 'executive', 'project_manager', 'scrum_master'];
@@ -19,6 +20,8 @@ export interface RaidWatchItem {
   detail: string;
   linkTab: 'raid' | 'schedule';
   resourceName?: string;
+  /** Row on the schedule screen (blocked tasks only) */
+  rowNumber?: number;
 }
 
 export interface BriefingTask {
@@ -29,6 +32,8 @@ export interface BriefingTask {
   projectCode: string;
   scheduleId: string;
   sortOrder: number;
+  /** Row the task shows on the schedule screen — use this, not sortOrder, for display */
+  rowNumber?: number;
   priority: string;
   resourceName?: string;
 }
@@ -69,7 +74,15 @@ class DailyBriefingService {
     const showResource = managerRoles.includes(userRole);
     const isRestricted = restrictedRoles.includes(userRole);
 
-    const resourceSelect = showResource ? ', r.name AS resourceName' : '';
+    // Same fallback as the schedule screen: a resource (by id, or by linked user), else the
+    // free text typed into "Assigned to" — but never a bare id that matched nothing.
+    const resourceSelect = showResource
+      ? `, COALESCE(
+           r.name,
+           (SELECT ru.name FROM resources ru WHERE ru.user_id = t.assigned_to LIMIT 1),
+           CASE WHEN t.assigned_to REGEXP '^[0-9a-fA-F-]{36}$' THEN NULL ELSE NULLIF(TRIM(t.assigned_to), '') END
+         ) AS resourceName`
+      : '';
     const resourceJoin = showResource ? 'LEFT JOIN resources r ON t.assigned_to = r.id' : '';
 
     // Restricted roles only see tasks assigned to them (via resource linked to their user)
@@ -259,6 +272,26 @@ class DailyBriefingService {
       ),
     ]);
 
+    // Row numbers as shown on the schedule screen, for every schedule that has a task in the briefing
+    const scheduleIds = [...new Set([...dueToday, ...dueThisWeek, ...overdue, ...blockedTasks].map((t: any) => t.scheduleId))];
+    const rowNumbers = new Map<string, number>();
+    if (scheduleIds.length > 0) {
+      const scheduleTasks = await databaseService.query<any>(
+        `SELECT id, schedule_id AS scheduleId, parent_task_id AS parentTaskId, sort_order AS sortOrder, start_date AS startDate
+         FROM tasks WHERE schedule_id IN (${scheduleIds.map(() => '?').join(',')})`,
+        scheduleIds
+      );
+      const bySchedule = new Map<string, any[]>();
+      for (const t of scheduleTasks) {
+        if (!bySchedule.has(t.scheduleId)) bySchedule.set(t.scheduleId, []);
+        bySchedule.get(t.scheduleId)!.push(t);
+      }
+      for (const list of bySchedule.values()) {
+        for (const [id, n] of computeScheduleRowNumbers(list)) rowNumbers.set(id, n);
+      }
+    }
+    const withRowNumber = <T extends { id: string }>(list: T[]) => list.map(t => ({ ...t, rowNumber: rowNumbers.get(t.id) }));
+
     // Process notifications
     const notifMap = new Map<string, number>();
     for (const row of notifications) {
@@ -294,6 +327,7 @@ class DailyBriefingService {
         detail: `blocked by: ${item.blockedByName}`,
         linkTab: 'schedule',
         resourceName: showResource ? (item.resourceName || undefined) : undefined,
+        rowNumber: rowNumbers.get(item.id),
       });
     }
 
@@ -322,9 +356,9 @@ class DailyBriefingService {
           high: notifMap.get('high') ?? 0,
         },
       },
-      tasksDueToday: dueToday,
-      tasksDueThisWeek: dueThisWeek,
-      overdueTasks: overdue,
+      tasksDueToday: withRowNumber(dueToday),
+      tasksDueThisWeek: withRowNumber(dueThisWeek),
+      overdueTasks: withRowNumber(overdue),
       recentHighRisks: risks,
       upcomingMilestones: milestones,
       raidWatch,

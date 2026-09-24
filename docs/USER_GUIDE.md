@@ -2919,7 +2919,7 @@ Available sections: Morning Briefing, KPI Tiles, Portfolio Intelligence, Project
 - **Due Soon** — Tasks due today/this week and upcoming milestones, sorted by urgency, with the actual due date (e.g. "Due Fri, Sep 26").
 - **RAID Watch** — Blocked tasks (with what they are waiting on), overdue meeting action items, and open issues. For viewers, this box spans the full row.
 
-Every item shows two lines: the full name with a coloured tag on the right ("5d overdue", "High risk", "Blocked"), and underneath it the project code and name, the row number, and — for admins, PMs and executives — the owner. All items are clickable and navigate to the relevant project tab. Up to 6 items per box with "+N more" overflow. The widget flashes amber on your first daily visit (24h cooldown) and is collapsible.
+Every item shows two lines: the full name with a coloured tag on the right ("5d overdue", "High risk", "Blocked"), and underneath it the project code and name, the row number (the same row you see on the schedule when everything is expanded and no filter is on), and — for admins, PMs and executives — the owner. The owner is the resource the task is assigned to, or whatever was typed into the task's "Assigned to" field (e.g. "DBJ / JV") if it isn't a resource. All items are clickable and navigate to the relevant project tab. Up to 6 items per box with "+N more" overflow. The widget flashes amber on your first daily visit (24h cooldown) and is collapsible.
 
 Opt-in sections (disabled by default): Sprint Snapshot, Goals Progress, Team Workload, Change Requests.
 

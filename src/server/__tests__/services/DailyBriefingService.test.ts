@@ -41,6 +41,7 @@ const queryControlPlaneMock = databaseService.queryControlPlane as ReturnType<ty
  *  8: overdueActions (query)
  *  9: blockedTasks (query)
  * 10: openIssues (query)
+ * 11: schedule tasks for row numbers (query — only runs when a task is in the briefing)
  */
 function setupDefaultResults(overrides: Record<number, any[]> = {}) {
   const defaults: any[][] = [
@@ -55,6 +56,7 @@ function setupDefaultResults(overrides: Record<number, any[]> = {}) {
     [],              // 8: overdueActions
     [],              // 9: blockedTasks
     [],              // 10: openIssues
+    [],              // 11: schedule tasks for row numbers
   ];
 
   for (const [idx, val] of Object.entries(overrides)) {
@@ -75,6 +77,7 @@ function setupDefaultResults(overrides: Record<number, any[]> = {}) {
     defaults[8],  // overdueActions
     defaults[9],  // blockedTasks
     defaults[10], // openIssues
+    defaults[11], // schedule tasks for row numbers
   ];
 
   queryMock.mockImplementation(() => {
@@ -235,6 +238,48 @@ describe('DailyBriefingService', () => {
       const result = await dailyBriefingService.getDailyBriefing('user-1', 'admin');
 
       expect(result.overdueTasks).toEqual(tasks);
+    });
+
+    it('numbers tasks by their row on the schedule screen, not by sortOrder', async () => {
+      // Schedule counts sortOrder from 1, so sortOrder + 1 would say row 4 for the third task
+      setupDefaultResults({
+        5: [{ id: 't-3', name: 'Gate 1', projectName: 'P', projectId: 'p-1', projectCode: 'PC', scheduleId: 's-1', sortOrder: 3, priority: 'medium', overdueDays: 55 }],
+        9: [{ id: 't-9', name: 'Child', projectId: 'p-1', projectName: 'P', projectCode: 'PC', scheduleId: 's-1', sortOrder: 0, blockedByName: 'Gate 1' }],
+        11: [
+          { id: 't-1', scheduleId: 's-1', parentTaskId: null, sortOrder: 1 },
+          { id: 't-2', scheduleId: 's-1', parentTaskId: null, sortOrder: 2 },
+          { id: 't-3', scheduleId: 's-1', parentTaskId: null, sortOrder: 3 },
+          { id: 't-9', scheduleId: 's-1', parentTaskId: 't-2', sortOrder: 0 },
+        ],
+      });
+
+      const result = await dailyBriefingService.getDailyBriefing('user-1', 'admin');
+
+      expect(result.overdueTasks[0].rowNumber).toBe(4); // t-1, t-2, t-9 (child of t-2), t-3
+      expect(result.raidWatch[0].rowNumber).toBe(3);
+      const rowQuery = queryMock.mock.calls[10];
+      expect(rowQuery[0]).toContain('schedule_id IN (?)');
+      expect(rowQuery[1]).toEqual(['s-1']);
+    });
+
+    it('skips the row-number query when no task is in the briefing', async () => {
+      setupDefaultResults();
+      await dailyBriefingService.getDailyBriefing('user-1', 'admin');
+      expect(queryMock).toHaveBeenCalledTimes(10);
+    });
+
+    it('falls back to the typed "Assigned to" text for the owner name, for managers only', async () => {
+      setupDefaultResults();
+      await dailyBriefingService.getDailyBriefing('user-1', 'project_manager');
+      const overdueSql = queryMock.mock.calls[4][0] as string;
+      expect(overdueSql).toContain('COALESCE(');
+      expect(overdueSql).toContain('ru.user_id = t.assigned_to');
+      expect(overdueSql).toContain("NULLIF(TRIM(t.assigned_to), '')");
+
+      vi.clearAllMocks();
+      setupDefaultResults();
+      await dailyBriefingService.getDailyBriefing('user-1', 'viewer');
+      expect(queryMock.mock.calls[4][0]).not.toContain('resourceName');
     });
 
     // ── High Risks ─────────────────────────────────────────────────────
