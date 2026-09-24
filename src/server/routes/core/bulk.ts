@@ -9,44 +9,55 @@ import logger from '../../utils/logger';
 
 const MAX_BULK = 100;
 
-const bulkTaskSchema = z.object({
+// Field names deliberately match the single-task route (schedules.ts createTaskSchema)
+// rather than inventing bulk-only names — `duration`/`progress`/`dependencies`/`notes`/
+// `wbs` used to appear here but named columns (`duration`, `progress`, `dependencies`,
+// `notes`, `wbs`) that never existed on `tasks` (real columns: `estimated_days`,
+// `progress_percentage`, `dependency`+`dependency_type`, `comments`). Every bulk create
+// silently failed row-by-row, and the live web UI's per-field bulk-edit menu only ever
+// sends status/priority/assignedTo in practice, so this was never caught. `wbs` has no
+// real column at all (only `source_wbs`, a distinct import-provenance field) and is
+// dropped rather than written to the wrong place.
+export const bulkTaskSchema = z.object({
   name: z.string().min(1),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  duration: z.number().optional(),
-  progress: z.number().min(0).max(100).optional(),
+  estimatedDays: z.number().optional(),
+  progressPercentage: z.number().min(0).max(100).optional(),
   status: z.string().optional(),
   priority: z.string().optional(),
   assignedTo: z.string().optional(),
-  dependencies: z.string().optional(),
-  notes: z.string().optional(),
-  wbs: z.string().optional(),
+  dependency: z.string().optional(),
+  dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional(),
+  comments: z.string().optional(),
+  isMilestone: z.boolean().optional(),
 });
 
-const bulkCreateSchema = z.object({
+export const bulkCreateSchema = z.object({
   scheduleId: z.string().min(1),
   tasks: z.array(bulkTaskSchema).min(1).max(MAX_BULK),
 });
 
-const bulkUpdateItemSchema = z.object({
+export const bulkUpdateItemSchema = z.object({
   id: z.string().min(1),
   scheduleId: z.string().min(1),
   name: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  duration: z.number().optional(),
-  progress: z.number().min(0).max(100).optional(),
+  estimatedDays: z.number().optional(),
+  progressPercentage: z.number().min(0).max(100).optional(),
   status: z.string().optional(),
   priority: z.string().optional(),
   assignedTo: z.string().optional(),
-  dependencies: z.string().optional(),
-  notes: z.string().optional(),
-  wbs: z.string().optional(),
+  dependency: z.string().optional(),
+  dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional(),
+  comments: z.string().optional(),
+  isMilestone: z.boolean().optional(),
   sortOrder: z.number().optional(),
   parentTaskId: z.string().nullable().optional(),
 });
 
-const bulkUpdateSchema = z.object({
+export const bulkUpdateSchema = z.object({
   updates: z.array(bulkUpdateItemSchema).min(1).max(MAX_BULK),
 });
 
@@ -82,23 +93,26 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             const id = uuidv4();
             await connection.execute(
               `INSERT INTO tasks
-                 (id, schedule_id, name, start_date, end_date, duration, progress,
-                  status, priority, assigned_to, dependencies, notes, wbs, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+                 (id, schedule_id, name, start_date, end_date, estimated_days, progress_percentage,
+                  status, priority, assigned_to, dependency, dependency_type, comments, is_milestone,
+                  created_by, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
               [
                 id,
                 body.scheduleId,
                 t.name,
                 t.startDate || null,
                 t.endDate || null,
-                t.duration ?? null,
-                t.progress ?? 0,
-                t.status || 'not_started',
+                t.estimatedDays ?? null,
+                t.progressPercentage ?? 0,
+                t.status || 'pending',
                 t.priority || 'medium',
                 t.assignedTo || null,
-                t.dependencies ? (typeof t.dependencies === 'string' ? t.dependencies : JSON.stringify(t.dependencies)) : '[]',
-                t.notes || null,
-                t.wbs || null,
+                t.dependency || null,
+                t.dependencyType || null,
+                t.comments || null,
+                t.isMilestone ? 1 : 0,
+                user.userId,
               ],
             );
             succeeded.push({ id, name: t.name });
@@ -110,6 +124,17 @@ export async function bulkRoutes(fastify: FastifyInstance) {
 
       return { succeeded, failed };
     } catch (error) {
+      // A malformed request (wrong field names, missing scheduleId) is the
+      // caller's mistake, not a server fault — say what was actually wrong
+      // instead of a bare 500 that gives no clue which field was the problem.
+      if (error instanceof z.ZodError) {
+        const first = error.issues[0];
+        return reply.status(400).send({
+          error: 'Invalid bulk task data',
+          message: first ? `${first.path.join('.')}: ${first.message}` : 'Invalid request body',
+          issues: error.issues.map(i => ({ field: i.path.join('.'), message: i.message })),
+        });
+      }
       logger.error('Bulk create tasks error', { error });
       return reply.status(500).send({ error: 'Failed to bulk create tasks' });
     }
@@ -142,17 +167,15 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             if (u.name !== undefined) { sets.push('name = ?'); params.push(u.name); }
             if (u.startDate !== undefined) { sets.push('start_date = ?'); params.push(u.startDate); }
             if (u.endDate !== undefined) { sets.push('end_date = ?'); params.push(u.endDate); }
-            if (u.duration !== undefined) { sets.push('duration = ?'); params.push(u.duration); }
-            if (u.progress !== undefined) { sets.push('progress = ?'); params.push(u.progress); }
+            if (u.estimatedDays !== undefined) { sets.push('estimated_days = ?'); params.push(u.estimatedDays); }
+            if (u.progressPercentage !== undefined) { sets.push('progress_percentage = ?'); params.push(u.progressPercentage); }
             if (u.status !== undefined) { sets.push('status = ?'); params.push(u.status); }
             if (u.priority !== undefined) { sets.push('priority = ?'); params.push(u.priority); }
             if (u.assignedTo !== undefined) { sets.push('assigned_to = ?'); params.push(u.assignedTo); }
-            if (u.dependencies !== undefined) {
-              sets.push('dependencies = ?');
-              params.push(typeof u.dependencies === 'string' ? u.dependencies : JSON.stringify(u.dependencies));
-            }
-            if (u.notes !== undefined) { sets.push('notes = ?'); params.push(u.notes); }
-            if (u.wbs !== undefined) { sets.push('wbs = ?'); params.push(u.wbs); }
+            if (u.dependency !== undefined) { sets.push('dependency = ?'); params.push(u.dependency); }
+            if (u.dependencyType !== undefined) { sets.push('dependency_type = ?'); params.push(u.dependencyType); }
+            if (u.comments !== undefined) { sets.push('comments = ?'); params.push(u.comments); }
+            if (u.isMilestone !== undefined) { sets.push('is_milestone = ?'); params.push(u.isMilestone ? 1 : 0); }
             if (u.sortOrder !== undefined) { sets.push('sort_order = ?'); params.push(u.sortOrder); }
             if (u.parentTaskId !== undefined) { sets.push('parent_task_id = ?'); params.push(u.parentTaskId); }
 
@@ -177,6 +200,14 @@ export async function bulkRoutes(fastify: FastifyInstance) {
 
       return { succeeded, failed };
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        const first = error.issues[0];
+        return reply.status(400).send({
+          error: 'Invalid bulk update data',
+          message: first ? `${first.path.join('.')}: ${first.message}` : 'Invalid request body',
+          issues: error.issues.map(i => ({ field: i.path.join('.'), message: i.message })),
+        });
+      }
       logger.error('Bulk update tasks error', { error });
       return reply.status(500).send({ error: 'Failed to bulk update tasks' });
     }

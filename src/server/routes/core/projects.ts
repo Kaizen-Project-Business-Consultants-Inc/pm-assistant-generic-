@@ -21,7 +21,7 @@ import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
 
 
-const createProjectSchema = z.object({
+export const createProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
   description: z.string().max(50000).optional(),
   category: z.string().optional(),
@@ -72,7 +72,20 @@ function duplicateProjectReply(error: unknown, reply: FastifyReply, name?: strin
   return null;
 }
 
-const updateProjectSchema = createProjectSchema.partial().extend({
+// createProjectSchema.partial() is NOT enough here: this project's Zod version
+// (v4, confirmed empirically) does not clear a field's .default(...) when
+// .partial() wraps it, so an omitted field on update silently reverted to its
+// CREATE-time default — methodology back to 'waterfall', priority to 'medium',
+// projectType to 'other', status to 'planning', currency to 'USD' — on every
+// update call that didn't explicitly re-send it. Overriding those five fields
+// with bare .optional() (no default) after .partial() strips the default while
+// leaving every other field's already-correct partial behaviour untouched.
+export const updateProjectSchema = createProjectSchema.partial().extend({
+  projectType: z.enum(['it', 'construction', 'infrastructure', 'roads', 'other']).optional(),
+  methodology: z.enum(['waterfall', 'agile', 'hybrid']).optional(),
+  status: z.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  currency: z.string().optional(),
   expectedUpdatedAt: z.string().optional(),
   /**
    * The day this project's progress is measured as at, like Microsoft Project's status

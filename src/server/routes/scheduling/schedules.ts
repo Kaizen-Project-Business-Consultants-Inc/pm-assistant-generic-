@@ -36,7 +36,7 @@ const taskDependencySchema = z.object({
   lagDays: z.number().int().default(0),
 });
 
-const createTaskSchema = z.object({
+export const createTaskSchema = z.object({
   scheduleId: z.string(),
   name: z.string().min(1),
   description: z.string().optional(),
@@ -84,7 +84,16 @@ const createTaskSchema = z.object({
   })).max(10).optional(),
 });
 
-const updateTaskSchema = createTaskSchema.partial().omit({ scheduleId: true });
+// Same fix as updateProjectSchema in routes/core/projects.ts: `.partial()` does not
+// clear `.default(...)` in this project's Zod version, so an omitted status/priority/
+// taskType on update silently reverted to its create-time default ('pending'/'medium'/
+// 'task'). Stripping the default on just those three fields fixes it without touching
+// the rest of createTaskSchema's already-correct partial behaviour.
+export const updateTaskSchema = createTaskSchema.partial().omit({ scheduleId: true }).extend({
+  status: z.enum(['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled']).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  taskType: z.enum(['task', 'story', 'bug', 'epic']).optional(),
+});
 
 export async function scheduleRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);

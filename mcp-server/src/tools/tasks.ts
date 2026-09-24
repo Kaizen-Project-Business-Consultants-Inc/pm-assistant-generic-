@@ -22,7 +22,9 @@ export function registerTaskTools(server: McpServer) {
     endDate: z.string().optional().describe('End date (YYYY-MM-DD)'),
     progressPercentage: z.number().optional().describe('Progress 0-100'),
     dependency: z.string().optional().describe('Dependency task ID'),
+    dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional().describe('Dependency link type: FS finish-to-start (default), SS start-to-start, FF finish-to-finish, SF start-to-finish'),
     parentTaskId: z.string().optional().describe('Parent task ID for subtasks'),
+    isMilestone: z.boolean().optional().describe('True for a zero-duration milestone rather than an ordinary task'),
   }, async ({ scheduleId, ...data }, extra) =>
     jsonResult(await getApiClientFromExtra(extra).post(`/schedules/${scheduleId}/tasks`, data))
   );
@@ -41,6 +43,8 @@ export function registerTaskTools(server: McpServer) {
     endDate: z.string().optional().describe('End date (YYYY-MM-DD)'),
     progressPercentage: z.number().optional().describe('Progress 0-100'),
     dependency: z.string().optional().describe('Dependency task ID'),
+    dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional().describe('Dependency link type: FS finish-to-start (default), SS start-to-start, FF finish-to-finish, SF start-to-finish'),
+    isMilestone: z.boolean().optional().describe('True for a zero-duration milestone rather than an ordinary task'),
   }, async ({ scheduleId, taskId, ...data }, extra) =>
     jsonResult(await getApiClientFromExtra(extra).put(`/schedules/${scheduleId}/tasks/${taskId}`, data))
   );
@@ -52,35 +56,48 @@ export function registerTaskTools(server: McpServer) {
     jsonResult(await getApiClientFromExtra(extra).delete(`/schedules/${scheduleId}/tasks/${taskId}`))
   );
 
-  server.tool('bulk-create-tasks', 'Bulk create up to 100 tasks', {
+  // The bulk endpoints (POST/PUT /bulk/tasks) take scheduleId ONCE, at the top level
+  // — not per task — and use the same field names as create-task/update-task above
+  // (estimatedDays, progressPercentage, dependency, comments), not shorthand aliases.
+  // Sending the wrong shape here used to fail every bulk-create with a bare 500.
+  server.tool('bulk-create-tasks', 'Bulk create up to 100 tasks in one schedule', {
+    scheduleId: z.string().describe('Schedule ID — all tasks in this call are created in the same schedule'),
     tasks: z.array(z.object({
-      scheduleId: z.string(),
       name: z.string(),
-      description: z.string().optional(),
       status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
       priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
       assignedTo: z.string().optional(),
-      dueDate: z.string().optional(),
       estimatedDays: z.number().optional(),
       startDate: z.string().optional(),
       endDate: z.string().optional(),
-      dependency: z.string().optional(),
-    })).max(100).describe('Array of tasks to create (max 100)'),
-  }, async ({ tasks }, extra) =>
-    jsonResult(await getApiClientFromExtra(extra).post('/bulk/tasks', { tasks }))
+      dependency: z.string().optional().describe('Dependency task ID'),
+      dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional().describe('Dependency link type: FS finish-to-start (default), SS start-to-start, FF finish-to-finish, SF start-to-finish'),
+      comments: z.string().optional(),
+      isMilestone: z.boolean().optional().describe('True for a zero-duration milestone rather than an ordinary task'),
+    })).min(1).max(100).describe('Array of tasks to create (max 100)'),
+  }, async ({ scheduleId, tasks }, extra) =>
+    jsonResult(await getApiClientFromExtra(extra).post('/bulk/tasks', { scheduleId, tasks }))
   );
 
-  server.tool('bulk-update-tasks', 'Bulk update multiple tasks', {
+  server.tool('bulk-update-tasks', 'Bulk update multiple tasks (can span schedules — each item names its own scheduleId)', {
     tasks: z.array(z.object({
       id: z.string(),
+      scheduleId: z.string().describe('Schedule the task belongs to'),
       name: z.string().optional(),
       status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
       priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
       assignedTo: z.string().optional(),
+      estimatedDays: z.number().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
       progressPercentage: z.number().min(0).max(100).optional(),
-    })).max(100).describe('Array of task updates (max 100)'),
+      dependency: z.string().optional().describe('Dependency task ID'),
+      dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional(),
+      comments: z.string().optional(),
+      isMilestone: z.boolean().optional(),
+    })).min(1).max(100).describe('Array of task updates (max 100)'),
   }, async ({ tasks }, extra) =>
-    jsonResult(await getApiClientFromExtra(extra).put('/bulk/tasks', { tasks }))
+    jsonResult(await getApiClientFromExtra(extra).put('/bulk/tasks', { updates: tasks }))
   );
 
   server.tool('bulk-status-update', 'Batch status change for multiple tasks', {

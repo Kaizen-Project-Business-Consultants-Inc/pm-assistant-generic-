@@ -140,6 +140,28 @@ describe('BaseRepository', () => {
       );
       expect(result!.values).toEqual(['TEST']);
     });
+
+    it('ignores a key present with value undefined, instead of writing NULL over it', () => {
+      // Regression test: `key in data` used to be true even when data[key] was
+      // `undefined` (e.g. a route spreading `startDate: parsed.startDate ||
+      // undefined` defensively), silently nulling a column the caller never
+      // touched on every single partial update.
+      const result = repo.buildUpdate(
+        { name: 'kept', startDate: undefined },
+        { name: 'name_col', startDate: 'start_date' },
+      );
+      expect(result!.sql).not.toContain('start_date');
+      expect(result!.values).toEqual(['kept']);
+    });
+
+    it('still honours an explicit null as "clear this column"', () => {
+      const result = repo.buildUpdate(
+        { statusDate: null },
+        { statusDate: 'status_date' },
+      );
+      expect(result!.sql).toContain('status_date = ?');
+      expect(result!.values).toEqual([null]);
+    });
   });
 
   describe('controlPlane option', () => {

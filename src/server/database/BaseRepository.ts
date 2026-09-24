@@ -93,7 +93,13 @@ export class BaseRepository<T> {
     const values: any[] = [];
 
     for (const [key, column] of Object.entries(columnMap)) {
-      if (key in data) {
+      // `key in data` is true even for a key present with value `undefined` —
+      // which routes.ts handlers sometimes produce defensively (e.g.
+      // `startDate: parsed.startDate || undefined`) — and wrote NULL over a
+      // column the caller never touched. Checking the value itself is the
+      // correct partial-update semantics: only an explicit `null` clears a
+      // column; a genuinely omitted/undefined field leaves it alone.
+      if (data[key] !== undefined) {
         fields.push(`${column} = ?`);
         let val = data[key];
         if (valueTransform) {

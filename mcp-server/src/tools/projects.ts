@@ -33,6 +33,7 @@ export function registerProjectTools(server: McpServer) {
     projectId: z.string().describe('Project ID'),
     name: z.string().optional().describe('Project name'),
     description: z.string().optional().describe('Project description'),
+    projectType: z.enum(['it', 'construction', 'infrastructure', 'roads', 'other']).optional().describe('Project type'),
     methodology: z.enum(['waterfall', 'agile', 'hybrid']).optional().describe('Project methodology — controls default view, tab ordering, and readiness steps'),
     status: z.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']).optional().describe('Project status'),
     priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('Priority level'),
