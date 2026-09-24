@@ -9,6 +9,7 @@ import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
+import { teamsEventDispatcher } from '../../services/integrations/TeamsEventDispatcher';
 import { PredictiveIntelligenceService } from '../../services/predictiveIntelligence';
 import { lessonsLearnedService } from '../../services/LessonsLearnedService';
 import { projectService } from '../../services/ProjectService';
@@ -173,6 +174,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
       webhookService.dispatch('risk.created', { risk, projectId }, userId);
       automationEventBus.emit({ type: 'risk.created', entityType: 'risk', entityId: risk.id, projectId, userId, payload: risk as any, timestamp: new Date().toISOString() }).catch(() => {});
       slackEventDispatcher.dispatchToSlack('risk.created', { risk, projectId }, projectId);
+      teamsEventDispatcher.dispatchToTeams('risk.created', { risk, projectId }, projectId);
       return reply.status(201).send({ data: risk });
     } catch (err) {
       if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });

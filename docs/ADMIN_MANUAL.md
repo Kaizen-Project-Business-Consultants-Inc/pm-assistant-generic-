@@ -552,6 +552,28 @@ Agents can be promoted from Tier 2 (propose-only) to Tier 3 (auto-execute) when 
 - Install the PM Assistant Slack app via OAuth.
 - Configure channel notifications for project events (task created, status changed, approvals needed).
 
+### Microsoft Teams
+- Notification-only, same event catalog as Slack — no two-way sync.
+- Reuses the **same Azure AD app registration** as the OneDrive/SharePoint
+  connector (`MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET` — nothing new to
+  set on the server). The app registration itself needed additional API
+  permissions added in the Azure portal: `ChannelMessage.Send`,
+  `Team.ReadBasic.All`, `Channel.ReadBasic.All`, and `offline_access` (for
+  refresh tokens), alongside whatever OneDrive already had. Also register the
+  callback redirect URI `{APP_URL}/api/v1/teams/callback` in the app's auth settings.
+- **A customer's Microsoft 365 tenant admin must grant consent** the first
+  time anyone at their organization connects — there is no simpler no-consent
+  path the way Slack's webhook is (Microsoft is retiring Teams' old webhook
+  connectors). If a customer reports Connect failing or silently not working,
+  this is the first thing to check: their admin needs to approve the app's
+  permissions, either by clicking through the consent screen themselves or
+  via the Azure portal's admin-consent flow.
+- Access tokens expire after about an hour; the app refreshes them
+  automatically before every notification using the stored refresh token. If
+  a customer's connection ever needs to be re-authorized (refresh token
+  revoked or expired), the fix is the same as any OAuth integration:
+  disconnect and reconnect.
+
 ### Sync Management
 - View sync status and last sync time under each integration.
 - Trigger manual sync or configure auto-sync intervals.

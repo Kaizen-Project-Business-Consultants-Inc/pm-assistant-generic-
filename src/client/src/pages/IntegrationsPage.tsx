@@ -32,7 +32,10 @@ interface Integration {
 }
 
 // Providers that support multiple connections (one per project)
-const MULTI_CONNECTION_PROVIDERS = new Set(['slack']);
+const MULTI_CONNECTION_PROVIDERS = new Set(['slack', 'msteams']);
+// Notification-only providers: events are pushed out, never pulled/synced,
+// so Sync and sync History are meaningless for them.
+const PUSH_ONLY_PROVIDERS = new Set(['slack', 'msteams']);
 
 // ---------------------------------------------------------------------------
 // Provider metadata
@@ -75,6 +78,12 @@ const PROVIDERS: Record<string, ProviderMeta> = {
     description: 'Sync Trello cards with tasks',
     color: '#0079BF',
     letter: 'T',
+  },
+  msteams: {
+    name: 'Microsoft Teams',
+    description: 'Send project notifications to a Teams channel',
+    color: '#5059C9',
+    letter: 'MT',
   },
 };
 
@@ -179,7 +188,7 @@ export const IntegrationsPage: React.FC = () => {
     setConfirmDisconnect({ id: integrationId, name: providerName });
   };
 
-  const OAUTH_PROVIDERS = new Set(['slack', 'google_calendar']);
+  const OAUTH_PROVIDERS = new Set(['slack', 'google_calendar', 'msteams']);
 
   const handleOAuthConnect = useCallback(async (provider: string) => {
     setBanner(null);
@@ -190,6 +199,8 @@ export const IntegrationsPage: React.FC = () => {
         data = await apiService.getSlackInstallUrl();
       } else if (provider === 'google_calendar') {
         data = await apiService.getCalendarConnectUrl();
+      } else if (provider === 'msteams') {
+        data = await apiService.getTeamsInstallUrl();
       }
       if (!data?.url) {
         setBanner({ kind: 'error', text: `${label} could not be started. Please try again.` });
@@ -224,7 +235,7 @@ export const IntegrationsPage: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['integrations'] });
         setBanner({
           kind: 'success',
-          text: data.provider === 'slack'
+          text: (data.provider === 'slack' || data.provider === 'msteams')
             ? `${label} is connected. Open Configure to choose the channel and which events get posted.`
             : `${label} is connected.`,
         });
@@ -251,7 +262,7 @@ export const IntegrationsPage: React.FC = () => {
   // Render action buttons for a single integration
   const renderActions = (integ: Integration, providerKey: string, meta: ProviderMeta, compact = false) => (
     <div className={`flex items-center gap-2 flex-wrap ${compact ? '' : 'mt-4'}`}>
-      {providerKey !== 'slack' && (
+      {!PUSH_ONLY_PROVIDERS.has(providerKey) && (
         <button
           onClick={() => syncMutation.mutate(integ.id)}
           disabled={syncMutation.isPending}
@@ -268,7 +279,7 @@ export const IntegrationsPage: React.FC = () => {
         <Settings className="h-4 w-4" />
         Configure
       </button>
-      {providerKey !== 'slack' && (
+      {!PUSH_ONLY_PROVIDERS.has(providerKey) && (
         <button
           onClick={() => setSyncLogId(integ.id)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -395,7 +406,7 @@ export const IntegrationsPage: React.FC = () => {
                             const projectName = integ.projectId
                               ? projectNameMap.get(integ.projectId) || 'Unknown Project'
                               : 'All Projects';
-                            const channel = (integ.config?.channel as string) || '';
+                            const channel = (integ.config?.channel as string) || (integ.config?.channelName as string) || '';
                             return (
                               <div
                                 key={integ.id}
@@ -440,14 +451,14 @@ export const IntegrationsPage: React.FC = () => {
                         }}
                       >
                         {hasAnyConnection ? <Plus className="h-4 w-4" /> : OAUTH_PROVIDERS.has(providerKey) ? <ExternalLink className="h-4 w-4" /> : <Plug className="h-4 w-4" />}
-                        {/* This starts a whole new workspace authorisation — it
-                            does not add a channel, which "Add Another Channel"
-                            led people to expect. Channels are picked in Configure. */}
-                        {hasAnyConnection ? 'Connect Another Workspace' : OAUTH_PROVIDERS.has(providerKey) ? 'Connect Slack' : 'Connect'}
+                        {/* This starts a whole new authorisation — it does not
+                            add a channel, which "Add Another Channel" led
+                            people to expect. Channels are picked in Configure. */}
+                        {hasAnyConnection ? 'Connect Another Account' : OAUTH_PROVIDERS.has(providerKey) ? `Connect ${meta.name}` : 'Connect'}
                       </button>
-                      {providerKey === 'slack' && !hasAnyConnection && (
+                      {OAUTH_PROVIDERS.has(providerKey) && !hasAnyConnection && (
                         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          Opens Slack so you can approve access. Start here, not from Slack&apos;s own app page.
+                          Opens {meta.name} so you can approve access. Start here, not from {meta.name}&apos;s own app page.
                         </p>
                       )}
                     </>

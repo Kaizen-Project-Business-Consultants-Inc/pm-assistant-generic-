@@ -3,6 +3,7 @@ import { jiraAdapter } from './integrations/JiraAdapter';
 import { githubAdapter } from './integrations/GitHubAdapter';
 import { slackAdapter } from './integrations/SlackAdapter';
 import { trelloAdapter } from './integrations/TrelloAdapter';
+import { teamsAdapter } from './integrations/TeamsAdapter';
 
 export interface Integration {
   id: string;
@@ -70,6 +71,8 @@ export class IntegrationService {
         return githubAdapter.testConnection(config as any);
       case 'slack':
         return slackAdapter.testConnection(config as any);
+      case 'msteams':
+        return teamsAdapter.testConnection(id, config as any);
       case 'trello':
         return trelloAdapter.testConnection(config as any);
       default:
@@ -122,6 +125,8 @@ export class IntegrationService {
       }
       case 'slack':
         throw new Error('Slack integration does not support pull');
+      case 'msteams':
+        throw new Error('Microsoft Teams integration does not support pull');
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -145,6 +150,8 @@ export class IntegrationService {
       }
       case 'slack':
         throw new Error('Slack integration does not support push');
+      case 'msteams':
+        throw new Error('Microsoft Teams integration does not support push');
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }

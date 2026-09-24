@@ -237,7 +237,7 @@ export async function slackRoutes(fastify: FastifyInstance) {
 
         // Find the integration owner to act as reviewer
         // Use the first active Slack integration's user_id as the acting user
-        const integrations = await integrationRepository.findActiveSlackByProject(proposalId);
+        const integrations = await integrationRepository.findActiveByProviderAndProject('slack', proposalId);
         let reviewerId = 'system';
         if (integrations.length > 0) {
           reviewerId = integrations[0].user_id;
@@ -273,7 +273,7 @@ export async function slackRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, text } = sendSlackSchema.parse(request.body);
-      const rows = await integrationRepository.findActiveSlackByProject(projectId);
+      const rows = await integrationRepository.findActiveByProviderAndProject('slack', projectId);
       if (rows.length === 0) {
         return reply.status(404).send({ error: 'No Slack integrations found for this project' });
       }
@@ -299,7 +299,7 @@ export async function slackRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = z.object({ projectId: z.string().min(1) }).parse(request.body);
-      const rows = await integrationRepository.findActiveSlackByProject(projectId);
+      const rows = await integrationRepository.findActiveByProviderAndProject('slack', projectId);
       if (rows.length === 0) {
         return reply.status(404).send({ error: 'No Slack integrations found for this project' });
       }

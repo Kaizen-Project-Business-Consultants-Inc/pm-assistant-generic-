@@ -8,7 +8,7 @@ class SlackEventDispatcher {
     if (!projectId) return;
 
     try {
-      const rows = await integrationRepository.findActiveSlackByProject(projectId);
+      const rows = await integrationRepository.findActiveByProviderAndProject('slack', projectId);
       if (rows.length === 0) return;
 
       // Look the project name up once so messages can say which project they

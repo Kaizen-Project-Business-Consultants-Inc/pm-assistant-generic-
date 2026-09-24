@@ -4,6 +4,7 @@ import { WebSocketService } from './WebSocketService';
 import { emailService } from './EmailService';
 import { userService, NotificationCategoryPref } from './UserService';
 import { slackEventDispatcher } from './integrations/SlackEventDispatcher';
+import { teamsEventDispatcher } from './integrations/TeamsEventDispatcher';
 import { webPushService } from './WebPushService';
 import logger from '../utils/logger';
 import { config } from '../config';
@@ -167,6 +168,11 @@ export class NotificationService {
         notification: { title: data.title, message: data.message, severity, type },
       }, data.projectId).catch(err => {
         logger.error('[NotificationService] Slack dispatch failed:', err);
+      });
+      teamsEventDispatcher.dispatchToTeams(slackEvent, {
+        notification: { title: data.title, message: data.message, severity, type },
+      }, data.projectId).catch(err => {
+        logger.error('[NotificationService] Teams dispatch failed:', err);
       });
     }
 

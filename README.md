@@ -258,8 +258,8 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - Pre-configured task structures and workflows
 
 ### External Integrations
-- Jira, GitHub, Slack, and Trello integration adapters
-- Bi-directional sync support (partial — adapter framework implemented)
+- Jira, GitHub, Slack, Trello, and Microsoft Teams integration adapters
+- Bi-directional sync support (partial — adapter framework implemented; Slack and Microsoft Teams are notification-only)
 
 ### Webhooks
 - Configurable outbound webhooks for project events

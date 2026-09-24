@@ -1966,6 +1966,48 @@ Agents and workflow actions can push ad-hoc messages to a project's Slack channe
 
 ---
 
+### Microsoft Teams Setup
+
+Notification-only, the same as Slack above — no two-way task sync.
+
+**Before you start:** connecting Microsoft Teams needs a Microsoft 365 admin to
+grant consent, the first time anyone at your organization connects it. If you
+are not an admin, the connect step will fail or prompt for one — ask your IT
+admin to click Connect once, or to grant admin consent for the app in the
+Azure portal.
+
+#### Connecting your Microsoft Teams
+
+1. Navigate to **Integrations** in the sidebar.
+2. Click **Connect Microsoft Teams** on the Microsoft Teams card.
+3. Sign in and approve the requested permissions (posting messages, and reading
+   your teams/channels so you can pick one). This is where an admin's consent
+   is required the first time.
+4. The window closes and the Microsoft Teams card updates on its own.
+
+If a team is already connected, the button reads **Connect Another Account**.
+
+#### Choosing the team, channel, project and events
+
+1. On the Microsoft Teams card, click **Configure**.
+2. In the modal:
+   - **Team** — pick which Microsoft Team to post into.
+   - **Channel** — pick the channel within that team.
+   - **Project** — same as Slack: scope this connection to one project, or leave
+     **All Projects**.
+   - **Event Filters** — same event list as Slack.
+3. Click **Save**, then **Test Connection** to confirm a message actually posts.
+
+#### What Teams Messages Look Like
+
+Notifications arrive as Adaptive Cards, Microsoft Teams' equivalent of Slack's
+Block Kit messages — a title, key details, and (where relevant) a link back to
+the item in Kovarti. There are no interactive Approve/Reject buttons on agent
+proposals in Microsoft Teams yet (Slack has these) — approve or reject from
+inside Kovarti instead.
+
+---
+
 ### Google Calendar
 
 #### Connecting Google Calendar

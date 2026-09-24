@@ -116,15 +116,18 @@ export class IntegrationRepository extends BaseRepository<Integration> {
   }
 
   /**
-   * Slack integrations that should receive this project's events: ones bound to
-   * the project, plus workspace-wide ones (project_id NULL — shown as "All
-   * Projects" in the UI, and what the OAuth install creates). A plain
-   * `project_id = ?` never matches NULL, so those were silently receiving nothing.
+   * Active integrations of one provider that should receive this project's
+   * events: ones bound to the project, plus workspace-wide ones (project_id
+   * NULL — shown as "All Projects" in the UI, and what an OAuth install
+   * creates). A plain `project_id = ?` never matches NULL, so those were
+   * silently receiving nothing. Shared by SlackEventDispatcher and
+   * TeamsEventDispatcher — was Slack-only (`findActiveSlackByProject`) until
+   * the Teams integration needed the identical query for a second provider.
    */
-  async findActiveSlackByProject(projectId: string): Promise<IntegrationRow[]> {
+  async findActiveByProviderAndProject(provider: string, projectId: string): Promise<IntegrationRow[]> {
     return this.queryRaw(
       'SELECT * FROM integrations WHERE (project_id = ? OR project_id IS NULL) AND provider = ? AND is_active = 1',
-      [projectId, 'slack'],
+      [projectId, provider],
     );
   }
 

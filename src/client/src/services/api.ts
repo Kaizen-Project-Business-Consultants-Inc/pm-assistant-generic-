@@ -3893,6 +3893,29 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   }
 
   // -------------------------------------------------------------------------
+  // Microsoft Teams
+  // -------------------------------------------------------------------------
+
+  async getTeamsInstallUrl() {
+    const response = await this.api.get('/teams/install');
+    return response.data;
+  }
+
+  async getTeamsTeams(integrationId?: string) {
+    const response = await this.api.get('/teams/teams', {
+      params: integrationId ? { integrationId } : undefined,
+    });
+    return response.data;
+  }
+
+  async getTeamsChannels(integrationId: string, teamId: string) {
+    const response = await this.api.get('/teams/channels', {
+      params: { integrationId, teamId },
+    });
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
   // Web Push Notifications
   // -------------------------------------------------------------------------
 

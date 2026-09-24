@@ -7,6 +7,7 @@ import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
+import { teamsEventDispatcher } from '../../services/integrations/TeamsEventDispatcher';
 import { auditLedgerService } from '../../services/AuditLedgerService';
 import { scheduleService } from '../../services/ScheduleService';
 import { riskService } from '../../services/RiskService';
@@ -266,6 +267,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
       webhookService.dispatch('project.updated', { project }, userId);
       automationEventBus.emit({ type: 'project.updated', entityType: 'project', entityId: id, projectId: id, userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});
       slackEventDispatcher.dispatchToSlack('project.updated', { project }, id);
+      teamsEventDispatcher.dispatchToTeams('project.updated', { project }, id);
       return { project: toProjectDTO(project) };
     } catch (error) {
       const dup = duplicateProjectReply(error, reply, (request.body as { name?: string })?.name);
@@ -321,6 +323,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
       automationEventBus.emit({ type: 'project.updated', entityType: 'project', entityId: id, projectId: id, userId: user.userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});
       automationEventBus.emit({ type: 'project.status_changed', entityType: 'project', entityId: id, projectId: id, userId: user.userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});
       slackEventDispatcher.dispatchToSlack('project.updated', { project }, id);
+      teamsEventDispatcher.dispatchToTeams('project.updated', { project }, id);
       return { project };
     } catch (error) {
       logger.error('Update project status error', { error });

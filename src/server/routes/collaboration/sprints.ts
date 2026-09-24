@@ -10,6 +10,7 @@ import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
+import { teamsEventDispatcher } from '../../services/integrations/TeamsEventDispatcher';
 import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
@@ -150,6 +151,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
       webhookService.dispatch('sprint.started', { sprint }, request.user!.userId);
       automationEventBus.emit({ type: 'sprint.started', entityType: 'sprint', entityId: sprint.id, projectId: sprint.projectId, userId: request.user!.userId, payload: sprint as any, timestamp: new Date().toISOString() }).catch(() => {});
       slackEventDispatcher.dispatchToSlack('sprint.started', { sprint }, sprint.projectId);
+      teamsEventDispatcher.dispatchToTeams('sprint.started', { sprint }, sprint.projectId);
       return { sprint };
     } catch (error) {
       logger.error('Start sprint error', { error });
@@ -165,6 +167,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
       webhookService.dispatch('sprint.completed', { sprint }, request.user!.userId);
       automationEventBus.emit({ type: 'sprint.completed', entityType: 'sprint', entityId: sprint.id, projectId: sprint.projectId, userId: request.user!.userId, payload: sprint as any, timestamp: new Date().toISOString() }).catch(() => {});
       slackEventDispatcher.dispatchToSlack('sprint.completed', { sprint }, sprint.projectId);
+      teamsEventDispatcher.dispatchToTeams('sprint.completed', { sprint }, sprint.projectId);
       return { sprint };
     } catch (error) {
       logger.error('Complete sprint error', { error });

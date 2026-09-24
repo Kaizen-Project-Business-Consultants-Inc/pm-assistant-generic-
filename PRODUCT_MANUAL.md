@@ -1818,6 +1818,7 @@ Implemented in: `src/server/services/tenantProvisioner.ts`
 | **GitHub** | `GitHubAdapter` | Issue sync, PR status tracking |
 | **Slack** | `SlackAdapter` | Event notifications, per-project channel routing, project selector, event filter checkboxes, `/kovarti status` slash command, interactive proposal buttons, POST /slack/send API |
 | **Trello** | `TrelloAdapter` | Card sync, board mapping |
+| **Microsoft Teams** | `TeamsAdapter` | Event notifications (same catalog as Slack), per-project team/channel routing, project selector, event filter checkboxes. Notification-only — no slash command or interactive buttons in v1. |
 
 ### Slack Integration
 
@@ -1863,6 +1864,50 @@ A successful delivery stamps `last_sync_at`, shown as "Last message" on the card
 - `GET /api/v1/slack/channels?integrationId=` — lists that connection's workspace channels for the picker
 
 **Scopes:** `chat:write,channels:read,groups:read,channels:join,commands,incoming-webhook`
+
+### Microsoft Teams Integration
+
+Notification-only, mirroring Slack's event catalog and dispatcher pattern —
+`TeamsEventDispatcher.dispatchToTeams()` is called from the same trigger sites as
+`SlackEventDispatcher.dispatchToSlack()` (task completion, risk creation, sprint
+start/complete, project updates, and the generic `NotificationService` fan-out).
+Two-way task sync is explicitly out of scope; `IntegrationService` throws
+"does not support pull/push" for `msteams`, same as Slack.
+
+**Why it differs from Slack architecturally:** Microsoft is retiring Teams'
+Incoming Webhook connectors, so there is no simple, no-consent fallback the way
+Slack's webhook is. Every notification goes through the Microsoft Graph API
+(`POST /teams/{team-id}/channels/{channel-id}/messages`), which requires a
+Microsoft 365 tenant admin to consent to `ChannelMessage.Send`,
+`Team.ReadBasic.All`, and `Channel.ReadBasic.All` the first time anyone at that
+organization connects. Graph OAuth tokens also expire (~1 hour, unlike Slack's
+long-lived bot token) — `TeamsAdapter.ensureFreshToken()` refreshes and persists
+a new token pair before every delivery attempt, using the stored `refreshToken`
+(`offline_access` scope). If refresh fails, delivery reports the connection as
+expired rather than silently dropping the notification.
+
+**Configuration:** reuses the same Azure AD app registration as the OneDrive/
+SharePoint storage connector — same `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`,
+no separate credentials to manage. See `docs/ADMIN_MANUAL.md` for the Azure
+permission change this required.
+
+**Connecting:** Click "Connect Microsoft Teams" on the Integrations page. After
+OAuth, **Configure** offers a team picker, then a channel picker scoped to that
+team (`GET /teams/teams` and `GET /teams/channels?teamId=` via `TeamsAdapter.listTeams`/
+`listChannels`), plus the same project-scope and event-filter UI as Slack.
+
+**Delivery:** `TeamsAdapter.deliver()` posts an Adaptive Card
+(`buildEventCards()`, the Teams equivalent of `SlackAdapter.buildEventBlocks()`)
+to the configured team/channel. A successful delivery stamps `last_sync_at`,
+shown as "Last message" on the card, same as Slack.
+
+**OAuth API endpoints:**
+- `GET /api/v1/teams/install` — returns the Microsoft OAuth URL (501 with an actionable message when unconfigured)
+- `GET /api/v1/teams/callback` — OAuth callback (exchanges code for an access/refresh token pair)
+- `GET /api/v1/teams/teams?integrationId=` — lists the teams the connected account belongs to
+- `GET /api/v1/teams/channels?integrationId=&teamId=` — lists channels within a chosen team
+
+**Scopes:** `ChannelMessage.Send Team.ReadBasic.All Channel.ReadBasic.All offline_access`
 
 **User Notification Preferences:**
 Each notification category now has three independent toggles — **In-App**, **Email**, and **Slack**. The Slack toggle controls whether that category's events are forwarded to the project's Slack channels. The Slack column appears in the Settings → Notifications table alongside In-App and Email. When the Slack toggle for a category is off, `SlackEventDispatcher` skips dispatch for that notification type without affecting in-app or email delivery.

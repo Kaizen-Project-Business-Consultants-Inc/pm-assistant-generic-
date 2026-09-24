@@ -85,6 +85,9 @@ const PROVIDER_FIELDS: Record<string, FieldDef[]> = {
   // a URL, so the edit form shows a channel picker instead of credential fields.
   // The webhook field only appears when there is no workspace token to post with.
   slack: [],
+  // Same story as Slack — Microsoft Teams is installed through Microsoft's own
+  // consent screen, and the edit form shows a team + channel picker instead.
+  msteams: [],
   trello: [
     {
       key: 'apiKey',
@@ -115,6 +118,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   github: 'GitHub',
   slack: 'Slack',
   trello: 'Trello',
+  msteams: 'Microsoft Teams',
 };
 
 const PROVIDER_COLORS: Record<string, string> = {
@@ -122,6 +126,7 @@ const PROVIDER_COLORS: Record<string, string> = {
   github: '#333333',
   slack: '#4A154B',
   trello: '#0079BF',
+  msteams: '#5059C9',
 };
 
 const SLACK_EVENT_TYPES: { key: string; label: string }[] = [
@@ -151,6 +156,11 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
   const isEdit = !!integrationId;
   const fields = PROVIDER_FIELDS[provider] ?? [];
   const providerName = PROVIDER_NAMES[provider] ?? provider;
+  const isSlack = provider === 'slack';
+  const isTeams = provider === 'msteams';
+  // Both are notification-only chat providers: project scope + event filter
+  // are the same UI for either, and neither takes credential fields.
+  const isChatProvider = isSlack || isTeams;
 
   // Form state: key -> value
   const [formValues, setFormValues] = useState<Record<string, string>>(() => {
@@ -167,16 +177,20 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
     message: string;
   } | null>(null);
 
-  // Slack-specific: project selector + channel picker + event filter
+  // Chat providers (Slack, Teams): project selector + channel picker + event filter
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [notifyEvents, setNotifyEvents] = useState<string[]>([]);
   const [channelId, setChannelId] = useState<string>('');
   const [channelName, setChannelName] = useState<string>('');
+  // Teams-only: a channel lives inside a team, so the channel picker is
+  // scoped to whichever team is chosen first. Slack has no such nesting.
+  const [teamId, setTeamId] = useState<string>('');
+  const [teamName, setTeamName] = useState<string>('');
 
   const { data: projectsData } = useQuery({
     queryKey: ['projects'],
     queryFn: () => apiService.getProjects(),
-    enabled: provider === 'slack',
+    enabled: isChatProvider,
   });
 
   // Load existing config if editing
@@ -196,11 +210,37 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
   } = useQuery({
     queryKey: ['slack-channels', integrationId],
     queryFn: () => apiService.getSlackChannels(integrationId),
-    enabled: provider === 'slack' && isEdit,
+    enabled: isSlack && isEdit,
     retry: false,
   });
 
   const channels: { id: string; name: string; isPrivate: boolean }[] = channelsData?.channels ?? [];
+
+  // Teams' own account (not this workspace's own token, the way Slack's is) —
+  // list the teams it belongs to first, then channels within whichever is chosen.
+  const {
+    data: teamsData,
+    isLoading: teamsLoading,
+    error: teamsError,
+  } = useQuery({
+    queryKey: ['teams-teams', integrationId],
+    queryFn: () => apiService.getTeamsTeams(integrationId),
+    enabled: isTeams && isEdit,
+    retry: false,
+  });
+  const teamsList: { id: string; name: string }[] = teamsData?.teams ?? [];
+
+  const {
+    data: teamsChannelsData,
+    isLoading: teamsChannelsLoading,
+    error: teamsChannelsError,
+  } = useQuery({
+    queryKey: ['teams-channels', integrationId, teamId],
+    queryFn: () => apiService.getTeamsChannels(integrationId!, teamId),
+    enabled: isTeams && isEdit && !!teamId,
+    retry: false,
+  });
+  const teamsChannels: { id: string; name: string }[] = teamsChannelsData?.channels ?? [];
 
   useEffect(() => {
     if (existingData?.integration) {
@@ -221,6 +261,9 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
         }
         if (config.channelId) setChannelId(String(config.channelId));
         if (config.channel) setChannelName(String(config.channel));
+        if (config.channelName) setChannelName(String(config.channelName));
+        if (config.teamId) setTeamId(String(config.teamId));
+        if (config.teamName) setTeamName(String(config.teamName));
       }
       if (integration.projectId) {
         setSelectedProjectId(integration.projectId);
@@ -244,15 +287,15 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
         return apiService.updateIntegration(integrationId!, {
           provider,
           config,
-          // Sent on edit too, so a workspace-wide Slack install can be narrowed
-          // to one project without disconnecting and starting over.
-          ...(provider === 'slack' ? { projectId: selectedProjectId || null } : {}),
+          // Sent on edit too, so a workspace-wide Slack/Teams install can be
+          // narrowed to one project without disconnecting and starting over.
+          ...(isChatProvider ? { projectId: selectedProjectId || null } : {}),
         });
       }
       return apiService.createIntegration({
         provider,
         config,
-        ...(provider === 'slack' && selectedProjectId ? { projectId: selectedProjectId } : {}),
+        ...(isChatProvider && selectedProjectId ? { projectId: selectedProjectId } : {}),
       });
     },
     onSuccess: () => {
@@ -312,7 +355,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
   const handleSave = () => {
     if (!validate()) return;
     const configPayload: Record<string, unknown> = { ...formValues };
-    if (provider === 'slack') {
+    if (isSlack) {
       // Always sent, including empty — otherwise clearing every checkbox would
       // leave the previous filter in place and nothing would appear to change.
       configPayload.notifyEvents = notifyEvents;
@@ -320,6 +363,19 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
         const picked = channels.find((c) => c.id === channelId);
         configPayload.channelId = channelId;
         if (picked) configPayload.channel = `#${picked.name}`;
+      }
+    }
+    if (isTeams) {
+      configPayload.notifyEvents = notifyEvents;
+      if (teamId) {
+        const pickedTeam = teamsList.find((t) => t.id === teamId);
+        configPayload.teamId = teamId;
+        if (pickedTeam) configPayload.teamName = pickedTeam.name;
+      }
+      if (channelId) {
+        const pickedChannel = teamsChannels.find((c) => c.id === channelId);
+        configPayload.channelId = channelId;
+        if (pickedChannel) configPayload.channelName = pickedChannel.name;
       }
     }
     saveMutation.mutate(configPayload);
@@ -388,28 +444,99 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
             </div>
           ))}
 
-          {/* Slack-specific: channel picker + project selector + event filter */}
-          {provider === 'slack' && (
+          {/* Slack-specific: channel picker */}
+          {isSlack && isEdit && (
+            <div>
+              <label htmlFor="slack-channel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Channel
+              </label>
+              {channelsLoading ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Loading your channels…
+                </p>
+              ) : channelsError ? (
+                <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2">
+                  {(channelsError as any)?.response?.data?.message ||
+                    'We could not load your channels. Notifications still go to the channel this connection was set up with.'}
+                </p>
+              ) : (
+                <>
+                  <select
+                    id="slack-channel"
+                    value={channelId}
+                    onChange={(e) => { setChannelId(e.target.value); setTestResult(null); }}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white"
+                  >
+                    <option value="">
+                      {channelName ? `Keep ${channelName}` : 'Choose a channel…'}
+                    </option>
+                    {channels.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.isPrivate ? '🔒 ' : '#'}{c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Where notifications are posted. For a private channel, type
+                    {' '}<code className="font-mono">/invite @Kovarti</code> in it first.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Teams-specific: team picker, then channel picker scoped to it */}
+          {isTeams && isEdit && (
             <>
-              {isEdit && (
+              <div>
+                <label htmlFor="teams-team" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Team
+                </label>
+                {teamsLoading ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Loading your teams…
+                  </p>
+                ) : teamsError ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2">
+                    {(teamsError as any)?.response?.data?.message ||
+                      'We could not load your teams. Reconnect Microsoft Teams to try again.'}
+                  </p>
+                ) : (
+                  <select
+                    id="teams-team"
+                    value={teamId}
+                    onChange={(e) => { setTeamId(e.target.value); setChannelId(''); setTestResult(null); }}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white"
+                  >
+                    <option value="">
+                      {teamName ? `Keep ${teamName}` : 'Choose a team…'}
+                    </option>
+                    {teamsList.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              {teamId && (
                 <div>
-                  <label htmlFor="slack-channel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label htmlFor="teams-channel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Channel
                   </label>
-                  {channelsLoading ? (
+                  {teamsChannelsLoading ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
                       <RefreshCw className="h-4 w-4 animate-spin" />
-                      Loading your channels…
+                      Loading channels…
                     </p>
-                  ) : channelsError ? (
+                  ) : teamsChannelsError ? (
                     <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2">
-                      {(channelsError as any)?.response?.data?.message ||
-                        'We could not load your channels. Notifications still go to the channel this connection was set up with.'}
+                      {(teamsChannelsError as any)?.response?.data?.message || 'We could not load this team’s channels.'}
                     </p>
                   ) : (
                     <>
                       <select
-                        id="slack-channel"
+                        id="teams-channel"
                         value={channelId}
                         onChange={(e) => { setChannelId(e.target.value); setTestResult(null); }}
                         className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white"
@@ -417,20 +544,23 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
                         <option value="">
                           {channelName ? `Keep ${channelName}` : 'Choose a channel…'}
                         </option>
-                        {channels.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.isPrivate ? '🔒 ' : '#'}{c.name}
-                          </option>
+                        {teamsChannels.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                       </select>
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Where notifications are posted. For a private channel, type
-                        {' '}<code className="font-mono">/invite @Kovarti</code> in it first.
+                        Where notifications are posted.
                       </p>
                     </>
                   )}
                 </div>
               )}
+            </>
+          )}
+
+          {/* Shared across chat providers: project scope + event filter */}
+          {isChatProvider && (
+            <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Project
@@ -454,7 +584,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
                   Event Filters
                 </label>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                  Select which events post to Slack. Leave all unchecked to receive all events.
+                  Select which events post to {providerName}. Leave all unchecked to receive all events.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {SLACK_EVENT_TYPES.map((evt) => (

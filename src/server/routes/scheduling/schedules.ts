@@ -9,6 +9,7 @@ import { WebSocketService } from '../../services/WebSocketService';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
+import { teamsEventDispatcher } from '../../services/integrations/TeamsEventDispatcher';
 import { recurrenceService } from '../../services/RecurrenceService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -285,6 +286,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       // Slack notification for completed tasks
       if (task.status === 'completed' && schedule?.projectId) {
         slackEventDispatcher.dispatchToSlack('task.updated', { task }, schedule.projectId);
+        teamsEventDispatcher.dispatchToTeams('task.updated', { task }, schedule.projectId);
       }
 
       return { task, cascadedChanges };
