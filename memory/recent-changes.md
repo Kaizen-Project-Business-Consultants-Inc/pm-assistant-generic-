@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24 (tenant migrations actually auto-apply — memory correction + staging cleanup)
+
+- **Corrected a stale assumption, documented in both `memory/deployment.md` (repo) and the auto-memory `MEMORY.md`:** tenant schema migrations (`tenant-migrations/T0XX_*.sql`) do **not** need manual per-tenant application. `runAllTenantMigrations()` (`src/server/database/tenantMigrationRunner.ts`) runs automatically on every app boot (called from `index.ts`), applying any new tenant migration to every organization where `is_active=1 AND is_provisioned=1` — same idempotent "already applied? record and continue" resilience as the control-plane migration runner. `deploy.sh` already ships `tenant-migrations/` in the uploaded dist, so a normal deploy + its restart is enough on its own.
+  - Discovered while shipping the RAID owner-resource migration (T053): 14 of staging's 15 registered tenants already had the new column before any manual step, simply from the earlier `deploy.sh staging` restart having picked it up.
+  - Manual application is still needed only for: a tenant stuck at `is_provisioned=0` (incomplete signup), or a tenant DB with no matching `organizations` row at all (orphaned).
+  - **Found 4 such orphaned tenant databases on staging** (`geoegie`, `geogieboy`, `testflow_july20`, `traditional_user`) — no organization record anywhere, all confirmed empty (0 projects, 0 tasks; one was a stub that never finished provisioning). Dropped all 4 after confirming with the user. Staging now has exactly 14 tenant databases, matching its 14 active+provisioned organizations — no orphans left.
+
 ## 2026-09-24 (RAID ownership for resources without login accounts)
 
 - **New `owner_resource_id` on RAID items — LIVE ON STAGING ONLY** (commit `6e638200`, migration `T053`, verified independently — health check + build-hash cross-check; `pm-mcp` active; not deployed to prod). User needed RAID items assignable to external subcontractor personnel (the Sapphire team) who exist as `resources` rows with no `users` account and never will. `owner_id` has always meant a real login (notifications, "my RAID items" filtering, viewer edit rights); `resolveOwnerId()` silently returned null for anyone without one, so the item ended up with no real owner at all.
