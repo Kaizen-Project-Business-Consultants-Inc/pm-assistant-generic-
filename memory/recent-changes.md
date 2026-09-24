@@ -1,5 +1,14 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24 (RAID ownership for resources without login accounts)
+
+- **New `owner_resource_id` on RAID items — LIVE ON STAGING ONLY** (commit `6e638200`, migration `T053`, verified independently — health check + build-hash cross-check; `pm-mcp` active; not deployed to prod). User needed RAID items assignable to external subcontractor personnel (the Sapphire team) who exist as `resources` rows with no `users` account and never will. `owner_id` has always meant a real login (notifications, "my RAID items" filtering, viewer edit rights); `resolveOwnerId()` silently returned null for anyone without one, so the item ended up with no real owner at all.
+  - New `owner_resource_id` column lets a resource own an item directly. At most one of `owner_id`/`owner_resource_id` is ever set, enforced in `RiskRepository`. A resource *with* a linked account still resolves to a real, notifiable user-owner first (no regression there); only one with no account falls back to owning the item directly, silently (nothing to notify).
+  - Exposed on the RAID routes, the MCP `create-raid-item`/`update-raid-item` tools, and the RAID detail panel's owner display — folded into the existing "Owner" field (resolves `ownerId` → member name, else `ownerResourceId` → resource name, else the free-text `ownerName` fallback) rather than leaving a separate dead line, since the previous fallback branch existed but was never actually reachable in a useful way.
+  - 181/181 files · 3736/3736 tests, zero regressions, clean `tsc` across server/client/mcp-server.
+  - **Worth knowing:** the tenant migration was already applied on 15 of 17 tenant DBs by the time a manual apply was attempted (duplicate-column error, not a double-run) — the app appears to auto-apply tenant migrations per-tenant now, which contradicts an older note elsewhere in memory about needing to apply them by hand. Verified via `information_schema` that all 17 tenants with a `project_risks` table have the column regardless of mechanism — worth re-confirming this behavior deliberately sometime rather than relying on this one observation.
+  - **Manually verified end-to-end on staging**, not just unit tests: created a real RAID item via the API with `ownerResourceId` set directly, and a second via `ownerName` alone (confirmed it auto-resolves to the resource since that person has no account) — both worked.
+
 ## 2026-09-24 (MCP connector bug report — 5 fixed, 3 already fixed)
 
 - **LIVE ON STAGING ONLY**, main app + MCP server both deployed and verified independently; not deployed to prod. User's connector test against kovarti-stage surfaced 8 open items; worked through them overnight on blanket authorization.
