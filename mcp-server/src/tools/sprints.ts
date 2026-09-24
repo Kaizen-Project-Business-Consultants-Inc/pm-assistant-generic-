@@ -17,6 +17,7 @@ export function registerSprintTools(server: McpServer) {
 
   server.tool('create-sprint', 'Create a new sprint', {
     projectId: z.string().describe('Project ID'),
+    scheduleId: z.string().describe("Schedule ID — required by the server, not derived from projectId (a project can have more than one schedule). Use list-schedules or get-project to find it."),
     name: z.string().describe('Sprint name'),
     goal: z.string().optional().describe('Sprint goal'),
     startDate: z.string().describe('Start date (YYYY-MM-DD)'),
