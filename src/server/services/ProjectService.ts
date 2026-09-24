@@ -1,3 +1,4 @@
+import { getActorSource } from '../middleware/requestContext';
 import { projectRepository } from '../database/ProjectRepository';
 import { CachedRepository } from '../database/CachedRepository';
 import { projectMemberService } from './ProjectMemberService';
@@ -113,7 +114,7 @@ export class ProjectService {
       entityId: project.id,
       projectId: project.id,
       payload: { after: project },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     // Auto-add creator as project owner (fire-and-forget)
@@ -165,7 +166,7 @@ export class ProjectService {
       entityId: id,
       projectId: id,
       payload: { before: existing, after: updated, changes: data },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     // Fire project-level workflow triggers (non-blocking)
@@ -218,7 +219,7 @@ export class ProjectService {
         entityId: id,
         projectId: id,
         payload: { before: existing },
-        source: 'web',
+        source: getActorSource(),
       }).catch(err => deadLetterService.capture('audit.append', {}, err));
     }
 

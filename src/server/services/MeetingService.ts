@@ -1,3 +1,4 @@
+import { getActorSource } from '../middleware/requestContext';
 import { meetingRepository, type Meeting, type AgendaItem } from '../database/MeetingRepository';
 import { meetingActionItemRepository } from '../database/MeetingActionItemRepository';
 import { meetingAnalysisRepository } from '../database/MeetingAnalysisRepository';
@@ -26,7 +27,7 @@ class MeetingService {
       actorId: userId, actorType: 'user', action: 'meeting.create',
       entityType: 'meeting', entityId: meeting.id, projectId,
       payload: { title: data.title, meetingType: data.meetingType },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return meeting;
@@ -52,7 +53,7 @@ class MeetingService {
       actorId: userId, actorType: 'user', action: 'meeting.update',
       entityType: 'meeting', entityId: id, projectId: meeting.projectId,
       payload: { fields: Object.keys(data) },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return updated;
@@ -77,7 +78,7 @@ class MeetingService {
       actorId: userId, actorType: 'user', action: 'meeting.delete',
       entityType: 'meeting', entityId: id, projectId: meeting.projectId,
       payload: { title: meeting.title },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
   }
 

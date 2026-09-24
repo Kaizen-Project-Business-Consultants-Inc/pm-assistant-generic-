@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { projectService } from '../../services/ProjectService';
 import { authMiddleware } from '../../middleware/auth';
+import { getActorSource } from '../../middleware/requestContext';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
@@ -328,7 +329,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
           entityId: id,
           projectId: id,
           payload: { reason: cancellationReason.trim() },
-          source: 'web',
+          source: getActorSource(),
         }).catch(() => {});
       }
 

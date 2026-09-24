@@ -1,3 +1,4 @@
+import { getActorSource } from '../middleware/requestContext';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { scheduleService } from './ScheduleService';
@@ -297,7 +298,7 @@ export class ScheduleFixProposerService {
       entityId: scheduleId,
       projectId: proposal.projectId,
       payload: { proposalId, appliedCount, beforeScore: before?.score ?? null, afterScore: after.score, actions: applied, skipped, baselineId, datesMoved: recompute.tasksMoved, projectEndShiftDays: recompute.projectEndShiftDays },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => logger.warn('[ScheduleFix] audit append (apply) failed', { proposalId, error: err?.message }));
 
     return {
@@ -392,7 +393,7 @@ export class ScheduleFixProposerService {
       entityId: scheduleId,
       projectId: proposal.projectId,
       payload: { proposalId, restored: log, score: review.score },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => logger.warn('[ScheduleFix] audit append (undo) failed', { proposalId, error: err?.message }));
 
     return { score: review.score };
@@ -423,7 +424,7 @@ export class ScheduleFixProposerService {
       entityId: scheduleId,
       projectId: proposal.projectId,
       payload: { proposalId, feedback: feedback ?? null },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => logger.warn('[ScheduleFix] audit append (reject) failed', { proposalId, error: err?.message }));
   }
 

@@ -7,7 +7,7 @@ import { dagWorkflowService } from './DagWorkflowService';
 import logger from '../utils/logger';
 import { deadLetterService } from './DeadLetterService';
 import { notificationService } from './NotificationService';
-import { getRequestContext } from '../middleware/requestContext';
+import { getRequestContext, getActorSource } from '../middleware/requestContext';
 import { taskAssignmentService } from './TaskAssignmentService';
 import { resourceService } from './ResourceService';
 import { userService } from './UserService';
@@ -637,7 +637,7 @@ export class ScheduleService {
       entityId: id,
       projectId: schedule?.projectId ?? null,
       payload: { after: task },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     dagWorkflowService.evaluateTaskChange(task, null, this).catch(err =>
@@ -864,7 +864,7 @@ export class ScheduleService {
       entityId: id,
       projectId: schedule?.projectId ?? null,
       payload: { before: oldTask, after: updated, changes: data },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     dagWorkflowService.evaluateTaskChange(updated, oldTask, this).catch(err =>
@@ -946,7 +946,7 @@ export class ScheduleService {
         entityId: id,
         projectId: schedule?.projectId ?? null,
         payload: { before: existing },
-        source: 'web',
+        source: getActorSource(),
       }).catch(err => deadLetterService.capture('audit.append', {}, err));
     }
 

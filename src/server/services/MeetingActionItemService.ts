@@ -1,3 +1,4 @@
+import { getActorSource } from '../middleware/requestContext';
 import { meetingActionItemRepository, type MeetingActionItem } from '../database/MeetingActionItemRepository';
 import { meetingRepository } from '../database/MeetingRepository';
 import { notificationService } from './NotificationService';
@@ -47,7 +48,7 @@ class MeetingActionItemService {
       actorId: userId, actorType: 'user', action: 'meeting_action_item.create',
       entityType: 'meeting_action_item', entityId: item.id, projectId: meeting.projectId,
       payload: { description: data.description, meetingId },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return item;

@@ -7,6 +7,8 @@ export interface RequestContext {
   startTime: number;
   tenantDbName?: string;
   organizationId?: string;
+  /** 'mcp' for any Bearer/API-key-authenticated request, 'web' otherwise. */
+  actorSource?: 'web' | 'mcp';
 }
 
 const asyncLocalStorage = new AsyncLocalStorage<RequestContext>();
@@ -25,6 +27,16 @@ export function getTenantContext(): { dbName: string; orgId: string } | undefine
     return { dbName: ctx.tenantDbName, orgId: ctx.organizationId };
   }
   return undefined;
+}
+
+/**
+ * Whether the current request came through the MCP connector / an API key,
+ * vs. the web app's own JWT-cookie session. Used to give audit log entries an
+ * honest `source` instead of every action reading as "web" regardless of who
+ * actually did it.
+ */
+export function getActorSource(): 'web' | 'mcp' {
+  return asyncLocalStorage.getStore()?.actorSource ?? 'web';
 }
 
 export function runWithTenantContext<T>(
@@ -54,6 +66,11 @@ export async function requestContextHook(
     requestId,
     userId,
     startTime: Date.now(),
+    // The global "API key resolution" onRequest hook in plugins.ts runs before
+    // this preHandler hook regardless of registration order (onRequest always
+    // precedes preHandler in Fastify's lifecycle), so apiKeyId is reliably set
+    // here for any MCP/Bearer-authenticated request.
+    actorSource: request.apiKeyId ? 'mcp' : 'web',
   };
 
   // Enter the async local storage context for the rest of the request lifecycle

@@ -5,7 +5,7 @@ import { resourceAvailabilityService } from './ResourceAvailabilityService';
 import { deadLetterService } from './DeadLetterService';
 import { timeEntryRepository } from '../database/TimeEntryRepository';
 import { databaseService } from '../database/connection';
-import { getRequestContext } from '../middleware/requestContext';
+import { getRequestContext, getActorSource } from '../middleware/requestContext';
 
 export interface SkillWithProficiency {
   name: string;
@@ -133,7 +133,7 @@ export class ResourceService {
       entityType: 'resource',
       entityId: id,
       payload: { before: existing, after: updated, changes: data },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return updated;
@@ -212,7 +212,7 @@ export class ResourceService {
       entityType: 'resource_assignment',
       entityId: assignment.id,
       payload: { after: assignment, warnings },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return { assignment, warnings };

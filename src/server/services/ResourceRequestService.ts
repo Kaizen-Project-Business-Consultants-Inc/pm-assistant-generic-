@@ -1,3 +1,4 @@
+import { getActorSource } from '../middleware/requestContext';
 import { resourceRequestRepository, type ResourceRequest } from '../database/ResourceRequestRepository';
 import { notificationService } from './NotificationService';
 import { emailService } from './EmailService';
@@ -27,7 +28,7 @@ class ResourceRequestService {
       actorId: userId, actorType: 'user', action: 'resource_request.create',
       entityType: 'resource_request', entityId: rr.id, projectId,
       payload: { resourceRole: data.resourceRole, hoursNeeded: data.hoursNeeded },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return rr;
@@ -44,7 +45,7 @@ class ResourceRequestService {
     auditLedgerService.append({
       actorId: userId, actorType: 'user', action: 'resource_request.submit',
       entityType: 'resource_request', entityId: id, projectId: rr.projectId,
-      payload: { status: 'pending' }, source: 'web',
+      payload: { status: 'pending' }, source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return updated;
@@ -63,7 +64,7 @@ class ResourceRequestService {
     auditLedgerService.append({
       actorId: userId, actorType: 'user', action: 'resource_request.approve',
       entityType: 'resource_request', entityId: id, projectId: rr.projectId,
-      payload: { status: 'approved', comment }, source: 'web',
+      payload: { status: 'approved', comment }, source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     // Notify requester (fire-and-forget)
@@ -110,7 +111,7 @@ class ResourceRequestService {
     auditLedgerService.append({
       actorId: userId, actorType: 'user', action: 'resource_request.reject',
       entityType: 'resource_request', entityId: id, projectId: rr.projectId,
-      payload: { status: 'rejected', comment }, source: 'web',
+      payload: { status: 'rejected', comment }, source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     // Notify requester (fire-and-forget)
@@ -155,7 +156,7 @@ class ResourceRequestService {
     auditLedgerService.append({
       actorId: userId, actorType: 'user', action: 'resource_request.fulfill',
       entityType: 'resource_request', entityId: id, projectId: rr.projectId,
-      payload: { status: 'fulfilled', resourceId }, source: 'web',
+      payload: { status: 'fulfilled', resourceId }, source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return updated;
@@ -172,7 +173,7 @@ class ResourceRequestService {
     auditLedgerService.append({
       actorId: userId, actorType: 'user', action: 'resource_request.cancel',
       entityType: 'resource_request', entityId: id, projectId: rr.projectId,
-      payload: { status: 'cancelled' }, source: 'web',
+      payload: { status: 'cancelled' }, source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return updated;

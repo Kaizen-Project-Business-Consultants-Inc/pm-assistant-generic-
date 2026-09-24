@@ -1,3 +1,4 @@
+import { getActorSource } from '../middleware/requestContext';
 import { sprintRepository } from '../database/SprintRepository';
 import { auditLedgerService } from './AuditLedgerService';
 import { deadLetterService } from './DeadLetterService';
@@ -58,7 +59,7 @@ export class SprintService {
       entityId: sprint.id,
       projectId: projectId,
       payload: { after: sprint },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return sprint;
@@ -114,7 +115,7 @@ export class SprintService {
       entityId: sprintTask.id,
       projectId: sprint?.projectId ?? null,
       payload: { sprintId, taskId, storyPoints },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return sprintTask;
@@ -140,7 +141,7 @@ export class SprintService {
       entityId: id,
       projectId: sprint.projectId,
       payload: { before, after: sprint },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return sprint;
@@ -158,7 +159,7 @@ export class SprintService {
       entityId: id,
       projectId: sprint.projectId,
       payload: { before, after: sprint },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return sprint;

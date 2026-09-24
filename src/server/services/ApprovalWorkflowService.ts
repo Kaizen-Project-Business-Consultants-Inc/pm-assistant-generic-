@@ -1,3 +1,4 @@
+import { getActorSource } from '../middleware/requestContext';
 import { approvalWorkflowRepository } from '../database/ApprovalWorkflowRepository';
 import { auditLedgerService } from './AuditLedgerService';
 import { deadLetterService } from './DeadLetterService';
@@ -125,7 +126,7 @@ export class ApprovalWorkflowService {
       entityId: crId,
       projectId: existing.projectId,
       payload: { before: existing, after: updated },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return updated;
@@ -145,7 +146,7 @@ export class ApprovalWorkflowService {
       entityId: crId,
       projectId: existing.projectId,
       payload: { deleted: existing },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
   }
 
@@ -206,7 +207,7 @@ export class ApprovalWorkflowService {
       entityId: crId,
       projectId: cr.projectId,
       payload: { before: before?.changeRequest, after: cr, workflowId },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return cr;
@@ -256,7 +257,7 @@ export class ApprovalWorkflowService {
         comment,
         resultStatus: result.status,
       },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     // Notify the requester of the action (fire-and-forget)
@@ -305,7 +306,7 @@ export class ApprovalWorkflowService {
       entityId: crId,
       projectId: existing.projectId,
       payload: { before: existing, after: result },
-      source: 'web',
+      source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     return result;

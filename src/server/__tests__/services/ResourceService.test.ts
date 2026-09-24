@@ -11,6 +11,7 @@ vi.mock('../../database/connection', () => ({
 
 vi.mock('../../middleware/requestContext', () => ({
   getRequestContext: vi.fn().mockReturnValue({ organizationId: 'org1' }),
+  getActorSource: vi.fn().mockReturnValue('web'),
 }));
 
 vi.mock('../../database/ResourceRepository', () => {
