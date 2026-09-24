@@ -34,6 +34,22 @@ const createResourceSchema = z.object({
   calendarTemplateId: z.string().uuid().nullable().default(null),
 });
 
+// createResourceSchema.partial() is NOT enough here: this project's Zod version does
+// not clear a field's .default(...) when .partial() wraps it (same bug class as
+// updateProjectSchema/updateTaskSchema). An update that omitted isActive was silently
+// reactivating a deactivated resource; omitting skills wiped them to []; cost/overtime
+// rates got nulled. Override every defaulted field with a bare .optional() copy.
+export const updateResourceSchema = createResourceSchema.partial().extend({
+  capacityHoursPerWeek: z.number().positive().optional(),
+  skills: z.array(skillSchema).optional(),
+  isActive: z.boolean().optional(),
+  costRateHourly: z.number().min(0).nullable().optional(),
+  overtimeRateHourly: z.number().min(0).nullable().optional(),
+  resourceGroup: z.string().max(100).nullable().optional(),
+  userId: z.string().uuid().nullable().optional(),
+  calendarTemplateId: z.string().uuid().nullable().optional(),
+});
+
 const createAssignmentSchema = z.object({
   resourceId: z.string().min(1),
   taskId: z.string().min(1),
@@ -172,7 +188,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   fastify.put('/:id', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const raw = createResourceSchema.partial().parse(request.body);
+      const raw = updateResourceSchema.parse(request.body);
       const data = raw.skills ? { ...raw, skills: normalizeSkills(raw.skills) } : raw;
       const resource = await resourceService.updateResource(id, data as any);
       if (!resource) return reply.status(404).send({ error: 'Resource not found' });

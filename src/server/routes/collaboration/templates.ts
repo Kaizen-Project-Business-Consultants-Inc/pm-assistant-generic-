@@ -32,6 +32,15 @@ const createTemplateSchema = z.object({
   tags: z.array(z.string()).default([]),
 });
 
+// createTemplateSchema.partial() alone would silently wipe tags to [] on any update
+// that doesn't resend them — this project's Zod version doesn't clear .default(...)
+// through .partial() (same bug class as updateProjectSchema). The nested `tasks` item
+// defaults (description/priority/dependencyType/etc.) are untouched by this — .partial()
+// only affects this schema's own top-level keys, not the shape nested inside the array.
+export const updateTemplateSchema = createTemplateSchema.partial().extend({
+  tags: z.array(z.string()).optional(),
+});
+
 export async function templateRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -102,7 +111,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const data = createTemplateSchema.partial().parse(request.body);
+      const data = updateTemplateSchema.parse(request.body);
       const template = await templateService.update(id, data);
       if (!template) {
         return reply.status(404).send({ error: 'Template not found or is built-in' });

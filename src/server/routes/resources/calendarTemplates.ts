@@ -12,6 +12,13 @@ const createSchema = z.object({
   isDefault: z.boolean().default(false),
 });
 
+// createSchema.partial() alone would silently reset isDefault to false on any update
+// that doesn't resend it — this project's Zod version doesn't clear .default(...)
+// through .partial() (same bug class as updateProjectSchema). Override it bare.
+export const updateSchema = createSchema.partial().extend({
+  isDefault: z.boolean().optional(),
+});
+
 export async function calendarTemplateRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -39,7 +46,7 @@ export async function calendarTemplateRoutes(fastify: FastifyInstance) {
   // PUT /resources/calendar-templates/:id
   fastify.put('/:id', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
-    const data = createSchema.partial().parse(request.body);
+    const data = updateSchema.parse(request.body);
     const template = await calendarTemplateService.update(id, data);
     if (!template) return reply.status(404).send({ error: 'Calendar template not found' });
     return { template };
