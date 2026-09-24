@@ -79,7 +79,10 @@ export class ResourceRepository extends BaseRepository<Resource> {
     await this.queryRaw(
       `INSERT INTO resources (id, name, role, email, capacity_hours_per_week, skills, is_active, cost_rate_hourly, resource_group, user_id, calendar_template_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, data.name, data.role, data.email, data.capacityHoursPerWeek, JSON.stringify(data.skills || []), data.isActive ? 1 : 0, data.costRateHourly ?? null, data.resourceGroup ?? null, data.userId ?? null, data.calendarTemplateId ?? null],
+      // role/email are optional at the schema level (matching the column's own
+      // NOT NULL DEFAULT '') — mysql2 rejects an undefined bind param outright,
+      // so an omitted value must become '' here, not null.
+      [id, data.name, data.role || '', data.email || '', data.capacityHoursPerWeek, JSON.stringify(data.skills || []), data.isActive ? 1 : 0, data.costRateHourly ?? null, data.resourceGroup ?? null, data.userId ?? null, data.calendarTemplateId ?? null],
     );
     return (await this.findById(id))!;
   }

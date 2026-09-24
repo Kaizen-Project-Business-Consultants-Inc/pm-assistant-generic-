@@ -1,5 +1,27 @@
 import { describe, it, expect } from 'vitest';
-import { updateResourceSchema } from '../../routes/resources/resources';
+import { updateResourceSchema, createResourceSchema } from '../../routes/resources/resources';
+
+describe('createResourceSchema', () => {
+  it('accepts name only', () => {
+    // Regression test: role and email were required, so even a name-only
+    // create (the common case when entering a bid's Key Personnel list one
+    // name at a time) failed with a bare "Invalid resource data" and no
+    // detail on which field was the problem.
+    const parsed = createResourceSchema.parse({ name: 'Samir Patel' });
+    expect(parsed.name).toBe('Samir Patel');
+    expect(parsed.role).toBeUndefined();
+    expect(parsed.email).toBeUndefined();
+  });
+
+  it('accepts name + role with no email', () => {
+    const parsed = createResourceSchema.parse({ name: 'Samir Patel', role: 'System Architecture' });
+    expect(parsed.role).toBe('System Architecture');
+  });
+
+  it('still rejects a malformed email', () => {
+    expect(() => createResourceSchema.parse({ name: 'Samir Patel', email: 'not-an-email' })).toThrow();
+  });
+});
 
 describe('updateResourceSchema', () => {
   it('does not reintroduce create-time defaults for omitted fields', () => {

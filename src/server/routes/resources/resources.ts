@@ -20,10 +20,17 @@ const skillSchema = z.union([
   z.object({ name: z.string(), level: z.number().min(1).max(5) }),
 ]);
 
-const createResourceSchema = z.object({
+export const createResourceSchema = z.object({
   name: z.string().min(1),
-  role: z.string().min(1),
-  email: z.string().email(),
+  // Both required in the original schema; the DB column has always had
+  // `NOT NULL DEFAULT ''` for both, and the rest of this route's own logic
+  // (the invite-email flow below) already treats email as conditional
+  // (`if (raw.email) {...}`) — the schema just never matched. A resource is
+  // a personnel record for planning; name is the only thing that must be
+  // known up front (e.g. entering a bid's Key Personnel list one name at a
+  // time, filling in role/email later).
+  role: z.string().optional(),
+  email: z.string().email().optional(),
   capacityHoursPerWeek: z.number().positive().default(40),
   skills: z.array(skillSchema).default([]),
   isActive: z.boolean().default(true),
@@ -150,7 +157,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
                 // Same org — send "Go to Dashboard" email
                 emailService.sendResourceInviteEmail(raw.email, {
                   resourceName: raw.name,
-                  role: raw.role,
+                  role: raw.role || 'Team Member',
                   inviterName,
                   isRegistered: true,
                 }).catch(err => logger.error('Resource invite email error', { error: err?.message || err }));
@@ -164,7 +171,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
               const invite = await inviteService.createInvite(inviterUserId, raw.email, null, 'viewer', { skipEmail: true });
               emailService.sendResourceInviteEmail(raw.email, {
                 resourceName: raw.name,
-                role: raw.role,
+                role: raw.role || 'Team Member',
                 inviterName,
                 isRegistered: false,
                 inviteToken: invite.token,
@@ -179,6 +186,18 @@ export async function resourceRoutes(fastify: FastifyInstance) {
 
       return reply.status(201).send({ resource, warning });
     } catch (error) {
+      // A rejected field is the caller's mistake, not a server fault — say what
+      // was actually wrong instead of a bare "Invalid resource data" that gives
+      // no clue which field it was (matches the pattern already used in
+      // projects.ts and bulk.ts).
+      if (error instanceof z.ZodError) {
+        const first = error.issues[0];
+        return reply.status(400).send({
+          error: 'Invalid resource data',
+          message: first ? `${first.path.join('.')}: ${first.message}` : 'Invalid request body',
+          issues: error.issues.map(i => ({ field: i.path.join('.'), message: i.message })),
+        });
+      }
       logger.error('Create resource error', { error });
       return reply.status(400).send({ error: 'Invalid resource data' });
     }
