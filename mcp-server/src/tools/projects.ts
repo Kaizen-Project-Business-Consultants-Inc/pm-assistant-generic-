@@ -49,4 +49,18 @@ export function registerProjectTools(server: McpServer) {
   }, async ({ projectId }, extra) =>
     jsonResult(await getApiClientFromExtra(extra).delete(`/projects/${projectId}`))
   );
+
+  // Team accounts can't delete-project (403 by design — see that tool's route);
+  // this is the actual way to remove a project from view for them.
+  server.tool('archive-project', 'Archive a project (the way team accounts remove a project, since they cannot delete)', {
+    projectId: z.string().describe('Project ID'),
+  }, async ({ projectId }, extra) =>
+    jsonResult(await getApiClientFromExtra(extra).post(`/projects/${projectId}/archive`))
+  );
+
+  server.tool('unarchive-project', 'Restore an archived project', {
+    projectId: z.string().describe('Project ID'),
+  }, async ({ projectId }, extra) =>
+    jsonResult(await getApiClientFromExtra(extra).post(`/projects/${projectId}/unarchive`))
+  );
 }
