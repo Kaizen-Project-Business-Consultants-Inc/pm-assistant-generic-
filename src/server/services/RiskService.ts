@@ -46,6 +46,7 @@ class RiskService {
     mitigationPlan?: string;
     responsePlan?: string;
     ownerId?: string;
+    ownerResourceId?: string;
     source?: 'manual' | 'ai_detected' | 'agent' | 'imported' | 'standup' | 'meeting';
     sourceAgentId?: string;
     aiConfidence?: number;

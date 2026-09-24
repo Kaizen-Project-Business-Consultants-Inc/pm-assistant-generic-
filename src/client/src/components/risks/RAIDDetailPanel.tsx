@@ -102,6 +102,15 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
     enabled: !!raidId,
   });
 
+  // Only needed to resolve ownerResourceId to a display name — resources have no
+  // login, so they can't appear in `members`. Org-wide list, not project-scoped
+  // (resources aren't project-scoped in this schema), but that's fine for a
+  // read-only name lookup by id.
+  const { data: resourcesData } = useQuery({
+    queryKey: ['resources'],
+    queryFn: () => apiService.getResources(),
+  });
+
   const item = itemData?.data;
   const updates: any[] = updatesData?.data || [];
   // Filter out old 'comment' entries from activity — updates section replaces them
@@ -186,6 +195,21 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
     if (!userId) return 'Unassigned';
     const m = members.find((m: any) => (m.userId || m.id) === userId);
     return m ? (m.userName || m.user?.name || m.name || m.email) : userId.slice(0, 8);
+  };
+
+  // Owner display, in priority order: a real member (ownerId), a resource with no
+  // login account (ownerResourceId — e.g. an external subcontractor), then the
+  // free-text fallback for legacy/imported data that never resolved to either.
+  const resourceName = (resourceId: string | null) => {
+    if (!resourceId) return null;
+    const r = resourcesData?.resources?.find((r: any) => r.id === resourceId);
+    return r?.name || resourceId.slice(0, 8);
+  };
+  const ownerDisplay = (): string => {
+    if (item?.ownerId) return memberName(item.ownerId);
+    if (item?.ownerResourceId) return resourceName(item.ownerResourceId) || 'Unassigned';
+    if (item?.ownerName) return item.ownerName;
+    return 'Unassigned';
   };
 
   if (!item) {
@@ -284,7 +308,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
               </div>
               <div>
                 <p className={labelClass}>Owner</p>
-                <p className={valueClass}>{memberName(item.ownerId)}</p>
+                <p className={valueClass}>{ownerDisplay()}</p>
               </div>
               <div>
                 <p className={labelClass}>Raised By</p>
@@ -418,14 +442,6 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
                   </div>
                 )}
               </>
-            )}
-
-            {/* Owner Name (free-text fallback) */}
-            {item.ownerName && !item.ownerId && (
-              <div>
-                <p className={labelClass}>Owner (Name)</p>
-                <p className={valueClass}>{item.ownerName}</p>
-              </div>
             )}
 
             {/* Assumption-specific fields */}

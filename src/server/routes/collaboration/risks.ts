@@ -35,6 +35,9 @@ const createRiskSchema = z.object({
   mitigationPlan: z.string().max(5000).optional(),
   responsePlan: z.string().max(5000).optional(),
   ownerId: z.string().optional(),
+  // Owns this item directly when there's no login account to be ownerId — e.g. an
+  // external subcontractor who exists only as a resources row.
+  ownerResourceId: z.string().optional(),
   linkedTaskIds: z.array(z.string()).optional(),
   // Action fields
   dueDate: z.string().optional(),

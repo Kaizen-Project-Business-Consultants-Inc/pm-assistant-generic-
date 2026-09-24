@@ -20,6 +20,10 @@ export interface ProjectRisk {
   mitigationPlan: string | null;
   responsePlan: string | null;
   ownerId: string | null;
+  /** Owns this item directly when there's no login account to be ownerId — e.g. an external
+   * subcontractor who exists only as a `resources` row. At most one of ownerId/ownerResourceId
+   * is ever set. */
+  ownerResourceId: string | null;
   source: 'manual' | 'ai_detected' | 'agent' | 'imported' | 'standup' | 'meeting';
   sourceAgentId: string | null;
   aiConfidence: number | null;
@@ -107,6 +111,7 @@ function mapRow(row: any): ProjectRisk {
     mitigationPlan: row.mitigation_plan,
     responsePlan: row.response_plan,
     ownerId: row.owner_id,
+    ownerResourceId: row.owner_resource_id ?? null,
     source: row.source,
     sourceAgentId: row.source_agent_id,
     aiConfidence: row.ai_confidence != null ? Number(row.ai_confidence) : null,
@@ -197,6 +202,7 @@ const COLUMN_MAP: Record<string, string> = {
   mitigationPlan: 'mitigation_plan',
   responsePlan: 'response_plan',
   ownerId: 'owner_id',
+  ownerResourceId: 'owner_resource_id',
   source: 'source',
   sourceAgentId: 'source_agent_id',
   aiConfidence: 'ai_confidence',
@@ -309,6 +315,7 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
     mitigationPlan?: string;
     responsePlan?: string;
     ownerId?: string;
+    ownerResourceId?: string;
     source?: 'manual' | 'ai_detected' | 'agent' | 'imported' | 'standup' | 'meeting';
     sourceAgentId?: string;
     aiConfidence?: number;
@@ -341,18 +348,28 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
       dependency: 'open',
     };
 
-    // Auto-link owner_id from owner_name if not explicitly set
-    const ownerId = data.ownerId || (data.ownerName ? await this.resolveOwnerId(data.ownerName) : null);
+    // Auto-link owner_id from owner_name if not explicitly set. A resource WITH a
+    // linked account still becomes a real, notifiable user-owner (resolveOwnerId
+    // wins); only fall back to a resource-direct owner (no account, no notify)
+    // when that fails. At most one of ownerId/ownerResourceId is ever written.
+    let ownerId = data.ownerId || null;
+    let ownerResourceId = data.ownerResourceId || null;
+    if (!ownerId && !ownerResourceId && data.ownerName) {
+      ownerId = await this.resolveOwnerId(data.ownerName);
+      if (!ownerId) ownerResourceId = await this.resolveOwnerResourceId(data.ownerName);
+    }
+    if (ownerId) ownerResourceId = null;
 
     await databaseService.query(
       `INSERT INTO project_risks (id, project_id, type, title, description, category, severity,
         probability, impact, status, trigger_condition, mitigation_plan, response_plan, owner_id,
+        owner_resource_id,
         source, source_agent_id, ai_confidence, linked_task_ids, linked_proposal_id, created_by,
         sequence_number, record_id, due_date, action_type, rationale, decided_by, decision_date,
         alternatives_considered, stakeholders_consulted, linked_raid_ids,
         root_cause, impact_assessment, workaround,
         validation_plan, dependent_entity, forum, source_meeting, owner_name)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.projectId,
@@ -368,6 +385,7 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
         data.mitigationPlan || null,
         data.responsePlan || null,
         ownerId,
+        ownerResourceId,
         data.source || 'manual',
         data.sourceAgentId || null,
         data.aiConfidence ?? null,
@@ -398,11 +416,22 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
   }
 
   async update(id: string, data: Record<string, any>): Promise<ProjectRisk | null> {
-    // Auto-link owner_id from owner_name if ownerName is being set but ownerId is not
-    if (data.ownerName && !data.ownerId) {
+    // Auto-link owner_id from owner_name if ownerName is being set but neither
+    // owner field is explicit. Same resolution order as create(): a resource
+    // with a linked account wins as a real user-owner; otherwise fall back to
+    // owning it directly as a resource (no account, no notification).
+    if (data.ownerName && !data.ownerId && !data.ownerResourceId) {
       const resolvedId = await this.resolveOwnerId(data.ownerName);
-      if (resolvedId) data.ownerId = resolvedId;
+      if (resolvedId) {
+        data.ownerId = resolvedId;
+      } else {
+        const resolvedResourceId = await this.resolveOwnerResourceId(data.ownerName);
+        if (resolvedResourceId) data.ownerResourceId = resolvedResourceId;
+      }
     }
+    // At most one of owner_id/owner_resource_id — setting one explicitly clears the other.
+    if (data.ownerId !== undefined && data.ownerId) data.ownerResourceId = null;
+    if (data.ownerResourceId !== undefined && data.ownerResourceId) data.ownerId = null;
 
     const upd = this.buildUpdate(data, COLUMN_MAP, (key, val) => {
       if (key === 'linkedTaskIds' || key === 'linkedRaidIds' || key === 'stakeholdersConsulted') {
@@ -552,6 +581,24 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
       names,
     );
     return rows.length > 0 ? rows[0].user_id : null;
+  }
+
+  /**
+   * Resolve owner_name to a resource's own id, for a resource with no linked
+   * user account (external personnel who will never log in — e.g. a
+   * subcontractor team). Only called after resolveOwnerId finds nothing, so a
+   * resource that DOES have an account still resolves to that account instead.
+   */
+  private async resolveOwnerResourceId(ownerName: string): Promise<string | null> {
+    const names = ownerName.split(/[\/&,]/).map(n => n.replace(/\(.*?\)/g, '').trim()).filter(Boolean);
+    if (names.length === 0) return null;
+
+    const placeholders = names.map(() => '?').join(',');
+    const rows = await databaseService.query<any>(
+      `SELECT id FROM resources WHERE name IN (${placeholders}) LIMIT 1`,
+      names,
+    );
+    return rows.length > 0 ? rows[0].id : null;
   }
 
   /**

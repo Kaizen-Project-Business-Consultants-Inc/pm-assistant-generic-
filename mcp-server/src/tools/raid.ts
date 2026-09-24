@@ -37,6 +37,7 @@ export function registerRaidTools(server: McpServer) {
     responsePlan: z.string().optional().describe('Response plan'),
     triggerCondition: z.string().optional().describe('Trigger condition'),
     ownerId: z.string().optional().describe('Owner user ID'),
+    ownerResourceId: z.string().optional().describe('Owner resource ID — use this instead of ownerId for a resource with no login account (e.g. an external subcontractor)'),
     dueDate: z.string().optional().describe('Due date (for actions, YYYY-MM-DD)'),
     actionType: z.enum(['preventive', 'corrective', 'improvement']).optional().describe('Action type (for actions)'),
     rationale: z.string().optional().describe('Rationale (for decisions)'),
@@ -58,6 +59,7 @@ export function registerRaidTools(server: McpServer) {
     mitigationPlan: z.string().optional().describe('Mitigation plan'),
     responsePlan: z.string().optional().describe('Response plan'),
     ownerId: z.string().optional().describe('Owner user ID'),
+    ownerResourceId: z.string().optional().describe('Owner resource ID — use this instead of ownerId for a resource with no login account (e.g. an external subcontractor)'),
   }, async ({ projectId, raidItemId, ...data }, extra) =>
     jsonResult(await getApiClientFromExtra(extra).put(`/projects/${projectId}/risks/${raidItemId}`, data))
   );
