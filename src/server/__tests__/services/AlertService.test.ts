@@ -11,11 +11,20 @@ vi.mock('../../config', () => ({
   },
 }));
 
+const redisClient = vi.hoisted(() => ({
+  get: vi.fn().mockResolvedValue(null),
+  keys: vi.fn().mockResolvedValue([]),
+  incr: vi.fn().mockResolvedValue(1),
+  expire: vi.fn().mockResolvedValue(1),
+}));
+
 vi.mock('../../services/RedisService', () => ({
   redisService: {
     isConnected: vi.fn().mockReturnValue(true),
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue(undefined),
+    // The signup-flood check counts through the raw client.
+    getClient: vi.fn(() => redisClient),
   },
 }));
 
@@ -114,6 +123,8 @@ const mockCheckDbHealth = degradationHandler.checkDatabaseHealth as ReturnType<t
 const mockGetMonthlyUsage = aiBudgetService.getMonthlyUsage as ReturnType<typeof vi.fn>;
 const mockQueryCP = databaseService.queryControlPlane as ReturnType<typeof vi.fn>;
 const mockNotifCreate = notificationService.create as ReturnType<typeof vi.fn>;
+const mockRedisKeys = redisClient.keys;
+const mockClientGet = redisClient.get;
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
@@ -151,6 +162,8 @@ describe('AlertService', () => {
     mockNotifCreate.mockResolvedValue({});
     mockSendEmail.mockResolvedValue(undefined);
     mockFetch.mockResolvedValue({ ok: true });
+    mockRedisKeys.mockResolvedValue([]);
+    mockClientGet.mockResolvedValue(null);
     (config as any).ALERT_EMAIL = 'admin@test.com';
     (config as any).ALERT_WEBHOOK_URL = '';
   });
@@ -795,14 +808,6 @@ describe('AlertService', () => {
       expect(JSON.stringify(raised)).toContain('db-backup');
     });
 
-    it('says nothing when Redis is unavailable, rather than alerting on its own blind spot', async () => {
-      mockRedisIsConnected.mockReturnValue(false);
-
-      await alertService.runChecks();
-
-      expect(alertsRaised()).toHaveLength(0);
-    });
-
     it('ignores an unreadable record instead of alerting on a formatting problem', async () => {
       mockRedisGet.mockImplementation(async (key: string) => {
         if (key === 'cron:last:reports') return 'not json';
@@ -815,6 +820,47 @@ describe('AlertService', () => {
       expect(alertsRaised()).toHaveLength(0);
     });
   });
+
+  describe('checkRegistrationFlood() — signup flood', () => {
+    const alertsRaised = () =>
+      ((logger.warn as any).mock.calls as any[][])
+        .filter((c) => typeof c[0] === 'string' &&
+          (c[0].includes('registering repeatedly') || c[0].includes('Unusually many signups')))
+        .map((c) => c[0] as string);
+
+    it('raises the alarm when one address registers over and over', async () => {
+      // Rate limiting turns them away but tells nobody. This is the noticing —
+      // and it stands whether or not the signup CAPTCHA is ever switched on.
+      mockClientGet.mockImplementation(async (key: string) =>
+        key?.startsWith('reg:') ? '25' : null);
+      mockRedisKeys.mockResolvedValue(['reg:ip:2026-09-23T04:1.2.3.4']);
+
+      await alertService.runChecks();
+
+      const raised = JSON.stringify(alertsRaised());
+      expect(raised).toContain('registering repeatedly');
+      expect(raised).toContain('1.2.3.4');
+    });
+
+    it('stays quiet at ordinary signup volumes', async () => {
+      mockClientGet.mockImplementation(async (key: string) =>
+        key?.startsWith('reg:') ? '3' : null);
+      mockRedisKeys.mockResolvedValue(['reg:ip:2026-09-23T04:1.2.3.4']);
+
+      await alertService.runChecks();
+
+      expect(alertsRaised()).toHaveLength(0);
+    });
+
+    it('says nothing when Redis is unavailable, rather than alerting on its own blind spot', async () => {
+      mockRedisIsConnected.mockReturnValue(false);
+
+      await alertService.runChecks();
+
+      expect(alertsRaised()).toHaveLength(0);
+    });
+  });
+
   describe('checkDegradedStart() — degraded server', () => {
     const alertsRaised = () =>
       ((logger.warn as any).mock.calls as any[][])

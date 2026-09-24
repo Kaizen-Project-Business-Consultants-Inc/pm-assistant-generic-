@@ -15,6 +15,7 @@ import { organizationRepository } from '../../database/OrganizationRepository';
 import { databaseService } from '../../database/connection';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { verifyTurnstile, turnstileActive } from '../../utils/turnstile';
+import { countRegistrationAttempt } from '../../utils/registrationWatch';
 import { runWithTenantContext } from '../../middleware/requestContext';
 import { resolvePriceId } from '../integrations/stripe';
 import logger from '../../utils/logger';
@@ -215,6 +216,10 @@ export async function authRoutes(fastify: FastifyInstance) {
       const ip = request.ip || 'unknown';
       const burst = await rateLimiter.checkAsync(`auth:register:${ip}`, 5, 60_000);
       if (!burst.allowed) {
+        // Was silent. A refused burst is the clearest early sign of a script,
+        // and nothing recorded it at all.
+        logger.warn('Registration burst limit hit', { ip });
+        await countRegistrationAttempt(ip);
         return reply.status(429).send({ error: 'Too many registration attempts. Please try again later.' });
       }
       // Generous enough for an office behind one address; nowhere near enough
@@ -222,8 +227,13 @@ export async function authRoutes(fastify: FastifyInstance) {
       const hourly = await rateLimiter.checkAsync(`auth:register:hourly:${ip}`, 15, 60 * 60_000);
       if (!hourly.allowed) {
         logger.warn('Registration hourly limit hit', { ip });
+        await countRegistrationAttempt(ip);
         return reply.status(429).send({ error: 'Too many registration attempts. Please try again later.' });
       }
+
+      // Counted before anything else can reject it, so a flood is visible even
+      // when every attempt is being turned away.
+      await countRegistrationAttempt(ip);
 
       const parsed = registerSchema.parse(request.body);
       const { email, password, organizationName, inviteToken, tier, plan, seats } = parsed;

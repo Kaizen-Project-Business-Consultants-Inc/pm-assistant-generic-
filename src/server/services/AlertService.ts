@@ -8,6 +8,7 @@ import { notificationService } from './NotificationService';
 import { databaseService } from '../database/connection';
 import { getDegraded } from '../utils/degradedState';
 import logger from '../utils/logger';
+import { registrationActivity } from '../utils/registrationWatch';
 
 type AlertType =
   | 'error_rate_high'
@@ -17,7 +18,8 @@ type AlertType =
   | 'db_latency_high'
   | 'db_connection_lost'
   | 'cron_job_stalled'
-  | 'migration_failed';
+  | 'migration_failed'
+  | 'registration_flood';
 
 /**
  * Scheduled jobs that must have run recently, and how long is too long (hours).
@@ -72,6 +74,7 @@ class AlertService {
         this.checkDatabaseHealth(),
         this.checkCronJobsRunning(),
         this.checkDegradedStart(),
+        this.checkRegistrationFlood(),
       ]);
     } catch (err) {
       logger.error('[AlertService] Check cycle failed', {
@@ -95,6 +98,40 @@ class AlertService {
       title: 'Server running in degraded mode',
       message: `${degraded.detail} Degraded since ${degraded.since}. The app is serving requests, but features relying on the missing schema change will fail.`,
     });
+  }
+
+  /**
+   * Notice a signup flood.
+   *
+   * Rate limiting slows a script down but tells nobody it is happening. The logs
+   * showed it plainly — the same address over and over — but only to someone
+   * already looking, and nobody was. This is the noticing, and it stands whether
+   * or not the CAPTCHA is ever switched on.
+   *
+   * Thresholds are set for a product with a handful of signups a week: anything
+   * near these is either abuse or a launch, and both are worth an email.
+   */
+  private async checkRegistrationFlood(): Promise<void> {
+    const { total, worstIp, worstCount } = await registrationActivity();
+
+    if (worstIp && worstCount >= 20) {
+      await this.fire({
+        type: 'registration_flood',
+        severity: 'critical',
+        title: 'One address is registering repeatedly',
+        message: `${worstCount} signup attempts from ${worstIp} in the past hour. That is a script, not a person. Rate limiting is turning most of them away, but consider switching on the signup CAPTCHA (scripts/set-turnstile-credentials.sh) or blocking the address.`,
+      });
+      return;
+    }
+
+    if (total >= 50) {
+      await this.fire({
+        type: 'registration_flood',
+        severity: 'warning',
+        title: 'Unusually many signups',
+        message: `${total} signup attempts in the past hour, across several addresses. Worth a look: either something good is happening, or it is distributed abuse.`,
+      });
+    }
   }
 
   /**
