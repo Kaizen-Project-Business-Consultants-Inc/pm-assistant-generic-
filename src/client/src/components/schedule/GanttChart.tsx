@@ -2580,7 +2580,7 @@ export function GanttChart({
                 className="shrink-0 px-1 text-center text-xs text-gray-300 dark:text-gray-600 font-mono"
                 style={{ width: getColWidth(GANTT_COLUMNS[0]) }}
               >
-                {rows.length + i + 1}
+                {rowNumMap.size + i + 1}
               </div>
               {/* Task name input */}
               <div className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]) }}>

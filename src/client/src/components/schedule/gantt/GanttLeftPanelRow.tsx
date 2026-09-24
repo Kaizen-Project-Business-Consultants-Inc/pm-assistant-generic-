@@ -185,6 +185,8 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   getDepHealth,
 }: GanttLeftPanelRowProps) {
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null);
+  // Fixed row number (position in the full plan), not the position in the current view
+  const rowNumber = rowNumMap.get(task.id) ?? rowIdx + 1;
 
   // Resource lookup for assignedTo display
   const { data: resourceData } = useQuery({
@@ -247,9 +249,9 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         ) : hasOnTaskReorder && !editingField && !sortField ? (
           <span className="hidden group-hover:inline cursor-grab text-gray-500" title="Drag to reorder">&#x2807;</span>
         ) : null}
-        {!(someSelected && hasOnBulkUpdate) && !(hasOnTaskReorder && !editingField && !sortField) && (rowIdx + 1)}
+        {!(someSelected && hasOnBulkUpdate) && !(hasOnTaskReorder && !editingField && !sortField) && rowNumber}
         {!(someSelected && hasOnBulkUpdate) && hasOnTaskReorder && !editingField && !sortField && (
-          <span className="group-hover:hidden">{rowIdx + 1}</span>
+          <span className="group-hover:hidden">{rowNumber}</span>
         )}
         {reviewFlagMap?.has(task.id) && (
           <span

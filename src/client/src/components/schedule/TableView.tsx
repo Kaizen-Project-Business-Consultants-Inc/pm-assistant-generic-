@@ -1794,9 +1794,9 @@ export function TableView({ tasks, allTasks, scheduleId, onTaskClick, onTaskSele
                             className="cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 flex-shrink-0 select-none w-5 text-center text-xs font-medium"
                             title="Drag to reorder"
                             onMouseDown={(e) => handleGripMouseDown(e, task, rowIdx)}
-                          >{rowIdx + 1}</span>
+                          >{rowNumMap.get(task.id) ?? rowIdx + 1}</span>
                         ) : (
-                          <span className="w-5 text-center text-xs font-medium text-gray-500 dark:text-gray-500">{rowIdx + 1}</span>
+                          <span className="w-5 text-center text-xs font-medium text-gray-500 dark:text-gray-500">{rowNumMap.get(task.id) ?? rowIdx + 1}</span>
                         )}
                         <input
                           type="checkbox"
@@ -1963,7 +1963,7 @@ export function TableView({ tasks, allTasks, scheduleId, onTaskClick, onTaskSele
               return (
                 <tr key={emptyRowKey} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                   <td className="px-2 py-2">
-                    <span className="w-5 text-center text-xs font-medium text-gray-300 dark:text-gray-600">{visibleSorted.length + i + 1}</span>
+                    <span className="w-5 text-center text-xs font-medium text-gray-300 dark:text-gray-600">{rowNumMap.size + i + 1}</span>
                   </td>
                   {visibleColumns.map((col, ci) => (
                     <td key={col.key} className="px-3 py-2" style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}>

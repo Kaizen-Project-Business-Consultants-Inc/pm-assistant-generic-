@@ -14,7 +14,7 @@ import { scheduleService } from '../../services/ScheduleService';
 import { riskService } from '../../services/RiskService';
 import { projectMemberService } from '../../services/ProjectMemberService';
 import { sprintService } from '../../services/SprintService';
-import { toProjectDTO, toScheduleDTO, toTaskDTO, paginate } from '../../dto/responses';
+import { toProjectDTO, toScheduleDTO, paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import { favouriteProjectRepository } from '../../database/FavouriteProjectRepository';
 import { projectRepository } from '../../database/ProjectRepository';
@@ -184,7 +184,10 @@ export async function projectRoutes(fastify: FastifyInstance) {
       return {
         project: toProjectDTO(project),
         schedules: schedules.map(s => toScheduleDTO(s as any)),
-        tasks: tasks.map(t => toTaskDTO(t as any)),
+        // Same shape as GET /schedules/:id/tasks — the client seeds that query's cache with
+        // this list, so a slimmed DTO here silently dropped sortOrder, milestone/summary flags,
+        // dependencies etc. from the schedule for the cache's lifetime (10 min).
+        tasks,
         riskStats,
         members,
         sprints,
