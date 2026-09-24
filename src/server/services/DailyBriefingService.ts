@@ -58,7 +58,7 @@ export interface DailyBriefing {
   tasksDueToday: BriefingTask[];
   tasksDueThisWeek: BriefingDueTask[];
   overdueTasks: BriefingOverdueTask[];
-  recentHighRisks: Array<{ id: string; title: string; projectId: string; projectName: string; projectCode: string; severity: string; type: string }>;
+  recentHighRisks: Array<{ id: string; title: string; projectId: string; projectName: string; projectCode: string; severity: string; type: string; ownerName?: string }>;
   upcomingMilestones: Array<{ id: string; name: string; projectId: string; projectName: string; projectCode: string; scheduleId: string; dueDate: string; daysUntil: number }>;
   raidWatch: RaidWatchItem[];
 }
@@ -191,9 +191,11 @@ class DailyBriefingService {
       // Recent high risks (last 24h)
       databaseService.query<any>(
         `SELECT pr.id, pr.title, p.name AS projectName, p.id AS projectId,
-                COALESCE(p.project_code, '') AS projectCode, pr.severity, pr.type
+                COALESCE(p.project_code, '') AS projectCode, pr.severity, pr.type,
+                pr.owner_id AS ownerId, ores.name AS ownerResourceName, pr.owner_name AS ownerText
          FROM project_risks pr
          JOIN projects p ON pr.project_id = p.id
+         LEFT JOIN resources ores ON ores.id = pr.owner_resource_id
          ${memberJoin}
          WHERE pr.severity IN ('critical', 'high')
            AND pr.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
@@ -292,6 +294,25 @@ class DailyBriefingService {
     }
     const withRowNumber = <T extends { id: string }>(list: T[]) => list.map(t => ({ ...t, rowNumber: rowNumbers.get(t.id) }));
 
+    // Risk owners, in the RAID panel's order: a member (login account, name lives in the
+    // control plane), then a resource with no login, then the free-text name. Managers only,
+    // like task owners.
+    const riskOwnerIds = showResource ? [...new Set(risks.map((r: any) => r.ownerId).filter(Boolean))] : [];
+    const ownerUserNames = new Map<string, string>();
+    if (riskOwnerIds.length > 0) {
+      const users = await databaseService.queryControlPlane<any>(
+        `SELECT id, full_name FROM users WHERE id IN (${riskOwnerIds.map(() => '?').join(',')})`,
+        riskOwnerIds
+      );
+      for (const u of users) if (u.full_name) ownerUserNames.set(u.id, u.full_name);
+    }
+    const recentHighRisks = risks.map(({ ownerId, ownerResourceName, ownerText, ...risk }: any) => ({
+      ...risk,
+      ownerName: showResource
+        ? (ownerUserNames.get(ownerId) || ownerResourceName || ownerText || undefined)
+        : undefined,
+    }));
+
     // Process notifications
     const notifMap = new Map<string, number>();
     for (const row of notifications) {
@@ -359,7 +380,7 @@ class DailyBriefingService {
       tasksDueToday: withRowNumber(dueToday),
       tasksDueThisWeek: withRowNumber(dueThisWeek),
       overdueTasks: withRowNumber(overdue),
-      recentHighRisks: risks,
+      recentHighRisks,
       upcomingMilestones: milestones,
       raidWatch,
     };

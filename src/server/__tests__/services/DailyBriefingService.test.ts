@@ -282,6 +282,29 @@ describe('DailyBriefingService', () => {
       expect(queryMock.mock.calls[4][0]).not.toContain('resourceName');
     });
 
+    it('names each risk owner: member, else resource, else typed name — managers only', async () => {
+      const risks = [
+        { id: 'r-1', title: 'A', projectId: 'p-1', projectName: 'P', projectCode: 'PC', severity: 'high', type: 'risk', ownerId: 'u-1', ownerResourceName: null, ownerText: null },
+        { id: 'r-2', title: 'B', projectId: 'p-1', projectName: 'P', projectCode: 'PC', severity: 'high', type: 'risk', ownerId: null, ownerResourceName: 'Sapphire Dev', ownerText: null },
+        { id: 'r-3', title: 'C', projectId: 'p-1', projectName: 'P', projectCode: 'PC', severity: 'critical', type: 'risk', ownerId: null, ownerResourceName: null, ownerText: 'DBJ' },
+        { id: 'r-4', title: 'D', projectId: 'p-1', projectName: 'P', projectCode: 'PC', severity: 'high', type: 'risk', ownerId: null, ownerResourceName: null, ownerText: null },
+      ];
+      setupDefaultResults({ 6: risks });
+      queryControlPlaneMock.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 'u-1', full_name: 'Michaela K' }]);
+
+      const result = await dailyBriefingService.getDailyBriefing('user-1', 'project_manager');
+
+      expect(result.recentHighRisks.map(r => r.ownerName)).toEqual(['Michaela K', 'Sapphire Dev', 'DBJ', undefined]);
+      expect(result.recentHighRisks[0]).not.toHaveProperty('ownerId');
+      expect(queryControlPlaneMock.mock.calls[1][1]).toEqual(['u-1']);
+
+      vi.clearAllMocks();
+      setupDefaultResults({ 6: risks });
+      const viewer = await dailyBriefingService.getDailyBriefing('user-1', 'viewer');
+      expect(viewer.recentHighRisks.every(r => r.ownerName === undefined)).toBe(true);
+      expect(queryControlPlaneMock).toHaveBeenCalledTimes(1); // notifications only, no owner lookup
+    });
+
     // ── High Risks ─────────────────────────────────────────────────────
 
     it('returns recent high risks', async () => {
