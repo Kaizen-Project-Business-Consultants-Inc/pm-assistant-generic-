@@ -33,6 +33,24 @@ describe('bulkCreateSchema', () => {
     expect(parsed.tasks[0].isMilestone).toBe(true);
     expect(parsed.tasks[0].dependencyType).toBe('SS');
   });
+
+  it('accepts parentTaskId, resolved the same way as dependency', () => {
+    // Regression test: bulk-create had no way to group tasks under a phase/
+    // summary task at all — importing a document with phases (e.g. a bid
+    // response) flattened every task to the same level. parentTaskId follows
+    // the same batch-reference rules as dependency (name, position, or a
+    // literal external ID).
+    const parsed = bulkCreateSchema.parse({
+      scheduleId: 'sched-1',
+      tasks: [
+        { name: 'Mobilization' },
+        { name: 'Site setup', parentTaskId: 'Mobilization' },
+        { name: 'Crew onboarding', parentTaskId: '0' },
+      ],
+    });
+    expect(parsed.tasks[1].parentTaskId).toBe('Mobilization');
+    expect(parsed.tasks[2].parentTaskId).toBe('0');
+  });
 });
 
 describe('bulkUpdateItemSchema', () => {

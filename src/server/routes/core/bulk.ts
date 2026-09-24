@@ -37,11 +37,17 @@ export const bulkTaskSchema = z.object({
   dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional(),
   comments: z.string().optional(),
   isMilestone: z.boolean().optional(),
+  // Same batch-reference rules as `dependency` above (name, position, or a
+  // literal external task ID) — the parent phase/summary task is usually
+  // created in the same batch as its children, so its real ID doesn't exist
+  // yet either. A task only becomes a visible "summary task" once a child
+  // actually resolves to it — see the rollup recompute after pass 2 below.
+  parentTaskId: z.string().optional(),
 });
 
 /**
- * Resolve a bulk-create task's `dependency` against this same batch before it's
- * treated as a literal task ID. Two forms, checked in order:
+ * Resolve a bulk-create task's `dependency`/`parentTaskId` against this same
+ * batch before it's treated as a literal task ID. Two forms, checked in order:
  *   - exact match on another task's `name` in this batch
  *   - a small non-negative integer string, read as a 0-based index into `tasks`
  * Self-references and out-of-range indices fall through to "not a batch
@@ -112,24 +118,31 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       const succeeded: Array<{ id: string; name: string }> = [];
       const failed: Array<{ index: number; name: string; error: string }> = [];
       // Filled as each row is inserted (index-aligned with body.tasks) so a later
-      // task's `dependency` can resolve against an earlier one's real ID.
+      // task's `dependency`/`parentTaskId` can resolve against an earlier one's
+      // real ID — and an earlier task's can resolve against a later one's, via
+      // the two-pass resolve below.
       const createdIds: (string | undefined)[] = new Array(body.tasks.length);
+      // Parents that gained a child this call — is_summary only flips to true
+      // via a rollup recompute, not by writing the column directly, so every
+      // parent that got a new child needs one (deduped, outside the transaction).
+      const parentsToRecompute = new Set<string>();
 
       await databaseService.transaction(async (connection) => {
-        // Pass 1: insert every task. Batch-local dependency refs (name/position)
-        // can't be written yet — the tasks they point to may not have an id yet
-        // either, if the reference points forward in the array.
+        // Pass 1: insert every task. Batch-local refs (name/position) can't be
+        // written yet — the tasks they point to may not have an id yet either,
+        // if the reference points forward in the array.
         for (let i = 0; i < body.tasks.length; i++) {
           const t = body.tasks[i];
           try {
             const id = uuidv4();
-            const isBatchRef = !!t.dependency && batchDependencyIndex(t.dependency, i, body.tasks) !== undefined;
+            const depIsBatchRef = !!t.dependency && batchDependencyIndex(t.dependency, i, body.tasks) !== undefined;
+            const parentIsBatchRef = !!t.parentTaskId && batchDependencyIndex(t.parentTaskId, i, body.tasks) !== undefined;
             await connection.execute(
               `INSERT INTO tasks
                  (id, schedule_id, name, start_date, end_date, estimated_days, progress_percentage,
                   status, priority, assigned_to, dependency, dependency_type, comments, is_milestone,
-                  created_by, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+                  parent_task_id, created_by, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
               [
                 id,
                 body.scheduleId,
@@ -142,38 +155,56 @@ export async function bulkRoutes(fastify: FastifyInstance) {
                 t.priority || 'medium',
                 t.assignedTo || null,
                 // A batch-local reference is resolved in pass 2, once every id
-                // exists; a literal external task ID is fine to write now.
-                isBatchRef ? null : (t.dependency || null),
+                // exists; a literal external ID is fine to write now.
+                depIsBatchRef ? null : (t.dependency || null),
                 t.dependencyType || null,
                 t.comments || null,
                 t.isMilestone ? 1 : 0,
+                parentIsBatchRef ? null : (t.parentTaskId || null),
                 user.userId,
               ],
             );
             createdIds[i] = id;
             succeeded.push({ id, name: t.name });
+            if (!parentIsBatchRef && t.parentTaskId) parentsToRecompute.add(t.parentTaskId);
           } catch (err: any) {
             failed.push({ index: i, name: t.name || '', error: err.message || 'Unknown error' });
           }
         }
 
         // Pass 2: now that every task in the batch has a real id, resolve each
-        // dependency that referred to another task in this same batch by name
-        // or position, and write the actual foreign key.
+        // dependency/parentTaskId that referred to another task in this same
+        // batch by name or position, and write the actual foreign key.
         for (let i = 0; i < body.tasks.length; i++) {
           const t = body.tasks[i];
           const selfId = createdIds[i];
-          if (!t.dependency || !selfId) continue;
-          const depIndex = batchDependencyIndex(t.dependency, i, body.tasks);
-          const resolvedId = depIndex !== undefined ? createdIds[depIndex] : undefined;
-          if (resolvedId) {
-            await connection.execute(
-              `UPDATE tasks SET dependency = ? WHERE id = ?`,
-              [resolvedId, selfId],
-            );
+          if (!selfId) continue;
+
+          if (t.dependency) {
+            const depIndex = batchDependencyIndex(t.dependency, i, body.tasks);
+            const resolvedId = depIndex !== undefined ? createdIds[depIndex] : undefined;
+            if (resolvedId) {
+              await connection.execute(`UPDATE tasks SET dependency = ? WHERE id = ?`, [resolvedId, selfId]);
+            }
+          }
+
+          if (t.parentTaskId) {
+            const parentIndex = batchDependencyIndex(t.parentTaskId, i, body.tasks);
+            const resolvedParentId = parentIndex !== undefined ? createdIds[parentIndex] : undefined;
+            if (resolvedParentId) {
+              await connection.execute(`UPDATE tasks SET parent_task_id = ? WHERE id = ?`, [resolvedParentId, selfId]);
+              parentsToRecompute.add(resolvedParentId);
+            }
           }
         }
       });
+
+      // A parent only renders as a summary task once its rollup is recomputed —
+      // writing parent_task_id on the child alone doesn't flip is_summary.
+      for (const parentId of parentsToRecompute) {
+        scheduleService.recomputeParentRollup(parentId).catch(err =>
+          logger.error('[Rollup] recomputeParentRollup error on bulk create:', err));
+      }
 
       return { succeeded, failed };
     } catch (error) {

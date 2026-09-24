@@ -74,6 +74,7 @@ export function registerTaskTools(server: McpServer) {
       dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional().describe('Dependency link type: FS finish-to-start (default), SS start-to-start, FF finish-to-finish, SF start-to-finish'),
       comments: z.string().optional(),
       isMilestone: z.boolean().optional().describe('True for a zero-duration milestone rather than an ordinary task'),
+      parentTaskId: z.string().optional().describe("Groups this task under a phase/summary task. Same rules as `dependency`: the exact `name` of another task IN THIS SAME BATCH, that task's 0-based position in this `tasks` array (as a string), or a real task ID outside this batch. A parent task only renders as a summary task once at least one child resolves to it — if you're importing a document with phases/sections, create the phase as its own task first and set every task under it to that phase's name or index here."),
     })).min(1).max(100).describe('Array of tasks to create (max 100)'),
   }, async ({ scheduleId, tasks }, extra) =>
     jsonResult(await getApiClientFromExtra(extra).post('/bulk/tasks', { scheduleId, tasks }))
