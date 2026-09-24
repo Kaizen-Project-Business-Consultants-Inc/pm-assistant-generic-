@@ -22,16 +22,42 @@ export const bulkTaskSchema = z.object({
   name: z.string().min(1),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  estimatedDays: z.number().optional(),
+  estimatedDays: z.number().min(0).optional(),
   progressPercentage: z.number().min(0).max(100).optional(),
   status: z.string().optional(),
   priority: z.string().optional(),
   assignedTo: z.string().optional(),
+  // An existing task's ID, OR a reference into this same batch — since a batch
+  // task's real ID doesn't exist until it's inserted, a caller can't know it in
+  // advance. Resolved in the route: an exact match against another task's `name`
+  // in this request wins first; otherwise a small integer string is read as a
+  // 0-based position in `tasks`. Anything else is treated as a literal task ID,
+  // unchanged from before.
   dependency: z.string().optional(),
   dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional(),
   comments: z.string().optional(),
   isMilestone: z.boolean().optional(),
 });
+
+/**
+ * Resolve a bulk-create task's `dependency` against this same batch before it's
+ * treated as a literal task ID. Two forms, checked in order:
+ *   - exact match on another task's `name` in this batch
+ *   - a small non-negative integer string, read as a 0-based index into `tasks`
+ * Self-references and out-of-range indices fall through to "not a batch
+ * reference" and are left as a literal ID for the caller's own use (an existing
+ * task outside this batch).
+ */
+export function batchDependencyIndex(ref: string, selfIndex: number, tasks: Array<{ name: string }>): number | undefined {
+  const byName = tasks.findIndex((t, i) => i !== selfIndex && t.name === ref);
+  if (byName !== -1) return byName;
+
+  if (/^\d+$/.test(ref)) {
+    const idx = Number(ref);
+    if (idx !== selfIndex && idx >= 0 && idx < tasks.length) return idx;
+  }
+  return undefined;
+}
 
 export const bulkCreateSchema = z.object({
   scheduleId: z.string().min(1),
@@ -85,12 +111,19 @@ export async function bulkRoutes(fastify: FastifyInstance) {
 
       const succeeded: Array<{ id: string; name: string }> = [];
       const failed: Array<{ index: number; name: string; error: string }> = [];
+      // Filled as each row is inserted (index-aligned with body.tasks) so a later
+      // task's `dependency` can resolve against an earlier one's real ID.
+      const createdIds: (string | undefined)[] = new Array(body.tasks.length);
 
       await databaseService.transaction(async (connection) => {
+        // Pass 1: insert every task. Batch-local dependency refs (name/position)
+        // can't be written yet — the tasks they point to may not have an id yet
+        // either, if the reference points forward in the array.
         for (let i = 0; i < body.tasks.length; i++) {
           const t = body.tasks[i];
           try {
             const id = uuidv4();
+            const isBatchRef = !!t.dependency && batchDependencyIndex(t.dependency, i, body.tasks) !== undefined;
             await connection.execute(
               `INSERT INTO tasks
                  (id, schedule_id, name, start_date, end_date, estimated_days, progress_percentage,
@@ -108,16 +141,36 @@ export async function bulkRoutes(fastify: FastifyInstance) {
                 t.status || 'pending',
                 t.priority || 'medium',
                 t.assignedTo || null,
-                t.dependency || null,
+                // A batch-local reference is resolved in pass 2, once every id
+                // exists; a literal external task ID is fine to write now.
+                isBatchRef ? null : (t.dependency || null),
                 t.dependencyType || null,
                 t.comments || null,
                 t.isMilestone ? 1 : 0,
                 user.userId,
               ],
             );
+            createdIds[i] = id;
             succeeded.push({ id, name: t.name });
           } catch (err: any) {
             failed.push({ index: i, name: t.name || '', error: err.message || 'Unknown error' });
+          }
+        }
+
+        // Pass 2: now that every task in the batch has a real id, resolve each
+        // dependency that referred to another task in this same batch by name
+        // or position, and write the actual foreign key.
+        for (let i = 0; i < body.tasks.length; i++) {
+          const t = body.tasks[i];
+          const selfId = createdIds[i];
+          if (!t.dependency || !selfId) continue;
+          const depIndex = batchDependencyIndex(t.dependency, i, body.tasks);
+          const resolvedId = depIndex !== undefined ? createdIds[depIndex] : undefined;
+          if (resolvedId) {
+            await connection.execute(
+              `UPDATE tasks SET dependency = ? WHERE id = ?`,
+              [resolvedId, selfId],
+            );
           }
         }
       });

@@ -47,7 +47,10 @@ export const createTaskSchema = z.object({
   acceptanceCriteria: z.string().optional(),
   assignedTo: z.string().optional(),
   dueDate: z.string().date().optional(),
-  estimatedDays: z.number().positive().optional(),
+  // .positive() used to reject a zero-duration milestone outright — isMilestone
+  // tasks are meant to have estimatedDays: 0 (bulk-create already allowed this;
+  // this single-task route just never matched it).
+  estimatedDays: z.number().min(0).optional(),
   startDate: z.string().date().optional(),
   endDate: z.string().date().optional(),
   actualStartDate: z.string().date().optional().nullable(),

@@ -131,10 +131,10 @@ export class ProjectRepository extends BaseRepository<Project> {
     const id = uuidv4();
     const projectCode = await this.generateProjectCode();
     await this.queryRaw(
-      `INSERT INTO projects (id, name, project_code, description, category, project_type, status, priority,
+      `INSERT INTO projects (id, name, project_code, description, category, project_type, methodology, status, priority,
         budget_allocated, budget_spent, currency, location, location_lat, location_lon,
         start_date, end_date, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.name,
@@ -142,6 +142,12 @@ export class ProjectRepository extends BaseRepository<Project> {
         data.description || null,
         data.category || null,
         data.projectType || 'other',
+        // Was missing from this INSERT entirely — every new project's methodology
+        // column was left NULL, and rowToProject's `row.methodology || 'waterfall'`
+        // fallback silently papered over it, so a project created as 'hybrid' read
+        // back as 'waterfall'. Not the same bug as the update-time Zod-defaults
+        // issue (that one only affects PUT, this one is CREATE-only).
+        data.methodology || 'waterfall',
         data.status || 'planning',
         data.priority || 'medium',
         data.budgetAllocated ?? null,

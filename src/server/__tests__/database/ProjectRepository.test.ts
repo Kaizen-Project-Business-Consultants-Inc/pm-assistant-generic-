@@ -80,6 +80,21 @@ describe('ProjectRepository', () => {
     );
   });
 
+  it('create writes methodology to the INSERT', async () => {
+    // Regression test: the INSERT column list and values array used to omit
+    // methodology entirely — a project created as 'hybrid' silently ended up
+    // NULL in the database, and rowToProject's `row.methodology || 'waterfall'`
+    // fallback papered over it, so it read back as 'waterfall'.
+    mockQuery
+      .mockResolvedValueOnce([]) // generateProjectCode
+      .mockResolvedValueOnce([]) // INSERT
+      .mockResolvedValueOnce([sampleRow]); // findById
+    await repo.create({ name: 'Test', userId: 'u1', methodology: 'hybrid' });
+    const [sql, params] = mockQuery.mock.calls[1];
+    expect(sql).toContain('methodology');
+    expect(params).toContain('hybrid');
+  });
+
   it('update builds and executes update', async () => {
     mockQuery
       .mockResolvedValueOnce([]) // UPDATE

@@ -70,7 +70,7 @@ export function registerTaskTools(server: McpServer) {
       estimatedDays: z.number().optional(),
       startDate: z.string().optional(),
       endDate: z.string().optional(),
-      dependency: z.string().optional().describe('Dependency task ID'),
+      dependency: z.string().optional().describe("Another task this one depends on. Either the exact `name` of another task IN THIS SAME BATCH, that task's 0-based position in this `tasks` array (as a string, e.g. \"2\"), or a real task ID for a task that already exists outside this batch."),
       dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional().describe('Dependency link type: FS finish-to-start (default), SS start-to-start, FF finish-to-finish, SF start-to-finish'),
       comments: z.string().optional(),
       isMilestone: z.boolean().optional().describe('True for a zero-duration milestone rather than an ordinary task'),
