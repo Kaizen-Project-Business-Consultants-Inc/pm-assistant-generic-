@@ -82,6 +82,31 @@ export function formatShortDate(d: Date, referenceYear?: number): string {
   return d.toLocaleDateString(undefined, opts);
 }
 
+/** Sibling order in the plan itself: sortOrder, then start date. */
+export function compareOutlineOrder(a: GanttTask, b: GanttTask): number {
+  const sa = a.sortOrder ?? 0;
+  const sb = b.sortOrder ?? 0;
+  if (sa !== sb) return sa - sb;
+  const da = toDate(a.startDate)?.getTime() ?? 0;
+  const db = toDate(b.startDate)?.getTime() ?? 0;
+  return da - db;
+}
+
+/**
+ * Fixed row numbers, like MS Project's ID column: a task's position in the full plan
+ * (everything expanded, nothing filtered, no column sort). Sorting, filtering and
+ * collapsing change what is shown, never the number — so "8FS" always means the same
+ * task. Pass the schedule's COMPLETE task list, not a filtered one.
+ *
+ * The Morning Briefing computes the same numbers server-side in
+ * src/server/utils/scheduleRowNumbers.ts — if this ordering changes, change that too.
+ */
+export function buildRowNumberMap(tasks: GanttTask[]): Map<string, number> {
+  const map = new Map<string, number>();
+  buildFlatRows(tasks).forEach(({ task }, idx) => map.set(task.id, idx + 1));
+  return map;
+}
+
 /** Build a flat, sorted list of tasks with WBS numbers & hierarchy levels.
  *  Collapsed parents have their children omitted from the result. */
 export function buildFlatRows(tasks: GanttTask[], collapsedIds?: Set<string>): FlatRow[] {
@@ -96,14 +121,7 @@ export function buildFlatRows(tasks: GanttTask[], collapsedIds?: Set<string>): F
     childrenOf.get(parent)!.push(t);
   }
 
-  const sortTasks = (list: GanttTask[]) => list.sort((a, b) => {
-    const sa = a.sortOrder ?? 0;
-    const sb = b.sortOrder ?? 0;
-    if (sa !== sb) return sa - sb;
-    const da = toDate(a.startDate)?.getTime() ?? 0;
-    const db = toDate(b.startDate)?.getTime() ?? 0;
-    return da - db;
-  });
+  const sortTasks = (list: GanttTask[]) => list.sort(compareOutlineOrder);
 
   const topLevel = sortTasks(childrenOf.get(null) || []);
 

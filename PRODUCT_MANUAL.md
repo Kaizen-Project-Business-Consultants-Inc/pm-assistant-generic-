@@ -2628,6 +2628,8 @@ Multiple predecessors are displayed as a comma-separated list in compact **row-n
 | `12FF-1d` | Finish-to-Finish on row 12 with 1-day negative lag (lead) |
 | `3FS+2d,5SS,7` | Three predecessors on rows 3, 5, and 7 |
 
+**Row numbers are fixed** (September 2026), like MS Project's ID column: the number is the task's position in the full plan with every phase expanded. Column sorting, filters, search and collapsed phases never renumber rows, so a predecessor typed while the grid is sorted or filtered still points at the right task. Previously both views numbered only the visible rows in their current order, so sorting by Start could turn row 6 into row 8.
+
 This format is also used in CSV export, matching MS Project's export convention.
 
 ### Dependency Health Badges

@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
+import { buildRowNumberMap, compareOutlineOrder } from './gantt/types';
 import { apiService } from '../../services/api';
 import type { SavedView } from './SavedViewsDropdown';
 import type { ColumnKey, ColumnDef } from './tableColumns';
@@ -23,7 +24,7 @@ import {
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
 
-export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap }: TableViewProps) {
+export function TableView({ tasks, allTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
@@ -276,7 +277,7 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
 
     const sortChildren = (list: GanttTask[]) => {
       if (!sortField) {
-        return [...list].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+        return [...list].sort(compareOutlineOrder);
       }
       return [...list].sort((a, b) => {
         const va = getSortValue(a, sortField);
@@ -454,17 +455,15 @@ export function TableView({ tasks, scheduleId, onTaskClick, onTaskSelect, active
   }, [canDragRows, onTaskReorder, visibleSorted, getDescendantIds]);
 
   // Row number maps
-  const rowNumMap = useMemo(() => {
-    const map = new Map<string, number>();
-    visibleSorted.forEach((task, idx) => map.set(task.id, idx + 1));
-    return map;
-  }, [visibleSorted]);
+  // Fixed row numbers (MS Project-style ID): position in the full plan, unaffected by
+  // sort, filter or collapse
+  const rowNumMap = useMemo(() => buildRowNumberMap(allTasks ?? tasks), [allTasks, tasks]);
 
   const rowNumToTaskId = useMemo(() => {
     const map = new Map<number, string>();
-    visibleSorted.forEach((task, idx) => map.set(idx + 1, task.id));
+    for (const [taskId, n] of rowNumMap) map.set(n, taskId);
     return map;
-  }, [visibleSorted]);
+  }, [rowNumMap]);
 
   // Successor map
   const successorMap = useMemo(() => {

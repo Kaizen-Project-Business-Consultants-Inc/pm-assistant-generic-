@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24 (fixed MS Project-style row numbers on the schedule)
+
+- User saw the briefing's row numbers disagree with the schedule. Cause: Gantt and Table views numbered **visible rows in the current sort** (`rows.forEach((t, i) => i + 1)`), so a column sort, filter, search or collapsed phase renumbered everything — and `rowNumToTaskId` used the same map, so a predecessor typed as `8FS` while sorted could link the wrong task. User chose MS Project behaviour.
+  - `buildRowNumberMap(allTasks)` + `compareOutlineOrder` in `components/schedule/gantt/types.ts`; both views use it for display **and** predecessor parsing. `ScheduleTab` passes new `allTasks` prop (full list) alongside the filtered `tasks`. Table's unsorted order now uses the same comparator (it lacked the start-date tie-break).
+  - Server port `utils/scheduleRowNumbers.ts` (briefing) — client test `__tests__/utils/rowNumbers.test.ts` asserts the two agree on a nested fixture.
+
 ## 2026-09-24 (Morning Briefing redesign — 2×2, two-line items, On Fire split)
 
 - **Client-only change** to `MorningBriefingWidget.tsx`; no server or data changes. User asked for two rows with more info per box.

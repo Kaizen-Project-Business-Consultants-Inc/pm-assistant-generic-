@@ -1057,6 +1057,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       {viewMode === 'gantt' && (
         <GanttChart
           tasks={filteredTasks}
+          allTasks={tasks}
           scheduleName={schedule.name}
           scheduleId={schedule.id}
           onTaskSelect={(task) => setActiveTaskId(task.id)}
@@ -1169,6 +1170,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       {viewMode === 'table' && (
         <TableView
           tasks={filteredTasks}
+          allTasks={tasks}
           scheduleId={schedule.id}
           reviewFlagMap={reviewFlagMap}
           onTaskSelect={(task) => setActiveTaskId(task.id)}

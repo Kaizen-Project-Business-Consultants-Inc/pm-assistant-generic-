@@ -28,6 +28,8 @@ export interface BaselineTaskVariance {
 
 export interface TableViewProps {
   tasks: GanttTask[];
+  /** The schedule's complete task list, when `tasks` is filtered — row numbers come from this */
+  allTasks?: GanttTask[];
   scheduleId: string;
   onTaskClick: (task: GanttTask) => void;
   onTaskSelect?: (task: GanttTask) => void;

@@ -16,6 +16,7 @@ import {
   daysBetween,
   formatShortDate,
   buildFlatRows,
+  buildRowNumberMap,
   barColors,
   ROW_H,
   HEADER_H,
@@ -95,8 +96,11 @@ export function GanttChart({
   onOpenReview,
   reviewActive,
   reviewFlagMap,
+  allTasks,
 }: {
   tasks: GanttTask[];
+  /** The schedule's complete task list, when `tasks` is filtered — row numbers come from this */
+  allTasks?: GanttTask[];
   scheduleName?: string;
   /** Schedule ID for persisting zoom level */
   scheduleId?: string;
@@ -850,12 +854,9 @@ export function GanttChart({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [selectedIds, onBulkDelete, handleBulkDelete, activeTaskId, onDeleteTask, tasks]);
 
-  // Row number map: taskId → 1-based row index
-  const rowNumMap = useMemo(() => {
-    const map = new Map<string, number>();
-    rows.forEach(({ task }, idx) => map.set(task.id, idx + 1));
-    return map;
-  }, [rows]);
+  // Fixed row numbers (MS Project-style ID): position in the full plan, unaffected by
+  // sort, filter, search or collapse
+  const rowNumMap = useMemo(() => buildRowNumberMap(allTasks ?? tasks), [allTasks, tasks]);
 
   // taskId → row index (0-based) for O(1) dependency arrow lookups
   const rowIdxMap = useMemo(() => {
@@ -1038,9 +1039,9 @@ export function GanttChart({
   // Reverse map: row number → taskId
   const rowNumToTaskId = useMemo(() => {
     const map = new Map<number, string>();
-    rows.forEach(({ task }, idx) => map.set(idx + 1, task.id));
+    for (const [taskId, n] of rowNumMap) map.set(n, taskId);
     return map;
-  }, [rows]);
+  }, [rowNumMap]);
 
   const parsePredecessorInput = useCallback((input: string, currentTaskId: string): { deps: Array<{ taskId: string; type: string; lag: number }> } | { error: string } => {
     const trimmed = input.trim();
