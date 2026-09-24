@@ -26,8 +26,6 @@ export function ProjectReadinessBar({ projectId, tasks, resources, methodology =
     localStorage.getItem(`${STORAGE_PREFIX}${projectId}`) === '1'
   );
 
-  if (dismissed) return null;
-
   const hasTasks = tasks.length > 0;
   const hasDependencies = tasks.some((t: any) => t.dependency || t.predecessors?.length > 0);
   const hasResources = resources.length > 0;
@@ -48,15 +46,20 @@ export function ProjectReadinessBar({ projectId, tasks, resources, methodology =
   const completedCount = steps.filter(s => s.done).length;
   const allComplete = completedCount === steps.length;
 
-  // Auto-dismiss after 3 seconds when all steps are complete
+  // Auto-dismiss after 3 seconds when all steps are complete. This hook must run on every
+  // render — the `dismissed` early return below used to sit above it, so dismissing changed
+  // the hook count and crashed the whole project page (React #300) 3s after the checklist
+  // completed.
   useEffect(() => {
-    if (!allComplete) return;
+    if (!allComplete || dismissed) return;
     const timer = setTimeout(() => {
       localStorage.setItem(`${STORAGE_PREFIX}${projectId}`, '1');
       setDismissed(true);
     }, 3000);
     return () => clearTimeout(timer);
-  }, [allComplete, projectId]);
+  }, [allComplete, dismissed, projectId]);
+
+  if (dismissed) return null;
 
   const handleDismiss = () => {
     localStorage.setItem(`${STORAGE_PREFIX}${projectId}`, '1');
