@@ -345,9 +345,23 @@ class ApiService {
   // Task endpoints
   // -------------------------------------------------------------------------
 
+  /**
+   * Every task in the schedule. The endpoint pages (max 200 per request, default 50), and
+   * callers — the Gantt, Table, row numbers — need the whole plan, so fetch all pages.
+   * Returns the same shape as a single page.
+   */
   async getTasks(scheduleId: string) {
-    const response = await this.api.get(`/schedules/${scheduleId}/tasks`);
-    return response.data;
+    const PAGE = 200;
+    const first = (await this.api.get(`/schedules/${scheduleId}/tasks`, { params: { limit: PAGE, offset: 0 } })).data;
+    const all = [...(first?.data ?? [])];
+    const total = Number(first?.total ?? all.length);
+    while (all.length < total) {
+      const next = (await this.api.get(`/schedules/${scheduleId}/tasks`, { params: { limit: PAGE, offset: all.length } })).data;
+      const rows = next?.data ?? [];
+      if (rows.length === 0) break;
+      all.push(...rows);
+    }
+    return { ...first, data: all, total, page: 1, pageSize: all.length, totalPages: 1 };
   }
 
   async createTask(

@@ -127,8 +127,8 @@ export class RecurrenceService {
           await databaseService.query(
             `INSERT INTO tasks (id, schedule_id, name, description, status, priority, assigned_to,
               estimated_days, start_date, end_date, progress_percentage, parent_task_id,
-              recurrence_parent_id, is_recurrence_template, created_by)
-             VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, 0, ?, ?, 0, ?)`,
+              recurrence_parent_id, is_recurrence_template, sort_order, created_by)
+             SELECT ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, 0, ?, ?, 0, COALESCE(MAX(sort_order), -1) + 1, ? FROM tasks WHERE schedule_id = ?`,
             [
               id,
               tpl.schedule_id,
@@ -142,6 +142,7 @@ export class RecurrenceService {
               tpl.parent_task_id || null,
               tpl.id,
               tpl.created_by,
+              tpl.schedule_id, // next free position in the schedule
             ]
           );
           created++;
@@ -203,8 +204,8 @@ export class RecurrenceService {
         await databaseService.query(
           `INSERT INTO tasks (id, schedule_id, name, description, status, priority, assigned_to,
             estimated_days, start_date, end_date, progress_percentage, parent_task_id,
-            recurrence_parent_id, is_recurrence_template, created_by)
-           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, 0, ?, ?, 0, ?)`,
+            recurrence_parent_id, is_recurrence_template, sort_order, created_by)
+           SELECT ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, 0, ?, ?, 0, COALESCE(MAX(sort_order), -1) + 1, ? FROM tasks WHERE schedule_id = ?`,
           [
             id,
             tpl.schedule_id,
@@ -218,6 +219,7 @@ export class RecurrenceService {
             tpl.parent_task_id || null,
             tpl.id,
             tpl.created_by,
+            tpl.schedule_id, // next free position in the schedule
           ]
         );
         created++;

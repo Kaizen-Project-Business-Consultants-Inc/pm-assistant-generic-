@@ -279,7 +279,8 @@ class DailyBriefingService {
     const rowNumbers = new Map<string, number>();
     if (scheduleIds.length > 0) {
       const scheduleTasks = await databaseService.query<any>(
-        `SELECT id, schedule_id AS scheduleId, parent_task_id AS parentTaskId, sort_order AS sortOrder, start_date AS startDate
+        `SELECT id, schedule_id AS scheduleId, parent_task_id AS parentTaskId, sort_order AS sortOrder, start_date AS startDate,
+                created_at AS createdAt
          FROM tasks WHERE schedule_id IN (${scheduleIds.map(() => '?').join(',')})`,
         scheduleIds
       );

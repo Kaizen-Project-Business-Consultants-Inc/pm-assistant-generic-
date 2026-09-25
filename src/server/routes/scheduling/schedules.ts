@@ -189,7 +189,12 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
-      const { limit, offset } = parsePagination(request.query as Record<string, unknown>);
+      let limit: number, offset: number;
+      try {
+        ({ limit, offset } = parsePagination(request.query as Record<string, unknown>));
+      } catch {
+        return reply.status(400).send({ error: 'Validation error', message: 'limit must be 1–200 and offset 0 or more' });
+      }
       const { rows, total } = await scheduleService.findTasksByScheduleIdPaginated(scheduleId, limit, offset);
       const page = Math.floor(offset / limit) + 1;
       return paginate(rows, total, page, limit);

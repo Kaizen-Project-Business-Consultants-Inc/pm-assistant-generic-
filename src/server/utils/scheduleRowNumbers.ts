@@ -3,7 +3,7 @@
  *
  * Mirrors the client's `buildFlatRows` (src/client/src/components/schedule/gantt/types.ts):
  * top-level tasks in sort order, each followed depth-first by its children, siblings ordered
- * by `sortOrder` then start date. `sortOrder` itself is NOT the row number — schedules number
+ * by `sortOrder`, start date, creation time, then id. `sortOrder` itself is NOT the row number — schedules number
  * it from 0 or 1 depending on how they were created, and it restarts under each parent.
  * If one of these changes, change the other.
  */
@@ -12,6 +12,7 @@ export interface RowNumberTask {
   parentTaskId?: string | null;
   sortOrder?: number | null;
   startDate?: string | null;
+  createdAt?: string | Date | null;
 }
 
 export function computeScheduleRowNumbers(tasks: RowNumberTask[]): Map<string, number> {
@@ -27,7 +28,13 @@ export function computeScheduleRowNumbers(tasks: RowNumberTask[]): Map<string, n
     const sa = a.sortOrder ?? 0;
     const sb = b.sortOrder ?? 0;
     if (sa !== sb) return sa - sb;
-    return String(a.startDate ?? '').localeCompare(String(b.startDate ?? ''));
+    const da = String(a.startDate ?? '').slice(0, 10);
+    const db = String(b.startDate ?? '').slice(0, 10);
+    if (da !== db) return da < db ? -1 : 1;
+    const ca = a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt ?? '');
+    const cb = b.createdAt instanceof Date ? b.createdAt.toISOString() : String(b.createdAt ?? '');
+    if (ca !== cb) return ca < cb ? -1 : 1;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
 
   const rowNumbers = new Map<string, number>();

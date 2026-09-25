@@ -153,7 +153,7 @@ export class TaskRepository {
 
   async findByScheduleId(scheduleId: string): Promise<Task[]> {
     const rows = await databaseService.query(
-      'SELECT * FROM tasks WHERE schedule_id = ? ORDER BY sort_order, created_at',
+      'SELECT * FROM tasks WHERE schedule_id = ? ORDER BY sort_order, created_at, id',
       [scheduleId],
     );
     const tasks = rows.map(rowToTask);
@@ -165,7 +165,7 @@ export class TaskRepository {
     const [countResult, rows] = await Promise.all([
       databaseService.query('SELECT COUNT(*) AS cnt FROM tasks WHERE schedule_id = ?', [scheduleId]),
       databaseService.query(
-        'SELECT * FROM tasks WHERE schedule_id = ? ORDER BY sort_order, created_at LIMIT ? OFFSET ?',
+        'SELECT * FROM tasks WHERE schedule_id = ? ORDER BY sort_order, created_at, id LIMIT ? OFFSET ?',
         [scheduleId, limit, offset],
       ),
     ]);

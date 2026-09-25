@@ -128,6 +128,13 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       const parentsToRecompute = new Set<string>();
 
       await databaseService.transaction(async (connection) => {
+        // Each task gets its own position (sort_order), after the schedule's existing tasks
+        // and in array order. Without this every bulk-created task got 0, so row order fell
+        // back to start date and a task's row number changed whenever its dates moved.
+        const maxRows = await databaseService.queryOn<{ max_order: number | null }>(
+          connection, 'SELECT COALESCE(MAX(sort_order), -1) AS max_order FROM tasks WHERE schedule_id = ?', [body.scheduleId]);
+        const firstSortOrder = Number(maxRows[0]?.max_order ?? -1) + 1;
+
         // Pass 1: insert every task. Batch-local refs (name/position) can't be
         // written yet — the tasks they point to may not have an id yet either,
         // if the reference points forward in the array.
@@ -141,8 +148,8 @@ export async function bulkRoutes(fastify: FastifyInstance) {
               `INSERT INTO tasks
                  (id, schedule_id, name, start_date, end_date, estimated_days, progress_percentage,
                   status, priority, assigned_to, dependency, dependency_type, comments, is_milestone,
-                  parent_task_id, created_by, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+                  parent_task_id, sort_order, created_by, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
               [
                 id,
                 body.scheduleId,
@@ -161,6 +168,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
                 t.comments || null,
                 t.isMilestone ? 1 : 0,
                 parentIsBatchRef ? null : (t.parentTaskId || null),
+                firstSortOrder + i,
                 user.userId,
               ],
             );

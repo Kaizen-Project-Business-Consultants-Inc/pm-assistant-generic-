@@ -1,5 +1,14 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24 (row numbers moved after linking — root cause; bulk.ts tenant-isolation hole)
+
+- **User report:** "I link 2 and 3 and 5 shows linked to 2". Not a linking bug: NSWMA was bulk-created via MCP and **every task had sort_order 0**, so order (and row numbers) fell back to start date; the link pushed "UI/UX" from Oct 12 to Oct 31 and it re-sorted from row 3 to row 5. Fixed row numbers need distinct sort_order.
+  - `POST /bulk/tasks` never set sort_order → now `MAX+1+i` in array order. `RecurrenceService` occurrences same → `INSERT … SELECT COALESCE(MAX(sort_order),-1)+1`. (`createTask` already did MAX+1.)
+  - **T054_unique_task_positions.sql**: renumbers only schedules with duplicate sibling positions, in today's display order (sort_order, start_date, created_at, id) — dry-run on staging michaela: 14 dup groups → 0, 60 rows, DBJ untouched. Auto-applies on restart.
+  - Tie-break made fully deterministic everywhere (client `compareOutlineOrder`, server `computeScheduleRowNumbers`, `TaskRepository` ORDER BY now ends `, id`) — ties previously depended on DB return order.
+  - **Latent:** schedule UI fetched `/schedules/:id/tasks` with no limit → server default **50**. Summary seed hid it for 10 min, then any refetch would drop tasks 51+. No schedule >50 on either server yet. `api.getTasks` now pages through all (200/page). `?limit>200` used to 500 → now 400.
+- **SECURITY — `routes/core/bulk.ts` used `connection.execute()` inside `databaseService.transaction()`** (4 calls, 2 of them for months) = the 2026-09-18 cross-tenant bug. The guard test only read `connection.ts`. Checked both servers: every tenant has the `tasks.schedule_id` FK and 0 orphan tasks → misrouted INSERTs were rejected (the "bulk create 500s"?), misrouted UPDATEs matched nothing (lost updates). No data crossed tenants. Fixed (`queryOn`) and the guard now scans all server files (commit `7cad7bdd`). See [CRITICAL-tenant-isolation-bug.md] in auto-memory.
+
 ## 2026-09-24 (adding links now moves dates; table row number shown once)
 
 - **User chose MS Project behaviour:** a new/changed predecessor pushes the task later if it now starts too early, plus its successors. Both paths: bulk link route and `PUT /tasks/:id` (when a dependency was gained/changed — compares id|type|lag). Reuses `ScheduleRecomputeService.recompute` with new `onlyFrom` scope (seeds + downstream only, so pre-existing violations elsewhere don't move). Rules unchanged: calendar days, keep length, pinned = completed/actual-dated, push later only. User answered: removing a link does **not** pull dates in; end-date cascade left as is.

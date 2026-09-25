@@ -40,6 +40,20 @@ describe('buildRowNumberMap (fixed, MS Project-style row numbers)', () => {
     expect(Object.fromEntries(rows)).toEqual({ phase1: 1, 'p1-a': 2, 'p1-b': 3, phase2: 4, 'p2-a': 5 });
   });
 
+  it('breaks full ties the same way every time, whatever order the tasks arrive in', () => {
+    // NSWMA case: bulk-created, every sortOrder 0, same start date, same second
+    const tied = [
+      task('zz', 0, { startDate: '2026-10-12', createdAt: '2026-09-24 17:15:11' } as any),
+      task('bb', 0, { startDate: '2026-10-12', createdAt: '2026-09-24 17:15:10' } as any),
+      task('aa', 0, { startDate: '2026-10-12', createdAt: '2026-09-24 17:15:11' } as any),
+    ];
+    const expected = { bb: 1, aa: 2, zz: 3 };
+    expect(Object.fromEntries(buildRowNumberMap(tied))).toEqual(expected);
+    expect(Object.fromEntries(buildRowNumberMap([...tied].reverse()))).toEqual(expected);
+    const server = computeScheduleRowNumbers([...tied].reverse().map(t => ({ id: t.id, sortOrder: 0, startDate: t.startDate, createdAt: (t as any).createdAt })));
+    expect(Object.fromEntries(server)).toEqual(expected);
+  });
+
   it('matches the server-side numbering used by the Morning Briefing', () => {
     const nested = [
       ...plan,

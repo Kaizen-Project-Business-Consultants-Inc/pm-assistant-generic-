@@ -82,14 +82,23 @@ export function formatShortDate(d: Date, referenceYear?: number): string {
   return d.toLocaleDateString(undefined, opts);
 }
 
-/** Sibling order in the plan itself: sortOrder, then start date. */
+/**
+ * Sibling order in the plan itself: sortOrder, then start date, then creation time, then
+ * id — fully deterministic, so two loads of the same data can never number rows
+ * differently. sortOrder is normally unique (T054); the rest only breaks legacy ties.
+ * Same order as src/server/utils/scheduleRowNumbers.ts and tenant migration T054.
+ */
 export function compareOutlineOrder(a: GanttTask, b: GanttTask): number {
   const sa = a.sortOrder ?? 0;
   const sb = b.sortOrder ?? 0;
   if (sa !== sb) return sa - sb;
   const da = toDate(a.startDate)?.getTime() ?? 0;
   const db = toDate(b.startDate)?.getTime() ?? 0;
-  return da - db;
+  if (da !== db) return da - db;
+  const ca = String((a as { createdAt?: string }).createdAt ?? '');
+  const cb = String((b as { createdAt?: string }).createdAt ?? '');
+  if (ca !== cb) return ca < cb ? -1 : 1;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
 /**
