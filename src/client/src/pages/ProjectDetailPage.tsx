@@ -132,11 +132,38 @@ export function ProjectDetailPage() {
     }
   }, [summaryData, id, queryClient]);
 
-  const project = summaryData?.project;
+  // Read what the page shows from the individual caches the summary seeds, not from the
+  // summary itself. Every edit (status, Edit Project, RAID items, tasks) invalidates those
+  // keys — ['project', id], ['project-risks-stats', id], ['tasks', scheduleId] — so reading
+  // the summary directly meant the header and cards only updated after a page refresh.
+  // Each query is enabled once its cache is seeded, so opening the page costs no extra
+  // requests; after that an invalidation refetches it.
+  const firstScheduleId: string | undefined = summaryData?.schedules?.[0]?.id;
+  const seeded = (key: unknown[]) => !!summaryData && queryClient.getQueryData(key) !== undefined;
+  const { data: projectData } = useQuery({
+    queryKey: ['project', id],
+    queryFn: () => apiService.getProject(id!),
+    enabled: !!id && seeded(['project', id]),
+    staleTime: 60_000,
+  });
+  const { data: riskStatsData } = useQuery({
+    queryKey: ['project-risks-stats', id],
+    queryFn: () => apiService.getRiskStats(id!),
+    enabled: !!id && seeded(['project-risks-stats', id]),
+    staleTime: 60_000,
+  });
+  const { data: tasksData } = useQuery({
+    queryKey: ['tasks', firstScheduleId],
+    queryFn: () => apiService.getTasks(firstScheduleId!),
+    enabled: !!firstScheduleId && seeded(['tasks', firstScheduleId]),
+    staleTime: 60_000,
+  });
 
-  const riskStats = summaryData?.riskStats;
+  const project = projectData?.project ?? summaryData?.project;
 
-  const readinessTasks: any[] = summaryData?.tasks || [];
+  const riskStats = riskStatsData?.data ?? summaryData?.riskStats;
+
+  const readinessTasks: any[] = tasksData?.data ?? summaryData?.tasks ?? [];
 
   const { data: readinessResourcesData } = useQuery({
     queryKey: ['resources'],
