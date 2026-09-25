@@ -374,8 +374,11 @@ export class ScheduleFixProposerService {
           created.push(child.id);
           after = child.id;
         }
+        // A milestone part (approval, sign-off) happens the day the work before it finishes,
+        // so that link is finish-to-finish; finish-to-start would push it a day later and
+        // stretch the summary past the task's own end.
         for (let i = 1; i < created.length; i++) {
-          await scheduleService.addDependency(created[i], created[i - 1], 'FS', 0);
+          await scheduleService.addDependency(created[i], created[i - 1], planned[i].isMilestone ? 'FF' : 'FS', 0);
         }
         const first = created[0];
         const last = created[created.length - 1];

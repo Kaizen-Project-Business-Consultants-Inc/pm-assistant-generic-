@@ -195,6 +195,21 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             if (resolvedId) {
               await databaseService.queryOn(connection, `UPDATE tasks SET dependency = ? WHERE id = ?`, [resolvedId, selfId]);
             }
+            // The link itself lives in task_dependencies — that is what the schedule, critical
+            // path, review and re-flow read. Until 2026-09-25 bulk create only wrote the legacy
+            // `dependency` column, so every link made this way (e.g. by the MCP connector) was
+            // stored but invisible. An external id must be a task in this schedule.
+            let depId = resolvedId;
+            if (!depId && depIndex === undefined) {
+              const found = await databaseService.queryOn<{ id: string }>(connection,
+                'SELECT id FROM tasks WHERE id = ? AND schedule_id = ?', [t.dependency, body.scheduleId]);
+              depId = found[0]?.id;
+            }
+            if (depId && depId !== selfId) {
+              await databaseService.queryOn(connection,
+                `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES (?, ?, ?, ?, 0)`,
+                [uuidv4(), selfId, depId, t.dependencyType || 'FS']);
+            }
           }
 
           if (t.parentTaskId) {

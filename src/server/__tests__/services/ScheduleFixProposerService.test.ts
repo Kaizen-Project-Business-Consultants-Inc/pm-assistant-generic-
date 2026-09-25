@@ -194,7 +194,7 @@ describe('ScheduleFixProposerService', () => {
 
     expect(scheduleService.createTask).toHaveBeenNthCalledWith(1, expect.objectContaining({ name: 'Circulate BRD', parentTaskId: 'brd', afterTaskId: 'brd', startDate: '2026-10-01', endDate: '2026-10-10', isMilestone: false, assignedTo: 'Ann' }));
     expect(scheduleService.createTask).toHaveBeenNthCalledWith(2, expect.objectContaining({ name: 'BRD approved', parentTaskId: 'brd', afterTaskId: 'part-1', startDate: '2026-10-10', endDate: '2026-10-10', isMilestone: true, estimatedDays: 0 }));
-    expect(scheduleService.addDependency).toHaveBeenCalledWith('part-2', 'part-1', 'FS', 0);  // parts in order
+    expect(scheduleService.addDependency).toHaveBeenCalledWith('part-2', 'part-1', 'FF', 0);  // milestone lands the day the work finishes
     expect(scheduleService.addDependency).toHaveBeenCalledWith('part-1', 'pre', 'FS', 0);     // predecessor moved to the first part
     expect(scheduleService.removeDependency).toHaveBeenCalledWith('brd', 'pre');
     expect(scheduleService.addDependency).toHaveBeenCalledWith('des', 'part-2', 'FS', 2);     // successor now waits on the last part, lag kept
