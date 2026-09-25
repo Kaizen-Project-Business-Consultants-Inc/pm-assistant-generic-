@@ -321,3 +321,7 @@ sudo iptables -L INPUT -n --line-numbers
 - [ ] Service is active: `sudo systemctl is-active pm-app`
 - [ ] Site loads at https://pm.kpbc.ca
 - [ ] Health check passes: `curl https://pm.kpbc.ca/health`
+
+## Open tabs and new deploys
+
+Every client build gets an id (`vite.config.ts` → `__APP_BUILD__`) and ships `/version.json` (`{"build": "<id>"}`) at the site root, uploaded with the rest of the client. Open tabs fetch it every minute and on tab focus (`src/client/src/utils/appUpdate.ts`); on a mismatch they show a banner and reload on the next in-app navigation (at most once per build automatically; "Reload now" always works). This replaced relying on the service worker's auto-update, which did not reload open tabs. Nginx already sends `no-store` for the entry files; `version.json` is fetched with `cache: 'no-store'` and a cache-busting query.

@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-25 (briefing hides archived projects; open tabs pick up new deploys)
+
+- **Morning Briefing** excluded nothing archived — it linked into PRJ-002 (archived 2026-09-16) and the "[TO ARCHIVE]" NSWMA copies. All 10 queries now join `projects` with `p.archived_at IS NULL`; test asserts it.
+- **Open tabs never updated** after deploys: the service worker's autoUpdate reload didn't fire (nginx already no-store; a reload alone would have worked). New: build id → `/version.json` + `__APP_BUILD__`; `utils/appUpdate.ts` polls every 60 s + on focus; `AppUpdateBanner` (inside Router) shows a purple banner and reloads on the next route change (once per build; button forces). Old SW toast code left in place (unused in autoUpdate mode).
+- **NSWMA** (user approved): restored the 16 hidden bulk-created links (direct SQL, cycle-checked, not audited), then re-flowed by re-applying the 5 violated links through bulk-link (audited): 14 tasks moved, plan end Feb 26 → Mar 3 2027.
+
 ## 2026-09-25 (Schedule Review Phase 2 — AI split / missing-phase suggestions)
 
 - User's splitting rule (played back and confirmed): several verbs = think, not auto-split. Split independent actions (hand-off, approval by someone else, separately trackable); keep one continuous activity ("Update and final review BRD"). Approvals → milestones. Applies to **every** task, not only long ones. Missing phase → **one linked task** (my default; user can ask for a phase with starter tasks instead).

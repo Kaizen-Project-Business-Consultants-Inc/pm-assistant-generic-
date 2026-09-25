@@ -3844,3 +3844,7 @@ Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox s
 - **Error reporting** -- If you encounter a crash (error boundary), a "Report this issue" link lets you email the error details directly to support.
 - **Administrators** -- See the [Admin Manual](./ADMIN_MANUAL.md) for system configuration and deployment.
 - **API access** -- Generate an API key in Settings to integrate with external tools.
+
+### Getting new versions
+
+When a new version of Kovarti is released while you have it open, a purple banner appears at the top: **"A new version of Kovarti is ready."** The new version loads by itself the next time you move to another page, so nothing you are typing is lost — or click **Reload now**. You no longer need to press Ctrl+Shift+R.

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ROUTES, ROUTE_PATTERNS } from './routes';
 import { useAuthStore } from './stores/authStore';
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
+import { AppUpdateBanner } from './components/AppUpdateBanner';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { apiService } from './services/api';
 import AppLayout from './components/layout/AppLayout';
@@ -139,6 +140,7 @@ function App() {
   return (
     <AccessibilityProvider>
     <Router>
+      <AppUpdateBanner />
       <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
       <Routes>

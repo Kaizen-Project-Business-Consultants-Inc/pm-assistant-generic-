@@ -6,9 +6,23 @@ import path from 'path';
 // `mode` is Vite's own — 'production' for `vite build`, 'development' for the
 // dev server. Checking process.env.NODE_ENV here would not be reliable: Vite
 // loads this file before it settles that variable.
+// One id per build: baked into the bundle and shipped as /version.json, so open tabs can
+// tell a newer deploy is live (src/client/src/utils/appUpdate.ts).
+const BUILD_ID = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
 export default defineConfig(({ mode }) => ({
+  define: {
+    __APP_BUILD__: JSON.stringify(mode === 'production' ? BUILD_ID : 'dev'),
+  },
   plugins: [
     react(),
+    {
+      name: 'emit-version-json',
+      apply: 'build',
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD_ID }) });
+      },
+    },
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',

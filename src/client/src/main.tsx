@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
+import { setServiceWorkerRegistration, startAppUpdateChecks } from './utils/appUpdate';
+
+// Notice new deploys in open tabs (see utils/appUpdate.ts) — independent of the service worker
+startAppUpdateChecks();
 import './index.css';
 
 registerSW({
@@ -36,6 +40,7 @@ registerSW({
     // Silently ready for offline use
   },
   onRegisteredSW(_swUrl, registration) {
+    setServiceWorkerRegistration(registration);
     if (registration) {
       // Check for SW updates every 60 seconds
       setInterval(() => { registration.update(); }, 60 * 1000);
