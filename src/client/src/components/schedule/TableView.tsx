@@ -1968,7 +1968,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
                 <tr key={emptyRowKey} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                   <td className="px-2 py-2" />
                   {visibleColumns.map((col) => (
-                    <td key={col.key} className="px-3 py-2" style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}>
+                    <td key={col.key} className={`px-3 py-2${col.key === 'rowNum' ? ' text-center' : ''}`} style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}>
                       {col.key === 'rowNum' ? (
                         <span className="text-xs font-medium text-gray-300 dark:text-gray-600">{rowNumMap.size + i + 1}</span>
                       ) : col.key === 'name' ? (
