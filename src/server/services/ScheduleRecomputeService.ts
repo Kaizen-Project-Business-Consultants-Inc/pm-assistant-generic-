@@ -1,6 +1,47 @@
 import { scheduleService } from './ScheduleService';
 import { taskRepository } from '../database/TaskRepository';
 import logger from '../utils/logger';
+import { auditLedgerService } from './AuditLedgerService';
+import { deadLetterService } from './DeadLetterService';
+import { getRequestContext, getActorSource } from '../middleware/requestContext';
+
+/** Why dates moved — recorded on every task.reschedule audit entry */
+export type RescheduleReason = 'link_added' | 'schedule_review_fix' | 'undo';
+
+/**
+ * One audit entry per moved task (action `task.reschedule`), with before/after dates.
+ * The ledger is a hash chain, so entries are appended one after another, in the
+ * background — the request doesn't wait for them.
+ */
+function auditMoves(
+  scheduleId: string,
+  moves: Array<{ taskId: string; name?: string; oldStart: string | null; oldEnd: string | null; newStart: string | null; newEnd: string | null }>,
+  reason: RescheduleReason,
+): void {
+  if (moves.length === 0) return;
+  const actorId = getRequestContext()?.userId ?? 'system';
+  const source = getActorSource();
+  void (async () => {
+    const schedule = await scheduleService.findById(scheduleId).catch(() => null);
+    for (const m of moves) {
+      await auditLedgerService.append({
+        actorId,
+        actorType: actorId === 'system' ? 'system' : 'user',
+        action: 'task.reschedule',
+        entityType: 'task',
+        entityId: m.taskId,
+        projectId: schedule?.projectId ?? null,
+        payload: {
+          reason,
+          taskName: m.name,
+          before: { startDate: m.oldStart, endDate: m.oldEnd },
+          after: { startDate: m.newStart, endDate: m.newEnd },
+        },
+        source,
+      }).catch(err => deadLetterService.capture('audit.append', {}, err));
+    }
+  })().catch(err => logger.warn('[ScheduleRecompute] audit failed', { error: err?.message }));
+}
 
 /**
  * Recomputes task dates from dependencies + durations after structural fixes are
@@ -75,7 +116,7 @@ export class ScheduleRecomputeService {
    *   move — a pre-existing violation elsewhere in the schedule is left alone). Omit to
    *   re-flow the whole schedule (Schedule Review "apply fixes").
    */
-  async recompute(scheduleId: string, opts: { onlyFrom?: string[] } = {}): Promise<RecomputeResult> {
+  async recompute(scheduleId: string, opts: { onlyFrom?: string[]; reason?: RescheduleReason } = {}): Promise<RecomputeResult> {
     const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
     const nodes = new Map<string, Node>();
     for (const t of tasks) {
@@ -165,6 +206,8 @@ export class ScheduleRecomputeService {
         logger.warn('[ScheduleRecompute] rollup failed', { parentId, error: err?.message }));
     }
 
+    auditMoves(scheduleId, deltas, opts.reason ?? (opts.onlyFrom ? 'link_added' : 'schedule_review_fix'));
+
     const endsBefore = leaves.map(n => n.end).filter(Boolean) as Date[];
     const endsAfter = leaves.map(n => newEnd.get(n.id)).filter(Boolean) as Date[];
     const projectEndBefore = endsBefore.length ? ymd(new Date(Math.max(...endsBefore.map(d => d.getTime())))) : null;
@@ -243,14 +286,16 @@ export async function restoreTaskDates(
   const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
   const byId = new Map(tasks.map(t => [t.id, t]));
   const parents = new Set<string>();
-  let restored = 0;
+  const moves: Parameters<typeof auditMoves>[1] = [];
   for (const d of dates) {
     const t = byId.get(d.taskId);
     if (!t || !d.startDate || !d.endDate) continue;
     await taskRepository.updateDates(d.taskId, d.startDate, d.endDate);
-    restored++;
+    moves.push({ taskId: t.id, name: t.name, oldStart: t.startDate ? String(t.startDate).slice(0, 10) : null, oldEnd: t.endDate ? String(t.endDate).slice(0, 10) : null, newStart: d.startDate, newEnd: d.endDate });
     if (t.parentTaskId) parents.add(t.parentTaskId);
   }
+  const restored = moves.length;
+  auditMoves(scheduleId, moves, 'undo');
   for (const p of parents) {
     await scheduleService.recomputeParentRollup(p).catch((err: any) =>
       logger.warn('[ScheduleRecompute] rollup failed', { parentId: p, error: err?.message }));

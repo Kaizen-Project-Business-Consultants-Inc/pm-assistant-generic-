@@ -7,8 +7,17 @@ vi.mock('../../database/TaskRepository', () => ({
 
 const findTasksByScheduleId = vi.fn();
 const recomputeParentRollup = vi.fn().mockResolvedValue(undefined);
+const findById = vi.fn().mockResolvedValue({ id: 's1', projectId: 'p1' });
 vi.mock('../../services/ScheduleService', () => ({
-  scheduleService: { findTasksByScheduleId, recomputeParentRollup },
+  scheduleService: { findTasksByScheduleId, recomputeParentRollup, findById },
+}));
+
+const append = vi.fn().mockResolvedValue({});
+vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { append } }));
+vi.mock('../../services/DeadLetterService', () => ({ deadLetterService: { capture: vi.fn() } }));
+vi.mock('../../middleware/requestContext', () => ({
+  getRequestContext: () => ({ userId: 'u-1' }),
+  getActorSource: () => 'web',
 }));
 
 function task(over: any) {
@@ -56,6 +65,34 @@ describe('ScheduleRecomputeService', () => {
     expect(updateDates).not.toHaveBeenCalledWith('X', expect.anything(), expect.anything());
   });
 
+  it('records every moved task in the audit trail with before/after dates and the reason', async () => {
+    const fs = (id: string) => [{ dependencyId: id, dependencyType: 'FS', lagDays: 0 }];
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' });
+    const B = task({ id: 'B', startDate: '2026-10-05', endDate: '2026-10-07', dependencies: fs('A') });
+    const C = task({ id: 'C', startDate: '2026-10-08', endDate: '2026-10-09', dependencies: fs('B') });
+    findTasksByScheduleId.mockResolvedValue([A, B, C]);
+    const { scheduleRecomputeService } = await import('../../services/ScheduleRecomputeService');
+    await scheduleRecomputeService.recompute('s1', { onlyFrom: ['B'] });
+    await vi.waitFor(() => expect(append).toHaveBeenCalledTimes(2));
+    expect(append).toHaveBeenCalledWith(expect.objectContaining({
+      actorId: 'u-1', actorType: 'user', action: 'task.reschedule', entityType: 'task', entityId: 'B', projectId: 'p1', source: 'web',
+      payload: expect.objectContaining({
+        reason: 'link_added',
+        before: { startDate: '2026-10-05', endDate: '2026-10-07' },
+        after: { startDate: '2026-10-10', endDate: '2026-10-12' },
+      }),
+    }));
+    expect(append.mock.calls.map(c => c[0].entityId)).toEqual(['B', 'C']);
+  });
+
+  it('records nothing when no task moves', async () => {
+    findTasksByScheduleId.mockResolvedValue([task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' })]);
+    const { scheduleRecomputeService } = await import('../../services/ScheduleRecomputeService');
+    await scheduleRecomputeService.recompute('s1');
+    await new Promise(r => setTimeout(r, 10));
+    expect(append).not.toHaveBeenCalled();
+  });
+
   it('restoreTaskDates puts tasks back, only within the schedule', async () => {
     findTasksByScheduleId.mockResolvedValue([task({ id: 'B', parentTaskId: 'P' })]);
     const { restoreTaskDates } = await import('../../services/ScheduleRecomputeService');
@@ -67,6 +104,8 @@ describe('ScheduleRecomputeService', () => {
     expect(updateDates).toHaveBeenCalledTimes(1);
     expect(updateDates).toHaveBeenCalledWith('B', '2026-10-05', '2026-10-07');
     expect(recomputeParentRollup).toHaveBeenCalledWith('P');
+    await vi.waitFor(() => expect(append).toHaveBeenCalledTimes(1));
+    expect(append.mock.calls[0][0]).toMatchObject({ action: 'task.reschedule', entityId: 'B', payload: { reason: 'undo', after: { startDate: '2026-10-05', endDate: '2026-10-07' } } });
   });
 
   it('leaves a task that already satisfies its predecessor untouched', async () => {
