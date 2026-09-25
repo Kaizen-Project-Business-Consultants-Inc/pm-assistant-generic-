@@ -92,6 +92,9 @@ class DailyBriefingService {
     const actionAssignedFilter = isRestricted ? 'AND mai.assignee_user_id = ?' : '';
     const actionAssignedParams = isRestricted ? [userId] : [];
 
+    // Every section joins projects with `p.archived_at IS NULL`: an archived project must not
+    // appear — the briefing used to link straight into archived projects, so a PM could work in
+    // one without knowing it was archived (it was hidden from the Projects list).
     const [
       proposals,
       changeRequests,
@@ -108,7 +111,7 @@ class DailyBriefingService {
       // Pending proposals
       databaseService.query<any>(
         `SELECT COUNT(*) AS cnt FROM agent_proposals ap
-         JOIN projects p ON ap.project_id = p.id
+         JOIN projects p ON ap.project_id = p.id AND p.archived_at IS NULL
          ${memberJoin}
          WHERE ap.status = 'pending'`,
         [...memberParams]
@@ -118,7 +121,7 @@ class DailyBriefingService {
         `SELECT cr.id, cr.title, p.name AS projectName, p.id AS projectId,
                 COALESCE(p.project_code, '') AS projectCode, cr.priority
          FROM change_requests cr
-         JOIN projects p ON cr.project_id = p.id
+         JOIN projects p ON cr.project_id = p.id AND p.archived_at IS NULL
          ${memberJoin}
          WHERE cr.status IN ('pending', 'in_review')
          ORDER BY cr.created_at DESC LIMIT 10`,
@@ -139,7 +142,7 @@ class DailyBriefingService {
                 ${resourceSelect}
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
          ${resourceJoin}
          ${assignedJoin}
          ${memberJoin}
@@ -159,7 +162,7 @@ class DailyBriefingService {
                 ${resourceSelect}
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
          ${resourceJoin}
          ${assignedJoin}
          ${memberJoin}
@@ -178,7 +181,7 @@ class DailyBriefingService {
                 ${resourceSelect}
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
          ${resourceJoin}
          ${assignedJoin}
          ${memberJoin}
@@ -194,7 +197,7 @@ class DailyBriefingService {
                 COALESCE(p.project_code, '') AS projectCode, pr.severity, pr.type,
                 pr.owner_id AS ownerId, ores.name AS ownerResourceName, pr.owner_name AS ownerText
          FROM project_risks pr
-         JOIN projects p ON pr.project_id = p.id
+         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL
          LEFT JOIN resources ores ON ores.id = pr.owner_resource_id
          ${memberJoin}
          WHERE pr.severity IN ('critical', 'high')
@@ -211,7 +214,7 @@ class DailyBriefingService {
                 DATEDIFF(t.end_date, CURDATE()) AS daysUntil
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
          ${assignedJoin}
          ${memberJoin}
          WHERE t.is_milestone = 1
@@ -227,7 +230,7 @@ class DailyBriefingService {
                 DATEDIFF(CURDATE(), mai.due_date) AS overdueDays,
                 mai.assignee_name AS resourceName
          FROM meeting_action_items mai
-         JOIN projects p ON mai.project_id = p.id
+         JOIN projects p ON mai.project_id = p.id AND p.archived_at IS NULL
          ${memberJoin}
          WHERE mai.due_date < CURDATE()
            AND mai.status NOT IN ('completed', 'cancelled')
@@ -246,7 +249,7 @@ class DailyBriefingService {
          JOIN tasks t ON td.task_id = t.id
          JOIN tasks pred ON td.dependency_id = pred.id
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
          ${resourceJoin}
          ${assignedJoin}
          ${memberJoin}
@@ -263,7 +266,7 @@ class DailyBriefingService {
         `SELECT pr.id, pr.title, pr.severity, p.id AS projectId, p.name AS projectName,
                 COALESCE(p.project_code, '') AS projectCode
          FROM project_risks pr
-         JOIN projects p ON pr.project_id = p.id
+         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL
          ${memberJoin}
          WHERE pr.type = 'issue'
            AND pr.status NOT IN ('resolved', 'closed', 'cancelled', 'mitigated')

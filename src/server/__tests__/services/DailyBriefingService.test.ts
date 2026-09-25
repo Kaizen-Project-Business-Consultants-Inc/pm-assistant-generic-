@@ -262,6 +262,14 @@ describe('DailyBriefingService', () => {
       expect(rowQuery[1]).toEqual(['s-1']);
     });
 
+    it('leaves archived projects out of every section', async () => {
+      setupDefaultResults();
+      await dailyBriefingService.getDailyBriefing('user-1', 'admin');
+      const sqls = queryMock.mock.calls.map(c => String(c[0])).filter(q => /JOIN projects p/.test(q));
+      expect(sqls.length).toBe(10); // every tenant query that touches projects
+      for (const q of sqls) expect(q).toContain('p.archived_at IS NULL');
+    });
+
     it('skips the row-number query when no task is in the briefing', async () => {
       setupDefaultResults();
       await dailyBriefingService.getDailyBriefing('user-1', 'admin');
