@@ -1,7 +1,7 @@
 import { databaseService } from './connection';
 import type { Band, Finding, Severity, SkippedRule } from '../services/scheduleReview/rules';
 
-export type ReviewTrigger = 'import' | 'manual' | 'agent' | 'post_proposal';
+export type ReviewTrigger = 'import' | 'manual' | 'agent' | 'post_proposal' | 'auto';
 
 export interface ScheduleReviewRecord {
   id: string;

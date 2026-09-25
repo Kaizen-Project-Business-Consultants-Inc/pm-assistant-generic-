@@ -1,5 +1,14 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-25 (Schedule Review re-runs itself; project page refresh; AI Reschedule findable & fixed)
+
+- **Schedule Review auto re-run** (user asked): `queueReviewRerun(scheduleId)` from `ScheduleService.createTask/updateTask/deleteTask` and all four `routes/core/bulk.ts` handlers; per-schedule 20 s debounce, `trigger='auto'` (VARCHAR column, no migration), broadcasts `schedule_updated {scheduleId, reviewUpdated}`; client `useWebSocket` now invalidates `['schedule-review', id]` (and tasks/criticalPath for other schedule_updated). No AI — rules only. **Note:** each run inserts a `schedule_reviews` row, so the history grows one row per editing burst.
+- **Project page needed a refresh after edits** — page read `['project-summary']` while edits invalidate `['project']`, `['project-risks-stats']`, `['tasks', sid]`. Now reads those (enabled once seeded).
+- **AI Reschedule unreachable** — Gantt toolbar didn't wrap (⋮ menu off-screen < ~1760 px), Table got `overflowMenu={null}`. Toolbar wraps, menu shared, plus a labelled purple **AI Reschedule** button.
+- **AI Reschedule detection** dropped overdue 0%-progress tasks (negative remaining × 2 → estimate in the past); now assumes full duration from today. Panel showed "-27d" → "27 days late".
+- **User's browser runs a stale service-worker copy** — no JS chunk requests in nginx for their IP; they need Ctrl+Shift+R after deploys. Offered to make updates reliable; not done yet.
+- PRJ-002 DBJ-Loans (archived since 2026-09-16, still reachable from Morning Briefing links, where the user was working) **unarchived at user's request**. Briefing still includes archived projects — fix paused when user said stop.
+
 ## 2026-09-24 (row numbers moved after linking — root cause; bulk.ts tenant-isolation hole)
 
 - **User report:** "I link 2 and 3 and 5 shows linked to 2". Not a linking bug: NSWMA was bulk-created via MCP and **every task had sort_order 0**, so order (and row numbers) fell back to start date; the link pushed "UI/UX" from Oct 12 to Oct 31 and it re-sorted from row 3 to row 5. Fixed row numbers need distinct sort_order.

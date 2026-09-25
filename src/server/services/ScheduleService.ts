@@ -13,6 +13,7 @@ import { resourceService } from './ResourceService';
 import { userService } from './UserService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import { findDependencyCycle } from '../utils/dependencyCycle';
+import { queueReviewRerun } from './scheduleReview/autoRerun';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 
 export interface Schedule {
@@ -757,6 +758,7 @@ export class ScheduleService {
       this.autoAddAssigneeToTeam(data.assignedTo, schedule.projectId).catch(() => {});
     }
 
+    queueReviewRerun(data.scheduleId);
     return task;
   }
 
@@ -1002,6 +1004,7 @@ export class ScheduleService {
       }
     }
 
+    queueReviewRerun(oldTask.scheduleId);
     return updated;
   }
 
@@ -1025,6 +1028,7 @@ export class ScheduleService {
     });
 
     if (deleted && existing) {
+      queueReviewRerun(existing.scheduleId);
       // Recompute parent rollup after child deletion
       if (existing.parentTaskId) {
         await this.recomputeParentRollup(existing.parentTaskId).catch(err =>

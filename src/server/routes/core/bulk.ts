@@ -6,6 +6,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { scheduleService } from '../../services/ScheduleService';
 import logger from '../../utils/logger';
+import { queueReviewRerun } from '../../services/scheduleReview/autoRerun';
 
 const MAX_BULK = 100;
 
@@ -214,6 +215,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
           logger.error('[Rollup] recomputeParentRollup error on bulk create:', err));
       }
 
+      queueReviewRerun(body.scheduleId);
       return { succeeded, failed };
     } catch (error) {
       // A malformed request (wrong field names, missing scheduleId) is the
@@ -290,6 +292,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         }
       });
 
+      for (const sid of new Set(body.updates.filter(u => succeeded.some(sx => sx.id === u.id)).map(u => u.scheduleId))) queueReviewRerun(sid);
       return { succeeded, failed };
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -330,6 +333,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       const header = result as any;
       const updated = header?.affectedRows ?? body.taskIds.length;
 
+      queueReviewRerun(body.scheduleId);
       return { updated };
     } catch (error) {
       logger.error('Batch status update error', { error });
@@ -385,6 +389,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
           logger.error('[Rollup] recomputeParentRollup error on bulk delete:', err));
       }
 
+      queueReviewRerun(body.scheduleId);
       return { deleted: existing.length };
     } catch (error) {
       logger.error('Bulk delete tasks error', { error });

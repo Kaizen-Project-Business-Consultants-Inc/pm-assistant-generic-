@@ -179,13 +179,24 @@ export function useWebSocket() {
                 }, 500);
                 break;
               }
-              case 'schedule_updated':
+              case 'schedule_updated': {
                 queryClient.invalidateQueries({ queryKey: ['schedules'] });
+                // Scoped to the schedule when the server says which one (bulk links, date
+                // re-flows, the automatic Schedule Review re-run)
+                const sid = message.payload?.scheduleId;
+                if (sid) {
+                  queryClient.invalidateQueries({ queryKey: ['schedule-review', sid] });
+                  if (!message.payload?.reviewUpdated) {
+                    queryClient.invalidateQueries({ queryKey: ['tasks', sid] });
+                    queryClient.invalidateQueries({ queryKey: ['criticalPath', sid] });
+                  }
+                }
                 if (portfolioDebounce) clearTimeout(portfolioDebounce);
                 portfolioDebounce = setTimeout(() => {
                   queryClient.invalidateQueries({ queryKey: ['portfolio'] });
                 }, 500);
                 break;
+              }
               case 'status_report_ready': {
                 window.dispatchEvent(new CustomEvent('ws:status_report_ready', {
                   detail: message.payload,
