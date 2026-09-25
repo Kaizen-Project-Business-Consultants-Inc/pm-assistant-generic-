@@ -15,6 +15,7 @@ import {
   Download,
   Trash2,
   MoreVertical,
+  Sparkles,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { GanttChart, type GanttTask } from '../../components/schedule/GanttChart';
@@ -1046,7 +1047,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
 
   // One "More actions" menu (baselines, scenarios, import/export, AI Reschedule, Level
   // Resources) shared by the Gantt and Table toolbars — the Table used to get none.
-  const scheduleOverflowMenu = canEdit ? (
+  const scheduleMoreMenu = canEdit ? (
       <ScheduleOverflowMenu
         schedule={schedule}
         projectId={projectId}
@@ -1084,6 +1085,22 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           setShowScenarioPrompt(true);
         }}
       />
+  ) : undefined;
+  // AI Reschedule gets its own labelled button next to the menu, in the AI colour — it was
+  // only inside the unlabelled ⋮ menu and the user couldn't find it.
+  const scheduleOverflowMenu = canEdit ? (
+    <>
+      <button
+        type="button"
+        onClick={() => setShowReschedulePanel(true)}
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md bg-ai-primary text-white hover:bg-ai-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-ai-border focus-visible:ring-offset-1 whitespace-nowrap"
+        title="Let AI suggest new dates for late or at-risk tasks"
+      >
+        <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+        AI Reschedule
+      </button>
+      {scheduleMoreMenu}
+    </>
   ) : undefined;
 
   return (
