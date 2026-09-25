@@ -450,7 +450,8 @@ Select multiple tasks to perform bulk operations:
   - **Link in order** -- chains the selected tasks by row number: each one waits for the one above it (Finish-to-Start). Selecting rows 4, 5 and 6 makes 5 wait on 4 and 6 wait on 5. The order you clicked them in doesn't matter.
   - **All wait on it** -- type a row in the **Row #** box (e.g. `3`, or `3SS`, `3FS+2d` for a type and lag) and every selected task waits for that row, e.g. "all of Task 2 waits on Gate 1".
   - **It waits on all** -- the row you typed waits for every selected task, e.g. "Gate 2 can't happen until these six tasks finish".
-  - Links are **added**: existing links are kept, and a link that already exists isn't duplicated. If the new links would create a loop (e.g. row 6 already leads to row 9), **nothing is linked** and you're told which rows form the loop. A task can have at most 20 predecessors. **Undo** removes the whole batch in one step. Adding links doesn't move any dates.
+  - Links are **added**: existing links are kept, and a link that already exists isn't duplicated. If the new links would create a loop (e.g. row 6 already leads to row 9), **nothing is linked** and you're told which rows form the loop. A task can have at most 20 predecessors. **Undo** removes the whole batch in one step and puts any moved dates back.
+  - **Dates move like MS Project.** When a task gets a new predecessor (from these buttons or by typing in its Predecessor cell), and it now starts earlier than that link allows, it is pushed later, and so is everything after it. Tasks keep their length, only ever move later, and completed tasks or tasks with an actual start/finish never move. Only the tasks you linked and the tasks after them can move. Days are calendar days (weekends are not skipped). The message tells you how many moved, e.g. "Linked rows 4 → 5 → 6 · 3 tasks moved later". Removing a link never pulls dates earlier.
 
 ---
 

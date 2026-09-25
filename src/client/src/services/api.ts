@@ -1,5 +1,16 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
+/** A task moved by the date re-flow after links were added */
+export interface RescheduledTask {
+  taskId: string;
+  name: string;
+  oldStart: string | null;
+  oldEnd: string | null;
+  newStart: string;
+  newEnd: string;
+  movedDays: number;
+}
+
 class ApiService {
   private api: AxiosInstance;
 
@@ -2896,7 +2907,18 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   /** Add several links at once — all-or-nothing; returns the links actually added (for undo). */
   async bulkLinkTasks(scheduleId: string, links: Array<{ taskId: string; dependencyId: string; dependencyType?: string; lagDays?: number }>) {
     const response = await this.api.post(`/schedules/${scheduleId}/dependencies/bulk`, { links });
-    return response.data as { added: Array<{ taskId: string; dependencyId: string; dependencyType: string; lagDays: number }>; skipped: number };
+    return response.data as {
+      added: Array<{ taskId: string; dependencyId: string; dependencyType: string; lagDays: number }>;
+      skipped: number;
+      /** Tasks pushed later because of the new links (with their previous dates, for undo) */
+      moved: RescheduledTask[];
+    };
+  }
+
+  /** Undo of a link re-flow: put tasks back on their previous dates */
+  async restoreTaskDates(scheduleId: string, dates: Array<{ taskId: string; startDate: string | null; endDate: string | null }>) {
+    const response = await this.api.post(`/schedules/${scheduleId}/tasks/restore-dates`, { dates });
+    return response.data as { restored: number };
   }
 
   async bulkUnlinkTasks(scheduleId: string, links: Array<{ taskId: string; dependencyId: string }>) {

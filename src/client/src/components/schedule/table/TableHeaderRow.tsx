@@ -48,7 +48,7 @@ export const TableHeaderRow = React.memo(function TableHeaderRow({
     <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <th className="w-16 px-2 py-2.5" scope="col">
         <div className="flex items-center gap-1">
-          <span className="text-xs font-semibold text-gray-500 dark:text-gray-500 w-5 text-center">#</span>
+          <span className="w-5" aria-hidden="true" />
           <input
             type="checkbox"
             checked={allSelected}

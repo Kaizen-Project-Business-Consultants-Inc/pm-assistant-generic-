@@ -69,7 +69,13 @@ function durationOf(n: Node): number {
 }
 
 export class ScheduleRecomputeService {
-  async recompute(scheduleId: string): Promise<RecomputeResult> {
+  /**
+   * @param opts.onlyFrom  Limit moves to these tasks and everything downstream of them
+   *   (used when links are added: only the newly linked tasks and their successors may
+   *   move — a pre-existing violation elsewhere in the schedule is left alone). Omit to
+   *   re-flow the whole schedule (Schedule Review "apply fixes").
+   */
+  async recompute(scheduleId: string, opts: { onlyFrom?: string[] } = {}): Promise<RecomputeResult> {
     const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
     const nodes = new Map<string, Node>();
     for (const t of tasks) {
@@ -91,6 +97,7 @@ export class ScheduleRecomputeService {
     const leafIds = new Set(leaves.map(n => n.id));
 
     const order = topoSort(leaves, leafIds);
+    const scope = opts.onlyFrom ? downstreamOf(opts.onlyFrom, [...nodes.values()]) : null;
 
     // Computed (possibly moved) dates; predecessors resolve from here first.
     const newStart = new Map<string, Date | null>();
@@ -100,6 +107,7 @@ export class ScheduleRecomputeService {
     for (const id of order) {
       const n = nodes.get(id)!;
       if (n.pinned) continue; // anchor: keep its dates
+      if (scope && !scope.has(id)) continue; // outside the change: keep its dates
 
       const dur = durationOf(n);
       let required: Date | null = null;
@@ -174,6 +182,25 @@ export class ScheduleRecomputeService {
   }
 }
 
+/** The seed tasks plus every task that (transitively) depends on one of them. */
+function downstreamOf(seeds: string[], nodes: Node[]): Set<string> {
+  const succ = new Map<string, string[]>();
+  for (const n of nodes) {
+    for (const d of n.deps) {
+      if (!succ.has(d.dependencyId)) succ.set(d.dependencyId, []);
+      succ.get(d.dependencyId)!.push(n.id);
+    }
+  }
+  const out = new Set<string>(seeds);
+  const queue = [...seeds];
+  while (queue.length) {
+    for (const s of succ.get(queue.shift()!) ?? []) {
+      if (!out.has(s)) { out.add(s); queue.push(s); }
+    }
+  }
+  return out;
+}
+
 /** Kahn topological sort over leaf-to-leaf dependency edges (graph is cycle-free). */
 function topoSort(leaves: Node[], leafIds: Set<string>): string[] {
   const indeg = new Map<string, number>();
@@ -204,3 +231,29 @@ function topoSort(leaves: Node[], leafIds: Set<string>): string[] {
 }
 
 export const scheduleRecomputeService = new ScheduleRecomputeService();
+
+/**
+ * Put tasks back on the dates they had before a re-flow (undo of "link tasks").
+ * Only tasks in this schedule are touched; parent rollups are refreshed.
+ */
+export async function restoreTaskDates(
+  scheduleId: string,
+  dates: Array<{ taskId: string; startDate: string | null; endDate: string | null }>,
+): Promise<number> {
+  const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
+  const byId = new Map(tasks.map(t => [t.id, t]));
+  const parents = new Set<string>();
+  let restored = 0;
+  for (const d of dates) {
+    const t = byId.get(d.taskId);
+    if (!t || !d.startDate || !d.endDate) continue;
+    await taskRepository.updateDates(d.taskId, d.startDate, d.endDate);
+    restored++;
+    if (t.parentTaskId) parents.add(t.parentTaskId);
+  }
+  for (const p of parents) {
+    await scheduleService.recomputeParentRollup(p).catch((err: any) =>
+      logger.warn('[ScheduleRecompute] rollup failed', { parentId: p, error: err?.message }));
+  }
+  return restored;
+}

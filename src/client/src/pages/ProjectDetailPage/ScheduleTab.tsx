@@ -32,6 +32,7 @@ import { useColumnState } from '../../hooks/useColumnState';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import { buildRowNumberMap } from '../../components/schedule/gantt/types';
 import { buildBulkLinks, type BulkLinkMode } from '../../components/schedule/bulkLink';
+import type { RescheduledTask } from '../../services/api';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { exportTasksCSV } from '../../utils/exportUtils';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
@@ -47,6 +48,9 @@ import { useAuthStore } from '../../stores/authStore';
 import { announce } from '../../utils/announce';
 import { isCalendarOverdue } from '../../utils/dateUtils';
 
+
+/** " · 3 tasks moved later" — appended to link messages when the re-flow moved dates */
+const movedSuffix = (n: number) => (n > 0 ? ` · ${n} task${n > 1 ? 's' : ''} moved later` : '');
 
 export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt' }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string }) {
   const queryClient = useQueryClient();
@@ -671,13 +675,42 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     // Optimistically update the cache for instant UI feedback
     patchTaskInCache(taskId, data);
     const fieldNames = Object.keys(data).join(', ');
+    if ('dependencies' in data) {
+      // A new predecessor can push this task and its successors later (server re-flow).
+      // Undo must put those dates back as well as the old links.
+      let moved: RescheduledTask[] = [];
+      const run = async () => {
+        const res: any = await updateMutation.mutateAsync({ taskId, data });
+        moved = res?.rescheduled ?? [];
+        if (moved.length) {
+          const msg = `Edit ${task.name} (predecessors)${movedSuffix(moved.length)}`;
+          setUndoToast(msg);
+          announce(msg);
+          clearTimeout(toastTimerRef.current);
+          toastTimerRef.current = setTimeout(() => setUndoToast(null), 4000);
+        }
+      };
+      pushAction({
+        description: `Edit ${task.name} (${fieldNames})`,
+        undo: async () => {
+          await updateMutation.mutateAsync({ taskId, data: oldValues });
+          if (moved.length) {
+            await apiService.restoreTaskDates(schedule.id, moved.map(m => ({ taskId: m.taskId, startDate: m.oldStart, endDate: m.oldEnd })));
+            queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+          }
+        },
+        redo: () => { run().catch(() => {}); },
+      });
+      run().catch(() => {});
+      return;
+    }
     pushAction({
       description: `Edit ${task.name} (${fieldNames})`,
       undo: () => updateMutation.mutate({ taskId, data: oldValues }),
       redo: () => updateMutation.mutate({ taskId, data }),
     });
     updateMutation.mutate({ taskId, data });
-  }, [tasks, updateMutation, pushAction, patchTaskInCache]);
+  }, [tasks, updateMutation, pushAction, patchTaskInCache, schedule.id, queryClient]);
 
   // Drag-end with undo (bar drag for dates)
   const handleTaskDragEndWithUndo = useCallback((taskId: string, newStart: string, newEnd: string) => {
@@ -774,14 +807,21 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     if (result.added.length === 0) throw new Error('Those tasks are already linked — nothing was added');
     queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
     const added = result.added;
+    let moved = result.moved ?? [];
     const refresh = () => queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+    const description = built.description + movedSuffix(moved.length);
     pushAction({
-      description: built.description,
-      undo: async () => { await apiService.bulkUnlinkTasks(schedule.id, added); refresh(); },
-      redo: async () => { await apiService.bulkLinkTasks(schedule.id, added); refresh(); },
+      description,
+      // Undo removes the links, then puts every task the re-flow moved back on its old dates
+      undo: async () => {
+        await apiService.bulkUnlinkTasks(schedule.id, added);
+        if (moved.length) await apiService.restoreTaskDates(schedule.id, moved.map(m => ({ taskId: m.taskId, startDate: m.oldStart, endDate: m.oldEnd })));
+        refresh();
+      },
+      redo: async () => { moved = (await apiService.bulkLinkTasks(schedule.id, added)).moved ?? []; refresh(); },
     });
-    announce(built.description);
-    return built.description;
+    announce(description);
+    return description;
   }, [rowNumbers, schedule.id, queryClient, pushAction]);
 
   // Bulk delete with undo

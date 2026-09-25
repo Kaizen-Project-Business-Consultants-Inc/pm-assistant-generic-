@@ -11,6 +11,7 @@ import { automationEventBus } from '../../services/automation/AutomationEventBus
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import { teamsEventDispatcher } from '../../services/integrations/TeamsEventDispatcher';
 import { recurrenceService } from '../../services/RecurrenceService';
+import { scheduleRecomputeService, restoreTaskDates } from '../../services/ScheduleRecomputeService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
@@ -272,6 +273,20 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
         }
       }
 
+      // A new or changed predecessor pushes this task (and what follows) later if it now
+      // starts too early — same rule as bulk linking. Removing a link never pulls dates in.
+      let rescheduled: Awaited<ReturnType<typeof scheduleRecomputeService.recompute>>['deltas'] = [];
+      if (updatePayload.dependencies !== undefined) {
+        const key = (d: { dependencyId: string; dependencyType?: string | null; lagDays?: number | null }) =>
+          `${d.dependencyId}|${(d.dependencyType || 'FS').toUpperCase()}|${d.lagDays ?? 0}`;
+        const before = new Set((oldTask.dependencies || []).map(key));
+        const gained = (task.dependencies || []).some(d => !before.has(key(d)));
+        if (gained) {
+          const { scheduleId } = request.params as { scheduleId: string };
+          rescheduled = (await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [taskId] })).deltas;
+        }
+      }
+
       // Workflow automation: evaluate rules
       await dagWorkflowService.evaluateTaskChange(task, oldTask, scheduleService);
 
@@ -301,7 +316,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
         teamsEventDispatcher.dispatchToTeams('task.updated', { task }, schedule.projectId);
       }
 
-      return { task, cascadedChanges };
+      return { task, cascadedChanges, rescheduled };
     } catch (error) {
       if (error instanceof DependencyValidationError) {
         return reply.status(400).send({ error: 'Validation error', message: error.message });
@@ -378,10 +393,15 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const schedule = await scheduleService.findById(scheduleId);
       if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
       const result = await scheduleService.bulkAddDependencies(scheduleId, parsed.data.links);
+      let moved: Awaited<ReturnType<typeof scheduleRecomputeService.recompute>>['deltas'] = [];
       if (result.added.length > 0) {
+        // Like MS Project: a task that now starts before its new predecessor allows is pushed
+        // later, and so is everything after it. Only the newly linked tasks and their
+        // successors can move; completed / actual-dated tasks never do.
+        moved = (await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [...new Set(result.added.map(a => a.taskId))] })).deltas;
         WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId } }, schedule.projectId);
       }
-      return result;
+      return { ...result, moved };
     } catch (error) {
       if (error instanceof DependencyValidationError) {
         return reply.status(400).send({ error: 'Validation error', message: error.message });
@@ -413,6 +433,31 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     } catch (error) {
       logger.error('Bulk remove dependencies error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to remove links' });
+    }
+  });
+
+  // Undo of a re-flow: put tasks back on their previous dates
+  fastify.post('/:scheduleId/tasks/restore-dates', {
+    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    schema: { description: 'Restore task dates (undo of a link re-flow)', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable();
+      const parsed = z.object({
+        dates: z.array(z.object({ taskId: z.string().min(1), startDate: day, endDate: day })).min(1).max(2000),
+      }).safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'Validation error', message: 'Send a list of { taskId, startDate, endDate } with dates as YYYY-MM-DD' });
+      }
+      const schedule = await scheduleService.findById(scheduleId);
+      if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
+      const restored = await restoreTaskDates(scheduleId, parsed.data.dates);
+      if (restored > 0) WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId } }, schedule.projectId);
+      return { restored };
+    } catch (error) {
+      logger.error('Restore task dates error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to restore dates' });
     }
   });
 

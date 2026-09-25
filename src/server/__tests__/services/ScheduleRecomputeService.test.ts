@@ -39,6 +39,36 @@ describe('ScheduleRecomputeService', () => {
     expect(res.deltas[0]).toMatchObject({ taskId: 'B', movedDays: 5 });
   });
 
+  it('with onlyFrom, moves the linked task and its successors but not unrelated violations', async () => {
+    const fs = (id: string) => [{ dependencyId: id, dependencyType: 'FS', lagDays: 0 }];
+    // Newly linked: B waits on A. C follows B. X waits on W and was ALREADY too early — not our change.
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' });
+    const B = task({ id: 'B', startDate: '2026-10-05', endDate: '2026-10-07', dependencies: fs('A') });
+    const C = task({ id: 'C', startDate: '2026-10-08', endDate: '2026-10-09', dependencies: fs('B') });
+    const W = task({ id: 'W', startDate: '2026-11-01', endDate: '2026-11-05' });
+    const X = task({ id: 'X', startDate: '2026-11-02', endDate: '2026-11-03', dependencies: fs('W') });
+    findTasksByScheduleId.mockResolvedValue([A, B, C, W, X]);
+    const { scheduleRecomputeService } = await import('../../services/ScheduleRecomputeService');
+    const res = await scheduleRecomputeService.recompute('s1', { onlyFrom: ['B'] });
+    expect(res.deltas.map(d => d.taskId).sort()).toEqual(['B', 'C']);
+    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-10', '2026-10-12'); // keeps its 2-day length
+    expect(updateDates).toHaveBeenCalledWith('C', '2026-10-13', '2026-10-14');
+    expect(updateDates).not.toHaveBeenCalledWith('X', expect.anything(), expect.anything());
+  });
+
+  it('restoreTaskDates puts tasks back, only within the schedule', async () => {
+    findTasksByScheduleId.mockResolvedValue([task({ id: 'B', parentTaskId: 'P' })]);
+    const { restoreTaskDates } = await import('../../services/ScheduleRecomputeService');
+    const n = await restoreTaskDates('s1', [
+      { taskId: 'B', startDate: '2026-10-05', endDate: '2026-10-07' },
+      { taskId: 'other-schedule', startDate: '2026-10-05', endDate: '2026-10-07' },
+    ]);
+    expect(n).toBe(1);
+    expect(updateDates).toHaveBeenCalledTimes(1);
+    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-05', '2026-10-07');
+    expect(recomputeParentRollup).toHaveBeenCalledWith('P');
+  });
+
   it('leaves a task that already satisfies its predecessor untouched', async () => {
     const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' });
     const B = task({ id: 'B', startDate: '2026-10-20', endDate: '2026-10-24', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });

@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle } from 'lucide-react';
+import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle, GripVertical } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
 import { buildRowNumberMap, compareOutlineOrder } from './gantt/types';
 import { apiService } from '../../services/api';
@@ -1798,9 +1798,9 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
                             className="cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 flex-shrink-0 select-none w-5 text-center text-xs font-medium"
                             title="Drag to reorder"
                             onMouseDown={(e) => handleGripMouseDown(e, task, rowIdx)}
-                          >{rowNumMap.get(task.id) ?? rowIdx + 1}</span>
+                           aria-label="Drag to reorder"><GripVertical className="w-3.5 h-3.5 mx-auto opacity-0 group-hover:opacity-100 focus-visible:opacity-100 motion-safe:transition-opacity" aria-hidden="true" /></span>
                         ) : (
-                          <span className="w-5 text-center text-xs font-medium text-gray-500 dark:text-gray-500">{rowNumMap.get(task.id) ?? rowIdx + 1}</span>
+                          <span className="w-5" aria-hidden="true" />
                         )}
                         <input
                           type="checkbox"
@@ -1966,12 +1966,12 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
               const emptyRowKey = `empty-${i}`;
               return (
                 <tr key={emptyRowKey} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                  <td className="px-2 py-2">
-                    <span className="w-5 text-center text-xs font-medium text-gray-300 dark:text-gray-600">{rowNumMap.size + i + 1}</span>
-                  </td>
-                  {visibleColumns.map((col, ci) => (
+                  <td className="px-2 py-2" />
+                  {visibleColumns.map((col) => (
                     <td key={col.key} className="px-3 py-2" style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}>
-                      {ci === 0 ? (
+                      {col.key === 'rowNum' ? (
+                        <span className="text-xs font-medium text-gray-300 dark:text-gray-600">{rowNumMap.size + i + 1}</span>
+                      ) : col.key === 'name' ? (
                         <input
                           type="text"
                           placeholder={i === 0 ? 'Type a task name…' : ''}

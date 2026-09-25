@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-24 (adding links now moves dates; table row number shown once)
+
+- **User chose MS Project behaviour:** a new/changed predecessor pushes the task later if it now starts too early, plus its successors. Both paths: bulk link route and `PUT /tasks/:id` (when a dependency was gained/changed — compares id|type|lag). Reuses `ScheduleRecomputeService.recompute` with new `onlyFrom` scope (seeds + downstream only, so pre-existing violations elsewhere don't move). Rules unchanged: calendar days, keep length, pinned = completed/actual-dated, push later only. User answered: removing a link does **not** pull dates in; end-date cascade left as is.
+  - Undo: bulk link → `bulk-remove` + new `POST /tasks/restore-dates` with the `moved` deltas' old dates. Single predecessor edit → `updateTaskWithUndo` now uses `mutateAsync`, captures `rescheduled`, undo restores links then dates. Toast/announce appends " · N tasks moved later".
+  - Re-flow writes dates via raw `taskRepository.updateDates` (like Schedule Review's) — **no per-task audit entry for the moved dates**; the link change itself is audited via `updateTask`.
+- **Table view** showed the row number twice (grip cell + # column): grip cell now shows a drag icon on hover only; header "#" over the checkbox column removed; the blank "type a new task" rows had their text box in the # column and the number in the grip cell — fixed.
+
 ## 2026-09-24 (bulk dependency linking + new default columns)
 
 - **Link selected tasks**: user asked; built all three: chain (`Link in order`), `All wait on it` (fan-out), `It waits on all` (fan-in). Shared `components/schedule/BulkLinkControls.tsx` slotted into both selection bars via a `linkControls` prop; selection to links in `components/schedule/bulkLink.ts` (uses fixed row numbers; accepts `3`, `3SS`, `3FS+2d`). Server `ScheduleService.bulkAddDependencies` is all-or-nothing: whole-schedule + batch loop check (`utils/dependencyCycle.ts`, iterative DFS), 20-pred cap, skips existing, then writes via `updateTask` per task (keeps legacy columns / audit / rollups). Undo = `bulk-remove` of exactly the `added` links. **Does not move dates** (same as single predecessor edits today; only an end-date change cascades).
