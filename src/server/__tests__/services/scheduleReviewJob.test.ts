@@ -46,6 +46,14 @@ describe('runScheduleReview', () => {
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ severity: 'high' }));
   });
 
+  it('does not notify when the drop comes from a new rules version', async () => {
+    latest.mockResolvedValue({ score: 60, counts: counts(), rulesVersion: '1.1' });
+    run.mockResolvedValue({ score: 40, counts: counts({ high: 1 }), rulesVersion: '1.2' });
+    const n = await runJob();
+    expect(create).not.toHaveBeenCalled();
+    expect(n).toBe(0);
+  });
+
   it('does not notify when the schedule improved and no new critical/high', async () => {
     latest.mockResolvedValue({ score: 40, counts: counts() });
     run.mockResolvedValue({ score: 60, counts: counts() });

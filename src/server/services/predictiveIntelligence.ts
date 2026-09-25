@@ -1073,7 +1073,11 @@ export class PredictiveIntelligenceService {
     const risks: AIRiskAssessment['risks'] = [];
 
     switch (projectType) {
+      // Web and app projects are software projects: same risk patterns as IT
       case 'it':
+      case 'web_design':
+      case 'web_application':
+      case 'app_development':
         risks.push(
           {
             type: 'technical',

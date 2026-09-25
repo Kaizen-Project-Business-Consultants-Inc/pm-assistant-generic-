@@ -5,6 +5,7 @@ import { baselineService } from './BaselineService';
 import { criticalPathService } from './CriticalPathService';
 import { resourceLevelingService } from './ResourceLevelingService';
 import { resourceService } from './ResourceService';
+import { sprintService } from './SprintService';
 import { scheduleReviewRepository, type ReviewTrigger, type ScheduleReviewRecord, type ScheduleReviewSummary } from '../database/ScheduleReviewRepository';
 import { reviewSchedule, type ReviewInput, type ReviewTask } from './scheduleReview/rules';
 import logger from '../utils/logger';
@@ -20,11 +21,12 @@ export class ScheduleReviewService {
     const schedule = await scheduleService.findById(scheduleId);
     if (!schedule) throw new ScheduleReviewNotFoundError(scheduleId);
 
-    const [tasks, project, baselines, resources] = await Promise.all([
+    const [tasks, project, baselines, resources, sprints] = await Promise.all([
       scheduleService.findTasksByScheduleId(scheduleId),
       projectService.findById(schedule.projectId).catch(() => null),
       baselineService.findByScheduleId(scheduleId).catch(() => []),
       resourceService.findAllResources().catch(() => []),
+      sprintService.getByProject(schedule.projectId).catch(() => []),
     ]);
 
     const hasLogic = tasks.some(t => (t.dependencies || []).length > 0);
@@ -36,7 +38,10 @@ export class ScheduleReviewService {
     const latest = baselines[0];
     const input: ReviewInput = {
       schedule: { id: schedule.id, startDate: schedule.startDate, endDate: schedule.endDate },
-      project: project ? { startDate: project.startDate, endDate: project.endDate } : null,
+      project: project
+        ? { startDate: project.startDate, endDate: project.endDate, projectType: project.projectType, methodology: project.methodology ?? null }
+        : null,
+      sprintCount: sprints.length,
       tasks: tasks.map(toReviewTask),
       resources: resources.map(r => ({ id: r.id, name: r.name, email: r.email, userId: r.userId })),
       baselineCount: baselines.length,

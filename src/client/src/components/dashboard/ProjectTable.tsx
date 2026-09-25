@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronUp, ChevronDown, ChevronsUpDown, FolderKanban, Play, Plus } from 'lucide-react';
 import { MetaPill } from '../ui/MetaPill';
 import { apiService } from '../../services/api';
+import { PROJECT_TYPE_LABELS } from '../../constants/projectTypes';
 
 export interface ProjectRow {
   id: string;
@@ -61,13 +62,7 @@ const statusOrder: Record<string, number> = {
   cancelled: 4,
 };
 
-const typeLabels: Record<string, string> = {
-  it: 'IT',
-  construction: 'Construction',
-  infrastructure: 'Infrastructure',
-  roads: 'Roads',
-  other: 'Other',
-};
+const typeLabels = PROJECT_TYPE_LABELS;
 
 function formatDate(dateStr?: string): string {
   if (!dateStr) return '—';

@@ -8,11 +8,12 @@ import { requireScope } from '../../middleware/requireScope';
 import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
+import { PROJECT_TYPES } from '../../constants/projectTypes';
 
 const createTemplateSchema = z.object({
   name: z.string().min(1),
   description: z.string(),
-  projectType: z.enum(['it', 'construction', 'infrastructure', 'roads', 'other']),
+  projectType: z.enum(PROJECT_TYPES),
   category: z.string(),
   estimatedDurationDays: z.number().positive(),
   tasks: z.array(z.object({

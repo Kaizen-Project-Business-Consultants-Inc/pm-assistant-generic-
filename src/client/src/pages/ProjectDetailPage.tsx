@@ -28,6 +28,7 @@ import { ProjectReadinessBar } from '../components/onboarding/ProjectReadinessBa
 import { EditProjectModal } from '../components/project/EditProjectModal';
 import { getPrimaryTabs, getOverflowTabs, getDefaultViewMode, type Methodology } from '../utils/methodology';
 import { PresenceIndicator } from '../components/presence/PresenceIndicator';
+import { PROJECT_TYPE_LABELS } from '../constants/projectTypes';
 
 // Lazy-loaded tab components
 const OverviewTab = lazy(() => import('./ProjectDetailPage/OverviewTab').then(m => ({ default: m.OverviewTab })));
@@ -411,8 +412,8 @@ export function ProjectDetailPage() {
                 {methodology}
               </span>
               {project.projectType && project.projectType !== 'other' && (
-                <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 capitalize">
-                  {project.projectType.replace(/_/g, ' ')}
+                <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                  {PROJECT_TYPE_LABELS[project.projectType] ?? project.projectType.replace(/_/g, ' ')}
                 </span>
               )}
             </div>

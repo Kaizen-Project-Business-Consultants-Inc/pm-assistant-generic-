@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PROJECT_TYPES } from '../constants/projectTypes';
 
 export const templateTaskSchema = z.object({
   refId: z.string(),
@@ -52,7 +53,7 @@ export const projectTemplateSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  projectType: z.enum(['it', 'construction', 'infrastructure', 'roads', 'other']),
+  projectType: z.enum(PROJECT_TYPES),
   category: z.string(),
   isBuiltIn: z.boolean().default(true),
   createdBy: z.string().nullable().default(null),

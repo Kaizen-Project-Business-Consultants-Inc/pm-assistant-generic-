@@ -290,12 +290,12 @@ describe('R22 / R23 / R25 / R26 / R27 — hygiene', () => {
     expect(f.message).toContain("'DBJ & JV+D9:D27'");
   });
 
-  it('R23 fires above 8 leaf tasks with no summaries, and is medium severity', () => {
+  it('R23 fires above 8 leaf tasks with no summaries, and is high severity (raised in 1.2)', () => {
     seq = 0;
     const nine = Array.from({ length: 9 }, (_, i) => task({ name: `T${i}`, startDate: '2026-10-01', endDate: `2026-10-${String(2 + (i % 20)).padStart(2, '0')}`, dependencies: i ? [{ dependencyId: `t${i}` }] : [] }));
     const r23 = rule(evaluateRules(input(nine)).findings, 'R23');
     expect(r23).toHaveLength(1);
-    expect(r23[0].severity).toBe('medium');
+    expect(r23[0].severity).toBe('high');
   });
 
   it('R23 does not fire at 8 or fewer leaf tasks', () => {
@@ -419,5 +419,118 @@ describe('golden: DBJ-style import', () => {
     for (let i = 1; i < r.findings.length; i++) {
       expect(order[r.findings[i].severity]).toBeGreaterThanOrEqual(order[r.findings[i - 1].severity]);
     }
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// 1.2 — project-type profiles, summary-task checks
+// ---------------------------------------------------------------------------
+
+describe('1.2 project-type profiles and summary checks', () => {
+  const link = (id: string) => [{ dependencyId: id, dependencyType: 'FS', lagDays: 0 }];
+  const typed = (tasks: ReviewTask[], projectType: string, methodology = 'waterfall', over: Partial<ReviewInput> = {}) =>
+    input(tasks, { project: { startDate: '2026-07-06', endDate: '2027-07-06', projectType, methodology }, ...over });
+
+  /** A complete SDLC plan: every phase and milestone present, linked, sized well */
+  function sdlcPlan(): ReviewTask[] {
+    seq = 0;
+    const rows: Array<[string, string, string, boolean?]> = [
+      ['Requirements workshops', '2026-10-01', '2026-10-09'],
+      ['Requirements sign-off', '2026-10-12', '2026-10-12', true],
+      ['Solution design', '2026-10-13', '2026-10-23'],
+      ['Build API', '2026-10-26', '2026-11-06'],
+      ['System testing', '2026-11-09', '2026-11-13'],
+      ['UAT sign-off', '2026-11-16', '2026-11-16', true],
+      ['Deploy to production', '2026-11-17', '2026-11-18'],
+      ['Go-live', '2026-11-19', '2026-11-19', true],
+    ];
+    return rows.map(([name, st, en, ms], i) => task({ id: `p${i}`, name, startDate: st, endDate: en, isMilestone: !!ms, assignedTo: 'r1', description: 'x', dependencies: i ? link(`p${i - 1}`) : [] }));
+  }
+
+  it('bumps the rules version', () => {
+    expect(reviewSchedule(input([])).rulesVersion).toBe('1.2');
+  });
+
+  it('a complete IT/SDLC plan raises no phase or milestone findings', () => {
+    const f = evaluateRules(typed(sdlcPlan(), 'it')).findings;
+    expect(ids(f)).not.toContain('R31');
+    expect(ids(f)).not.toContain('R32');
+  });
+
+  it('R31 names the SDLC phases that are missing', () => {
+    const plan = sdlcPlan().filter(t => !/testing|deploy/i.test(t.name));
+    const r31 = rule(evaluateRules(typed(plan, 'it')).findings, 'R31');
+    expect(r31).toHaveLength(1);
+    expect(r31[0].message).toContain('an IT project run as Waterfall (SDLC)');
+    expect(r31[0].message).toContain('No task looks like Testing');
+  });
+
+  it('R32 names the missing key milestones, and only counts milestone tasks', () => {
+    // "UAT" appears in a normal task name only; that is not a milestone
+    const plan = sdlcPlan().filter(t => t.name !== 'UAT sign-off');
+    plan.push(task({ name: 'Prepare UAT scripts', startDate: '2026-11-02', endDate: '2026-11-03', dependencies: link('p3') }));
+    const r32 = rule(evaluateRules(typed(plan, 'it')).findings, 'R32');
+    expect(r32).toHaveLength(1);
+    expect(r32[0].message).toContain('UAT sign-off');
+    expect(r32[0].severity).toBe('low');
+  });
+
+  it('Agile IT expects sprints, and a project with sprints defined counts as having them', () => {
+    const plan = sdlcPlan();
+    const without = rule(evaluateRules(typed(plan, 'it', 'agile')).findings, 'R31');
+    expect(without[0].message).toContain('Sprints');
+    const withSprints = rule(evaluateRules(typed(plan, 'it', 'agile', { sprintCount: 3 })).findings, 'R31');
+    expect(withSprints.map(f => f.message).join(' ')).not.toContain('No task looks like Sprints');
+  });
+
+  it('App Development expects a beta; Web Design expects content', () => {
+    const app = rule(evaluateRules(typed(sdlcPlan(), 'app_development')).findings, 'R32');
+    expect(app[0].message).toContain('Beta / TestFlight');
+    const web = rule(evaluateRules(typed(sdlcPlan(), 'web_design')).findings, 'R31');
+    expect(web[0].message).toContain('Content');
+  });
+
+  it('types without a profile and tiny plans get no phase checks', () => {
+    expect(ids(evaluateRules(typed(sdlcPlan(), 'construction')).findings)).not.toContain('R31');
+    expect(ids(evaluateRules(typed(sdlcPlan().slice(0, 3), 'it')).findings)).not.toContain('R31');
+  });
+
+  it('R13 uses the project type limit: 12 working days is fine generally, too long for web/app', () => {
+    seq = 0;
+    // 20 tasks, two of them 12 working days (10%, above the 5% gate)
+    const plan = Array.from({ length: 20 }, (_, i) => task({ id: `w${i}`, name: `Step ${i}`, startDate: '2026-10-05', endDate: i < 2 ? '2026-10-20' : '2026-10-06', dependencies: i ? link(`w${i - 1}`) : [] }));
+    expect(ids(evaluateRules(input(plan)).findings)).not.toContain('R13');
+    expect(ids(evaluateRules(typed(plan, 'it')).findings)).not.toContain('R13');
+    const web = rule(evaluateRules(typed(plan, 'web_application')).findings, 'R13');
+    expect(web).toHaveLength(1);
+    expect(web[0].message).toContain('longer than 10 working days');
+  });
+
+  it('R13 ignores level-of-effort work such as recurring status reporting', () => {
+    seq = 0;
+    const plan = Array.from({ length: 20 }, (_, i) => task({ id: `l${i}`, name: i < 2 ? `Weekly status report and RAID review (recurring) ${i}` : `Step ${i}`, startDate: '2026-10-05', endDate: i < 2 ? '2026-12-20' : '2026-10-06', dependencies: i ? link(`l${i - 1}`) : [] }));
+    expect(ids(evaluateRules(typed(plan, 'app_development')).findings)).not.toContain('R13');
+  });
+
+  it('R29 flags a summary task that carries its own links', () => {
+    seq = 0;
+    const phase = task({ id: 'ph', name: 'Phase 1', isSummary: true, startDate: '2026-10-01', endDate: '2026-10-10' });
+    const kid = task({ id: 'k1', name: 'Work', parentTaskId: 'ph', startDate: '2026-10-01', endDate: '2026-10-10' });
+    const after = task({ id: 'af', name: 'Later', startDate: '2026-10-12', endDate: '2026-10-13', dependencies: link('ph') });
+    const r29 = rule(evaluateRules(input([phase, kid, after])).findings, 'R29');
+    expect(r29).toHaveLength(1);
+    expect(r29[0].taskIds).toEqual(['ph']);
+  });
+
+  it('R30 flags a summary whose dates do not cover its tasks', () => {
+    seq = 0;
+    const phase = task({ id: 'ph', name: 'Phase 1', isSummary: true, startDate: '2026-10-05', endDate: '2026-10-10' });
+    const early = task({ id: 'k1', name: 'Starts early', parentTaskId: 'ph', startDate: '2026-10-01', endDate: '2026-10-06' });
+    const r30 = rule(evaluateRules(input([phase, early])).findings, 'R30');
+    expect(r30).toHaveLength(1);
+    expect(r30[0].message).toContain('2026-10-01 to 2026-10-06');
+    phase.startDate = '2026-10-01'; phase.endDate = '2026-10-06';
+    expect(ids(evaluateRules(input([phase, early])).findings)).not.toContain('R30');
   });
 });

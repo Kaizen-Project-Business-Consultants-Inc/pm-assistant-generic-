@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-25 (Schedule Review rules v1.2 — project-type profiles)
+
+- User reviewed an external "AI schedule reviewer" spec; agreed approach: **score stays rules-based**, AI only in Propose fixes later (Phase 2, not built). First domains: IT (SDLC + Agile), Web Design, Web Application, App Development (user chose three separate web/app types).
+- Built: `domainProfiles.ts`; R13 limits (15 WD IT / 10 WD web+app, LOE excluded), R23 → high, new R29/R30/R31/R32; `ScheduleReviewService` passes projectType/methodology/sprintCount; weekly job skips alerts across a rules-version change. T055 adds the 3 ENUM values; project-type list consolidated (`src/server/constants/projectTypes.ts`, client mirror, MCP copy). Predictive risks treat web/app types like IT.
+- Dry run on real data: DBJ-Loans (IT/Waterfall) — no missing phases/milestones, R23 + R13 (6 long tasks); NSWMA (App Dev) — complete, only R13 (after excluding LOE "Weekly status report").
+- **Phase 2 (not started):** AI "split this task" breakdowns and suggested missing phases inside Propose fixes.
+
 ## 2026-09-25 (Schedule Review re-runs itself; project page refresh; AI Reschedule findable & fixed)
 
 - **Schedule Review auto re-run** (user asked): `queueReviewRerun(scheduleId)` from `ScheduleService.createTask/updateTask/deleteTask` and all four `routes/core/bulk.ts` handlers; per-schedule 20 s debounce, `trigger='auto'` (VARCHAR column, no migration), broadcasts `schedule_updated {scheduleId, reviewUpdated}`; client `useWebSocket` now invalidates `['schedule-review', id]` (and tasks/criticalPath for other schedule_updated). No AI — rules only. **Note:** each run inserts a `schedule_reviews` row, so the history grows one row per editing burst.

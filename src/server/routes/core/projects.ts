@@ -20,13 +20,14 @@ import { favouriteProjectRepository } from '../../database/FavouriteProjectRepos
 import { projectRepository } from '../../database/ProjectRepository';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
+import { PROJECT_TYPES } from '../../constants/projectTypes';
 
 
 export const createProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
   description: z.string().max(50000).optional(),
   category: z.string().optional(),
-  projectType: z.enum(['it', 'construction', 'infrastructure', 'roads', 'other']).default('other'),
+  projectType: z.enum(PROJECT_TYPES).default('other'),
   methodology: z.enum(['waterfall', 'agile', 'hybrid']).default('waterfall'),
   status: z.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']).default('planning'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
@@ -82,7 +83,7 @@ function duplicateProjectReply(error: unknown, reply: FastifyReply, name?: strin
 // with bare .optional() (no default) after .partial() strips the default while
 // leaving every other field's already-correct partial behaviour untouched.
 export const updateProjectSchema = createProjectSchema.partial().extend({
-  projectType: z.enum(['it', 'construction', 'infrastructure', 'roads', 'other']).optional(),
+  projectType: z.enum(PROJECT_TYPES).optional(),
   methodology: z.enum(['waterfall', 'agile', 'hybrid']).optional(),
   status: z.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),

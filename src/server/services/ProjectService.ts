@@ -8,6 +8,7 @@ import { policyEngineService } from './PolicyEngineService';
 import logger from '../utils/logger';
 import { dagWorkflowService } from './DagWorkflowService';
 import { deadLetterService } from './DeadLetterService';
+import type { ProjectType } from '../constants/projectTypes';
 
 const cachedProject = new CachedRepository<Project>(projectRepository, {
   prefix: 'cache:project',
@@ -19,7 +20,7 @@ export interface Project {
   name: string;
   description?: string;
   category?: string;
-  projectType: 'it' | 'construction' | 'infrastructure' | 'roads' | 'other';
+  projectType: ProjectType;
   methodology: 'waterfall' | 'agile' | 'hybrid';
   status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'urgent';
@@ -47,7 +48,7 @@ export interface CreateProjectData {
   name: string;
   description?: string;
   category?: string;
-  projectType?: 'it' | 'construction' | 'infrastructure' | 'roads' | 'other';
+  projectType?: ProjectType;
   methodology?: 'waterfall' | 'agile' | 'hybrid';
   status?: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
   priority?: 'low' | 'medium' | 'high' | 'urgent';

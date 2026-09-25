@@ -8,7 +8,13 @@
  * where one exists.
  */
 
-export const RULES_VERSION = '1.1';
+import { profileFor, matchesAny } from './domainProfiles';
+
+export const RULES_VERSION = '1.2';
+
+// 1.2 (2026-09-25): project-type profiles (IT / Web Design / Web Application / App
+// Development) for task-length limits, expected phases (R31) and key milestones (R32);
+// summary-task checks R29/R30; R23 Flat hierarchy raised to high.
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 export type Band = 'tracking_sheet' | 'needs_work' | 'controllable' | 'fit_for_control';
@@ -57,7 +63,16 @@ export interface ReviewBaselineTask {
 
 export interface ReviewInput {
   schedule: { id: string; startDate?: string | null; endDate?: string | null };
-  project?: { startDate?: string | null; endDate?: string | null } | null;
+  project?: {
+    startDate?: string | null;
+    endDate?: string | null;
+    /** Picks the domain profile (task-length limit, expected phases / milestones) */
+    projectType?: string | null;
+    /** waterfall | agile | hybrid — Agile plans are expected to have sprints, not SDLC phases */
+    methodology?: string | null;
+  } | null;
+  /** Sprints defined on the project (Agile plans often keep sprints outside the task list) */
+  sprintCount?: number;
   tasks: ReviewTask[];
   resources?: ReviewResource[];
   baselineCount: number;
@@ -129,12 +144,16 @@ export const RULES: Record<string, RuleMeta> = {
   R20: { id: 'R20', name: 'No buffer before gate', severity: 'medium', scope: 'task' },
   R21: { id: 'R21', name: 'Over-allocated owner', severity: 'medium', scope: 'task' },
   R22: { id: 'R22', name: 'Suspicious names', severity: 'low', scope: 'task' },
-  R23: { id: 'R23', name: 'Flat hierarchy', severity: 'medium', scope: 'schedule' },
+  R23: { id: 'R23', name: 'Flat hierarchy', severity: 'high', scope: 'schedule' },
   R24: { id: 'R24', name: 'Stale task', severity: 'low', scope: 'task' },
   R25: { id: 'R25', name: 'Phase without children', severity: 'medium', scope: 'task' },
   R26: { id: 'R26', name: 'Duplicate task name', severity: 'medium', scope: 'task' },
   R27: { id: 'R27', name: 'No description', severity: 'info', scope: 'task' },
   R28: { id: 'R28', name: 'Sub-day duration over multiple days', severity: 'medium', scope: 'task' },
+  R29: { id: 'R29', name: 'Summary task has its own links', severity: 'medium', scope: 'task' },
+  R30: { id: 'R30', name: "Summary dates don't cover its tasks", severity: 'medium', scope: 'task' },
+  R31: { id: 'R31', name: 'Standard phases missing', severity: 'medium', scope: 'schedule' },
+  R32: { id: 'R32', name: 'Key milestones missing', severity: 'low', scope: 'schedule' },
 };
 
 const MAX_DEDUCTION: Record<Severity, number> = { critical: 25, high: 12, medium: 6, low: 2, info: 0 };
@@ -147,6 +166,8 @@ const MILESTONE_NAME = /\bmilestone\b|\bgate\s*-?\s*\d/i;
 const MILESTONE_EVENT = /\b(sign[\s-]?off|acceptance|go[\s-]?live|approval)\b/i;
 const WORK_VERB = /\b(review|test|testing|execution|cutover|preparation|remediation|configuration|migration|training|support|development|build)\b/i;
 export const BUFFER_NAME = /\b(buffer|reserve|contingency|float)\b/i;
+/** Level-of-effort work that runs alongside the plan (DCMA treats it separately): never "too long". */
+const LEVEL_OF_EFFORT = /\b(status report|project management|pmo|governance|recurring|weekly|meetings?|stand-?ups?|hypercare|warranty)\b/i;
 const LEGEND_WORDS = new Set(['delayed', 'ahead', 'completed', 'complete', 'not started', 'on track', 'in progress', 'pending', 'done', 'status', 'legend']);
 const CELL_REF = /\b[A-Z]{1,3}\d{1,5}(:[A-Z]{1,3}\d{1,5})?\b/;
 const PHASE_CODE = /^[A-Za-z]{1,3}\d{0,3}$/;
@@ -289,6 +310,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   const n = leaves.length;
 
   const noLogic = g.dependencyCount === 0 && n >= 2;
+  const profile = profileFor(input.project?.projectType, input.project?.methodology);
   const hasFloat = !!input.floatByTask && input.floatByTask.size > 0 && !noLogic;
 
   // R03 — No logic at all
@@ -416,10 +438,12 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     findings.push(make('R12', disagree.map(t => t.id), `${plural(disagree.length, 'task')} have estimates that disagree with their dates: ${listNames(disagree)}.${hint}`));
   }
 
-  // R13 — Very long task
-  const longTasks = leaves.filter(t => { const s = ymd(t.startDate); const e = ymd(t.endDate); return s && e && !isMilestoneLike(t) && workingDaySpan(s, e) > LONG_TASK_WORKING_DAYS; });
+  // R13 — Very long task (limit depends on the kind of project; DCMA's 44 otherwise)
+  const longLimit = profile?.longTaskWorkingDays ?? LONG_TASK_WORKING_DAYS;
+  const longTasks = leaves.filter(t => { const s = ymd(t.startDate); const e = ymd(t.endDate); return s && e && !isMilestoneLike(t) && !LEVEL_OF_EFFORT.test(t.name || '') && !t.recurrenceParentId && workingDaySpan(s, e) > longLimit; });
   if (longTasks.length > 0 && longTasks.length / Math.max(1, n) > 0.05) {
-    findings.push(make('R13', longTasks.map(t => t.id), `${plural(longTasks.length, 'task')} run longer than ${LONG_TASK_WORKING_DAYS} working days as one task: ${listNames(longTasks)}. Split them so progress can be measured.`));
+    const why = profile ? ` For ${profile.description}, work longer than ${longLimit} working days is usually broken down.` : '';
+    findings.push(make('R13', longTasks.map(t => t.id), `${plural(longTasks.length, 'task')} run longer than ${longLimit} working days as one task: ${listNames(longTasks)}.${why} Split them so progress can be measured.`));
   }
 
   // R14 — Hard constraints
@@ -565,6 +589,49 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   const subDay = leaves.filter(t => { const s = ymd(t.startDate); const e = ymd(t.endDate); const d = Number(t.estimatedDays ?? 0); return s && e && d > 0 && d < 1 && workingDaySpan(s, e) >= 2; });
   for (const t of subDay) {
     findings.push(make('R28', [t.id], `'${t.name}' is estimated at ${t.estimatedDays} days but runs ${ymd(t.startDate)} to ${ymd(t.endDate)}. Hours and days were probably swapped on import.`));
+  }
+
+  // R29 — Summary task has its own links. Links belong on the work inside a phase; a link
+  // on the phase itself hides which task really drives the dates.
+  const linkedSummaries = g.summaries.filter(t => (t.dependencies || []).some(d => g.byId.has(d.dependencyId)) || (g.successorsOf.get(t.id) || []).length > 0);
+  for (const t of linkedSummaries) {
+    findings.push(make('R29', [t.id], `Summary task '${t.name}' has its own predecessor or successor. Put the link on the task inside it that actually drives the date, so the critical path stays accurate.`));
+  }
+
+  // R30 — Summary dates don't cover its tasks
+  for (const s of g.summaries) {
+    const ss = ymd(s.startDate); const se = ymd(s.endDate);
+    if (!ss || !se) continue;
+    const kids = (g.childrenOf.get(s.id) || []).filter(c => ymd(c.startDate) && ymd(c.endDate));
+    if (kids.length === 0) continue;
+    const minStart = kids.map(c => ymd(c.startDate)!).sort()[0];
+    const maxEnd = kids.map(c => ymd(c.endDate)!).sort().slice(-1)[0];
+    if (minStart < ss || maxEnd > se) {
+      findings.push(make('R30', [s.id], `Summary task '${s.name}' runs ${ss} to ${se}, but the tasks under it run ${minStart} to ${maxEnd}. A summary should span exactly its tasks.`));
+    }
+  }
+
+  // R31 / R32 — Standard phases and key milestones for this kind of project. Matched on task
+  // names, deterministic. Skipped for tiny plans and for types without a profile yet.
+  if (profile && n >= 5) {
+    // Phases are work, so only non-milestone tasks count: a "UAT sign-off" milestone
+    // doesn't mean the testing itself is planned.
+    const names = g.all.filter(t => !isMilestoneLike(t)).map(t => t.name || '');
+    const has = (patterns: RegExp[]) => names.some(nm => matchesAny(nm, patterns));
+    const missingPhases = profile.phases
+      .filter(p => !(p.label === 'Sprints' && (input.sprintCount ?? 0) > 0))
+      .filter(p => !has(p.patterns))
+      .map(p => p.label);
+    if (missingPhases.length > 0) {
+      findings.push(make('R31', [], `For ${profile.description}, a plan usually covers ${profile.phases.map(p => p.label).join(', ')}. No task looks like ${missingPhases.join(', ')}. Add ${missingPhases.length === 1 ? 'it' : 'them'} as phases, or rename tasks so the plan says where that work happens.`));
+    }
+    const milestoneNames = g.all.filter(t => isMilestoneLike(t)).map(t => t.name || '');
+    const missingMilestones = profile.milestones
+      .filter(m => !milestoneNames.some(nm => matchesAny(nm, m.patterns)))
+      .map(m => m.label);
+    if (missingMilestones.length > 0) {
+      findings.push(make('R32', [], `For ${profile.description}, expected milestones include ${profile.milestones.map(m => m.label).join(', ')}. None found for ${missingMilestones.join(', ')}. Add ${missingMilestones.length === 1 ? 'it as a milestone' : 'them as milestones'} (a single day, flagged as a milestone).`));
+    }
   }
 
   return { findings, skipped, leafTaskCount: n };

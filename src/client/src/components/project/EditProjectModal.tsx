@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import { AccessibleModal } from '../ui/AccessibleModal';
+import { PROJECT_TYPE_OPTIONS } from '../../constants/projectTypes';
 
 interface ProjectData {
   name: string;
@@ -125,11 +126,7 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
           <div>
             <label className={labelClass}>Project Type</label>
             <select value={projectType} onChange={(e) => setProjectType(e.target.value)} className={inputClass}>
-              <option value="it">IT</option>
-              <option value="construction">Construction</option>
-              <option value="infrastructure">Infrastructure</option>
-              <option value="roads">Roads</option>
-              <option value="other">Other</option>
+              {PROJECT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
         </div>

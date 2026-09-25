@@ -1,6 +1,7 @@
 // C:\Users\gerog\Documents\pm-assistant-generic\src\server\services\aiToolDefinitions.ts
 
 import Anthropic from '@anthropic-ai/sdk';
+import { PROJECT_TYPES } from '../constants/projectTypes';
 
 // Claude tool definitions for AI action execution
 // These define what the AI can do in the PM system
@@ -61,7 +62,7 @@ export const AI_TOOLS: Anthropic.Tool[] = [
       properties: {
         name: { type: 'string', description: 'Project name' },
         description: { type: 'string', description: 'Project description' },
-        projectType: { type: 'string', enum: ['it', 'construction', 'infrastructure', 'roads', 'other'], description: 'Type of project' },
+        projectType: { type: 'string', enum: [...PROJECT_TYPES], description: 'Type of project' },
         priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'Project priority' },
         budgetAllocated: { type: 'number', description: 'Budget in USD' },
         startDate: { type: 'string', description: 'Start date in ISO format' },

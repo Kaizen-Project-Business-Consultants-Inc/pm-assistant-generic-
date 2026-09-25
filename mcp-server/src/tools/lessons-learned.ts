@@ -19,7 +19,7 @@ export function registerLessonsLearnedTools(server: McpServer) {
   );
 
   server.tool('find-relevant-lessons', 'Find lessons relevant to a project type or category', {
-    projectType: z.string().optional().describe('Project type (it, construction, infrastructure, roads, other)'),
+    projectType: z.string().optional().describe('Project type (it, web_design, web_application, app_development, construction, infrastructure, roads, other)'),
     category: z.string().optional().describe('Category (schedule, budget, quality, stakeholder, risk, communication, resource, technical)'),
   }, async ({ projectType, category }, extra) => {
     const params = new URLSearchParams();

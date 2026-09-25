@@ -33,6 +33,10 @@ export async function runScheduleReview(): Promise<number> {
       const previous = await scheduleReviewService.latest(row.id);
       const current = await scheduleReviewService.run(row.id, 'agent');
 
+      // A new rules version re-scores every schedule; a drop caused by the rules changing is
+      // not the schedule getting worse, so don't alert on it. Next week compares like with like.
+      if (previous && previous.rulesVersion !== current.rulesVersion) continue;
+
       const scoreDropped = !!previous && current.score < previous.score;
       const newCritical = !previous || current.counts.critical > (previous?.counts.critical ?? 0);
       const newHigh = !previous || current.counts.high > (previous?.counts.high ?? 0);
