@@ -38,11 +38,19 @@ export function BulkLinkControls({ selectedIds, onBulkLink, onLinked, disabled }
   };
 
   const off = disabled || busy;
-  const btn = 'text-xs px-2 py-1 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 dark:bg-primary-900/40 dark:text-primary-300 dark:hover:bg-primary-900/60 disabled:opacity-50 whitespace-nowrap';
+  // Indigo, deliberately unlike the rest of the teal selection bar so the Link group stands
+  // out (user feedback: pale teal-on-teal didn't register). Indigo isn't a semantic colour
+  // here — blue is status, violet is AI, red/orange/green are risk.
+  const btn = 'text-xs font-semibold px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-400 dark:hover:bg-indigo-300 dark:text-gray-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-1 disabled:bg-indigo-100 disabled:text-indigo-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-500 disabled:cursor-not-allowed whitespace-nowrap';
 
   return (
-    <div className="flex items-center gap-1 flex-wrap" role="group" aria-label="Link selected tasks">
-      <Link2 className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" aria-hidden="true" />
+    <div
+      className="flex items-center gap-1.5 flex-wrap rounded-md border-2 border-indigo-400 bg-white dark:bg-gray-900 dark:border-indigo-400/70 px-2 py-1 shadow-sm"
+      role="group"
+      aria-label="Link selected tasks"
+    >
+      <Link2 className="w-4 h-4 text-indigo-600 dark:text-indigo-300" aria-hidden="true" />
+      <span className="text-xs font-bold text-indigo-700 dark:text-indigo-200 whitespace-nowrap">Link tasks</span>
       <button
         type="button"
         className={btn}
@@ -57,7 +65,7 @@ export function BulkLinkControls({ selectedIds, onBulkLink, onLinked, disabled }
         inputMode="numeric"
         aria-label="Row to link to, for example 3 or 3FS+2d"
         placeholder="Row #"
-        className="text-xs px-2 py-1 rounded border border-primary-200 dark:border-primary-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-400 w-20"
+        className="text-xs px-2 py-1 rounded border border-indigo-300 dark:border-indigo-500/60 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400 w-20"
         value={target}
         onChange={e => setTarget(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && target.trim()) run('allWaitOn'); }}

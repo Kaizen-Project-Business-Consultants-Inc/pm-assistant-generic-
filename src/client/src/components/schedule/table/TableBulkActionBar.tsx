@@ -35,10 +35,10 @@ export const TableBulkActionBar = React.memo(function TableBulkActionBar({
   linkControls,
 }: TableBulkActionBarProps) {
   return (
-    <div className="sticky top-0 z-10 bg-primary-50 border border-primary-200 rounded-lg p-3 m-2 flex items-center gap-3 flex-wrap">
+    <div className="sticky top-0 z-10 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-3 m-2 flex items-center gap-3 flex-wrap">
       <div className="flex items-center gap-1.5">
-        <CheckSquare className="w-4 h-4 text-primary-600" />
-        <span className="text-xs font-semibold text-primary-700">{selectedCount} selected</span>
+        <CheckSquare className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+        <span className="text-xs font-semibold text-primary-700 dark:text-primary-300">{selectedCount} selected</span>
       </div>
 
       <div className="h-4 w-px bg-primary-200" />
