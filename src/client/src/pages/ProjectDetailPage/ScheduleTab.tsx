@@ -1044,6 +1044,48 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     );
   }
 
+  // One "More actions" menu (baselines, scenarios, import/export, AI Reschedule, Level
+  // Resources) shared by the Gantt and Table toolbars — the Table used to get none.
+  const scheduleOverflowMenu = canEdit ? (
+      <ScheduleOverflowMenu
+        schedule={schedule}
+        projectId={projectId}
+        baselines={baselines}
+        selectedBaselineId={selectedBaselineId}
+        setSelectedBaselineId={setSelectedBaselineId}
+        showComparison={showComparison}
+        setShowComparison={setShowComparison}
+        createBaselineMutation={createBaselineMutation}
+        scenarios={scenarios}
+        selectedScenarioId={selectedScenarioId}
+        setSelectedScenarioId={setSelectedScenarioId}
+        showScenarioCompare={showScenarioCompare}
+        setShowScenarioCompare={setShowScenarioCompare}
+        setShowImportModal={setShowImportModal}
+        setShowReschedulePanel={setShowReschedulePanel}
+        levelingBusy={levelingBusy}
+        onLevelResources={async () => {
+          setLevelingBusy(true);
+          try {
+            const res = await apiService.levelResources(schedule.id);
+            const adjustments = res?.result?.adjustedTasks || res?.adjustedTasks || [];
+            setLevelingResult(adjustments.length === 0 ? [] : adjustments);
+          } catch {
+            setLevelingResult([]);
+          } finally {
+            setLevelingBusy(false);
+          }
+        }}
+        exportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
+        queryClient={queryClient}
+        onDeleteSchedule={() => setShowDeleteConfirm(true)}
+        onCreateScenario={() => {
+          setScenarioName(`Scenario ${new Date().toLocaleDateString()}`);
+          setShowScenarioPrompt(true);
+        }}
+      />
+  ) : undefined;
+
   return (
     <>
       {/* Row 1: Toolbar + Quick filter pills (merged) */}
@@ -1062,7 +1104,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           reviewActive={showReviewPanel || !!reviewRowFilter}
           showCriticalPath={showCriticalPath}
           onCriticalPathChange={setShowCriticalPath}
-          overflowMenu={null}
+          overflowMenu={scheduleOverflowMenu}
           onExportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
           filteredCount={filteredTasks.length}
           totalCount={tasks.length}
@@ -1181,45 +1223,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           onOpenReview={() => setShowReviewPanel(true)}
           reviewActive={showReviewPanel || !!reviewRowFilter}
           reviewFlagMap={reviewFlagMap}
-          scheduleOverflowMenu={canEdit ?
-            <ScheduleOverflowMenu
-              schedule={schedule}
-              projectId={projectId}
-              baselines={baselines}
-              selectedBaselineId={selectedBaselineId}
-              setSelectedBaselineId={setSelectedBaselineId}
-              showComparison={showComparison}
-              setShowComparison={setShowComparison}
-              createBaselineMutation={createBaselineMutation}
-              scenarios={scenarios}
-              selectedScenarioId={selectedScenarioId}
-              setSelectedScenarioId={setSelectedScenarioId}
-              showScenarioCompare={showScenarioCompare}
-              setShowScenarioCompare={setShowScenarioCompare}
-              setShowImportModal={setShowImportModal}
-              setShowReschedulePanel={setShowReschedulePanel}
-              levelingBusy={levelingBusy}
-              onLevelResources={async () => {
-                setLevelingBusy(true);
-                try {
-                  const res = await apiService.levelResources(schedule.id);
-                  const adjustments = res?.result?.adjustedTasks || res?.adjustedTasks || [];
-                  setLevelingResult(adjustments.length === 0 ? [] : adjustments);
-                } catch {
-                  setLevelingResult([]);
-                } finally {
-                  setLevelingBusy(false);
-                }
-              }}
-              exportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
-              queryClient={queryClient}
-              onDeleteSchedule={() => setShowDeleteConfirm(true)}
-              onCreateScenario={() => {
-                setScenarioName(`Scenario ${new Date().toLocaleDateString()}`);
-                setShowScenarioPrompt(true);
-              }}
-            />
-          : undefined}
+          scheduleOverflowMenu={scheduleOverflowMenu}
         />
       )}
       {viewMode === 'kanban' && (

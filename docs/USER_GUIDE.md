@@ -341,7 +341,7 @@ The schedule toolbar is a compact single row of controls:
 [Search] [Filters] | [Columns] [Critical Path] | [⋯]
 ```
 
-The **⋯ overflow menu** groups less-frequent actions:
+The **⋯ overflow menu** (the "More actions" button at the right of the toolbar, in the Gantt, Table, Kanban and Calendar views; on narrower screens the toolbar wraps onto a second line so it is always visible) groups less-frequent actions:
 
 | Group | Items |
 |-------|-------|

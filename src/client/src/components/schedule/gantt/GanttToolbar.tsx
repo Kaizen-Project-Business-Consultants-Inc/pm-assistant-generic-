@@ -141,9 +141,11 @@ export const GanttToolbar = React.memo(function GanttToolbar({
 
   if (!scheduleName) return null;
 
+  // Wraps onto a second line on narrower screens — it used to run off the right edge,
+  // hiding "More actions" (AI Reschedule, Level Resources) below ~1760px wide.
   return (
-    <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
-      <div className="flex items-center gap-2">
+    <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between flex-wrap gap-y-2 gap-x-3">
+      <div className="flex items-center gap-2 flex-wrap">
         <div className="w-1.5 h-4 rounded-full bg-primary-500" />
         <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate max-w-[200px]" title={scheduleName}>
           {scheduleName}
@@ -249,7 +251,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
           </button>
         </div>
       )}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {/* Quick search */}
         <div className="relative">
           <svg className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
