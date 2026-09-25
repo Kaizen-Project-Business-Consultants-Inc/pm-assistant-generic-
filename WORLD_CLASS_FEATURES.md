@@ -1075,3 +1075,5 @@ Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully 
 - **Bulk dependency linking** (Sep 2026): select tasks and **Link in order** (MS Project's Link Tasks), **All wait on it** (fan-out from a gate), or **It waits on all** (fan-in to a milestone). All-or-nothing with whole-batch loop detection that names the rows; one-step undo. Default schedule columns set to Duration, Start, End, Predecessor, Assigned To, Status.
 
 - **Project-type aware Schedule Review** (Sep 2026, rules v1.2): IT (SDLC and Agile), Web Design, Web Application and App Development profiles set task-length limits and check for the standard phases and key milestones of that kind of project, plus summary-task link and span checks. Fully deterministic — the score stays reproducible and costs no AI tokens.
+
+- **AI split-task and missing-phase suggestions** (Sep 2026): Propose fixes asks the AI once to split tasks that bundle independent actions (approvals become milestones; single activities are left alone) and to place a task for each missing standard phase — all tick-to-apply with one-step undo; the review score itself stays rule-based.

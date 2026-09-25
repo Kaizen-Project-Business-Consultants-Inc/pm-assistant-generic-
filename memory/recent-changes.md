@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-25 (Schedule Review Phase 2 — AI split / missing-phase suggestions)
+
+- User's splitting rule (played back and confirmed): several verbs = think, not auto-split. Split independent actions (hand-off, approval by someone else, separately trackable); keep one continuous activity ("Update and final review BRD"). Approvals → milestones. Applies to **every** task, not only long ones. Missing phase → **one linked task** (my default; user can ask for a phase with starter tasks instead).
+- One AI call per click (`aiSuggestions`, replaces `aiGroupings`), prompt embeds the rule + examples; `split_task` / `add_task` fix types with full undo; `findMissingPhases/findMissingMilestones` now shared by rules and proposer. Panel: purple "AI suggestions: split tasks, add missing phases" button, shown even when rules find nothing (it used to be a text link hidden unless rules found fixes), plus a "no AI suggestions" note.
+- Gotcha: `isMilestoneLike()` treats names containing "approval" as milestones, so the split pre-filter uses the `isMilestone` flag only — else "Circulate and obtain approval for BRD" was never sent.
+
 ## 2026-09-25 (Schedule Review rules v1.2 — project-type profiles)
 
 - User reviewed an external "AI schedule reviewer" spec; agreed approach: **score stays rules-based**, AI only in Propose fixes later (Phase 2, not built). First domains: IT (SDLC + Agile), Web Design, Web Application, App Development (user chose three separate web/app types).

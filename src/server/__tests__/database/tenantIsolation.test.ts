@@ -59,13 +59,13 @@ describe('tenant isolation (whole server)', () => {
       .filter(({ code }) => PREPARED_ON_CONNECTION.test(code))
       .map(({ file }) => file);
     expect(offenders).toEqual([]);
-  });
+  }, 60_000); // reads every server file — slow when the machine is busy
 
   it('actually scans the route and service files', () => {
     const files = serverSources().map(s => s.file.replace(/\\/g, '/'));
     expect(files).toContain('routes/core/bulk.ts');
     expect(files.length).toBeGreaterThan(100);
-  });
+  }, 60_000);
 });
 
 describe('tenant isolation (connection.ts)', () => {

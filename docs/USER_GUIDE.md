@@ -2645,6 +2645,14 @@ In the panel, findings are grouped by severity. Each one says what is wrong in p
 
 A plan with no summary tasks at all ("Flat hierarchy") is now **High**, so it shows at the top of the review. All of these are fixed rules, not AI — same schedule, same result, no AI tokens. When the rules are updated, your score may change; the weekly check does not send a "score dropped" alert for a change caused only by new rules.
 
+**AI suggestions** (plans with AI: Pro, SME, Enterprise). In **Propose fixes**, click the purple **AI suggestions: split tasks, add missing phases** button. One AI request per click — never automatic — and it only looks at task names, dates and the project type. It can suggest:
+
+- **Split into separate steps** — for tasks that bundle independent actions. "Circulate and obtain approval for BRD" becomes *Circulate BRD* then *BRD approved* (a one-day milestone). Tasks whose verbs describe one activity are left alone: "Update and final review BRD", "Develop and unit test login module", "Go-Live Execution / Production Cutover". When applied, the original task becomes a summary with the steps under it, linked in order and sharing its dates; its links move onto the first and last step.
+- **Add missing phase** — for each standard phase the review found missing (see *Checks for your kind of project*), one task with a suggested length, placed after the task it follows and linked to the task that should wait for it. Dates after it are pushed later if needed.
+- **Group under phase** — for a plan with no phases at all, as before.
+
+Tick what you want and **Apply**; **Undo** reverses everything, including dates. If nothing comes back, either nothing needs splitting or adding, or your plan doesn't include AI.
+
 **Propose fixes:** The review does not just tell you what is wrong — it offers to fix it. In the review panel click **Propose fixes** and Kovarti lists concrete changes: link tasks in sequence, flag gates as milestones, and group loose tasks under a phase. Each suggestion has a plain-English reason and a confidence, and the confident ones are pre-ticked. Tick the ones you want and click **Apply selected**; the score updates so you can see the improvement, and a single **Undo** puts everything back if you change your mind. Nothing is ever changed without you approving it.
 
 When you apply fixes that add links between tasks, Kovarti also **re-flows the dates** so each task starts after the tasks it now depends on. Anything already finished, or with real start/finish dates recorded, stays exactly where it is. The panel tells you how many tasks moved and how much the project finish shifted, and warns you if a lot of the plan moved a long way, so you can undo if it is not what you expected.

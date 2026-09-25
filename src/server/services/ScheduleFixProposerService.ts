@@ -14,9 +14,16 @@ import logger from '../utils/logger';
 import {
   proposeFixesDeterministic,
   buildGroupingFixes,
+  buildSplitFixes,
+  buildPhaseFixes,
+  splitCandidates,
+  planSplitDates,
   type ProposedFix,
 } from './scheduleReview/fixProposer';
-import { RULES_VERSION, type ReviewTask } from './scheduleReview/rules';
+import { RULES_VERSION, findMissingPhases, type ReviewTask } from './scheduleReview/rules';
+import { profileFor } from './scheduleReview/domainProfiles';
+import { projectService } from './ProjectService';
+import { sprintService } from './SprintService';
 import {
   scheduleFixProposalRepository,
   type ScheduleFixProposal,
@@ -26,17 +33,50 @@ import {
 const aiLearning = new AILearningServiceV2();
 
 /**
- * The AI is asked ONLY to group tasks into phases — a small, fast reply that does
- * not truncate on large schedules. The deterministic engine still produces the
- * dependency chain and milestone flags (instant and reliable); the model does the
- * one thing rules cannot: read the meaning of task names to infer sequential phases.
+ * One AI call per "Propose fixes" click, for the things rules cannot do — reading what
+ * task names mean: group loose tasks into phases, split tasks that bundle independent
+ * steps, and place a task for each missing standard phase. The deterministic engine still
+ * produces the dependency chain, milestone flags, durations and buffers. The score never
+ * uses AI. Small reply (a few items), so it returns fast and doesn't truncate.
  */
-const AiGroupingSchema = z.object({
+const AiSuggestionSchema = z.object({
   groups: z.array(z.object({
     phaseName: z.string().min(1).max(80),
     taskIds: z.array(z.string()).min(1).max(200),
-  })).max(20),
+  })).max(20).default([]),
+  splits: z.array(z.object({
+    taskId: z.string(),
+    parts: z.array(z.object({
+      name: z.string().min(1).max(200),
+      isMilestone: z.boolean().optional(),
+      days: z.number().optional(),
+    })).min(2).max(5),
+    reason: z.string().max(400).optional(),
+  })).max(15).default([]),
+  phases: z.array(z.object({
+    phase: z.string(),
+    name: z.string().min(1).max(200),
+    days: z.number().optional(),
+    afterTaskId: z.string().nullable().optional(),
+    beforeTaskId: z.string().nullable().optional(),
+    reason: z.string().max(400).optional(),
+  })).max(10).default([]),
 });
+
+/** The user's rule for splitting (agreed 2026-09-25), with their own examples. */
+const SPLIT_RULES = `SPLITTING RULE. Several action verbs in one task is a prompt to think, not an automatic split.
+- SPLIT when the verbs are independent actions: each can be done, finished and checked on its own, often by different people, and one waits for the other (a hand-off, or an approval by someone else).
+- DO NOT split when the verbs describe one activity: the same people working through it in one go, where the second verb just completes or polishes the first; or when two phrases name the same thing.
+- Approvals, sign-offs, signatures and hand-over events are one-day MILESTONES (isMilestone true, days 0), not work.
+Examples:
+  "Circulate and obtain approval for BRD" -> SPLIT: "Circulate BRD" (work) then "BRD approved" (milestone).
+  "Update and final review BRD" -> KEEP (one activity).
+  "Develop and unit test login module" -> KEEP (developers test as they build).
+  "Build API and deploy to staging" -> SPLIT: "Build API" then "Deploy API to staging".
+  "Draft, review and sign contract" -> SPLIT: "Draft contract", "Review contract", "Contract signed" (milestone).
+  "Configure and test firewall rules" -> KEEP (same engineer, one sitting).
+  "Go-Live Execution / Production Cutover" -> KEEP (two names for the same activity).
+Only return tasks that should be split. Keep the original wording and subject in each part's name. days = rough share of the task for work parts.`;
 
 export interface ApplyResult {
   beforeScore: number | null;
@@ -94,13 +134,13 @@ export class ScheduleFixProposerService {
     let source: 'ai' | 'rules' = 'rules';
     if (useAi && config.AI_ENABLED && claudeService.isAvailable() && leafCount <= 80) {
       try {
-        const groupings = await this.aiGroupings(tasks, userId);
-        if (groupings.length > 0) {
-          fixes = [...fixes.filter(f => f.type !== 'set_parent'), ...groupings];
-          source = 'ai';
-        }
+        const ai = await this.aiSuggestions(schedule.projectId, tasks, userId);
+        if (ai.groupings.length > 0) fixes = [...fixes.filter(f => f.type !== 'set_parent'), ...ai.groupings];
+        fixes = [...fixes, ...ai.splits, ...ai.phases];
+        if (ai.groupings.length + ai.splits.length + ai.phases.length > 0) source = 'ai';
       } catch (err: any) {
-        logger.warn('[ScheduleFix] AI grouping failed, keeping deterministic fixes', { scheduleId, error: err?.message });
+        // Includes the plan having no AI allowance (Basic/Trial): rules-only fixes stand.
+        logger.warn('[ScheduleFix] AI suggestions failed, keeping deterministic fixes', { scheduleId, error: err?.message });
       }
     }
 
@@ -120,31 +160,61 @@ export class ScheduleFixProposerService {
   }
 
   /**
-   * Ask the model to group ungrouped leaf tasks into sequential phases. Small,
-   * focused reply (a few groups), so it returns fast and does not truncate on
-   * large schedules. Returns set_parent fixes; empty when there is nothing to group.
+   * One model call for everything that needs the meaning of task names. Each part is
+   * asked for only when it applies: phase grouping for a flat plan (6+ loose tasks),
+   * splits for tasks whose names might bundle steps, a placed task for each standard
+   * phase the review found missing. Nothing to ask → no call, no tokens.
    */
-  private async aiGroupings(tasks: ReviewTask[], userId: string | null): Promise<ProposedFix[]> {
-    const candidates = tasks.filter(t => !t.isSummary && !t.parentTaskId);
-    if (candidates.length < 6) return []; // too small to benefit from phases
+  private async aiSuggestions(projectId: string, tasks: ReviewTask[], userId: string | null): Promise<{ groupings: ProposedFix[]; splits: ProposedFix[]; phases: ProposedFix[] }> {
+    const groupCandidates = tasks.filter(t => !t.isSummary && !t.parentTaskId);
+    const wantGroups = groupCandidates.length >= 6 && !tasks.some(t => t.isSummary);
+    const splitCands = splitCandidates(tasks);
 
-    const taskLines = candidates.map(t => `- id=${t.id} | "${t.name}"`).join('\n');
-    const systemPrompt = `You are a scheduling expert. Group these project tasks into 3-8 sequential PHASES ` +
-      `(for example: Initiation, Analysis & Design, Build/Configuration, Testing, Migration, Go-Live) based on what each task does. ` +
-      `Only group tasks that clearly belong together; omit any you are unsure about. Do not invent tasks. ` +
-      `Return JSON: { "groups": [ { "phaseName": string, "taskIds": string[] } ] } using only ids from the list.`;
-    const userMessage = `Tasks:\n${taskLines}`;
+    const [project, sprints] = await Promise.all([
+      projectService.findById(projectId).catch(() => null),
+      sprintService.getByProject(projectId).catch(() => []),
+    ]);
+    const profile = profileFor(project?.projectType, project?.methodology);
+    const missing = profile ? findMissingPhases(tasks, profile, sprints.length) : [];
+
+    if (!wantGroups && splitCands.length === 0 && missing.length === 0) return { groupings: [], splits: [], phases: [] };
+
+    const line = (t: ReviewTask) => `- id=${t.id} | "${t.name}" | ${String(t.startDate ?? '').slice(0, 10)} to ${String(t.endDate ?? '').slice(0, 10)}${t.isMilestone ? ' | milestone' : ''}`;
+    const sections: string[] = [];
+    const asks: string[] = [];
+    if (wantGroups) {
+      asks.push(`"groups": group the loose tasks into 3-8 sequential PHASES (e.g. Initiation, Analysis & Design, Build, Testing, Migration, Go-Live). Only group tasks that clearly belong together; omit any you are unsure about.`);
+      sections.push(`Loose tasks (for groups):\n${groupCandidates.map(line).join('\n')}`);
+    }
+    if (splitCands.length > 0) {
+      asks.push(`"splits": apply the SPLITTING RULE to these tasks.`);
+      sections.push(`Tasks that might bundle steps (for splits):\n${splitCands.map(line).join('\n')}`);
+    }
+    if (missing.length > 0) {
+      asks.push(`"phases": the plan is missing these standard phases for ${profile!.description}: ${missing.join(', ')}. For each, give one task: "phase" (exactly one of those labels), a specific "name", "days", and where it goes — "afterTaskId" (the task it follows) and "beforeTaskId" (the task that should wait for it), both ids from the full list, or null.`);
+      sections.push(`Full plan (for phases):\n${tasks.filter(t => !t.isSummary).map(line).join('\n')}`);
+    }
+
+    const systemPrompt = `You are a project scheduling expert reviewing a plan. Do not invent tasks except where asked for a missing phase. Use only ids from the lists.\n\n` +
+      (splitCands.length > 0 ? `${SPLIT_RULES}\n\n` : '') +
+      `Return JSON with these keys (empty arrays for anything not asked):\n` +
+      `{ "groups": [ { "phaseName": string, "taskIds": string[] } ], "splits": [ { "taskId": string, "parts": [ { "name": string, "isMilestone": boolean, "days": number } ], "reason": string } ], "phases": [ { "phase": string, "name": string, "days": number, "afterTaskId": string|null, "beforeTaskId": string|null, "reason": string } ] }\n\n` +
+      `Asked for:\n${asks.map(a => `- ${a}`).join('\n')}`;
 
     const { data } = await claudeService.completeWithJsonSchema({
       systemPrompt,
-      userMessage,
-      schema: AiGroupingSchema,
-      maxTokens: 1500,
+      userMessage: sections.join('\n\n'),
+      schema: AiSuggestionSchema,
+      maxTokens: 2500,
       temperature: 0.2,
       userId: userId ?? undefined,
     });
 
-    return buildGroupingFixes(data.groups, candidates);
+    return {
+      groupings: wantGroups ? buildGroupingFixes(data.groups, groupCandidates) : [],
+      splits: splitCands.length > 0 ? buildSplitFixes(data.splits, splitCands) : [],
+      phases: missing.length > 0 ? buildPhaseFixes(data.phases, tasks, missing) : [],
+    };
   }
 
   /** Apply the selected fixes, recording a reversal log, then re-score. */
@@ -271,6 +341,87 @@ export class ScheduleFixProposerService {
         appliedCount++;
       } catch (err: any) {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not insert buffer' });
+      }
+    }
+
+    // 6) splits — the bundled task becomes a summary over its parts, linked in order, with
+    // the task's own dates shared across them. Its links move onto the parts (a summary
+    // shouldn't carry links — R29): predecessors to the first part, successors off the last.
+    for (const f of fixes.filter(f => f.type === 'split_task')) {
+      try {
+        const t = taskById.get(f.taskId!);
+        if (!t || !t.startDate || !t.endDate || !f.parts?.length) { skipped.push({ fixId: f.id, reason: 'task not found or has no dates' }); continue; }
+        if (tasks.some(x => x.parentTaskId === t.id)) { skipped.push({ fixId: f.id, reason: 'task already has tasks under it' }); continue; }
+        const planned = planSplitDates(String(t.startDate), String(t.endDate), f.parts);
+        const created: string[] = [];
+        let after = t.id;
+        for (const part of planned) {
+          const child = await scheduleService.createTask({
+            scheduleId,
+            name: part.name,
+            parentTaskId: t.id,
+            afterTaskId: after,
+            startDate: part.startDate,
+            endDate: part.endDate,
+            isMilestone: part.isMilestone,
+            estimatedDays: part.isMilestone ? 0 : undefined,
+            assignedTo: t.assignedTo || undefined,
+            status: t.status,
+            priority: t.priority,
+            createdBy: userId ?? 'system',
+          } as any);
+          applied.push({ op: 'delete_task', taskId: child.id }); // undo removes parts (and their links)
+          created.push(child.id);
+          after = child.id;
+        }
+        for (let i = 1; i < created.length; i++) {
+          await scheduleService.addDependency(created[i], created[i - 1], 'FS', 0);
+        }
+        const first = created[0];
+        const last = created[created.length - 1];
+        for (const d of t.dependencies || []) {
+          await scheduleService.addDependency(first, d.dependencyId, (d.dependencyType || 'FS') as any, d.lagDays ?? 0);
+          await scheduleService.removeDependency(t.id, d.dependencyId);
+          applied.push({ op: 'readd_dependency', taskId: t.id, dependencyId: d.dependencyId, dependencyType: (d.dependencyType || 'FS') as any, lagDays: d.lagDays ?? 0 });
+        }
+        for (const succ of tasks.filter(x => (x.dependencies || []).some(d => d.dependencyId === t.id))) {
+          const d = succ.dependencies.find(dd => dd.dependencyId === t.id)!;
+          await scheduleService.addDependency(succ.id, last, (d.dependencyType || 'FS') as any, d.lagDays ?? 0);
+          await scheduleService.removeDependency(succ.id, t.id);
+          applied.push({ op: 'readd_dependency', taskId: succ.id, dependencyId: t.id, dependencyType: (d.dependencyType || 'FS') as any, lagDays: d.lagDays ?? 0 });
+          applied.push({ op: 'remove_dependency', taskId: succ.id, dependencyId: last });
+        }
+        appliedCount++;
+      } catch (err: any) {
+        skipped.push({ fixId: f.id, reason: err?.message || 'could not split task' });
+      }
+    }
+
+    // 7) missing phases — one task, placed after its anchor and linked; the task that should
+    // wait for it gets a link too, and the re-flow below pushes it later if needed.
+    for (const f of fixes.filter(f => f.type === 'add_task')) {
+      try {
+        const anchor = f.afterTaskId ? taskById.get(f.afterTaskId) : undefined;
+        const start = anchor?.endDate ? new Date(Date.parse(String(anchor.endDate).slice(0, 10) + 'T00:00:00Z') + 86_400_000).toISOString().slice(0, 10) : undefined;
+        const end = start ? new Date(Date.parse(start + 'T00:00:00Z') + ((f.newTaskDays ?? 5) - 1) * 86_400_000).toISOString().slice(0, 10) : undefined;
+        const created = await scheduleService.createTask({
+          scheduleId,
+          name: f.newTaskName!,
+          afterTaskId: anchor?.id,
+          parentTaskId: anchor?.parentTaskId || undefined,
+          startDate: start,
+          endDate: end,
+          estimatedDays: f.newTaskDays ?? 5,
+          createdBy: userId ?? 'system',
+        } as any);
+        applied.push({ op: 'delete_task', taskId: created.id }); // undo removes it and its links
+        if (anchor) await scheduleService.addDependency(created.id, anchor.id, 'FS', 0);
+        if (f.beforeTaskId && taskById.has(f.beforeTaskId)) {
+          await scheduleService.addDependency(f.beforeTaskId, created.id, 'FS', 0).catch(() => { /* would loop — leave it unlinked */ });
+        }
+        appliedCount++;
+      } catch (err: any) {
+        skipped.push({ fixId: f.id, reason: err?.message || 'could not add phase task' });
       }
     }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proposeFixesDeterministic, buildGroupingFixes } from '../../services/scheduleReview/fixProposer';
+import { proposeFixesDeterministic, buildGroupingFixes, splitCandidates, buildSplitFixes, buildPhaseFixes, planSplitDates } from '../../services/scheduleReview/fixProposer';
 import type { Finding, ReviewTask } from '../../services/scheduleReview/rules';
 
 let seq = 0;
@@ -142,5 +142,81 @@ describe('buildGroupingFixes (AI phase grouping → set_parent)', () => {
     ], tasks);
     expect(fixes.map(f => f.taskId)).toEqual(['a', 'b']);
     expect(fixes.every(f => f.newParentName === 'Real')).toBe(true);
+  });
+});
+
+
+describe('Phase 2 — split bundled tasks, add missing phases', () => {
+  const dated = (id: string, name: string, extra: Partial<ReviewTask> = {}) =>
+    task({ id, name, startDate: '2026-10-01', endDate: '2026-10-10', ...extra });
+
+  it('splitCandidates pre-filters names that might bundle steps, skipping milestones, summaries and done work', () => {
+    seq = 0;
+    const tasks = [
+      dated('a', 'Circulate and obtain approval for BRD'),
+      dated('b', 'Build API & deploy to staging'),
+      dated('c', 'Draft / review contract'),
+      dated('d', 'Write test plan'),                       // no joiner
+      dated('e', 'Gate 1 sign-off and acceptance', { isMilestone: true }),
+      dated('f', 'Design and build', { status: 'completed' }),
+      dated('ph', 'Phase A and B', { isSummary: true }),
+      dated('k', 'Child', { parentTaskId: 'ph' }),
+    ];
+    expect(splitCandidates(tasks).map(t => t.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('buildSplitFixes keeps valid splits and drops bad ones', () => {
+    seq = 0;
+    const cands = [dated('a', 'Circulate and obtain approval for BRD'), dated('b', 'Build API & deploy')];
+    const fixes = buildSplitFixes([
+      { taskId: 'a', parts: [{ name: 'Circulate BRD', days: 8 }, { name: 'BRD approved', isMilestone: true, days: 0 }], reason: 'Approval is a separate decision' },
+      { taskId: 'zz', parts: [{ name: 'x' }, { name: 'y' }] },                        // unknown task
+      { taskId: 'b', parts: [{ name: 'Only one part' }] },                              // too few parts
+      { taskId: 'b', parts: [{ name: 'A', isMilestone: true }, { name: 'B', isMilestone: true }] }, // no work
+      { taskId: 'a', parts: [{ name: 'dup' }, { name: 'dup2' }] },                      // second split of a
+    ], cands);
+    expect(fixes).toHaveLength(1);
+    expect(fixes[0]).toMatchObject({ type: 'split_task', taskId: 'a', taskName: 'Circulate and obtain approval for BRD', reason: 'Approval is a separate decision', defaultChecked: true });
+    expect(fixes[0].parts).toEqual([{ name: 'Circulate BRD', isMilestone: false, days: 8 }, { name: 'BRD approved', isMilestone: true, days: 0 }]);
+  });
+
+  it('buildPhaseFixes accepts only phases the review found missing, one each, with real anchors', () => {
+    seq = 0;
+    const tasks = [dated('build', 'Build API'), dated('dep', 'Deploy to production')];
+    const fixes = buildPhaseFixes([
+      { phase: 'testing', name: 'System and user acceptance testing', days: 10, afterTaskId: 'build', beforeTaskId: 'dep', reason: 'No testing planned' },
+      { phase: 'Testing', name: 'Another testing task' },   // second for same phase
+      { phase: 'Design', name: 'Not missing' },              // not in the missing list
+      { phase: 'Deployment', name: 'Go live', afterTaskId: 'nope', days: 900 },
+    ], tasks, ['Testing', 'Deployment']);
+    expect(fixes.map(f => f.phaseLabel)).toEqual(['Testing', 'Deployment']);
+    expect(fixes[0]).toMatchObject({ type: 'add_task', newTaskName: 'System and user acceptance testing', newTaskDays: 10, afterTaskId: 'build', afterTaskName: 'Build API', beforeTaskId: 'dep' });
+    expect(fixes[1]).toMatchObject({ afterTaskId: undefined, newTaskDays: 60 }); // unknown anchor dropped, length capped
+  });
+
+  it('planSplitDates shares the task span across work parts and puts milestones on the day work ends', () => {
+    const plan = planSplitDates('2026-10-01', '2026-10-10', [
+      { name: 'Circulate BRD', isMilestone: false, days: 8 },
+      { name: 'BRD approved', isMilestone: true, days: 0 },
+    ]);
+    expect(plan).toEqual([
+      { name: 'Circulate BRD', isMilestone: false, days: 8, startDate: '2026-10-01', endDate: '2026-10-10' },
+      { name: 'BRD approved', isMilestone: true, days: 0, startDate: '2026-10-10', endDate: '2026-10-10' },
+    ]);
+    const three = planSplitDates('2026-10-01', '2026-10-10', [
+      { name: 'Draft', isMilestone: false, days: 3 },
+      { name: 'Review', isMilestone: false, days: 2 },
+      { name: 'Signed', isMilestone: true, days: 0 },
+    ]);
+    expect(three.map(p => [p.startDate, p.endDate])).toEqual([['2026-10-01', '2026-10-06'], ['2026-10-07', '2026-10-10'], ['2026-10-10', '2026-10-10']]);
+  });
+
+  it('planSplitDates always fills the span exactly and gives each work part at least a day', () => {
+    const plan = planSplitDates('2026-10-01', '2026-10-03', [
+      { name: 'A', isMilestone: false, days: 30 }, { name: 'B', isMilestone: false, days: 1 }, { name: 'C', isMilestone: false, days: 1 },
+    ]);
+    expect(plan.map(p => [p.startDate, p.endDate])).toEqual([['2026-10-01', '2026-10-01'], ['2026-10-02', '2026-10-02'], ['2026-10-03', '2026-10-03']]);
+    const tight = planSplitDates('2026-10-01', '2026-10-01', [{ name: 'A', isMilestone: false, days: 1 }, { name: 'B', isMilestone: false, days: 1 }]);
+    expect(tight.every(p => p.startDate === '2026-10-01' && p.endDate === '2026-10-01')).toBe(true); // more parts than days: parallel
   });
 });

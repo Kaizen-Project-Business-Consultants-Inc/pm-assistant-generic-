@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { X, Loader2, CheckCircle2, Undo2, Link2, Flag, FolderTree, Clock, Shield, Sparkles } from 'lucide-react';
+import { X, Loader2, CheckCircle2, Undo2, Link2, Flag, FolderTree, Clock, Shield, Sparkles, Scissors, ListPlus } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { announce } from '../../../utils/announce';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
@@ -9,7 +9,7 @@ import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 // Types (mirror the server ProposedFix / proposal shape)
 // ---------------------------------------------------------------------------
 
-type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration' | 'insert_buffer';
+type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration' | 'insert_buffer' | 'split_task' | 'add_task';
 
 interface ProposedFix {
   id: string;
@@ -23,6 +23,12 @@ interface ProposedFix {
   newDuration?: number;
   gateName?: string;
   bufferDays?: number;
+  parts?: Array<{ name: string; isMilestone: boolean; days: number }>;
+  phaseLabel?: string;
+  newTaskName?: string;
+  newTaskDays?: number;
+  afterTaskName?: string;
+  beforeTaskName?: string;
 }
 
 interface FixProposal {
@@ -65,6 +71,8 @@ const TYPE_META: Record<FixType, { label: string; Icon: typeof Link2 }> = {
   set_parent: { label: 'Group under phase', Icon: FolderTree },
   set_duration: { label: 'Fix duration', Icon: Clock },
   insert_buffer: { label: 'Add buffer', Icon: Shield },
+  split_task: { label: 'Split into separate steps', Icon: Scissors },
+  add_task: { label: 'Add missing phase', Icon: ListPlus },
 };
 
 function fixText(f: ProposedFix): string {
@@ -72,6 +80,15 @@ function fixText(f: ProposedFix): string {
   if (f.type === 'set_milestone') return `Flag '${f.taskName}' as a milestone`;
   if (f.type === 'set_duration') return `Set '${f.taskName}' duration to ${f.newDuration} day${f.newDuration === 1 ? '' : 's'}`;
   if (f.type === 'insert_buffer') return `Add a ${f.bufferDays}-day buffer before '${f.gateName}'`;
+  if (f.type === 'split_task') {
+    const steps = (f.parts ?? []).map((p, i) => `${i + 1}. ${p.name}${p.isMilestone ? ' (milestone)' : ''}`).join('  ');
+    return `Split '${f.taskName}' into: ${steps}`;
+  }
+  if (f.type === 'add_task') {
+    const where = f.afterTaskName ? ` after '${f.afterTaskName}'` : '';
+    const then = f.beforeTaskName ? `, before '${f.beforeTaskName}'` : '';
+    return `Add ${f.phaseLabel}: '${f.newTaskName}' (${f.newTaskDays} day${f.newTaskDays === 1 ? '' : 's'})${where}${then}`;
+  }
   return `Group '${f.taskName}' under phase '${f.newParentName}'`;
 }
 
@@ -87,6 +104,7 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
   const [undone, setUndone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const generated = useRef(false);
+  const askedAi = useRef(false);
 
   const proposeMutation = useMutation({
     mutationFn: (useAi: boolean) => apiService.proposeScheduleFixes(scheduleId, useAi),
@@ -139,7 +157,7 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
 
   const fixes = proposal?.proposalData.fixes ?? [];
   const grouped = useMemo(() => {
-    const order: FixType[] = ['add_dependency', 'set_milestone', 'set_parent', 'set_duration', 'insert_buffer'];
+    const order: FixType[] = ['split_task', 'add_task', 'add_dependency', 'set_milestone', 'set_parent', 'set_duration', 'insert_buffer'];
     return order.map(type => ({ type, items: fixes.filter(f => f.type === type) })).filter(g => g.items.length > 0);
   }, [fixes]);
 
@@ -186,17 +204,26 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
 
           {error && <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm">{error}</div>}
 
-          {/* Opt-in AI drafting: rules are instant; AI is slower but writes richer reasons. */}
-          {proposal && !applied && proposal.source === 'rules' && fixes.length > 0 && (
-            <button
-              type="button"
-              onClick={() => proposeMutation.mutate(true)}
-              disabled={proposeMutation.isPending}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 hover:underline disabled:opacity-60"
-            >
-              {proposeMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-              {proposeMutation.isPending ? 'Grouping into phases…' : 'Suggest phases with AI'}
-            </button>
+          {/* Opt-in AI: rules are instant; AI reads what task names mean — group loose tasks
+              into phases, split tasks that bundle separate steps, add missing phases. One
+              call per click, never automatic. Shown even when the rules found nothing. */}
+          {proposal && !applied && proposal.source === 'rules' && (
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => { askedAi.current = true; proposeMutation.mutate(true); }}
+                disabled={proposeMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-ai-primary text-white hover:bg-ai-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-ai-border focus-visible:ring-offset-1 disabled:opacity-60"
+              >
+                {proposeMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />}
+                {proposeMutation.isPending ? 'Asking AI…' : 'AI suggestions: split tasks, add missing phases'}
+              </button>
+              {askedAi.current && !proposeMutation.isPending && (
+                <p role="status" className="text-xs text-gray-600 dark:text-gray-400">
+                  No AI suggestions this time — either nothing needs splitting or adding, or your plan doesn't include AI.
+                </p>
+              )}
+            </div>
           )}
 
           {proposal && !proposeMutation.isPending && fixes.length === 0 && (

@@ -8,7 +8,7 @@
  * where one exists.
  */
 
-import { profileFor, matchesAny } from './domainProfiles';
+import { profileFor, matchesAny, type DomainProfile } from './domainProfiles';
 
 export const RULES_VERSION = '1.2';
 
@@ -614,27 +614,39 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   // R31 / R32 — Standard phases and key milestones for this kind of project. Matched on task
   // names, deterministic. Skipped for tiny plans and for types without a profile yet.
   if (profile && n >= 5) {
-    // Phases are work, so only non-milestone tasks count: a "UAT sign-off" milestone
-    // doesn't mean the testing itself is planned.
-    const names = g.all.filter(t => !isMilestoneLike(t)).map(t => t.name || '');
-    const has = (patterns: RegExp[]) => names.some(nm => matchesAny(nm, patterns));
-    const missingPhases = profile.phases
-      .filter(p => !(p.label === 'Sprints' && (input.sprintCount ?? 0) > 0))
-      .filter(p => !has(p.patterns))
-      .map(p => p.label);
+    const missingPhases = findMissingPhases(g.all, profile, input.sprintCount ?? 0);
     if (missingPhases.length > 0) {
       findings.push(make('R31', [], `For ${profile.description}, a plan usually covers ${profile.phases.map(p => p.label).join(', ')}. No task looks like ${missingPhases.join(', ')}. Add ${missingPhases.length === 1 ? 'it' : 'them'} as phases, or rename tasks so the plan says where that work happens.`));
     }
-    const milestoneNames = g.all.filter(t => isMilestoneLike(t)).map(t => t.name || '');
-    const missingMilestones = profile.milestones
-      .filter(m => !milestoneNames.some(nm => matchesAny(nm, m.patterns)))
-      .map(m => m.label);
+    const missingMilestones = findMissingMilestones(g.all, profile);
     if (missingMilestones.length > 0) {
       findings.push(make('R32', [], `For ${profile.description}, expected milestones include ${profile.milestones.map(m => m.label).join(', ')}. None found for ${missingMilestones.join(', ')}. Add ${missingMilestones.length === 1 ? 'it as a milestone' : 'them as milestones'} (a single day, flagged as a milestone).`));
     }
   }
 
   return { findings, skipped, leafTaskCount: n };
+}
+
+/**
+ * Standard phases of the profile that no task covers. Phases are work, so only
+ * non-milestone tasks count — a "UAT sign-off" milestone doesn't mean the testing itself
+ * is planned. Sprints set up on the project count as the Sprints phase. Shared by R31 and
+ * the fix proposer, so the review and its suggestions always agree.
+ */
+export function findMissingPhases(tasks: ReviewTask[], profile: DomainProfile, sprintCount = 0): string[] {
+  const names = tasks.filter(t => !isMilestoneLike(t)).map(t => t.name || '');
+  return profile.phases
+    .filter(p => !(p.label === 'Sprints' && sprintCount > 0))
+    .filter(p => !names.some(nm => matchesAny(nm, p.patterns)))
+    .map(p => p.label);
+}
+
+/** Key milestones of the profile that no milestone-like task covers (R32). */
+export function findMissingMilestones(tasks: ReviewTask[], profile: DomainProfile): string[] {
+  const names = tasks.filter(t => isMilestoneLike(t)).map(t => t.name || '');
+  return profile.milestones
+    .filter(m => !names.some(nm => matchesAny(nm, m.patterns)))
+    .map(m => m.label);
 }
 
 // ---------------------------------------------------------------------------

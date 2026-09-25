@@ -2,6 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../config', () => ({ config: { AI_ENABLED: false } }));
 
+vi.mock('../../services/ProjectService', () => ({
+  projectService: { findById: vi.fn().mockResolvedValue({ id: 'p1', projectType: 'it', methodology: 'waterfall' }) },
+}));
+vi.mock('../../services/SprintService', () => ({
+  sprintService: { getByProject: vi.fn().mockResolvedValue([]) },
+}));
+
 vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
     findById: vi.fn().mockResolvedValue({ id: 's1', projectId: 'p1', startDate: '2026-10-01', endDate: '2026-12-31' }),
@@ -50,7 +57,7 @@ vi.mock('../../services/ScheduleReviewService', () => ({
 }));
 
 vi.mock('../../services/claudeService', () => ({
-  claudeService: { isAvailable: () => false, completeWithJsonSchema: vi.fn() },
+  claudeService: { isAvailable: vi.fn(() => false), completeWithJsonSchema: vi.fn() },
 }));
 
 const recordFeedback = vi.fn();
@@ -165,6 +172,124 @@ describe('ScheduleFixProposerService', () => {
     const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
     expect(log.map(a => a.op)).toEqual(['delete_task', 'readd_dependency', 'remove_dependency']);
     expect(res.appliedCount).toBe(1);
+  });
+
+  it('applies split_task: parts under the task, linked in order, links moved off the summary, reversible', async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const prop = { ...PROPOSAL, proposalData: { fixes: [
+      { id: 'sp1', type: 'split_task', confidence: 0.7, reason: 'x', defaultChecked: true, taskId: 'brd', taskName: 'Circulate and obtain approval for BRD',
+        parts: [{ name: 'Circulate BRD', isMilestone: false, days: 8 }, { name: 'BRD approved', isMilestone: true, days: 0 }] },
+    ] } };
+    vi.mocked(repo.findById).mockResolvedValue({ ...prop } as any);
+    vi.mocked(scheduleService.createTask).mockResolvedValueOnce({ id: 'part-1' } as any).mockResolvedValueOnce({ id: 'part-2' } as any);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue([
+      { id: 'pre', name: 'Draft BRD', dependencies: [] },
+      { id: 'brd', name: 'Circulate and obtain approval for BRD', startDate: '2026-10-01', endDate: '2026-10-10', assignedTo: 'Ann', status: 'pending', priority: 'high',
+        dependencies: [{ dependencyId: 'pre', dependencyType: 'FS', lagDays: 0 }] },
+      { id: 'des', name: 'Design', dependencies: [{ dependencyId: 'brd', dependencyType: 'FS', lagDays: 2 }] },
+    ] as any);
+
+    const res = await (await svc()).apply('s1', 'prop-1', ['sp1'], 'u1');
+
+    expect(scheduleService.createTask).toHaveBeenNthCalledWith(1, expect.objectContaining({ name: 'Circulate BRD', parentTaskId: 'brd', afterTaskId: 'brd', startDate: '2026-10-01', endDate: '2026-10-10', isMilestone: false, assignedTo: 'Ann' }));
+    expect(scheduleService.createTask).toHaveBeenNthCalledWith(2, expect.objectContaining({ name: 'BRD approved', parentTaskId: 'brd', afterTaskId: 'part-1', startDate: '2026-10-10', endDate: '2026-10-10', isMilestone: true, estimatedDays: 0 }));
+    expect(scheduleService.addDependency).toHaveBeenCalledWith('part-2', 'part-1', 'FS', 0);  // parts in order
+    expect(scheduleService.addDependency).toHaveBeenCalledWith('part-1', 'pre', 'FS', 0);     // predecessor moved to the first part
+    expect(scheduleService.removeDependency).toHaveBeenCalledWith('brd', 'pre');
+    expect(scheduleService.addDependency).toHaveBeenCalledWith('des', 'part-2', 'FS', 2);     // successor now waits on the last part, lag kept
+    expect(scheduleService.removeDependency).toHaveBeenCalledWith('des', 'brd');
+    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    expect(log.map(a => a.op)).toEqual(['delete_task', 'delete_task', 'readd_dependency', 'readd_dependency', 'remove_dependency']);
+    expect(res.appliedCount).toBe(1);
+  });
+
+  it('applies add_task: one task after its anchor, linked both ways, removed on undo', async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const prop = { ...PROPOSAL, proposalData: { fixes: [
+      { id: 'ph1', type: 'add_task', confidence: 0.65, reason: 'x', defaultChecked: true, phaseLabel: 'Testing', newTaskName: 'System testing', newTaskDays: 5, afterTaskId: 'build', beforeTaskId: 'dep' },
+    ] } };
+    vi.mocked(repo.findById).mockResolvedValue({ ...prop } as any);
+    vi.mocked(scheduleService.createTask).mockResolvedValue({ id: 'test-1' } as any);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue([
+      { id: 'build', name: 'Build', startDate: '2026-10-01', endDate: '2026-10-10', parentTaskId: 'phase-b', dependencies: [] },
+      { id: 'dep', name: 'Deploy', startDate: '2026-10-11', endDate: '2026-10-12', dependencies: [{ dependencyId: 'build', dependencyType: 'FS', lagDays: 0 }] },
+    ] as any);
+
+    await (await svc()).apply('s1', 'prop-1', ['ph1'], 'u1');
+
+    expect(scheduleService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'System testing', afterTaskId: 'build', parentTaskId: 'phase-b', startDate: '2026-10-11', endDate: '2026-10-15', estimatedDays: 5 }));
+    expect(scheduleService.addDependency).toHaveBeenCalledWith('test-1', 'build', 'FS', 0);
+    expect(scheduleService.addDependency).toHaveBeenCalledWith('dep', 'test-1', 'FS', 0);
+    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    expect(log.map(a => a.op)).toEqual(['delete_task']);
+  });
+
+  it('asks the AI once, with the splitting rule, only for what applies, and merges valid suggestions', async () => {
+    const { config } = await import('../../config');
+    const { claudeService } = await import('../../services/claudeService');
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleReviewService } = await import('../../services/ScheduleReviewService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    (config as any).AI_ENABLED = true;
+    vi.mocked(claudeService.isAvailable).mockReturnValue(true);
+    vi.mocked(scheduleReviewService.latest).mockResolvedValue({ id: 'rev-1', findings: [] } as any);
+    vi.mocked(repo.insert).mockImplementation(async (r: any) => r);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue([
+      { id: 'ph', name: 'Analysis', isSummary: true, dependencies: [] },
+      { id: 'brd', name: 'Circulate and obtain approval for BRD', parentTaskId: 'ph', startDate: '2026-10-01', endDate: '2026-10-10', status: 'pending', dependencies: [] },
+      { id: 'des', name: 'Solution design', parentTaskId: 'ph', startDate: '2026-10-11', endDate: '2026-10-20', status: 'pending', dependencies: [] },
+      { id: 'bld', name: 'Build the API', parentTaskId: 'ph', startDate: '2026-10-21', endDate: '2026-10-30', status: 'pending', dependencies: [] },
+      { id: 'go', name: 'Go-live', parentTaskId: 'ph', isMilestone: true, startDate: '2026-11-02', endDate: '2026-11-02', status: 'pending', dependencies: [] },
+    ] as any);
+    vi.mocked(claudeService.completeWithJsonSchema).mockResolvedValue({ data: {
+      groups: [],
+      splits: [{ taskId: 'brd', parts: [{ name: 'Circulate BRD', isMilestone: false, days: 8 }, { name: 'BRD approved', isMilestone: true, days: 0 }], reason: 'Approval is a separate decision' }],
+      phases: [
+        { phase: 'Testing', name: 'System and user acceptance testing', days: 10, afterTaskId: 'bld', beforeTaskId: 'go', reason: 'No testing planned' },
+        { phase: 'Deployment', name: 'Deploy to production', days: 2, afterTaskId: null, beforeTaskId: null },
+      ],
+    } } as any);
+
+    const proposal: any = await (await svc()).propose('s1', 'u1', true);
+
+    expect(claudeService.completeWithJsonSchema).toHaveBeenCalledTimes(1);
+    const call = vi.mocked(claudeService.completeWithJsonSchema).mock.calls[0][0] as any;
+    expect(call.systemPrompt).toContain('SPLITTING RULE');
+    expect(call.systemPrompt).toContain('Update and final review BRD');
+    expect(call.systemPrompt).toContain('Testing, Deployment');  // the phases the review says are missing
+    expect(call.systemPrompt).not.toContain('"groups": group');   // plan already has a phase: no grouping asked
+    expect(call.userMessage).toContain('Circulate and obtain approval for BRD');
+    expect(call.maxTokens).toBe(2500);
+    const types = proposal.proposalData.fixes.map((f: any) => f.type);
+    expect(types).toContain('split_task');
+    expect(types.filter((t: string) => t === 'add_task')).toHaveLength(2);
+    expect(proposal.source).toBe('ai');
+    (config as any).AI_ENABLED = false;
+    vi.mocked(claudeService.isAvailable).mockReturnValue(false);
+  });
+
+  it('makes no AI call when there is nothing for it to do', async () => {
+    const { config } = await import('../../config');
+    const { claudeService } = await import('../../services/claudeService');
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleReviewService } = await import('../../services/ScheduleReviewService');
+    const { projectService } = await import('../../services/ProjectService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    (config as any).AI_ENABLED = true;
+    vi.mocked(claudeService.isAvailable).mockReturnValue(true);
+    vi.mocked(projectService.findById).mockResolvedValueOnce({ id: 'p1', projectType: 'other', methodology: 'waterfall' } as any);
+    vi.mocked(scheduleReviewService.latest).mockResolvedValue({ id: 'rev-1', findings: [] } as any);
+    vi.mocked(repo.insert).mockImplementation(async (r: any) => r);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue([
+      { id: 'a', name: 'Design', startDate: '2026-10-01', endDate: '2026-10-02', dependencies: [] },
+      { id: 'b', name: 'Build', startDate: '2026-10-03', endDate: '2026-10-04', dependencies: [] },
+    ] as any);
+    await (await svc()).propose('s1', 'u1', true);
+    expect(claudeService.completeWithJsonSchema).not.toHaveBeenCalled();
+    (config as any).AI_ENABLED = false;
+    vi.mocked(claudeService.isAvailable).mockReturnValue(false);
   });
 
   it('skips a dependency that is rejected (cycle) without failing the apply', async () => {

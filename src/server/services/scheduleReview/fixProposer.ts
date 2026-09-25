@@ -9,7 +9,7 @@
 
 import { calendarDaySpan, isMilestoneLike, BUFFER_NAME, type Finding, type ReviewTask } from './rules';
 
-export type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration' | 'insert_buffer';
+export type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration' | 'insert_buffer' | 'split_task' | 'add_task';
 
 export interface ProposedFix {
   id: string;
@@ -33,6 +33,24 @@ export interface ProposedFix {
   gateTaskId?: string;     // the gate/milestone to protect
   gateName?: string;
   bufferDays?: number;     // size of the buffer task to insert before the gate
+  // split_task — the task (taskId/taskName) becomes a summary over these parts, in order
+  parts?: SplitPart[];
+  // add_task — a missing standard phase, added as one linked task
+  phaseLabel?: string;     // "Testing"
+  newTaskName?: string;    // "System and user acceptance testing"
+  newTaskDays?: number;
+  afterTaskId?: string;    // the new task waits on this one
+  afterTaskName?: string;
+  beforeTaskId?: string;   // this one then waits on the new task
+  beforeTaskName?: string;
+}
+
+export interface SplitPart {
+  name: string;
+  /** Approvals, sign-offs, hand-over events: a one-day milestone, not work */
+  isMilestone: boolean;
+  /** Suggested length in calendar days (work parts); rescaled to the task's own span */
+  days: number;
 }
 
 /** Fixes at or above this confidence are pre-ticked in the UI. */
@@ -235,4 +253,149 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
   }
 
   return fixes;
+}
+
+
+// ---------------------------------------------------------------------------
+// Phase 2 (AI-assisted) — split bundled tasks, add missing phases
+// ---------------------------------------------------------------------------
+
+/**
+ * Names that MIGHT bundle several steps ("Circulate and obtain approval for BRD",
+ * "Build API & deploy", "Draft / review contract"). Only a pre-filter for what the AI
+ * is asked about — the AI decides whether the verbs are independent actions (split) or
+ * one activity ("Update and final review BRD" — keep). Keeps the prompt small.
+ */
+const JOINER = /\b(and|then)\b|&|\+|\/|,/i;
+
+export function splitCandidates(tasks: ReviewTask[]): ReviewTask[] {
+  const parents = new Set(tasks.map(t => t.parentTaskId).filter(Boolean) as string[]);
+  // Only tasks actually flagged as milestones are skipped — not ones whose NAME mentions
+  // approval: "Circulate and obtain approval for BRD" is exactly the kind of bundled
+  // work + decision the AI should look at, even as a one-day task.
+  return tasks.filter(t =>
+    !t.isSummary && !parents.has(t.id) && !t.isMilestone &&
+    !!t.startDate && !!t.endDate && JOINER.test(t.name || '') &&
+    t.status !== 'completed' && t.status !== 'cancelled');
+}
+
+/**
+ * Validate AI split suggestions into split_task fixes. Drops anything that doesn't name a
+ * candidate task, has fewer than two or more than five parts, or has no real work part.
+ */
+export function buildSplitFixes(
+  splits: Array<{ taskId: string; parts: Array<{ name: string; isMilestone?: boolean; days?: number }>; reason?: string }>,
+  candidates: ReviewTask[],
+): ProposedFix[] {
+  const byId = new Map(candidates.map(t => [t.id, t]));
+  const done = new Set<string>();
+  const out: ProposedFix[] = [];
+  for (const sp of splits) {
+    const t = byId.get(sp.taskId);
+    if (!t || done.has(t.id)) continue;
+    const parts: SplitPart[] = (sp.parts || [])
+      .map(p => ({ name: String(p.name || '').trim().slice(0, 200), isMilestone: !!p.isMilestone, days: Math.max(0, Math.round(Number(p.days) || 0)) }))
+      .filter(p => p.name);
+    if (parts.length < 2 || parts.length > 5) continue;
+    if (!parts.some(p => !p.isMilestone)) continue;
+    done.add(t.id);
+    out.push(build({
+      id: `split:${t.id}`,
+      type: 'split_task',
+      confidence: 0.7,
+      reason: (sp.reason || '').trim().slice(0, 300) || `'${t.name}' bundles separate steps; each can be tracked and finished on its own.`,
+      taskId: t.id,
+      taskName: t.name,
+      parts,
+    }));
+  }
+  return out;
+}
+
+/**
+ * Validate AI suggestions for missing phases into add_task fixes. Only phases the review
+ * found missing are accepted, anchors must be real tasks, and a length is always set.
+ */
+export function buildPhaseFixes(
+  phases: Array<{ phase: string; name: string; days?: number; afterTaskId?: string | null; beforeTaskId?: string | null; reason?: string }>,
+  tasks: ReviewTask[],
+  missingPhaseLabels: string[],
+): ProposedFix[] {
+  const byId = new Map(tasks.map(t => [t.id, t]));
+  const wanted = new Map(missingPhaseLabels.map(l => [l.toLowerCase(), l]));
+  const out: ProposedFix[] = [];
+  for (const ph of phases) {
+    const label = wanted.get(String(ph.phase || '').trim().toLowerCase());
+    const name = String(ph.name || '').trim().slice(0, 200);
+    if (!label || !name) continue;
+    wanted.delete(label.toLowerCase()); // one suggestion per missing phase
+    const after = ph.afterTaskId ? byId.get(ph.afterTaskId) : undefined;
+    const before = ph.beforeTaskId ? byId.get(ph.beforeTaskId) : undefined;
+    const days = Math.min(60, Math.max(1, Math.round(Number(ph.days) || 5)));
+    out.push(build({
+      id: `phase:${label}`,
+      type: 'add_task',
+      confidence: after ? 0.65 : 0.5,
+      reason: (ph.reason || '').trim().slice(0, 300) || `The plan has no ${label} work; adding it makes the timeline honest.`,
+      phaseLabel: label,
+      newTaskName: name,
+      newTaskDays: days,
+      afterTaskId: after?.id,
+      afterTaskName: after?.name,
+      beforeTaskId: before && before.id !== after?.id ? before.id : undefined,
+      beforeTaskName: before && before.id !== after?.id ? before.name : undefined,
+    }));
+  }
+  return out;
+}
+
+const DAY = 86_400_000;
+const addDays = (ymd: string, n: number) => new Date(Date.parse(`${ymd}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
+
+/**
+ * Share a task's own dates across its split parts, in order, in calendar days (the app's
+ * date math). Work parts are scaled to fill the task's span exactly — the summary keeps
+ * the original dates — by largest remainder, at least one day each; if there are more
+ * work parts than days they run in parallel over the whole span. A milestone sits on the
+ * last day of the work before it (or the task's first day if it comes first).
+ */
+export function planSplitDates(start: string, end: string, parts: SplitPart[]): Array<SplitPart & { startDate: string; endDate: string }> {
+  const s = start.slice(0, 10);
+  const e = end.slice(0, 10);
+  const span = Math.max(1, Math.round((Date.parse(`${e}T00:00:00Z`) - Date.parse(`${s}T00:00:00Z`)) / DAY) + 1);
+  const work = parts.filter(p => !p.isMilestone);
+  const parallel = work.length > span;
+  let alloc: number[] = [];
+  if (!parallel) {
+    const weights = work.map(p => Math.max(1, p.days || 1));
+    const total = weights.reduce((a, b) => a + b, 0);
+    const extra = span - work.length; // every part gets 1 day, share the rest by weight
+    const raw = weights.map(w => (w / total) * extra);
+    alloc = raw.map(r => 1 + Math.floor(r));
+    let left = span - alloc.reduce((a, b) => a + b, 0);
+    const order = raw.map((r, i) => ({ i, f: r - Math.floor(r) })).sort((a, b) => b.f - a.f || a.i - b.i);
+    for (let k = 0; left > 0; k = (k + 1) % order.length, left--) alloc[order[k].i]++;
+  }
+  const out: Array<SplitPart & { startDate: string; endDate: string }> = [];
+  let cursor = s;
+  let lastEnd: string | null = null;
+  let w = 0;
+  for (const p of parts) {
+    if (p.isMilestone) {
+      const day = lastEnd ?? s;
+      out.push({ ...p, startDate: day, endDate: day });
+      continue;
+    }
+    if (parallel) {
+      out.push({ ...p, startDate: s, endDate: e });
+      lastEnd = e;
+      continue;
+    }
+    const pe = addDays(cursor, alloc[w] - 1);
+    out.push({ ...p, startDate: cursor, endDate: pe });
+    lastEnd = pe;
+    cursor = addDays(pe, 1);
+    w++;
+  }
+  return out;
 }
