@@ -306,6 +306,27 @@ describe('AutoRescheduleService', () => {
       expect(result[0].delayDays).toBeLessThanOrEqual(6);
     });
 
+    it('flags an overdue task with no progress (used to be dropped)', async () => {
+      // Ended 55 days ago, 10-day task, 0% — like DBJ "Gate 1". Must be at least 55 days late.
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('t1', 'Gate 1', { startDate: daysAgo(65), endDate: daysAgo(55), progressPercentage: 0 }),
+      ]);
+      const result = await service.detectDelays('sch-1');
+      expect(result.length).toBe(1);
+      // today + whole 10-day duration, vs an end date 55 days ago → ~65 days
+      expect(result[0].delayDays).toBeGreaterThanOrEqual(64);
+      expect(result[0].delayDays).toBeLessThanOrEqual(66);
+    });
+
+    it('flags an overdue task with partial progress', async () => {
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('t1', 'Half done, late', { startDate: daysAgo(30), endDate: daysAgo(10), progressPercentage: 50 }),
+      ]);
+      const result = await service.detectDelays('sch-1');
+      expect(result.length).toBe(1);
+      expect(result[0].delayDays).toBeGreaterThan(10);
+    });
+
     it('projects completion based on current velocity for partial progress', async () => {
       // 10 of 20 days elapsed, 20% progress. Velocity = 10d / 20% = 0.5 d/%.
       // Remaining: 80% * 0.5 = 40 days from now.

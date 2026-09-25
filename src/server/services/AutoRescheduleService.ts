@@ -86,9 +86,14 @@ export class AutoRescheduleService {
         // Estimate completion based on current velocity
         let estimatedEndDate: Date;
         if (actualProgress <= 0) {
-          // No progress at all — estimate double the remaining duration from now
+          // No progress at all — estimate double the remaining duration from now. If the end
+          // date has already passed there is no "remaining" (it's negative, which used to put
+          // the estimate in the past and silently drop the most overdue tasks) — assume the
+          // whole task still has to be done, starting today.
           const remainingMs = endDate.getTime() - now.getTime();
-          estimatedEndDate = new Date(now.getTime() + remainingMs * 2);
+          estimatedEndDate = remainingMs > 0
+            ? new Date(now.getTime() + remainingMs * 2)
+            : new Date(now.getTime() + totalDuration);
         } else {
           // Project completion based on current velocity
           const msPerPercent = elapsed / actualProgress;

@@ -305,8 +305,8 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{delay.reason}</p>
                       </div>
-                      <span className="text-sm font-semibold text-red-600 whitespace-nowrap">
-                        -{delay.delayDays}d
+                      <span className="text-sm font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">
+                        {delay.delayDays} day{delay.delayDays === 1 ? '' : 's'} late
                       </span>
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${severityColor(delay.severity)}`}
