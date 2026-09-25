@@ -137,7 +137,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             const id = uuidv4();
             const depIsBatchRef = !!t.dependency && batchDependencyIndex(t.dependency, i, body.tasks) !== undefined;
             const parentIsBatchRef = !!t.parentTaskId && batchDependencyIndex(t.parentTaskId, i, body.tasks) !== undefined;
-            await connection.execute(
+            await databaseService.queryOn(connection, 
               `INSERT INTO tasks
                  (id, schedule_id, name, start_date, end_date, estimated_days, progress_percentage,
                   status, priority, assigned_to, dependency, dependency_type, comments, is_milestone,
@@ -184,7 +184,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             const depIndex = batchDependencyIndex(t.dependency, i, body.tasks);
             const resolvedId = depIndex !== undefined ? createdIds[depIndex] : undefined;
             if (resolvedId) {
-              await connection.execute(`UPDATE tasks SET dependency = ? WHERE id = ?`, [resolvedId, selfId]);
+              await databaseService.queryOn(connection, `UPDATE tasks SET dependency = ? WHERE id = ?`, [resolvedId, selfId]);
             }
           }
 
@@ -192,7 +192,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             const parentIndex = batchDependencyIndex(t.parentTaskId, i, body.tasks);
             const resolvedParentId = parentIndex !== undefined ? createdIds[parentIndex] : undefined;
             if (resolvedParentId) {
-              await connection.execute(`UPDATE tasks SET parent_task_id = ? WHERE id = ?`, [resolvedParentId, selfId]);
+              await databaseService.queryOn(connection, `UPDATE tasks SET parent_task_id = ? WHERE id = ?`, [resolvedParentId, selfId]);
               parentsToRecompute.add(resolvedParentId);
             }
           }
@@ -271,7 +271,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             sets.push('updated_at = NOW()');
             params.push(u.id, u.scheduleId);
 
-            await connection.execute(
+            await databaseService.queryOn(connection, 
               `UPDATE tasks SET ${sets.join(', ')} WHERE id = ? AND schedule_id = ?`,
               params,
             );

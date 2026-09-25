@@ -31,6 +31,43 @@ const CODE = SRC.split('\n')
 
 const PREPARED_ON_CONNECTION = /\b(conn|connection)\.execute\s*\(/;
 
+/** Every non-test server source file, comment lines stripped. */
+function serverSources(): Array<{ file: string; code: string }> {
+  const root = path.join(__dirname, '../..');
+  const out: Array<{ file: string; code: string }> = [];
+  const walk = (dir: string) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) { if (e.name !== '__tests__' && e.name !== 'node_modules') walk(full); continue; }
+      if (!/\.ts$/.test(e.name) || /\.(test|spec)\.ts$/.test(e.name)) continue;
+      const code = fs.readFileSync(full, 'utf-8').split('\n')
+        .filter((l) => { const t = l.trimStart(); return !t.startsWith('*') && !t.startsWith('//') && !t.startsWith('/*'); })
+        .join('\n');
+      out.push({ file: path.relative(root, full), code });
+    }
+  };
+  walk(root);
+  return out;
+}
+
+describe('tenant isolation (whole server)', () => {
+  // 2026-09-24: routes/core/bulk.ts had used connection.execute() inside
+  // databaseService.transaction() for months — this guard only scanned connection.ts.
+  // Every connection handed out by getConnection()/transaction() has had USE applied.
+  it('no server file calls the prepared form on a connection', () => {
+    const offenders = serverSources()
+      .filter(({ code }) => PREPARED_ON_CONNECTION.test(code))
+      .map(({ file }) => file);
+    expect(offenders).toEqual([]);
+  });
+
+  it('actually scans the route and service files', () => {
+    const files = serverSources().map(s => s.file.replace(/\\/g, '/'));
+    expect(files).toContain('routes/core/bulk.ts');
+    expect(files.length).toBeGreaterThan(100);
+  });
+});
+
 describe('tenant isolation (connection.ts)', () => {
   it('never uses the prepared form on a pooled connection', () => {
     // Pooled connections are the ones that get a database switch applied. The prepared
