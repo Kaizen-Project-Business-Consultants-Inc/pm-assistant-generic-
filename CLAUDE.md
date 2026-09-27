@@ -1,28 +1,19 @@
 # PM Assistant — Software Development Lifecycle (SDLC)
 
-> ## 🔴 RESUME HERE — handover, 2026-09-25 (laptop restart)
-> **Staging is far ahead of prod. Nothing from 2026-09-24/25 is on prod.** Full list:
-> auto-memory `todo.md` → "RESUME HERE", and repo `memory/recent-changes.md` (newest first).
+> ## ✅ STAGING AND PROD IN SYNC — 2026-09-27
+> Big prod deploy on the user's "deploy prod" (app build 74e098e806d7 + MCP): the 24 Sep
+> bulk.ts tenant-isolation fix, **permissions Phase 1** (only a project's Manager/Owner
+> changes project data; Editor removed; fail-closed project checks; guard test
+> `routePermissionGuard.test.ts`), **billing fix** (invited members use the org's plan),
+> Schedule History + Undo, Morning Briefing by project with jump-to-row, notification/link
+> fixes, overdue tile, legibility pass, PMI-aligned RAID notifications. Migrations 120 and
+> T053–T057 were dry-run on a restored prod backup first (all OK), then applied.
+> **Next:** permissions Phase 2 (list in the guard test + auto-memory
+> `permissions-audit-2026-09-27.md`). Details: repo `memory/recent-changes.md`.
 >
-> **Waiting on the user — do not act without them:**
-> - **Prod deploy.** Recommend the **security fix first** (`7cad7bdd`: `routes/core/bulk.ts`
->   used `connection.execute()` on tenant connections — the 2026-09-18 class of bug; checked
->   both servers, no data crossed tenants). New tenant migrations since prod: **T053, T054,
->   T055** — dry-run on a restored prod dump first. `deploy.sh prod` **and** `deploy.sh prod
->   --mcp` (`--mcp` alone deploys only the MCP server and skips the app).
->
-> **Shipped to staging (all verified on the running system / in a real browser):** Morning
-> Briefing redesign (archived projects excluded); fixed MS-Project row numbers; bulk link
-> tools + date push on new links (audited, undoable); default columns; project page updates
-> without refresh; visible AI Reschedule; Schedule Review auto re-run, rules v1.2 per project
-> type, and Phase 2 AI suggestions (split bundled tasks per the user's rule, add missing
-> phases); bulk-created links now actually saved (NSWMA's 16 hidden links restored and
-> re-flowed with the user's OK); open tabs pick up new deploys via `/version.json`.
->
-> **Machine gotcha:** `node_modules` in root, `src/client` and `mcp-server` have all gone
-> corrupt this week (`MODULE_NOT_FOUND` from tsc) — `rm -rf node_modules && npm install`.
-> The full test suite can time out when another heavy job is running; re-run the failing
-> files alone, and confirm with a clean full run before claiming green.
+> **Machine gotcha:** `node_modules` in root, `src/client` and `mcp-server` keep going
+> corrupt (`MODULE_NOT_FOUND` / esbuild platform errors) — `rm -rf node_modules && npm
+> install`. `deploy.sh --mcp` does not stop when the MCP build fails — check its output.
 >
 > ## ✅ Registration-flood alert — DONE, LIVE ON STAGING + PROD (2026-09-24)
 > The signup-flood alert from the 2026-09-23 handover shipped:
