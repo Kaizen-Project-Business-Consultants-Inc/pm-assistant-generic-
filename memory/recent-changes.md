@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-27 (Morning Briefing by project; task links jump to the row)
+
+- User (consultant, several clients): mixed briefing is "jumbled"; wanted to pick a project so nothing scrolls. Agreed design after push-back on a plain dropdown (hides the other projects): **All projects** default + **One project at a time** list/detail; list always shows every project with dot + counts; opens on the most urgent project each morning. Mock: claude.ai artifact XGTUrp76rftzfsr5HD5NWH.
+- Server: `projects[]` with true counts + next milestone; caps 10/20 → 50; blocked items carry scheduleId. Client: `utils/briefingByProject.ts`, rewritten `MorningBriefingWidget.tsx`.
+- **Row jump** (user: "remember you had issues going to the row"): cause of past trouble = Gantt virtualises rows > 100 (off-screen row not in DOM), collapsed phases (persisted per schedule), saved quick filters, fixed 300 ms timeout + direct DOM class edits wiped by re-render. Now `?schedule=&task=` handled in ScheduleTab/ScheduleGantt/GanttChart/TableView as described in PRODUCT_MANUAL "Morning Briefing by project". Mobile schedule view does not jump (not built).
+- No client name exists on projects — subtitle is code · type · methodology.
+
 ## 2026-09-27 (import status/progress/milestones; summary duration; re-run confirmation)
 
 - UAT on the imported DBJ-LMS plan (score 19): Completed rows imported at **0%** (R08 ×7); "Delayed" with an Actual Finish imported as in progress (Gate 1, R09); one-day "Gate 3 – UAT Sign-off" not a milestone; T2 summary **263 days** = sum of children.

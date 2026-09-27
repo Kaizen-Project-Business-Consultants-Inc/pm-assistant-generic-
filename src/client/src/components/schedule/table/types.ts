@@ -60,6 +60,8 @@ export interface TableViewProps {
   taskRiskMap?: Map<string, import('../../../utils/taskRiskAssessment').TaskRiskLevel>;
   /** taskId → tooltip for rows flagged Critical/High by Schedule Review */
   reviewFlagMap?: Map<string, string>;
+  /** Task to bring into view and highlight (e.g. opened from the Morning Briefing) */
+  focusTaskId?: string | null;
 }
 
 export const barColors: Record<string, { bg: string; text: string }> = {

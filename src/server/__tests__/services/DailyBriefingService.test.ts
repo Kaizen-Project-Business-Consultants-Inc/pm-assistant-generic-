@@ -42,6 +42,9 @@ const queryControlPlaneMock = databaseService.queryControlPlane as ReturnType<ty
  *  9: blockedTasks (query)
  * 10: openIssues (query)
  * 11: schedule tasks for row numbers (query — only runs when a task is in the briefing)
+ * 12: projects the user can see (query)
+ * 13-17: per-project counts — overdue, due soon, blocked, open issues, overdue actions (query)
+ * 18: next milestone per project (query)
  */
 function setupDefaultResults(overrides: Record<number, any[]> = {}) {
   const defaults: any[][] = [
@@ -57,6 +60,13 @@ function setupDefaultResults(overrides: Record<number, any[]> = {}) {
     [],              // 9: blockedTasks
     [],              // 10: openIssues
     [],              // 11: schedule tasks for row numbers
+    [],              // 12: projects
+    [],              // 13: overdue counts
+    [],              // 14: due-soon counts
+    [],              // 15: blocked counts
+    [],              // 16: open-issue counts
+    [],              // 17: overdue-action counts
+    [],              // 18: next milestones
   ];
 
   for (const [idx, val] of Object.entries(overrides)) {
@@ -77,7 +87,14 @@ function setupDefaultResults(overrides: Record<number, any[]> = {}) {
     defaults[8],  // overdueActions
     defaults[9],  // blockedTasks
     defaults[10], // openIssues
-    defaults[11], // schedule tasks for row numbers
+    defaults[12], // projects
+    defaults[13], // overdue counts
+    defaults[14], // due-soon counts
+    defaults[15], // blocked counts
+    defaults[16], // open-issue counts
+    defaults[17], // overdue-action counts
+    defaults[18], // next milestones
+    defaults[11], // schedule tasks for row numbers (runs after the parallel batch)
   ];
 
   queryMock.mockImplementation(() => {
@@ -257,7 +274,7 @@ describe('DailyBriefingService', () => {
 
       expect(result.overdueTasks[0].rowNumber).toBe(4); // t-1, t-2, t-9 (child of t-2), t-3
       expect(result.raidWatch[0].rowNumber).toBe(3);
-      const rowQuery = queryMock.mock.calls[10];
+      const rowQuery = queryMock.mock.calls[17]; // after the 17 parallel queries
       expect(rowQuery[0]).toContain('schedule_id IN (?)');
       expect(rowQuery[1]).toEqual(['s-1']);
     });
@@ -266,14 +283,16 @@ describe('DailyBriefingService', () => {
       setupDefaultResults();
       await dailyBriefingService.getDailyBriefing('user-1', 'admin');
       const sqls = queryMock.mock.calls.map(c => String(c[0])).filter(q => /JOIN projects p/.test(q));
-      expect(sqls.length).toBe(10); // every tenant query that touches projects
+      expect(sqls.length).toBe(16); // every tenant query that joins projects
       for (const q of sqls) expect(q).toContain('p.archived_at IS NULL');
+      const projectList = queryMock.mock.calls.map(c => String(c[0])).find(q => /FROM projects p/.test(q));
+      expect(projectList).toContain('p.archived_at IS NULL');
     });
 
     it('skips the row-number query when no task is in the briefing', async () => {
       setupDefaultResults();
       await dailyBriefingService.getDailyBriefing('user-1', 'admin');
-      expect(queryMock).toHaveBeenCalledTimes(10);
+      expect(queryMock).toHaveBeenCalledTimes(17);
     });
 
     it('falls back to the typed "Assigned to" text for the owner name, for managers only', async () => {
@@ -649,7 +668,7 @@ describe('DailyBriefingService', () => {
 
       await dailyBriefingService.getDailyBriefing('user-1', 'admin');
 
-      expect(queryMock).toHaveBeenCalledTimes(10);
+      expect(queryMock).toHaveBeenCalledTimes(17);
       expect(queryControlPlaneMock).toHaveBeenCalledTimes(1);
     });
 
@@ -684,6 +703,58 @@ describe('DailyBriefingService', () => {
       await expect(
         dailyBriefingService.getDailyBriefing('user-1', 'admin')
       ).rejects.toThrow('Control plane down');
+    });
+  });
+
+  // ── Per-project view ───────────────────────────────────────────────────
+
+  describe('projects', () => {
+    it('lists every visible project, quiet ones included, with true counts and next milestone', async () => {
+      setupDefaultResults({
+        12: [
+          { id: 'p-busy', name: 'DBJ-LMS', code: 'PRJ-012', projectType: 'it', methodology: 'waterfall' },
+          { id: 'p-quiet', name: 'NSWMA', code: 'PRJ-006', projectType: 'app_development', methodology: 'hybrid' },
+        ],
+        13: [{ projectId: 'p-busy', cnt: '63' }], // more than the item cap: counts are not capped
+        15: [{ projectId: 'p-busy', cnt: 3 }],
+        14: [{ projectId: 'p-quiet', cnt: 2 }],
+        18: [{ projectId: 'p-quiet', name: 'Design sign-off', dueDate: '2026-10-30' }],
+      });
+      const b = await dailyBriefingService.getDailyBriefing('user-1', 'project_manager');
+      expect(b.projects).toEqual([
+        {
+          id: 'p-busy', name: 'DBJ-LMS', code: 'PRJ-012', projectType: 'it', methodology: 'waterfall',
+          counts: { overdue: 63, dueSoon: 0, blocked: 3, openIssues: 0, overdueActions: 0 },
+          nextMilestone: null,
+        },
+        {
+          id: 'p-quiet', name: 'NSWMA', code: 'PRJ-006', projectType: 'app_development', methodology: 'hybrid',
+          counts: { overdue: 0, dueSoon: 2, blocked: 0, openIssues: 0, overdueActions: 0 },
+          nextMilestone: { name: 'Design sign-off', dueDate: '2026-10-30' },
+        },
+      ]);
+    });
+
+    it('leaves demo projects out of the project list', async () => {
+      setupDefaultResults();
+      await dailyBriefingService.getDailyBriefing('user-1', 'admin');
+      const projectList = queryMock.mock.calls.map(c => String(c[0])).find(q => /FROM projects p/.test(q));
+      expect(projectList).toContain('COALESCE(p.is_demo, 0) = 0');
+    });
+
+    it('counts blocked tasks once even with several late predecessors', async () => {
+      setupDefaultResults();
+      await dailyBriefingService.getDailyBriefing('user-1', 'admin');
+      const blockedCount = queryMock.mock.calls.map(c => String(c[0])).find(q => /COUNT\(DISTINCT t\.id\)/.test(q));
+      expect(blockedCount).toContain('task_dependencies');
+    });
+
+    it('gives blocked tasks their schedule, so the link can open the row', async () => {
+      setupDefaultResults({
+        9: [{ id: 't-9', name: 'SSD Part-2', projectId: 'p-1', projectName: 'DBJ-LMS', projectCode: 'PRJ-012', scheduleId: 's-1', sortOrder: 1, blockedByName: 'SSD Part-1' }],
+      });
+      const b = await dailyBriefingService.getDailyBriefing('user-1', 'admin');
+      expect(b.raidWatch[0].scheduleId).toBe('s-1');
     });
   });
 });

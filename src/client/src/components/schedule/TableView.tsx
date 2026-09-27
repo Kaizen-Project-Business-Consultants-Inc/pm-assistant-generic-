@@ -25,7 +25,7 @@ import {
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
 
-export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap }: TableViewProps) {
+export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
@@ -49,6 +49,29 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
   const [groupBy, setGroupBy] = useState<GroupByField>('');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [collapsedSummaries, setCollapsedSummaries] = useState<Set<string>>(new Set());
+
+  // Focus a task from a link: open its collapsed phases and groups, then scroll its row
+  // to the middle once it has rendered (a few frames — data and layout may still settle).
+  useEffect(() => {
+    if (!focusTaskId) return;
+    const byId = new Map(tasks.map(t => [t.id, t]));
+    if (!byId.has(focusTaskId)) return;
+    const ancestors: string[] = [];
+    let cur = byId.get(focusTaskId)?.parentTaskId;
+    while (cur && byId.has(cur) && ancestors.length < 20) { ancestors.push(cur); cur = byId.get(cur)?.parentTaskId; }
+    setCollapsedSummaries(prev => (ancestors.some(a => prev.has(a)) ? new Set([...prev].filter(id => !ancestors.includes(id))) : prev));
+    setCollapsedGroups(prev => (prev.size ? new Set() : prev));
+    let tries = 0;
+    let frame = 0;
+    const seek = () => {
+      const row = document.querySelector(`tr[data-task-id="${CSS.escape(focusTaskId)}"]`);
+      if (row) { row.scrollIntoView({ block: 'center' }); return; }
+      if (++tries < 30) frame = requestAnimationFrame(seek);
+    };
+    frame = requestAnimationFrame(seek);
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTaskId]);
   const [editingCell, setEditingCell] = useState<{ taskId: string; field: EditableField } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [savingCell, setSavingCell] = useState<{ taskId: string; field: string } | null>(null);
@@ -1784,7 +1807,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
                     key={task.id}
                     data-row-idx={rowIdx}
                     data-task-id={task.id}
-                    className={`border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-all duration-150 group cursor-pointer ${riskBorder} ${summaryTaskIds.has(task.id) ? 'font-semibold bg-gray-100/80 dark:bg-gray-700/40' : ''} ${isSelected ? 'bg-primary-50/40 dark:bg-primary-900/20' : ''} ${activeTaskId === task.id ? 'ring-1 ring-inset ring-primary-200 dark:ring-primary-700 bg-primary-50/60 dark:bg-primary-900/30' : ''} ${isDragTarget ? 'border-t-2 border-t-primary-400' : ''} ${rowDrag?.taskId === task.id ? 'relative z-10 scale-[1.02] shadow-lg shadow-primary-200/40 dark:shadow-primary-900/60 bg-primary-50 dark:bg-primary-900/40 opacity-90' : ''}`}
+                    className={`border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-all duration-150 group cursor-pointer ${riskBorder} ${summaryTaskIds.has(task.id) ? 'font-semibold bg-gray-100/80 dark:bg-gray-700/40' : ''} ${isSelected ? 'bg-primary-50/40 dark:bg-primary-900/20' : ''} ${activeTaskId === task.id ? 'ring-1 ring-inset ring-primary-200 dark:ring-primary-700 bg-primary-50/60 dark:bg-primary-900/30' : ''} ${focusTaskId === task.id ? '!bg-amber-100 dark:!bg-amber-900/40 ring-2 ring-inset ring-amber-400 dark:ring-amber-500' : ''} ${isDragTarget ? 'border-t-2 border-t-primary-400' : ''} ${rowDrag?.taskId === task.id ? 'relative z-10 scale-[1.02] shadow-lg shadow-primary-200/40 dark:shadow-primary-900/60 bg-primary-50 dark:bg-primary-900/40 opacity-90' : ''}`}
                     onClick={() => onTaskSelect?.(task)}
                     onContextMenu={(e) => {
                       e.preventDefault();

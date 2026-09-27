@@ -97,6 +97,7 @@ export function GanttChart({
   onOpenReview,
   reviewActive,
   reviewFlagMap,
+  focusTaskId,
   allTasks,
   onBulkLink,
 }: {
@@ -172,6 +173,8 @@ export function GanttChart({
   reviewActive?: boolean;
   /** taskId → tooltip for rows flagged Critical/High by Schedule Review */
   reviewFlagMap?: Map<string, string>;
+  /** Task to bring into view and highlight (e.g. opened from the Morning Briefing) */
+  focusTaskId?: string | null;
 }) {
   const criticalSet = useMemo(() => new Set(criticalPathTaskIds || []), [criticalPathTaskIds]);
   const baselineMap = useMemo(() => {
@@ -1621,6 +1624,37 @@ export function GanttChart({
     timelineRef.current.scrollLeft = Math.max(0, px);
   }, [minDate, dayPx]);
 
+  // Focus a task from a link: make its row exist (expand collapsed phases, drop the
+  // Gantt's own search/filters), then scroll by row POSITION. Rows are virtualised
+  // above VIRTUALIZE_THRESHOLD, so an off-screen row is not in the DOM to scroll to.
+  const focusScrolledFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusTaskId) { focusScrolledFor.current = null; return; }
+    const byId = new Map(tasks.map(t => [t.id, t]));
+    if (!byId.has(focusTaskId)) return;
+    const ancestors: string[] = [];
+    let cur = byId.get(focusTaskId)?.parentTaskId;
+    while (cur && byId.has(cur) && ancestors.length < 20) { ancestors.push(cur); cur = byId.get(cur)?.parentTaskId; }
+    setCollapsedIds(prev => (ancestors.some(a => prev.has(a)) ? new Set([...prev].filter(id => !ancestors.includes(id))) : prev));
+    setSearchQuery(q => (q ? '' : q));
+    setFilters(f => (activeFilterCount > 0 ? { statuses: new Set(), priorities: new Set(), assignee: '', startAfter: '', startBefore: '', progressMin: null, progressMax: null } : f));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTaskId, tasks]);
+  useEffect(() => {
+    if (!focusTaskId || focusScrolledFor.current === focusTaskId) return;
+    const idx = rows.findIndex(r => r.task.id === focusTaskId);
+    const tl = timelineRef.current;
+    if (idx < 0 || !tl) return;
+    focusScrolledFor.current = focusTaskId;
+    const task = rows[idx].task;
+    requestAnimationFrame(() => {
+      tl.scrollTop = Math.max(0, rowTop(idx) - tl.clientHeight / 2 + ROW_H / 2);
+      const start = toDate(task.startDate);
+      if (start) tl.scrollLeft = Math.max(0, daysBetween(minDate, start) * dayPx - 200);
+      tl.scrollIntoView({ block: 'nearest' });
+    });
+  }, [focusTaskId, rows, minDate, dayPx, rowTop]);
+
   // Track scroll position for minimap viewport + virtualisation + sync left/right panels
   const [containerHeight, setContainerHeight] = useState(600);
   useEffect(() => {
@@ -2456,6 +2490,7 @@ export function GanttChart({
                 level={level}
                 rowIdx={rowIdx}
                 isActive={activeTaskId === task.id}
+                isFocused={focusTaskId === task.id}
                 isSelected={selectedIds.has(task.id)}
                 isParent={parentTaskIds.has(task.id)}
                 isCollapsed={collapsedIds.has(task.id)}

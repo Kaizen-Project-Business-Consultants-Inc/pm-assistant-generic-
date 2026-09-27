@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import {
   Calendar,
   CalendarDays,
@@ -82,6 +83,21 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
   });
 
   const schedules: any[] = schedulesData?.schedules || [];
+
+  // A link to one task (Morning Briefing): open the schedule it lives in, in a view
+  // that has rows. ScheduleGantt scrolls to and highlights the task itself.
+  const [linkParams] = useSearchParams();
+  const linkedScheduleId = linkParams.get('schedule');
+  const linkedTaskId = linkParams.get('task');
+  useEffect(() => {
+    if (!linkedScheduleId) return;
+    const i = schedules.findIndex(sc => sc.id === linkedScheduleId);
+    if (i >= 0) setSelectedScheduleIdx(i);
+  }, [linkedScheduleId, schedules]);
+  useEffect(() => {
+    if (linkedTaskId && viewMode !== 'gantt' && viewMode !== 'table') setViewModeRaw('gantt');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedTaskId]);
 
 
   if (schedulesLoading) {
@@ -174,7 +190,8 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
   }
 
   // Guard against out-of-bounds (e.g. after schedule deletion)
-  const safeIdx = selectedScheduleIdx >= schedules.length ? 0 : selectedScheduleIdx;
+  const linkedIdx = linkedScheduleId ? schedules.findIndex(sc => sc.id === linkedScheduleId) : -1;
+  const safeIdx = linkedIdx >= 0 ? linkedIdx : selectedScheduleIdx >= schedules.length ? 0 : selectedScheduleIdx;
 
   if (isMobile) {
     return <MobileScheduleView schedules={schedules} selectedIdx={safeIdx} onSelectSchedule={setSelectedScheduleIdx} desktopViewMode={viewMode} />;
@@ -1021,6 +1038,47 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     return { total, completed, inProgress, pending, overdue, pct };
   })();
 
+  // ---- Task link: /project/:id?tab=schedule&schedule=S&task=T (Morning Briefing) ----
+  const [focusParams, setFocusParams] = useSearchParams();
+  const linkedTask = focusParams.get('task');
+  const linkedSchedule = focusParams.get('schedule');
+  const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
+  const [focusNotice, setFocusNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!linkedTask || tasksLoading) return;
+    if (linkedSchedule && linkedSchedule !== schedule.id) return; // the right schedule is on its way
+    const clearParams = () => setFocusParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('task');
+      next.delete('schedule');
+      return next;
+    }, { replace: true });
+    if (!tasks.some(t => t.id === linkedTask)) {
+      setFocusNotice('That task is no longer in this schedule. It may have been deleted or moved.');
+      clearParams();
+      return;
+    }
+    if (!filteredTasks.some(t => t.id === linkedTask)) {
+      setSearchQuery(''); setFilterStatus(''); setFilterPriority(''); setFilterAssignee('');
+      setReviewRowFilter(null); setQuickFilter('all');
+      setFocusNotice('Filters were cleared so you can see this task.');
+    }
+    setFocusTaskId(linkedTask);
+    clearParams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedTask, linkedSchedule, tasksLoading, schedule.id]);
+  // The highlight and the note fade after a few seconds; the row stays where it is.
+  useEffect(() => {
+    if (!focusTaskId) return;
+    const t = setTimeout(() => setFocusTaskId(null), 8000);
+    return () => clearTimeout(t);
+  }, [focusTaskId]);
+  useEffect(() => {
+    if (!focusNotice) return;
+    const t = setTimeout(() => setFocusNotice(null), 8000);
+    return () => clearTimeout(t);
+  }, [focusNotice]);
+
   if (tasksLoading) {
     return (
       <div className="space-y-3">
@@ -1180,6 +1238,11 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         </div>
       )}
 
+      {focusNotice && (
+        <div role="status" className="mb-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+          {focusNotice}
+        </div>
+      )}
       {viewMode === 'gantt' && (
         <GanttChart
           tasks={filteredTasks}
@@ -1187,6 +1250,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           onBulkLink={canEdit ? handleBulkLink : undefined}
           scheduleName={schedule.name}
           scheduleId={schedule.id}
+          focusTaskId={focusTaskId}
           onTaskSelect={(task) => setActiveTaskId(task.id)}
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}
@@ -1263,6 +1327,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           onBulkLink={canEdit ? handleBulkLink : undefined}
           scheduleId={schedule.id}
           reviewFlagMap={reviewFlagMap}
+          focusTaskId={focusTaskId}
           onTaskSelect={(task) => setActiveTaskId(task.id)}
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}

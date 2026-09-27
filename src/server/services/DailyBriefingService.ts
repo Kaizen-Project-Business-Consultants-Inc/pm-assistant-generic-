@@ -1,5 +1,6 @@
 import { databaseService } from '../database/connection';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
+import { toDateString } from '../utils/calendarDate';
 
 const globalRoles = ['admin', 'executive', 'pmo'];
 const managerRoles = ['admin', 'pmo', 'executive', 'project_manager', 'scrum_master'];
@@ -22,6 +23,20 @@ export interface RaidWatchItem {
   resourceName?: string;
   /** Row on the schedule screen (blocked tasks only) */
   rowNumber?: number;
+  /** Schedule the task lives in (blocked tasks only) — for a link straight to the row */
+  scheduleId?: string;
+}
+
+/** One line per project the user can see, so the briefing can show every project — quiet ones included. */
+export interface BriefingProject {
+  id: string;
+  name: string;
+  code: string;
+  projectType: string | null;
+  methodology: string | null;
+  /** True counts — the item lists are capped, these are not */
+  counts: { overdue: number; dueSoon: number; blocked: number; openIssues: number; overdueActions: number };
+  nextMilestone: { name: string; dueDate: string } | null;
 }
 
 export interface BriefingTask {
@@ -61,7 +76,11 @@ export interface DailyBriefing {
   recentHighRisks: Array<{ id: string; title: string; projectId: string; projectName: string; projectCode: string; severity: string; type: string; ownerName?: string }>;
   upcomingMilestones: Array<{ id: string; name: string; projectId: string; projectName: string; projectCode: string; scheduleId: string; dueDate: string; daysUntil: number }>;
   raidWatch: RaidWatchItem[];
+  projects: BriefingProject[];
 }
+
+/** Items per section. The page shows a few per project; this cap only bounds the payload. */
+const ITEM_CAP = 50;
 
 // Subquery to exclude parent/summary tasks (tasks that have children)
 const NOT_PARENT = `AND t.id NOT IN (SELECT DISTINCT parent_task_id FROM tasks WHERE parent_task_id IS NOT NULL)`;
@@ -107,6 +126,13 @@ class DailyBriefingService {
       overdueActions,
       blockedTasks,
       openIssues,
+      projectRows,
+      overdueCounts,
+      dueSoonCounts,
+      blockedCounts,
+      issueCounts,
+      actionCounts,
+      nextMilestones,
     ] = await Promise.all([
       // Pending proposals
       databaseService.query<any>(
@@ -124,7 +150,7 @@ class DailyBriefingService {
          JOIN projects p ON cr.project_id = p.id AND p.archived_at IS NULL
          ${memberJoin}
          WHERE cr.status IN ('pending', 'in_review')
-         ORDER BY cr.created_at DESC LIMIT 10`,
+         ORDER BY cr.created_at DESC LIMIT ${ITEM_CAP}`,
         [...memberParams]
       ),
       // Unread notifications (control plane table)
@@ -149,7 +175,7 @@ class DailyBriefingService {
          WHERE t.end_date = CURDATE()
            AND t.status NOT IN ('completed', 'done', 'cancelled')
            ${NOT_PARENT}
-         ORDER BY t.priority DESC LIMIT 20`,
+         ORDER BY t.priority DESC LIMIT ${ITEM_CAP}`,
         [...assignedParams, ...memberParams]
       ),
       // Tasks due this week (next 7 days, excluding today, leaf tasks only)
@@ -169,7 +195,7 @@ class DailyBriefingService {
          WHERE t.end_date BETWEEN DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
            AND t.status NOT IN ('completed', 'done', 'cancelled')
            ${NOT_PARENT}
-         ORDER BY t.end_date ASC LIMIT 20`,
+         ORDER BY t.end_date ASC LIMIT ${ITEM_CAP}`,
         [...assignedParams, ...memberParams]
       ),
       // Overdue tasks (leaf tasks only)
@@ -188,7 +214,7 @@ class DailyBriefingService {
          WHERE t.end_date < CURDATE()
            AND t.status NOT IN ('completed', 'done', 'cancelled')
            ${NOT_PARENT}
-         ORDER BY overdueDays DESC LIMIT 10`,
+         ORDER BY overdueDays DESC LIMIT ${ITEM_CAP}`,
         [...assignedParams, ...memberParams]
       ),
       // Recent high risks (last 24h)
@@ -235,7 +261,7 @@ class DailyBriefingService {
          WHERE mai.due_date < CURDATE()
            AND mai.status NOT IN ('completed', 'cancelled')
            ${actionAssignedFilter}
-         ORDER BY mai.due_date ASC LIMIT 10`,
+         ORDER BY mai.due_date ASC LIMIT ${ITEM_CAP}`,
         [...memberParams, ...actionAssignedParams]
       ),
       // RAID Watch: Blocked tasks (FS predecessor not completed, leaf tasks only)
@@ -258,7 +284,7 @@ class DailyBriefingService {
            AND t.status NOT IN ('completed', 'done', 'cancelled')
            AND pred.end_date < CURDATE()
            ${NOT_PARENT}
-         ORDER BY pred.end_date ASC LIMIT 10`,
+         ORDER BY pred.end_date ASC LIMIT ${ITEM_CAP}`,
         [...assignedParams, ...memberParams]
       ),
       // RAID Watch: Open issues (unresolved risks of type 'issue')
@@ -272,8 +298,98 @@ class DailyBriefingService {
            AND pr.status NOT IN ('resolved', 'closed', 'cancelled', 'mitigated')
            ${isRestricted ? 'AND pr.owner_id = ?' : ''}
          ORDER BY FIELD(pr.severity, 'critical', 'high', 'medium', 'low'), pr.created_at DESC
-         LIMIT 10`,
+         LIMIT ${ITEM_CAP}`,
         [...memberParams, ...(isRestricted ? [userId] : [])]
+      ),
+      // Every project the user can see (quiet ones too), for the per-project view
+      databaseService.query<any>(
+        `SELECT p.id, p.name, COALESCE(p.project_code, '') AS code, p.project_type AS projectType, p.methodology
+         FROM projects p
+         ${memberJoin}
+         WHERE p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
+         ORDER BY p.name`,
+        [...memberParams]
+      ),
+      // True per-project counts — same filters as the lists above, without their caps
+      databaseService.query<any>(
+        `SELECT p.id AS projectId, COUNT(*) AS cnt
+         FROM tasks t
+         JOIN schedules s ON t.schedule_id = s.id
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+         ${assignedJoin}
+         ${memberJoin}
+         WHERE t.end_date < CURDATE()
+           AND t.status NOT IN ('completed', 'done', 'cancelled')
+           ${NOT_PARENT}
+         GROUP BY p.id`,
+        [...assignedParams, ...memberParams]
+      ),
+      databaseService.query<any>(
+        `SELECT p.id AS projectId, COUNT(*) AS cnt
+         FROM tasks t
+         JOIN schedules s ON t.schedule_id = s.id
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+         ${assignedJoin}
+         ${memberJoin}
+         WHERE t.end_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+           AND t.status NOT IN ('completed', 'done', 'cancelled')
+           ${NOT_PARENT}
+         GROUP BY p.id`,
+        [...assignedParams, ...memberParams]
+      ),
+      databaseService.query<any>(
+        `SELECT p.id AS projectId, COUNT(DISTINCT t.id) AS cnt
+         FROM task_dependencies td
+         JOIN tasks t ON td.task_id = t.id
+         JOIN tasks pred ON td.dependency_id = pred.id
+         JOIN schedules s ON t.schedule_id = s.id
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+         ${assignedJoin}
+         ${memberJoin}
+         WHERE td.dependency_type = 'FS'
+           AND pred.status NOT IN ('completed', 'done', 'cancelled')
+           AND t.status NOT IN ('completed', 'done', 'cancelled')
+           AND pred.end_date < CURDATE()
+           ${NOT_PARENT}
+         GROUP BY p.id`,
+        [...assignedParams, ...memberParams]
+      ),
+      databaseService.query<any>(
+        `SELECT p.id AS projectId, COUNT(*) AS cnt
+         FROM project_risks pr
+         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL
+         ${memberJoin}
+         WHERE pr.type = 'issue'
+           AND pr.status NOT IN ('resolved', 'closed', 'cancelled', 'mitigated')
+           ${isRestricted ? 'AND pr.owner_id = ?' : ''}
+         GROUP BY p.id`,
+        [...memberParams, ...(isRestricted ? [userId] : [])]
+      ),
+      databaseService.query<any>(
+        `SELECT p.id AS projectId, COUNT(*) AS cnt
+         FROM meeting_action_items mai
+         JOIN projects p ON mai.project_id = p.id AND p.archived_at IS NULL
+         ${memberJoin}
+         WHERE mai.due_date < CURDATE()
+           AND mai.status NOT IN ('completed', 'cancelled')
+           ${actionAssignedFilter}
+         GROUP BY p.id`,
+        [...memberParams, ...actionAssignedParams]
+      ),
+      // Next open milestone per project (any distance ahead) — the "Next:" line on quiet projects
+      databaseService.query<any>(
+        `SELECT projectId, name, dueDate FROM (
+           SELECT p.id AS projectId, t.name, t.end_date AS dueDate,
+                  ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY t.end_date, t.id) AS rn
+           FROM tasks t
+           JOIN schedules s ON t.schedule_id = s.id
+           JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+           ${memberJoin}
+           WHERE t.is_milestone = 1
+             AND t.end_date >= CURDATE()
+             AND t.status NOT IN ('completed', 'done', 'cancelled')
+         ) m WHERE rn = 1`,
+        [...memberParams]
       ),
     ]);
 
@@ -353,6 +469,7 @@ class DailyBriefingService {
         linkTab: 'schedule',
         resourceName: showResource ? (item.resourceName || undefined) : undefined,
         rowNumber: rowNumbers.get(item.id),
+        scheduleId: item.scheduleId,
       });
     }
 
@@ -368,6 +485,27 @@ class DailyBriefingService {
         linkTab: 'raid',
       });
     }
+
+    const countMap = (rows: any[]) => new Map<string, number>(rows.map((r: any) => [r.projectId, Number(r.cnt)]));
+    const [oc, dc, bc, ic, ac] = [overdueCounts, dueSoonCounts, blockedCounts, issueCounts, actionCounts].map(countMap);
+    const nextByProject = new Map<string, { name: string; dueDate: string }>(
+      nextMilestones.map((m: any) => [m.projectId, { name: m.name, dueDate: toDateString(m.dueDate) ?? String(m.dueDate) }]),
+    );
+    const projects: BriefingProject[] = projectRows.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      code: p.code,
+      projectType: p.projectType ?? null,
+      methodology: p.methodology ?? null,
+      counts: {
+        overdue: oc.get(p.id) ?? 0,
+        dueSoon: dc.get(p.id) ?? 0,
+        blocked: bc.get(p.id) ?? 0,
+        openIssues: ic.get(p.id) ?? 0,
+        overdueActions: ac.get(p.id) ?? 0,
+      },
+      nextMilestone: nextByProject.get(p.id) ?? null,
+    }));
 
     return {
       generatedAt: new Date().toISOString(),
@@ -387,6 +525,7 @@ class DailyBriefingService {
       recentHighRisks,
       upcomingMilestones: milestones,
       raidWatch,
+      projects,
     };
   }
 }

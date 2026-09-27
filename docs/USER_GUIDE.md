@@ -2938,13 +2938,19 @@ The unified dashboard supports toggling widget sections on/off and drag-and-drop
 
 Available sections: Morning Briefing, KPI Tiles, Portfolio Intelligence, Projects Table, AI Suggestions, Issues Trend, Sprint Velocity, Milestones, Budget Watch, Activity Feed, Standup Summary.
 
-**Morning Briefing** is the top widget with 4 boxes, laid out two per row (stacked on a phone). Each box heading shows how many items it holds, e.g. "On Fire (14)".
-- **On Fire** — split into two sections: **Overdue tasks** (most overdue first) and **Risks** (critical, then high). Each section shows up to 4 items with its own "+N more".
-- **Pending Approvals** — Pending change requests, agent proposals and unread notifications (broken down into critical / high / other). Hidden for viewer-role users.
-- **Due Soon** — Tasks due today/this week and upcoming milestones, sorted by urgency, with the actual due date (e.g. "Due Fri, Sep 26").
-- **RAID Watch** — Blocked tasks (with what they are waiting on), overdue meeting action items, and open issues. For viewers, this box spans the full row.
+**Morning Briefing** is the top widget. It is organised **by project**, so each client's work is shown separately instead of mixed together (September 2026).
 
-Every item shows two lines: the full name with a coloured tag on the right ("5d overdue", "High risk", "Blocked"), and underneath it the project code and name, the row number (the same row you see on the schedule when everything is expanded and no filter is on), and — for admins, PMs and executives — the owner. The owner is the resource the task is assigned to, or whatever was typed into the task's "Assigned to" field (e.g. "DBJ / JV") if it isn't a resource. For risks, the owner is the team member who owns it, else the resource (e.g. an external subcontractor), else the name typed into the risk's owner field — the same order the RAID panel uses. All items are clickable and navigate to the relevant project tab. Up to 6 items per box with "+N more" overflow. The widget flashes amber on your first daily visit (24h cooldown) and is collapsible.
+A switch at the top chooses the view:
+- **All projects** (the default) — every project on one page. Projects that need you come first, each in its own block with its late, blocked, risk, approval and due-this-week items. Projects with nothing waiting are listed at the bottom, one line each, with their next milestone.
+- **One project at a time** — a list of your projects on the left (a row of tabs on a phone) and one project's detail on the right, so there is nothing to scroll. The list never hides a project: each shows a coloured dot (red = needs you today, amber = something waiting, green = on track) and its counts, e.g. "3 late · 3 blocked". Each morning it opens on the project that needs you most. Use the arrow keys to move through the list.
+
+The app remembers which view you chose. Unread notifications and agent proposals, which don't belong to one project, sit in the bar next to the switch.
+
+Each project block has up to five sections, each with a count — **Late**, **Blocked** (with what the task is waiting on), **Risks, issues & actions** (new high/critical risks, open issues, overdue meeting actions), **Waiting for your approval** (change requests; hidden for viewers) and **Due this week** (tasks and milestones, with the real date). An empty section says "None". Counts are true totals: when a section has more than fits, **See all N →** opens the full list (late and due-soon open the schedule already filtered).
+
+**Clicking a task opens its schedule scrolled to that row, highlighted in amber.** It opens the right schedule when the project has several, switches to the Gantt if you were on a view without rows (Kanban, Calendar…), expands a collapsed phase that hides the task, and clears any filter or search that hides it (a note says so). The highlight fades after a few seconds. If the task has since been deleted, a note says so instead.
+
+Every item shows the full name with a coloured tag ("12 days late", "Blocked", "Due Tue, Sep 29"), then the row number and — for admins, PMs and executives — the owner. The widget flashes amber on your first daily visit (24h cooldown) and is collapsible.
 
 Opt-in sections (disabled by default): Sprint Snapshot, Goals Progress, Team Workload, Change Requests.
 
