@@ -13,6 +13,8 @@ export interface ProactiveAlert {
   projectName?: string;
   taskId?: string;
   taskName?: string;
+  /** Schedule the task is in, so the bell can open its row */
+  scheduleId?: string;
   suggestedAction: {
     toolName: string;
     params: Record<string, any>;
@@ -193,6 +195,8 @@ export class ProactiveAlertService {
     // Sort by severity (critical first) then by date
     const severityOrder = { critical: 0, warning: 1, info: 2 };
     alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+    const scheduleOfTask = new Map(allTasks.map(t => [t.id, t.scheduleId]));
+    for (const a of alerts) if (a.taskId) a.scheduleId = scheduleOfTask.get(a.taskId);
 
     return alerts;
   }

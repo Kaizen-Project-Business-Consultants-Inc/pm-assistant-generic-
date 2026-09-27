@@ -4,6 +4,7 @@
 
 - Sweep: (1) client-404 telemetry on staging, 30 days — only one-offs from before `/login/sme` existed or typed by hand; (2) static check of every path literal in client + server against App.tsx routes (validated against the pre-fix widget) — client clean after today's fixes; (3) server-built links: notification email CTA `/<type>s/<id>` and project-invite `/projects/<id>` were 404s.
 - Fix: `utils/notificationLink.ts` client + server twin, one fixture table; bell and Notifications page now make every notification with a target clickable (was proposals only, and sent to the schedule).
+- Proactive alerts (GET /alerts): bell and page read `message` (alerts have `description`) and dropped `taskId`, so alerts had no text and "Overdue: X" opened the project. `alertAsNotification()`; server adds `scheduleId` per task alert.
 
 ## 2026-09-27 (links to /project/:id/<tab> were 404s)
 

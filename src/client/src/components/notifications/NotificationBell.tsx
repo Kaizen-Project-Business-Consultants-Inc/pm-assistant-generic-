@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore, Notification } from '../../stores/uiStore';
 import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
-import { notificationLink } from '../../utils/notificationLink';
+import { notificationLink, alertAsNotification } from '../../utils/notificationLink';
 import { AlertActionButton } from './AlertActionButton';
 
 const typeIcons: Record<string, React.ElementType> = {
@@ -84,9 +84,12 @@ export function NotificationBell() {
           type: string;
           severity: string;
           title: string;
-          message: string;
+          message?: string;
+          description?: string;
           projectId?: string;
           projectName?: string;
+          taskId?: string;
+          scheduleId?: string;
           suggestedActions?: Array<{ toolName: string; params: Record<string, any>; label: string }>;
         }> = response?.alerts ?? [];
 
@@ -103,7 +106,7 @@ export function NotificationBell() {
             type,
             severity,
             title: alert.title,
-            message: alert.message,
+            ...alertAsNotification(alert),
             projectId: alert.projectId,
             projectName: alert.projectName,
             suggestedActions: alert.suggestedActions,

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore, Notification } from '../stores/uiStore';
 import { apiService } from '../services/api';
 import { timeAgo } from '../utils/timeAgo';
-import { notificationLink } from '../utils/notificationLink';
+import { notificationLink, alertAsNotification } from '../utils/notificationLink';
 import { severityColor } from '../utils/severityColors';
 
 // ---------------------------------------------------------------------------
@@ -121,7 +121,7 @@ export function NotificationsPage() {
         for (const a of alerts) {
           const type = (a.type in typeIcons ? a.type : 'info') as Notification['type'];
           const severity = (['critical', 'high', 'medium', 'low'].includes(a.severity) ? a.severity : 'medium') as Notification['severity'];
-          addNotification({ type, severity, title: a.title, message: a.message, projectId: a.projectId, projectName: a.projectName, read: false });
+          addNotification({ type, severity, title: a.title, ...alertAsNotification(a), projectId: a.projectId, projectName: a.projectName, read: false });
         }
 
         const items = notifRes?.notifications ?? [];

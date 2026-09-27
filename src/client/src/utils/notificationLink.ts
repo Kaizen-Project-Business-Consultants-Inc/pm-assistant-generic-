@@ -46,3 +46,17 @@ export function notificationLink(n: NotificationTarget): string | null {
       return project();
   }
 }
+
+/**
+ * A proactive alert (GET /alerts) as a bell entry. Alerts carry `description` (not
+ * `message`) and a `taskId` — both used to be dropped, so alerts showed no text and
+ * "Overdue: <task>" opened the project instead of the task.
+ */
+export function alertAsNotification(a: {
+  description?: string; message?: string; taskId?: string; scheduleId?: string;
+}): { message: string; linkType?: string; linkId?: string; scheduleId?: string } {
+  return {
+    message: a.message ?? a.description ?? '',
+    ...(a.taskId ? { linkType: 'task', linkId: a.taskId, scheduleId: a.scheduleId } : {}),
+  };
+}
