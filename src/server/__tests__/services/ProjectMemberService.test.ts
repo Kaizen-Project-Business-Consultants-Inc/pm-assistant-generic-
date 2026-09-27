@@ -92,7 +92,10 @@ describe('ProjectMemberService', () => {
 
     it('returns false when role is below minimum', async () => {
       mockQuery.mockResolvedValue([{ ...sampleRow, role: 'viewer' }]);
-      expect(await service.hasRole('p1', 'u1', 'editor')).toBe(false);
+      expect(await service.hasRole('p1', 'u1', 'manager')).toBe(false);
+      // Editor was removed: it ranks as read-only
+      mockQuery.mockResolvedValue([{ ...sampleRow, role: 'editor' }]);
+      expect(await service.hasRole('p1', 'u1', 'manager')).toBe(false);
     });
 
     it('returns false when not a member', async () => {

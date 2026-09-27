@@ -1,13 +1,7 @@
 import { FastifyReply } from 'fastify';
 import { projectMemberService, ProjectRole } from '../services/ProjectMemberService';
 import { projectService } from '../services/ProjectService';
-
-const ROLE_HIERARCHY: Record<ProjectRole, number> = {
-  owner: 4,
-  manager: 3,
-  editor: 2,
-  viewer: 1,
-};
+import { ROLE_HIERARCHY } from './requireProjectAccess';
 
 /**
  * Handler-level project access check for routes where projectId must be

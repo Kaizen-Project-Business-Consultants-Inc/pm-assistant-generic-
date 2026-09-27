@@ -31,7 +31,7 @@ export async function projectLinkRoutes(fastify: FastifyInstance) {
 
   // POST /:projectId/links
   fastify.post('/:projectId/links', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { projectId } = request.params as { projectId: string };
     const parsed = createSchema.parse(request.body);
@@ -45,7 +45,7 @@ export async function projectLinkRoutes(fastify: FastifyInstance) {
 
   // PUT /:projectId/links/reorder
   fastify.put('/:projectId/links/reorder', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest) => {
     const { projectId } = request.params as { projectId: string };
     const { orderedIds } = request.body as { orderedIds: string[] };
@@ -56,7 +56,7 @@ export async function projectLinkRoutes(fastify: FastifyInstance) {
 
   // PUT /:projectId/links/:linkId
   fastify.put('/:projectId/links/:linkId', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { projectId, linkId } = request.params as { projectId: string; linkId: string };
     const parsed = updateSchema.parse(request.body);
@@ -67,7 +67,7 @@ export async function projectLinkRoutes(fastify: FastifyInstance) {
 
   // DELETE /:projectId/links/:linkId
   fastify.delete('/:projectId/links/:linkId', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { projectId, linkId } = request.params as { projectId: string; linkId: string };
     const deleted = await projectLinkRepository.remove(linkId, projectId);

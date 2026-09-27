@@ -1,4 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { approvalWorkflowRepository } from '../../database/ApprovalWorkflowRepository';
+import { ROLE_HIERARCHY, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { approvalWorkflowService } from '../../services/ApprovalWorkflowService';
 import { authMiddleware } from '../../middleware/auth';
@@ -48,7 +50,7 @@ const actOnStepSchema = z.object({
 });
 
 /** Verify the user has project access for a CR-scoped endpoint (where :id is a CR id, not a projectId). */
-async function requireCRProjectAccess(request: FastifyRequest, reply: FastifyReply, minRole: 'viewer' | 'editor' = 'viewer') {
+async function requireCRProjectAccess(request: FastifyRequest, reply: FastifyReply, minRole: 'viewer' | 'manager' = 'viewer') {
   const user = request.user!;
   const { id } = request.params as { id: string };
 
@@ -63,8 +65,7 @@ async function requireCRProjectAccess(request: FastifyRequest, reply: FastifyRep
   // Check project membership
   const membership = await projectMemberService.findMembership(cr.projectId, user.userId);
   if (membership) {
-    const hierarchy: Record<string, number> = { owner: 4, manager: 3, editor: 2, viewer: 1 };
-    if ((hierarchy[membership.role] || 0) < (hierarchy[minRole] || 0)) {
+    if ((ROLE_HIERARCHY[membership.role as keyof typeof ROLE_HIERARCHY] || 0) < (ROLE_HIERARCHY[minRole] || 0)) {
       return reply.status(403).send({ error: 'Insufficient project role' });
     }
     return;
@@ -82,11 +83,29 @@ async function requireCRProjectAccess(request: FastifyRequest, reply: FastifyRep
   return reply.status(404).send({ error: 'Not found' });
 }
 
+/** Editing or deleting an approval workflow: its project's PM; an org-wide workflow: admin/PMO */
+async function requireWorkflowPM(request: FastifyRequest, reply: FastifyReply) {
+  const { id } = request.params as { id: string };
+  const wf: any = await approvalWorkflowRepository.findById(id);
+  if (!wf) return reply.status(404).send({ error: 'Workflow not found' });
+  if (!wf.projectId) {
+    if (['admin', 'pmo'].includes(request.user!.role)) return;
+    return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can change an organisation-wide approval workflow.' });
+  }
+  const d = await checkProjectRole(request, wf.projectId, 'manager');
+  if (!d.ok) return reply.status(d.status).send(d.body);
+}
+
+/** Editing or deleting a change request: its project's PM */
+async function requireCRPM(request: FastifyRequest, reply: FastifyReply) {
+  await requireCRProjectAccess(request, reply, 'manager');
+}
+
 export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST /workflows/:projectId — create workflow
-  fastify.post('/workflows/:projectId', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/workflows/:projectId', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { projectId } = request.params as { projectId: string };
@@ -113,7 +132,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   });
 
   // PUT /workflows/:id — update workflow
-  fastify.put('/workflows/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/workflows/:id', { preHandler: [requireScope('write'), requireWorkflowPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const body = updateWorkflowSchema.parse(request.body);
@@ -127,7 +146,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /workflows/:id — delete workflow
-  fastify.delete('/workflows/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/workflows/:id', { preHandler: [requireScope('write'), requireWorkflowPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       await approvalWorkflowService.deleteWorkflow(id);
@@ -141,7 +160,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   });
 
   // POST /change-requests/:projectId — create change request
-  fastify.post('/change-requests/:projectId', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/change-requests/:projectId', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { projectId } = request.params as { projectId: string };
@@ -187,7 +206,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   });
 
   // PUT /change-requests/:id — update draft change request
-  fastify.put('/change-requests/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/change-requests/:id', { preHandler: [requireScope('write'), requireCRPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { id } = request.params as { id: string };
@@ -205,7 +224,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /change-requests/:id — delete draft change request
-  fastify.delete('/change-requests/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/change-requests/:id', { preHandler: [requireScope('write'), requireCRPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { id } = request.params as { id: string };
@@ -223,7 +242,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   // POST /change-requests/:id/submit — submit for approval
   fastify.post('/change-requests/:id/submit', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      await requireCRProjectAccess(request, reply, 'editor');
+      await requireCRProjectAccess(request, reply, 'manager');
       if (reply.sent) return;
       const user = request.user!;
       const { id } = request.params as { id: string };
@@ -242,7 +261,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   // POST /change-requests/:id/action — act on step
   fastify.post('/change-requests/:id/action', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      await requireCRProjectAccess(request, reply, 'editor');
+      await requireCRProjectAccess(request, reply, 'manager');
       if (reply.sent) return;
       const user = request.user!;
       const { id } = request.params as { id: string };
@@ -269,7 +288,7 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
   // POST /change-requests/:id/withdraw — withdraw change request
   fastify.post('/change-requests/:id/withdraw', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      await requireCRProjectAccess(request, reply, 'editor');
+      await requireCRProjectAccess(request, reply, 'manager');
       if (reply.sent) return;
       const user = request.user!;
       const { id } = request.params as { id: string };

@@ -31,6 +31,7 @@ import { AutoReschedulePanel } from '../../components/schedule/AutoReschedulePan
 import { ImportModal } from '../../components/schedule/ImportModal';
 import { ScheduleReviewPanel, type ScheduleReview } from '../../components/schedule/review/ScheduleReviewPanel';
 import { ScheduleHistoryPanel } from '../../components/schedule/ScheduleHistoryPanel';
+import { useProjectRole } from '../../hooks/useProjectRole';
 import { TaskListMobile } from '../../components/tasks/TaskListMobile';
 import { useColumnState } from '../../hooks/useColumnState';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
@@ -253,8 +254,7 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
 
 function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule, desktopViewMode }: { schedules: any[]; selectedIdx: number; onSelectSchedule: (idx: number) => void; desktopViewMode?: string }) {
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
-  const canEdit = !!user && user.role !== 'viewer' && user.role !== 'team_member';
+  const { canEdit } = useProjectRole(schedules[0]?.projectId);
   const [mobileView, setMobileView] = useState<'list' | 'kanban' | 'calendar'>(() => {
     if (desktopViewMode === 'kanban') return 'kanban';
     if (desktopViewMode === 'calendar') return 'calendar';
@@ -405,9 +405,9 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   const [filterAssignee, setFilterAssignee] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Role-based editing — viewers and team_members are read-only on schedules
+  // Only the project's Manager/Owner (or admin/PMO) edits the schedule — by PROJECT role
   const { user } = useAuthStore();
-  const canEdit = !!user && user.role !== 'viewer' && user.role !== 'team_member';
+  const { canEdit } = useProjectRole(projectId);
   const VALID_QF = ['all', 'due', 'late', 'at_risk', 'my_tasks', 'unassigned'];
   const [quickFilter, setQuickFilter] = useState<QuickFilterType>(() => {
     try {

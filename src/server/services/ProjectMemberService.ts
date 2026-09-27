@@ -4,12 +4,17 @@ import { databaseService } from '../database/connection';
 export type { ProjectMember } from '../database/ProjectMemberRepository';
 export type ProjectRole = 'owner' | 'manager' | 'editor' | 'viewer';
 
+// "editor" was removed from the product (Sep 2026) — anyone still holding it is read-only
 const ROLE_HIERARCHY: Record<ProjectRole, number> = {
   owner: 4,
   manager: 3,
-  editor: 2,
+  editor: 1,
   viewer: 1,
 };
+
+export class LastOwnerError extends Error {
+  constructor() { super('A project needs at least one Owner. Make someone else Owner first.'); }
+}
 
 export class ProjectMemberService {
   async findByProjectId(projectId: string): Promise<ProjectMember[]> {
@@ -54,9 +59,18 @@ export class ProjectMemberService {
     return member;
   }
 
+  async findMemberById(memberId: string): Promise<ProjectMember | null> {
+    return (await projectMemberRepository.findById(memberId)) ?? null;
+  }
+
+  /** Throws LastOwnerError rather than leave a project with no Owner. */
   async updateRole(memberId: string, role: ProjectRole): Promise<ProjectMember | null> {
     const member = await projectMemberRepository.findById(memberId);
     if (!member) return null;
+    if (member.role === 'owner' && role !== 'owner') {
+      const ownerCount = await projectMemberRepository.countOwners(member.projectId);
+      if (ownerCount <= 1) throw new LastOwnerError();
+    }
     await projectMemberRepository.updateRole(memberId, role);
     return { ...member, role };
   }

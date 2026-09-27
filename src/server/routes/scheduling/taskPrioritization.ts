@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { taskPrioritizationService } from '../../services/TaskPrioritizationService';
 import { authMiddleware } from '../../middleware/auth';
@@ -17,6 +18,16 @@ const applyAllBodySchema = z.object({
       priority: z.enum(['low', 'medium', 'high', 'urgent']),
     }),
   ),
+});
+
+/** The URL names a project and a schedule — the schedule must be in that project, and the caller its PM */
+const projectAndSchedule = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const { projectId, scheduleId } = req.params as { projectId: string; scheduleId: string };
+    const projects = await projectsOfSchedules([scheduleId]);
+    if (!projects || projects[0] !== projectId) return null; // mismatch → refused
+    return projectId;
+  },
 });
 
 export async function taskPrioritizationRoutes(fastify: FastifyInstance) {
@@ -48,7 +59,7 @@ export async function taskPrioritizationRoutes(fastify: FastifyInstance) {
 
   // POST /:projectId/:scheduleId/apply — apply a single priority change
   fastify.post('/:projectId/:scheduleId/apply', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), projectAndSchedule],
     schema: { description: 'Apply a single AI-suggested priority change', tags: ['task-prioritization'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -78,7 +89,7 @@ export async function taskPrioritizationRoutes(fastify: FastifyInstance) {
 
   // POST /:projectId/:scheduleId/apply-all — apply all suggested priority changes
   fastify.post('/:projectId/:scheduleId/apply-all', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), projectAndSchedule],
     schema: { description: 'Apply all AI-suggested priority changes', tags: ['task-prioritization'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

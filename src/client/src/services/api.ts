@@ -1062,6 +1062,12 @@ class ApiService {
     return response.data;
   }
 
+  /** The caller's role on a project: { role, canEdit, canManageOwners } */
+  async getMyProjectRole(projectId: string) {
+    const response = await this.api.get(`/projects/${projectId}/members/me`);
+    return response.data;
+  }
+
   /** Schedule History: group changes of the last 30 days */
   async getScheduleChanges(scheduleId: string) {
     const response = await this.api.get(`/schedules/${scheduleId}/changes`);

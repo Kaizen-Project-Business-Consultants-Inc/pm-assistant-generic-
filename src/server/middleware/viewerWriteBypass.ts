@@ -13,7 +13,7 @@ import { requireProjectAccess } from './requireProjectAccess';
  * Ownership verification (e.g. isTaskAssignedToUser) must still be done
  * in the route handler — this only handles scope/access gating.
  */
-export function viewerWriteBypass(writeRole: 'editor' | 'manager' = 'editor') {
+export function viewerWriteBypass(writeRole: 'viewer' | 'manager' = 'manager') {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     const role = request.user?.role;
     if (role === 'viewer' || role === 'team_member') {

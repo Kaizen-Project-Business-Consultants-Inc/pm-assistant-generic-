@@ -30,7 +30,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST / — create expense
-  fastify.post('/', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const body = createExpenseSchema.parse(request.body);
@@ -75,7 +75,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
       if (!existing) return reply.status(404).send({ error: 'Expense not found' });
 
       const isOwner = existing.createdBy === user.userId;
-      const minRole = isOwner ? 'editor' : 'manager';
+      const minRole = 'manager'; // only the PM changes project costs
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
       if (!allowed) return;
 
@@ -97,7 +97,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
       if (!existing) return reply.status(404).send({ error: 'Expense not found' });
 
       const isOwner = existing.createdBy === user.userId;
-      const minRole = isOwner ? 'editor' : 'manager';
+      const minRole = 'manager'; // only the PM changes project costs
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
       if (!allowed) return;
 

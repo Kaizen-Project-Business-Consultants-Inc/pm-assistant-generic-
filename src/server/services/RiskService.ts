@@ -463,18 +463,20 @@ class RiskService {
     return update;
   }
 
-  async editUpdate(updateId: string, userId: string, text: string): Promise<RaidUpdate> {
+  /** The PM (asManager) may edit anyone's update; anyone else only their own. */
+  async editUpdate(updateId: string, userId: string, text: string, opts: { asManager?: boolean; raidItemId?: string } = {}): Promise<RaidUpdate> {
     const update = await riskRepository.findUpdateById(updateId);
-    if (!update) throw new Error('Update not found');
-    if (update.userId !== userId) throw new Error('You can only edit your own updates');
+    if (!update || (opts.raidItemId && update.raidItemId !== opts.raidItemId)) throw new Error('Update not found');
+    if (!opts.asManager && update.userId !== userId) throw new Error('You can only edit your own updates');
     const edited = await riskRepository.editUpdate(updateId, text);
     return edited!;
   }
 
-  async deleteUpdate(updateId: string, userId: string): Promise<void> {
+  /** The PM (asManager) may delete anyone's update; anyone else only their own. */
+  async deleteUpdate(updateId: string, userId: string, opts: { asManager?: boolean; raidItemId?: string } = {}): Promise<void> {
     const update = await riskRepository.findUpdateById(updateId);
-    if (!update) throw new Error('Update not found');
-    if (update.userId !== userId) throw new Error('You can only delete your own updates');
+    if (!update || (opts.raidItemId && update.raidItemId !== opts.raidItemId)) throw new Error('Update not found');
+    if (!opts.asManager && update.userId !== userId) throw new Error('You can only delete your own updates');
 
     await riskRepository.deleteUpdate(updateId);
 

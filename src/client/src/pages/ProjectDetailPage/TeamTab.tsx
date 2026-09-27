@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useProjectRole } from '../../hooks/useProjectRole';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Plus, Trash2, Activity } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -102,7 +103,9 @@ export function TeamTab({ projectId }: { projectId: string }) {
   });
 
   const [showAddMember, setShowAddMember] = useState(false);
-  const [newMember, setNewMember] = useState({ userName: '', email: '', role: 'editor' });
+  // Only the project's Manager/Owner manages the team; only an Owner removes people or makes Owners
+  const { canEdit, canManageOwners } = useProjectRole(projectId);
+  const [newMember, setNewMember] = useState({ userName: '', email: '', role: 'viewer' });
 
   const addMemberMutation = useMutation({
     mutationFn: (data: { userId?: string; userName: string; email: string; role: string }) =>
@@ -110,7 +113,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-members', projectId] });
       setShowAddMember(false);
-      setNewMember({ userName: '', email: '', role: 'editor' });
+      setNewMember({ userName: '', email: '', role: 'viewer' });
     },
   });
 
@@ -150,13 +153,13 @@ export function TeamTab({ projectId }: { projectId: string }) {
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">Team Members</h3>
             <span className="text-xs text-gray-500 dark:text-gray-400">({members.length})</span>
           </div>
-          <button
+          {canEdit && <button
             onClick={() => setShowAddMember(!showAddMember)}
             className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/40 rounded-md transition-colors"
           >
             <Plus className="w-3 h-3" />
             Add Member
-          </button>
+          </button>}
         </div>
 
         {/* Add member form */}
@@ -182,10 +185,9 @@ export function TeamTab({ projectId }: { projectId: string }) {
                 onChange={e => setNewMember({ ...newMember, role: e.target.value })}
                 className="text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
               >
-                <option value="viewer">Viewer</option>
-                <option value="editor">Editor</option>
-                <option value="manager">Manager</option>
-                <option value="owner">Owner</option>
+                <option value="viewer">Viewer — can see the project</option>
+                <option value="manager">Manager — can change the project</option>
+                {canManageOwners && <option value="owner">Owner — can also manage the team</option>}
               </select>
               <button
                 onClick={handleAddMember}
@@ -217,9 +219,9 @@ export function TeamTab({ projectId }: { projectId: string }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${roleColors[member.role] || roleColors.viewer}`}>
-                    {member.role}
+                    {member.role === 'editor' ? 'viewer' : member.role}
                   </span>
-                  {member.role !== 'owner' && (
+                  {member.role !== 'owner' && canManageOwners && (
                     <button
                       onClick={() => removeMemberMutation.mutate(member.id)}
                       className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"

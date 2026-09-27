@@ -120,25 +120,39 @@ fastify.get('/:scheduleId/tasks', {
 1. **`requireScope`** — Can this user role perform read/write/admin actions at all?
 2. **`requireProjectAccess`** — Is this user a member of this specific project with sufficient project role?
 
-### Project Role Hierarchy
+### Project Role Hierarchy (Sep 2026)
+
+**Rule: only a project's Manager or Owner (or an admin/PMO) changes project data.** The Editor role was removed — anyone still holding it is read-only (ranked with Viewer; migration T057 renames stored editors to viewer).
 
 ```
-owner  >  manager  >  editor  >  viewer
+owner  >  manager  >  viewer   (editor = viewer)
 ```
 
-| Project Role | Read | Write (create/edit) | Delete own items | Delete others' items | Manage Members / Delete Project |
-|---|---|---|---|---|---|
-| **owner** | Yes | Yes | Yes | Yes | Yes |
-| **manager** | Yes | Yes | Yes | Yes | No (members no, delete project no) |
-| **editor** | Yes | Yes | Yes | No | No |
-| **viewer** | Yes | Time entries on assigned tasks only; RAID items they own; comments on assigned tasks | No | No | No |
-| **Non-member** | No | No | No | No | No |
+| Project Role | Read | Change project data | Manage team | Make Owners / remove members / delete project |
+|---|---|---|---|---|
+| **owner** | Yes | Yes | Yes | Yes |
+| **manager** | Yes | Yes | Add members, change Viewer/Manager roles | No |
+| **viewer** (and legacy editor) | Yes | Only the owner-scoped exceptions below | No | No |
+| **Non-member** | No (404) | No | No | No |
 
-**Note:** Delete operations on project-level entities (tasks, schedules, baselines, sprints, resources, expenses, meetings, documents, etc.) require `requireScope('write')` + appropriate `requireProjectAccess` level. Editors can delete items they created; deleting another user's items requires `manager`. Only project deletion requires `requireProjectAccess('owner')`. Document deletion always requires `manager`. System-level operations (kill switches, agent policies, feedback management) remain `requireScope('admin')`.
+**Owner-scoped exceptions (user-approved):**
+- **RAID item owner** — may update **only that item's status**, add progress updates and comment on it; may edit/delete only their own progress updates. Everything else on the item (and creating, cancelling, importing, AI scan) is Manager/Owner. Enforced by `raidItemGate` in `routes/collaboration/risks.ts`; the PM may edit/delete anyone's progress update.
+- **Time entries** — any project member logs and edits **their own** time; others' entries need Manager/Owner; the entry's task/schedule must belong to the project.
+- **Sprints standups/retro/votes and meeting action items** — own items only (Phase 2, see below).
 
-**Viewer write bypass:** The `viewerWriteBypass` middleware (`src/server/middleware/viewerWriteBypass.ts`) allows viewers to log time on tasks assigned to them, edit their own time entries, and comment on assigned tasks. Ownership verification is performed in the route handler after the middleware grants access. **Schedules are fully read-only for viewers** — task creation, editing, deletion, drag-and-drop reordering, and bulk operations all require the `editor` project role. The frontend hides all editing controls (inline edit, drag handles, add/delete buttons, overflow menu) for viewer and team_member roles.
+**Fail closed:** a change (`minRole` above viewer) whose project cannot be determined is refused with **400 `project_unknown`** — it used to skip the check, which is how the bulk tools (schedule id in the body) went unchecked. Routes that carry ids in the body pass a `resolve` function (e.g. `projectsOfSchedules`); **every** project a request names must pass.
 
-**Sidebar visibility:** Viewers and team_members see a reduced sidebar. Role-restricted items (Resources, Meetings, Change Requests, Workflows, Intake, Analytics, EVM, Monte Carlo, Scenarios, Report Builder) are rendered as disabled with a lock icon rather than being hidden entirely, so users can see what is available at higher tiers/roles. Accessible items for viewers/team_members: Dashboard, Projects, Lessons, Reports, AI Query, Notifications, Timesheets, Goals, My Feedback, and Settings.
+**Wrong-project (IDOR) checks:** a task in the URL must belong to the URL's schedule (`schedules.ts` hook); a RAID item to the URL's project (`risks.ts` hook); a calendar/exception to its project/calendar; a project member to the URL's project; a time entry's task to its schedule and project; task-prioritisation's schedule to its project.
+
+**Team management:** only an Owner (or admin/PMO) can grant Owner or change an Owner's role; a project always keeps at least one Owner (409 `last_owner`).
+
+**Screens** use the caller's **project** role from `GET /projects/:projectId/members/me` → `{ role, canEdit, canManageOwners }` (`useProjectRole`), not the organisation role.
+
+**Guard test:** `src/server/__tests__/middleware/routePermissionGuard.test.ts` fails the build if a write route has no project check and is not listed as non-project data or as a Phase-2 route; it also fails on any `requireProjectAccess('editor')`.
+
+**Phase 2 (not yet gated — listed in the guard test):** sprints, meeting action items, meeting intelligence, file attachments, lessons learned, workflows, resource assignments and requests, storage connectors, calendar-sync task links, RAID report schedules, status report render/email, portal links edit, AI chat tool actions, agent/dreaming proposal approve, context config, intelligence scenarios.
+
+**Why the gaps existed (for the record):** the check was added on 4 Jul 2026 route by route (opt-in); later routes (bulk tools 15 Jul, bulk delete 5 Sep, many others) never got it; the middleware silently passed when it couldn't find a project; nothing tested for it.
 
 ### Global Role Bypasses
 

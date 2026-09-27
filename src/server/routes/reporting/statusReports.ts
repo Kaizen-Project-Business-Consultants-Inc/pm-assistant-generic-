@@ -38,7 +38,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
   // Generate a status report (background mode via WebSocket)
   // Trial users get a sample report synchronously (no AI tokens consumed).
   fastify.post('/generate', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
@@ -172,7 +172,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
 
   // Create a recurring schedule
   fastify.post('/schedule', {
-    preHandler: [requireScope('write'), requirePaidTier, requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requirePaidTier, requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
@@ -224,7 +224,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
       // Extract projectId from templateId pattern "status-report::<projectId>"
       const projectId = schedule.templateId?.split('::')[1];
       if (projectId) {
-        const allowed = await checkEntityProjectAccess(projectId, userId, request.user!.role, 'editor', reply);
+        const allowed = await checkEntityProjectAccess(projectId, userId, request.user!.role, 'manager', reply);
         if (!allowed) return;
       }
 

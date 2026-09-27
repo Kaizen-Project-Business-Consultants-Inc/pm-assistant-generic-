@@ -1,5 +1,6 @@
 import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useProjectRole } from '../hooks/useProjectRole';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -99,7 +100,8 @@ export function ProjectDetailPage() {
   }, [isNewProject]);
 
   const { user } = useAuthStore();
-  const canEditStatus = user?.role === 'admin' || user?.role === 'project_manager';
+  // Project Manager/Owner (or admin/PMO) of THIS project — not the organisation role
+  const { canEdit: canEditStatus } = useProjectRole(id);
   const { viewers: presenceViewers, editors: presenceEditors } = usePresence(id);
   const otherViewers = presenceViewers.filter(v => v.userId !== user?.id);
 

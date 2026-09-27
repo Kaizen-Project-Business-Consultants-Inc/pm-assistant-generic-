@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { resourceLevelingService } from '../../services/ResourceLevelingService';
 import { authMiddleware } from '../../middleware/auth';
@@ -35,7 +36,7 @@ export async function resourceLevelingRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:scheduleId/level — level resources
-  fastify.post('/:scheduleId/level', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:scheduleId/level', { preHandler: [requireScope('write'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
       const result = await resourceLevelingService.levelResources(scheduleId);
@@ -47,7 +48,7 @@ export async function resourceLevelingRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:scheduleId/apply — apply leveled dates
-  fastify.post('/:scheduleId/apply', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:scheduleId/apply', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
       const { adjustments } = applyAdjustmentsSchema.parse(request.body);

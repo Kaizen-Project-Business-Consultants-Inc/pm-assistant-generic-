@@ -23,7 +23,7 @@ export async function scheduleReviewRoutes(fastify: FastifyInstance) {
 
   // POST /:scheduleId/review — run the rules, store a row, return the result
   fastify.post('/:scheduleId/review', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Run Schedule Review and store the result', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

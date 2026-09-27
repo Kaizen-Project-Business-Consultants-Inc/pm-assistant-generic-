@@ -29,7 +29,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST /:projectId/documents/upload — multipart file upload
-  fastify.post('/:projectId/documents/upload', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:projectId/documents/upload', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { projectId } = request.params as { projectId: string };
@@ -111,7 +111,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   // PATCH /:projectId/documents/:documentId — update description, folder, pin status
-  fastify.patch('/:projectId/documents/:documentId', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.patch('/:projectId/documents/:documentId', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { documentId } = request.params as { projectId: string; documentId: string };
     const body = request.body as { description?: string | null; folder?: string | null; isPinned?: boolean };
 
@@ -234,7 +234,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:projectId/documents/:documentId/reprocess — re-run AI processing
-  fastify.post('/:projectId/documents/:documentId/reprocess', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:projectId/documents/:documentId/reprocess', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { projectId, documentId } = request.params as { projectId: string; documentId: string };
 

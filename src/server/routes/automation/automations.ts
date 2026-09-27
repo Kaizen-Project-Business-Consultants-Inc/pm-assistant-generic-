@@ -35,7 +35,7 @@ export async function automationRoutes(fastify: FastifyInstance) {
 
   // POST /projects/:projectId/automations/suggestions/:suggestionId/dismiss
   fastify.post('/:projectId/automations/suggestions/:suggestionId/dismiss', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request) => {
     const { projectId, suggestionId } = request.params as { projectId: string; suggestionId: string };
     const user = request.user!;
@@ -45,7 +45,7 @@ export async function automationRoutes(fastify: FastifyInstance) {
 
   // POST /projects/:projectId/automations/suggestions/:suggestionId/apply
   fastify.post('/:projectId/automations/suggestions/:suggestionId/apply', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request, reply) => {
     const { projectId, suggestionId } = request.params as { projectId: string; suggestionId: string };
     const user = request.user!;
@@ -56,7 +56,7 @@ export async function automationRoutes(fastify: FastifyInstance) {
 
   // POST /projects/:projectId/automations/ai-generate
   fastify.post('/:projectId/automations/ai-generate', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request) => {
     const { projectId } = request.params as { projectId: string };
     const { description } = request.body as { description: string };
@@ -88,7 +88,7 @@ export async function automationRoutes(fastify: FastifyInstance) {
 
   // POST /projects/:projectId/automations
   fastify.post('/:projectId/automations', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
     const user = request.user!;
@@ -102,7 +102,7 @@ export async function automationRoutes(fastify: FastifyInstance) {
 
   // PUT /projects/:projectId/automations/:id
   fastify.put('/:projectId/automations/:id', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request, reply) => {
     const { id } = request.params as { projectId: string; id: string };
     const body = updateAutomationSchema.parse(request.body);
@@ -113,7 +113,7 @@ export async function automationRoutes(fastify: FastifyInstance) {
 
   // DELETE /projects/:projectId/automations/:id
   fastify.delete('/:projectId/automations/:id', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request) => {
     const { id } = request.params as { projectId: string; id: string };
     await automationService.delete(id);
@@ -122,7 +122,7 @@ export async function automationRoutes(fastify: FastifyInstance) {
 
   // POST /projects/:projectId/automations/:id/enable
   fastify.post('/:projectId/automations/:id/enable', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request, reply) => {
     const { id } = request.params as { projectId: string; id: string };
     const automation = await automationService.enable(id);
@@ -131,7 +131,7 @@ export async function automationRoutes(fastify: FastifyInstance) {
 
   // POST /projects/:projectId/automations/:id/disable
   fastify.post('/:projectId/automations/:id/disable', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request) => {
     const { id } = request.params as { projectId: string; id: string };
     const automation = await automationService.disable(id);
@@ -214,7 +214,7 @@ export async function automationRoutes(fastify: FastifyInstance) {
 
   // POST /projects/:projectId/automations/marketplace/:marketplaceId/import
   fastify.post('/:projectId/automations/marketplace/:marketplaceId/import', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request, reply) => {
     const { projectId, marketplaceId } = request.params as { projectId: string; marketplaceId: string };
     const user = request.user!;
@@ -224,7 +224,7 @@ export async function automationRoutes(fastify: FastifyInstance) {
 
   // POST /projects/:projectId/automations/:id/test (dry-run)
   fastify.post('/:projectId/automations/:id/test', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request, reply) => {
     const { projectId, id } = request.params as { projectId: string; id: string };
     const user = request.user!;

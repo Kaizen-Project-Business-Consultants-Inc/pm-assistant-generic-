@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useProjectRole } from '../../hooks/useProjectRole';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Bot, Activity, ShieldAlert, Search, Filter, X, ChevronUp, ChevronDown,
@@ -44,6 +45,7 @@ const MATRIX_COLORS: Record<number, string> = {
 };
 
 export function RAIDTab({ projectId, projectName }: { projectId: string; projectName: string }) {
+  const { canEdit } = useProjectRole(projectId);
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editRisk, setEditRisk] = useState<any>(null);
@@ -395,6 +397,8 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
       {/* Actions + Filters bar */}
       <div className={`${cardClass} p-3`}>
         <div className="flex flex-wrap items-center gap-2">
+          {/* Creating, scanning and importing are for the project's Manager/Owner */}
+          {canEdit && (<>
           <button onClick={() => openAdd('risk')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
             <Plus className="w-3.5 h-3.5" /> Risk
           </button>
@@ -428,6 +432,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
             <Upload className="w-3.5 h-3.5" />
             Import
           </button>
+          </>)}
           {scanError && (
             <span className="text-xs text-red-600 dark:text-red-400 max-w-xs truncate" title={scanError}>
               {scanError}

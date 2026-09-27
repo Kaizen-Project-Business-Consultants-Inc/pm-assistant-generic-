@@ -208,8 +208,8 @@ describe('requireProjectAccess', () => {
       expect(reply.status).not.toHaveBeenCalled();
     });
 
-    it('executive is denied editor-level access', async () => {
-      const handler = requireProjectAccess('editor');
+    it('executive is denied change (manager-level) access', async () => {
+      const handler = requireProjectAccess('manager');
       const req = makeRequest({
         user: { userId: 'u1', username: 'exec', role: 'executive' },
         params: { projectId: 'proj1' },
@@ -219,7 +219,7 @@ describe('requireProjectAccess', () => {
       await handler(req, reply);
 
       expect(reply.status).toHaveBeenCalledWith(403);
-      expect(reply.body.message).toContain('read-only');
+      expect(reply.body.message).toContain('view projects but not change them');
     });
 
     it('executive is denied manager-level access', async () => {
@@ -253,7 +253,7 @@ describe('requireProjectAccess', () => {
     });
 
     it('grants owner access to project creator without membership row', async () => {
-      const handler = requireProjectAccess('editor');
+      const handler = requireProjectAccess('manager');
       const req = makeRequest({ params: { projectId: 'proj1' } });
       const reply = makeReply();
       mockFindMembership.mockResolvedValue(undefined);
@@ -265,10 +265,10 @@ describe('requireProjectAccess', () => {
     });
 
     it('allows member with exact required role', async () => {
-      const handler = requireProjectAccess('editor');
+      const handler = requireProjectAccess('manager');
       const req = makeRequest({ params: { projectId: 'proj1' } });
       const reply = makeReply();
-      mockFindMembership.mockResolvedValue(makeMembership('editor'));
+      mockFindMembership.mockResolvedValue(makeMembership('manager'));
 
       await handler(req, reply);
 
@@ -276,7 +276,7 @@ describe('requireProjectAccess', () => {
     });
 
     it('allows member with higher role than required', async () => {
-      const handler = requireProjectAccess('editor');
+      const handler = requireProjectAccess('manager');
       const req = makeRequest({ params: { projectId: 'proj1' } });
       const reply = makeReply();
       mockFindMembership.mockResolvedValue(makeMembership('owner'));
@@ -287,7 +287,7 @@ describe('requireProjectAccess', () => {
     });
 
     it('denies member with lower role than required', async () => {
-      const handler = requireProjectAccess('editor');
+      const handler = requireProjectAccess('manager');
       const req = makeRequest({ params: { projectId: 'proj1' } });
       const reply = makeReply();
       mockFindMembership.mockResolvedValue(makeMembership('viewer'));
@@ -296,8 +296,7 @@ describe('requireProjectAccess', () => {
 
       expect(reply.status).toHaveBeenCalledWith(403);
       expect(reply.body.error).toBe('Insufficient project role');
-      expect(reply.body.message).toContain("'editor'");
-      expect(reply.body.message).toContain("'viewer'");
+      expect(reply.body.message).toBe("Only the project's Manager or Owner can change this.");
     });
 
     it('attaches membership to request on success', async () => {
@@ -318,7 +317,8 @@ describe('requireProjectAccess', () => {
   // -----------------------------------------------------------------------
   describe('role hierarchy', () => {
     const projectRoles = ['viewer', 'editor', 'manager', 'owner'] as const;
-    const hierarchy: Record<string, number> = { viewer: 1, editor: 2, manager: 3, owner: 4 };
+    // Editor was removed (Sep 2026): it is read-only, the same as Viewer
+    const hierarchy: Record<string, number> = { viewer: 1, editor: 1, manager: 3, owner: 4 };
 
     for (const memberRole of projectRoles) {
       for (const requiredRole of projectRoles) {
@@ -388,6 +388,46 @@ describe('requireProjectAccess', () => {
       await handler(req, reply);
 
       expect(mockFindMembership).toHaveBeenCalledWith('from-schedule', 'u1');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Sep 2026: changes must name a project; several projects all checked
+  // -----------------------------------------------------------------------
+  describe('changes fail closed', () => {
+    it('refuses a change when the project cannot be determined (used to skip the check)', async () => {
+      const handler = requireProjectAccess('manager');
+      const req = makeRequest({ params: {}, body: {} });
+      const reply = makeReply();
+      await handler(req, reply);
+      expect(reply.status).toHaveBeenCalledWith(400);
+      expect(reply.body.error).toBe('project_unknown');
+    });
+
+    it('still lets read-only list routes through without a project', async () => {
+      const handler = requireProjectAccess('viewer');
+      const req = makeRequest({ params: {}, body: {} });
+      const reply = makeReply();
+      await handler(req, reply);
+      expect(reply.status).not.toHaveBeenCalled();
+    });
+
+    it('checks every project a request names (bulk tools spanning schedules)', async () => {
+      const handler = requireProjectAccess('manager', { resolve: async () => ['pA', 'pB'] });
+      const req = makeRequest({ params: {} });
+      const reply = makeReply();
+      mockFindMembership.mockImplementation(async (projectId: string) => makeMembership(projectId === 'pA' ? 'manager' : 'viewer'));
+      await handler(req, reply);
+      expect(reply.status).toHaveBeenCalledWith(403); // manager on A is not enough when B is also touched
+    });
+
+    it('an Editor can no longer change anything', async () => {
+      const handler = requireProjectAccess('manager');
+      const req = makeRequest({ params: { projectId: 'proj1' } });
+      const reply = makeReply();
+      mockFindMembership.mockResolvedValue(makeMembership('editor'));
+      await handler(req, reply);
+      expect(reply.status).toHaveBeenCalledWith(403);
     });
   });
 });

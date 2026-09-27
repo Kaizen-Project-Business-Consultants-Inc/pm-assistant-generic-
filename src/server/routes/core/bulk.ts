@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from '../../database/connection';
@@ -19,6 +20,20 @@ function describeFields(keys: string[]): string {
   const labels = [...new Set(keys.map(k => FIELD_LABEL[k] ?? k))];
   return labels.length <= 3 ? labels.join(', ') : `${labels.slice(0, 3).join(', ')} and ${labels.length - 3} more`;
 }
+
+/**
+ * Only the project's Manager/Owner may change tasks (Sep 2026). The schedule(s) are in the
+ * body, not the URL, so the check is told where to look; every schedule named must pass.
+ */
+const bodySchedule = requireProjectAccess('manager', {
+  resolve: async (req) => projectsOfSchedules([(req.body as any)?.scheduleId]),
+});
+const bodyUpdateSchedules = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const updates = (req.body as any)?.updates;
+    return Array.isArray(updates) ? projectsOfSchedules(updates.map((u: any) => u?.scheduleId)) : null;
+  },
+});
 
 /** One History line per schedule touched (MCP bulk tools can span schedules) */
 async function projectOfSchedule(scheduleId: string): Promise<string | null> {
@@ -130,7 +145,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
   // -----------------------------------------------------------------------
   // POST /tasks — Bulk create tasks
   // -----------------------------------------------------------------------
-  fastify.post('/tasks', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/tasks', { preHandler: [requireScope('write'), bodySchedule] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
@@ -286,7 +301,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
   // -----------------------------------------------------------------------
   // PUT /tasks — Bulk update tasks
   // -----------------------------------------------------------------------
-  fastify.put('/tasks', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/tasks', { preHandler: [requireScope('write'), bodyUpdateSchedules] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
@@ -384,7 +399,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
   // -----------------------------------------------------------------------
   // PUT /tasks/status — Batch status update
   // -----------------------------------------------------------------------
-  fastify.put('/tasks/status', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/tasks/status', { preHandler: [requireScope('write'), bodySchedule] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
@@ -429,7 +444,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
   // -----------------------------------------------------------------------
   // DELETE /tasks — Bulk delete tasks
   // -----------------------------------------------------------------------
-  fastify.delete('/tasks', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/tasks', { preHandler: [requireScope('write'), bodySchedule] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });

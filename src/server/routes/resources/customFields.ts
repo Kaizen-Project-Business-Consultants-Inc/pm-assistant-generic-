@@ -24,7 +24,7 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
   });
 
   // POST /project/:projectId — create field
-  fastify.post('/project/:projectId', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/project/:projectId', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { projectId } = request.params as { projectId: string };
@@ -48,7 +48,7 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
       const existing = await customFieldRepository.findById(id);
       if (!existing) return reply.status(404).send({ error: 'Custom field not found' });
 
-      const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, 'editor', reply);
+      const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, 'manager', reply);
       if (!allowed) return;
 
       const body = request.body as { fieldLabel?: string; fieldType?: string; options?: string[]; isRequired?: boolean; sortOrder?: number };
@@ -111,7 +111,7 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
         projectId = field?.projectId;
       }
       if (projectId) {
-        const allowed = await checkEntityProjectAccess(projectId, user.userId, user.role, 'editor', reply);
+        const allowed = await checkEntityProjectAccess(projectId, user.userId, user.role, 'manager', reply);
         if (!allowed) return;
       }
 

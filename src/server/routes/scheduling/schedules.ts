@@ -102,6 +102,14 @@ export const updateTaskSchema = createTaskSchema.partial().omit({ scheduleId: tr
 
 export async function scheduleRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // A task named in the URL must belong to the schedule in the URL — access is checked
+  // against that schedule's project, so a task from another project must not slip through.
+  fastify.addHook('preHandler', async (request, reply) => {
+    const p = request.params as { scheduleId?: string; taskId?: string } | undefined;
+    if (!p?.taskId || !p.scheduleId || reply.sent) return;
+    const task = await scheduleService.findTaskById(p.taskId);
+    if (!task || task.scheduleId !== p.scheduleId) return reply.status(404).send({ error: 'Not found', message: 'Task not found in this schedule' });
+  });
 
   // dagWorkflowService is a singleton — no instantiation needed
 
@@ -120,7 +128,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Create a schedule (projectId in body)', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -206,7 +214,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/:scheduleId/tasks', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Create a task', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -244,7 +252,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
 
   // Editor+ can update tasks; viewers are read-only on schedules
   fastify.put('/:scheduleId/tasks/:taskId', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Update a task', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -358,7 +366,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   // -------------------------------------------------------------------------
 
   fastify.delete('/:scheduleId/tasks/:taskId/dependencies/:predecessorId', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Remove a single dependency from a task', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -387,7 +395,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/:scheduleId/dependencies/bulk', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Add several dependencies at once (all-or-nothing)', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -430,7 +438,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/:scheduleId/dependencies/bulk-remove', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Remove specific dependencies (undo of a bulk link)', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -456,7 +464,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
 
   // Undo of a re-flow: put tasks back on their previous dates
   fastify.post('/:scheduleId/tasks/restore-dates', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Restore task dates (undo of a link re-flow)', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -563,7 +571,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/:scheduleId/baselines', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Create a baseline snapshot', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -710,7 +718,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
 
   // Expand recurrence template into instances
   fastify.post('/:scheduleId/tasks/:taskId/expand-recurrence', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Expand a recurring task template into instances', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -726,7 +734,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
 
   // Delete all recurrence children
   fastify.delete('/:scheduleId/tasks/:taskId/recurrence-children', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Delete all instances of a recurring task template', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -745,7 +753,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
 
   // Clone schedule as a scenario
   fastify.post('/:scheduleId/clone', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Clone a schedule as a what-if scenario', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

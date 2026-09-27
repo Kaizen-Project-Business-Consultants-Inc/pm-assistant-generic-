@@ -1,5 +1,14 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-27 (permissions Phase 1 — only Manager/Owner change project data)
+
+- User rules + decisions in auto-memory `permissions-audit-2026-09-27.md`. Editor removed (ranked = viewer; T057 renames stored editors; Team tab offers Viewer/Manager/Owner-if-owner). All 50 `requireProjectAccess('editor')` → manager; in-handler editor checks → manager (own time entries stay any-member).
+- `requireProjectAccess` fails CLOSED for changes with no resolvable project (400 project_unknown); `resolve` option; checks every project named. Gated: bulk.ts (body schedule ids), imports, resource levelling apply, task prioritisation (schedule must be in project), AI Reschedule propose/accept/reject/modify, approval workflows + CR PUT/DELETE, calendars (had NO auth — calendars were failing for everyone without tenant context).
+- IDOR hooks: task∈schedule (schedules.ts), RAID item∈project (risks.ts), calendar/exception, member∈project, time-entry task∈schedule∈project. Members: only Owner/admin/PMO grants or changes Owner; last Owner protected.
+- RAID owner rule (b) via `raidItemGate`; PM edits/deletes any progress update.
+- Client `useProjectRole` (GET /projects/:id/members/me) replaces org-role `canEdit` on Schedule, project page, RAID create bar, Team tab.
+- Guard test `routePermissionGuard.test.ts` (probe-proven). Phase 2 list inside it.
+
 ## 2026-09-27 (RAID notifications, PMI-aligned — user approved)
 
 - PM told of every meaningful change (due date / mitigation / response / probability / impact / title / description were silent before; severity down too); owner told of others' changes; one merged notification per person; resource owners emailed on assign/escalate; team digest `raidChanges` in the Morning Briefing. Sponsor escalation deferred.

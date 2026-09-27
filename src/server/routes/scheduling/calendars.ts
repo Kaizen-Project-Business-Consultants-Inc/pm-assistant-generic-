@@ -1,6 +1,9 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { calendarService } from '../../services/CalendarService';
+import { authMiddleware } from '../../middleware/auth';
+import { requireScope } from '../../middleware/requireScope';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 
 const createCalendarSchema = z.object({
   name: z.string().min(1).max(255),
@@ -21,6 +24,30 @@ const addExceptionSchema = z.object({
 });
 
 export async function calendarRoutes(fastify: FastifyInstance) {
+  // These routes had no login check at all (Sep 2026 audit). Without a login the server
+  // didn't know which account's database to use, so calendars failed for everyone too.
+  // Now: signed in; reading needs project access; changing needs the project's Manager/Owner.
+  fastify.addHook('preHandler', authMiddleware);
+  const readGate = [requireScope('read'), requireProjectAccess('viewer')];
+  const writeGate = [requireScope('write'), requireProjectAccess('manager')];
+  fastify.addHook('preHandler', async (request, reply) => {
+    if (reply.sent) return;
+    for (const gate of request.method === 'GET' ? readGate : writeGate) {
+      await (gate as any)(request, reply);
+      if (reply.sent) return;
+    }
+    // The calendar must be this project's, and the exception this calendar's
+    const p = request.params as { projectId?: string; calendarId?: string; exceptionId?: string };
+    if (p.calendarId) {
+      const cal = await calendarService.findById(p.calendarId);
+      if (!cal || cal.projectId !== p.projectId) return reply.status(404).send({ error: 'Calendar not found' });
+      if (p.exceptionId) {
+        const ex = await calendarService.getExceptions(p.calendarId);
+        if (!ex.some(e => e.id === p.exceptionId)) return reply.status(404).send({ error: 'Exception not found' });
+      }
+    }
+  });
+
   // List calendars for a project
   fastify.get('/api/projects/:projectId/calendars', async (req) => {
     const { projectId } = req.params as { projectId: string };

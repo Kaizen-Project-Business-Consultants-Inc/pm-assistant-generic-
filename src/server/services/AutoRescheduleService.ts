@@ -483,6 +483,11 @@ Please propose date changes to reschedule affected tasks with minimal disruption
     }
   }
 
+  /** For access checks: which schedule a proposal belongs to */
+  async findProposalScheduleId(proposalId: string): Promise<string | null> {
+    return (await this.getProposalById(proposalId))?.scheduleId ?? null;
+  }
+
   private async getProposalById(proposalId: string): Promise<RescheduleProposal | null> {
     try {
       const row = await rescheduleProposalRepository.findById(proposalId);

@@ -4,7 +4,7 @@ import { parse as csvParse } from 'csv-parse/sync';
 import { riskService } from '../../services/RiskService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { requireProjectAccess, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
@@ -84,6 +84,32 @@ const commentSchema = z.object({
   comment: z.string().min(1).max(5000),
 });
 
+/**
+ * RAID rule (Sep 2026, user-approved): the project's Manager/Owner can change anything on
+ * an item; the person the item is assigned to can update only its status, progress
+ * updates and comments; everyone else on the team can only read. The item must belong to
+ * the project in the URL (no reaching another project's item by its id).
+ */
+async function raidItemGate(request: FastifyRequest, reply: FastifyReply): Promise<{ item: any; asManager: boolean } | null> {
+  const { projectId, riskId } = request.params as { projectId: string; riskId: string };
+  const item = await riskService.findById(riskId);
+  if (!item || item.projectId !== projectId) {
+    reply.status(404).send({ error: 'RAID item not found' });
+    return null;
+  }
+  const pm = await checkProjectRole(request, projectId, 'manager');
+  if (pm.ok) return { item, asManager: true };
+  if (item.ownerId && item.ownerId === request.user!.userId) return { item, asManager: false };
+  reply.status(403).send({
+    error: 'not_owner',
+    message: "Only the project's Manager or Owner, or the person this item is assigned to, can update it.",
+  });
+  return null;
+}
+
+/** What an item's owner (not the PM) may change on the item itself */
+const OWNER_EDITABLE_FIELDS = new Set(['status']);
+
 /** Derive a concise title from a long description text */
 function deriveTitle(text: string): string {
   // Strip filler prefixes like "Risk that...", "There is a risk that...", "The assumption is that..."
@@ -113,6 +139,14 @@ function canPerformRaidAction(role: string, itemType: string, action: string): b
 
 export async function riskRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // Every route that names an item must name it under its own project — otherwise access
+  // checked against project A could be used on project B's item.
+  fastify.addHook('preHandler', async (request, reply) => {
+    const p = request.params as { projectId?: string; riskId?: string } | undefined;
+    if (!p?.riskId || !p.projectId || reply.sent) return;
+    const item = await riskService.findById(p.riskId);
+    if (!item || item.projectId !== p.projectId) return reply.status(404).send({ error: 'RAID item not found' });
+  });
 
   // GET /api/v1/projects/:projectId/risks — List risks with filters
   fastify.get('/:projectId/risks', {
@@ -161,7 +195,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/projects/:projectId/risks — Create RAID item
   fastify.post('/:projectId/risks', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -190,20 +224,22 @@ export async function riskRoutes(fastify: FastifyInstance) {
   // PUT /api/v1/projects/:projectId/risks/:riskId — Update RAID item
   // Viewers can update RAID items assigned to them (owner_id); all other write roles use standard scope check
   fastify.put('/:projectId/risks/:riskId', {
-    preHandler: [viewerWriteBypass()],
+    preHandler: [viewerWriteBypass('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, riskId } = request.params as { projectId: string; riskId: string };
       const body = updateRiskSchema.parse(request.body);
       const userId = request.user!.userId;
-      const userRole = request.user!.role;
 
-      // Viewer ownership check: must be the item's owner
-      if (userRole === 'viewer') {
-        const existing = await riskService.findById(riskId);
-        if (!existing) return reply.status(404).send({ error: 'RAID item not found' });
-        if (existing.ownerId !== userId) {
-          return reply.status(403).send({ error: 'Viewers can only update RAID items assigned to them' });
+      const gate = await raidItemGate(request, reply);
+      if (!gate) return;
+      if (!gate.asManager) {
+        const other = Object.keys(body).filter(k => !OWNER_EDITABLE_FIELDS.has(k));
+        if (other.length > 0) {
+          return reply.status(403).send({
+            error: 'owner_limited',
+            message: "As this item's owner you can update its status, add progress updates and comment. Ask the project manager to change anything else.",
+          });
         }
       }
 
@@ -222,7 +258,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/projects/:projectId/risks/:riskId/cancel — Cancel RAID item
   fastify.post('/:projectId/risks/:riskId/cancel', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { riskId } = request.params as { projectId: string; riskId: string };
@@ -240,7 +276,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/projects/:projectId/risks/:riskId/reverse — Reverse decision
   fastify.post('/:projectId/risks/:riskId/reverse', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { riskId } = request.params as { projectId: string; riskId: string };
@@ -280,19 +316,14 @@ export async function riskRoutes(fastify: FastifyInstance) {
   // POST /api/v1/projects/:projectId/risks/:riskId/comments — Add comment
   // Viewers can comment on RAID items assigned to them
   fastify.post('/:projectId/risks/:riskId/comments', {
-    preHandler: [viewerWriteBypass()],
+    preHandler: [viewerWriteBypass('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, riskId } = request.params as { projectId: string; riskId: string };
       const { comment } = commentSchema.parse(request.body);
       const userId = request.user!.userId;
 
-      const item = await riskService.findById(riskId);
-      if (!item) return reply.status(404).send({ error: 'RAID item not found' });
-
-      if (request.user!.role === 'viewer' && item.ownerId !== userId) {
-        return reply.status(403).send({ error: 'Viewers can only comment on RAID items assigned to them' });
-      }
+      if (!(await raidItemGate(request, reply))) return;
 
       await riskService.addComment(riskId, projectId, userId, comment);
       return reply.status(201).send({ message: 'Comment added' });
@@ -324,19 +355,14 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // Viewers can add updates on RAID items assigned to them
   fastify.post('/:projectId/risks/:riskId/updates', {
-    preHandler: [viewerWriteBypass()],
+    preHandler: [viewerWriteBypass('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, riskId } = request.params as { projectId: string; riskId: string };
       const { text } = updateSchema.parse(request.body);
       const userId = request.user!.userId;
 
-      const item = await riskService.findById(riskId);
-      if (!item) return reply.status(404).send({ error: 'RAID item not found' });
-
-      if (request.user!.role === 'viewer' && item.ownerId !== userId) {
-        return reply.status(403).send({ error: 'Viewers can only add updates to RAID items assigned to them' });
-      }
+      if (!(await raidItemGate(request, reply))) return;
 
       const update = await riskService.addUpdate(riskId, projectId, userId, text);
       return reply.status(201).send({ data: update });
@@ -349,13 +375,15 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // PUT /api/v1/projects/:projectId/risks/:riskId/updates/:updateId — Edit own update
   fastify.put('/:projectId/risks/:riskId/updates/:updateId', {
-    preHandler: [viewerWriteBypass()],
+    preHandler: [viewerWriteBypass('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { updateId } = request.params as { projectId: string; riskId: string; updateId: string };
+      const { riskId, updateId } = request.params as { projectId: string; riskId: string; updateId: string };
       const { text } = updateSchema.parse(request.body);
       const userId = request.user!.userId;
-      const update = await riskService.editUpdate(updateId, userId, text);
+      const gate = await raidItemGate(request, reply);
+      if (!gate) return;
+      const update = await riskService.editUpdate(updateId, userId, text, { asManager: gate.asManager, raidItemId: riskId });
       return reply.send({ data: update });
     } catch (err) {
       if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
@@ -368,12 +396,14 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/v1/projects/:projectId/risks/:riskId/updates/:updateId — Delete own update
   fastify.delete('/:projectId/risks/:riskId/updates/:updateId', {
-    preHandler: [viewerWriteBypass()],
+    preHandler: [viewerWriteBypass('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { updateId } = request.params as { projectId: string; riskId: string; updateId: string };
+      const { riskId, updateId } = request.params as { projectId: string; riskId: string; updateId: string };
       const userId = request.user!.userId;
-      await riskService.deleteUpdate(updateId, userId);
+      const gate = await raidItemGate(request, reply);
+      if (!gate) return;
+      await riskService.deleteUpdate(updateId, userId, { asManager: gate.asManager, raidItemId: riskId });
       return reply.send({ message: 'Update deleted' });
     } catch (err) {
       if (err instanceof Error && err.message === 'Update not found') return reply.status(404).send({ error: err.message });
@@ -385,7 +415,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/projects/:projectId/risks/ai-scan — Scan only, return candidates
   fastify.post('/:projectId/risks/ai-scan', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -453,7 +483,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/:projectId/risks/batch', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -539,7 +569,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
   };
 
   fastify.post('/:projectId/risks/import', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };

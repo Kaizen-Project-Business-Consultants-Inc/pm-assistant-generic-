@@ -34,7 +34,7 @@ export async function scheduleFixRoutes(fastify: FastifyInstance) {
 
   // POST /:scheduleId/review/propose — generate a fix proposal (AI when budget allows, else rules)
   fastify.post('/:scheduleId/review/propose', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Propose structural schedule fixes', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -68,7 +68,7 @@ export async function scheduleFixRoutes(fastify: FastifyInstance) {
 
   // POST /:scheduleId/review/proposals/:proposalId/apply
   fastify.post('/:scheduleId/review/proposals/:proposalId/apply', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Apply selected schedule fixes', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -86,7 +86,7 @@ export async function scheduleFixRoutes(fastify: FastifyInstance) {
 
   // POST /:scheduleId/review/proposals/:proposalId/undo
   fastify.post('/:scheduleId/review/proposals/:proposalId/undo', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Undo an applied schedule fix proposal', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -104,7 +104,7 @@ export async function scheduleFixRoutes(fastify: FastifyInstance) {
 
   // POST /:scheduleId/review/proposals/:proposalId/reject
   fastify.post('/:scheduleId/review/proposals/:proposalId/reject', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Reject a schedule fix proposal', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

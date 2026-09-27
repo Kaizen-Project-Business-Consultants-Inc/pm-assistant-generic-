@@ -88,7 +88,7 @@ export async function portalRoutes(fastify: FastifyInstance) {
 
   // POST /links/:projectId — create portal link
   fastify.post('/links/:projectId', {
-    preHandler: [authMiddleware, requireScope('write'), requireFeature('portal'), requireProjectAccess('editor')],
+    preHandler: [authMiddleware, requireScope('write'), requireFeature('portal'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;

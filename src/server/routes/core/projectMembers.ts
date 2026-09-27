@@ -1,12 +1,12 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
-import { projectMemberService } from '../../services/ProjectMemberService';
+import { projectMemberService, LastOwnerError } from '../../services/ProjectMemberService';
 import { projectService } from '../../services/ProjectService';
 import { emailService } from '../../services/EmailService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { requireProjectAccess, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { notificationService } from '../../services/NotificationService';
 import logger from '../../utils/logger';
 
@@ -14,15 +14,35 @@ const addMemberSchema = z.object({
   userId: z.string().optional(),
   userName: z.string().min(1),
   email: z.string().email(),
-  role: z.enum(['owner', 'manager', 'editor', 'viewer']),
+  role: z.enum(['owner', 'manager', 'viewer']), // Editor removed Sep 2026
 });
 
 const updateRoleSchema = z.object({
-  role: z.enum(['owner', 'manager', 'editor', 'viewer']),
+  role: z.enum(['owner', 'manager', 'viewer']), // Editor removed Sep 2026
 });
+
+/** Owner is granted only by an Owner of the project, or an admin/PMO */
+function canGrantOwner(request: FastifyRequest): boolean {
+  return ['admin', 'pmo'].includes(request.user!.role) || request.projectMembership?.role === 'owner';
+}
+function refuseOwnerGrant(reply: FastifyReply) {
+  return reply.status(403).send({ error: 'owner_only', message: "Only the project's Owner can make someone Owner or change an Owner's role." });
+}
 
 export async function projectMemberRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+
+  // GET /api/v1/projects/:projectId/members/me — the caller's role here, so the screen
+  // shows edit controls from the PROJECT role (it used to use the organisation role).
+  fastify.get('/:projectId/members/me', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    schema: { description: "The caller's role on this project", tags: ['members'] },
+  }, async (request: FastifyRequest) => {
+    const { projectId } = request.params as { projectId: string };
+    const pm = await checkProjectRole(request, projectId, 'manager');
+    const role = pm.ok ? (pm.membership?.role ?? 'manager') : (request.projectMembership?.role === 'editor' ? 'viewer' : request.projectMembership?.role ?? 'viewer');
+    return { role, canEdit: pm.ok, canManageOwners: canGrantOwner(request) || (pm.ok && pm.membership?.role === 'owner') };
+  });
 
   // GET /api/v1/projects/:projectId/members
   fastify.get('/:projectId/members', {
@@ -47,6 +67,7 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
     try {
       const { projectId } = request.params as { projectId: string };
       const data = addMemberSchema.parse(request.body);
+      if (data.role === 'owner' && !canGrantOwner(request)) return refuseOwnerGrant(reply);
 
       // Resolve userId from email if not provided
       let userId = data.userId;
@@ -118,12 +139,17 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
     schema: { description: 'Update member role', tags: ['members'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { memberId } = request.params as { memberId: string };
+      const { projectId, memberId } = request.params as { projectId: string; memberId: string };
       const data = updateRoleSchema.parse(request.body);
+      const target = await projectMemberService.findMemberById(memberId);
+      if (!target || target.projectId !== projectId) return reply.status(404).send({ error: 'Member not found' });
+      // Making someone Owner, or changing an Owner, is for Owners (or admin/PMO) only
+      if ((data.role === 'owner' || target.role === 'owner') && !canGrantOwner(request)) return refuseOwnerGrant(reply);
       const member = await projectMemberService.updateRole(memberId, data.role);
       if (!member) return reply.status(404).send({ error: 'Member not found' });
       return { member };
     } catch (error) {
+      if (error instanceof LastOwnerError) return reply.status(409).send({ error: 'last_owner', message: error.message });
       logger.error('Update member error', { error });
       return reply.status(500).send({ error: 'Internal server error' });
     }
@@ -135,7 +161,9 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
     schema: { description: 'Remove a project member', tags: ['members'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { memberId } = request.params as { memberId: string };
+      const { projectId, memberId } = request.params as { projectId: string; memberId: string };
+      const target = await projectMemberService.findMemberById(memberId);
+      if (!target || target.projectId !== projectId) return reply.status(404).send({ error: 'Member not found' });
       const removed = await projectMemberService.removeMember(memberId);
       if (!removed) return reply.status(400).send({ error: 'Cannot remove member (may be last owner)' });
       return { message: 'Member removed' };

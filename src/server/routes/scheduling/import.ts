@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { parse as csvParse } from 'csv-parse/sync';
 import { scheduleService, type CreateTaskData } from '../../services/ScheduleService';
@@ -206,7 +207,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
 }
 
   // POST /:scheduleId/import — bulk import tasks from CSV
-  fastify.post('/:scheduleId/import', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:scheduleId/import', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
       const rawBody = importCsvSchema.parse(request.body);
@@ -686,7 +687,7 @@ Return a JSON object mapping unmapped headers to target fields.`;
     tasks: z.array(structuredTaskSchema).max(500),
   });
 
-  fastify.post('/:scheduleId/import-structured', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:scheduleId/import-structured', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
       const body = importStructuredSchema.parse(request.body);
@@ -821,7 +822,7 @@ Return a JSON object mapping unmapped headers to target fields.`;
 
   // POST /:scheduleId/import-document — extract tasks from an unstructured document via AI
   fastify.post('/:scheduleId/import-document', {
-    preHandler: [requireScope('write'), requireFeature('ai_assistant')],
+    preHandler: [requireScope('write'), requireFeature('ai_assistant'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };

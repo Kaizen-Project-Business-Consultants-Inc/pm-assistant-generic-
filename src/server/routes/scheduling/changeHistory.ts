@@ -26,7 +26,7 @@ export async function changeHistoryRoutes(fastify: FastifyInstance) {
 
   // POST /:scheduleId/changes/:changeId/undo   body: { force?: boolean }
   fastify.post('/:scheduleId/changes/:changeId/undo', {
-    preHandler: [requireScope('write'), requireProjectAccess('editor')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
     schema: { description: 'Undo one group change', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

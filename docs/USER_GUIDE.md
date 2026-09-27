@@ -102,7 +102,11 @@ SME accounts get an extended **4-step wizard** with an additional Team Setup ste
 
 **Step 2 — Team Setup**
 - A seat summary shows how many seats your plan includes, how many are already used, and how many are still available.
-- Use the invite form to add team members: enter an email address and select a role (Owner, Manager, Editor, or Viewer), then click **Send Invite**. Repeat for each person you want to add.
+- Use the invite form to add team members: enter an email address and select a role, then click **Send Invite**. Repeat for each person you want to add.
+  - **Viewer** — can see the project. Can also update the RAID items assigned to them (status, progress updates, comments) and log their own time.
+  - **Manager** — can change the project: tasks, dates, links, RAID items, change requests, imports, AI changes.
+  - **Owner** — everything a Manager can do, plus make other people Owner, remove members and delete the project. A project always keeps at least one Owner.
+  - The **Editor** role was removed in September 2026; anyone who had it is now a Viewer. Only the project's Manager or Owner can change project data. Edit buttons appear only for them.
 - Sent invitations appear in the pending-invites list below the form.
 - Click **Send Invites & Continue** to proceed, or **Skip — I'll invite later** if you prefer to set up your team after the wizard.
 

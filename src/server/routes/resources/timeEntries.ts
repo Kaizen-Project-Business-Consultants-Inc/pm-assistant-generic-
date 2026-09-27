@@ -10,6 +10,7 @@ import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
 import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAccess';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
+import { scheduleService } from '../../services/ScheduleService';
 import logger from '../../utils/logger';
 
 const submitTimesheetSchema = z.object({
@@ -41,11 +42,18 @@ const updateTimeEntrySchema = z.object({
 export async function timeEntryRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
-  // POST / — log entry (viewers can log time on assigned tasks)
-  fastify.post('/', { preHandler: [viewerWriteBypass()] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // POST / — log your OWN time (any member of the project; the PM approves). userId is
+  // always the caller, so nobody can log time for someone else.
+  fastify.post('/', { preHandler: [viewerWriteBypass('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const body = createTimeEntrySchema.parse(request.body);
+      // The task and schedule must belong to the project the access check was made for
+      const schedule = await scheduleService.findById(body.scheduleId);
+      const task = await scheduleService.findTaskById(body.taskId);
+      if (!schedule || schedule.projectId !== body.projectId || !task || task.scheduleId !== body.scheduleId) {
+        return reply.status(400).send({ error: 'mismatch', message: "That task isn't in this project's schedule." });
+      }
       const entry = await timeEntryService.create({ ...body, userId: user.userId });
       automationEventBus.emit({ type: 'time_entry.created', entityType: 'time_entry', entityId: entry.id, projectId: body.projectId, userId: user.userId, payload: entry, timestamp: new Date().toISOString() }).catch(() => {});
       return { entry };
@@ -368,7 +376,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
 
       // Viewers can only edit their own entries
       const isOwner = existing.userId === user.userId;
-      const minRole = isOwner ? 'viewer' : 'editor';
+      const minRole = isOwner ? 'viewer' : 'manager'; // own time: any member; others': the PM
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
       if (!allowed) return;
 
@@ -393,7 +401,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       if (!existing) return reply.status(404).send({ error: 'Time entry not found' });
 
       const isOwner = existing.userId === user.userId;
-      const minRole = isOwner ? 'editor' : 'manager';
+      const minRole = isOwner ? 'viewer' : 'manager'; // own time: any member; others': the PM
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
       if (!allowed) return;
 

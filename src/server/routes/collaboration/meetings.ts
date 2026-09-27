@@ -71,7 +71,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
   });
 
   // POST / — create a meeting
-  fastify.post('/', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const parsed = createSchema.parse(request.body);
     const meeting = await meetingService.createMeeting(parsed.projectId, parsed, user.userId);
@@ -97,7 +97,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     const meeting = await meetingRepository.findById(id);
     if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
 
-    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'editor', reply);
+    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'manager', reply);
     if (!allowed) return;
 
     const parsed = updateSchema.parse(request.body);
@@ -112,7 +112,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
 
     const isOwner = meeting.createdBy === user.userId;
-    const minRole = isOwner ? 'editor' : 'manager';
+    const minRole = 'manager'; // only the PM deletes (creator no longer enough)
     const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, minRole as any, reply);
     if (!allowed) return;
 
@@ -127,7 +127,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     const meeting = await meetingRepository.findById(id);
     if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
 
-    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'editor', reply);
+    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'manager', reply);
     if (!allowed) return;
 
     return meetingService.completeMeeting(id, user.userId);
@@ -140,7 +140,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     const meeting = await meetingRepository.findById(id);
     if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
 
-    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'editor', reply);
+    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'manager', reply);
     if (!allowed) return;
 
     return meetingService.cancelMeeting(id, user.userId);
@@ -152,7 +152,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     const meeting = await meetingRepository.findById(id);
     if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
 
-    const allowed = await checkEntityProjectAccess(meeting.projectId, request.user!.userId, request.user!.role, 'editor', reply);
+    const allowed = await checkEntityProjectAccess(meeting.projectId, request.user!.userId, request.user!.role, 'manager', reply);
     if (!allowed) return;
 
     const { analysisId } = (request.body as { analysisId?: string }) || {};
@@ -168,7 +168,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     const meeting = await meetingRepository.findById(id);
     if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
 
-    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'editor', reply);
+    const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'manager', reply);
     if (!allowed) return;
 
     const { analysisId } = (request.body as { analysisId?: string }) || {};
@@ -178,7 +178,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
   });
 
   // POST /sync-external — import a meeting from an external source
-  fastify.post('/sync-external', { preHandler: [requireScope('write'), requireProjectAccess('editor')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/sync-external', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const syncSchema = z.object({
       projectId: z.string().min(1),
@@ -253,7 +253,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
       const meetingData = await meetingService.getMeeting(id);
       if (!meetingData) return reply.status(404).send({ error: 'Meeting not found' });
 
-      const allowed = await checkEntityProjectAccess(meetingData.meeting.projectId, request.user!.userId, request.user!.role, 'editor', reply);
+      const allowed = await checkEntityProjectAccess(meetingData.meeting.projectId, request.user!.userId, request.user!.role, 'manager', reply);
       if (!allowed) return;
 
       const analysis = await meetingIntelligenceService.getAnalysis(body.analysisId);
