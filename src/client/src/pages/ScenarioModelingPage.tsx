@@ -149,7 +149,7 @@ function severityIcon(severity: string) {
     case 'medium':
       return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
     default:
-      return <AlertTriangle className="w-4 h-4 text-gray-500 dark:text-gray-500" />;
+      return <AlertTriangle className="w-4 h-4 text-gray-500 dark:text-gray-400" />;
   }
 }
 
@@ -160,7 +160,7 @@ function trendIcon(trend: string) {
     case 'declining':
       return <TrendingDown className="w-5 h-5 text-red-500" />;
     default:
-      return <Minus className="w-5 h-5 text-gray-500 dark:text-gray-500" />;
+      return <Minus className="w-5 h-5 text-gray-500 dark:text-gray-400" />;
   }
 }
 
@@ -248,7 +248,7 @@ const PortfolioIntelligence: React.FC = () => {
       {heatMap.length > 0 && (
         <div className="mb-6">
           <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
+            <Activity className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
             Portfolio Risk Heat Map
           </h3>
           <div className="overflow-x-auto">
@@ -294,7 +294,7 @@ const PortfolioIntelligence: React.FC = () => {
                     </td>
                     <td className="py-2.5 px-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        <DollarSign className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
+                        <DollarSign className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
                         <span className="text-gray-700 dark:text-gray-200">
                           {Math.round(entry.budgetUtilization)}%
                         </span>
@@ -325,7 +325,7 @@ const PortfolioIntelligence: React.FC = () => {
       {reallocation && (
         <div>
           <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
+            <DollarSign className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
             Budget Reallocation
           </h3>
 
@@ -459,7 +459,7 @@ const AnomalyDetection: React.FC = () => {
       )}
 
       {/* Scanned projects count */}
-      <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
         Scanned {anomalyData.scannedProjects} project{anomalyData.scannedProjects !== 1 ? 's' : ''}
       </p>
 

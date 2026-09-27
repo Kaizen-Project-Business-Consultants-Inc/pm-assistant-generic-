@@ -237,7 +237,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
         )}
 
         {/* Meta */}
-        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-500">
+        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
           <span>Requested by: {cr.requestedByName || cr.requestedBy || '-'}</span>
           <span>Created: {new Date(cr.createdAt).toLocaleString()}</span>
           {cr.updatedAt && <span>Updated: {new Date(cr.updatedAt).toLocaleString()}</span>}
@@ -289,7 +289,7 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
                     {entry.comment && (
                       <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5">{entry.comment}</p>
                     )}
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {new Date(entry.actedAt).toLocaleString()}
                     </p>
                   </div>

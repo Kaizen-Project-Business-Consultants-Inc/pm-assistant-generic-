@@ -87,7 +87,7 @@ export function LessonsPanel({ projectId, category }: LessonsPanelProps) {
                   {lesson.title}
                 </span>
                 {lesson.severity && (
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase ${
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full uppercase ${
                     lesson.severity === 'critical' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
                     lesson.severity === 'high' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' :
                     lesson.severity === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
@@ -120,7 +120,7 @@ export function LessonsPanel({ projectId, category }: LessonsPanelProps) {
                 </p>
               )}
               {lesson.projectName && (
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">From: {lesson.projectName}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">From: {lesson.projectName}</p>
               )}
             </div>
           ))}

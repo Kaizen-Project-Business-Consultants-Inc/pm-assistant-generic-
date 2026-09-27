@@ -78,7 +78,7 @@ function ChecklistSection({
         <div className="p-3">
           {!checklist ? (
             <div className="text-center py-3">
-              <p className="text-xs text-gray-500 dark:text-gray-500 mb-2">No checklist initialized</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">No checklist initialized</p>
               <button
                 onClick={() => initMutation.mutate()}
                 disabled={initMutation.isPending}
@@ -117,7 +117,7 @@ function ChecklistSection({
                       <Square className="w-4 h-4 text-gray-500 group-hover:text-gray-500" />
                     )}
                   </button>
-                  <span className={`text-sm ${item.checked ? 'text-gray-500 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-300'}`}>
+                  <span className={`text-sm ${item.checked ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-700 dark:text-gray-300'}`}>
                     {item.label}
                   </span>
                 </label>

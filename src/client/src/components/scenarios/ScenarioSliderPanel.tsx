@@ -61,7 +61,7 @@ export const ScenarioSliderPanel: React.FC<Props> = ({ values, onChange, disable
             type="button"
             onClick={() => onChange({ ...values, [key]: 0 })}
             disabled={disabled || values[key] === 0}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 transition-colors"
+            className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 transition-colors"
             aria-label={`Reset ${label}`}
             title="Reset"
           >

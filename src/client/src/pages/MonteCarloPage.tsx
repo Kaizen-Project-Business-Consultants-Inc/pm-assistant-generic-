@@ -259,7 +259,7 @@ export function MonteCarloPage() {
       {/* Configuration Panel */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <Settings2Icon className="w-4 h-4 text-gray-500 dark:text-gray-500" />
+          <Settings2Icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
           Simulation Configuration
         </h2>
 
@@ -283,7 +283,7 @@ export function MonteCarloPage() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500 pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400 pointer-events-none" />
             </div>
           </div>
 
@@ -294,7 +294,7 @@ export function MonteCarloPage() {
             </label>
             <div className="relative">
               <select
-                className="w-full appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 pr-8 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-colors disabled:bg-gray-50 dark:bg-gray-900 disabled:text-gray-400 dark:text-gray-500"
+                className="w-full appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 pr-8 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-colors disabled:bg-gray-50 dark:bg-gray-900 disabled:text-gray-400 dark:text-gray-400"
                 value={selectedScheduleId}
                 onChange={handleScheduleChange}
                 disabled={!selectedProjectId || schedulesLoading}
@@ -312,7 +312,7 @@ export function MonteCarloPage() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500 pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400 pointer-events-none" />
             </div>
           </div>
 
@@ -348,7 +348,7 @@ export function MonteCarloPage() {
                 <option value="PERT">PERT Distribution</option>
                 <option value="Triangular">Triangular Distribution</option>
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500 pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400 pointer-events-none" />
             </div>
           </div>
         </div>

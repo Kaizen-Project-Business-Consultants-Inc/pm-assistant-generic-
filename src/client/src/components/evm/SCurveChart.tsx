@@ -68,7 +68,7 @@ export function SCurveChart({ data, height = 300 }: SCurveChartProps) {
 
   if (data.length === 0) {
     return (
-      <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-500">
+      <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
         No S-Curve data available.
       </div>
     );

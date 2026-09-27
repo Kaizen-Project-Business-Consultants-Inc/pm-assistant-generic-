@@ -72,7 +72,7 @@ function ScoreBadge({ score }: { score: number }) {
   const color = score >= 70 ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
     : score >= 50 ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
     : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300';
-  return <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${color}`}>{score}</span>;
+  return <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${color}`}>{score}</span>;
 }
 
 export function HealthTrendsWidget({ projects }: HealthTrendsWidgetProps) {
@@ -111,7 +111,7 @@ export function HealthTrendsWidget({ projects }: HealthTrendsWidgetProps) {
       </div>
 
       {activeProjects.length === 0 ? (
-        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-6">No active projects</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-6">No active projects</p>
       ) : (
         <div className="space-y-2">
           {activeProjects.map((project, idx) => {

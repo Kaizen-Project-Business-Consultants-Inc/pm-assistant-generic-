@@ -148,7 +148,7 @@ export function ProjectLinksCard({ projectId, canEdit }: Props) {
           key={link.id}
           className="group flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
         >
-          <span className={`flex-shrink-0 w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold ${getLinkColor(link.icon)}`}>
+          <span className={`flex-shrink-0 w-7 h-7 rounded flex items-center justify-center text-xs font-bold ${getLinkColor(link.icon)}`}>
             {getLinkIcon(link.icon)}
           </span>
           <a
@@ -160,19 +160,19 @@ export function ProjectLinksCard({ projectId, canEdit }: Props) {
           >
             {link.label}
           </a>
-          <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <ExternalLink className="w-3.5 h-3.5 text-gray-500 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
           {canEdit && (
             <div className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={() => startEdit(link)}
-                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 title="Edit"
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => deleteMutation.mutate(link.id)}
-                className="p-1 text-gray-400 hover:text-red-500"
+                className="p-1 text-gray-500 hover:text-red-500"
                 title="Remove"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -227,7 +227,7 @@ export function ProjectLinksCard({ projectId, canEdit }: Props) {
             </button>
             <button
               onClick={cancelForm}
-              className="p-1.5 text-gray-400 hover:text-gray-600"
+              className="p-1.5 text-gray-500 hover:text-gray-600"
               title="Cancel"
             >
               <X className="w-4 h-4" />

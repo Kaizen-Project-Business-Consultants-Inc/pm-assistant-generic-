@@ -66,14 +66,14 @@ export function AttachmentVersionHistory({ attachmentId, onClose }: AttachmentVe
               <div className="w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
             </div>
           ) : versions.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-4">No versions found</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No versions found</p>
           ) : (
             versions.map((v: any) => (
               <div key={v.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">v{v.version}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">{v.originalName} &middot; {formatSize(v.fileSize)}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">{new Date(v.createdAt).toLocaleString()}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{v.originalName} &middot; {formatSize(v.fileSize)}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(v.createdAt).toLocaleString()}</p>
                 </div>
                 <button onClick={() => handleDownload(v)} className="p-1.5 text-gray-500 hover:text-primary-600">
                   <Download className="w-4 h-4" />

@@ -136,7 +136,7 @@ export function StandupSummaryWidget({ projects }: Props) {
               {/* Empty state */}
               {changes.completions.length === 0 && changes.statusChanges.length === 0 &&
                changes.newTasks.length === 0 && changes.newRisks.length === 0 && changes.blockers.length === 0 && (
-                <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-4">No notable changes yesterday.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No notable changes yesterday.</p>
               )}
             </div>
           )}
@@ -178,7 +178,7 @@ function Section({ icon: Icon, title, color, items, render }: {
           </li>
         ))}
         {items.length > 8 && (
-          <li className="text-xs text-gray-500 dark:text-gray-500">+{items.length - 8} more</li>
+          <li className="text-xs text-gray-500 dark:text-gray-400">+{items.length - 8} more</li>
         )}
       </ul>
     </div>

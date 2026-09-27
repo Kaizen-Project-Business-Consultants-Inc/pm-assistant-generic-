@@ -84,11 +84,11 @@ export function ResourceUsageView({ projectId }: { projectId: string }) {
       <div className="flex items-center gap-2 mb-4">
         <BarChart3 className="h-5 w-5 text-primary-500" />
         <h3 className="text-base font-semibold text-gray-900 dark:text-white">Resource Usage</h3>
-        <span className="text-xs text-gray-500 dark:text-gray-500">({usage.length})</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">({usage.length})</span>
       </div>
 
       {usage.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-6">
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
           No task-level resource assignments. Assign resources in the Gantt chart.
         </p>
       ) : (
@@ -104,9 +104,9 @@ export function ResourceUsageView({ projectId }: { projectId: string }) {
                   aria-expanded={isExpanded}
                 >
                   {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
                   )}
                   <div className="w-7 h-7 rounded-full bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
@@ -115,7 +115,7 @@ export function ResourceUsageView({ projectId }: { projectId: string }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">{r.resourceName}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-500">{r.role} &middot; {r.tasks.length} task{r.tasks.length !== 1 ? 's' : ''}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{r.role} &middot; {r.tasks.length} task{r.tasks.length !== 1 ? 's' : ''}</div>
                   </div>
                   <UtilBar planned={r.totalHoursPlanned} capacity={r.capacityHoursPerWeek} />
                 </button>
@@ -141,7 +141,7 @@ export function ResourceUsageView({ projectId }: { projectId: string }) {
                             <td className="py-1.5 px-2 text-right text-gray-600 dark:text-gray-400">{t.hoursPlanned != null ? `${t.hoursPlanned}h` : '--'}</td>
                             <td className="py-1.5 px-2 text-right text-gray-600 dark:text-gray-400">{t.allocationPct}%</td>
                             <td className="py-1.5 px-2 text-gray-600 dark:text-gray-400">{t.roleOnTask || '--'}</td>
-                            <td className="py-1.5 px-2 text-gray-500 dark:text-gray-500 whitespace-nowrap">
+                            <td className="py-1.5 px-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">
                               {t.startDate && t.endDate ? `${t.startDate} – ${t.endDate}` : t.startDate || '--'}
                             </td>
                             <td className="py-1.5 pl-2 text-center">

@@ -72,7 +72,7 @@ export function LessonsInsightsWidget() {
           <BookOpen className="h-4 w-4 text-primary-500" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Lessons & Insights</h3>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-4">
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-4">
           No lessons captured yet. Complete a project to start building your knowledge base.
         </p>
       </div>

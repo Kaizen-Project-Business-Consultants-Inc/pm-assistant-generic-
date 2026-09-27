@@ -39,7 +39,7 @@ export const ReportCategorySection: React.FC<ReportCategorySectionProps> = ({
         )}
         <Icon className="w-4 h-4 text-primary-500 flex-shrink-0" />
         <span className="text-sm font-semibold text-gray-900 dark:text-white">{category.title}</span>
-        <span className="text-xs text-gray-500 dark:text-gray-500">{category.reports.length}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{category.reports.length}</span>
       </button>
 
       {expanded && (

@@ -347,7 +347,7 @@ function HeroMockup() {
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
           <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
           <span className="ml-2.5 text-xs text-slate-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>portfolio · health</span>
-          <span className="ml-auto inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-green-400 px-2 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.12)' }}>
+          <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-green-400 px-2 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.12)' }}>
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" style={{ animation: 'hpulse 1.6s ease-in-out infinite' }} />
             Live
           </span>
@@ -361,7 +361,7 @@ function HeroMockup() {
             { label: 'CPI', value: '0.94', color: '#fbbf24' },
           ].map((kpi) => (
             <div key={kpi.label} className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <p className="text-[11px] text-slate-400 m-0">{kpi.label}</p>
+              <p className="text-xs text-slate-400 m-0">{kpi.label}</p>
               <p className="text-[22px] font-extrabold mt-1 m-0 tabular-nums" style={{ color: kpi.color }}>{kpi.value}</p>
             </div>
           ))}
@@ -371,7 +371,7 @@ function HeroMockup() {
         <div className="mt-2.5 rounded-xl p-3.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-slate-300 m-0">Delivery confidence</p>
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-cyan-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+            <span className="inline-flex items-center gap-1.5 text-xs text-cyan-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               Monte Carlo
               <span className="w-1 h-1 rounded-full bg-cyan-400" style={{ animation: 'hpulse 1.6s ease-in-out infinite' }} />
             </span>

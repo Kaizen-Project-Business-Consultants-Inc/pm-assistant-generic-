@@ -144,14 +144,14 @@ export function AdminAuditPage() {
                       </td>
                       <td className="py-3 pr-4">
                         <div className="font-medium text-gray-900 dark:text-white">{entry.entityType}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-500 font-mono">{entry.entityId?.slice(0, 8)}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">{entry.entityId?.slice(0, 8)}</div>
                       </td>
                       <td className="py-3 pr-4">
                         <div className="text-gray-700 dark:text-gray-200">{entry.actorType}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-500 font-mono">{entry.actorId?.slice(0, 8)}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">{entry.actorId?.slice(0, 8)}</div>
                       </td>
                       <td className="py-3 pr-4 text-gray-600 dark:text-gray-300">{entry.source}</td>
-                      <td className="py-3 text-xs text-gray-500 dark:text-gray-500 font-mono">{entry.projectId?.slice(0, 8) || '\u2014'}</td>
+                      <td className="py-3 text-xs text-gray-500 dark:text-gray-400 font-mono">{entry.projectId?.slice(0, 8) || '\u2014'}</td>
                     </tr>
                   );
                 })}

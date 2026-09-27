@@ -242,7 +242,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
     if (s === 'pending_decision') return 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400';
     if (s === 'deferred' || s === 'unverified' || s === 'pending') return 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400';
     if (s === 'at_risk') return 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400';
-    if (s === 'cancelled' || s === 'reversed') return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-500';
+    if (s === 'cancelled' || s === 'reversed') return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
     return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
   };
 
@@ -382,7 +382,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
               {severityDist.medium > 0 && <div className="bg-yellow-400" style={{ width: `${(severityDist.medium / risks.length) * 100}%` }} title={`Medium: ${severityDist.medium}`} />}
               {severityDist.low > 0 && <div className="bg-green-400" style={{ width: `${(severityDist.low / risks.length) * 100}%` }} title={`Low: ${severityDist.low}`} />}
             </div>
-            <div className="flex gap-1.5 text-[9px] text-gray-500 dark:text-gray-400">
+            <div className="flex gap-1.5 text-xs text-gray-500 dark:text-gray-400">
               {severityDist.critical > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-red-500" aria-hidden="true" /><span className="sr-only">Critical:</span>{severityDist.critical}</span>}
               {severityDist.high > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-orange-500" aria-hidden="true" /><span className="sr-only">High:</span>{severityDist.high}</span>}
               {severityDist.medium > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-yellow-400" aria-hidden="true" /><span className="sr-only">Medium:</span>{severityDist.medium}</span>}
@@ -476,7 +476,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
             <Filter className="w-3.5 h-3.5" />
             Filters
             {activeFilterCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center rounded-full bg-primary-600 text-white text-[9px] font-bold">
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center rounded-full bg-primary-600 text-white text-[10px] font-bold">
                 {activeFilterCount}
               </span>
             )}
@@ -691,7 +691,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                   </span>
 
                   {/* Date */}
-                  <span onClick={() => setSelectedRaidId(risk.id)} className="text-xs text-gray-500 dark:text-gray-500">
+                  <span onClick={() => setSelectedRaidId(risk.id)} className="text-xs text-gray-500 dark:text-gray-400">
                     {formatDate(risk.createdAt)}
                   </span>
                 </div>
@@ -767,14 +767,14 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                       <div className="flex items-center gap-1.5 mb-1">
                         <div className={`w-1.5 h-4 rounded-full ${typeIndicatorColor(risk.type)}`} />
                         <span className="text-xs font-mono text-gray-500">{risk.recordId}</span>
-                        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full capitalize ml-auto ${severityColor(risk.severity)}`}>{risk.severity}</span>
+                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full capitalize ml-auto ${severityColor(risk.severity)}`}>{risk.severity}</span>
                       </div>
                       <p className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">{risk.title}</p>
                       <div className="flex items-center gap-2 mt-1.5">
                         {memberName(risk.ownerId) && (
                           <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{memberName(risk.ownerId)}</span>
                         )}
-                        {due && <span className={`text-[9px] font-medium ml-auto ${due.color}`}>{due.label}</span>}
+                        {due && <span className={`text-xs font-medium ml-auto ${due.color}`}>{due.label}</span>}
                       </div>
                     </div>
                   );
@@ -819,7 +819,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                             {items.length > 0 ? (
                               <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{items.length}</span>
                             ) : (
-                              <span className="text-[9px] text-gray-300 dark:text-gray-600">{score}</span>
+                              <span className="text-xs text-gray-300 dark:text-gray-600">{score}</span>
                             )}
                           </div>
                         </td>

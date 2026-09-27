@@ -1093,7 +1093,7 @@ export function ResourceManagementPage() {
           onCancel={() => { setDeleteConfirmId(null); setRemoveAccessOnDelete(false); setDeleteImpact(null); }}
         >
           {deleteImpactLoading && (
-            <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">Checking assignments...</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Checking assignments...</p>
           )}
           {deleteImpact && (deleteImpact.taskAssignments > 0 || deleteImpact.raidItems > 0) && (
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">

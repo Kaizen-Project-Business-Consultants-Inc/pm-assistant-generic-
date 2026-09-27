@@ -136,7 +136,7 @@ export function TimeTrendChart({ projectId }: { projectId: string }) {
                       x={x + chart.barW / 2}
                       y={y - 6}
                       textAnchor="middle"
-                      className={`text-[9px] font-medium ${w.delta > 0 ? 'fill-green-500' : w.delta < 0 ? 'fill-red-500' : 'fill-gray-400'}`}
+                      className={`text-xs font-medium ${w.delta > 0 ? 'fill-green-500' : w.delta < 0 ? 'fill-red-500' : 'fill-gray-400'}`}
                     >
                       {w.delta > 0 ? '+' : ''}{w.delta}%
                     </text>
@@ -146,7 +146,7 @@ export function TimeTrendChart({ projectId }: { projectId: string }) {
                     x={chart.pad.left + chart.gap * i + chart.gap / 2}
                     y={chart.H - 15}
                     textAnchor="middle"
-                    className="fill-gray-400 text-[9px]"
+                    className="fill-gray-400 text-xs"
                     transform={`rotate(-30, ${chart.pad.left + chart.gap * i + chart.gap / 2}, ${chart.H - 15})`}
                   >
                     {formatCalendarDate(w.weekStart, { month: 'short', day: 'numeric' }, 'en-US')}

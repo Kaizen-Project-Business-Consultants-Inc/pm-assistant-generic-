@@ -134,7 +134,7 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
           )}
         </div>
         <span
-          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0 ${healthPillColor(healthScore)}`}
+          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${healthPillColor(healthScore)}`}
         >
           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${healthDotColor(healthScore)}`} />
           {label}
@@ -143,19 +143,19 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
 
       {/* Chips row */}
       <div className="flex flex-wrap gap-1.5">
-        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${statusChipColor(status)}`}>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusChipColor(status)}`}>
           {status}
         </span>
-        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${priorityChipColor(priority)}`}>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${priorityChipColor(priority)}`}>
           {priority}
         </span>
         {methodology && (
-          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 capitalize">
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 capitalize">
             {methodology}
           </span>
         )}
         {isArchived && (
-          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300">
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300">
             Archived
           </span>
         )}
@@ -164,8 +164,8 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
       {/* Progress */}
       <div>
         <div className="flex justify-between items-center mb-1">
-          <span className="text-[11px] text-gray-500 dark:text-gray-400">Progress</span>
-          <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">{pct}%</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">Progress</span>
+          <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{pct}%</span>
         </div>
         <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
           <div
@@ -176,7 +176,7 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-500">
+      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
         <span className="flex items-center gap-1">
           <Calendar className="w-3 h-3" />
           {formatDate(endDate)}

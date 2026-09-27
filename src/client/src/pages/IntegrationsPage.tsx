@@ -345,7 +345,7 @@ export const IntegrationsPage: React.FC = () => {
       {/* Loading / Error */}
       {isLoading && (
         <div className="flex items-center justify-center py-20">
-          <RefreshCw className="h-6 w-6 animate-spin text-gray-500 dark:text-gray-500" />
+          <RefreshCw className="h-6 w-6 animate-spin text-gray-500 dark:text-gray-400" />
           <span className="ml-2 text-gray-500 dark:text-gray-400">Loading integrations…</span>
         </div>
       )}
@@ -424,7 +424,7 @@ export const IntegrationsPage: React.FC = () => {
                                   {/* Slack is never "synced" — it's pushed to. Saying
                                       "Last synced: Never" on a working connection
                                       reads as broken, so name what it really is. */}
-                                  <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-500">
+                                  <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                                     <Clock className="h-3 w-3" />
                                     {integ.lastSyncAt
                                       ? `Last message ${formatRelativeTime(integ.lastSyncAt)}`

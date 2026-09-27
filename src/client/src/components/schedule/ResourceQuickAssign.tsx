@@ -144,7 +144,7 @@ export function ResourceQuickAssign({ taskId, assignments, onUpdate }: ResourceQ
                   <Avatar name={r.name} size="xs" />
                   <div className="min-w-0">
                     <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
-                    <div className="text-gray-500 dark:text-gray-500 truncate">{r.role}</div>
+                    <div className="text-gray-500 dark:text-gray-400 truncate">{r.role}</div>
                   </div>
                 </button>
               ))

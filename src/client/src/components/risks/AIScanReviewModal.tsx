@@ -178,7 +178,7 @@ export function AIScanReviewModal({ isOpen, onClose, onImport, candidates, impor
                         <button onClick={() => toggleSelect(idx)} className="mt-0.5 flex-shrink-0">
                           {isSelected
                             ? <CheckSquare className="w-4.5 h-4.5 text-primary-600 dark:text-primary-400" />
-                            : <Square className="w-4.5 h-4.5 text-gray-500 dark:text-gray-500" />
+                            : <Square className="w-4.5 h-4.5 text-gray-500 dark:text-gray-400" />
                           }
                         </button>
 

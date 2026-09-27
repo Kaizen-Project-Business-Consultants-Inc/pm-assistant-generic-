@@ -517,7 +517,7 @@ export function EVMDashboardPage() {
       )}
 
       {selectedProjectId && !isLoading && !result && (
-        <div className="text-center py-16 text-gray-500 dark:text-gray-500">No EVM data available for this project.</div>
+        <div className="text-center py-16 text-gray-500 dark:text-gray-400">No EVM data available for this project.</div>
       )}
 
       {result && m && (
@@ -773,7 +773,7 @@ export function EVMDashboardPage() {
                 const hasData = activeData.length >= 2 && activeLines;
 
                 if (!hasData) {
-                  return <div className="text-center py-8 text-gray-500 dark:text-gray-500 text-sm">Not enough historical data for trend chart.</div>;
+                  return <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">Not enough historical data for trend chart.</div>;
                 }
 
                 // Compute annotations: crossover points where CPI or SPI crosses 1.0

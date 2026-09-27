@@ -146,10 +146,10 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
                 <Avatar name={r.name} size="xs" />
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
-                  <div className="text-gray-500 dark:text-gray-500 truncate">{r.role}</div>
+                  <div className="text-gray-500 dark:text-gray-400 truncate">{r.role}</div>
                 </div>
                 {matchedSkill && (
-                  <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
+                  <span className="shrink-0 px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
                     {PROFICIENCY_LABELS[matchedSkill.level] || matchedSkill.level}
                   </span>
                 )}

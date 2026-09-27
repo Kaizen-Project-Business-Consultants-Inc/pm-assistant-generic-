@@ -686,8 +686,8 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                               >
                                 {pct > 0 ? (
                                   <>
-                                    <span className="text-[9px] font-bold leading-tight">{actual > 0 ? actual : '-'}/{w.allocated}h</span>
-                                    <span className="text-[8px] opacity-80">{pct}%</span>
+                                    <span className="text-[11px] font-bold leading-tight">{actual > 0 ? actual : '-'}/{w.allocated}h</span>
+                                    <span className="text-[10px] opacity-80">{pct}%</span>
                                   </>
                                 ) : ''}
                               </div>

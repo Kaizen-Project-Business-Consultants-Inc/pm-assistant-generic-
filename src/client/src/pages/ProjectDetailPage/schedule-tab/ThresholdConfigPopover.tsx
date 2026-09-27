@@ -60,7 +60,7 @@ export function ThresholdConfigPopover({ thresholds, onChange }: ThresholdConfig
           <p className="text-xs font-medium text-gray-700 dark:text-gray-200">Risk Thresholds</p>
 
           <label className="block">
-            <span className="text-[11px] text-gray-500 dark:text-gray-400">At Risk gap (%)</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">At Risk gap (%)</span>
             <input
               type="number"
               min={1}
@@ -72,7 +72,7 @@ export function ThresholdConfigPopover({ thresholds, onChange }: ThresholdConfig
           </label>
 
           <label className="block">
-            <span className="text-[11px] text-gray-500 dark:text-gray-400">Critical gap (%)</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Critical gap (%)</span>
             <input
               type="number"
               min={1}
@@ -85,7 +85,7 @@ export function ThresholdConfigPopover({ thresholds, onChange }: ThresholdConfig
 
           <button
             onClick={() => onChange({ ...DEFAULT_RISK_THRESHOLDS })}
-            className="w-full text-[11px] text-primary-600 dark:text-primary-400 hover:underline text-center"
+            className="w-full text-xs text-primary-600 dark:text-primary-400 hover:underline text-center"
           >
             Reset to defaults
           </button>

@@ -230,7 +230,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                         <Clock className="w-3 h-3 text-blue-500" />
                         <span className="text-xs text-blue-600 dark:text-blue-400">{formatScheduleFrequency(auto)}</span>
                         {auto.nextRunAt && (
-                          <span className="text-xs text-gray-500 dark:text-gray-500" title={`Next: ${new Date(auto.nextRunAt).toLocaleString()}`}>
+                          <span className="text-xs text-gray-500 dark:text-gray-400" title={`Next: ${new Date(auto.nextRunAt).toLocaleString()}`}>
                             (next: {formatRelativeDate(auto.nextRunAt)})
                           </span>
                         )}
@@ -397,7 +397,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                       <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">{mp.triggerEventType}</code>
                     </div>
                     {mp.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{mp.description}</p>}
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-500">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
                       <span>By {mp.publishedByOrgName}</span>
                       <span>{mp.downloadCount} imports</span>
                     </div>

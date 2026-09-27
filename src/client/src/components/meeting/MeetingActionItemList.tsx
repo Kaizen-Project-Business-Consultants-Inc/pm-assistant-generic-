@@ -221,7 +221,7 @@ export const MeetingActionItemList: React.FC<MeetingActionItemListProps> = ({
       {isLoading ? (
         <div className="text-xs text-gray-500 py-4 text-center">Loading...</div>
       ) : items.length === 0 ? (
-        <div className="text-xs text-gray-500 dark:text-gray-500 py-4 text-center italic">
+        <div className="text-xs text-gray-500 dark:text-gray-400 py-4 text-center italic">
           No action items{statusFilter ? ` with status "${statusFilter}"` : ''}.
         </div>
       ) : (

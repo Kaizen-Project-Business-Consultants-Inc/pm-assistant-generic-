@@ -151,7 +151,7 @@ function GaugeCard({ label, value, max, unit, percent }: { label: string; value:
           <p className={`text-lg font-bold mt-0.5 ${colors.text}`}>
             {value}{unit && <span className="text-sm font-normal ml-0.5">{unit}</span>}
           </p>
-          {max && <p className="text-xs text-gray-500 dark:text-gray-500">of {max}</p>}
+          {max && <p className="text-xs text-gray-500 dark:text-gray-400">of {max}</p>}
         </div>
       </div>
     </div>

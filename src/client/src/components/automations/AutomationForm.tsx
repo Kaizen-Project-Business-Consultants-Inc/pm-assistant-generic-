@@ -402,7 +402,7 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
                   />
                 )}
                 {param.help && (
-                  <p className="text-[11px] text-gray-500 dark:text-gray-500 mt-0.5">{param.help}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{param.help}</p>
                 )}
               </div>
             ))}

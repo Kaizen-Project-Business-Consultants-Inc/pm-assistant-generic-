@@ -236,6 +236,10 @@ Budget fields are also available in the Task Form modal. For summary tasks, budg
 
 One definition everywhere (Sep 2026): a **leaf** task (not a phase summary) that is not completed, done or cancelled, whose end date is **before today** (calendar day, `CURDATE()`), in a project that is **not archived**. The Overdue Tasks tile (`AnalyticsSummaryRepository.getOverdueCount`, and its week-ago trend), the tile's drill-in list (`GET /dashboard/overdue-tasks`) and the Morning Briefing all use it. Previously the tile always showed 0 — the client read `.tasks` off the `{ summary }` wrapper (now unwrapped once in `apiService.getAnalyticsSummary`) — and the server counted summaries and archived projects (8 vs the briefing's 6). The analytics portfolio now also leaves archived projects out.
 
+### Type scale and text contrast (Sep 2026)
+
+Readable text is never below **12px** (`text-xs`); body 14px. Only fixed-size spots — initials in small avatars, count badges in 16–20px circles, dense heatmap cells — use 10–11px, and nothing is below 10px. Secondary text is `gray-500`, now `#66605b` (5.9:1 on the page background; was 4.6:1), and dark mode uses `gray-400` (6.0:1; `dark:text-gray-500` was 3.2:1, below WCAG AA). Enforced by `src/client/src/__tests__/utils/typeScaleGuard.test.ts`, which fails the build on text under 10px, 10–11px outside the listed fixed-size files, or `dark:text-gray-500`.
+
 ### Morning Briefing by project
 
 `GET /api/v1/briefing/daily` (DailyBriefingService) returns, besides the flat item lists, `projects[]`: every non-archived, non-demo project the user can see (member projects, or all for admin/pmo/executive and `scope=portfolio`), with **true counts** (`overdue`, `dueSoon` = today + 7 days, `blocked` = distinct tasks with a late unfinished FS predecessor, `openIssues`, `overdueActions`) computed by grouped COUNT queries with the same role filters as the lists, plus `nextMilestone` (first open milestone on or after today). Item lists are capped at 50 each (they were 10–20); blocked RAID items now carry `scheduleId`.

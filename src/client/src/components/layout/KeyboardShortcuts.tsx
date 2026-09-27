@@ -57,7 +57,7 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ isOpen, onClose }
         <div className="px-5 py-4 max-h-[60vh] overflow-y-auto space-y-5">
           {shortcuts.map((group) => (
             <div key={group.section}>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-500 mb-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                 {group.section}
               </h3>
               <div className="space-y-2">
@@ -82,7 +82,7 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ isOpen, onClose }
         </div>
 
         <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Press <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 text-xs font-medium">ESC</kbd> to close
           </p>
         </div>

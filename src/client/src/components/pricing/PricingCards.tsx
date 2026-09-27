@@ -320,7 +320,7 @@ const PLANS: PlanDef[] = pricingData?.tiers
             : dk ? 'border-slate-600 shadow-lg shadow-black/30' : 'border-gray-200 dark:border-gray-700';
           const textPrimary = dk ? 'text-white' : 'text-gray-900 dark:text-white';
           const textSecondary = dk ? 'text-gray-300' : 'text-gray-500 dark:text-gray-400';
-          const textTertiary = dk ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400';
+          const textTertiary = dk ? 'text-gray-500' : 'text-gray-500 dark:text-gray-400';
           const textFeature = dk ? 'text-gray-200' : 'text-gray-700 dark:text-gray-200';
 
           return (
@@ -588,15 +588,15 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
             <thead>
               <tr className="border-b-2 border-gray-700">
                 <th scope="col" className="text-left py-3 pr-6 font-semibold text-white">Feature</th>
-                <th scope="col" className="text-center py-3 px-3 font-semibold text-gray-400 w-20">
+                <th scope="col" className="text-center py-3 px-3 font-semibold text-gray-500 w-20">
                   Trial
-                  <div className="text-xs font-normal text-gray-400">14 days</div>
+                  <div className="text-xs font-normal text-gray-500">14 days</div>
                 </th>
                 <th scope="col" className="text-center py-3 px-3 font-semibold text-white w-20">Basic</th>
                 <th scope="col" className="text-center py-3 px-3 font-semibold text-primary-400 w-20">Pro</th>
                 <th scope="col" className="text-center py-3 px-3 font-semibold text-white w-20">
                   Team
-                  <div className="text-xs font-normal text-gray-400">per seat</div>
+                  <div className="text-xs font-normal text-gray-500">per seat</div>
                 </th>
               </tr>
             </thead>
@@ -605,7 +605,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
                 <tr key={row.feature} className={`border-b border-gray-700/50 ${i % 2 === 0 ? 'bg-gray-800/50' : ''}`}>
                   <td className="py-2.5 pr-4">
                     <div className="text-gray-300">{row.feature}</div>
-                    {row.desc && <div className="text-xs text-gray-400 mt-0.5">{row.desc}</div>}
+                    {row.desc && <div className="text-xs text-gray-500 mt-0.5">{row.desc}</div>}
                   </td>
                   {(['trial', 'consultant_basic', 'consultant_pro', 'sme'] as const).map((tier) => {
                     const val = row[tier];
@@ -629,7 +629,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
       </div>
 
       {/* Refund policy */}
-      <details className="mt-12 text-center text-xs text-gray-400">
+      <details className="mt-12 text-center text-xs text-gray-500">
         <summary className="cursor-pointer hover:text-gray-300 transition-colors">Refund &amp; cancellation policy</summary>
         <div className="mt-2 space-y-1">
           <p>Monthly subscriptions are non-refundable. Cancel anytime.</p>

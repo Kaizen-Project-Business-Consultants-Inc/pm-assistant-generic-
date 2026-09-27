@@ -179,7 +179,7 @@ export function MorningBriefingWidget({ scope }: Props) {
 
   const renderSection = (s: BriefingSection, max: number) => (
     <div key={s.key}>
-      <h4 className={`text-[11px] font-bold uppercase tracking-wide mb-1 ${SECTION_COLOUR[s.key]}`}>
+      <h4 className={`text-xs font-bold uppercase tracking-wide mb-1 ${SECTION_COLOUR[s.key]}`}>
         {s.title} <span className="font-medium text-gray-500 dark:text-gray-400 tabular-nums">({s.count})</span>
       </h4>
       {s.count === 0 ? (
@@ -227,7 +227,7 @@ export function MorningBriefingWidget({ scope }: Props) {
     </div>
   );
 
-  const chip = (text: string, cls: string) => <span className={`text-[11px] font-semibold px-1.5 py-px rounded-full whitespace-nowrap ${cls}`}>{text}</span>;
+  const chip = (text: string, cls: string) => <span className={`text-xs font-semibold px-1.5 py-px rounded-full whitespace-nowrap ${cls}`}>{text}</span>;
   const listChips = (p: ProjectBriefing) => {
     const out: JSX.Element[] = [];
     for (const s of p.sections) {
@@ -312,7 +312,7 @@ export function MorningBriefingWidget({ scope }: Props) {
               ))}
               {quiet.length > 0 && (
                 <section aria-label="Quiet projects" className="px-4 py-4">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-2">
                     Quiet: nothing needs you <span className="font-medium text-gray-500 dark:text-gray-400">({quiet.length})</span>
                   </h4>
                   <ul className="space-y-1">
@@ -366,7 +366,7 @@ export function MorningBriefingWidget({ scope }: Props) {
                         <span className="min-w-0">
                           <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words">{p.name}</span>
                           <span className="mt-1 flex flex-wrap items-center gap-1">
-                            {p.code && <span className="text-[11px] text-gray-500 dark:text-gray-400">{p.code}</span>}
+                            {p.code && <span className="text-xs text-gray-500 dark:text-gray-400">{p.code}</span>}
                             {listChips(p)}
                           </span>
                         </span>

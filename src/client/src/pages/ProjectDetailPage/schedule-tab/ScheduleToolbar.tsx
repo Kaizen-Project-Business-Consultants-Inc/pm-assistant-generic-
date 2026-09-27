@@ -75,7 +75,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
           <Filter className="w-3 h-3" />
           Filters
           {hasActiveFilters && (
-            <span className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-primary-600 text-white text-[9px] font-bold">
+            <span className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-primary-600 text-white text-[10px] font-bold">
               {activeFilterCount}
             </span>
           )}
@@ -146,7 +146,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
 
       {/* Filter result count */}
       {hasActiveFilters && (
-        <span className="text-xs text-gray-500 dark:text-gray-500 ml-auto">
+        <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">
           {filteredCount} of {totalCount} tasks
         </span>
       )}

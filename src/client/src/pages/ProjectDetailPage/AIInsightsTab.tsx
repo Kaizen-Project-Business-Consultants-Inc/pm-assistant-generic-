@@ -112,7 +112,7 @@ function MetricCard({
 }) {
   return (
     <div className="rounded-lg border border-gray-100 bg-gray-50 dark:bg-gray-900 p-3 text-center" title={tooltip}>
-      <div className="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wide">{label}</div>
+      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</div>
       <div className={`mt-1 text-lg font-bold ${color}`}>{value}</div>
     </div>
   );
@@ -188,7 +188,7 @@ function TaskSlipPredictionSection({ projectId }: { projectId: string }) {
       {isLoading ? (
         <SectionSpinner />
       ) : tasks.length === 0 ? (
-        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-4">{summary || 'No tasks at risk of slipping'}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-4">{summary || 'No tasks at risk of slipping'}</p>
       ) : (
         <>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{summary}</p>
@@ -240,7 +240,7 @@ function ScopeCreepSection({ projectId }: { projectId: string }) {
         <SectionSpinner />
       ) : !data?.hasBaseline ? (
         <div className="text-center py-4">
-          <p className="text-xs text-gray-500 dark:text-gray-500">Create a baseline to enable scope creep detection.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Create a baseline to enable scope creep detection.</p>
           <p className="text-xs text-gray-300 mt-1">Go to Schedule → Baselines to create one.</p>
         </div>
       ) : (
@@ -357,7 +357,7 @@ function EVMSCurveSection({ projectId }: { projectId: string }) {
         <SCurveChart data={sCurve} height={280} />
       )}
       {!sCurveLoading && sCurve.length === 0 && (
-        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-4">No S-Curve data available for this project.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-4">No S-Curve data available for this project.</p>
       )}
     </div>
   );
@@ -395,7 +395,7 @@ function RiskAssessmentSection({ projectId }: { projectId: string }) {
               <div className={`text-3xl font-bold ${riskScoreColor(riskData.overallRiskScore)}`}>
                 {riskData.overallRiskScore}
               </div>
-              <div className="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wide">
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Risk Score
               </div>
             </div>
@@ -460,7 +460,7 @@ function RiskAssessmentSection({ projectId }: { projectId: string }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-500">No risks identified for this project.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">No risks identified for this project.</p>
           )}
         </div>
       )}
@@ -501,7 +501,7 @@ function WeatherImpactSection({ projectId }: { projectId: string }) {
               <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Set project location for weather analysis
               </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Add a location to this project to receive weather-based impact assessments.
               </p>
             </div>

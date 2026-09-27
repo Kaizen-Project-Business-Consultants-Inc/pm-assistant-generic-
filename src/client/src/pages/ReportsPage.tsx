@@ -193,7 +193,7 @@ const ReportViewerModal: React.FC<{
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeColor}`}>
                 {typeLabel}
               </span>
-              <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-500">
+              <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                 <Clock className="w-3 h-3" />
                 {formatDate(dateStr)}
               </span>
@@ -210,7 +210,7 @@ const ReportViewerModal: React.FC<{
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-gray-500 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -560,7 +560,7 @@ export const ReportsPage: React.FC = () => {
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-500" />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400" />
         </div>
       </div>
 
@@ -572,7 +572,7 @@ export const ReportsPage: React.FC = () => {
           <div className="flex items-center gap-2 mb-3">
             <Star className="w-4 h-4 text-amber-400 fill-current" />
             <span className="text-sm font-semibold text-gray-900 dark:text-white">Favorites</span>
-            <span className="text-xs text-gray-500 dark:text-gray-500">{favoriteReports.length}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{favoriteReports.length}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {favoriteReports.map(report => (
@@ -607,7 +607,7 @@ export const ReportsPage: React.FC = () => {
             <CalendarClock className="w-4 h-4 text-primary-500 flex-shrink-0" />
             <span className="text-sm font-semibold text-gray-900 dark:text-white">Scheduled Reports</span>
             {schedules.length > 0 && (
-              <span className="text-xs text-gray-500 dark:text-gray-500">{schedules.length}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{schedules.length}</span>
             )}
           </button>
           <button
@@ -761,7 +761,7 @@ export const ReportsPage: React.FC = () => {
           ) : (
             <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
           )}
-          <Clock className="w-4 h-4 text-gray-500 dark:text-gray-500 flex-shrink-0" />
+          <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
           <span className="text-sm font-semibold text-gray-900 dark:text-white">Report History</span>
         </button>
 
@@ -901,7 +901,7 @@ export const ReportsPage: React.FC = () => {
                             <span className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
                               {report.title}
                               {report.contentAvailable === false && (
-                                <span className="ml-2 inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                                <span className="ml-2 inline-block rounded px-1.5 py-0.5 text-xs font-semibold uppercase bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
                                   Expired
                                 </span>
                               )}

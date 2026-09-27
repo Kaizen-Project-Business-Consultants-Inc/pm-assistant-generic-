@@ -457,7 +457,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     ),
 
     'timeline': !start || !end ? (
-      <EmptyState icon={<Clock className="w-5 h-5 text-gray-300 dark:text-gray-500" />} message="No start/end dates set" cta="Set dates" onAction={() => onNavigateToTab?.('settings')} />
+      <EmptyState icon={<Clock className="w-5 h-5 text-gray-300 dark:text-gray-400" />} message="No start/end dates set" cta="Set dates" onAction={() => onNavigateToTab?.('settings')} />
     ) : (
       <div className="space-y-3">
         <div className="flex items-center justify-between text-sm">
@@ -516,14 +516,14 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
 
     'milestones': tasksLoading || (!primaryScheduleId && schedules.length === 0) ? (
       !primaryScheduleId && !tasksLoading ? (
-        <EmptyState icon={<Target className="w-5 h-5 text-gray-300 dark:text-gray-500" />} message="No schedule created yet" cta="Create schedule" onAction={() => onNavigateToTab?.('schedule')} />
+        <EmptyState icon={<Target className="w-5 h-5 text-gray-300 dark:text-gray-400" />} message="No schedule created yet" cta="Create schedule" onAction={() => onNavigateToTab?.('schedule')} />
       ) : (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <div key={i} className={`h-10 ${skeletonPulse}`} />)}
         </div>
       )
     ) : milestones.length === 0 ? (
-      <EmptyState icon={<Target className="w-5 h-5 text-gray-300 dark:text-gray-500" />} message="No milestones defined" cta="Mark milestones in Schedule" onAction={() => onNavigateToTab?.('schedule')} />
+      <EmptyState icon={<Target className="w-5 h-5 text-gray-300 dark:text-gray-400" />} message="No milestones defined" cta="Mark milestones in Schedule" onAction={() => onNavigateToTab?.('schedule')} />
     ) : (
       <div className="space-y-2.5">
         {milestones.map((m: any) => {
@@ -550,7 +550,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className={`text-sm font-medium truncate ${isDone ? 'text-gray-500 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
+                <p className={`text-sm font-medium truncate ${isDone ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>
                   {m.name}
                 </p>
                 <p className={`text-xs ${isPast && !isDone ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
@@ -565,7 +565,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     ),
 
     'health': currentHealth === null ? (
-      <EmptyState icon={<Heart className="w-5 h-5 text-gray-300 dark:text-gray-500" />} message="No health data yet" cta={undefined} />
+      <EmptyState icon={<Heart className="w-5 h-5 text-gray-300 dark:text-gray-400" />} message="No health data yet" cta={undefined} />
     ) : (
       <div className="space-y-3">
         <div className="flex items-center gap-3">
@@ -595,7 +595,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     ),
 
     'evm': cpi === null && spi === null ? (
-      <EmptyState icon={<TrendingUp className="w-5 h-5 text-gray-300 dark:text-gray-500" />} message="No EVM data available" cta="Learn about EVM" />
+      <EmptyState icon={<TrendingUp className="w-5 h-5 text-gray-300 dark:text-gray-400" />} message="No EVM data available" cta="Learn about EVM" />
     ) : (
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
@@ -632,7 +632,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     ),
 
     'budget': budgetAllocated === 0 ? (
-      <EmptyState icon={<DollarSign className="w-5 h-5 text-gray-300 dark:text-gray-500" />} message="No budget allocated" cta="Set budget" onAction={() => onNavigateToTab?.('budget')} />
+      <EmptyState icon={<DollarSign className="w-5 h-5 text-gray-300 dark:text-gray-400" />} message="No budget allocated" cta="Set budget" onAction={() => onNavigateToTab?.('budget')} />
     ) : (
       <div className="space-y-3">
         <div className="flex items-baseline justify-between">
@@ -754,7 +754,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     ),
 
     'sprint': !activeSprint ? (
-      <EmptyState icon={<Kanban className="w-5 h-5 text-gray-300 dark:text-gray-500" />} message="No active sprint" cta="Manage sprints" onAction={() => onNavigateToTab?.('sprints')} />
+      <EmptyState icon={<Kanban className="w-5 h-5 text-gray-300 dark:text-gray-400" />} message="No active sprint" cta="Manage sprints" onAction={() => onNavigateToTab?.('sprints')} />
     ) : (() => {
       const total = activeSprint.totalTasks || 0;
       const done = activeSprint.completedTasks || 0;
@@ -791,7 +791,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     })(),
 
     'activity': recentActivity.length === 0 ? (
-      <EmptyState icon={<Activity className="w-5 h-5 text-gray-300 dark:text-gray-500" />} message="No recent activity" />
+      <EmptyState icon={<Activity className="w-5 h-5 text-gray-300 dark:text-gray-400" />} message="No recent activity" />
     ) : (
       <div className="space-y-2.5 max-h-[220px] overflow-y-auto">
         {recentActivity.map((a: any, i: number) => (
@@ -803,7 +803,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               <p className="text-xs text-gray-800 dark:text-gray-200 truncate">
                 {a.action || a.description || a.summary || a.message || 'Activity'}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {a.userName || a.user || ''}{a.userName || a.user ? ' · ' : ''}
                 {new Date(a.createdAt || a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
               </p>
@@ -858,7 +858,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               <p className="text-xs text-gray-800 dark:text-gray-200 truncate">
                 {a.action || a.description || a.summary || a.message || 'Comment'}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {a.userName || a.user || ''}{a.userName || a.user ? ' · ' : ''}
                 {new Date(a.createdAt || a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
               </p>
@@ -877,7 +877,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
           return (
             <div key={g.id} className="space-y-1">
               <div className="flex items-center justify-between">
-                <p className={`text-sm font-medium truncate flex-1 mr-2 ${isDone ? 'text-gray-500 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
+                <p className={`text-sm font-medium truncate flex-1 mr-2 ${isDone ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>
                   {g.name || g.title}
                 </p>
                 <span className={`text-xs font-medium ${isDone ? 'text-green-600 dark:text-green-400' : progress >= 75 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
@@ -891,7 +891,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
                 />
               </div>
               {g.targetDate && (
-                <p className="text-xs text-gray-500 dark:text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Target: {formatCalendarDate(g.targetDate, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US')}
                 </p>
               )}
@@ -982,7 +982,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         )}
       </div>
     ) : (
-      <EmptyState icon={<Mic className="w-5 h-5 text-gray-300 dark:text-gray-500" />} message="No meetings analyzed yet" />
+      <EmptyState icon={<Mic className="w-5 h-5 text-gray-300 dark:text-gray-400" />} message="No meetings analyzed yet" />
     ),
   };
 
@@ -1034,7 +1034,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               <div key={lesson.id} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-primary-100 dark:border-primary-900/30">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{lesson.title}</p>
-                  {lesson.recommendation && <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{lesson.recommendation}</p>}
+                  {lesson.recommendation && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{lesson.recommendation}</p>}
                 </div>
                 <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-medium shrink-0">{lesson.category}</span>
               </div>
@@ -1118,7 +1118,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
               ))}
             </div>
           ) : members.length === 0 ? (
-            <EmptyState icon={<Users className="w-5 h-5 text-gray-300 dark:text-gray-500" />} message="No team members assigned" cta="Invite team" onAction={() => onNavigateToTab?.('team')} />
+            <EmptyState icon={<Users className="w-5 h-5 text-gray-300 dark:text-gray-400" />} message="No team members assigned" cta="Invite team" onAction={() => onNavigateToTab?.('team')} />
           ) : (
             <div className="space-y-3">
               {visibleMembers.map((m: any, idx: number) => {
@@ -1167,7 +1167,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         <div className="flex justify-end">
           <button
             onClick={resetCardOrder}
-            className="text-xs text-gray-500 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             Reset card order
           </button>

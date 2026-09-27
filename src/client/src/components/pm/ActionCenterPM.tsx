@@ -159,7 +159,7 @@ export function ActionCenterPM({ projects: _projects }: ActionCenterPMProps) {
                       )}
                     </div>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500 flex-shrink-0" aria-hidden="true" />
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 flex-shrink-0" aria-hidden="true" />
                 </button>
               </li>
             );

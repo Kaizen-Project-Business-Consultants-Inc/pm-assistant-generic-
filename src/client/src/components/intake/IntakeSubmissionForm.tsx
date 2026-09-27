@@ -59,7 +59,7 @@ export const IntakeSubmissionForm: React.FC<Props> = ({ formId, onClose, onSubmi
 
   if (isLoading) {
     return (
-      <div className="text-center py-12 text-gray-500 dark:text-gray-500">Loading form…</div>
+      <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading form…</div>
     );
   }
 

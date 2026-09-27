@@ -1122,7 +1122,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
     if (isEditing(taskId, field) || isSaving(taskId, field) || isSaved(taskId, field)) return null;
     return (
       <span className="absolute top-1 right-1 opacity-0 group-hover/cell:opacity-100 transition-opacity">
-        <Pencil className="w-2.5 h-2.5 text-gray-500 dark:text-gray-500" />
+        <Pencil className="w-2.5 h-2.5 text-gray-500 dark:text-gray-400" />
       </span>
     );
   };
@@ -1499,7 +1499,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
             ) : (() => {
               const deps = task.dependencies || [];
               if (deps.length === 0 && !task.dependency) {
-                return <span className="text-gray-500 dark:text-gray-500">{'\u2014'}</span>;
+                return <span className="text-gray-500 dark:text-gray-400">{'\u2014'}</span>;
               }
               const items = deps.length > 0 ? deps : (task.dependency ? [{ dependencyId: task.dependency, dependencyType: task.dependencyType || 'FS', lagDays: task.dependencyLagDays || 0 }] : []);
               let worstHealth: 'satisfied' | 'in_progress' | 'at_risk' = 'satisfied';
@@ -1537,7 +1537,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
       case 'successor': {
         const succs = successorMap.get(task.id);
         if (!succs || succs.length === 0) {
-          return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-500 font-mono text-center">{'\u2014'}</td>;
+          return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono text-center">{'\u2014'}</td>;
         }
         const succLabels = succs.map(s => {
           const succRowNum = rowNumMap.get(s.successorId);
@@ -1557,7 +1557,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
 
       case 'rowNum':
         return (
-          <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-500 font-mono text-center w-12">
+          <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono text-center w-12">
             {rowNumMap.get(task.id) || '\u2014'}
             {reviewFlagMap?.has(task.id) && (
               <span
@@ -1700,7 +1700,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
       }
 
       default:
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-500">{'\u2014'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">{'\u2014'}</td>;
     }
   };
 
@@ -1845,7 +1845,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
                           title="Edit task"
                           aria-label="Edit task"
                         >
-                          <Pencil className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500" />
+                          <Pencil className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
                         </button>
                         {(onInlineInsert || onInsertAfter) && (
                           <button
@@ -1861,7 +1861,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
                             title="Insert task below"
                             aria-label="Insert task below"
                           >
-                            <PlusCircle className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500 hover:text-green-600" />
+                            <PlusCircle className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 hover:text-green-600" />
                           </button>
                         )}
                         <button
@@ -1870,7 +1870,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
                           title="Delete task"
                           aria-label="Delete task"
                         >
-                          <Trash2 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-500 hover:text-red-500" />
+                          <Trash2 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 hover:text-red-500" />
                         </button>
                       </div>
                     </td>
@@ -1949,7 +1949,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
                           <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 capitalize">
                             {groupKey.replace(/_/g, ' ')}
                           </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-500 font-medium">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
                             {groupTasks.length} task{groupTasks.length !== 1 ? 's' : ''}
                           </span>
                         </div>
@@ -2021,7 +2021,7 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
 
             {visibleSorted.length === 0 && !onQuickAdd && (
               <tr>
-                <td colSpan={visibleColumns.length + 2} className="text-center py-8 text-sm text-gray-500 dark:text-gray-500">
+                <td colSpan={visibleColumns.length + 2} className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
                   No tasks found
                 </td>
               </tr>

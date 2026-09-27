@@ -83,7 +83,7 @@ function DefinitionEditor({
 
       <div className="p-4 space-y-2">
         {criteria.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-500 text-center py-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
             No criteria defined yet.
             {isManager && unusedSuggestions.length > 0 && ' Click suggestions below to add.'}
           </p>

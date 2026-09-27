@@ -105,7 +105,7 @@ export function AISummaryBanner() {
           <div
             className={`flex h-14 w-14 items-center justify-center rounded-full border-2 ${portfolioHealthScore != null ? getHealthBgColor(portfolioHealthScore) : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700'}`}
           >
-            <span className={`text-xl font-bold ${portfolioHealthScore != null ? getHealthColor(portfolioHealthScore) : 'text-gray-500 dark:text-gray-500'}`}>
+            <span className={`text-xl font-bold ${portfolioHealthScore != null ? getHealthColor(portfolioHealthScore) : 'text-gray-500 dark:text-gray-400'}`}>
               {portfolioHealthScore != null ? portfolioHealthScore : '—'}
             </span>
           </div>
@@ -113,7 +113,7 @@ export function AISummaryBanner() {
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               Portfolio Health
             </p>
-            <p className={`text-sm font-semibold ${portfolioHealthScore != null ? getHealthColor(portfolioHealthScore) : 'text-gray-500 dark:text-gray-500'}`}>
+            <p className={`text-sm font-semibold ${portfolioHealthScore != null ? getHealthColor(portfolioHealthScore) : 'text-gray-500 dark:text-gray-400'}`}>
               {portfolioHealthScore == null
                 ? 'No active projects'
                 : portfolioHealthScore >= 75

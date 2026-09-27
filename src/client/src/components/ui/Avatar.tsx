@@ -39,8 +39,8 @@ export function getAvatarHex(name: string): string {
 type AvatarSize = 'xs' | 'sm' | 'md' | 'lg';
 
 const SIZE_CLASSES: Record<AvatarSize, { container: string; text: string }> = {
-  xs: { container: 'w-5 h-5', text: 'text-[8px]' },
-  sm: { container: 'w-6 h-6', text: 'text-[9px]' },
+  xs: { container: 'w-5 h-5', text: 'text-[10px]' },
+  sm: { container: 'w-6 h-6', text: 'text-[10px]' },
   md: { container: 'w-7 h-7', text: 'text-xs' },
   lg: { container: 'w-8 h-8', text: 'text-xs' },
 };

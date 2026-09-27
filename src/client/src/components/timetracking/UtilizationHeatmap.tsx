@@ -102,7 +102,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
               const d = new Date(date);
               const isWeekend = d.getDay() === 0 || d.getDay() === 6;
               return (
-                <div key={date} className={`text-center text-[9px] text-gray-500 p-1 ${isWeekend ? 'opacity-50' : ''}`}>
+                <div key={date} className={`text-center text-xs text-gray-500 p-1 ${isWeekend ? 'opacity-50' : ''}`}>
                   {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </div>
               );
@@ -125,7 +125,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
                       title={`${user.userName}: ${hours.toFixed(1)}h (${util}%)`}
                     >
                       {hours > 0 && (
-                        <span className="text-[9px] font-medium text-gray-700 dark:text-gray-200">{hours.toFixed(0)}</span>
+                        <span className="text-[11px] font-medium text-gray-700 dark:text-gray-200">{hours.toFixed(0)}</span>
                       )}
                       {/* Tooltip */}
                       <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-10 pointer-events-none">

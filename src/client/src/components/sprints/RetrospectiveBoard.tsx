@@ -149,7 +149,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: Retrospe
                         </button>
 
                         {item.aiGenerated && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+                          <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
                             AI
                           </span>
                         )}

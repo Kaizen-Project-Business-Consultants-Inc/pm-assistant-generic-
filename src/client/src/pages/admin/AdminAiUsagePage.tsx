@@ -277,7 +277,7 @@ function UsageAnalyticsTab() {
           {data.agentPatterns.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6 shadow-sm">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Sequential Agent Patterns</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">Agents triggered within 30 minutes of each other on the same project</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Agents triggered within 30 minutes of each other on the same project</p>
               <div className="space-y-2">
                 {data.agentPatterns.map((p, i) => (
                   <div key={i} className="flex items-center gap-2 text-sm">

@@ -78,7 +78,7 @@ function Section({ title, icon: Icon, items, linkFn, count }: {
       {open && (
         <ul className="ml-6 space-y-1 mt-1">
           {items.length === 0 && (
-            <li className="text-xs text-gray-500 dark:text-gray-500 py-1">No items</li>
+            <li className="text-xs text-gray-500 dark:text-gray-400 py-1">No items</li>
           )}
           {items.map(item => {
             const due = formatDueDate(item.dueDate);
@@ -91,7 +91,7 @@ function Section({ title, icon: Icon, items, linkFn, count }: {
                 >
                   {item.name}
                 </Link>
-                <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium ${STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-600'}`}>
+                <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-600'}`}>
                   {item.status.replace(/_/g, ' ')}
                 </span>
                 {due.text && (
@@ -99,7 +99,7 @@ function Section({ title, icon: Icon, items, linkFn, count }: {
                     {due.text}
                   </span>
                 )}
-                <span className="shrink-0 text-xs text-gray-500 dark:text-gray-500 truncate max-w-[100px]">
+                <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400 truncate max-w-[100px]">
                   {item.projectName}
                 </span>
               </li>

@@ -65,7 +65,7 @@ export function RoleCapacityView() {
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Capacity Planning by Role</h3>
-        <span className="text-xs text-gray-500 dark:text-gray-500">12-week capacity vs demand by role</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">12-week capacity vs demand by role</span>
       </div>
 
       <div className="overflow-x-auto">
@@ -78,7 +78,7 @@ export function RoleCapacityView() {
               <th className="px-2 py-2 font-semibold text-gray-600 dark:text-gray-400 text-center w-12">#</th>
               <th className="px-2 py-2 font-semibold text-gray-600 dark:text-gray-400 text-center w-16">Cap/Wk</th>
               {weekHeaders.map((w, i) => (
-                <th key={i} className="px-1 py-2 font-medium text-gray-500 dark:text-gray-500 text-center min-w-[56px]">
+                <th key={i} className="px-1 py-2 font-medium text-gray-500 dark:text-gray-400 text-center min-w-[56px]">
                   {formatWeek(w)}
                 </th>
               ))}
@@ -98,8 +98,8 @@ export function RoleCapacityView() {
                       className={`rounded px-1 py-1 font-medium ${STATUS_COLORS[w.status]}`}
                       title={`${role.role} — ${formatWeek(w.weekStart)}\nCapacity: ${w.capacity}h\nAllocated: ${w.allocated}h\nSurplus: ${w.surplus}h`}
                     >
-                      <div className="text-[9px] leading-tight">{w.allocated}/{w.capacity}h</div>
-                      <div className="text-[8px] opacity-70">{w.surplus >= 0 ? `+${w.surplus}` : w.surplus}h</div>
+                      <div className="text-[11px] leading-tight">{w.allocated}/{w.capacity}h</div>
+                      <div className="text-[10px] opacity-70">{w.surplus >= 0 ? `+${w.surplus}` : w.surplus}h</div>
                     </div>
                   </td>
                 ))}

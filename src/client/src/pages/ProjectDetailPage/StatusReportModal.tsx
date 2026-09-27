@@ -380,7 +380,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
               </>
             )}
             <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-              <X className="w-4 h-4 text-gray-500 dark:text-gray-500" />
+              <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             </button>
           </div>
         </div>
@@ -431,7 +431,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-4" />
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Generating your status report...</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">This typically takes 20–30 seconds. Feel free to close this dialog and continue working — we'll notify you when it's ready.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">This typically takes 20–30 seconds. Feel free to close this dialog and continue working — we'll notify you when it's ready.</p>
                 </div>
               ) : (mutation.isError || generateError) ? (
                 <div className="text-center py-8">
@@ -601,7 +601,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                           <span className="text-gray-500 dark:text-gray-400 ml-1">on day {s.dayOfMonth}</span>
                         )}
                         <span className="text-gray-500 dark:text-gray-400 ml-1">at {s.timeOfDay || '08:00'}</span>
-                        <div className="text-gray-500 dark:text-gray-500 mt-0.5">
+                        <div className="text-gray-500 dark:text-gray-400 mt-0.5">
                           To: {(s.recipients || []).join(', ')}
                         </div>
                       </div>

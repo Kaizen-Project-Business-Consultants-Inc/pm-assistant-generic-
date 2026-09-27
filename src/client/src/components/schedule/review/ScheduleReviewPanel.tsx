@@ -299,7 +299,7 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-                              {f.rule} <span className="font-normal text-gray-400">· {f.ruleId}</span>
+                              {f.rule} <span className="font-normal text-gray-500">· {f.ruleId}</span>
                             </div>
                             <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 break-words">{f.message}</p>
                           </div>
@@ -332,7 +332,7 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
               </h3>
               <ul className="mt-1 text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
                 {review.skippedRules.filter(s => s.reason === 'needs_logic').map(s => (
-                  <li key={s.ruleId}>{s.rule} <span className="text-gray-400">· {SKIP_REASON[s.reason] ?? s.reason}</span></li>
+                  <li key={s.ruleId}>{s.rule} <span className="text-gray-500">· {SKIP_REASON[s.reason] ?? s.reason}</span></li>
                 ))}
               </ul>
             </section>

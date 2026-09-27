@@ -211,7 +211,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
                       ))
                     )}
                     {dayTasks.length > 3 && (
-                      <span className="text-[9px] font-bold text-primary-500 dark:text-primary-400">{dayTasks.length}</span>
+                      <span className="text-xs font-bold text-primary-500 dark:text-primary-400">{dayTasks.length}</span>
                     )}
                   </div>
                   <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${
@@ -225,7 +225,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
                 <div className="space-y-0.5">
                   {dayTasks.slice(0, 3).map(task => renderTaskPill(task, day))}
                   {dayTasks.length > 3 && (
-                    <span className="text-xs text-gray-500 dark:text-gray-500 pl-1">+{dayTasks.length - 3} more</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 pl-1">+{dayTasks.length - 3} more</span>
                   )}
                 </div>
               </div>
@@ -262,7 +262,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
             >
               {/* Day header */}
               <div className="text-center mb-2">
-                <div className="text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase">{DAYS[day.getDay()]}</div>
+                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{DAYS[day.getDay()]}</div>
                 <div className={`text-lg font-bold mx-auto w-8 h-8 flex items-center justify-center rounded-full ${
                   isToday ? 'bg-primary-600 text-white' : 'text-gray-700 dark:text-gray-200'
                 }`}>
@@ -316,7 +316,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
 
         {/* Task list */}
         {dayTasks.length === 0 ? (
-          <div className="text-center py-12 text-sm text-gray-500 dark:text-gray-500">No tasks scheduled for this day</div>
+          <div className="text-center py-12 text-sm text-gray-500 dark:text-gray-400">No tasks scheduled for this day</div>
         ) : (
           <div className="space-y-2">
             {dayTasks.map(task => {
@@ -335,13 +335,13 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
                     <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{task.name}</div>
                     <div className="flex items-center gap-2 mt-0.5">
                       {task.priority && (
-                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase">{task.priority}</span>
+                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{task.priority}</span>
                       )}
                       {task.assignedTo && (
-                        <span className="text-xs text-gray-500 dark:text-gray-500">{task.assignedTo}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{task.assignedTo}</span>
                       )}
                       {task.startDate && task.endDate && (
-                        <span className="text-xs text-gray-500 dark:text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {formatCalendarDate(task.startDate, { month: 'short', day: 'numeric' }, 'en-US')} – {formatCalendarDate(task.endDate, { month: 'short', day: 'numeric' }, 'en-US')}
                         </span>
                       )}

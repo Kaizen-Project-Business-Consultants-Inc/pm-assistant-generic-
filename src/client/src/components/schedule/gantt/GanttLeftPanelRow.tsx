@@ -315,7 +315,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
               </span>
             )}
             {task.taskType && task.taskType !== 'task' && (
-              <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex-shrink-0 leading-none ${
+              <span className={`text-xs font-bold px-1 py-0.5 rounded flex-shrink-0 leading-none ${
                 task.taskType === 'story' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
                 task.taskType === 'bug' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
                 task.taskType === 'epic' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : ''
@@ -639,7 +639,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'notes') return (
           <div
             key="notes"
-            className="shrink-0 px-1.5 text-[11px] text-gray-500 dark:text-gray-400 truncate cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
+            className="shrink-0 px-1.5 text-xs text-gray-500 dark:text-gray-400 truncate cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
             style={{ width: getColWidth(col) }}
             title={task.description || 'Click to add notes'}
             onClick={(e) => {

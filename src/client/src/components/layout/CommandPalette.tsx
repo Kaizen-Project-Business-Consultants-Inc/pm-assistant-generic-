@@ -384,7 +384,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
     cumulativeIndex += items.length;
     return (
       <React.Fragment key={title}>
-        <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase tracking-wider mt-1 first:mt-0">
+        <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1 first:mt-0">
           {title}
         </div>
         {items.map((cmd, i) => {
@@ -400,11 +400,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
                 isSelected ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
-              <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-primary-500 dark:text-primary-400' : 'text-gray-500 dark:text-gray-500'}`} />
+              <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-primary-500 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'}`} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{cmd.label}</p>
                 {cmd.description && (
-                  <p className="text-xs text-gray-500 dark:text-gray-500 truncate">{cmd.description}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{cmd.description}</p>
                 )}
               </div>
               <ArrowRight className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-primary-400' : 'text-gray-300 dark:text-gray-600'}`} />
@@ -432,7 +432,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       >
         {/* Search Input */}
         <div className="flex items-center px-4 border-b border-gray-200 dark:border-gray-700">
-          <Search className="w-5 h-5 text-gray-500 dark:text-gray-500 flex-shrink-0" />
+          <Search className="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -450,7 +450,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
         <div ref={resultsRef} className="max-h-80 overflow-y-auto">
           {/* Loading */}
           {loading && (
-            <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-500">Searching…</div>
+            <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Searching…</div>
           )}
 
           {/* Commands (default + filtered) */}
@@ -461,13 +461,13 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
               {renderCommandSection('Navigate', navSection)}
 
               {commandItems.length === 0 && query.length === 1 && (
-                <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-500">
+                <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
                   No commands match "{query}" — keep typing to search
                 </div>
               )}
 
               {showDefaultCommands && (
-                <div className="px-4 py-3 text-center text-xs text-gray-500 dark:text-gray-500 border-t border-gray-100 dark:border-gray-700 mt-1">
+                <div className="px-4 py-3 text-center text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 mt-1">
                   Type 2+ characters to search projects, tasks, and more
                 </div>
               )}
@@ -481,7 +481,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
                 const Icon = config.icon;
                 return (
                   <React.Fragment key={config.type}>
-                    <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase tracking-wider mt-1 first:mt-0">
+                    <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1 first:mt-0">
                       {config.label}
                     </div>
                     {items.map((result) => {
@@ -497,11 +497,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
                             isSelected ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                           }`}
                         >
-                          <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-primary-500 dark:text-primary-400' : 'text-gray-500 dark:text-gray-500'}`} />
+                          <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-primary-500 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'}`} />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium truncate">{result.name}</p>
                             {subtitle && (
-                              <p className="text-xs text-gray-500 dark:text-gray-500 truncate">{subtitle}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{subtitle}</p>
                             )}
                           </div>
                           <ResultBadges result={result} />
@@ -517,7 +517,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
           {/* No results */}
           {showEmpty && (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-gray-500 dark:text-gray-500">No results found for "{query}"</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">No results found for "{query}"</p>
               <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Try a different search term</p>
             </div>
           )}

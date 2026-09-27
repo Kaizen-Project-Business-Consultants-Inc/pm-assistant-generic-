@@ -49,7 +49,7 @@ export function WidgetGrid({ widgets, enabledIds, widgetOrder, onReorder, render
   if (orderedIds.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center">
-        <p className="text-sm text-gray-500 dark:text-gray-500">No widgets enabled. Click Customize to add widgets.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">No widgets enabled. Click Customize to add widgets.</p>
       </div>
     );
   }
@@ -133,7 +133,7 @@ export function WidgetGrid({ widgets, enabledIds, widgetOrder, onReorder, render
             onClick={() => moveWidget(flatIdx, flatIdx - 1)}
             className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:invisible"
           >
-            <ChevronUp className="w-3 h-3 text-gray-500 dark:text-gray-500" />
+            <ChevronUp className="w-3 h-3 text-gray-500 dark:text-gray-400" />
           </button>
           <div className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" aria-hidden="true">
             <GripVertical className="w-4 h-4 text-gray-300 dark:text-gray-600" />
@@ -144,7 +144,7 @@ export function WidgetGrid({ widgets, enabledIds, widgetOrder, onReorder, render
             onClick={() => moveWidget(flatIdx, flatIdx + 1)}
             className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:invisible"
           >
-            <ChevronDown className="w-3 h-3 text-gray-500 dark:text-gray-500" />
+            <ChevronDown className="w-3 h-3 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
         {onResize && (

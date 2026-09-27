@@ -306,7 +306,7 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
                           <span className="block text-sm text-gray-900 dark:text-gray-100">{fixText(f)}</span>
                           <span className="block text-xs text-gray-500 dark:text-gray-400">{f.reason}</span>
                         </span>
-                        <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500" title="Confidence">{Math.round(f.confidence * 100)}%</span>
+                        <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400" title="Confidence">{Math.round(f.confidence * 100)}%</span>
                       </label>
                     </li>
                   ))}

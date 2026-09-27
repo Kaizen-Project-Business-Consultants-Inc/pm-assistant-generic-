@@ -146,7 +146,7 @@ export const SyncLogPanel: React.FC<SyncLogPanelProps> = ({
             <div className="text-center py-12">
               <Clock className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
               <p className="text-gray-500 dark:text-gray-400 font-medium">No sync history yet</p>
-              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 Click "Sync Now" to run the first synchronization.
               </p>
             </div>

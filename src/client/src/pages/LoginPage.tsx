@@ -109,7 +109,7 @@ export const LoginPage: React.FC = () => {
             <p className="text-gray-500 dark:text-gray-400 mb-6">
               We sent a login confirmation link to your email address. Click the link to complete sign-in.
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
               The link expires in 10 minutes.
             </p>
             <button
@@ -251,7 +251,7 @@ export const LoginPage: React.FC = () => {
                 Don't have an account?{' '}
                 <Link to="/pricing" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:text-primary-300 font-medium">Sign up</Link>
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Need help?{' '}
                 <a
                   href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Login Help')}&body=${encodeURIComponent(`I need help logging in.\n\nPage: ${window.location.href}\nTime: ${new Date().toISOString()}`)}`}

@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-27 (legibility pass — "concerned about the fonts")
+
+- 62 tiny sizes (8/9/10/10.5/11px) → 12px; fixed-size spots (avatars, 16–20px badges, heatmap cells) → 10–11px. 474 `dark:text-gray-500` → `gray-400` (3.2→6.0:1). 21 light `text-gray-400` → `gray-500`. Tailwind gray-500 `#78716c` → `#66605b` (4.6→5.9:1). Guard test `typeScaleGuard.test.ts` (proven with a 9px probe).
+
 ## 2026-09-27 (Schedule History with Undo)
 
 - User approved plan. T056 `change_batches`; `ChangeHistoryService` (record/list/undo/markUndoneByRef); routes `changeHistory.ts`; hooks in bulk link, bulk.ts create/update/status, review-fix apply (+ panel undo marks history), AI reschedule accept. Client `ScheduleHistoryPanel` + teal **History** button (all users; Undo editors only). Conflict = task `updated_at` > change + 5 s → 409, "Undo anyway".

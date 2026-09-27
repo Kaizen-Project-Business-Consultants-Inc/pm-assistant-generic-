@@ -128,14 +128,14 @@ export function CumulativeFlowChart({ sprintId }: CumulativeFlowChartProps) {
           return (
             <g key={v}>
               <line x1={PADDING.left} y1={y} x2={PADDING.left + chartW} y2={y} stroke="#e5e7eb" strokeWidth={0.5} />
-              <text x={PADDING.left - 4} y={y + 3} textAnchor="end" className="text-[8px] fill-gray-400">{v}</text>
+              <text x={PADDING.left - 4} y={y + 3} textAnchor="end" className="text-xs fill-gray-400">{v}</text>
             </g>
           );
         })}
 
         {/* X-axis labels */}
         {xLabels.map(({ x, label }) => (
-          <text key={label} x={x} y={HEIGHT - 5} textAnchor="middle" className="text-[8px] fill-gray-400">{label}</text>
+          <text key={label} x={x} y={HEIGHT - 5} textAnchor="middle" className="text-xs fill-gray-400">{label}</text>
         ))}
       </svg>
 

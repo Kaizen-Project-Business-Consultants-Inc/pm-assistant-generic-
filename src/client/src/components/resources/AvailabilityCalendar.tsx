@@ -222,7 +222,7 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
                 {date.getDate()}
               </div>
               {entry && colors && (
-                <div className={`mt-0.5 rounded text-center text-[8px] font-medium px-0.5 py-0.5 ${colors.bg} ${colors.text}`}>
+                <div className={`mt-0.5 rounded text-center text-[10px] font-medium px-0.5 py-0.5 ${colors.bg} ${colors.text}`}>
                   {colors.label.slice(0, 3)}
                 </div>
               )}
@@ -234,7 +234,7 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
       {/* Entries list */}
       {entries.length > 0 && (
         <div className="mt-3 space-y-1">
-          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase">Scheduled Blocks</h4>
+          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Scheduled Blocks</h4>
           {entries.map(e => {
             const colors = typeColors[e.type];
             return (
@@ -247,7 +247,7 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
                   {' — '}
                   {formatCalendarDate(e.dateTo, { month: 'short', day: 'numeric' }, 'en-US')}
                 </span>
-                {e.note && <span className="text-gray-500 dark:text-gray-500 truncate">{e.note}</span>}
+                {e.note && <span className="text-gray-500 dark:text-gray-400 truncate">{e.note}</span>}
                 <button
                   onClick={() => deleteMutation.mutate(e.id)}
                   className="ml-auto p-0.5 text-gray-500 hover:text-red-500"

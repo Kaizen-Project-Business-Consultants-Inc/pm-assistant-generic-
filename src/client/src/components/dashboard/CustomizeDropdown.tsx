@@ -58,7 +58,7 @@ export function CustomizeDropdown({ widgets, enabledIds, onToggle, onReset, widg
           {[...groups.entries()].map(([group, items], gi) => (
             <div key={group}>
               <div className="px-3 py-1">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase tracking-wider">{group}</span>
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{group}</span>
               </div>
               {items.map(w => {
                 const currentSize = getSize(w.id);
@@ -83,7 +83,7 @@ export function CustomizeDropdown({ widgets, enabledIds, onToggle, onReset, widg
                           <button
                             key={opt.value}
                             onClick={() => onResize(w.id, opt.value)}
-                            className={`w-5 h-5 text-[9px] font-bold rounded transition-colors ${
+                            className={`w-5 h-5 text-[10px] font-bold rounded transition-colors ${
                               currentSize === opt.value
                                 ? 'bg-primary-600 text-white'
                                 : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'

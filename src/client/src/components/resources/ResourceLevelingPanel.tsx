@@ -282,7 +282,7 @@ export function ResourceLevelingPanel({
             <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
               Proposed Delay Adjustments
             </h3>
-            <span className="text-xs text-gray-500 dark:text-gray-500">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               {levelingResult.adjustments.length} task
               {levelingResult.adjustments.length !== 1 ? 's' : ''} affected
             </span>
@@ -397,7 +397,7 @@ export function ResourceLevelingPanel({
             <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
               Reassignment Suggestions
             </h3>
-            <span className="text-xs text-gray-500 dark:text-gray-500">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               {levelingResult.reassignmentSuggestions.length} task
               {levelingResult.reassignmentSuggestions.length !== 1 ? 's' : ''} can be reassigned
             </span>
@@ -448,7 +448,7 @@ export function ResourceLevelingPanel({
                       <button
                         onClick={() => reassignMutation.mutate({ taskId: sug.taskId, assignedTo: sug.suggestedResource })}
                         disabled={reassignMutation.isPending}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[11px] font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50"
                       >
                         <UserCheck className="w-3 h-3" />
                         Reassign

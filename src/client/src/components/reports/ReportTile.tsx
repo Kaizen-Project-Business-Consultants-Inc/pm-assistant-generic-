@@ -59,7 +59,7 @@ export const ReportTile: React.FC<ReportTileProps> = ({ report, disabled, loadin
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-900 dark:text-white">{report.name}</span>
-          <span className={`inline-block rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider
+          <span className={`inline-block rounded-full px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider
             ${isAI
               ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
               : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'

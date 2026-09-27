@@ -122,7 +122,7 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
         className="input w-full text-left flex items-center justify-between gap-2"
         onClick={() => setOpen(!open)}
       >
-        <span className={current ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-500'}>
+        <span className={current ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}>
           {current ? current.name : 'Select resource...'}
         </span>
         <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
@@ -167,7 +167,7 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
                     <Avatar name={r.name} size="xs" />
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
-                      <div className="text-gray-500 dark:text-gray-500 truncate">{r.role}</div>
+                      <div className="text-gray-500 dark:text-gray-400 truncate">{r.role}</div>
                     </div>
                     {selected && <span className="text-primary-600 text-xs font-medium">Current</span>}
                   </button>

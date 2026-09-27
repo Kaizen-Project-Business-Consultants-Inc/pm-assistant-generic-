@@ -37,7 +37,9 @@ export default {
           200: '#e7e5e4',
           300: '#d6d3d1',
           400: '#a8a29e',
-          500: '#78716c',
+          // Secondary text colour. Stone-500 (#78716c) was ~4.5:1 on the off-white page —
+          // legal but faint at 12px (user: "concerned about the fonts"). Same hue, darker.
+          500: '#66605b',
           600: '#57534e',
           700: '#44403c',
           800: '#292524',

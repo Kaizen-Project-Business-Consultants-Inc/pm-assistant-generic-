@@ -153,7 +153,7 @@ export const MemoryBrowser: React.FC = () => {
 
         {/* Search */}
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
             type="text"
             value={search}
@@ -198,28 +198,28 @@ export const MemoryBrowser: React.FC = () => {
                 <div className="flex items-center gap-1 ml-2">
                   <button
                     onClick={e => { e.stopPropagation(); handleViewHistory(memory); }}
-                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                     title="View history"
                   >
                     <History className="w-4 h-4" />
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); handleEdit(memory); }}
-                    className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                    className="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
                     title="Edit"
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); handleRollback(memory); }}
-                    className="p-1 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400"
+                    className="p-1 text-gray-500 hover:text-amber-600 dark:hover:text-amber-400"
                     title="Rollback"
                   >
                     <RotateCcw className="w-4 h-4" />
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); handleDelete(memory); }}
-                    className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                    className="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400"
                     title="Delete"
                   >
                     <Trash2 className="w-4 h-4" />

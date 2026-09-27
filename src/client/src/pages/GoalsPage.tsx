@@ -278,7 +278,7 @@ const ObjectiveRow: React.FC<{ obj: Goal; onEdit: (g: Goal) => void; onDelete: (
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
       <div className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onClick={() => hasChildren && setExpanded(!expanded)}>
-        <div className="w-5 h-5 flex items-center justify-center text-gray-500 dark:text-gray-500">
+        <div className="w-5 h-5 flex items-center justify-center text-gray-500 dark:text-gray-400">
           {hasChildren ? (expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />) : <Target className="w-4 h-4 text-green-500" />}
         </div>
         <div className="flex-1 min-w-0">

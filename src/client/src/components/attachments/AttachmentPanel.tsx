@@ -136,7 +136,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
           <div className="w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
         </div>
       ) : attachments.length === 0 ? (
-        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-2">No attachments yet</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">No attachments yet</p>
       ) : (
         <div className="space-y-2">
           {attachments.map((att: any) => (
@@ -150,7 +150,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
               </button>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{att.originalName}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   {formatSize(att.fileSize)} &middot; v{att.version} &middot; {new Date(att.createdAt).toLocaleDateString('en-US')}
                 </p>
               </div>

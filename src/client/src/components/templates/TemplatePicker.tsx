@@ -457,7 +457,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                         ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
                         : s.completed
                           ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                          : 'text-gray-500 dark:text-gray-500'
+                          : 'text-gray-500 dark:text-gray-400'
                     }`}
                   >
                     {s.label}
@@ -555,10 +555,10 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                 onClick={() => fileInputRef.current?.click()}
                 className="flex flex-col items-center justify-center gap-3 p-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors"
               >
-                <Upload className="w-10 h-10 text-gray-500 dark:text-gray-500" />
+                <Upload className="w-10 h-10 text-gray-500 dark:text-gray-400" />
                 <div className="text-center">
                   <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop your file here, or <span className="text-blue-600 font-medium">browse</span></p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">.xlsx, .xls, or .csv (max 5MB)</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">.xlsx, .xls, or .csv (max 5MB)</p>
                 </div>
               </div>
               <input

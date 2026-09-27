@@ -97,12 +97,12 @@ const SprintCard = memo(function SprintCard({
     >
       <div className="flex items-center gap-1.5 mb-2">
         {task.taskType && task.taskType !== 'task' && taskTypeBadge[task.taskType] && (
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${taskTypeBadge[task.taskType].bg} ${taskTypeBadge[task.taskType].text}`}>
+          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${taskTypeBadge[task.taskType].bg} ${taskTypeBadge[task.taskType].text}`}>
             {taskTypeBadge[task.taskType].label}
           </span>
         )}
         {(task.status === 'blocked' || task.status === 'cancelled') && (
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${task.status === 'blocked' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
+          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${task.status === 'blocked' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
             {task.status === 'blocked' ? 'Blocked' : 'Cancelled'}
           </span>
         )}
@@ -328,7 +328,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
       <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2 flex-wrap">
         <Kanban className="w-4 h-4 text-primary-500" />
         <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Sprint Board</h3>
-        <span className="text-xs text-gray-500 dark:text-gray-500">
+        <span className="text-xs text-gray-500 dark:text-gray-400">
           {tasks.length} task{tasks.length !== 1 ? 's' : ''}
           {totalPoints > 0 && <> · {totalPoints} pts</>}
         </span>
@@ -357,7 +357,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                   <Avatar name={group.label} size="xs" />
                 )}
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">{group.label}</span>
-                <span className="text-xs text-gray-500 dark:text-gray-500">{group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}</span>
               </div>
             </div>
           )}
@@ -412,7 +412,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                   {/* Cards */}
                   <div className="p-2 space-y-2 max-h-[60vh] overflow-y-auto">
                     {columnTasks.length === 0 && (
-                      <div className="text-center py-8 text-xs text-gray-500 dark:text-gray-500">
+                      <div className="text-center py-8 text-xs text-gray-500 dark:text-gray-400">
                         {isOver ? 'Drop here' : 'No tasks'}
                       </div>
                     )}

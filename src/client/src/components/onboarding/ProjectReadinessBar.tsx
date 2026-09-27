@@ -99,7 +99,7 @@ export function ProjectReadinessBar({ projectId, tasks, resources, methodology =
         </span>
       ))}
       <span className="ml-auto flex items-center gap-2 flex-shrink-0">
-        <span className="text-xs text-gray-500 dark:text-gray-500 whitespace-nowrap">
+        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
           {completedCount}/{steps.length} ready
         </span>
         <button

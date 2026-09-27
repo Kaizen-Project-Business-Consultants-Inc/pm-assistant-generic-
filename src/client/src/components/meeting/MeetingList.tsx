@@ -78,9 +78,9 @@ export const MeetingList: React.FC<MeetingListProps> = ({
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-gray-500 dark:text-gray-500 py-8 text-center">Loading meetings...</div>
+        <div className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">Loading meetings...</div>
       ) : meetings.length === 0 ? (
-        <div className="text-sm text-gray-500 dark:text-gray-500 py-8 text-center italic">
+        <div className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center italic">
           No meetings yet. Create one to get started.
         </div>
       ) : (

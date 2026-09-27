@@ -32,7 +32,7 @@ export const ResourceLevelingModal = React.memo(function ResourceLevelingModal({
                       <span>→</span>
                       <span className="text-orange-600 dark:text-orange-400 font-medium">{adj.newStart?.slice(0, 10)}</span>
                     </div>
-                    {adj.reason && <p className="mt-1 text-gray-500 dark:text-gray-500 italic">{adj.reason}</p>}
+                    {adj.reason && <p className="mt-1 text-gray-500 dark:text-gray-400 italic">{adj.reason}</p>}
                   </div>
                 ))}
               </div>

@@ -140,11 +140,11 @@ export function VelocitySparklineWidget({ projects }: VelocitySparklineWidgetPro
       <div className="flex items-center gap-2 mb-3">
         <Zap className="w-4 h-4 text-indigo-500" />
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Sprint Velocity</h3>
-        <span className="text-xs text-gray-500 dark:text-gray-500">pts/sprint</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">pts/sprint</span>
       </div>
 
       {projectsWithData.length === 0 ? (
-        <p className="text-xs text-gray-500 dark:text-gray-500 text-center py-6">
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-6">
           {agileProjects.length > 0 ? 'No completed sprints yet' : 'No agile projects'}
         </p>
       ) : (
@@ -175,7 +175,7 @@ export function VelocitySparklineWidget({ projects }: VelocitySparklineWidgetPro
                   Portfolio
                 </span>
                 <Sparkline data={aggregated} />
-                <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200">
+                <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200">
                   {totalCurrent}
                 </span>
                 <TrendArrow values={aggregated} />
@@ -197,7 +197,7 @@ export function VelocitySparklineWidget({ projects }: VelocitySparklineWidgetPro
                   {project.name}
                 </span>
                 <Sparkline data={velocities} />
-                <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
+                <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
                   {avg}
                 </span>
                 <TrendArrow values={velocities} />

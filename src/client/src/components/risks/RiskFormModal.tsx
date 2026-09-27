@@ -439,7 +439,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                     <div key={lesson.id} className="px-2.5 py-2 rounded-md bg-white dark:bg-gray-800 border border-amber-100 dark:border-amber-900/30">
                       <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{lesson.title}</p>
                       {lesson.recommendation && (
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{lesson.recommendation}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{lesson.recommendation}</p>
                       )}
                       {lesson.projectName && (
                         <p className="text-xs text-gray-500 mt-0.5">From: {lesson.projectName}</p>

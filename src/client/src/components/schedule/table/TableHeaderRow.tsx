@@ -25,7 +25,7 @@ interface TableHeaderRowProps {
 }
 
 const SortIcon = ({ field, sortField, sortDir }: { field: ColumnKey; sortField: ColumnKey | null; sortDir: SortDir }) => {
-  if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-gray-500 dark:text-gray-500" />;
+  if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-gray-500 dark:text-gray-400" />;
   return sortDir === 'asc'
     ? <ArrowUp className="w-3 h-3 text-primary-600" />
     : <ArrowDown className="w-3 h-3 text-primary-600" />;

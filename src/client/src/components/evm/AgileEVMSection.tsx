@@ -92,7 +92,7 @@ export function AgileEVMSection({ projectId, sprintContext }: AgileEVMSectionPro
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex items-center justify-center">
-            <p className="text-sm text-gray-500 dark:text-gray-500 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
               No active sprint. Sprint burndown will appear when a sprint is in progress.
             </p>
           </div>

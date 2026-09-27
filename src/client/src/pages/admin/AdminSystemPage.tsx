@@ -84,7 +84,7 @@ function ConfigCard({ icon: Icon, label, value, color, mono }: {
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-xl border-l-4 ${color} border border-gray-200 dark:border-gray-700 p-3 shadow-sm`}>
       <div className="flex items-center gap-2 mb-1">
-        <Icon className="w-4 h-4 text-gray-500 dark:text-gray-500" />
+        <Icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
         <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
       </div>
       <p className={`text-sm font-bold text-gray-900 dark:text-white truncate ${mono ? 'font-mono' : ''}`}>{value}</p>
@@ -149,7 +149,7 @@ export function AdminSystemPage() {
                   {f.detail && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 font-mono">{f.detail}</p>
                   )}
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 font-mono">{f.key}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-mono">{f.key}</p>
                 </div>
               ))}
             </div>

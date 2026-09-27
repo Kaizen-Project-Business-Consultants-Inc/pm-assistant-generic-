@@ -155,11 +155,11 @@ export const ApiKeysTab: React.FC = () => {
                   <p className="text-sm font-medium text-gray-900 dark:text-white">{key.name}</p>
                   <div className="flex items-center gap-3 mt-1">
                     <code className="text-xs text-gray-500 dark:text-gray-400 font-mono">{key.keyPrefix}...</code>
-                    <span className="text-xs text-gray-500 dark:text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       Scopes: {(key.scopes || []).join(', ')}
                     </span>
                     {key.lastUsedAt && (
-                      <span className="text-xs text-gray-500 dark:text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         Last used: {formatCalendarDate(key.lastUsedAt)}
                       </span>
                     )}
@@ -168,7 +168,7 @@ export const ApiKeysTab: React.FC = () => {
                 <button
                   onClick={() => setConfirmRevokeId(key.id)}
                   className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
-                    key.isActive ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800' : 'text-gray-500 dark:text-gray-500 cursor-not-allowed'
+                    key.isActive ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800' : 'text-gray-500 dark:text-gray-400 cursor-not-allowed'
                   }`}
                   disabled={!key.isActive}
                 >

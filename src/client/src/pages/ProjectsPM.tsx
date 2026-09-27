@@ -421,7 +421,7 @@ export function ProjectsPM() {
                         {p.name}
                         {(p as any).isDemo && <span className="ml-1.5 text-xs font-bold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 uppercase">Sample</span>}
                       </Link>
-                      {p.client && <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">{p.client}</p>}
+                      {p.client && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{p.client}</p>}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 capitalize">{statusDisplay}</td>
                     <td className="px-4 py-3">

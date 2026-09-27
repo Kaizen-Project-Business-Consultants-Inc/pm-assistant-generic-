@@ -165,7 +165,7 @@ export function TimesheetGrid() {
             <tbody>
               {projectGroups.length === 0 ? (
                 <tr>
-                  <td colSpan={days.length + 3} className="text-center py-8 text-gray-500 dark:text-gray-500 text-sm">
+                  <td colSpan={days.length + 3} className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
                     No time entries for this week
                   </td>
                 </tr>

@@ -67,7 +67,7 @@ export function ResourceImportModal({ onClose }: ResourceImportModalProps) {
           {/* CSV Format Info */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
             <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-1">Expected CSV columns:</p>
-            <code className="text-[11px] text-blue-600 dark:text-blue-400">name, role, email, capacityHoursPerWeek, skills (semicolon-separated), costRateHourly, resourceGroup</code>
+            <code className="text-xs text-blue-600 dark:text-blue-400">name, role, email, capacityHoursPerWeek, skills (semicolon-separated), costRateHourly, resourceGroup</code>
           </div>
 
           {fileError && (
