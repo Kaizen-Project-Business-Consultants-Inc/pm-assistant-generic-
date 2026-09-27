@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   toDateString, toCalendarDate, dayOfWeekFor, isWeekend,
   addDays, startOfWeek, daysBetween, today, isBefore, isAfter, isSameDay, isOverdue,
+  inclusiveDaySpan,
 } from '../../utils/calendarDate';
 
 /**
@@ -150,5 +151,18 @@ describe('calendarDate', () => {
       expect(d.toISOString()).toBe('2026-09-19T00:00:00.000Z');
       expect(d.getUTCDay()).toBe(6);
     });
+  });
+});
+
+describe('inclusiveDaySpan', () => {
+  it('counts both ends — a phase from 23 Jul to 6 Nov is 107 days (DBJ T2 showed 263, the sum of its tasks)', () => {
+    expect(inclusiveDaySpan('2026-07-23', '2026-11-06')).toBe(107);
+  });
+  it('a one-day task is 1', () => {
+    expect(inclusiveDaySpan('2027-01-22', '2027-01-22')).toBe(1);
+  });
+  it('null when a date is missing or finish is before start', () => {
+    expect(inclusiveDaySpan(null, '2027-01-22')).toBeNull();
+    expect(inclusiveDaySpan('2027-01-22', '2027-01-21')).toBeNull();
   });
 });

@@ -15,6 +15,7 @@ import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import { findDependencyCycle } from '../utils/dependencyCycle';
 import { queueReviewRerun } from './scheduleReview/autoRerun';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
+import { inclusiveDaySpan } from '../utils/calendarDate';
 
 export interface Schedule {
   id: string;
@@ -546,8 +547,10 @@ export class ScheduleService {
     const rollupBudget = childTasks.reduce((s, c) => s + (c.budgetAllocated ?? 0), 0) || null;
     const rollupCost = childTasks.reduce((s, c) => s + (c.actualCost ?? 0), 0) || null;
 
-    // EstimatedDays
-    const rollupEstDays = childTasks.reduce((s, c) => s + (c.estimatedDays ?? 0), 0) || null;
+    // EstimatedDays — the phase's span, first start to last finish (calendar days,
+    // inclusive, like task durations). Summing children counted parallel work twice:
+    // DBJ's T2 showed 263 days for a 3½-month phase.
+    const rollupEstDays = inclusiveDaySpan(rollupStart, rollupEnd);
 
     await databaseService.query(
       `UPDATE tasks SET

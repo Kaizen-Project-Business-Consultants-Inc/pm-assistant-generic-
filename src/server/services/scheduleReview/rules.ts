@@ -226,7 +226,7 @@ function norm(s?: string | null): string {
   return (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-function nameSaysMilestone(name?: string | null): boolean {
+export function nameSaysMilestone(name?: string | null): boolean {
   const n = name || '';
   if (MILESTONE_NAME.test(n)) return true;
   return MILESTONE_EVENT.test(n) && !WORK_VERB.test(n);

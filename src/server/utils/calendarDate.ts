@@ -91,6 +91,12 @@ export function daysBetween(from: unknown, to: unknown): number | null {
   return Math.round((b.getTime() - a.getTime()) / 86400000);
 }
 
+/** Days from start to finish counting both ends (a one-day task is 1), or null if either is missing or finish is before start. */
+export function inclusiveDaySpan(from: unknown, to: unknown): number | null {
+  const d = daysBetween(from, to);
+  return d === null || d < 0 ? null : d + 1;
+}
+
 /**
  * Today as a calendar date, in a named time zone.
  *

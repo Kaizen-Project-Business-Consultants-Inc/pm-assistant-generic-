@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, RefreshCw, Loader2, ChevronDown, ChevronRight, Lock, ListFilter, Wrench, FileDown } from 'lucide-react';
+import { X, RefreshCw, Loader2, ChevronDown, ChevronRight, Lock, ListFilter, Wrench, FileDown, CheckCircle2 } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { severityColor } from '../../../utils/severityColors';
 import { announce } from '../../../utils/announce';
@@ -65,6 +65,17 @@ const SKIP_REASON: Record<string, string> = {
   no_data: 'no data',
 };
 
+/** What the user sees after Re-run review — says it ran even when nothing changed. */
+export function describeRerun(prevScore: number | undefined, next: ScheduleReview): string {
+  const band = BAND_LABELS[next.band];
+  if (prevScore === undefined) return `Review complete — score ${next.score} (${band})`;
+  const diff = next.score - prevScore;
+  if (diff === 0) return `Review updated — score ${next.score} (no change)`;
+  return `Review updated — score ${next.score}, ${diff > 0 ? 'up' : 'down'} ${Math.abs(diff)} (${band})`;
+}
+
+const RERUN_MESSAGE_MS = 8000;
+
 function formatWhen(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -81,6 +92,13 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
   const [error, setError] = useState<string | null>(null);
   const [showFixes, setShowFixes] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [rerunMessage, setRerunMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!rerunMessage) return;
+    const t = setTimeout(() => setRerunMessage(null), RERUN_MESSAGE_MS);
+    return () => clearTimeout(t);
+  }, [rerunMessage]);
 
   /**
    * The review as a Word document. This is the only form of it that can leave
@@ -116,11 +134,17 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
 
   const runMutation = useMutation({
     mutationFn: () => apiService.reviewSchedule(scheduleId),
-    onSuccess: (data: ScheduleReview) => {
+    onMutate: () => {
+      setRerunMessage(null);
+      return { prevScore: queryClient.getQueryData<ScheduleReview | null>(['schedule-review', scheduleId, 'latest'])?.score };
+    },
+    onSuccess: (data: ScheduleReview, _vars, ctx) => {
       setError(null);
       queryClient.setQueryData(['schedule-review', scheduleId, 'latest'], data);
       queryClient.invalidateQueries({ queryKey: ['schedule-review', scheduleId, 'history'] });
-      announce(`Schedule review complete. Score ${data.score}, ${BAND_LABELS[data.band]}.`);
+      const message = describeRerun(ctx?.prevScore, data);
+      setRerunMessage(message);
+      announce(message);
     },
     onError: (err: unknown) => setError(getApiErrorMessage(err, 'Review failed')),
   });
@@ -185,7 +209,9 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
         <div className="flex items-start justify-between gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Schedule Review</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <p className={`text-xs mt-0.5 rounded transition-colors motion-reduce:transition-none ${
+              rerunMessage ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium px-1 -mx-1' : 'text-gray-500 dark:text-gray-400'
+            }`}>
               {review ? `Last run ${formatWhen(review.createdAt)} · rules v${review.rulesVersion}` : 'No review yet'}
             </p>
           </div>
@@ -312,6 +338,14 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
             </section>
           )}
         </div>
+
+        {/* Confirmation after Re-run review — without it a run that changes nothing looks like a dead button */}
+        {rerunMessage && (
+          <div className="mx-3 mb-2 flex items-center gap-2 rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/30 px-3 py-2 text-sm font-medium text-green-800 dark:text-green-200">
+            <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>{rerunMessage}</span>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 p-3 border-t border-gray-200 dark:border-gray-700">

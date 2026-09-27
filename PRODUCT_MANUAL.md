@@ -241,7 +241,7 @@ When a task has children (via `parent_task_id`), it becomes a **summary task** (
 - **Progress** = weighted average by estimatedDays
 - **Status** = all completed → completed, any in-progress → in_progress, else pending
 - **Budget/Cost** = sum of children
-- **Estimated Days** = sum of children
+- **Estimated Days** = the summary's span, earliest child start to latest child end, in calendar days counting both ends (Sep 2026 — it used to be the sum of children, which double-counted parallel work: a 3½-month phase showed 263 days)
 
 Summary fields are **read-only** in the UI — greyed out in inline editing and disabled in the Task Form modal. The Gantt chart renders summary tasks with diamond endpoint markers.
 
@@ -2722,6 +2722,11 @@ Tasks can be imported in bulk from a CSV or Excel file via `POST /api/v1/schedul
 
 The column mapping component (`ColumnMapper`) is shared between the "From File" project creation flow and the schedule-level ImportModal for re-imports on existing schedules.
 
+**Status, progress and milestones on import (Sep 2026):**
+- A row with an **Actual Finish** date imports as **Completed**, even if its status column says something else (e.g. "Delayed" for work that finished late) — unless it says Cancelled.
+- A Completed row with no % Complete column imports at **100%** (it used to import at 0%). An explicit % Complete value always wins.
+- A row **named** like a milestone ("Milestone", "Gate 3", or sign-off / acceptance / go-live wording not describing work) that **spans one day** imports as a milestone. Multi-day "gates" stay tasks — the file says the review takes that long; Schedule Review flags them so the PM can split the review work from the decision.
+
 **Guardrails:**
 - **Schedule validation** — the target schedule must exist (404 otherwise).
 - **Duplicate detection** — rows with the same name + start date as an existing task (or earlier row in the same batch) are skipped.
@@ -2764,7 +2769,7 @@ Schedule Review is a deterministic quality check that tells a PM whether a sched
 
 Rules that need dependency logic are listed under **Unlocks when dependencies exist** rather than counted, so the PM can see what becomes visible once predecessors are added.
 
-**Findings panel.** Score chip with an eight-run trend, findings grouped by severity (Critical and High open by default), each with the rule, the plain-English message, the points deducted and a **Show rows** button that filters the grid to exactly those tasks. Rows flagged Critical or High carry a small indicator in the row-number column in both Table and Gantt views. **Re-run review** is available to editors; viewers can read the latest run. **Automatic re-run** (Sep 2026): any task create / update / delete / bulk change or link queues a review for that schedule, debounced — one run 20 s after the last change (`services/scheduleReview/autoRerun.ts`, trigger `auto`). Rule-based, no AI tokens; open panels refresh over WebSocket. "Propose fixes" is unchanged: only its phase-grouping suggestion can call AI (≤80 leaf tasks, ≤1,500 output tokens), and only when clicked. The panel traps focus, closes on Escape, and announces score changes via a live region.
+**Findings panel.** Score chip with an eight-run trend, findings grouped by severity (Critical and High open by default), each with the rule, the plain-English message, the points deducted and a **Show rows** button that filters the grid to exactly those tasks. Rows flagged Critical or High carry a small indicator in the row-number column in both Table and Gantt views. **Re-run review** is available to editors; viewers can read the latest run. After a run the panel shows a green confirmation for 8 seconds — "Review updated — score 44, up 25 (Needs work)" or "…(no change)" — and highlights the Last run line, so a run that changes nothing still visibly happened. **Automatic re-run** (Sep 2026): any task create / update / delete / bulk change or link queues a review for that schedule, debounced — one run 20 s after the last change (`services/scheduleReview/autoRerun.ts`, trigger `auto`). Rule-based, no AI tokens; open panels refresh over WebSocket. "Propose fixes" is unchanged: only its phase-grouping suggestion can call AI (≤80 leaf tasks, ≤1,500 output tokens), and only when clicked. The panel traps focus, closes on Escape, and announces score changes via a live region.
 
 **Project-type profiles — rules v1.2 (September 2026).** `services/scheduleReview/domainProfiles.ts` defines, per project type and methodology, a long-task limit, expected phases and key milestones; `rules.ts` uses them. Profiles exist for `it` (SDLC for waterfall/hybrid, Agile for agile), `web_design`, `web_application` and `app_development` (the last two also have an Agile variant); other types get the general rules. New rules: **R29** Summary task has its own links (medium), **R30** Summary dates don't cover its tasks (medium), **R31** Standard phases missing (medium, schedule-level; matched on non-milestone task names, sprints on the project count for Agile), **R32** Key milestones missing (low; matched on milestone-like tasks). **R13** uses the profile limit (15 working days IT, 10 web/app; DCMA 44 otherwise) and skips level-of-effort tasks. **R23** Flat hierarchy raised to high. Deterministic, keyword-based, no AI. The weekly re-review skips its score-drop / new-high alert when the previous review used a different rules version. New project types (`web_design`, `web_application`, `app_development`) added in tenant migration T055; the server's single list is `src/server/constants/projectTypes.ts` (client mirror `src/client/src/constants/projectTypes.ts`, MCP copy in `mcp-server/src/tools/projects.ts`).
 

@@ -96,3 +96,30 @@ export function decideDurationUnit(samples: DurationSample[]): 'hours' | 'days' 
   if (hoursVotes >= majority && hoursVotes > daysVotes) return 'hours';
   return 'unknown';
 }
+
+/**
+ * Status and progress as the file meant them. An actual finish date means the
+ * task is done (as in MS Project) even when the status column says "Delayed" —
+ * DBJ's tracker marks late-finished work that way. A done task with no progress
+ * column is 100%, not 0%. An explicit progress value always wins.
+ */
+export function importedStatusAndProgress(
+  status: string,
+  progress: number | null,
+  actualEndDate: string | null,
+): { status: string; progress: number } {
+  const done = status === 'completed' || (!!actualEndDate && status !== 'cancelled');
+  const finalStatus = done ? 'completed' : status;
+  if (progress !== null) return { status: finalStatus, progress };
+  return { status: finalStatus, progress: done ? 100 : 0 };
+}
+
+/**
+ * A row named like a milestone ("Gate 3 – UAT Sign-off") that spans at most one
+ * day imports as a milestone. A multi-day "gate" is left as a task: the file says
+ * the review takes that long, and collapsing it would lose the work.
+ */
+export function importAsMilestone(nameSaysMilestone: boolean, startIso: string | null, endIso: string | null): boolean {
+  if (!nameSaysMilestone || !startIso) return false;
+  return !endIso || endIso <= startIso;
+}

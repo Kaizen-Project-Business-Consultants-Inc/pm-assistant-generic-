@@ -23,8 +23,11 @@ import {
   cleanAssignee,
   workingDaySpan,
   decideDurationUnit,
+  importedStatusAndProgress,
+  importAsMilestone,
   type DurationSample,
 } from '../../utils/importHeuristics';
+import { nameSaysMilestone } from '../../services/scheduleReview/rules';
 
 /** Truthy string test for boolean-ish import columns (yes/y/true/1/x). */
 function isTruthyFlag(v: string | undefined | null): boolean {
@@ -375,10 +378,10 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
 
           const startDate = toDateStr(row.startDate);
           const endDate = toDateStr(row.endDate);
-          const progressPercentage = row.progressPercentage ? parseFloat(row.progressPercentage) : 0;
+          const explicitProgress = row.progressPercentage ? parseFloat(row.progressPercentage) : null;
           const durationValue = row.estimatedDurationHours ? parseFloat(row.estimatedDurationHours) : null;
 
-          if (row.progressPercentage && isNaN(progressPercentage)) {
+          if (row.progressPercentage && explicitProgress !== null && isNaN(explicitProgress)) {
             throw new Error(`Invalid progress value "${row.progressPercentage}"`);
           }
           if (row.estimatedDurationHours && durationValue !== null && isNaN(durationValue)) {
@@ -390,10 +393,16 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
           }
           if (row.actualStartDate || row.actualEndDate) sawActualColumn = true;
 
+          const actualEndDate = toDateStr(row.actualEndDate);
+          const settled = importedStatusAndProgress(status, explicitProgress, actualEndDate);
+          status = settled.status;
+          const progressPercentage = settled.progress;
+
           const isMilestone =
             isTruthyFlag(row._milestone) ||
             row._type?.trim().toLowerCase() === 'milestone' ||
-            durationValue === 0;
+            durationValue === 0 ||
+            importAsMilestone(nameSaysMilestone(name), startDate, endDate);
 
           prepared.push({
             rowNum,
@@ -406,7 +415,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
             endDate,
             dueDate: toDateStr(row.dueDate),
             actualStartDate: toDateStr(row.actualStartDate),
-            actualEndDate: toDateStr(row.actualEndDate),
+            actualEndDate,
             baselineStartDate: toDateStr(row.baselineStartDate),
             baselineFinishDate: toDateStr(row.baselineFinishDate),
             baselineDurationDays: row.baselineDurationDays ? parseFloat(row.baselineDurationDays) : null,

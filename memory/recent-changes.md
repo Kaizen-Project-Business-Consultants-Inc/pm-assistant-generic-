@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-27 (import status/progress/milestones; summary duration; re-run confirmation)
+
+- UAT on the imported DBJ-LMS plan (score 19): Completed rows imported at **0%** (R08 ×7); "Delayed" with an Actual Finish imported as in progress (Gate 1, R09); one-day "Gate 3 – UAT Sign-off" not a milestone; T2 summary **263 days** = sum of children.
+- Fixes: `importedStatusAndProgress()` (actual finish ⇒ completed unless cancelled; completed w/o % ⇒ 100; explicit % wins), `importAsMilestone()` (name via exported `nameSaysMilestone` + span ≤ 1 day; multi-day gates stay tasks — user-facing R04 handles them). `recomputeParentRollup` estimated_days = `inclusiveDaySpan(start, end)` (new in calendarDate.ts) — affects every schedule's summaries on next child write.
+- Review panel: `describeRerun()` green message for 8 s + Last run highlight (user: "how do I know it did?").
+- Linked DBJ-LMS via bulk-link API with user approval: 33 links, 0 moved, score 19→44.
+
 ## 2026-09-27 (import mapper: Task column → phase, not Notes)
 
 - **UAT report** (DBJ_LMS_Schedule - Sep 14.xlsx, New Project → From File): "Task" (T1/T2 codes) was AI-mapped to **Notes**. Activity had exact-matched Task Name; "Task" had no client alias, so the AI layer — seeing headers only — guessed description.

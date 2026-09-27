@@ -10,7 +10,7 @@ const api = vi.hoisted(() => ({
 vi.mock('../../services/api', () => ({ apiService: api }));
 vi.mock('../../utils/announce', () => ({ announce: vi.fn() }));
 
-import { ScheduleReviewPanel, type ScheduleReview } from '../../components/schedule/review/ScheduleReviewPanel';
+import { ScheduleReviewPanel, describeRerun, type ScheduleReview } from '../../components/schedule/review/ScheduleReviewPanel';
 import { ScheduleScoreChip } from '../../components/schedule/review/ScheduleScoreChip';
 
 const review: ScheduleReview = {
@@ -92,6 +92,15 @@ describe('ScheduleReviewPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Re-run review/ }));
     await waitFor(() => expect(api.reviewSchedule).toHaveBeenCalledWith('s1'));
     expect(await screen.findByText('22')).toBeInTheDocument();
+    expect(screen.getByText('Review updated — score 22, up 6 (Tracking sheet)')).toBeInTheDocument();
+  });
+
+  it('confirms a re-run even when the score did not change', async () => {
+    api.reviewSchedule.mockResolvedValueOnce({ ...review, id: 'rv2' });
+    renderPanel();
+    await screen.findByText('No logic at all');
+    fireEvent.click(screen.getByRole('button', { name: /Re-run review/ }));
+    expect(await screen.findByText('Review updated — score 16 (no change)')).toBeInTheDocument();
   });
 
   it('runs a first review automatically when none is stored and the user can edit', async () => {
@@ -130,5 +139,15 @@ describe('ScheduleScoreChip', () => {
     render(<ScheduleScoreChip score={5} band="tracking_sheet" onClick={onClick} />);
     fireEvent.click(screen.getByRole('button'));
     expect(onClick).toHaveBeenCalled();
+  });
+});
+
+describe('describeRerun', () => {
+  it('first run, up, down and unchanged', () => {
+    expect(describeRerun(undefined, review)).toBe('Review complete — score 16 (Tracking sheet)');
+    expect(describeRerun(16, review)).toBe('Review updated — score 16 (no change)');
+    expect(describeRerun(10, review)).toBe('Review updated — score 16, up 6 (Tracking sheet)');
+    expect(describeRerun(20, { ...review, score: 45, band: 'needs_work' })).toBe('Review updated — score 45, up 25 (Needs work)');
+    expect(describeRerun(20, review)).toBe('Review updated — score 16, down 4 (Tracking sheet)');
   });
 });
