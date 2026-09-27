@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import { apiService } from '../../../services/api';
+import { routeTo } from '../../../routes';
 
 interface CRSummary {
   byStatus: Record<string, number>;
@@ -69,7 +70,7 @@ export function ChangeRequestWidget() {
               <li key={cr.id} className="flex items-center justify-between gap-2 text-sm">
                 <div className="min-w-0">
                   <Link
-                    to={`/project/${cr.projectId}/change-requests`}
+                    to={routeTo.project(cr.projectId, 'change-requests')}
                     className="text-gray-900 dark:text-gray-100 hover:text-primary-600 dark:hover:text-primary-400 truncate block"
                   >
                     {cr.title}

@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ROUTES, ROUTE_PATTERNS } from './routes';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { ROUTES, ROUTE_PATTERNS, routeTo } from './routes';
 import { useAuthStore } from './stores/authStore';
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
 import { AppUpdateBanner } from './components/AppUpdateBanner';
@@ -72,6 +72,14 @@ const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then(m => ({ 
 const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
+
+/** /project/:id/schedule used to be linked from a few widgets and never existed (404).
+ *  Send any such address to the project page on that tab instead. */
+const LEGACY_TAB: Record<string, string> = { risks: 'raid', meetings: 'overview' };
+function ProjectTabRedirect() {
+  const { id, tab } = useParams<{ id: string; tab: string }>();
+  return <Navigate to={routeTo.project(id!, LEGACY_TAB[tab!] ?? tab)} replace />;
+}
 
 function PageLoader() {
   return (
@@ -169,6 +177,7 @@ function App() {
         <Route path={ROUTES.dashboard} element={<PrivateRoute><DashboardPM /></PrivateRoute>} />
         <Route path={ROUTES.projects} element={<PrivateRoute><ProjectsPM /></PrivateRoute>} />
         <Route path={ROUTE_PATTERNS.project} element={<PrivateRoute><ProjectDetailPage /></PrivateRoute>} />
+        <Route path={ROUTE_PATTERNS.projectTab} element={<ProjectTabRedirect />} />
         <Route path={ROUTES.reports} element={<PrivateRoute><ReportsPage /></PrivateRoute>} />
         <Route path={ROUTES.scenarios} element={<PrivateRoute><ScenarioModelingPage /></PrivateRoute>} />
         <Route path={ROUTES.portfolio} element={<PrivateRoute><PortfolioPage /></PrivateRoute>} />

@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-27 (links to /project/:id/<tab> were 404s)
+
+- Log watch caught a client 404 on `/project/<archived DBJ-Loans>/schedule`. The route never existed; `MyAssignmentsWidget` (the dashboard "Tasks / RAID Items / Action Items" list) built `/schedule`, `/risks`, `/meetings`; `ChangeRequestWidget` built `/change-requests`; Scenario page built `/schedule/:sid?tab=scenarios`. Now: tasks → `taskLink` (jump to row; my-assignments returns scheduleId), RAID → `?tab=raid`, action items → `/meetings`, others via `routeTo.project`. Safety net: route `/project/:id/:tab/*` redirects to `?tab=` (risks→raid).
+
 ## 2026-09-27 (dashboard "0 Overdue Tasks")
 
 - Tile always 0: `/analytics/summary` returns `{ summary }`; DashboardPM, ActionCenterPM and PrioritiesStripWidget read `.tasks`/`.portfolio` off the wrapper. Fixed once in `apiService.getAnalyticsSummary` (unwrap). Also affected: the "N projects at risk" subtitle and Action Center summary.

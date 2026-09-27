@@ -31,6 +31,7 @@ import { apiService } from '../services/api';
 import { ScenarioSliderPanel, type SliderValues } from '../components/scenarios/ScenarioSliderPanel';
 import { ScenarioImpactGauges } from '../components/scenarios/ScenarioImpactGauges';
 import { SensitivityChart } from '../components/scenarios/SensitivityChart';
+import { routeTo } from '../routes';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1181,7 +1182,7 @@ const WhatIfScenario: React.FC = () => {
               )}
               {selectedProject?.scheduleId && (
                 <a
-                  href={`/project/${projectId}/schedule/${selectedProject.scheduleId}?tab=scenarios`}
+                  href={routeTo.project(projectId, 'scenarios')}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-violet-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
                 >
                   <GitBranch className="w-3.5 h-3.5" /> Create Schedule Scenario

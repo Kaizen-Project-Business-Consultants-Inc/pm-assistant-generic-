@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, CheckSquare, AlertTriangle, ClipboardList } from 'lucide-react';
 import { apiService } from '../../../services/api';
+import { taskLink } from '../../../utils/briefingByProject';
 
 interface AssignmentItem {
   id: string;
@@ -12,6 +13,8 @@ interface AssignmentItem {
   dueDate: string | null;
   projectId: string;
   projectName: string;
+  /** Tasks only — lets the link open the right schedule on the task's row */
+  scheduleId?: string;
   itemType?: string;
   meetingId?: string;
 }
@@ -137,21 +140,21 @@ export function MyAssignmentsWidget() {
         icon={CheckSquare}
         items={data.tasks}
         count={data.tasks.length}
-        linkFn={item => `/project/${item.projectId}/schedule`}
+        linkFn={item => taskLink(item.projectId, item.scheduleId, item.id)}
       />
       <Section
         title="RAID Items"
         icon={AlertTriangle}
         items={data.raidItems}
         count={data.raidItems.length}
-        linkFn={item => `/project/${item.projectId}/risks`}
+        linkFn={item => `/project/${item.projectId}?tab=raid`}
       />
       <Section
         title="Action Items"
         icon={ClipboardList}
         items={data.actionItems}
         count={data.actionItems.length}
-        linkFn={item => `/project/${item.projectId}/meetings`}
+        linkFn={() => '/meetings'}
       />
     </div>
   );

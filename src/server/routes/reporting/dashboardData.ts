@@ -213,7 +213,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const [tasks, raidItems, actionItems] = await Promise.all([
       databaseService.query<any>(
         `SELECT t.id, t.name, t.status, t.priority, t.end_date AS dueDate,
-                s.project_id AS projectId, p.name AS projectName
+                s.project_id AS projectId, p.name AS projectName, s.id AS scheduleId
          FROM tasks t
          JOIN resources r ON t.assigned_to = r.id
          JOIN schedules s ON t.schedule_id = s.id

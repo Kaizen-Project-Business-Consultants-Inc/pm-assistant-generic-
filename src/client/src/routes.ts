@@ -66,6 +66,8 @@ export const ROUTES = {
 /** Route-pattern strings for <Route path="..."> declarations (with params) */
 export const ROUTE_PATTERNS = {
   project: '/project/:id',
+  /** Old-style /project/:id/<tab> links (history, bookmarks) — redirected to ?tab= */
+  projectTab: '/project/:id/:tab/*',
   portal: '/portal/:token',
   kpi: '/kpi/:type',
 } as const;
