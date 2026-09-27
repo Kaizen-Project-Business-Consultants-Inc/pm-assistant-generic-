@@ -1563,6 +1563,10 @@ The `NotificationService` delivers notifications to users with:
 - **WebSocket delivery**: real-time push via the `WebSocketService`
 - **Bulk mark-as-read**
 
+### RAID notifications (Sep 2026, PMI-aligned)
+
+`RiskService.notifyOnUpdate` → `meaningfulChanges(existing, data)` over status, severity, dueDate, ownerId/ownerResourceId, mitigationPlan, responsePlan, probability, impact, title, description, triggerCondition. Recipients: project owner/manager members + the item's `ownerId`, minus the changer; the new owner gets "assigned to you" instead. Severity of the notification: escalation to high/critical → high/critical; cancelled/reversed → high; other status change → medium; other edits → low. One merged notification per person. Resource-only owners (`ownerResourceId`) are emailed via `emailResourceOwner` on creation-with-owner, reassignment and escalation when `resources.email` is set. Team digest: `DailyBriefingService` `raidChanges` (from `raid_activity_log`, last 24 h, severity → high/critical or status → closed/resolved/mitigated/cancelled/reversed/completed, latest per item, member-scoped, non-archived) shown in the project's "Risks, issues & actions" section of the Morning Briefing. Sponsor escalation not built (no sponsor field on projects).
+
 ### Schedule History (group changes with Undo)
 
 Tenant table `change_batches` (T056): one row per group change — `kind` (`link`, `bulk_update`, `bulk_status`, `bulk_create`, `review_fix`, `ai_reschedule`), plain-English `summary`, `actor_id` + `source` (`web`/`mcp`, from the request context, so Claude-via-connector changes are attributed), `task_ids` touched, `undo_payload`, `ref` (review-fix proposal / reschedule proposal id), `status` `applied|undone`. Written by `ChangeHistoryService.record()` (best-effort: never fails the change) from `POST /schedules/:id/dependencies/bulk`, `POST|PUT /bulk/tasks`, `PUT /bulk/tasks/status` (previous values read first — the raw-SQL bulk routes kept no audit before), `ScheduleFixProposerService.apply`, `AutoRescheduleService.acceptProposal` (dates read at accept time).

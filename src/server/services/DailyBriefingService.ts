@@ -77,6 +77,8 @@ export interface DailyBriefing {
   upcomingMilestones: Array<{ id: string; name: string; projectId: string; projectName: string; projectCode: string; scheduleId: string; dueDate: string; daysUntil: number }>;
   raidWatch: RaidWatchItem[];
   projects: BriefingProject[];
+  /** RAID items escalated to High/Critical or closed in the last 24 h — the team's daily digest */
+  raidChanges: Array<{ id: string; projectId: string; projectName: string; projectCode: string; title: string; type: string; change: 'escalated' | 'closed'; to: string; at: string }>;
 }
 
 /** Items per section. The page shows a few per project; this cap only bounds the payload. */
@@ -133,6 +135,7 @@ class DailyBriefingService {
       issueCounts,
       actionCounts,
       nextMilestones,
+      raidChangeRows,
     ] = await Promise.all([
       // Pending proposals
       databaseService.query<any>(
@@ -391,6 +394,26 @@ class DailyBriefingService {
          ) m WHERE rn = 1`,
         [...memberParams]
       ),
+      // Team digest: escalations to High/Critical and closures in the last 24 h (latest per item)
+      databaseService.query<any>(
+        `SELECT pr.id, pr.title, pr.type, p.id AS projectId, p.name AS projectName,
+                COALESCE(p.project_code, '') AS projectCode,
+                al.field_name AS fieldName, al.action_type AS actionType, al.new_value AS newValue, al.created_at AS at
+         FROM raid_activity_log al
+         JOIN project_risks pr ON pr.id = al.raid_item_id
+         JOIN projects p ON al.project_id = p.id AND p.archived_at IS NULL
+         ${memberJoin}
+         WHERE al.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+           AND (
+             (al.field_name = 'severity' AND al.new_value IN ('high', 'critical'))
+             OR (al.action_type IN ('status_change', 'cancelled', 'reversed')
+                 AND al.new_value IN ('closed', 'resolved', 'mitigated', 'cancelled', 'reversed', 'completed'))
+             OR al.action_type IN ('cancelled', 'reversed')
+           )
+         ORDER BY al.created_at DESC
+         LIMIT ${ITEM_CAP}`,
+        [...memberParams]
+      ),
     ]);
 
     // Row numbers as shown on the schedule screen, for every schedule that has a task in the briefing
@@ -526,6 +549,19 @@ class DailyBriefingService {
       upcomingMilestones: milestones,
       raidWatch,
       projects,
+      raidChanges: (() => {
+        const seen = new Set<string>();
+        const out: DailyBriefing['raidChanges'] = [];
+        for (const r of raidChangeRows) {
+          const change: 'escalated' | 'closed' = r.fieldName === 'severity' ? 'escalated' : 'closed';
+          const key = `${r.id}|${change}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const to = r.actionType === 'cancelled' || r.actionType === 'reversed' ? r.actionType : String(r.newValue ?? '');
+          out.push({ id: r.id, projectId: r.projectId, projectName: r.projectName, projectCode: r.projectCode, title: r.title, type: r.type, change, to, at: new Date(r.at).toISOString() });
+        }
+        return out;
+      })(),
     };
   }
 }

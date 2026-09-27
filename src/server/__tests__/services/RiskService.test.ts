@@ -28,6 +28,11 @@ vi.mock('../../database/ProjectMemberRepository', () => ({
   projectMemberRepository: { findByProjectId: vi.fn().mockResolvedValue([]) },
 }));
 
+const dbQuery = vi.fn().mockResolvedValue([{ email: 'crew@subco.example', name: 'SubCo crew' }]);
+vi.mock('../../database/connection', () => ({ databaseService: { query: (...a: any[]) => dbQuery(...a) } }));
+const sendNotificationEmail = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../services/EmailService', () => ({ emailService: { sendNotificationEmail: (...a: any[]) => sendNotificationEmail(...a) } }));
+
 vi.mock('../../utils/logger', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -577,7 +582,7 @@ describe('RiskService', () => {
       );
     });
 
-    it('does not notify on severity change that is not to critical/high', async () => {
+    it('tells the PM when severity goes DOWN too — a meaningful change, low priority', async () => {
       const existing = { ...sampleRisk(), severity: 'high' };
       mockRepo.findById.mockResolvedValueOnce(existing);
       mockRepo.update.mockResolvedValueOnce({ ...existing, severity: 'medium' });
@@ -585,12 +590,13 @@ describe('RiskService', () => {
 
       await riskService.update('r1', { severity: 'medium' }, 'u1');
 
-      expect(mockNotification.create).not.toHaveBeenCalled();
+      const calls = mockNotification.create.mock.calls.map((c: any) => c[0]);
+      expect(calls.map((n: any) => n.userId).sort()).toEqual(['pm1', 'u2']); // the PM and the item's owner
+      expect(calls[0].severity).toBe('low');
+      expect(calls[0].message).toContain('severity high → medium');
     });
 
-    it('does not send duplicate severity notification when status also changed', async () => {
-      // When status changes, notifyOnUpdate returns early after status notifications
-      // so severity escalation notification is skipped (no duplicates)
+    it('sends ONE notification per person when status and severity change together', async () => {
       const existing = { ...sampleRisk(), severity: 'medium' };
       mockRepo.findById.mockResolvedValueOnce(existing);
       mockRepo.update.mockResolvedValueOnce({ ...existing, status: 'monitoring', severity: 'critical' });
@@ -598,9 +604,60 @@ describe('RiskService', () => {
 
       await riskService.update('r1', { status: 'monitoring', severity: 'critical' }, 'u1');
 
-      // Should only get status change notifications, not severity escalation duplicates
-      const titles = mockNotification.create.mock.calls.map((c: any) => c[0].title);
-      expect(titles.every((t: string) => t.includes('status'))).toBe(true);
+      const calls = mockNotification.create.mock.calls.map((c: any) => c[0]).filter((n: any) => n.userId === 'pm1');
+      expect(calls).toHaveLength(1);
+      expect(calls[0].title).toContain('escalated to critical');
+      expect(calls[0].severity).toBe('critical');
+      expect(calls[0].message).toContain('status open → monitoring');
+    });
+
+    it('tells the PM and the owner about a due date or mitigation change (used to go unannounced)', async () => {
+      const existing = { ...sampleRisk(), ownerId: 'own1', dueDate: '2026-10-03' };
+      mockRepo.findById.mockResolvedValueOnce(existing);
+      mockRepo.update.mockResolvedValueOnce({ ...existing, dueDate: '2026-10-10' });
+      mockMembers.findByProjectId.mockResolvedValueOnce([pmMember]);
+
+      await riskService.update('r1', { dueDate: '2026-10-10', mitigationPlan: 'New plan' }, 'u1');
+
+      const calls = mockNotification.create.mock.calls.map((c: any) => c[0]);
+      expect(calls.map((n: any) => n.userId).sort()).toEqual(['own1', 'pm1']);
+      expect(calls[0].title).toContain('updated: due date, mitigation plan');
+      expect(calls[0].message).toContain('due date 2026-10-03 → 2026-10-10');
+    });
+
+    it('never notifies the person who made the change', async () => {
+      const existing = { ...sampleRisk(), ownerId: 'pm1' };
+      mockRepo.findById.mockResolvedValueOnce(existing);
+      mockRepo.update.mockResolvedValueOnce({ ...existing, dueDate: '2026-10-10' });
+      mockMembers.findByProjectId.mockResolvedValueOnce([pmMember]);
+
+      await riskService.update('r1', { dueDate: '2026-10-10' }, 'pm1');
+
+      expect(mockNotification.create).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when nothing meaningful changed', async () => {
+      const existing = sampleRisk();
+      mockRepo.findById.mockResolvedValueOnce(existing);
+      mockRepo.update.mockResolvedValueOnce(existing);
+      mockMembers.findByProjectId.mockResolvedValueOnce([pmMember]);
+
+      await riskService.update('r1', { severity: existing.severity, category: 'schedule' }, 'u1');
+
+      expect(mockNotification.create).not.toHaveBeenCalled();
+    });
+
+    it('emails an owner with no login when their item is escalated', async () => {
+      const existing = { ...sampleRisk(), severity: 'medium', ownerResourceId: 'res-9' };
+      mockRepo.findById.mockResolvedValueOnce(existing);
+      mockRepo.update.mockResolvedValueOnce({ ...existing, severity: 'high' });
+      mockMembers.findByProjectId.mockResolvedValueOnce([pmMember]);
+
+      await riskService.update('r1', { severity: 'high' }, 'u1');
+
+      expect(sendNotificationEmail).toHaveBeenCalledTimes(1);
+      expect(sendNotificationEmail.mock.calls[0][0]).toBe('crew@subco.example');
+      expect(sendNotificationEmail.mock.calls[0][1]).toContain('escalated to high');
     });
 
     it('handles notification failure gracefully during update', async () => {

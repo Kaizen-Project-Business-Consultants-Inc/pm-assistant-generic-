@@ -1,6 +1,8 @@
 import { riskRepository, ProjectRisk, RiskFilters, RiskStats, RaidUpdate } from '../database/RiskRepository';
 import { notificationService } from './NotificationService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
+import { databaseService } from '../database/connection';
+import { emailService } from './EmailService';
 import logger from '../utils/logger';
 
 const VALID_STATUSES: Record<string, string[]> = {
@@ -18,6 +20,40 @@ const TRIAGE_BYPASS_ROLES = new Set([
 ]);
 
 const TERMINAL_STATUSES = ['closed', 'resolved', 'mitigated', 'cancelled', 'reversed', 'completed'];
+
+const HIGH_SEVERITIES = ['critical', 'high'];
+
+/** Fields whose change the PM (and the item's owner) should hear about, in plain words */
+const MEANINGFUL_FIELDS: Record<string, string> = {
+  status: 'status', severity: 'severity', dueDate: 'due date', ownerId: 'owner', ownerResourceId: 'owner',
+  mitigationPlan: 'mitigation plan', responsePlan: 'response plan', probability: 'probability', impact: 'impact',
+  title: 'title', description: 'description', triggerCondition: 'trigger',
+};
+const SHOW_VALUES = new Set(['status', 'severity', 'dueDate', 'probability', 'impact']);
+
+/** What meaningfully changed, as { label, text } — "due date 2026-10-03 → 2026-10-10" */
+export function meaningfulChanges(existing: Record<string, any>, data: Record<string, any>): Array<{ field: string; label: string; text: string }> {
+  // Dates compare by calendar day; empty and null are the same
+  const norm = (v: unknown) => {
+    if (v == null || v === '') return '';
+    const str = v instanceof Date ? v.toISOString() : String(v);
+    return /^\d{4}-\d{2}-\d{2}/.test(str) ? str.slice(0, 10) : str;
+  };
+  const out: Array<{ field: string; label: string; text: string }> = [];
+  const seenLabels = new Set<string>();
+  for (const [field, label] of Object.entries(MEANINGFUL_FIELDS)) {
+    if (!(field in data)) continue;
+    const before = norm(existing[field]);
+    const after = norm(data[field]);
+    if (before === after || seenLabels.has(label)) continue;
+    seenLabels.add(label);
+    const text = SHOW_VALUES.has(field)
+      ? `${label} ${before || '(none)'} → ${after || '(none)'}`.replace(/_/g, ' ')
+      : `${label} changed`;
+    out.push({ field, label, text });
+  }
+  return out;
+}
 
 class RiskService {
   async findByProject(projectId: string, filters: RiskFilters = {}): Promise<ProjectRisk[]> {
@@ -100,6 +136,14 @@ class RiskService {
     if (data.ownerId && data.ownerId !== data.createdBy) {
       try { await this.notifyAssignment(data.projectId, risk, data.ownerId); } catch (error) { logger.warn('Failed to notify RAID assignment', { raidItemId: risk.id, error }); }
     }
+    if (data.ownerResourceId) {
+      const typeLabel = risk.type.charAt(0).toUpperCase() + risk.type.slice(1);
+      await this.emailResourceOwner(data.ownerResourceId, {
+        subject: `${typeLabel} assigned to you: ${risk.title}`,
+        title: `You own ${risk.recordId || risk.id}: ${risk.title}`,
+        message: `You have been named as the owner of this ${risk.type}. The project manager will follow up with you on it.`,
+      });
+    }
 
     return risk;
   }
@@ -159,20 +203,26 @@ class RiskService {
   }
 
   /**
-   * Notify relevant people when a RAID item is updated.
-   * - Owner reassigned → notify new owner
-   * - Status changed → notify owner + PMs (excluding changer)
-   * - Severity escalated to critical/high → notify PMs
+   * Notify relevant people when a RAID item is updated (PMI practice — the PM is accountable
+   * for the register and hears about every meaningful change; the item's owner hears about
+   * changes someone else makes to their item; escalations use the agreed thresholds).
+   *  - PMs (project owner/manager): any meaningful change
+   *  - Item owner: any meaningful change made by someone else
+   *  - New owner: "assigned to you"
+   *  - Owner with no login (a resource): emailed on assignment and on escalation, if the
+   *    resource has an email address
+   * The person who made the change is never notified. One notification per person.
    */
   private async notifyOnUpdate(existing: ProjectRisk, data: Record<string, any>, changedBy: string): Promise<void> {
     const typeLabel = existing.type.charAt(0).toUpperCase() + existing.type.slice(1);
     const label = existing.recordId || existing.id;
-    const recipients = new Set<string>();
+    const changes = meaningfulChanges(existing, data);
+    const reassignedTo = data.ownerId && data.ownerId !== existing.ownerId ? String(data.ownerId) : null;
 
-    // Owner reassigned
-    if (data.ownerId && data.ownerId !== existing.ownerId && data.ownerId !== changedBy) {
+    // New owner: assigned to you
+    if (reassignedTo && reassignedTo !== changedBy) {
       await notificationService.create({
-        userId: data.ownerId,
+        userId: reassignedTo,
         type: 'raid_item',
         severity: 'medium',
         title: `${typeLabel} assigned to you: ${existing.title}`,
@@ -183,50 +233,63 @@ class RiskService {
       });
     }
 
-    // Status changed → notify owner + PMs (excluding changer)
-    if (data.status && data.status !== existing.status) {
-      if (existing.ownerId && existing.ownerId !== changedBy) recipients.add(existing.ownerId);
-      // Also notify new owner if reassigned in same update
-      if (data.ownerId && data.ownerId !== changedBy) recipients.add(data.ownerId);
+    if (changes.length === 0) return;
 
-      const members = await projectMemberRepository.findByProjectId(existing.projectId);
-      for (const m of members) {
-        if (['owner', 'manager'].includes(m.role) && m.userId !== changedBy) recipients.add(m.userId);
-      }
+    const escalated = typeof data.severity === 'string' && HIGH_SEVERITIES.includes(data.severity) && data.severity !== existing.severity;
+    const statusChanged = typeof data.status === 'string' && data.status !== existing.status;
+    const severity: 'critical' | 'high' | 'medium' | 'low' =
+      escalated ? (data.severity === 'critical' ? 'critical' : 'high')
+        : statusChanged && (data.status === 'cancelled' || data.status === 'reversed') ? 'high'
+          : statusChanged ? 'medium' : 'low';
+    const title = escalated
+      ? `${typeLabel} ${label} escalated to ${data.severity}`
+      : statusChanged
+        ? `${typeLabel} ${label} status → ${String(data.status).replace(/_/g, ' ')}`
+        : `${typeLabel} ${label} updated: ${changes.map(c => c.label).join(', ')}`;
+    const message = `${existing.title} — ${changes.map(c => c.text).join('; ')}.`;
 
-      const statusLabel = String(data.status).replace(/_/g, ' ');
-      for (const uid of recipients) {
-        await notificationService.create({
-          userId: uid,
-          type: 'raid_item',
-          severity: data.status === 'cancelled' || data.status === 'reversed' ? 'high' : 'medium',
-          title: `${typeLabel} ${label} status → ${statusLabel}`,
-          message: `${existing.title} status changed from "${existing.status}" to "${statusLabel}".`,
-          projectId: existing.projectId,
-          linkType: 'raid',
-          linkId: existing.id,
-        });
-      }
-      return; // Already notified PMs, skip duplicate severity notification
+    const recipients = new Set<string>();
+    const members = await projectMemberRepository.findByProjectId(existing.projectId);
+    for (const m of members) {
+      if (['owner', 'manager'].includes(m.role) && m.userId !== changedBy) recipients.add(m.userId);
+    }
+    if (existing.ownerId && existing.ownerId !== changedBy) recipients.add(existing.ownerId);
+    if (reassignedTo) recipients.delete(reassignedTo); // already told "assigned to you"
+
+    for (const uid of recipients) {
+      await notificationService.create({
+        userId: uid,
+        type: 'raid_item',
+        severity,
+        title,
+        message,
+        projectId: existing.projectId,
+        linkType: 'raid',
+        linkId: existing.id,
+      });
     }
 
-    // Severity escalated to critical/high → notify PMs
-    const HIGH_SEVERITIES = ['critical', 'high'];
-    if (data.severity && HIGH_SEVERITIES.includes(data.severity) && data.severity !== existing.severity) {
-      const members = await projectMemberRepository.findByProjectId(existing.projectId);
-      const pms = members.filter(m => ['owner', 'manager'].includes(m.role) && m.userId !== changedBy);
-      for (const pm of pms) {
-        await notificationService.create({
-          userId: pm.userId,
-          type: 'raid_item',
-          severity: data.severity === 'critical' ? 'critical' : 'high',
-          title: `${typeLabel} ${label} escalated to ${data.severity}`,
-          message: `${existing.title} severity changed from "${existing.severity}" to "${data.severity}".`,
-          projectId: existing.projectId,
-          linkType: 'raid',
-          linkId: existing.id,
-        });
-      }
+    // Owner with no login: email on escalation or when newly assigned
+    const resourceOwnerId = (data.ownerResourceId ?? existing.ownerResourceId) as string | undefined;
+    const newlyAssignedResource = !!data.ownerResourceId && data.ownerResourceId !== existing.ownerResourceId;
+    if (resourceOwnerId && (escalated || newlyAssignedResource)) {
+      await this.emailResourceOwner(resourceOwnerId, newlyAssignedResource
+        ? { subject: `${typeLabel} assigned to you: ${existing.title}`, title: `You own ${label}: ${existing.title}`, message: `You have been named as the owner of this ${existing.type}. The project manager will follow up with you on it.` }
+        : { subject: title, title, message });
+    }
+  }
+
+  /** Email an owner who exists only as a resource (no login). Best effort. */
+  private async emailResourceOwner(resourceId: string, mail: { subject: string; title: string; message: string }): Promise<void> {
+    try {
+      const rows = await databaseService.query<{ email: string; name: string }>(
+        'SELECT email, name FROM resources WHERE id = ? LIMIT 1', [resourceId],
+      );
+      const to = rows[0]?.email?.trim();
+      if (!to) return;
+      await emailService.sendNotificationEmail(to, mail.subject, mail.title, mail.message);
+    } catch (err) {
+      logger.warn('Failed to email RAID resource owner', { resourceId, error: err });
     }
   }
 

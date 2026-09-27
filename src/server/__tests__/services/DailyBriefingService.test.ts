@@ -45,6 +45,7 @@ const queryControlPlaneMock = databaseService.queryControlPlane as ReturnType<ty
  * 12: projects the user can see (query)
  * 13-17: per-project counts — overdue, due soon, blocked, open issues, overdue actions (query)
  * 18: next milestone per project (query)
+ * 19: RAID escalations/closures in the last 24 h (query)
  */
 function setupDefaultResults(overrides: Record<number, any[]> = {}) {
   const defaults: any[][] = [
@@ -67,6 +68,7 @@ function setupDefaultResults(overrides: Record<number, any[]> = {}) {
     [],              // 16: open-issue counts
     [],              // 17: overdue-action counts
     [],              // 18: next milestones
+    [],              // 19: RAID changes
   ];
 
   for (const [idx, val] of Object.entries(overrides)) {
@@ -94,6 +96,7 @@ function setupDefaultResults(overrides: Record<number, any[]> = {}) {
     defaults[16], // open-issue counts
     defaults[17], // overdue-action counts
     defaults[18], // next milestones
+    defaults[19], // RAID changes
     defaults[11], // schedule tasks for row numbers (runs after the parallel batch)
   ];
 
@@ -274,7 +277,7 @@ describe('DailyBriefingService', () => {
 
       expect(result.overdueTasks[0].rowNumber).toBe(4); // t-1, t-2, t-9 (child of t-2), t-3
       expect(result.raidWatch[0].rowNumber).toBe(3);
-      const rowQuery = queryMock.mock.calls[17]; // after the 17 parallel queries
+      const rowQuery = queryMock.mock.calls[18]; // after the 18 parallel queries
       expect(rowQuery[0]).toContain('schedule_id IN (?)');
       expect(rowQuery[1]).toEqual(['s-1']);
     });
@@ -283,7 +286,7 @@ describe('DailyBriefingService', () => {
       setupDefaultResults();
       await dailyBriefingService.getDailyBriefing('user-1', 'admin');
       const sqls = queryMock.mock.calls.map(c => String(c[0])).filter(q => /JOIN projects p/.test(q));
-      expect(sqls.length).toBe(16); // every tenant query that joins projects
+      expect(sqls.length).toBe(17); // every tenant query that joins projects
       for (const q of sqls) expect(q).toContain('p.archived_at IS NULL');
       const projectList = queryMock.mock.calls.map(c => String(c[0])).find(q => /FROM projects p/.test(q));
       expect(projectList).toContain('p.archived_at IS NULL');
@@ -292,7 +295,7 @@ describe('DailyBriefingService', () => {
     it('skips the row-number query when no task is in the briefing', async () => {
       setupDefaultResults();
       await dailyBriefingService.getDailyBriefing('user-1', 'admin');
-      expect(queryMock).toHaveBeenCalledTimes(17);
+      expect(queryMock).toHaveBeenCalledTimes(18);
     });
 
     it('falls back to the typed "Assigned to" text for the owner name, for managers only', async () => {
@@ -668,7 +671,7 @@ describe('DailyBriefingService', () => {
 
       await dailyBriefingService.getDailyBriefing('user-1', 'admin');
 
-      expect(queryMock).toHaveBeenCalledTimes(17);
+      expect(queryMock).toHaveBeenCalledTimes(18);
       expect(queryControlPlaneMock).toHaveBeenCalledTimes(1);
     });
 
@@ -755,6 +758,29 @@ describe('DailyBriefingService', () => {
       });
       const b = await dailyBriefingService.getDailyBriefing('user-1', 'admin');
       expect(b.raidWatch[0].scheduleId).toBe('s-1');
+    });
+  });
+
+  describe('raidChanges (team digest)', () => {
+    it('lists escalations and closures once per item, newest first', async () => {
+      setupDefaultResults({
+        19: [
+          { id: 'r1', title: 'Data migration quality', type: 'risk', projectId: 'p1', projectName: 'DBJ-LMS', projectCode: 'PRJ-012', fieldName: 'severity', actionType: 'field_update', newValue: 'critical', at: '2026-09-27T10:00:00Z' },
+          { id: 'r1', title: 'Data migration quality', type: 'risk', projectId: 'p1', projectName: 'DBJ-LMS', projectCode: 'PRJ-012', fieldName: 'severity', actionType: 'field_update', newValue: 'high', at: '2026-09-27T09:00:00Z' },
+          { id: 'i2', title: 'Vendor access', type: 'issue', projectId: 'p1', projectName: 'DBJ-LMS', projectCode: 'PRJ-012', fieldName: 'status', actionType: 'status_change', newValue: 'resolved', at: '2026-09-27T08:00:00Z' },
+        ],
+      });
+      const b = await dailyBriefingService.getDailyBriefing('user-1', 'project_manager');
+      expect(b.raidChanges.map(c => [c.id, c.change, c.to])).toEqual([['r1', 'escalated', 'critical'], ['i2', 'closed', 'resolved']]);
+    });
+
+    it('only covers the last 24 hours, non-archived projects the user can see', async () => {
+      setupDefaultResults();
+      await dailyBriefingService.getDailyBriefing('user-1', 'project_manager');
+      const sql = queryMock.mock.calls.map(c => String(c[0])).find(q => q.includes('raid_activity_log'))!;
+      expect(sql).toContain('INTERVAL 24 HOUR');
+      expect(sql).toContain('p.archived_at IS NULL');
+      expect(sql).toContain('project_members pm');
     });
   });
 });

@@ -2874,6 +2874,15 @@ The EVM Dashboard (`/evm`) provides a comprehensive earned value management view
 
 ## 28. Notifications Center Page
 
+### Who is told when a RAID item changes
+
+Following PMI practice (the PM is accountable for the RAID log; each item's owner keeps it current; escalations follow agreed thresholds; the wider team gets a regular digest rather than a ping per edit):
+- **The project's Manager/Owner** is notified of every meaningful change — status, severity (up or down), due date, owner, mitigation or response plan, probability, impact, title, description, trigger. One notification per change, saying exactly what changed ("due date 3 Oct → 10 Oct").
+- **The item's owner** is notified when someone else changes their item, and when an item is assigned to them.
+- **The whole team** sees RAID items escalated to High/Critical or closed in the last 24 hours in each project's block of the **Morning Briefing**.
+- **Owners without a login** (a subcontractor recorded as a resource) are emailed when an item is assigned to them or escalated, if the resource has an email address.
+- Nobody is notified about their own change. Escalations to High/Critical are also emailed to people who have email notifications on.
+
 ### Schedule History and Undo
 
 The **History** button on the schedule toolbar (next to AI Reschedule) opens every change made to **many tasks at once** in the last 30 days, newest first: linking several tasks (and any dates that pushed), editing or changing the status of several tasks, creating several tasks, applying Schedule Review fixes, and accepting an AI Reschedule. Each line says what changed, when, and who — **You**, a colleague, or **Claude (for you)** when Claude made the change through the connector.

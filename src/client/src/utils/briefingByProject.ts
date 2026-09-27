@@ -124,6 +124,19 @@ export function buildProjectBriefings(
     }
   }
 
+  // Team digest: escalated or closed in the last 24 h
+  for (const c of briefing.raidChanges ?? []) {
+    const p = ensure(c.projectId, c.projectName, c.projectCode);
+    const kind = c.type ? c.type.charAt(0).toUpperCase() + c.type.slice(1) : 'Item';
+    if (c.change === 'escalated' && c.to === 'critical') p.critical++;
+    p.risks.unshift({
+      id: `chg-${c.id}-${c.change}`, label: c.title,
+      tone: c.change === 'escalated' ? (c.to === 'critical' ? 'red' : 'orange') : 'gray',
+      tag: c.change === 'escalated' ? `${kind} escalated to ${c.to}` : `${kind} ${c.to.replace(/_/g, ' ')}`,
+      extra: 'Last 24 hours', link: `/project/${c.projectId}?tab=raid`,
+    });
+  }
+
   for (const r of briefing.recentHighRisks ?? []) {
     const p = ensure(r.projectId, r.projectName, r.projectCode);
     if (r.severity === 'critical') p.critical++;
@@ -165,7 +178,8 @@ export function buildProjectBriefings(
     const lateCount = Math.max(c?.overdue ?? 0, p.late.length);
     const blockedCount = Math.max(c?.blocked ?? 0, p.blocked.length);
     const newRisks = (briefing.recentHighRisks ?? []).filter((r: any) => r.projectId === p.id).length;
-    const riskTotal = Math.max((c?.openIssues ?? 0) + (c?.overdueActions ?? 0) + newRisks, p.risks.length);
+    const recentChanges = (briefing.raidChanges ?? []).filter((r: any) => r.projectId === p.id).length;
+    const riskTotal = Math.max((c?.openIssues ?? 0) + (c?.overdueActions ?? 0) + newRisks + recentChanges, p.risks.length);
     const dueCount = Math.max((c?.dueSoon ?? 0), p.due.length);
     const base = `/project/${p.id}`;
     const sections: BriefingSection[] = [
