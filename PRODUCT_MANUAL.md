@@ -1559,6 +1559,14 @@ The `NotificationService` delivers notifications to users with:
 - **WebSocket delivery**: real-time push via the `WebSocketService`
 - **Bulk mark-as-read**
 
+### Schedule History (group changes with Undo)
+
+Tenant table `change_batches` (T056): one row per group change — `kind` (`link`, `bulk_update`, `bulk_status`, `bulk_create`, `review_fix`, `ai_reschedule`), plain-English `summary`, `actor_id` + `source` (`web`/`mcp`, from the request context, so Claude-via-connector changes are attributed), `task_ids` touched, `undo_payload`, `ref` (review-fix proposal / reschedule proposal id), `status` `applied|undone`. Written by `ChangeHistoryService.record()` (best-effort: never fails the change) from `POST /schedules/:id/dependencies/bulk`, `POST|PUT /bulk/tasks`, `PUT /bulk/tasks/status` (previous values read first — the raw-SQL bulk routes kept no audit before), `ScheduleFixProposerService.apply`, `AutoRescheduleService.acceptProposal` (dates read at accept time).
+
+API: `GET /schedules/:scheduleId/changes` (viewer, last 30 days, ≤100) and `POST /schedules/:scheduleId/changes/:changeId/undo` `{ force? }` (editor). Undo refuses with **409 `edited_since` `{editedCount}`** when a touched task's `updated_at` is more than 5 s after the change, unless `force`. Undo per kind: remove links + `restoreTaskDates`; write back previous column values (whitelisted columns, tenant-safe `queryOn` in a transaction); delete created tasks; `scheduleFixProposerService.undo`; restore dates. Undoing a review fix from its own panel marks the History row undone (`markUndoneByRef`). Each undo is audited as `change.undo`. Not covered: bulk delete (needs full task + link snapshots), imports.
+
+Also fixed: `task.create/update/delete` audit rows recorded the **task's creator** as the actor; they now record the request's user.
+
 ### Where a notification links to
 
 One mapping from a notification's `linkType` / `linkId` / `projectId` / `scheduleId` to an app path: `src/client/src/utils/notificationLink.ts` (bell, Notifications page, RecentActivityWidget, ActivityFeedPM) and its server twin `src/server/utils/notificationLink.ts` (email "View Details" = `APP_URL` + path). Both are tested against one table, `src/server/__tests__/fixtures/notificationLinks.json`. task → `?tab=schedule&schedule=&task=` (row highlight); schedule → schedule tab; raid → `?tab=raid`; change_request → `?tab=change-requests`; project → project; evm → `?tab=performance`; time → `?tab=time` (else `/timesheet`); timesheet → `/timesheet`; meeting, meeting_action_item → `/meetings`; proposal → `/agent`; resource_request → `/resources`; anything else → the project, or not clickable. Emails previously used `/<linkType>s/<linkId>` (404) and project invites `/projects/<id>` (404).

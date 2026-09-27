@@ -17,6 +17,7 @@ import {
   Trash2,
   MoreVertical,
   Sparkles,
+  History,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { GanttChart, type GanttTask } from '../../components/schedule/GanttChart';
@@ -29,6 +30,7 @@ import { BurndownPanel } from '../../components/burndown/BurndownPanel';
 import { AutoReschedulePanel } from '../../components/schedule/AutoReschedulePanel';
 import { ImportModal } from '../../components/schedule/ImportModal';
 import { ScheduleReviewPanel, type ScheduleReview } from '../../components/schedule/review/ScheduleReviewPanel';
+import { ScheduleHistoryPanel } from '../../components/schedule/ScheduleHistoryPanel';
 import { TaskListMobile } from '../../components/tasks/TaskListMobile';
 import { useColumnState } from '../../hooks/useColumnState';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
@@ -395,6 +397,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   const [showReschedulePanel, setShowReschedulePanel] = useState(false);
   // Schedule Review panel + "Show rows" filter from a finding
   const [showReviewPanel, setShowReviewPanel] = useState(false);
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [reviewRowFilter, setReviewRowFilter] = useState<{ taskIds: Set<string>; label: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
@@ -1146,8 +1149,22 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   ) : undefined;
   // AI Reschedule gets its own labelled button next to the menu, in the AI colour — it was
   // only inside the unlabelled ⋮ menu and the user couldn't find it.
+  // History sits next to them for everyone: every group change of the last 30 days, with
+  // Undo (editors) — including changes Claude made through the connector.
+  const historyButton = (
+    <button
+      type="button"
+      onClick={() => setShowHistoryPanel(true)}
+      className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border border-primary-600 text-primary-700 bg-white hover:bg-primary-50 dark:bg-gray-800 dark:border-primary-400 dark:text-primary-300 dark:hover:bg-primary-900/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 whitespace-nowrap"
+      title="See and undo changes made to many tasks at once"
+    >
+      <History className="w-3.5 h-3.5" aria-hidden="true" />
+      History
+    </button>
+  );
   const scheduleOverflowMenu = canEdit ? (
     <>
+      {historyButton}
       <button
         type="button"
         onClick={() => setShowReschedulePanel(true)}
@@ -1159,7 +1176,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       </button>
       {scheduleMoreMenu}
     </>
-  ) : undefined;
+  ) : historyButton;
 
   return (
     <>
@@ -1448,6 +1465,14 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       />
 
       {/* Schedule Review panel */}
+      {showHistoryPanel && (
+        <ScheduleHistoryPanel
+          scheduleId={schedule.id}
+          canEdit={canEdit}
+          currentUserId={user?.id}
+          onClose={() => setShowHistoryPanel(false)}
+        />
+      )}
       {showReviewPanel && (
         <ScheduleReviewPanel
           scheduleId={schedule.id}

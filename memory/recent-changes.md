@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-27 (Schedule History with Undo)
+
+- User approved plan. T056 `change_batches`; `ChangeHistoryService` (record/list/undo/markUndoneByRef); routes `changeHistory.ts`; hooks in bulk link, bulk.ts create/update/status, review-fix apply (+ panel undo marks history), AI reschedule accept. Client `ScheduleHistoryPanel` + teal **History** button (all users; Undo editors only). Conflict = task `updated_at` > change + 5 s → 409, "Undo anyway".
+- Not covered (told user): bulk delete, import. Audit actor bug fixed (task.* rows used task creator).
+- Found, not fixed: `/bulk/tasks` routes have no project-access check (requireScope only) — any tenant user with write scope can bulk-edit any project's tasks. Flag to user.
+
 ## 2026-09-27 (broken-link sweep; notification links)
 
 - Sweep: (1) client-404 telemetry on staging, 30 days — only one-offs from before `/login/sme` existed or typed by hand; (2) static check of every path literal in client + server against App.tsx routes (validated against the pre-fix widget) — client clean after today's fixes; (3) server-built links: notification email CTA `/<type>s/<id>` and project-invite `/projects/<id>` were 404s.

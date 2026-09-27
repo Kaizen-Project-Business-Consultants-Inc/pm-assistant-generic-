@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { changeHistoryService } from '../../services/ChangeHistoryService';
 import { z } from 'zod';
 import {
   scheduleFixProposerService,
@@ -90,7 +91,9 @@ export async function scheduleFixRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId, proposalId } = request.params as { scheduleId: string; proposalId: string };
-      return await scheduleFixProposerService.undo(scheduleId, proposalId, request.user!.userId);
+      const result = await scheduleFixProposerService.undo(scheduleId, proposalId, request.user!.userId);
+      await changeHistoryService.markUndoneByRef('review_fix', proposalId); // keep History in step
+      return result;
     } catch (error: any) {
       if (error instanceof ScheduleFixNotFoundError) return reply.status(404).send({ error: 'Proposal not found' });
       if (error instanceof ScheduleFixStateError) return reply.status(409).send({ error: error.message });

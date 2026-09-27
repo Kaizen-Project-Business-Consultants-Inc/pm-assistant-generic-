@@ -21,6 +21,7 @@ import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
 import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
+import { changeHistoryService } from '../../services/ChangeHistoryService';
 
 const createScheduleSchema = z.object({
   projectId: z.string(),
@@ -405,6 +406,18 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
         // successors can move; completed / actual-dated tasks never do.
         moved = (await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [...new Set(result.added.map(a => a.taskId))] })).deltas;
         WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId } }, schedule.projectId);
+        const n = result.added.length;
+        await changeHistoryService.record({
+          projectId: schedule.projectId,
+          scheduleId,
+          kind: 'link',
+          summary: `Added ${n} link${n === 1 ? '' : 's'}${moved.length ? ` · ${moved.length} task${moved.length === 1 ? '' : 's'} moved later` : ''}`,
+          taskIds: [...result.added.map(a => a.taskId), ...moved.map(m => m.taskId)],
+          undo: {
+            links: result.added.map(a => ({ taskId: a.taskId, dependencyId: a.dependencyId })),
+            moved: moved.map(m => ({ taskId: m.taskId, startDate: m.oldStart, endDate: m.oldEnd })),
+          },
+        });
       }
       return { ...result, moved };
     } catch (error) {

@@ -1,4 +1,5 @@
 import { getActorSource } from '../middleware/requestContext';
+import { changeHistoryService } from './ChangeHistoryService';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { scheduleService } from './ScheduleService';
@@ -443,6 +444,15 @@ export class ScheduleFixProposerService {
 
     const after = await scheduleReviewService.run(scheduleId, 'post_proposal', userId, proposalId);
     await scheduleFixProposalRepository.markApplied(proposalId, applied, baselineId);
+    await changeHistoryService.record({
+      projectId: proposal.projectId,
+      scheduleId,
+      kind: 'review_fix',
+      ref: proposalId,
+      summary: `Applied ${appliedCount} Schedule Review fix${appliedCount === 1 ? '' : 'es'}${recompute.tasksMoved ? ` · ${recompute.tasksMoved} task${recompute.tasksMoved === 1 ? '' : 's'} moved` : ''}`,
+      taskIds: recompute.deltas.map(d => d.taskId).concat(applied.flatMap((a: any) => [a.taskId, a.newTaskId].filter(Boolean))),
+      undo: { proposalId },
+    });
 
     auditLedgerService.append({
       actorId: userId ?? 'system',

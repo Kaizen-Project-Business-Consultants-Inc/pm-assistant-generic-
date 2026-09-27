@@ -7,6 +7,27 @@ import { requireScope } from '../../middleware/requireScope';
 import { scheduleService } from '../../services/ScheduleService';
 import logger from '../../utils/logger';
 import { queueReviewRerun } from '../../services/scheduleReview/autoRerun';
+import { changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues } from '../../services/ChangeHistoryService';
+
+const STATUS_LABEL: Record<string, string> = { pending: 'Not started', in_progress: 'In progress', completed: 'Done', cancelled: 'Cancelled' };
+const FIELD_LABEL: Record<string, string> = {
+  name: 'name', startDate: 'start', endDate: 'finish', estimatedDays: 'duration', progressPercentage: 'progress',
+  status: 'status', priority: 'priority', assignedTo: 'owner', dependency: 'predecessor', dependencyType: 'link type',
+  comments: 'notes', isMilestone: 'milestone', sortOrder: 'order', parentTaskId: 'phase',
+};
+function describeFields(keys: string[]): string {
+  const labels = [...new Set(keys.map(k => FIELD_LABEL[k] ?? k))];
+  return labels.length <= 3 ? labels.join(', ') : `${labels.slice(0, 3).join(', ')} and ${labels.length - 3} more`;
+}
+
+/** One History line per schedule touched (MCP bulk tools can span schedules) */
+async function projectOfSchedule(scheduleId: string): Promise<string | null> {
+  try {
+    return (await scheduleService.findById(scheduleId))?.projectId ?? null;
+  } catch {
+    return null; // History is best-effort; never fail the bulk change over it
+  }
+}
 
 const MAX_BULK = 100;
 
@@ -231,6 +252,19 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       }
 
       queueReviewRerun(body.scheduleId);
+      if (succeeded.length > 0) {
+        const projectId = await projectOfSchedule(body.scheduleId);
+        if (projectId) {
+          await changeHistoryService.record({
+            projectId,
+            scheduleId: body.scheduleId,
+            kind: 'bulk_create',
+            summary: `Created ${succeeded.length} task${succeeded.length === 1 ? '' : 's'}: ${succeeded.slice(0, 3).map(t => t.name).join(', ')}${succeeded.length > 3 ? ` and ${succeeded.length - 3} more` : ''}`,
+            taskIds: succeeded.map(t => t.id),
+            undo: { createdIds: succeeded.map(t => t.id) },
+          });
+        }
+      }
       return { succeeded, failed };
     } catch (error) {
       // A malformed request (wrong field names, missing scheduleId) is the
@@ -261,6 +295,13 @@ export async function bulkRoutes(fastify: FastifyInstance) {
 
       const succeeded: Array<{ id: string }> = [];
       const failed: Array<{ id: string; error: string }> = [];
+
+      // For Schedule History's Undo: the current values of exactly the fields being changed
+      const changedColumns = [...new Set(body.updates.flatMap(u =>
+        Object.keys(BULK_UPDATE_COLUMNS).filter(k => (u as any)[k] !== undefined).map(k => BULK_UPDATE_COLUMNS[k])))];
+      const previous: PreviousValues[] = await changeHistoryService
+        .readPrevious(body.updates.map(u => u.id).filter(Boolean), changedColumns)
+        .catch(() => []);
 
       await databaseService.transaction(async (connection) => {
         for (const u of body.updates) {
@@ -307,7 +348,24 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         }
       });
 
-      for (const sid of new Set(body.updates.filter(u => succeeded.some(sx => sx.id === u.id)).map(u => u.scheduleId))) queueReviewRerun(sid);
+      const doneIds = new Set(succeeded.map(s => s.id));
+      for (const sid of new Set(body.updates.filter(u => doneIds.has(u.id)).map(u => u.scheduleId))) {
+        queueReviewRerun(sid);
+        const ids = body.updates.filter(u => u.scheduleId === sid && doneIds.has(u.id)).map(u => u.id);
+        const projectId = await projectOfSchedule(sid);
+        if (projectId) {
+          const fields = [...new Set(body.updates.filter(u => ids.includes(u.id)).flatMap(u =>
+            Object.keys(BULK_UPDATE_COLUMNS).filter(k => (u as any)[k] !== undefined)))];
+          await changeHistoryService.record({
+            projectId,
+            scheduleId: sid,
+            kind: 'bulk_update',
+            summary: `Edited ${ids.length} task${ids.length === 1 ? '' : 's'} (${describeFields(fields)})`,
+            taskIds: ids,
+            undo: { previous: previous.filter(p => ids.includes(p.id)) },
+          });
+        }
+      }
       return { succeeded, failed };
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -333,6 +391,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
 
       const body = bulkStatusSchema.parse(request.body);
 
+      const previous = await changeHistoryService.readPrevious(body.taskIds, ['status']).catch(() => [] as PreviousValues[]);
       const placeholders = body.taskIds.map(() => '?').join(',');
       // databaseService.query returns the raw ResultSetHeader for non-SELECT
       // statements (the mysql2 driver returns it as `rows` from execute).
@@ -349,6 +408,17 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       const updated = header?.affectedRows ?? body.taskIds.length;
 
       queueReviewRerun(body.scheduleId);
+      const projectId = updated > 0 ? await projectOfSchedule(body.scheduleId) : null;
+      if (projectId) {
+        await changeHistoryService.record({
+          projectId,
+          scheduleId: body.scheduleId,
+          kind: 'bulk_status',
+          summary: `Set ${body.taskIds.length} task${body.taskIds.length === 1 ? '' : 's'} to ${STATUS_LABEL[body.status] ?? body.status}`,
+          taskIds: body.taskIds,
+          undo: { previous },
+        });
+      }
       return { updated };
     } catch (error) {
       logger.error('Batch status update error', { error });

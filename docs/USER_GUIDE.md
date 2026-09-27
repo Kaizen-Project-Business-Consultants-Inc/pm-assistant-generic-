@@ -2874,6 +2874,12 @@ The EVM Dashboard (`/evm`) provides a comprehensive earned value management view
 
 ## 28. Notifications Center Page
 
+### Schedule History and Undo
+
+The **History** button on the schedule toolbar (next to AI Reschedule) opens every change made to **many tasks at once** in the last 30 days, newest first: linking several tasks (and any dates that pushed), editing or changing the status of several tasks, creating several tasks, applying Schedule Review fixes, and accepting an AI Reschedule. Each line says what changed, when, and who — **You**, a colleague, or **Claude (for you)** when Claude made the change through the connector.
+
+**Undo** puts that change back — links removed and dates restored, previous values written back, created tasks removed, review fixes rolled back. If any of those tasks were changed afterwards, Undo first warns you ("2 of these tasks were changed after this") and only overwrites those later changes if you choose **Undo anyway**. Undone changes stay in the list, crossed out, with who undid them. Viewers can see the history but not undo. Not covered yet: deleting several tasks, and imports.
+
 **Clicking a notification takes you to what it is about** (September 2026) — in the bell, on the Notifications page, in the dashboard feeds, and from the **View Details** button in notification emails: a task notification opens its schedule on that row, highlighted; a RAID item opens the project's RAID tab; a change request its Change Requests tab; a Schedule Review alert the schedule; a budget (EVM) alert the Performance tab; time alerts the Time tab or your Timesheet; meeting items the Meetings page; agent proposals the Agent page; resource requests the Resources page. (Before this, only agent proposals could be clicked, and email buttons led to "page not found".)
 
 The full-page Notifications Center is available at `/notifications`. Access it from the sidebar ("Notifications" under Workspace) or by clicking "View all alerts" in the notification bell dropdown.

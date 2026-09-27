@@ -728,7 +728,7 @@ export class ScheduleService {
     // Fire-and-forget side effects AFTER transaction commit
     const schedule = await this.findById(data.scheduleId);
     auditLedgerService.append({
-      actorId: data.createdBy,
+      actorId: getRequestContext()?.userId || data.createdBy,
       actorType: 'user',
       action: 'task.create',
       entityType: 'task',
@@ -956,7 +956,8 @@ export class ScheduleService {
 
     const schedule = await this.findById(oldTask.scheduleId);
     auditLedgerService.append({
-      actorId: data.createdBy || oldTask.createdBy,
+      // Whoever made the edit — this used to record the task's creator
+      actorId: getRequestContext()?.userId || data.createdBy || oldTask.createdBy,
       actorType: 'user',
       action: 'task.update',
       entityType: 'task',
@@ -1040,7 +1041,7 @@ export class ScheduleService {
 
       const schedule = await this.findById(existing.scheduleId);
       auditLedgerService.append({
-        actorId: existing.createdBy,
+        actorId: getRequestContext()?.userId || existing.createdBy,
         actorType: 'user',
         action: 'task.delete',
         entityType: 'task',

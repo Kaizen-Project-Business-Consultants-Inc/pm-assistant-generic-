@@ -1062,6 +1062,18 @@ class ApiService {
     return response.data;
   }
 
+  /** Schedule History: group changes of the last 30 days */
+  async getScheduleChanges(scheduleId: string) {
+    const response = await this.api.get(`/schedules/${scheduleId}/changes`);
+    return response.data?.changes ?? [];
+  }
+
+  /** Undo one group change. 409 { error: 'edited_since', editedCount } unless force. */
+  async undoScheduleChange(scheduleId: string, changeId: string, force = false) {
+    const response = await this.api.post(`/schedules/${scheduleId}/changes/${changeId}/undo`, { force });
+    return response.data;
+  }
+
   async rejectScheduleFixProposal(scheduleId: string, proposalId: string, feedback?: string) {
     const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/reject`, { feedback });
     return response.data;

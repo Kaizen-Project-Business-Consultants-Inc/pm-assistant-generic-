@@ -1,4 +1,5 @@
 import { ScheduleService, Task } from './ScheduleService';
+import { changeHistoryService } from './ChangeHistoryService';
 import { CriticalPathService } from './CriticalPathService';
 import { claudeService } from './claudeService';
 import { config } from '../config';
@@ -358,6 +359,18 @@ Please propose date changes to reschedule affected tasks with minimal disruption
     const proposal = await this.getProposalById(proposalId);
     if (!proposal || proposal.status !== 'pending') return false;
 
+    // The dates as they are now (the proposal's "current" dates may be stale) — for History's Undo
+    const before: Array<{ taskId: string; startDate: string | null; endDate: string | null }> = [];
+    try {
+      for (const change of proposal.proposedChanges) {
+        const t = await this.scheduleService.findTaskById(change.taskId);
+        if (t) before.push({ taskId: t.id, startDate: t.startDate ? String(t.startDate).slice(0, 10) : null, endDate: t.endDate ? String(t.endDate).slice(0, 10) : null });
+      }
+    } catch (err: any) {
+      logger.warn('[AutoReschedule] could not read dates for History; this change will not be undoable', { proposalId, error: err?.message });
+      before.length = 0;
+    }
+
     // Apply all proposed changes
     for (const change of proposal.proposedChanges) {
       await this.scheduleService.updateTask(change.taskId, {
@@ -396,6 +409,19 @@ Please propose date changes to reschedule affected tasks with minimal disruption
       await rescheduleProposalRepository.updateStatus(proposalId, 'accepted');
     } catch {
       logger.warn('[AutoReschedule] Could not update proposal status in DB');
+    }
+
+    const schedule = before.length ? await Promise.resolve().then(() => this.scheduleService.findById(proposal.scheduleId)).catch(() => null) : null;
+    if (schedule && before.length) {
+      await changeHistoryService.record({
+        projectId: schedule.projectId,
+        scheduleId: proposal.scheduleId,
+        kind: 'ai_reschedule',
+        ref: proposalId,
+        summary: `Accepted AI Reschedule: ${before.length} task${before.length === 1 ? '' : 's'} re-dated`,
+        taskIds: before.map(b => b.taskId),
+        undo: { moved: before },
+      });
     }
 
     return true;

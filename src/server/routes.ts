@@ -30,6 +30,7 @@ import { taskPrioritizationRoutes } from './routes/scheduling/taskPrioritization
 import { importRoutes } from './routes/scheduling/import';
 import { scheduleReviewRoutes } from './routes/scheduling/scheduleReview';
 import { scheduleFixRoutes } from './routes/scheduling/scheduleFix';
+import { changeHistoryRoutes } from './routes/scheduling/changeHistory';
 import { calendarRoutes } from './routes/scheduling/calendars';
 
 // AI
@@ -175,6 +176,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(importRoutes, { prefix: '/api/v1/schedules' });
   await fastify.register(scheduleReviewRoutes, { prefix: '/api/v1/schedules' });
   await fastify.register(scheduleFixRoutes, { prefix: '/api/v1/schedules' });
+  await fastify.register(changeHistoryRoutes, { prefix: '/api/v1/schedules' });
   await fastify.register(calendarRoutes);
 
   // AI
