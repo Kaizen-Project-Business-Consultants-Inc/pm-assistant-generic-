@@ -2713,9 +2713,10 @@ Tasks can be imported in bulk from a CSV or Excel file via `POST /api/v1/schedul
 3. **Smart column mapping** — three-layer automatic mapping with manual override:
    - **Layer 1 — Exact alias match**: Dictionary of known synonyms using Microsoft Project (MPP) conventions (e.g., "Task Name" → Name, "Finish" → End Date, "Resource Names" → Assigned To, "% Complete" → Progress, "Duration" → Estimated Duration).
    - **Layer 2 — Fuzzy matching**: Levenshtein distance comparison catches misspellings and abbreviations (e.g., "Stat Date" → Start Date). Threshold: distance ≤ 3.
-   - **Layer 3 — AI suggestions**: Claude analyzes remaining unmapped column headers and suggests mappings asynchronously. AI-suggested mappings show a sparkle badge. Graceful fallback if AI is unavailable.
+   - **Layer 3 — AI suggestions**: Claude analyzes remaining unmapped column headers, plus up to 5 sample values from each, and suggests mappings asynchronously. AI-suggested mappings show a sparkle badge. Graceful fallback if AI is unavailable. An AI suggestion of **Notes** is only accepted when the header itself means notes (note, description, comment, remark, detail) — codes such as "T1" never end up as every task's note.
+   - **Phase / Group**: a column named Phase, Group, Category, Section, Stage or Workstream maps to **Phase / Group** — each distinct value becomes a phase (summary task) with its rows underneath. A column named **Task** sitting beside a separate task-name column (e.g. "Activity") is treated the same way (typical of sheets with T1, T2… codes). Phase matching is exact-name only (no fuzzy matching — "Stage" would otherwise catch "Date").
    - Users can manually override any mapping via dropdown selectors.
-   - **Skip column** — Any column set to "-- skip --" is excluded from import. All unmapped columns default to skip, ensuring only explicitly mapped columns are imported.
+   - **Skip column** — Any column set to "-- skip --" is excluded from import, in both the schedule Import dialog and the New Project → From File flow. All unmapped columns default to skip, ensuring only explicitly mapped columns are imported.
 4. **Preview** — inspect the parsed rows before committing.
 5. **Import** — valid rows are created as tasks via `scheduleService.createTask()` (with full dependency validation, audit logging, workflow triggers, sort order management, and WebSocket broadcasts); errors are reported per-row.
 

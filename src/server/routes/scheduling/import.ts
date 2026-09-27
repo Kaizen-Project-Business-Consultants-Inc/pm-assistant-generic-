@@ -587,6 +587,8 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
     headers: z.array(z.string()).min(1).max(100),
     unmappedHeaders: z.array(z.string()).min(1).max(100),
     targetFields: z.array(z.string()).min(1).max(20),
+    // A few values per unmapped header, so the AI can see what the column holds
+    samples: z.record(z.string(), z.array(z.string().max(80)).max(5)).optional(),
   });
 
   fastify.post('/suggest-columns', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
@@ -606,12 +608,18 @@ Rules:
 2. Each target field can only be used once.
 3. Return a JSON object where keys are the unmapped header names and values are the suggested target field names.
 4. If a header doesn't clearly map to any target field, omit it from the result.
-5. Consider common abbreviations, synonyms, and domain variations (e.g., "S Date" → "startDate", "Resp." → "assignedTo").`;
+5. Consider common abbreviations, synonyms, and domain variations (e.g., "S Date" → "startDate", "Resp." → "assignedTo").
+6. Look at the sample values. "description" is free-text notes only — never map codes, IDs or short labels there.
+7. "phase" is the group/phase each row belongs to: values repeat across rows (e.g. "T1, T1, T2" or "Design, Design, Build"). Map such a column to "phase" when that field is available.`;
+
+      const sampleLines = Object.entries(body.samples ?? {})
+        .filter(([h]) => body.unmappedHeaders.includes(h))
+        .map(([h, v]) => `- ${h}: ${v.join(' | ')}`);
 
       const userMessage = `All column headers in the spreadsheet: ${body.headers.join(', ')}
 
 Unmapped headers that need suggestions: ${body.unmappedHeaders.join(', ')}
-
+${sampleLines.length ? `\nSample values per unmapped header:\n${sampleLines.join('\n')}\n` : ''}
 Return a JSON object mapping unmapped headers to target fields.`;
 
       const result = await claudeService.complete({

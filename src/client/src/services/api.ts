@@ -3291,11 +3291,13 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     headers: string[],
     unmappedHeaders: string[],
     targetFields: string[],
+    samples?: Record<string, string[]>,
   ): Promise<Record<string, string>> {
     const response = await this.api.post('/schedules/suggest-columns', {
       headers,
       unmappedHeaders,
       targetFields,
+      samples,
     });
     return response.data?.suggestions ?? {};
   }

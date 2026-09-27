@@ -202,7 +202,8 @@ Click **Create New Project** from the Dashboard or Projects page. You'll see thr
 2. **Column Mapping** -- The system automatically maps your spreadsheet columns to task fields using three layers:
    - *Exact aliases* -- Recognizes Microsoft Project (MPP) column names: "Task Name", "Finish", "Resource Names", "% Complete", "Duration", "Notes", plus common alternatives like "Activity", "Responsibility", "Planned Start Date", "Actual Start", "Actual Finish", "Baseline Start", "Baseline Finish", "Baseline Duration", and "Baseline Cost".
    - *Fuzzy matching* -- Catches misspellings and abbreviations (e.g., "Stat Date" maps to Start Date).
-   - *AI suggestions* -- Claude analyzes remaining unmapped columns and suggests mappings (shown with a sparkle icon). Falls back gracefully if AI is unavailable.
+   - *AI suggestions* -- Claude looks at the remaining unmapped columns and a few of their values and suggests mappings (shown with a sparkle icon). It only suggests **Notes** for a column whose heading means notes. Falls back gracefully if AI is unavailable.
+   - *Phase / Group* -- Map a column to **Phase / Group** and each different value in it becomes a phase, with its tasks underneath. Columns named Phase, Group, Category, Section, Stage or Workstream are picked automatically, and so is a column named **Task** when another column (such as "Activity") already holds the task names -- e.g. a sheet whose Task column says T1, T2… gets phases T1, T2… (rename them after import if you like).
    - You can manually override any mapping using the dropdown selectors.
    - *Skip* -- Set any column to "-- skip --" to exclude it from import. All unmapped columns default to skip.
 3. Review the data preview, then click **Next: Project Details**.

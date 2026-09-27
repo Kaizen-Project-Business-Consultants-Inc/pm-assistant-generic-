@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-27 (import mapper: Task column → phase, not Notes)
+
+- **UAT report** (DBJ_LMS_Schedule - Sep 14.xlsx, New Project → From File): "Task" (T1/T2 codes) was AI-mapped to **Notes**. Activity had exact-matched Task Name; "Task" had no client alias, so the AI layer — seeing headers only — guessed description.
+- Fixes: client **Phase / Group** target (value `phase` → server `_phase`, which already built summary parents; server already aliased `task` → `_phase`). Exact aliases only (fuzzy "stage" ≈ "Date"). `taskColumnAsPhase()`: header "Task" + another column already mapped to name → phase. AI gets ≤5 sample values/column (`samples` on `/suggest-columns`, prompt rules for description vs phase); `acceptAiSuggestion()` drops AI→Notes unless header matches note/desc/comment/remark/detail.
+- **Found:** From File flow (TemplatePicker) only sent mapped headers, so "-- skip --" didn't skip — the server re-mapped skipped headers by its own aliases. Now sends `_skip` like ImportModal.
+
 ## 2026-09-25 (briefing hides archived projects; open tabs pick up new deploys)
 
 - **Morning Briefing** excluded nothing archived — it linked into PRJ-002 (archived 2026-09-16) and the "[TO ARCHIVE]" NSWMA copies. All 10 queries now join `projects` with `p.archived_at IS NULL`; test asserts it.

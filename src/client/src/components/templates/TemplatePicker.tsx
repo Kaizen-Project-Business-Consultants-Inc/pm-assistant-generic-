@@ -334,13 +334,12 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
           });
           const scheduleId = schedule.schedule?.id || schedule.id;
           if (scheduleId) {
-            // Build header-name-based column map from index-based
+            // Build header-name-based column map from index-based. Every header gets an
+            // entry — skipped ones as '_skip', or the server would re-map them by name.
             const headerMap: Record<string, string> = {};
-            for (const [idx, field] of Object.entries(columnMap)) {
-              if (field && fileParsed.headers[Number(idx)]) {
-                headerMap[fileParsed.headers[Number(idx)]] = field;
-              }
-            }
+            fileParsed.headers.forEach((header, i) => {
+              if (header) headerMap[header] = columnMap[i] || '_skip';
+            });
             await apiService.importTasks(scheduleId, parsedCsvText, headerMap);
           }
         } catch {
@@ -615,6 +614,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                 headers={fileParsed.headers}
                 mappings={columnMap}
                 onMappingsChange={setColumnMap}
+                sampleRows={fileParsed.rows}
               />
 
               {/* Preview table */}

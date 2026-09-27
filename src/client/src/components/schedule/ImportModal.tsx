@@ -623,6 +623,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
                     headers={parsed.headers}
                     mappings={columnMap}
                     onMappingsChange={setColumnMap}
+                    sampleRows={parsed.rows}
                   />
 
                   {/* Preview table */}

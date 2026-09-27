@@ -10,6 +10,7 @@ import { apiService } from '../../services/api';
 export const TARGET_COLUMNS = [
   { value: '', label: '-- skip --' },
   { value: 'name', label: 'Task Name' },
+  { value: 'phase', label: 'Phase / Group' },
   { value: 'status', label: 'Status' },
   { value: 'priority', label: 'Priority' },
   { value: 'startDate', label: 'Start' },
@@ -40,6 +41,7 @@ const ALIASES: Record<string, string> = {
   duration: 'estimatedDurationHours', estimateddurationhours: 'estimatedDurationHours', hours: 'estimatedDurationHours',
   planneddays: 'estimatedDurationHours', days: 'estimatedDurationHours',
   notes: 'description', description: 'description', desc: 'description',
+  phase: 'phase', group: 'phase', category: 'phase', section: 'phase', stage: 'phase', workstream: 'phase',
   actualstart: 'actualStartDate', actual_start: 'actualStartDate', actual_start_date: 'actualStartDate', actualstartdate: 'actualStartDate',
   actualfinish: 'actualEndDate', actual_finish: 'actualEndDate', actual_end: 'actualEndDate', actual_end_date: 'actualEndDate', actualenddate: 'actualEndDate', actual_finish_date: 'actualEndDate', actualfinishdate: 'actualEndDate',
   baselinestart: 'baselineStartDate', baseline_start: 'baselineStartDate', baseline_start_date: 'baselineStartDate', baselinestartdate: 'baselineStartDate',
@@ -59,6 +61,7 @@ const TARGET_LABELS: Record<string, string[]> = {
   progressPercentage: ['% complete', 'progress', 'percent complete'],
   estimatedDurationHours: ['duration', 'hours', 'days', 'estimated duration'],
   description: ['notes', 'description'],
+  phase: [], // exact aliases only: short words like "stage" fuzzy-match "Date"
   actualStartDate: ['actual start', 'actual start date'],
   actualEndDate: ['actual finish', 'actual end', 'actual finish date', 'actual end date'],
   baselineStartDate: ['baseline start', 'baseline start date'],
@@ -78,6 +81,37 @@ export interface ColumnMapperProps {
   aliases?: Record<string, string>;
   /** Override fuzzy-match labels (default: task import labels) */
   targetLabels?: Record<string, string[]>;
+  /** First few data rows, so the AI can see what each column holds */
+  sampleRows?: string[][];
+}
+
+const NOTES_HEADER = /note|desc|comment|remark|detail/i;
+
+/** AI may only put a column into Notes when its header actually means notes —
+ *  otherwise codes like "T1" end up as every task's note. */
+export function acceptAiSuggestion(header: string, target: string): boolean {
+  return target !== 'description' || NOTES_HEADER.test(header);
+}
+
+/** A "Task" column next to a separate task-name column (e.g. "Activity") holds
+ *  the group each row belongs to — T1, T2… — so it becomes the phase. Same rule
+ *  the server applies to a "task" header. */
+export function taskColumnAsPhase(headers: string[], map: Record<number, string>, targetValues: string[]): Record<number, string> {
+  const values = Object.values(map);
+  if (!targetValues.includes('phase') || !values.includes('name') || values.includes('phase')) return map;
+  const i = headers.findIndex((h, idx) => !map[idx] && h.trim().toLowerCase() === 'task');
+  return i < 0 ? map : { ...map, [i]: 'phase' };
+}
+
+/** Up to 5 non-empty sample values per header, trimmed to keep the AI call small. */
+export function sampleValues(headers: string[], headerNames: string[], rows: string[][]): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const h of headerNames) {
+    const i = headers.indexOf(h);
+    if (i < 0) continue;
+    out[h] = rows.map(r => (r[i] ?? '').trim()).filter(Boolean).slice(0, 5).map(v => v.slice(0, 80));
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -138,7 +172,7 @@ function fuzzyMap(
 // Component
 // ---------------------------------------------------------------------------
 
-export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = true, targetColumns: customTargetColumns, aliases: customAliases, targetLabels: customTargetLabels }: ColumnMapperProps) {
+export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = true, targetColumns: customTargetColumns, aliases: customAliases, targetLabels: customTargetLabels, sampleRows }: ColumnMapperProps) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSource, setAiSource] = useState<Set<number>>(new Set()); // indices that came from AI
 
@@ -153,7 +187,11 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
     if (headers.length === 0) return;
 
     const step1 = exactAliasMap(headers, effectiveAliases);
-    const step2 = fuzzyMap(headers, step1, effectiveTargetValues, effectiveTargetLabels);
+    const step2 = taskColumnAsPhase(
+      headers,
+      fuzzyMap(headers, step1, effectiveTargetValues, effectiveTargetLabels),
+      effectiveTargetValues,
+    );
     onMappingsChange(step2);
 
     // Layer 3: AI suggestions for remaining unmapped headers (async)
@@ -161,7 +199,7 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
       const unmapped = headers.filter((_, i) => !step2[i]);
       if (unmapped.length > 0) {
         setAiLoading(true);
-        apiService.suggestColumns(headers, unmapped, effectiveTargetValues as string[])
+        apiService.suggestColumns(headers, unmapped, effectiveTargetValues as string[], sampleValues(headers, unmapped, (sampleRows ?? []).slice(0, 10)))
           .then(suggestions => {
             // Apply AI suggestions to currently unmapped columns
             const newMap = { ...step2 };
@@ -170,7 +208,7 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
             headers.forEach((h, i) => {
               if (newMap[i]) return;
               const suggested = suggestions[h];
-              if (suggested && effectiveTargetValues.includes(suggested) && !used.has(suggested)) {
+              if (suggested && effectiveTargetValues.includes(suggested) && !used.has(suggested) && acceptAiSuggestion(h, suggested)) {
                 newMap[i] = suggested;
                 used.add(suggested);
                 newAiSource.add(i);
