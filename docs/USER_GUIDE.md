@@ -2874,6 +2874,8 @@ The EVM Dashboard (`/evm`) provides a comprehensive earned value management view
 
 ## 28. Notifications Center Page
 
+**Clicking a notification takes you to what it is about** (September 2026) — in the bell, on the Notifications page, in the dashboard feeds, and from the **View Details** button in notification emails: a task notification opens its schedule on that row, highlighted; a RAID item opens the project's RAID tab; a change request its Change Requests tab; a Schedule Review alert the schedule; a budget (EVM) alert the Performance tab; time alerts the Time tab or your Timesheet; meeting items the Meetings page; agent proposals the Agent page; resource requests the Resources page. (Before this, only agent proposals could be clicked, and email buttons led to "page not found".)
+
 The full-page Notifications Center is available at `/notifications`. Access it from the sidebar ("Notifications" under Workspace) or by clicking "View all alerts" in the notification bell dropdown.
 
 ### Severity Summary Cards

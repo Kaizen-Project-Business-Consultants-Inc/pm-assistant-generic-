@@ -2,13 +2,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, Link } from 'react-router-dom';
 import { Bell, Clock } from 'lucide-react';
 import { apiService } from '../../../services/api';
+import { notificationLink } from '../../../utils/notificationLink';
 
 function resolveLink(n: any): string {
-  if (n.linkType === 'project' && n.linkId) return `/project/${n.linkId}`;
-  if (n.linkType === 'proposal') return '/agent';
-  if (n.linkType === 'change_request') return '/change-requests';
-  if (n.projectId) return `/project/${n.projectId}`;
-  return '/notifications';
+  return notificationLink(n) ?? '/notifications';
 }
 
 export function RecentActivityWidget() {

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore, Notification } from '../stores/uiStore';
 import { apiService } from '../services/api';
 import { timeAgo } from '../utils/timeAgo';
+import { notificationLink } from '../utils/notificationLink';
 import { severityColor } from '../utils/severityColors';
 
 // ---------------------------------------------------------------------------
@@ -264,15 +265,16 @@ export function NotificationsPage() {
         ) : (
           filtered.map((n: Notification) => {
             const Icon = typeIcons[n.type] || Info;
-            const isClickable = n.linkType === 'proposal' && n.projectId;
+            const target = notificationLink(n);
+            const isClickable = !!target;
             return (
               <div
                 key={n.id}
                 onClick={() => {
-                  if (isClickable) {
+                  if (target) {
                     dismissNotification(n.id);
                     apiService.markNotificationRead(n.id).catch(() => {/* best effort */});
-                    navigate(`/project/${n.projectId}?tab=schedule`);
+                    navigate(target);
                   }
                 }}
                 className={`flex items-start gap-4 px-5 py-4 relative hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${n.read ? 'opacity-60' : ''} ${isClickable ? 'cursor-pointer' : ''}`}

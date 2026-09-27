@@ -232,6 +232,8 @@ describe('NotificationService', () => {
         message: 'Server is down',
         linkType: 'task',
         linkId: 'task-99',
+        projectId: 'proj-1',
+        scheduleId: 'sched-1',
       });
 
       // Wait for the fire-and-forget async to complete
@@ -243,7 +245,8 @@ describe('NotificationService', () => {
         '[CRITICAL] Critical Issue',
         'Critical Issue',
         'Server is down',
-        'https://pm.kpbc.ca/tasks/task-99',
+        // Opens the task's row on its schedule — /tasks/<id> was never a page
+        'https://pm.kpbc.ca/project/proj-1?tab=schedule&schedule=sched-1&task=task-99',
         'View Details',
       );
     });

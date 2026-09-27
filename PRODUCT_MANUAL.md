@@ -1559,6 +1559,10 @@ The `NotificationService` delivers notifications to users with:
 - **WebSocket delivery**: real-time push via the `WebSocketService`
 - **Bulk mark-as-read**
 
+### Where a notification links to
+
+One mapping from a notification's `linkType` / `linkId` / `projectId` / `scheduleId` to an app path: `src/client/src/utils/notificationLink.ts` (bell, Notifications page, RecentActivityWidget, ActivityFeedPM) and its server twin `src/server/utils/notificationLink.ts` (email "View Details" = `APP_URL` + path). Both are tested against one table, `src/server/__tests__/fixtures/notificationLinks.json`. task → `?tab=schedule&schedule=&task=` (row highlight); schedule → schedule tab; raid → `?tab=raid`; change_request → `?tab=change-requests`; project → project; evm → `?tab=performance`; time → `?tab=time` (else `/timesheet`); timesheet → `/timesheet`; meeting, meeting_action_item → `/meetings`; proposal → `/agent`; resource_request → `/resources`; anything else → the project, or not clickable. Emails previously used `/<linkType>s/<linkId>` (404) and project invites `/projects/<id>` (404).
+
 ### Notifications Center Page
 
 A full-page notification center is available at `/notifications`, accessible from the sidebar ("Notifications" under Workspace) and from the "View all alerts" link in the notification bell dropdown. The page provides:

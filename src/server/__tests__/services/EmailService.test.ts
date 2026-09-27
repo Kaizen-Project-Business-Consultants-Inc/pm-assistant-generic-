@@ -953,7 +953,8 @@ describe('EmailService', () => {
       await service.sendProjectInviteEmail('u@t.com', { ...baseParams, isRegistered: true });
 
       const html = mockSend.mock.calls[0][0].html;
-      expect(html).toContain('https://pm.kpbc.ca/projects/proj-1');
+      expect(html).toContain('https://pm.kpbc.ca/project/proj-1'); // singular — /projects/<id> is not a page
+      expect(html).not.toContain('/projects/proj-1');
       expect(html).toContain('View Project');
     });
 

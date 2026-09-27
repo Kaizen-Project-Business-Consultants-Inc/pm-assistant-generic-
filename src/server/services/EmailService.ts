@@ -825,7 +825,7 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td
     const { projectName, projectId, inviterName, role, isRegistered } = params;
 
     const ctaUrl = isRegistered
-      ? `${config.APP_URL}/projects/${projectId}`
+      ? `${config.APP_URL}/project/${projectId}`
       : `${config.APP_URL}/register`;
     const ctaLabel = isRegistered ? 'View Project' : 'Create Account';
 

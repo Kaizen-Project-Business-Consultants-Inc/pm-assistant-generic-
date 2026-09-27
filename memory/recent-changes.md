@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-27 (broken-link sweep; notification links)
+
+- Sweep: (1) client-404 telemetry on staging, 30 days — only one-offs from before `/login/sme` existed or typed by hand; (2) static check of every path literal in client + server against App.tsx routes (validated against the pre-fix widget) — client clean after today's fixes; (3) server-built links: notification email CTA `/<type>s/<id>` and project-invite `/projects/<id>` were 404s.
+- Fix: `utils/notificationLink.ts` client + server twin, one fixture table; bell and Notifications page now make every notification with a target clickable (was proposals only, and sent to the schedule).
+
 ## 2026-09-27 (links to /project/:id/<tab> were 404s)
 
 - Log watch caught a client 404 on `/project/<archived DBJ-Loans>/schedule`. The route never existed; `MyAssignmentsWidget` (the dashboard "Tasks / RAID Items / Action Items" list) built `/schedule`, `/risks`, `/meetings`; `ChangeRequestWidget` built `/change-requests`; Scenario page built `/schedule/:sid?tab=scenarios`. Now: tasks → `taskLink` (jump to row; my-assignments returns scheduleId), RAID → `?tab=raid`, action items → `/meetings`, others via `routeTo.project`. Safety net: route `/project/:id/:tab/*` redirects to `?tab=` (risks→raid).

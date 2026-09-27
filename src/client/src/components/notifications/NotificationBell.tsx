@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore, Notification } from '../../stores/uiStore';
 import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
+import { notificationLink } from '../../utils/notificationLink';
 import { AlertActionButton } from './AlertActionButton';
 
 const typeIcons: Record<string, React.ElementType> = {
@@ -317,16 +318,17 @@ export function NotificationBell() {
                 const severityColor = severityColors[notification.severity] || 'bg-gray-400';
                 const severityText = severityTextColors[notification.severity] || 'text-gray-600 dark:text-gray-400';
 
-                const isClickable = notification.linkType === 'proposal' && notification.projectId;
+                const target = notificationLink(notification);
+                const isClickable = !!target;
 
                 return (
                   <div
                     key={notification.id}
                     onClick={() => {
-                      if (isClickable) {
+                      if (target) {
                         setOpen(false);
                         dismissNotification(notification.id);
-                        navigate(`/project/${notification.projectId}?tab=schedule`);
+                        navigate(target);
                       }
                     }}
                     {...(isClickable ? {
@@ -337,7 +339,7 @@ export function NotificationBell() {
                           e.preventDefault();
                           setOpen(false);
                           dismissNotification(notification.id);
-                          navigate(`/project/${notification.projectId}?tab=schedule`);
+                          navigate(target!);
                         }
                       },
                     } : {})}

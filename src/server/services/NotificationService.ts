@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { notificationPath } from '../utils/notificationLink';
 import { notificationRepository, NotificationDTO } from '../database/NotificationRepository';
 import { WebSocketService } from './WebSocketService';
 import { emailService } from './EmailService';
@@ -130,9 +131,8 @@ export class NotificationService {
       (async () => {
         try {
           if (user && user.emailNotificationsEnabled && user.emailVerified && user.email) {
-            const ctaUrl = data.linkType && data.linkId
-              ? `${config.APP_URL}/${data.linkType}s/${data.linkId}`
-              : undefined;
+            const path = notificationPath(data);
+            const ctaUrl = path ? `${config.APP_URL}${path}` : undefined;
             await emailService.sendNotificationEmail(
               user.email,
               `[${data.severity?.toUpperCase()}] ${data.title}`,

@@ -1,0 +1,20 @@
+[
+  { "in": { "linkType": "task", "linkId": "t1", "projectId": "p1", "scheduleId": "s1" }, "out": "/project/p1?tab=schedule&schedule=s1&task=t1" },
+  { "in": { "linkType": "task", "linkId": "t1", "projectId": "p1" }, "out": "/project/p1?tab=schedule&task=t1" },
+  { "in": { "linkType": "task", "linkId": "t1" }, "out": null },
+  { "in": { "linkType": "schedule", "linkId": "s1", "projectId": "p1" }, "out": "/project/p1?tab=schedule&schedule=s1" },
+  { "in": { "linkType": "raid", "linkId": "r1", "projectId": "p1" }, "out": "/project/p1?tab=raid" },
+  { "in": { "linkType": "change_request", "linkId": "c1", "projectId": "p1" }, "out": "/project/p1?tab=change-requests" },
+  { "in": { "linkType": "change_request", "linkId": "c1" }, "out": "/change-requests" },
+  { "in": { "linkType": "project", "linkId": "p9" }, "out": "/project/p9" },
+  { "in": { "linkType": "evm", "projectId": "p1" }, "out": "/project/p1?tab=performance" },
+  { "in": { "linkType": "time", "projectId": "p1" }, "out": "/project/p1?tab=time" },
+  { "in": { "linkType": "time" }, "out": "/timesheet" },
+  { "in": { "linkType": "timesheet", "projectId": "p1" }, "out": "/timesheet" },
+  { "in": { "linkType": "meeting", "linkId": "m1" }, "out": "/meetings" },
+  { "in": { "linkType": "meeting_action_item", "linkId": "a1", "projectId": "p1" }, "out": "/meetings" },
+  { "in": { "linkType": "proposal", "linkId": "x1", "projectId": "p1" }, "out": "/agent" },
+  { "in": { "linkType": "resource_request", "linkId": "rr1" }, "out": "/resources" },
+  { "in": { "linkType": null, "projectId": "p1" }, "out": "/project/p1" },
+  { "in": { "linkType": "something_new" }, "out": null }
+]

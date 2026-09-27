@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Bell, ArrowRight, CheckCheck } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
+import { notificationLink } from '../../utils/notificationLink';
 
 interface ActivityFeedPMProps {
   limit?: number;
@@ -34,12 +35,12 @@ function getDateGroup(dateStr: string): string {
 }
 
 function resolveLink(notification: any): string {
-  const linkType: string = notification.link_type || notification.linkType || '';
-  const projectId: string = notification.project_id || notification.projectId || '';
-
-  if (linkType === 'project' && projectId) return `/project/${projectId}`;
-  if (linkType === 'proposal') return '/agent';
-  return '/notifications';
+  return notificationLink({
+    linkType: notification.link_type ?? notification.linkType,
+    linkId: notification.link_id ?? notification.linkId,
+    projectId: notification.project_id ?? notification.projectId,
+    scheduleId: notification.schedule_id ?? notification.scheduleId,
+  }) ?? '/notifications';
 }
 
 export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
