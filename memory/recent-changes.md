@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-27 (permissions Phase 2 — every project write route gated)
+
+- Per user decisions: sprints (PM; own standups/retro/votes for any member — team_member/viewer had only 'read' scope so they could NEVER post standups before; new `ownWorkScope()`), action items (PM; assignee done/reopen/notes), meeting intelligence, attachments (+ read checks), lessons, workflows, resource assignments/requests, storage connectors, calendar task links, RAID/status report schedule/email, portal links, agent proposals, what-if scenarios, AI context config. Mjuzi/alert tool runner: `AIActionExecutor.checkProjectWrite` via new `checkProjectRoleFor` (no-request variant).
+- Guard test: Phase-2 list empty; 148 routes listed as non-project with reasons; probe-proven again.
+- Not done (noted): several READ routes are still tenant-wide (e.g. meeting action item summary without projectId, AI portfolio/overdue tools, dashboard lists). Client still shows some PM-only sprint/action buttons to team members (server refuses with a clear message).
+
 ## 2026-09-27 (invited team members blocked by "Your trial has ended" — ON PROD since 24 Sep)
 
 - Found by the Phase-1 live test. Subscription check is per USER; org.ts direct invites set members to 'none'; invite links copied tier/status but not trial_ends_at. Per-seat payment copies plan to members present at payment time only. Fix: `utils/memberSubscription.ts` used by org.ts (both paths) + InviteService; `requireActiveSubscription` falls back to the org for non-owner members; control-plane migration 120 repairs members (staging dry run: 0 rows). Prod dry run needed before deploy (Claude can't read prod DB without the user's OK).

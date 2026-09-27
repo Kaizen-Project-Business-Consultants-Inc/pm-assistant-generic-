@@ -29,6 +29,11 @@ const updateLinkSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+/** Changing or removing a client-portal link: its project's Manager/Owner (Sep 2026 rules) */
+const linkPM = requireProjectAccess('manager', {
+  resolve: async (req) => (await portalService.getLinkById((req.params as { id: string }).id))?.projectId ?? null,
+});
+
 export async function portalRoutes(fastify: FastifyInstance) {
   // ── Public routes (token-based access) ──────────────────────────────
 
@@ -129,18 +134,14 @@ export async function portalRoutes(fastify: FastifyInstance) {
 
   // PUT /links/:id — update portal link
   fastify.put('/links/:id', {
-    preHandler: [authMiddleware, requireScope('write'), requireFeature('portal')],
+    preHandler: [authMiddleware, requireScope('write'), requireFeature('portal'), linkPM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const existing = await portalService.getLinkById(id);
       if (!existing) return reply.status(404).send({ error: 'Portal link not found' });
 
-      // Ownership check: only creator or admin can update
-      const user = request.user!;
-      if (existing.createdBy !== user.userId && user.role !== 'admin') {
-        return reply.status(403).send({ error: 'Only the link creator or an admin can modify this portal link' });
-      }
+      // Who may: the project's Manager/Owner (linkPM) — was "the link's creator or an admin"
 
       const body = updateLinkSchema.parse(request.body);
       const link = await portalService.updateLink(id, body);
@@ -154,18 +155,14 @@ export async function portalRoutes(fastify: FastifyInstance) {
 
   // DELETE /links/:id — delete portal link
   fastify.delete('/links/:id', {
-    preHandler: [authMiddleware, requireScope('write'), requireFeature('portal')],
+    preHandler: [authMiddleware, requireScope('write'), requireFeature('portal'), linkPM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const existing = await portalService.getLinkById(id);
       if (!existing) return reply.status(404).send({ error: 'Portal link not found' });
 
-      // Ownership check: only creator or admin can delete
-      const user = request.user!;
-      if (existing.createdBy !== user.userId && user.role !== 'admin') {
-        return reply.status(403).send({ error: 'Only the link creator or an admin can delete this portal link' });
-      }
+      // Who may: the project's Manager/Owner (linkPM) — was "the link's creator or an admin"
 
       await portalService.deleteLink(id);
       return { message: 'Portal link deleted' };

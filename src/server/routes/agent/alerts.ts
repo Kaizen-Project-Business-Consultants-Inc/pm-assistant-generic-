@@ -74,6 +74,7 @@ export async function alertRoutes(fastify: FastifyInstance) {
   });
 
   // POST /execute-action — Execute a suggested action from an alert
+  // project check: AIActionExecutor.checkProjectWrite → checkProjectRoleFor (Manager/Owner)
   fastify.post('/execute-action', {
     preHandler: [requireScope('write')],
     schema: {

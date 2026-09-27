@@ -1,4 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { databaseService } from '../../database/connection';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { AnomalyDetectionService } from '../../services/anomalyDetectionService';
 import { CrossProjectIntelligenceService } from '../../services/crossProjectIntelligenceService';
 import { WhatIfScenarioService } from '../../services/whatIfScenarioService';
@@ -7,6 +9,14 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
+
+/** Saving or deleting a what-if scenario for a project: its Manager/Owner */
+const scenarioPM = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const rows = await databaseService.query<{ project_id: string }>('SELECT project_id FROM scenario_analyses WHERE id = ?', [(req.params as { id: string }).id]);
+    return rows[0]?.project_id ?? null;
+  },
+});
 
 export async function intelligenceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -130,7 +140,7 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
 
   // What-If Scenarios — run scenario
   fastify.post('/scenarios', {
-    preHandler: [requireScope('write'), requireFeature('cross_project_intelligence')],
+    preHandler: [requireScope('write'), requireFeature('cross_project_intelligence'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       // #10: Trial users get sample data
@@ -166,7 +176,7 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
 
   // What-If Scenarios — delete a saved scenario
   fastify.delete('/scenarios/:id', {
-    preHandler: [requireScope('write'), requireFeature('cross_project_intelligence')],
+    preHandler: [requireScope('write'), requireFeature('cross_project_intelligence'), scenarioPM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requirePaidTier } from '../../middleware/requireTier';
-import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { requireProjectAccess, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAccess';
 import { projectStatusReportService } from '../../services/ProjectStatusReportService';
 import { reportScheduleService } from '../../services/ReportScheduleService';
@@ -144,6 +144,11 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
         projectId: z.string().optional(),
       });
       const body = schema.parse(request.body);
+      // Emailing a project's status report to its stakeholders: that project's Manager/Owner
+      if (body.projectId) {
+        const access = await checkProjectRole(request, body.projectId, 'manager');
+        if (!access.ok) return reply.status(access.status).send(access.body);
+      }
       // These recipients are typed in by hand, so they are routinely the
       // consultant's client rather than a colleague. Address them as such.
       const clientContext = body.projectId

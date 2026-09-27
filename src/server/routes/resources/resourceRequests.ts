@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -26,6 +27,20 @@ const updateSchema = z.object({
   skillsRequired: z.array(z.string().max(100)).max(20).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
 });
+
+/**
+ * Resource requests (Sep 2026 rules): the requesting project's Manager/Owner raises, edits,
+ * submits and cancels them; approving, rejecting and fulfilling are for the organisation's
+ * resource managers (admin / PMO) — not the PM who asked.
+ */
+const requestPM = requireProjectAccess('manager', {
+  resolve: async (req) => (await resourceRequestService.getRequest((req.params as { id: string }).id))?.projectId ?? null,
+});
+const resourceManagerOnly = async (request: FastifyRequest, reply: FastifyReply) => {
+  if (!['admin', 'pmo'].includes(request.user!.role)) {
+    return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can approve, reject or fulfil resource requests.' });
+  }
+};
 
 export async function resourceRequestRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -58,7 +73,7 @@ export async function resourceRequestRoutes(fastify: FastifyInstance) {
   });
 
   // POST / — create
-  fastify.post('/', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const parsed = createSchema.parse(request.body);
     const rr = await resourceRequestService.createRequest(parsed.projectId, parsed, user.userId);
@@ -66,7 +81,7 @@ export async function resourceRequestRoutes(fastify: FastifyInstance) {
   });
 
   // PUT /:id — update draft
-  fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  fastify.put('/:id', { preHandler: [requireScope('write'), requestPM] }, async (request: FastifyRequest) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
     const parsed = updateSchema.parse(request.body);
@@ -74,14 +89,14 @@ export async function resourceRequestRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/submit — submit for approval
-  fastify.post('/:id/submit', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  fastify.post('/:id/submit', { preHandler: [requireScope('write'), requestPM] }, async (request: FastifyRequest) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
     return resourceRequestService.submitRequest(id, user.userId);
   });
 
   // POST /:id/approve — approve (manager+)
-  fastify.post('/:id/approve', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  fastify.post('/:id/approve', { preHandler: [requireScope('write'), resourceManagerOnly] }, async (request: FastifyRequest) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
     const { comment } = (request.body as { comment?: string }) || {};
@@ -89,7 +104,7 @@ export async function resourceRequestRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/reject — reject (manager+)
-  fastify.post('/:id/reject', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  fastify.post('/:id/reject', { preHandler: [requireScope('write'), resourceManagerOnly] }, async (request: FastifyRequest) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
     const { comment } = (request.body as { comment?: string }) || {};
@@ -98,7 +113,7 @@ export async function resourceRequestRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/fulfill — fulfill with resource
-  fastify.post('/:id/fulfill', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  fastify.post('/:id/fulfill', { preHandler: [requireScope('write'), resourceManagerOnly] }, async (request: FastifyRequest) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
     const { resourceId } = (request.body as { resourceId: string }) || {};
@@ -107,7 +122,7 @@ export async function resourceRequestRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/cancel — cancel
-  fastify.post('/:id/cancel', { preHandler: [requireScope('write')] }, async (request: FastifyRequest) => {
+  fastify.post('/:id/cancel', { preHandler: [requireScope('write'), requestPM] }, async (request: FastifyRequest) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
     return resourceRequestService.cancelRequest(id, user.userId);

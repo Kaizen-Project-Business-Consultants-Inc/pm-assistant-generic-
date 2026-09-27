@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess, projectsOfSchedules, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { meetingIntelligenceService } from '../../services/MeetingIntelligenceService';
 import { riskService } from '../../services/RiskService';
@@ -13,6 +14,31 @@ import { userService } from '../../services/UserService';
 import { fileAttachmentService } from '../../services/FileAttachmentService';
 import { parseTranscriptFile } from '../../utils/transcriptParser';
 
+/**
+ * Meeting intelligence (Sep 2026 rules): analysing a transcript for a project, applying the
+ * analysis to the plan, and sending items to RAID are changes to that project — its
+ * Manager/Owner only. The schedule must belong to the project.
+ */
+const analyzePM = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const b = req.body as { projectId?: string; scheduleId?: string } | undefined;
+    const sched = await projectsOfSchedules([b?.scheduleId]);
+    return b?.projectId && sched && sched[0] === b.projectId ? b.projectId : null;
+  },
+});
+const analysisProject = async (req: FastifyRequest) =>
+  (await meetingIntelligenceService.getAnalysis((req.params as { analysisId: string }).analysisId))?.projectId ?? null;
+const analysisPM = requireProjectAccess('manager', { resolve: analysisProject });
+const analysisMember = requireProjectAccess('viewer', { resolve: analysisProject });
+/** Sending to RAID: the analysis's project, and the body must name the same project */
+const sendToRaidPM = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const project = await analysisProject(req);
+    const bodyProject = (req.body as any)?.projectId;
+    return project && (!bodyProject || bodyProject === project) ? project : null;
+  },
+});
+
 export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -22,7 +48,7 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
 
   // Trial users get sample analysis data with an upgrade prompt.
   fastify.post('/analyze', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), analyzePM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
@@ -60,7 +86,7 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
   // ---------------------------------------------------------------------------
 
   fastify.post('/:analysisId/apply', {
-    preHandler: [requireScope('write'), requireFeature('meeting_intelligence')],
+    preHandler: [requireScope('write'), requireFeature('meeting_intelligence'), analysisPM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { analysisId } = request.params as { analysisId: string };
@@ -88,7 +114,7 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
   // ---------------------------------------------------------------------------
 
   fastify.post('/upload-transcript', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write')], // project check is in the handler (checkProjectRole) — multipart
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
@@ -128,6 +154,13 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
       if (!projectId || !scheduleId) {
         return reply.status(400).send({ error: 'projectId and scheduleId are required' });
       }
+      // Only the project's Manager/Owner, and the schedule must be that project's
+      const scheduleProjects = await projectsOfSchedules([scheduleId]);
+      if (!scheduleProjects || scheduleProjects[0] !== projectId) {
+        return reply.status(400).send({ error: 'mismatch', message: "That schedule isn't in this project." });
+      }
+      const access = await checkProjectRole(request, projectId, 'manager');
+      if (!access.ok) return reply.status(access.status).send(access.body);
 
       // Parse transcript
       const { format, segments, transcript } = parseTranscriptFile(file.filename, content);
@@ -186,7 +219,7 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/:analysisId/check-raid-duplicates', {
-    preHandler: [requireScope('read'), requireFeature('meeting_intelligence')],
+    preHandler: [requireScope('read'), requireFeature('meeting_intelligence'), analysisMember],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { analysisId } = request.params as { analysisId: string };
@@ -242,7 +275,7 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/:analysisId/send-to-raid', {
-    preHandler: [requireScope('write'), requireFeature('meeting_intelligence')],
+    preHandler: [requireScope('write'), requireFeature('meeting_intelligence'), sendToRaidPM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { analysisId } = request.params as { analysisId: string };

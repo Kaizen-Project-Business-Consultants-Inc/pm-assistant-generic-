@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -36,7 +37,7 @@ export async function raidReportRoutes(fastify: FastifyInstance) {
 
   // Generate a RAID report
   fastify.post('/generate', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer', { resolve: async (req) => (req.body as any)?.projectId ?? null })],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
@@ -67,7 +68,7 @@ export async function raidReportRoutes(fastify: FastifyInstance) {
 
   // Create a recurring schedule for RAID reports
   fastify.post('/schedule', {
-    preHandler: [requireScope('write'), requirePaidTier],
+    preHandler: [requireScope('write'), requirePaidTier, requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
@@ -115,7 +116,10 @@ export async function raidReportRoutes(fastify: FastifyInstance) {
 
       const schedule = await reportScheduleService.getById(id);
       if (!schedule) return reply.status(404).send({ error: 'Schedule not found' });
-      if (schedule.createdBy !== userId && request.user!.role !== 'admin') {
+      // The creator, an admin, or the project's Manager/Owner (checkProjectRole)
+      const scheduledProject = String((schedule as any).templateId ?? '').split('::')[1];
+      const isPM = scheduledProject ? (await checkProjectRole(request, scheduledProject, 'manager')).ok : false;
+      if (schedule.createdBy !== userId && request.user!.role !== 'admin' && !isPM) {
         return reply.status(403).send({ error: 'Not authorized to delete this schedule' });
       }
 

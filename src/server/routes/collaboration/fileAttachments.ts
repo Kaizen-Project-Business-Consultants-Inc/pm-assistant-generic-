@@ -2,22 +2,69 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { fileAttachmentService } from '../../services/FileAttachmentService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
+import { ownWorkScope } from '../../middleware/viewerWriteBypass';
+import { checkProjectRole } from '../../middleware/requireProjectAccess';
+import { sprintService } from '../../services/SprintService';
+import { meetingRepository } from '../../database/MeetingRepository';
 import { validateMimeType } from '../../utils/mimeValidator';
 import { config } from '../../config';
 import { scheduleService } from '../../services/ScheduleService';
 import { riskService } from '../../services/RiskService';
 import logger from '../../utils/logger';
 
-async function canViewerUploadToEntity(entityType: string, entityId: string, userId: string): Promise<boolean> {
-  if (entityType === 'task') {
-    return scheduleService.isTaskAssignedToUser(entityId, userId);
+/** Which project an attachment's item belongs to ('goal' is organisation-level: null) */
+async function entityProject(entityType: string, entityId: string): Promise<string | null> {
+  switch (entityType) {
+    case 'project': return entityId;
+    case 'schedule': return (await scheduleService.findById(entityId))?.projectId ?? null;
+    case 'task': {
+      const t = await scheduleService.findTaskById(entityId);
+      return t ? (await scheduleService.findById(t.scheduleId))?.projectId ?? null : null;
+    }
+    case 'risk': case 'issue': case 'decision': case 'action':
+      return (await riskService.findById(entityId))?.projectId ?? null;
+    case 'sprint': return (await sprintService.getById(entityId))?.projectId ?? null;
+    case 'meeting': return (await meetingRepository.findById(entityId))?.projectId ?? null;
+    default: return null;
   }
-  if (entityType === 'risk') {
+}
+const RAID_TYPES = new Set(['risk', 'issue', 'decision', 'action']);
+
+/**
+ * Attachments (Sep 2026 rules): adding, replacing or deleting a file on project items is
+ * for the project's Manager/Owner. The owner of a RAID item may also attach files to their
+ * own item (evidence for their progress updates). Reading needs project access.
+ * Organisation-level items (goals) keep the old behaviour.
+ */
+async function attachmentGate(request: FastifyRequest, reply: FastifyReply, entityType: string, entityId: string, write: boolean): Promise<boolean> {
+  if (entityType === 'goal') return true;
+  const projectId = await entityProject(entityType, entityId);
+  if (!projectId) { reply.status(404).send({ error: 'Not found', message: 'That item was not found.' }); return false; }
+  if (!write) {
+    const d = await checkProjectRole(request, projectId, 'viewer');
+    if (!d.ok) { reply.status(d.status).send(d.body); return false; }
+    return true;
+  }
+  const pm = await checkProjectRole(request, projectId, 'manager');
+  if (pm.ok) return true;
+  if (RAID_TYPES.has(entityType)) {
     const item = await riskService.findById(entityId);
-    return item?.ownerId === userId;
+    const member = await checkProjectRole(request, projectId, 'viewer');
+    if (member.ok && item?.ownerId === request.user!.userId) return true;
   }
-  return false; // fail-closed for all other entity types
+  reply.status(403).send({ error: 'Insufficient project role', message: "Only the project's Manager or Owner can change files on this item." });
+  return false;
+}
+
+/** Reading files needs access to the item's project (it used to need only a login) */
+async function readByEntity(request: FastifyRequest, reply: FastifyReply) {
+  const { entityType, entityId } = request.params as { entityType: string; entityId: string };
+  await attachmentGate(request, reply, entityType, entityId, false);
+}
+async function readById(request: FastifyRequest, reply: FastifyReply) {
+  const existing = await fileAttachmentService.getById((request.params as { id: string }).id);
+  if (!existing) return reply.status(404).send({ error: 'Attachment not found' });
+  await attachmentGate(request, reply, existing.entityType, existing.entityId, false);
 }
 
 export async function fileAttachmentRoutes(fastify: FastifyInstance) {
@@ -26,29 +73,14 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
   // POST /:entityType/:entityId — multipart upload
   // Viewers can upload attachments to tasks/RAID items assigned to them
   fastify.post('/:entityType/:entityId', {
-    preHandler: [
-      async (request: FastifyRequest, reply: FastifyReply) => {
-        const role = request.user?.role;
-        if (role === 'viewer') {
-          await requireScope('read')(request, reply);
-        } else {
-          await requireScope('write')(request, reply);
-        }
-        if (reply.sent) return;
-      },
-    ],
+    preHandler: [ownWorkScope()],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { entityType, entityId } = request.params as { entityType: string; entityId: string };
 
-      // Viewer ownership check
-      if (user.role === 'viewer') {
-        const allowed = await canViewerUploadToEntity(entityType, entityId, user.userId);
-        if (!allowed) {
-          return reply.status(403).send({ error: 'Viewers can only upload attachments to items assigned to them' });
-        }
-      }
+      // Project check (checkProjectRole): the PM, or the owner of this RAID item
+      if (!(await attachmentGate(request, reply, entityType, entityId, true))) return;
       const file = await request.file();
       if (!file) return reply.status(400).send({ error: 'No file uploaded' });
 
@@ -71,7 +103,7 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:entityType/:entityId — list attachments
-  fastify.get('/:entityType/:entityId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:entityType/:entityId', { preHandler: [requireScope('read'), readByEntity] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { entityType, entityId } = request.params as { entityType: string; entityId: string };
       const attachments = await fileAttachmentService.getByEntity(entityType, entityId);
@@ -83,7 +115,7 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:id/download — stream file
-  fastify.get('/:id/download', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/download', { preHandler: [requireScope('read'), readById] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const attachment = await fileAttachmentService.getById(id);
@@ -117,6 +149,10 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
     try {
       const user = request.user!;
       const { id } = request.params as { id: string };
+      const existing = await fileAttachmentService.getById(id);
+      if (!existing) return reply.status(404).send({ error: 'Attachment not found' });
+      // Project check (checkProjectRole) on the item the file belongs to
+      if (!(await attachmentGate(request, reply, existing.entityType, existing.entityId, true))) return;
       const file = await request.file();
       if (!file) return reply.status(400).send({ error: 'No file uploaded' });
 
@@ -138,7 +174,7 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:id/versions — version history
-  fastify.get('/:id/versions', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/versions', { preHandler: [requireScope('read'), readById] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const versions = await fileAttachmentService.getVersionHistory(id);
@@ -153,6 +189,14 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
   fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
+      const existing = await fileAttachmentService.getById(id);
+      if (!existing) return reply.status(404).send({ error: 'Attachment not found' });
+      // Deleting: the PM only (checkProjectRole), not the item owner
+      if (existing.entityType !== 'goal') {
+        const projectId = await entityProject(existing.entityType, existing.entityId);
+        const pm = projectId ? await checkProjectRole(request, projectId, 'manager') : null;
+        if (!pm?.ok) return reply.status(pm && !pm.ok ? pm.status : 404).send(pm && !pm.ok ? pm.body : { error: 'Not found' });
+      }
       await fileAttachmentService.delete(id);
       return { message: 'Attachment deleted' };
     } catch (error) {

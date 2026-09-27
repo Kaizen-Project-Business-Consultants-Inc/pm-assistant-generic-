@@ -1,4 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { databaseService } from '../../database/connection';
 import { z } from 'zod';
 import { lessonsLearnedService } from '../../services/LessonsLearnedService';
 import { authMiddleware } from '../../middleware/auth';
@@ -55,6 +57,25 @@ const feedbackSchema = z.object({
 const effectivenessSchema = z.object({
   rating: z.number().int().min(0).max(100),
 });
+
+/**
+ * Lessons learned (Sep 2026 rules). Every lesson belongs to a project: extracting lessons
+ * from a project, adding one to it, or editing / elevating / re-rating / deleting it is for
+ * that project's Manager/Owner. The knowledge base stays readable and usable by everyone
+ * (similar-lesson search, patterns, "I applied this", helpful/outdated feedback). Seeding the
+ * library from every project is for admins/PMO.
+ */
+const lessonPM = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const rows = await databaseService.query<{ project_id: string }>('SELECT project_id FROM lessons_learned WHERE id = ?', [(req.params as { id: string }).id]);
+    return rows[0]?.project_id ?? null;
+  },
+});
+const orgAdminOnly = async (request: FastifyRequest, reply: FastifyReply) => {
+  if (!['admin', 'pmo'].includes(request.user!.role)) {
+    return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can rebuild the lessons library from every project.' });
+  }
+};
 
 export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -115,7 +136,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
 
   // POST /extract/:projectId — Extract lessons from a project
   fastify.post('/extract/:projectId', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -175,7 +196,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
 
   // POST / — Add a lesson manually
   fastify.post('/', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = addLessonSchema.parse(request.body);
@@ -209,7 +230,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
 
   // POST /seed — Seed initial lessons from existing project data
   fastify.post('/seed', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), orgAdminOnly],
   }, async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       const seeded = await lessonsLearnedService.seedFromProjects();
@@ -222,7 +243,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
 
   // PUT /:id — Update a lesson
   fastify.put('/:id', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), lessonPM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
@@ -239,7 +260,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
 
   // PATCH /:id/elevate — Elevate a lesson to org-wide visibility
   fastify.patch('/:id/elevate', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), lessonPM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
@@ -254,7 +275,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
 
   // PATCH /:id/status — Update lesson status (review workflow)
   fastify.patch('/:id/status', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), lessonPM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
@@ -285,7 +306,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
 
   // PATCH /:id/effectiveness — Rate lesson effectiveness
   fastify.patch('/:id/effectiveness', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), lessonPM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
@@ -319,7 +340,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
 
   // DELETE /:id — Delete a lesson
   fastify.delete('/:id', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), lessonPM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };

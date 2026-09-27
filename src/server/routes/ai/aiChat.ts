@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { AIChatService } from '../../services/aiChatService';
 import { AICircuitBreakerError } from '../../services/claudeService';
@@ -25,12 +26,26 @@ const extractTasksSchema = z.object({
   scheduleId: z.string().optional(),
 });
 
+/**
+ * Mjuzi acts as the signed-in user: every tool that changes a project is checked in
+ * AIActionExecutor.checkProjectWrite (checkProjectRoleFor — the project's Manager/Owner).
+ * Extracting tasks into a schedule writes directly, so it is checked here.
+ */
+const extractPM = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const b = req.body as { projectId?: string; scheduleId?: string } | undefined;
+    const sched = await projectsOfSchedules([b?.scheduleId]);
+    return sched && (!b?.projectId || b.projectId === sched[0]) ? sched[0] : null;
+  },
+});
+
 export async function aiChatRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   const chatService = new AIChatService(fastify);
 
   // POST /message — non-streaming chat
+  // project check for each change: AIActionExecutor.checkProjectWrite → checkProjectRoleFor
   fastify.post('/message', {
     preHandler: [requireScope('write')],
     schema: {
@@ -95,6 +110,7 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
   });
 
   // POST /stream — SSE streaming chat
+  // project check for each change: AIActionExecutor.checkProjectWrite → checkProjectRoleFor
   fastify.post('/stream', {
     preHandler: [requireScope('write')],
     schema: {
@@ -280,7 +296,7 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
 
   // POST /extract-tasks — extract tasks from meeting notes
   fastify.post('/extract-tasks', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), extractPM],
     schema: {
       description: 'Extract tasks from meeting notes',
       tags: ['ai-chat'],

@@ -6,7 +6,10 @@ import { retrospectiveService } from '../../services/RetrospectiveService';
 import { scrumDefinitionService } from '../../services/ScrumDefinitionService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { ownWorkScope } from '../../middleware/viewerWriteBypass';
+import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
+import { scheduleService } from '../../services/ScheduleService';
+import { taskChecklistRepository } from '../../database/TaskChecklistRepository';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
@@ -26,6 +29,44 @@ const createSprintSchema = z.object({
 });
 
 const updateSprintSchema = createSprintSchema.omit({ projectId: true, scheduleId: true }).partial();
+
+/**
+ * Sprints (Sep 2026 rules): only the project's Manager/Owner changes the sprint itself —
+ * details, its tasks, story points, start/complete, converting retro items, DoR/DoD
+ * checklists. Any project member posts their OWN standups, retro notes and votes (the
+ * services refuse editing or deleting someone else's).
+ */
+const sprintProject = async (req: FastifyRequest) => {
+  const { id } = req.params as { id: string };
+  return (await sprintService.getById(id))?.projectId ?? null;
+};
+const sprintPM = requireProjectAccess('manager', { resolve: sprintProject });
+const sprintMember = requireProjectAccess('viewer', { resolve: sprintProject });
+/** Converting a retro item creates a task: the schedule must be in the sprint's project */
+const sprintAndSchedulePM = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const project = await sprintProject(req);
+    const sched = await projectsOfSchedules([(req.body as any)?.scheduleId]);
+    return project && sched && sched[0] === project ? project : null;
+  },
+});
+/** DoR/DoD checklists belong to a task: its project's PM, and the body's project must match */
+const checklistTaskPM = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const { taskId } = req.params as { taskId: string };
+    const task = await scheduleService.findTaskById(taskId);
+    const projects = task ? await projectsOfSchedules([task.scheduleId]) : null;
+    const bodyProject = (req.body as any)?.projectId;
+    return projects && (!bodyProject || bodyProject === projects[0]) ? projects[0] : null;
+  },
+});
+const checklistPM = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const { checklistId } = req.params as { checklistId: string };
+    const cl: any = await taskChecklistRepository.findById(checklistId);
+    return cl?.projectId ?? null;
+  },
+});
 
 export async function sprintRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -80,7 +121,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // PUT /:id — update sprint
-  fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/:id', { preHandler: [requireScope('write'), sprintPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const body = updateSprintSchema.parse(request.body);
@@ -94,7 +135,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:id — delete sprint
-  fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id', { preHandler: [requireScope('write'), sprintPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       await sprintService.delete(id);
@@ -106,7 +147,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/tasks — add task to sprint
-  fastify.post('/:id/tasks', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/tasks', { preHandler: [requireScope('write'), sprintPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const { taskId, storyPoints } = request.body as { taskId: string; storyPoints?: number };
@@ -119,7 +160,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // PATCH /:id/tasks/:taskId/points — update story points for a sprint task
-  fastify.patch('/:id/tasks/:taskId/points', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.patch('/:id/tasks/:taskId/points', { preHandler: [requireScope('write'), sprintPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id, taskId } = request.params as { id: string; taskId: string };
       const { storyPoints } = request.body as { storyPoints: number };
@@ -132,7 +173,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:id/tasks/:taskId — remove task from sprint
-  fastify.delete('/:id/tasks/:taskId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id/tasks/:taskId', { preHandler: [requireScope('write'), sprintPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id, taskId } = request.params as { id: string; taskId: string };
       await sprintService.removeTask(id, taskId);
@@ -144,7 +185,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/start — start sprint
-  fastify.post('/:id/start', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/start', { preHandler: [requireScope('write'), sprintPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.startSprint(id);
@@ -160,7 +201,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/complete — complete sprint
-  fastify.post('/:id/complete', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/complete', { preHandler: [requireScope('write'), sprintPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.completeSprint(id);
@@ -216,7 +257,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/retrospective — AI-generated sprint retrospective
-  fastify.post('/:id/retrospective', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/retrospective', { preHandler: [requireScope('read'), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.getById(id);
@@ -324,7 +365,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   // =========================================================================
 
   // POST /:id/standups — submit/update daily standup
-  fastify.post('/:id/standups', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/standups', { preHandler: [ownWorkScope(), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const user = request.user!;
@@ -381,7 +422,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // PUT /:id/standups/:entryId — update own entry
-  fastify.put('/:id/standups/:entryId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/:id/standups/:entryId', { preHandler: [ownWorkScope(), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { entryId } = request.params as { id: string; entryId: string };
       const user = request.user!;
@@ -403,7 +444,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // DELETE /:id/standups/:entryId — delete own entry
-  fastify.delete('/:id/standups/:entryId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id/standups/:entryId', { preHandler: [ownWorkScope(), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { entryId } = request.params as { id: string; entryId: string };
       const user = request.user!;
@@ -435,7 +476,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // POST /:id/retro — add retro item
-  fastify.post('/:id/retro', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/retro', { preHandler: [ownWorkScope(), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const user = request.user!;
@@ -461,7 +502,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // DELETE /:id/retro/:itemId — delete own item
-  fastify.delete('/:id/retro/:itemId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id/retro/:itemId', { preHandler: [ownWorkScope(), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { itemId } = request.params as { id: string; itemId: string };
       const user = request.user!;
@@ -476,7 +517,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // POST /:id/retro/:itemId/vote — vote on item
-  fastify.post('/:id/retro/:itemId/vote', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/retro/:itemId/vote', { preHandler: [ownWorkScope(), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { itemId } = request.params as { id: string; itemId: string };
       const user = request.user!;
@@ -489,7 +530,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // DELETE /:id/retro/:itemId/vote — unvote
-  fastify.delete('/:id/retro/:itemId/vote', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id/retro/:itemId/vote', { preHandler: [ownWorkScope(), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { itemId } = request.params as { id: string; itemId: string };
       const user = request.user!;
@@ -516,7 +557,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // POST /:id/retro/:itemId/convert — convert action item to task
-  fastify.post('/:id/retro/:itemId/convert', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/retro/:itemId/convert', { preHandler: [requireScope('write'), sprintAndSchedulePM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { itemId } = request.params as { id: string; itemId: string };
       const user = request.user!;
@@ -586,7 +627,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // POST /checklists/:taskId/:type — initialize checklist from template
-  fastify.post('/checklists/:taskId/:type', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/checklists/:taskId/:type', { preHandler: [requireScope('write'), checklistTaskPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { taskId, type } = request.params as { taskId: string; type: string };
       if (type !== 'dor' && type !== 'dod') return reply.status(400).send({ error: 'Type must be dor or dod' });
@@ -604,7 +645,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // PUT /checklists/:checklistId — update checklist item
-  fastify.put('/checklists/:checklistId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/checklists/:checklistId', { preHandler: [requireScope('write'), checklistPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { checklistId } = request.params as { checklistId: string };
       const body = z.object({

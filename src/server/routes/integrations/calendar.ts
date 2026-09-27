@@ -1,4 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { scheduleService } from '../../services/ScheduleService';
+import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { googleCalendarAdapter } from '../../services/integrations/GoogleCalendarAdapter';
@@ -9,6 +11,15 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { config } from '../../config';
 import logger from '../../utils/logger';
+
+/** Putting a task in your own calendar: you must be on the task's project (read access is enough) */
+const taskMember = requireProjectAccess('viewer', {
+  resolve: async (req) => {
+    const taskId = (req.body as any)?.taskId ?? (req.params as any)?.taskId;
+    const task = taskId ? await scheduleService.findTaskById(taskId) : null;
+    return task ? projectsOfSchedules([task.scheduleId]) : null;
+  },
+});
 
 export async function googleCalendarRoutes(fastify: FastifyInstance) {
   // GET /callback — OAuth callback (called by Google redirect, NO auth — must be before addHook)
@@ -125,7 +136,7 @@ export async function googleCalendarRoutes(fastify: FastifyInstance) {
 
   // POST /link-task — link a task to a calendar event
   fastify.post('/link-task', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), taskMember],
     schema: { description: 'Push a task to Google Calendar', tags: ['calendar'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { taskId, name, startDate, endDate, dueDate, description } = z.object({
@@ -151,7 +162,7 @@ export async function googleCalendarRoutes(fastify: FastifyInstance) {
 
   // DELETE /unlink-task/:taskId — remove link
   fastify.delete('/unlink-task/:taskId', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), taskMember],
     schema: { description: 'Unlink a task from Google Calendar', tags: ['calendar'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { taskId } = request.params as { taskId: string };

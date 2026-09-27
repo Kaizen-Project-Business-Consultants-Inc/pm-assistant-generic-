@@ -1,4 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { checkProjectRole, projectsOfSchedules } from '../../middleware/requireProjectAccess';
+import { databaseService } from '../../database/connection';
 import { z } from 'zod';
 import { dagWorkflowService } from '../../services/DagWorkflowService';
 import { scheduleService } from '../../services/ScheduleService';
@@ -56,12 +58,58 @@ const resumeSchema = z.object({
 
 // ── Routes ─────────────────────────────────────────────────────────────────
 
+/**
+ * Workflows (Sep 2026 rules): a workflow that belongs to a project is created, changed,
+ * switched on/off, run and resumed by that project's Manager/Owner. Organisation-wide
+ * workflows (no project) are for admins/PMO. Running a workflow on a task also needs the
+ * PM role on that task's project.
+ */
+async function workflowProject(workflowId: string): Promise<{ found: boolean; projectId: string | null }> {
+  const rows = await databaseService.query<{ project_id: string | null }>('SELECT project_id FROM workflow_definitions WHERE id = ?', [workflowId]);
+  return rows.length ? { found: true, projectId: rows[0].project_id } : { found: false, projectId: null };
+}
+async function requirePMOrOrgAdmin(request: FastifyRequest, reply: FastifyReply, projectId: string | null | undefined) {
+  if (!projectId) {
+    if (['admin', 'pmo'].includes(request.user!.role)) return;
+    return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can manage organisation-wide workflows.' });
+  }
+  const d = await checkProjectRole(request, projectId, 'manager');
+  if (!d.ok) return reply.status(d.status).send(d.body);
+}
+/** Create / generate: the project named in the body */
+const bodyProjectPM = async (request: FastifyRequest, reply: FastifyReply) =>
+  requirePMOrOrgAdmin(request, reply, (request.body as any)?.projectId ?? null);
+/** Change / toggle / delete / run: the workflow's own project */
+const workflowPM = async (request: FastifyRequest, reply: FastifyReply) => {
+  const wf = await workflowProject((request.params as { id: string }).id);
+  if (!wf.found) return reply.status(404).send({ error: 'Workflow not found' });
+  await requirePMOrOrgAdmin(request, reply, wf.projectId);
+  if (reply.sent) return;
+  // Running it on a task: the caller must also be PM of that task's project
+  const body = request.body as { entityType?: string; entityId?: string } | undefined;
+  if (request.url.endsWith('/trigger') && (body?.entityType ?? 'task') === 'task' && body?.entityId) {
+    const task = await scheduleService.findTaskById(body.entityId);
+    const projects = task ? await projectsOfSchedules([task.scheduleId]) : null;
+    if (!projects) return reply.status(404).send({ error: 'Task not found' });
+    if (wf.projectId && projects[0] !== wf.projectId) return reply.status(400).send({ error: 'mismatch', message: "That task isn't in this workflow's project." });
+    const d = await checkProjectRole(request, projects[0], 'manager');
+    if (!d.ok) return reply.status(d.status).send(d.body);
+  }
+};
+/** Resume a paused run: its workflow's project */
+const executionPM = async (request: FastifyRequest, reply: FastifyReply) => {
+  const rows = await databaseService.query<{ workflow_id: string }>('SELECT workflow_id FROM workflow_executions WHERE id = ?', [(request.params as { id: string }).id]);
+  if (!rows.length) return reply.status(404).send({ error: 'Execution not found' });
+  const wf = await workflowProject(rows[0].workflow_id);
+  await requirePMOrOrgAdmin(request, reply, wf.projectId);
+};
+
 export async function workflowRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST /api/v1/workflows/generate — AI-generate workflow from natural language
   fastify.post('/generate', {
-    preHandler: [requireScope('write'), requireFeature('workflows')],
+    preHandler: [requireScope('write'), requireFeature('workflows'), bodyProjectPM],
     schema: { description: 'Generate a workflow definition from natural language', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -143,7 +191,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/workflows — create definition
   fastify.post('/', {
-    preHandler: [requireScope('write'), requireFeature('workflows')],
+    preHandler: [requireScope('write'), requireFeature('workflows'), bodyProjectPM],
     schema: { description: 'Create a workflow definition', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -165,7 +213,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
 
   // PUT /api/v1/workflows/:id — update definition
   fastify.put('/:id', {
-    preHandler: [requireScope('write'), requireFeature('workflows')],
+    preHandler: [requireScope('write'), requireFeature('workflows'), workflowPM],
     schema: { description: 'Update a workflow definition', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -185,7 +233,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/v1/workflows/:id — delete definition
   fastify.delete('/:id', {
-    preHandler: [requireScope('write'), requireFeature('workflows')],
+    preHandler: [requireScope('write'), requireFeature('workflows'), workflowPM],
     schema: { description: 'Delete a workflow definition', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -201,7 +249,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
 
   // PATCH /api/v1/workflows/:id/toggle — enable/disable
   fastify.patch('/:id/toggle', {
-    preHandler: [requireScope('write'), requireFeature('workflows')],
+    preHandler: [requireScope('write'), requireFeature('workflows'), workflowPM],
     schema: { description: 'Toggle workflow enabled/disabled', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -221,7 +269,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/workflows/:id/trigger — manual trigger
   fastify.post('/:id/trigger', {
-    preHandler: [requireScope('write'), requireFeature('workflows')],
+    preHandler: [requireScope('write'), requireFeature('workflows'), workflowPM],
     schema: { description: 'Manually trigger a workflow', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -275,7 +323,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/workflows/executions/:id/resume — resume waiting execution
   fastify.post('/executions/:id/resume', {
-    preHandler: [requireScope('write'), requireFeature('workflows')],
+    preHandler: [requireScope('write'), requireFeature('workflows'), executionPM],
     schema: { description: 'Resume a waiting workflow execution', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

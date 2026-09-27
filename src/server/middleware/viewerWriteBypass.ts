@@ -29,3 +29,17 @@ export function viewerWriteBypass(writeRole: 'viewer' | 'manager' = 'manager') {
     }
   };
 }
+
+/**
+ * Scope check for a person's OWN work on a project — their standups, retro notes and
+ * votes, time entries, the RAID items and action items assigned to them (Sep 2026 rules).
+ * Viewers and team members have only the 'read' scope, so they could never post a standup;
+ * for them 'read' is enough here. Pair it with a project check (who may act) and let the
+ * handler/service enforce "your own item only".
+ */
+export function ownWorkScope() {
+  return async (request: FastifyRequest, reply: FastifyReply) => {
+    const role = request.user?.role;
+    await requireScope(role === 'viewer' || role === 'team_member' ? 'read' : 'write')(request, reply);
+  };
+}

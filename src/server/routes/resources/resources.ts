@@ -1,11 +1,11 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { parse as csvParse } from 'csv-parse/sync';
 import { resourceService, normalizeSkills } from '../../services/ResourceService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
-import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { userService } from '../../services/UserService';
 import { scheduleService } from '../../services/ScheduleService';
 import { emailService } from '../../services/EmailService';
@@ -64,6 +64,25 @@ const createAssignmentSchema = z.object({
   hoursPerWeek: z.number().positive(),
   startDate: z.string().date(),
   endDate: z.string().date(),
+});
+
+/**
+ * Assigning people to a project's tasks (Sep 2026 rules): that project's Manager/Owner.
+ * The resource pool itself (people, rates, import) is organisation data and unchanged.
+ */
+const bodyTaskPM = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const b = req.body as { taskId?: string; scheduleId?: string } | undefined;
+    const task = b?.taskId ? await scheduleService.findTaskById(b.taskId) : null;
+    if (!task || task.scheduleId !== b?.scheduleId) return null; // the task must be in that schedule
+    return projectsOfSchedules([task.scheduleId]);
+  },
+});
+const assignmentPM = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const rows = await databaseService.query<{ schedule_id: string }>('SELECT schedule_id FROM resource_assignments WHERE id = ?', [(req.params as { id: string }).id]);
+    return rows[0] ? projectsOfSchedules([rows[0].schedule_id]) : null;
+  },
 });
 
 export async function resourceRoutes(fastify: FastifyInstance) {
@@ -296,14 +315,14 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /resources/assignments/:scheduleId
-  fastify.get('/assignments/:scheduleId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
+  fastify.get('/assignments/:scheduleId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
     const { scheduleId } = request.params as { scheduleId: string };
     const assignments = await resourceService.findAssignmentsBySchedule(scheduleId);
     return { assignments };
   });
 
   // POST /resources/assignments
-  fastify.post('/assignments', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/assignments', { preHandler: [requireScope('write'), requireFeature('resources'), bodyTaskPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const data = createAssignmentSchema.parse(request.body);
       const { assignment, warnings } = await resourceService.createAssignment(data);
@@ -315,7 +334,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /resources/assignments/:id
-  fastify.delete('/assignments/:id', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/assignments/:id', { preHandler: [requireScope('write'), requireFeature('resources'), assignmentPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
     const deleted = await resourceService.deleteAssignment(id);
     if (!deleted) return reply.status(404).send({ error: 'Assignment not found' });
@@ -346,7 +365,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 
   // POST /resources/quick-assign (#7) - Quick assign resource to task
-  fastify.post('/quick-assign', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/quick-assign', { preHandler: [requireScope('write'), requireFeature('resources'), bodyTaskPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = z.object({
         resourceId: z.string().min(1),

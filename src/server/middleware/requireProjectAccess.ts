@@ -71,7 +71,15 @@ type Decision = { ok: true; membership?: Membership } | { ok: false; status: num
  * Shared by the middleware and by handlers that allow item owners (RAID, action items).
  */
 export async function checkProjectRole(request: FastifyRequest, projectId: string, minRole: ProjectRole): Promise<Decision> {
-  const user = request.user!;
+  return checkProjectRoleFor(request.user!, projectId, minRole);
+}
+
+/** The same rule for callers without a web request (the AI tool runner, agents). */
+export async function checkProjectRoleFor(
+  user: { userId: string; role: string; isGuest?: boolean },
+  projectId: string,
+  minRole: ProjectRole,
+): Promise<Decision> {
   // Global role bypasses (guests never get global bypass)
   if (!user.isGuest && GLOBAL_FULL_ACCESS.includes(user.role)) {
     return { ok: true, membership: { projectId, userId: user.userId, role: 'owner' } as Membership };

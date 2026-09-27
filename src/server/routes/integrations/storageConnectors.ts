@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireTier } from '../../middleware/requireTier';
@@ -13,6 +14,14 @@ const VALID_AUTH_PROVIDERS: StorageProvider[] = ['onedrive', 'sharepoint', 'goog
 const requireConnectorTier = requireTier('consultant_pro', 'sme', 'enterprise');
 
 // OAuth callback — top-level route, no auth (called by provider redirect)
+/** Storage connectors are project settings: its Manager/Owner; the connector must be this project's */
+const connectorInProject = async (request: FastifyRequest, reply: FastifyReply) => {
+  const { projectId, id } = request.params as { projectId: string; id?: string };
+  if (!id) return;
+  const c: any = await storageConnectorRepository.findById(id);
+  if (!c || c.projectId !== projectId) return reply.status(404).send({ error: 'Connector not found' });
+};
+
 export async function storageConnectorCallbackRoutes(fastify: FastifyInstance) {
   // Generic callback: GET /storage-connectors/:provider/callback
   for (const provider of VALID_CALLBACK_PROVIDERS) {
@@ -62,7 +71,7 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
 
   // POST /:projectId/storage-connectors/:provider/auth — initiate OAuth flow (tier-gated)
   fastify.post('/:projectId/storage-connectors/:provider/auth', {
-    preHandler: [requireScope('write'), requireConnectorTier],
+    preHandler: [requireScope('write'), requireConnectorTier, requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { projectId, provider } = request.params as { projectId: string; provider: string };
@@ -106,7 +115,7 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
   });
 
   // PUT /:projectId/storage-connectors/:id/folders — set sync folders
-  fastify.put('/:projectId/storage-connectors/:id/folders', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/:projectId/storage-connectors/:id/folders', { preHandler: [requireScope('write'), requireProjectAccess('manager'), connectorInProject] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { projectId: string; id: string };
     const { folderIds } = request.body as { folderIds: string[] };
 
@@ -119,7 +128,7 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:projectId/storage-connectors/:id/sync — trigger manual sync
-  fastify.post('/:projectId/storage-connectors/:id/sync', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:projectId/storage-connectors/:id/sync', { preHandler: [requireScope('write'), requireProjectAccess('manager'), connectorInProject] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { projectId: string; id: string };
 
     try {
@@ -132,7 +141,7 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
   });
 
   // PUT /:projectId/storage-connectors/:id — update settings
-  fastify.put('/:projectId/storage-connectors/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/:projectId/storage-connectors/:id', { preHandler: [requireScope('write'), requireProjectAccess('manager'), connectorInProject] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { projectId: string; id: string };
     const body = request.body as {
       displayName?: string;
@@ -154,7 +163,7 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:projectId/storage-connectors/:id — disconnect
-  fastify.delete('/:projectId/storage-connectors/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:projectId/storage-connectors/:id', { preHandler: [requireScope('write'), requireProjectAccess('manager'), connectorInProject] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { projectId: string; id: string };
 
     const connector = await storageConnectorRepository.findById(id);

@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -17,6 +18,11 @@ const feedbackSchema = z.object({
   outcome: z.enum(['effective', 'partially_effective', 'ineffective', 'made_worse', 'rolled_back']),
   comment: z.string().max(2000).optional(),
 });
+
+/** An agent proposal changes its project: approve / reject / execute / roll back need its Manager/Owner */
+const proposalProject = async (req: FastifyRequest) => (await actionProposalService.getById((req.params as { id: string }).id))?.projectId ?? null;
+const proposalPMGate = requireProjectAccess('manager', { resolve: proposalProject });
+const proposalMember = requireProjectAccess('viewer', { resolve: proposalProject });
 
 export async function proposalRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -62,7 +68,7 @@ export async function proposalRoutes(fastify: FastifyInstance) {
 
   // Approve proposal
   fastify.post('/:id/approve', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), proposalPMGate],
     schema: { description: 'Approve an agent proposal', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -88,7 +94,7 @@ export async function proposalRoutes(fastify: FastifyInstance) {
 
   // Reject proposal
   fastify.post('/:id/reject', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), proposalPMGate],
     schema: { description: 'Reject an agent proposal', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -114,7 +120,7 @@ export async function proposalRoutes(fastify: FastifyInstance) {
 
   // Execute approved proposal
   fastify.post('/:id/execute', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), proposalPMGate],
     schema: { description: 'Execute an approved agent proposal', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
@@ -133,7 +139,7 @@ export async function proposalRoutes(fastify: FastifyInstance) {
 
   // Rollback executed proposal
   fastify.post('/:id/rollback', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), proposalPMGate],
     schema: { description: 'Rollback an executed agent proposal', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
@@ -159,7 +165,7 @@ export async function proposalRoutes(fastify: FastifyInstance) {
 
   // Submit feedback on executed proposal
   fastify.post('/:id/feedback', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), proposalMember],
     schema: { description: 'Submit feedback on an executed agent proposal', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

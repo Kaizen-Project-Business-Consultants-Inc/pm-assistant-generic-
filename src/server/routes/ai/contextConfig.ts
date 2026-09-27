@@ -1,10 +1,25 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { checkProjectRole } from '../../middleware/requireProjectAccess';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { z } from 'zod';
 import { contextConfigService, type ConfigScope, CONFIG_KEY_SCHEMAS } from '../../services/context/ContextConfigService';
 
 const scopeSchema = z.enum(['org', 'project', 'user']);
+
+/** Who may change AI context settings at each scope (Sep 2026 rules) */
+async function contextScopeGate(request: FastifyRequest, reply: FastifyReply) {
+  const { scope, scopeId } = request.params as { scope: string; scopeId: string };
+  const user = request.user!;
+  if (scope === 'project') {
+    const d = await checkProjectRole(request, scopeId, 'manager');
+    if (!d.ok) return reply.status(d.status).send(d.body);
+  } else if (scope === 'org') {
+    if (!['admin', 'pmo'].includes(user.role)) return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can change organisation-wide AI settings.' });
+  } else if (scope === 'user') {
+    if (scopeId !== user.userId) return reply.status(403).send({ error: 'Forbidden', message: 'You can only change your own AI settings.' });
+  }
+}
 
 export async function contextConfigRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -53,7 +68,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
 
   // PUT /api/v1/context/config/:scope/:scopeId — update config
   fastify.put('/config/:scope/:scopeId', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), contextScopeGate],
     schema: { description: 'Update AI context config at a scope', tags: ['context'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -100,7 +115,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/context/config/:scope/:scopeId/lock — lock a key
   fastify.post('/config/:scope/:scopeId/lock', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), contextScopeGate],
     schema: { description: 'Lock a config key (admin only)', tags: ['context'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

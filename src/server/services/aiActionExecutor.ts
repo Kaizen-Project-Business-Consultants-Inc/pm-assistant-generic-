@@ -1,6 +1,7 @@
 // C:\Users\gerog\Documents\pm-assistant-generic\src\server\services\aiActionExecutor.ts
 
 import { projectService, type CreateProjectData, type Project } from './ProjectService';
+import { checkProjectRoleFor } from '../middleware/requireProjectAccess';
 import { scheduleService, type CreateTaskData, type Task, DependencyValidationError } from './ScheduleService';
 import { userService } from './UserService';
 import { auditLedgerService } from './AuditLedgerService';
@@ -22,7 +23,44 @@ export interface ActionContext {
   userRole: string;
 }
 
+/** Tools that change an existing project's data */
+const AI_WRITE_TOOLS = new Set([
+  'create_task', 'update_task', 'delete_task', 'update_project', 'reschedule_task',
+  'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies',
+]);
+
 export class AIActionExecutor {
+  /** Which project a tool call touches: projectId, else via scheduleId, else via taskId */
+  private async projectsForTool(input: Record<string, any>): Promise<string[] | null> {
+    const projects = new Set<string>();
+    if (input.projectId) projects.add(String(input.projectId));
+    if (input.scheduleId) {
+      const sch = await scheduleService.findById(String(input.scheduleId));
+      if (!sch) return null;
+      projects.add(sch.projectId);
+    }
+    for (const key of ['taskId', 'dependsOnTaskId', 'dependencyId', 'predecessorId']) {
+      if (!input[key]) continue;
+      const t = await scheduleService.findTaskById(String(input[key]));
+      if (!t) return null;
+      const sch = await scheduleService.findById(t.scheduleId);
+      if (!sch) return null;
+      projects.add(sch.projectId);
+    }
+    return projects.size ? [...projects] : null;
+  }
+
+  private async checkProjectWrite(toolName: string, input: Record<string, any>, context: ActionContext): Promise<ActionResult | null> {
+    const projects = await this.projectsForTool(input);
+    const refuse = (summary: string): ActionResult => ({ success: false, toolName, summary, error: 'Not allowed' });
+    if (!projects) return refuse("I couldn't tell which project this change is for, so I didn't make it.");
+    if (projects.length > 1) return refuse("That change would link items from different projects, so I didn't make it.");
+    const d = await checkProjectRoleFor({ userId: context.userId, role: context.userRole }, projects[0], 'manager');
+    if (!d.ok) return refuse("Only the project's Manager or Owner can change it, so I didn't make that change.");
+    return null;
+  }
+
+
   async execute(toolName: string, input: Record<string, any>, context: ActionContext): Promise<ActionResult> {
     try {
       // Policy gate for all AI actions
@@ -52,6 +90,14 @@ export class AIActionExecutor {
           source: 'api',
         }).catch(err => deadLetterService.capture('audit.append', { action: `ai.action.${toolName}`, entityId: input.taskId || input.projectId }, err));
         return blocked;
+      }
+
+      // Project permission (Sep 2026 rules): the AI acts as the signed-in user, so a tool that
+      // changes a project needs that user to be the project's Manager/Owner — exactly as if
+      // they clicked it themselves. Creating a brand-new project is allowed (its creator owns it).
+      if (AI_WRITE_TOOLS.has(toolName)) {
+        const denied = await this.checkProjectWrite(toolName, input, context);
+        if (denied) return denied;
       }
 
       let result: ActionResult;

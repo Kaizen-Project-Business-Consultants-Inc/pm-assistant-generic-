@@ -9,11 +9,16 @@ import { join, relative, sep } from 'path';
  * checkEntityProjectAccess / an admin role check), or be listed below:
  *  - NON_PROJECT: not project data (sign-in, your own profile, billing, org admin, global
  *    templates, read-only analysis that happens to be a POST)
- *  - PHASE_2: project data still to be gated — the user chose a two-phase rollout. Remove a
- *    route from this list when it is gated; this test then keeps it gated.
+ *  - NON_PROJECT also covers: your own chat conversations, creating a new project, AI memory
+ *    ("dreaming"), knowledge-base usage (lessons search/feedback), the public portal comment
+ *    (token-scoped), personal calendar sync, formatting a report you already hold, and the
+ *    organisation's resource pool.
+ *  - PHASE_2: empty — both phases are done. A route here would be project data not yet gated.
+ * The AI chat and alert "execute" routes are gated inside AIActionExecutor.checkProjectWrite;
+ * they carry a `checkProjectRoleFor` comment just above the route, which this test accepts.
  * A new write route that is neither gated nor listed fails the build.
  */
-const GATES = ["requireProjectAccess", "viewerWriteBypass", "bodySchedule", "bodyUpdateSchedules", "proposalPM", "requireWorkflowPM", "requireCRPM", "projectAndSchedule", "checkEntityProjectAccess", "requireCRProjectAccess", "checkProjectRole", "raidItemGate", "requireRole(", "requireAdmin", "requireSuperAdmin"];
+const GATES = ["requireProjectAccess", "viewerWriteBypass", "bodySchedule", "bodyUpdateSchedules", "proposalPM", "requireWorkflowPM", "requireCRPM", "projectAndSchedule", "checkEntityProjectAccess", "requireCRProjectAccess", "checkProjectRole", "raidItemGate", "requireRole(", "requireAdmin", "requireSuperAdmin", "sprintPM", "sprintMember", "sprintAndSchedulePM", "checklistTaskPM", "checklistPM", "createPM", "actionItemGate", "analyzePM", "analysisPM", "analysisMember", "sendToRaidPM", "attachmentGate", "linkPM", "lessonPM", "orgAdminOnly", "bodyProjectPM", "workflowPM", "executionPM", "bodyTaskPM", "assignmentPM", "requestPM", "resourceManagerOnly", "connectorInProject", "taskMember", "extractPM", "proposalPMGate", "proposalMember", "scenarioPM", "contextScopeGate"];
 const NON_PROJECT: Record<string, string[]> = {
   "admin/waitlist.ts": [
     "POST /"
@@ -225,150 +230,45 @@ const NON_PROJECT: Record<string, string[]> = {
   ],
   "scheduling/monteCarlo.ts": [
     "POST /:scheduleId/simulate"
-  ]
-};
-const PHASE_2: Record<string, string[]> = {
-  "agent/alerts.ts": [
-    "POST /execute-action"
-  ],
-  "agent/proposals.ts": [
-    "POST /:id/approve",
-    "POST /:id/reject",
-    "POST /:id/execute",
-    "POST /:id/rollback",
-    "POST /:id/feedback"
   ],
   "ai/aiChat.ts": [
-    "POST /message",
-    "POST /stream",
     "DELETE /conversations/:id",
-    "POST /create-project",
-    "POST /extract-tasks"
-  ],
-  "ai/contextConfig.ts": [
-    "PUT /config/:scope/:scopeId",
-    "POST /config/:scope/:scopeId/lock"
+    "POST /create-project"
   ],
   "ai/dreaming.ts": [
     "POST /proposals/:id/approve",
     "POST /proposals/:id/reject",
     "POST /trigger"
   ],
-  "ai/intelligence.ts": [
-    "POST /scenarios",
-    "DELETE /scenarios/:id"
-  ],
-  "collaboration/fileAttachments.ts": [
-    "POST /:entityType/:entityId",
-    "POST /:id/version",
-    "DELETE /:id"
-  ],
   "collaboration/lessonsLearned.ts": [
-    "POST /extract/:projectId",
-    "POST /patterns",
-    "POST /mitigations",
-    "POST /",
-    "POST /similar",
-    "POST /seed",
-    "PUT /:id",
-    "PATCH /:id/elevate",
-    "PATCH /:id/status",
     "POST /:id/applied",
-    "PATCH /:id/effectiveness",
     "POST /:id/feedback",
-    "DELETE /:id"
-  ],
-  "collaboration/meetingActionItems.ts": [
-    "POST /",
-    "PUT /:id",
-    "POST /:id/complete",
-    "POST /:id/reopen",
-    "POST /:id/cancel"
-  ],
-  "collaboration/meetingIntelligence.ts": [
-    "POST /analyze",
-    "POST /:analysisId/apply",
-    "POST /upload-transcript",
-    "POST /:analysisId/check-raid-duplicates",
-    "POST /:analysisId/send-to-raid"
+    "POST /mitigations",
+    "POST /patterns",
+    "POST /similar"
   ],
   "collaboration/portal.ts": [
-    "POST /view/:token/comment",
-    "PUT /links/:id",
-    "DELETE /links/:id"
-  ],
-  "collaboration/sprints.ts": [
-    "PUT /:id",
-    "DELETE /:id",
-    "POST /:id/tasks",
-    "PATCH /:id/tasks/:taskId/points",
-    "DELETE /:id/tasks/:taskId",
-    "POST /:id/start",
-    "POST /:id/complete",
-    "POST /:id/standups",
-    "PUT /:id/standups/:entryId",
-    "DELETE /:id/standups/:entryId",
-    "POST /:id/retro",
-    "DELETE /:id/retro/:itemId",
-    "POST /:id/retro/:itemId/vote",
-    "DELETE /:id/retro/:itemId/vote",
-    "POST /:id/retro/:itemId/convert",
-    "POST /checklists/:taskId/:type",
-    "PUT /checklists/:checklistId"
-  ],
-  "collaboration/workflows.ts": [
-    "POST /generate",
-    "POST /",
-    "PUT /:id",
-    "DELETE /:id",
-    "PATCH /:id/toggle",
-    "POST /:id/trigger",
-    "POST /executions/:id/resume"
+    "POST /view/:token/comment"
   ],
   "integrations/calendar.ts": [
-    "POST /sync",
-    "POST /link-task",
-    "DELETE /unlink-task/:taskId",
+    "DELETE /disconnect",
     "POST /settings",
-    "DELETE /disconnect"
-  ],
-  "integrations/storageConnectors.ts": [
-    "POST /:projectId/storage-connectors/:provider/auth",
-    "PUT /:projectId/storage-connectors/:id/folders",
-    "POST /:projectId/storage-connectors/:id/sync",
-    "PUT /:projectId/storage-connectors/:id",
-    "DELETE /:projectId/storage-connectors/:id"
-  ],
-  "reporting/raidReports.ts": [
-    "POST /generate",
-    "POST /schedule",
-    "DELETE /schedule/:id"
+    "POST /sync"
   ],
   "reporting/statusReports.ts": [
-    "POST /render",
     "POST /export/docx",
-    "POST /email"
-  ],
-  "resources/resourceRequests.ts": [
-    "POST /",
-    "PUT /:id",
-    "POST /:id/submit",
-    "POST /:id/approve",
-    "POST /:id/reject",
-    "POST /:id/fulfill",
-    "POST /:id/cancel"
+    "POST /render"
   ],
   "resources/resources.ts": [
-    "POST /",
-    "PUT /:id",
     "DELETE /:id",
+    "POST /",
     "POST /bulk-delete",
-    "POST /assignments",
-    "DELETE /assignments/:id",
-    "POST /quick-assign",
-    "POST /import"
+    "POST /import",
+    "PUT /:id"
   ]
 };
+// Phase 2 done (Sep 2026): every project write route is now gated. Keep this empty.
+const PHASE_2: Record<string, string[]> = {};
 
 const ROUTES = join(__dirname, '..', '..', 'routes');
 function files(dir: string): string[] {
@@ -389,7 +289,8 @@ function ungated(): Record<string, string[]> {
     while ((m = re.exec(s))) {
       const next = s.indexOf('fastify.', m.index + m[0].length);
       const body = s.slice(m.index, next > 0 ? next : s.length).slice(0, 6000);
-      if (GATES.some(g => body.includes(g))) continue;
+      const above = s.slice(Math.max(0, m.index - 200), m.index);
+      if (GATES.some(g => body.includes(g)) || above.includes('checkProjectRoleFor')) continue;
       (out[rel] ??= []).push(`${m[1].toUpperCase()} ${m[2]}`);
     }
   }
@@ -406,6 +307,15 @@ describe('every project write route has a project check', () => {
       for (const r of routes) if (!allowed.has(r)) unexpected.push(`${file}: ${r}`);
     }
     expect(unexpected).toEqual([]);
+  });
+
+  it('Phase 2 is empty — every project area is gated', () => {
+    expect(Object.keys(PHASE_2)).toEqual([]);
+    for (const f of ['collaboration/sprints.ts', 'collaboration/meetingActionItems.ts', 'collaboration/meetingIntelligence.ts',
+      'collaboration/fileAttachments.ts', 'collaboration/workflows.ts', 'resources/resourceRequests.ts',
+      'integrations/storageConnectors.ts', 'agent/proposals.ts', 'ai/intelligence.ts', 'ai/contextConfig.ts', 'reporting/raidReports.ts']) {
+      expect(found[f] ?? []).toEqual([]);
+    }
   });
 
   it('Phase 1 areas stay gated (tasks, schedules, bulk tools, imports, RAID, change requests, calendars, members)', () => {
