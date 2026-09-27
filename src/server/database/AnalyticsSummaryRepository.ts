@@ -11,6 +11,13 @@ export interface ProjectRow {
   progress: number | null;
 }
 
+/**
+ * "Overdue" means the same thing here as in the Morning Briefing: a leaf task (not a
+ * phase summary) past its end date, in a project that is not archived. The dashboard
+ * tile said 8 while the briefing said 6 because this counted summaries and archived work.
+ */
+const LEAF_ONLY = 'AND st.id NOT IN (SELECT DISTINCT parent_task_id FROM tasks WHERE parent_task_id IS NOT NULL)';
+
 class AnalyticsSummaryRepository {
   async findProjects(condition: string, params: unknown[]): Promise<ProjectRow[]> {
     return databaseService.query<ProjectRow>(
@@ -19,7 +26,7 @@ class AnalyticsSummaryRepository {
               COALESCE(budget_spent, 0)     AS budget_spent,
               start_date, end_date, 0 AS progress
        FROM projects p
-       WHERE ${condition}`,
+       WHERE ${condition} AND p.archived_at IS NULL`,
       params,
     );
   }
@@ -44,7 +51,8 @@ class AnalyticsSummaryRepository {
        JOIN schedules s ON s.id = st.schedule_id
        WHERE s.project_id IN (${placeholders})
          AND st.status NOT IN ('completed','done','cancelled')
-         AND st.end_date < NOW()`,
+         AND st.end_date < CURDATE()
+         ${LEAF_ONLY}`,
       [...projectIds],
     );
     return Number(rows[0]?.overdue_count) || 0;
@@ -90,7 +98,8 @@ class AnalyticsSummaryRepository {
        JOIN schedules s ON s.id = st.schedule_id
        WHERE s.project_id IN (${placeholders})
          AND st.status NOT IN ('completed','done','cancelled')
-         AND st.end_date < ?`,
+         AND st.end_date < DATE(?)
+         ${LEAF_ONLY}`,
       [...projectIds, date],
     );
     return Number(rows[0]?.overdue_count) || 0;

@@ -232,6 +232,10 @@ Each task tracks `budget_allocated` (planned budget) and `actual_cost` (spent to
 
 Budget fields are also available in the Task Form modal. For summary tasks, budget rolls up automatically from children.
 
+### What "overdue" means (dashboard tile, drill-in, briefing)
+
+One definition everywhere (Sep 2026): a **leaf** task (not a phase summary) that is not completed, done or cancelled, whose end date is **before today** (calendar day, `CURDATE()`), in a project that is **not archived**. The Overdue Tasks tile (`AnalyticsSummaryRepository.getOverdueCount`, and its week-ago trend), the tile's drill-in list (`GET /dashboard/overdue-tasks`) and the Morning Briefing all use it. Previously the tile always showed 0 — the client read `.tasks` off the `{ summary }` wrapper (now unwrapped once in `apiService.getAnalyticsSummary`) — and the server counted summaries and archived projects (8 vs the briefing's 6). The analytics portfolio now also leaves archived projects out.
+
 ### Morning Briefing by project
 
 `GET /api/v1/briefing/daily` (DailyBriefingService) returns, besides the flat item lists, `projects[]`: every non-archived, non-demo project the user can see (member projects, or all for admin/pmo/executive and `scope=portfolio`), with **true counts** (`overdue`, `dueSoon` = today + 7 days, `blocked` = distinct tasks with a late unfinished FS predecessor, `openIssues`, `overdueActions`) computed by grouped COUNT queries with the same role filters as the lists, plus `nextMilestone` (first open milestone on or after today). Item lists are capped at 50 each (they were 10–20); blocked RAID items now carry `scheduleId`.

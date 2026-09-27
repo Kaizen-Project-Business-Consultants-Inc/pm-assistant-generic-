@@ -2877,7 +2877,9 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   async getAnalyticsSummary(scope?: 'portfolio') {
     const params = scope ? `?scope=${scope}` : '';
     const response = await this.api.get(`/analytics/summary${params}`);
-    return response.data;
+    // The server wraps it as { summary }; three dashboard widgets read `.tasks` straight off
+    // the result and showed 0 overdue. Unwrap once here so every caller gets the summary.
+    return response.data?.summary ?? response.data;
   }
 
   async getDashboardOverdueTasks(scope?: 'portfolio') {

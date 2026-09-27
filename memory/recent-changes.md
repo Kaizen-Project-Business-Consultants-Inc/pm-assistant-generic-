@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-27 (dashboard "0 Overdue Tasks")
+
+- Tile always 0: `/analytics/summary` returns `{ summary }`; DashboardPM, ActionCenterPM and PrioritiesStripWidget read `.tasks`/`.portfolio` off the wrapper. Fixed once in `apiService.getAnalyticsSummary` (unwrap). Also affected: the "N projects at risk" subtitle and Action Center summary.
+- Server said 8 vs briefing 6: analytics counted phase summaries + archived projects, `NOW()` not `CURDATE()`. Aligned the tile, its trend and the `/dashboard/overdue-tasks` drill-in with the briefing; analytics `findProjects` excludes archived.
+
 ## 2026-09-27 (Morning Briefing by project; task links jump to the row)
 
 - User (consultant, several clients): mixed briefing is "jumbled"; wanted to pick a project so nothing scrolls. Agreed design after push-back on a plain dropdown (hides the other projects): **All projects** default + **One project at a time** list/detail; list always shows every project with dot + counts; opens on the most urgent project each morning. Mock: claude.ai artifact XGTUrp76rftzfsr5HD5NWH.

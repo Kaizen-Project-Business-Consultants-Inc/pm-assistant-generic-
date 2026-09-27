@@ -29,13 +29,15 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const rows = await databaseService.query<any>(
       `SELECT t.id, t.name, s.project_id AS projectId, p.name AS projectName,
               t.assigned_to AS assignedTo, t.end_date AS dueDate, t.priority,
-              DATEDIFF(NOW(), t.end_date) AS overdueDays
+              DATEDIFF(CURDATE(), t.end_date) AS overdueDays
        FROM tasks t
        JOIN schedules s ON t.schedule_id = s.id
-       JOIN projects p ON s.project_id = p.id
+       JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
        ${memberJoin}
        ${viewerJoin}
-       WHERE t.status NOT IN ('completed','done','cancelled') AND t.end_date < NOW()
+       WHERE t.status NOT IN ('completed','done','cancelled') AND t.end_date < CURDATE()
+         -- same "overdue" as the Morning Briefing and the tile: leaf tasks only
+         AND t.id NOT IN (SELECT DISTINCT parent_task_id FROM tasks WHERE parent_task_id IS NOT NULL)
        ORDER BY overdueDays DESC
        LIMIT 50`,
       params
