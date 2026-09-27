@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-27 (invited team members blocked by "Your trial has ended" — ON PROD since 24 Sep)
+
+- Found by the Phase-1 live test. Subscription check is per USER; org.ts direct invites set members to 'none'; invite links copied tier/status but not trial_ends_at. Per-seat payment copies plan to members present at payment time only. Fix: `utils/memberSubscription.ts` used by org.ts (both paths) + InviteService; `requireActiveSubscription` falls back to the org for non-owner members; control-plane migration 120 repairs members (staging dry run: 0 rows). Prod dry run needed before deploy (Claude can't read prod DB without the user's OK).
+
 ## 2026-09-27 (permissions Phase 1 — only Manager/Owner change project data)
 
 - User rules + decisions in auto-memory `permissions-audit-2026-09-27.md`. Editor removed (ranked = viewer; T057 renames stored editors; Team tab offers Viewer/Manager/Owner-if-owner). All 50 `requireProjectAccess('editor')` → manager; in-handler editor checks → manager (own time entries stay any-member).

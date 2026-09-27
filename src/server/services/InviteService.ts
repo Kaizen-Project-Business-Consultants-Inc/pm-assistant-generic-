@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { memberSubscriptionFromOrg } from '../utils/memberSubscription';
 import { v4 as uuidv4 } from 'uuid';
 import { inviteTokenRepository, InviteToken } from '../database/InviteTokenRepository';
 import { organizationRepository } from '../database/OrganizationRepository';
@@ -105,10 +106,7 @@ export class InviteService {
     // For non-viewer roles, sync subscription tier/status from org
     if (invite.role !== 'viewer') {
       const org = await organizationRepository.findById(invite.organizationId);
-      if (org) {
-        updateData.subscriptionTier = org.subscriptionTier;
-        updateData.subscriptionStatus = org.subscriptionStatus;
-      }
+      if (org) Object.assign(updateData, memberSubscriptionFromOrg(org));
     }
 
     await userService.update(userId, updateData as any);

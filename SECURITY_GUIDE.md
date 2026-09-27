@@ -152,6 +152,8 @@ owner  >  manager  >  viewer   (editor = viewer)
 
 **Phase 2 (not yet gated — listed in the guard test):** sprints, meeting action items, meeting intelligence, file attachments, lessons learned, workflows, resource assignments and requests, storage connectors, calendar-sync task links, RAID report schedules, status report render/email, portal links edit, AI chat tool actions, agent/dreaming proposal approve, context config, intelligence scenarios.
 
+**Subscription check for team members (Sep 2026 fix):** the write-time subscription check (`middleware/requireSubscription.ts`) looked only at the person's own record. Members invited after their organisation paid were created with `subscription_status='none'` (direct invites) or without the trial end date (invite links), so every change they made was refused with "Your trial has ended". Now every join path uses `utils/memberSubscription.ts` (`memberSubscriptionFromOrg`), the check falls back to the organisation's plan for non-owner members (`orgSubscriptionAllowsMembers`: active paid, past due, or unexpired trial), and migration `120_member_subscription_from_org.sql` repairs existing members. The organisation owner is still judged by their own record.
+
 **Why the gaps existed (for the record):** the check was added on 4 Jul 2026 route by route (opt-in); later routes (bulk tools 15 Jul, bulk delete 5 Sep, many others) never got it; the middleware silently passed when it couldn't find a project; nothing tested for it.
 
 ### Global Role Bypasses

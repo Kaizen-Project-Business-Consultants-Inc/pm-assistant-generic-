@@ -3,6 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../services/UserService', () => ({
   userService: { findById: vi.fn() },
 }));
+const orgFindById = vi.fn().mockResolvedValue(null);
+vi.mock('../../database/OrganizationRepository', () => ({
+  organizationRepository: { findById: (...a: any[]) => orgFindById(...a) },
+}));
 vi.mock('../../utils/logger', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -117,5 +121,42 @@ describe('requireActiveSubscription', () => {
     await requireActiveSubscription(req(), reply);
 
     expect(reply.statusCode).toBe(0);
+  });
+
+  // Sep 2026: members invited after the team paid had subscription 'none' and were refused
+  describe("a team member is covered by the organisation's plan", () => {
+    const org = (over: Record<string, any> = {}) => ({ id: 'o-1', ownerUserId: 'owner-1', subscriptionTier: 'sme', subscriptionStatus: 'active', trialEndsAt: null, ...over });
+
+    it("lets an invited member of a paying team through even though their own record says 'none'", async () => {
+      (userService.findById as any).mockResolvedValue(account({ organizationId: 'o-1' }));
+      orgFindById.mockResolvedValueOnce(org());
+      const reply = makeReply();
+      await requireActiveSubscription(req('team_member'), reply);
+      expect(reply.statusCode).toBe(0);
+    });
+
+    it("lets a member of a team still on its trial through", async () => {
+      (userService.findById as any).mockResolvedValue(account({ organizationId: 'o-1', subscriptionStatus: 'trialing' }));
+      orgFindById.mockResolvedValueOnce(org({ subscriptionTier: 'trial', subscriptionStatus: 'trialing', trialEndsAt: inFuture() }));
+      const reply = makeReply();
+      await requireActiveSubscription(req('team_member'), reply);
+      expect(reply.statusCode).toBe(0);
+    });
+
+    it('still blocks members when the organisation has cancelled', async () => {
+      (userService.findById as any).mockResolvedValue(account({ organizationId: 'o-1' }));
+      orgFindById.mockResolvedValueOnce(org({ subscriptionStatus: 'canceled' }));
+      const reply = makeReply();
+      await requireActiveSubscription(req('team_member'), reply);
+      expect(reply.statusCode).toBe(403);
+    });
+
+    it("judges the organisation's OWNER by their own record, not the org's", async () => {
+      (userService.findById as any).mockResolvedValue(account({ id: 'owner-1', organizationId: 'o-1', subscriptionStatus: 'canceled' }));
+      orgFindById.mockResolvedValueOnce(org({ ownerUserId: 'owner-1' }));
+      const reply = makeReply();
+      await requireActiveSubscription(req('project_manager'), reply);
+      expect(reply.statusCode).toBe(403);
+    });
   });
 });

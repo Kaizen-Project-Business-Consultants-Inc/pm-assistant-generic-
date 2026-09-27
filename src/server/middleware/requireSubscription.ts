@@ -1,4 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { organizationRepository } from '../database/OrganizationRepository';
+import { orgSubscriptionAllowsMembers } from '../utils/memberSubscription';
 import { userService } from '../services/UserService';
 import logger from '../utils/logger';
 
@@ -139,6 +141,16 @@ export async function requireActiveSubscription(request: FastifyRequest, reply: 
     // Past due — allow with warning (Stripe will handle dunning)
     if (subscriptionStatus === 'past_due') {
       return;
+    }
+
+    // A team member (not the org's owner) is covered by their organisation's plan, even if
+    // their own record lags behind it (members invited after payment had 'none').
+    const orgId = (fullUser as any).organizationId as string | undefined;
+    if (orgId) {
+      const org = await organizationRepository.findById(orgId).catch(() => null);
+      if (org && org.ownerUserId !== fullUser.id && orgSubscriptionAllowsMembers(org)) {
+        return;
+      }
     }
 
     // All other cases: expired trial, canceled, incomplete, none, free

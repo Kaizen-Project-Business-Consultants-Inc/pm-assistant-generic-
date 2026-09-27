@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { memberSubscriptionFromOrg } from '../../utils/memberSubscription';
 import { z } from 'zod';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -86,8 +87,12 @@ export async function orgRoutes(fastify: FastifyInstance) {
           return reply.status(409).send({ error: 'User in another organization', message: 'This user already belongs to another organization.' });
         }
 
-        // Add existing user to this org
-        await userService.update(existingUser.id, { organizationId: org.id, role } as any);
+        // Add existing user to this org — with the org's subscription unless they're a viewer
+        await userService.update(existingUser.id, {
+          organizationId: org.id,
+          role,
+          ...(role !== 'viewer' ? memberSubscriptionFromOrg(org) : {}),
+        } as any);
         organizationService.invalidateUserCache(existingUser.id);
 
         // Create a resource record so they appear in resource management
@@ -136,7 +141,9 @@ export async function orgRoutes(fastify: FastifyInstance) {
         await userService.update(newUser.id, {
           mustChangePassword: true,
           organizationId: org.id,
-          subscriptionStatus: 'none',
+          // Team members use the organisation's plan (they were created with 'none' and
+          // then refused every change: "Your trial has ended")
+          ...(role !== 'viewer' ? memberSubscriptionFromOrg(org) : { subscriptionStatus: 'none' }),
         } as any);
         organizationService.invalidateUserCache(newUser.id);
 
