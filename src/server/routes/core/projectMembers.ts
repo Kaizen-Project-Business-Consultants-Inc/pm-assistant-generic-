@@ -128,6 +128,9 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
 
       return reply.status(201).send({ member });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ error: 'Validation error', message: 'Choose a role: Viewer, Manager or Owner. (Editor was removed.)' });
+      }
       logger.error('Add member error', { error: error?.message || error, stack: error?.stack });
       return reply.status(500).send({ error: 'Internal server error', message: error?.message });
     }
@@ -150,6 +153,7 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
       return { member };
     } catch (error) {
       if (error instanceof LastOwnerError) return reply.status(409).send({ error: 'last_owner', message: error.message });
+      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', message: 'Choose a role: Viewer, Manager or Owner. (Editor was removed.)' });
       logger.error('Update member error', { error });
       return reply.status(500).send({ error: 'Internal server error' });
     }
