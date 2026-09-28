@@ -8,12 +8,14 @@
 > Schedule History + Undo, Morning Briefing by project with jump-to-row, notification/link
 > fixes, overdue tile, legibility pass, PMI-aligned RAID notifications. Migrations 120 and
 > T053–T057 were dry-run on a restored prod backup first (all OK), then applied.
-> **2026-09-28 (evening): staging + prod in sync, build 086fa43ce751.** Permissions Phase 2,
+> **2026-09-28 (late): staging + prod in sync, build 1f60f30da6b8** — adds private-data PHASE 2
+> (every read route checks the project; `routeReadGuard.test.ts`), integration/API-key owner-only,
+> push skip without tenant. Earlier the same day: Permissions Phase 2,
 > private-data phase 1, dashboard cleanup (briefing Team/Yours, notifications = events), error
 > alert that works (5xx counted in Redis; cron jobs now connect to Redis — the signup-flood alert
 > never could fire before), empty briefing for no-org accounts, and new-signup "still being set up"
 > fix. **After every prod deploy run `scripts/prod-smoke.cjs`** (credentials in auto-memory).
-> Next: private-data phase 2.
+> Next: nothing queued — ask the user.
 >
 > **Machine gotcha:** `node_modules` in root, `src/client` and `mcp-server` keep going
 > corrupt (`MODULE_NOT_FOUND` / esbuild platform errors) — `rm -rf node_modules && npm
