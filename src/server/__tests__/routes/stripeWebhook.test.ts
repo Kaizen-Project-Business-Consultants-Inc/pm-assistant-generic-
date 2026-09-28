@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import Fastify from 'fastify';
 
 vi.mock('../../utils/logger', () => ({
@@ -63,10 +63,10 @@ function post(app: any, body: unknown, headers: Record<string, string> = { 'stri
 describe('the Stripe webhook', () => {
   let app: any;
 
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    app = await buildApp();
-  });
+  // Build once: the first build loads the whole Stripe module, which took longer than the default
+  // 10 s hook limit whenever the full suite ran in parallel (it failed three deploys on 28 Sep).
+  beforeAll(async () => { app = await buildApp(); }, 60_000);
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it('refuses a message it cannot prove came from Stripe', async () => {
     // Either someone is posting to our endpoint, or our secret is wrong. Both
