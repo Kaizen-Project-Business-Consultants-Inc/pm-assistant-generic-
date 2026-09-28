@@ -1,6 +1,7 @@
 import webpush from 'web-push';
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from '../database/connection';
+import { getTenantContext } from '../middleware/requestContext';
 import { config } from '../config';
 import logger from '../utils/logger';
 
@@ -53,6 +54,10 @@ class WebPushService {
 
   async sendPush(userId: string, payload: { title: string; body: string; url?: string; tag?: string }): Promise<void> {
     if (!this.configured) return;
+    // Subscriptions live in each organisation's database. With no organisation in context (e.g. an
+    // admin alert raised by the alert timer) there is nowhere to look — the shared database has no
+    // such table, and every alert logged ER_NO_SUCH_TABLE. The email still goes out.
+    if (!getTenantContext()) return;
 
     const rows = await databaseService.query(
       'SELECT id, user_id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?',
