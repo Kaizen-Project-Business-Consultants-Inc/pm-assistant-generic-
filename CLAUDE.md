@@ -8,9 +8,12 @@
 > Schedule History + Undo, Morning Briefing by project with jump-to-row, notification/link
 > fixes, overdue tile, legibility pass, PMI-aligned RAID notifications. Migrations 120 and
 > T053–T057 were dry-run on a restored prod backup first (all OK), then applied.
-> **2026-09-28: permissions Phase 2 also on staging + prod** (server build 68f04b7fba91 on both;
-> 24/24 live checks on staging; no migrations). The user will test it later. Details: repo
-> `memory/recent-changes.md`.
+> **2026-09-28: permissions Phase 2, private-data phase 1 and the dashboard cleanup are on staging + prod**
+> (build 8dd352adde48 on both; migrations 121 + T058 applied). Briefing = Team follow-up / Yours to do;
+> My Assignments + AI Suggestions removed; notifications are events only (mark-read now reaches the
+> server). **Known:** the user's prod account (michaela, admin) has NO organisation, so it reads the
+> shared database and the briefing 500s (no `meeting_action_items` there) — pre-existing; fix needs
+> the user's OK (attach the account to an organisation). Next: private-data phase 2.
 >
 > **Machine gotcha:** `node_modules` in root, `src/client` and `mcp-server` keep going
 > corrupt (`MODULE_NOT_FOUND` / esbuild platform errors) — `rm -rf node_modules && npm
