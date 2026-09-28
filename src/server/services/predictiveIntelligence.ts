@@ -1,4 +1,6 @@
 import { FastifyInstance } from 'fastify';
+import { getTenantContext } from '../middleware/requestContext';
+import { portfolioVersion } from '../utils/portfolioChanges';
 import { AIContextBuilder, ProjectContext, PortfolioContext } from './aiContextBuilder';
 import { claudeService, PromptTemplate } from './claudeService';
 import { dataProviderManager } from './dataProviders';
@@ -27,10 +29,11 @@ const DASHBOARD_CACHE_KEY = 'predictions:dashboard';
 // and Projects pages asked again every 5 minutes (the largest routine AI cost). Refresh button: see below.
 const DASHBOARD_CACHE_TTL = 6 * 60 * 60; // 6 hours
 const DASHBOARD_REFRESH_MIN_S = 10 * 60; // a manual refresh at most every 10 minutes per person
-// The numbers are rules only (free) and refresh every 5 minutes; the AI highlights are re-asked at
-// most every 5 minutes, and only when the numbers have changed since they were written
-const DASHBOARD_NUMBERS_TTL = 5 * 60;
-const DASHBOARD_AI_MIN_INTERVAL_S = 5 * 60;
+// "Just when a change is made" (user, Sep 2026): the numbers (rules only, free) are kept until something
+// in the organisation changes; the AI highlights are re-asked only when the numbers came out different,
+// once editing has been quiet for 2 minutes, so moving 20 tasks in a row costs one AI call, not 20.
+const DASHBOARD_NUMBERS_TTL = 24 * 60 * 60; // kept until a change (a day at most)
+const DASHBOARD_AI_QUIET_S = 2 * 60;
 
 /** What the AI highlights were based on — if this hasn't changed, the old highlights still apply */
 function dashboardFingerprint(p: AIDashboardPredictions): string {
@@ -708,17 +711,20 @@ export class PredictiveIntelligenceService {
     const cacheKey = `${DASHBOARD_CACHE_KEY}:${userId || 'anon'}`;
     const aiKey = `${cacheKey}:ai`;
 
-    // 1. The numbers (health scores, risk counts, budget) — rules only, free: every 5 minutes
+    // 1. The numbers (health scores, risk counts, budget) — rules only, free: recalculated after a change
+    const tenant = getTenantContext()?.dbName ?? 'none';
+    const { version, changedAt } = await portfolioVersion(tenant);
+    const numbersKey = `${cacheKey}:v${version}`;
     let numbers: { predictions: AIDashboardPredictions; generatedAt: string } | null = null;
     try {
-      const cached = await redisService.get(cacheKey);
+      const cached = await redisService.get(numbersKey);
       if (cached) numbers = JSON.parse(cached);
     } catch { /* cache miss */ }
     let computed: Awaited<ReturnType<PredictiveIntelligenceService['computeDashboardNumbers']>> | null = null;
     if (!numbers) {
       computed = await this.computeDashboardNumbers(userId, userRole);
       numbers = { predictions: computed.fallbackPredictions, generatedAt: new Date().toISOString() };
-      redisService.set(cacheKey, JSON.stringify(numbers), DASHBOARD_NUMBERS_TTL).catch(() => {});
+      redisService.set(numbersKey, JSON.stringify(numbers), DASHBOARD_NUMBERS_TTL).catch(() => {});
     }
 
     // Only the Portfolio Intelligence panel shows the AI highlights; every other screen needs just the numbers
@@ -734,7 +740,8 @@ export class PredictiveIntelligenceService {
     } catch { /* none yet */ }
     const fingerprint = dashboardFingerprint(numbers.predictions);
     const unchanged = !!ai && ai.fingerprint === fingerprint;
-    const recent = !!ai && Date.now() - Date.parse(ai.generatedAt) < DASHBOARD_AI_MIN_INTERVAL_S * 1000;
+    // Still editing? Wait until it's been quiet for 2 minutes, then ask once
+    const settling = Date.now() - changedAt < DASHBOARD_AI_QUIET_S * 1000;
     let forced = false;
     if (opts.refresh && userId) {
       // "Refresh" asks now, but not more than once every 10 minutes
@@ -744,7 +751,7 @@ export class PredictiveIntelligenceService {
         await redisService.set(throttleKey, '1', DASHBOARD_REFRESH_MIN_S);
       }
     }
-    if (forced || (!unchanged && !recent)) {
+    if (forced || (!unchanged && !settling)) {
       // One AI call per person at a time (the panel and the page can ask together)
       const inflightKey = `${cacheKey}:inflight`;
       const busy = await redisService.get(inflightKey).catch(() => null);

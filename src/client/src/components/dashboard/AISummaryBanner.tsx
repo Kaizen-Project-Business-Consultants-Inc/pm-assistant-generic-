@@ -71,7 +71,7 @@ export function AISummaryBanner() {
     queryKey: ['dashboard-predictions', 'ai'],
     queryFn: () => apiService.getDashboardPredictions(false, true),
     staleTime: 60000,
-    refetchInterval: 5 * 60_000, // numbers every 5 minutes; highlights only re-asked when they changed
+    refetchInterval: 60_000, // cheap: AI is only asked after a change, once editing has settled
   });
 
   const { data: narrativeData, isLoading: narrativeLoading, refetch: refetchNarrative } = useQuery({

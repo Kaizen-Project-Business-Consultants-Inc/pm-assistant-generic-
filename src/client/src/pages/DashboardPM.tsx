@@ -102,7 +102,7 @@ export function DashboardPM() {
     queryKey: ['dashboard-predictions'],
     queryFn: () => apiService.getDashboardPredictions(),
     staleTime: 120_000,
-    refetchInterval: 5 * 60_000, // health numbers every 5 minutes (rules only — no AI cost)
+    refetchInterval: 60_000, // cheap: the server recalculates only after a change (rules, no AI)
   });
 
   const { data: analyticsData } = useQuery({
