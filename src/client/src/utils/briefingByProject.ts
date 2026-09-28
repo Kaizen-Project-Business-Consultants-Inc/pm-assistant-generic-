@@ -266,6 +266,18 @@ export function buildProjectBriefings(
   };
   const sortedMine = [...mineTasks].sort((a, b) =>
     (Number(b.overdueDays) || 0) - (Number(a.overdueDays) || 0) || String(a.dueDate ?? '9999').localeCompare(String(b.dueDate ?? '9999')));
+  // "See all" opens the schedule most of your tasks are in (a project can have several)
+  const schedCount = new Map<string, Map<string, number>>();
+  for (const t of mineTasks) {
+    if (!t.scheduleId) continue;
+    const m = schedCount.get(t.projectId) ?? new Map<string, number>();
+    m.set(t.scheduleId, (m.get(t.scheduleId) ?? 0) + 1);
+    schedCount.set(t.projectId, m);
+  }
+  for (const [projectId, m] of schedCount) {
+    const top = [...m.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    yoursFor(projectId).allTasksLink = `/project/${projectId}?tab=schedule&schedule=${top}&qf=my_tasks`;
+  }
   for (const t of sortedMine) {
     ensure(t.projectId);
     const y = yoursFor(t.projectId);

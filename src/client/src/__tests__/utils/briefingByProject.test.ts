@@ -135,7 +135,7 @@ describe('Team follow-up vs Yours to do (Sep 2026)', () => {
     const n = get('nswma');
     expect(n.yours.tasks.map(i => i.id)).toEqual(['y1']);
     expect(n.yours.taskTotal).toBe(2);
-    expect(n.yours.allTasksLink).toBe('/project/nswma?tab=schedule&qf=my_tasks');
+    expect(n.yours.allTasksLink).toBe('/project/nswma?tab=schedule&schedule=s-n&qf=my_tasks');
   });
 
   it('shows the next task when nothing of yours is due soon', () => {
