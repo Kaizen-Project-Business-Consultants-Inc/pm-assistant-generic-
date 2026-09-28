@@ -544,9 +544,15 @@ class ApiService {
   // Predictions endpoints
   // -------------------------------------------------------------------------
 
-  /** `refresh`: ask for new AI predictions now (the server keeps them 6 hours; at most every 10 minutes) */
-  async getDashboardPredictions(refresh = false) {
-    const response = await this.api.get('/predictions/dashboard', { params: refresh ? { refresh: '1' } : undefined });
+  /**
+   * Portfolio numbers (rules, refreshed every 5 minutes). `ai`: also the AI highlights — only the
+   * Portfolio Intelligence panel asks. `refresh`: new AI highlights now (at most every 10 minutes).
+   */
+  async getDashboardPredictions(refresh = false, ai = false) {
+    const params: Record<string, string> = {};
+    if (refresh) params.refresh = '1';
+    if (ai) params.ai = '1';
+    const response = await this.api.get('/predictions/dashboard', { params });
     return response.data;
   }
 

@@ -62,14 +62,16 @@ export function AISummaryBanner() {
   const refreshPredictions = async () => {
     setRefreshing(true);
     try {
-      const fresh = await apiService.getDashboardPredictions(true);
-      queryClient.setQueryData(['dashboard-predictions'], fresh);
+      await apiService.getDashboardPredictions(true, true);
+      // New highlights are written in the background; pick them up shortly
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['dashboard-predictions', 'ai'] }), 20_000);
     } finally { setRefreshing(false); }
   };
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['dashboard-predictions'],
-    queryFn: () => apiService.getDashboardPredictions(),
+    queryKey: ['dashboard-predictions', 'ai'],
+    queryFn: () => apiService.getDashboardPredictions(false, true),
     staleTime: 60000,
+    refetchInterval: 5 * 60_000, // numbers every 5 minutes; highlights only re-asked when they changed
   });
 
   const { data: narrativeData, isLoading: narrativeLoading, refetch: refetchNarrative } = useQuery({

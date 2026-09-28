@@ -27,6 +27,15 @@ const DASHBOARD_CACHE_KEY = 'predictions:dashboard';
 // and Projects pages asked again every 5 minutes (the largest routine AI cost). Refresh button: see below.
 const DASHBOARD_CACHE_TTL = 6 * 60 * 60; // 6 hours
 const DASHBOARD_REFRESH_MIN_S = 10 * 60; // a manual refresh at most every 10 minutes per person
+// The numbers are rules only (free) and refresh every 5 minutes; the AI highlights are re-asked at
+// most every 5 minutes, and only when the numbers have changed since they were written
+const DASHBOARD_NUMBERS_TTL = 5 * 60;
+const DASHBOARD_AI_MIN_INTERVAL_S = 5 * 60;
+
+/** What the AI highlights were based on — if this hasn't changed, the old highlights still apply */
+function dashboardFingerprint(p: AIDashboardPredictions): string {
+  return JSON.stringify([p.risks, p.budget, p.summary, p.projectHealthScores.map((h) => [h.projectId, h.healthScore])]);
+}
 
 // ---------------------------------------------------------------------------
 // Project Metrics (computed inline since AIContextBuilder doesn't carry them)
@@ -694,27 +703,70 @@ export class PredictiveIntelligenceService {
   async getDashboardPredictions(
     userId?: string,
     userRole?: string,
-    opts: { refresh?: boolean } = {},
+    opts: { refresh?: boolean; ai?: boolean } = {},
   ): Promise<{ predictions: AIDashboardPredictions; aiPowered: boolean; generatedAt?: string }> {
-    // Check cache first — return immediately if fresh data available
     const cacheKey = `${DASHBOARD_CACHE_KEY}:${userId || 'anon'}`;
-    let skipCache = false;
+    const aiKey = `${cacheKey}:ai`;
+
+    // 1. The numbers (health scores, risk counts, budget) — rules only, free: every 5 minutes
+    let numbers: { predictions: AIDashboardPredictions; generatedAt: string } | null = null;
+    try {
+      const cached = await redisService.get(cacheKey);
+      if (cached) numbers = JSON.parse(cached);
+    } catch { /* cache miss */ }
+    let computed: Awaited<ReturnType<PredictiveIntelligenceService['computeDashboardNumbers']>> | null = null;
+    if (!numbers) {
+      computed = await this.computeDashboardNumbers(userId, userRole);
+      numbers = { predictions: computed.fallbackPredictions, generatedAt: new Date().toISOString() };
+      redisService.set(cacheKey, JSON.stringify(numbers), DASHBOARD_NUMBERS_TTL).catch(() => {});
+    }
+
+    // Only the Portfolio Intelligence panel shows the AI highlights; every other screen needs just the numbers
+    if (!opts.ai || !claudeService.isAvailable()) {
+      return { predictions: numbers.predictions, aiPowered: false, generatedAt: numbers.generatedAt };
+    }
+
+    // 2. AI highlights: reuse them while nothing has changed; re-ask at most every 5 minutes
+    let ai: { highlights: AIDashboardPredictions['highlights']; weather: AIDashboardPredictions['weather']; fingerprint: string; generatedAt: string } | null = null;
+    try {
+      const cached = await redisService.get(aiKey);
+      if (cached) ai = JSON.parse(cached);
+    } catch { /* none yet */ }
+    const fingerprint = dashboardFingerprint(numbers.predictions);
+    const unchanged = !!ai && ai.fingerprint === fingerprint;
+    const recent = !!ai && Date.now() - Date.parse(ai.generatedAt) < DASHBOARD_AI_MIN_INTERVAL_S * 1000;
+    let forced = false;
     if (opts.refresh && userId) {
-      // "Refresh" skips the saved copy, but not more than once every 10 minutes
+      // "Refresh" asks now, but not more than once every 10 minutes
       const throttleKey = `${DASHBOARD_CACHE_KEY}:refresh:${userId}`;
       if (!(await redisService.get(throttleKey))) {
-        skipCache = true;
+        forced = true;
         await redisService.set(throttleKey, '1', DASHBOARD_REFRESH_MIN_S);
       }
     }
-    try {
-      const cached = skipCache ? null : await redisService.get(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        return parsed;
+    if (forced || (!unchanged && !recent)) {
+      // One AI call per person at a time (the panel and the page can ask together)
+      const inflightKey = `${cacheKey}:inflight`;
+      const busy = await redisService.get(inflightKey).catch(() => null);
+      if (!busy) {
+        await redisService.set(inflightKey, '1', 120).catch(() => {});
+        computed ??= await this.computeDashboardNumbers(userId, userRole);
+        this.enrichDashboardWithAI(aiKey, computed.portfolio, computed.fallbackPredictions, computed.weatherOverview, userId, fingerprint)
+          .catch((err) => { logger.warn('Background AI dashboard enrichment failed: ' + String(err)); })
+          .finally(() => { redisService.del(inflightKey).catch(() => {}); });
       }
-    } catch { /* cache miss, continue */ }
+    }
 
+    if (!ai) return { predictions: numbers.predictions, aiPowered: false, generatedAt: numbers.generatedAt };
+    return {
+      predictions: { ...numbers.predictions, highlights: ai.highlights, weather: ai.weather },
+      aiPowered: true,
+      generatedAt: ai.generatedAt,
+    };
+  }
+
+  /** Health scores, risk counts, budget and weather from the rules — no AI */
+  private async computeDashboardNumbers(userId?: string, userRole?: string) {
     const portfolio = await this.contextBuilder.buildPortfolioContext({ userId, role: userRole });
 
     // Compute per-project health deterministically
@@ -799,7 +851,7 @@ export class PredictiveIntelligenceService {
     let weatherImpactStr = 'No weather impacts expected';
     let weatherOverview = 'Weather data unavailable';
     try {
-      const allProjects = await projectService.findAll();
+      const allProjects = userId ? await projectService.findAccessible({ userId, role: userRole ?? '' }) : await projectService.findAll();
       const projectWithCoords = allProjects.find(
         (p) => p.locationLat && p.locationLon,
       );
@@ -846,35 +898,16 @@ export class PredictiveIntelligenceService {
       projectHealthScores,
     };
 
-    if (!claudeService.isAvailable()) {
-      const fallbackResult = { predictions: fallbackPredictions, aiPowered: false };
-      this.cacheDashboardResult(cacheKey, fallbackResult);
-      return fallbackResult;
-    }
-
-    // Return fallback immediately, trigger AI enrichment in background
-    const fallbackResult = { predictions: fallbackPredictions, aiPowered: false };
-
-    // Fire-and-forget: enrich with AI and cache the result for subsequent requests. The dashboard
-    // asks 3-4 times at once when it opens; only one AI call may run per person at a time.
-    const inflightKey = `${cacheKey}:inflight`;
-    const busy = await redisService.get(inflightKey).catch(() => null);
-    if (!busy) {
-      await redisService.set(inflightKey, '1', 120).catch(() => {});
-      this.enrichDashboardWithAI(cacheKey, portfolio, fallbackPredictions, weatherOverview, userId)
-        .catch((err) => { logger.warn('Background AI dashboard enrichment failed: ' + String(err)); })
-        .finally(() => { redisService.del(inflightKey).catch(() => {}); });
-    }
-
-    return fallbackResult;
+    return { fallbackPredictions, portfolio, weatherOverview };
   }
 
   private async enrichDashboardWithAI(
-    cacheKey: string,
+    aiKey: string,
     portfolio: PortfolioContext,
     fallbackPredictions: AIDashboardPredictions,
     weatherOverview: string,
-    userId?: string,
+    userId: string | undefined,
+    fingerprint: string,
   ): Promise<void> {
     const portfolioPrompt = this.contextBuilder.portfolioToPromptString(portfolio);
 
@@ -910,15 +943,10 @@ export class PredictiveIntelligenceService {
       projectHealthScores: fallbackPredictions.projectHealthScores,
     };
 
-    const enrichedResult = { predictions: merged, aiPowered: true };
-    this.cacheDashboardResult(cacheKey, enrichedResult);
+    const aiParts = { highlights: merged.highlights, weather: merged.weather, fingerprint, generatedAt: new Date().toISOString() };
+    redisService.set(aiKey, JSON.stringify(aiParts), DASHBOARD_CACHE_TTL).catch(() => {});
   }
 
-  private cacheDashboardResult(cacheKey: string, result: { predictions: AIDashboardPredictions; aiPowered: boolean }): void {
-    // Stamp when it was worked out, so the dashboard can say "Updated 2 h ago"
-    (result as { generatedAt?: string }).generatedAt = new Date().toISOString();
-    redisService.set(cacheKey, JSON.stringify(result), DASHBOARD_CACHE_TTL).catch(() => {});
-  }
 
   // -----------------------------------------------------------------------
   // 5. Project Health Score

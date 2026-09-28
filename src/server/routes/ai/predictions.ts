@@ -21,8 +21,9 @@ export async function predictionRoutes(fastify: FastifyInstance) {
     try {
       const userId = request.user!.userId;
       const userRole = request.user!.role;
-      const { refresh } = request.query as { refresh?: string };
-      const { predictions, aiPowered, generatedAt } = await service.getDashboardPredictions(userId, userRole, { refresh: refresh === '1' });
+      // ai=1: the Portfolio Intelligence panel (the only place the AI highlights are shown)
+      const { refresh, ai } = request.query as { refresh?: string; ai?: string };
+      const { predictions, aiPowered, generatedAt } = await service.getDashboardPredictions(userId, userRole, { refresh: refresh === '1', ai: ai === '1' });
       return reply.send({ data: predictions, aiPowered, generatedAt });
     } catch (err) {
       fastify.log.error({ err }, 'Dashboard predictions failed');
