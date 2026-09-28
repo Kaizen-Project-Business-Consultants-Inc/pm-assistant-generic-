@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { organizationRepository } from '../database/OrganizationRepository';
 import { config } from '../config';
 import { organizationService } from '../services/OrganizationService';
 import { getRequestContext } from './requestContext';
@@ -32,7 +33,17 @@ export async function tenantResolverHook(
   // No user = no tenant context (authMiddleware will handle 401)
   if (!request.user?.userId) return;
 
-  const org = await organizationService.findByUserId(request.user.userId);
+  let org = await organizationService.findByUserId(request.user.userId);
+  // The cached copy can predate the organisation's database: it's cached at sign-up, and the
+  // database is only built once the email is confirmed. Believe the database, not the cache —
+  // otherwise a brand-new customer saw "still being set up" on every screen for 5 minutes.
+  if (org && !org.isProvisioned) {
+    const fresh = await organizationRepository.findByUserId(request.user.userId);
+    if (fresh?.isProvisioned) {
+      organizationService.invalidateUserCache(request.user.userId);
+      org = fresh;
+    }
+  }
   if (!org) {
     // User has no organization — fall through to main DB (supports legacy/unassigned users)
     return;

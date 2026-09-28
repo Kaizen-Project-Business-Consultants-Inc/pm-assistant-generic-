@@ -45,6 +45,11 @@ export async function provisionTenantDatabase(orgId: string): Promise<void> {
 
   // Mark as provisioned
   await organizationRepository.update(orgId, { isProvisioned: true });
+  // Members' cached organisation still says "not provisioned" — clear it
+  try {
+    const { organizationService } = await import('../services/OrganizationService');
+    for (const u of await organizationRepository.getUserIdsInOrg(orgId)) organizationService.invalidateUserCache(u);
+  } catch { /* the request path re-checks the database anyway */ }
   logger.info(`[provisioner] Tenant ${org.slug} provisioned successfully`);
 }
 
