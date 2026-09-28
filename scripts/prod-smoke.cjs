@@ -28,7 +28,8 @@ const fs = require('fs');
 
   // Open the first project the account can see
   const projects = await page.request.get('/api/v1/projects');
-  const list = (await projects.json()).projects ?? [];
+  const body = await projects.json();
+  const list = body.projects ?? body.data ?? [];
   if (list.length > 0) {
     await page.goto(`/project/${list[0].id}`);
     await page.waitForTimeout(5000);
