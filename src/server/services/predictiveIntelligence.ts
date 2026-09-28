@@ -855,10 +855,16 @@ export class PredictiveIntelligenceService {
     // Return fallback immediately, trigger AI enrichment in background
     const fallbackResult = { predictions: fallbackPredictions, aiPowered: false };
 
-    // Fire-and-forget: enrich with AI and cache the result for subsequent requests
-    this.enrichDashboardWithAI(cacheKey, portfolio, fallbackPredictions, weatherOverview, userId).catch((err) => {
-      logger.warn('Background AI dashboard enrichment failed: ' + String(err));
-    });
+    // Fire-and-forget: enrich with AI and cache the result for subsequent requests. The dashboard
+    // asks 3-4 times at once when it opens; only one AI call may run per person at a time.
+    const inflightKey = `${cacheKey}:inflight`;
+    const busy = await redisService.get(inflightKey).catch(() => null);
+    if (!busy) {
+      await redisService.set(inflightKey, '1', 120).catch(() => {});
+      this.enrichDashboardWithAI(cacheKey, portfolio, fallbackPredictions, weatherOverview, userId)
+        .catch((err) => { logger.warn('Background AI dashboard enrichment failed: ' + String(err)); })
+        .finally(() => { redisService.del(inflightKey).catch(() => {}); });
+    }
 
     return fallbackResult;
   }
