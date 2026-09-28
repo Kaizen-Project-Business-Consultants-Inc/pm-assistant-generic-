@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
+vi.mock('../../utils/serverErrorWatch', () => ({
+  serverErrorActivity: vi.fn().mockResolvedValue({ total: 0, routes: [] }),
+}));
 vi.mock('../../config', () => ({
   config: {
     ALERT_COOLDOWN_MINUTES: 30,
@@ -109,6 +112,7 @@ import { aiBudgetService } from '../../services/AIBudgetService';
 import { notificationService } from '../../services/NotificationService';
 import { databaseService } from '../../database/connection';
 import logger from '../../utils/logger';
+import { serverErrorActivity } from '../../utils/serverErrorWatch';
 import { getDegraded } from '../../utils/degradedState';
 
 // ── Typed references ───────────────────────────────────────────────────────
@@ -118,6 +122,7 @@ const mockRedisGet = redisService.get as ReturnType<typeof vi.fn>;
 const mockRedisSet = redisService.set as ReturnType<typeof vi.fn>;
 const mockSendEmail = emailService.sendNotificationEmail as ReturnType<typeof vi.fn>;
 const mockGetSnapshot = metricsService.getSnapshot as ReturnType<typeof vi.fn>;
+const mockServerErrors = serverErrorActivity as ReturnType<typeof vi.fn>;
 const mockGetHealthStatus = degradationHandler.getHealthStatus as ReturnType<typeof vi.fn>;
 const mockCheckDbHealth = degradationHandler.checkDatabaseHealth as ReturnType<typeof vi.fn>;
 const mockGetMonthlyUsage = aiBudgetService.getMonthlyUsage as ReturnType<typeof vi.fn>;
@@ -133,6 +138,7 @@ describe('AlertService', () => {
     vi.clearAllMocks();
     // Reset defaults
     mockRedisIsConnected.mockReturnValue(true);
+    mockServerErrors.mockResolvedValue({ total: 0, routes: [] });
     // Default: every scheduled job ran a moment ago, so the cron-stall check stays
     // quiet and the other checks can be asserted in isolation. Cooldown keys (any
     // other key) still return null so alerts are allowed to fire.
@@ -174,7 +180,7 @@ describe('AlertService', () => {
     it('invokes all four check methods without throwing', async () => {
       await alertService.runChecks();
 
-      expect(mockGetSnapshot).toHaveBeenCalled();
+      expect(mockServerErrors).toHaveBeenCalled();
       expect(mockGetHealthStatus).toHaveBeenCalled();
       expect(mockCheckDbHealth).toHaveBeenCalled();
       // AI budget check queries for admin user first
@@ -203,55 +209,32 @@ describe('AlertService', () => {
 
   // ── checkErrorRate ───────────────────────────────────────────────────
 
-  describe('checkErrorRate (via runChecks)', () => {
-    it('does nothing when total requests < 100', async () => {
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 50 },
-        errors: { total5xx: 10 },
-        latency: { p95Ms: 50 },
-      });
-
+  describe('checkErrorRate (via runChecks) — server errors counted in Redis', () => {
+    it('does nothing below the threshold', async () => {
+      mockServerErrors.mockResolvedValue({ total: 2, routes: [{ route: 'GET /api/v1/briefing/daily', count: 2 }] });
       await alertService.runChecks();
-
-      // No alert fired — no email, no log warning about error rate
-      expect(mockSendEmail).not.toHaveBeenCalled();
+      expect(mockSendEmail).not.toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Server errors'), expect.anything(), expect.anything(), expect.anything(), expect.anything());
     });
 
-    it('fires critical alert when error rate >= 10%', async () => {
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 25 },
-        latency: { p95Ms: 100 },
-      });
-      // fire() queries admins for in-app notifications
+    it('emails when a few server errors happen, naming where', async () => {
+      mockServerErrors.mockResolvedValue({ total: 3, routes: [{ route: 'GET /api/v1/briefing/daily', count: 3 }] });
       mockQueryCP.mockResolvedValue([{ id: 'admin-1' }]);
-
       await alertService.runChecks();
-
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('High Error Rate'),
-      );
       expect(mockSendEmail).toHaveBeenCalledWith(
         'admin@test.com',
-        '[CRITICAL] High Error Rate',
-        'High Error Rate',
-        expect.stringContaining('12.5%'),
+        '[WARNING] Server errors',
+        'Server errors',
+        expect.stringContaining('GET /api/v1/briefing/daily (3)'),
         'https://app.test/admin',
         'View Admin Panel',
       );
     });
 
-    it('does not fire alert when error rate < 10%', async () => {
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 10 },
-        latency: { p95Ms: 100 },
-      });
-
+    it('is critical when there are many', async () => {
+      mockServerErrors.mockResolvedValue({ total: 25, routes: [{ route: 'POST /api/v1/x', count: 25 }] });
+      mockQueryCP.mockResolvedValue([{ id: 'admin-1' }]);
       await alertService.runChecks();
-
-      // 5% error rate — no alert
-      expect(mockSendEmail).not.toHaveBeenCalled();
+      expect(mockSendEmail).toHaveBeenCalledWith('admin@test.com', '[CRITICAL] Server errors', 'Server errors', expect.any(String), expect.any(String), expect.any(String));
     });
   });
 
@@ -462,11 +445,7 @@ describe('AlertService', () => {
   describe('fire() — Redis cooldown', () => {
     it('skips alert when cooldown key exists in Redis', async () => {
       // Trigger an alert condition
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       mockRedisGet.mockResolvedValue('1'); // cooldown active
 
       await alertService.runChecks();
@@ -474,16 +453,12 @@ describe('AlertService', () => {
       // Alert suppressed — no email, no log
       expect(mockSendEmail).not.toHaveBeenCalled();
       expect(logger.warn).not.toHaveBeenCalledWith(
-        expect.stringContaining('High Error Rate'),
+        expect.stringContaining('Server errors'),
       );
     });
 
     it('sets cooldown key when alert fires', async () => {
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       mockQueryCP.mockResolvedValue([{ id: 'admin-1' }]);
 
       await alertService.runChecks();
@@ -497,11 +472,7 @@ describe('AlertService', () => {
 
     it('fires alert without cooldown when Redis is disconnected', async () => {
       mockRedisIsConnected.mockReturnValue(false);
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       mockQueryCP.mockResolvedValue([{ id: 'admin-1' }]);
 
       await alertService.runChecks();
@@ -510,7 +481,7 @@ describe('AlertService', () => {
       expect(mockRedisGet).not.toHaveBeenCalled();
       expect(mockRedisSet).not.toHaveBeenCalled();
       expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('High Error Rate'),
+        expect.stringContaining('Server errors'),
       );
     });
   });
@@ -520,11 +491,7 @@ describe('AlertService', () => {
   describe('fire() — email alerts', () => {
     it('does not send email when ALERT_EMAIL is empty', async () => {
       (config as any).ALERT_EMAIL = '';
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       mockQueryCP.mockResolvedValue([{ id: 'admin-1' }]);
 
       await alertService.runChecks();
@@ -534,11 +501,7 @@ describe('AlertService', () => {
 
     it('logs error when email fails but does not throw', async () => {
       mockSendEmail.mockRejectedValue(new Error('smtp down'));
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       mockQueryCP.mockResolvedValue([{ id: 'admin-1' }]);
 
       await alertService.runChecks();
@@ -558,11 +521,7 @@ describe('AlertService', () => {
   describe('fire() — webhook alerts', () => {
     it('sends webhook when ALERT_WEBHOOK_URL is set', async () => {
       (config as any).ALERT_WEBHOOK_URL = 'https://hooks.test/alert';
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       mockQueryCP.mockResolvedValue([{ id: 'admin-1' }]);
 
       await alertService.runChecks();
@@ -579,11 +538,7 @@ describe('AlertService', () => {
 
     it('does not send webhook when ALERT_WEBHOOK_URL is empty', async () => {
       (config as any).ALERT_WEBHOOK_URL = '';
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       mockQueryCP.mockResolvedValue([{ id: 'admin-1' }]);
 
       await alertService.runChecks();
@@ -594,11 +549,7 @@ describe('AlertService', () => {
     it('logs error when webhook fails but does not throw', async () => {
       (config as any).ALERT_WEBHOOK_URL = 'https://hooks.test/alert';
       mockFetch.mockRejectedValue(new Error('network error'));
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       mockQueryCP.mockResolvedValue([{ id: 'admin-1' }]);
 
       await alertService.runChecks();
@@ -616,11 +567,7 @@ describe('AlertService', () => {
 
   describe('fire() — in-app notifications', () => {
     it('creates notifications for all admin users', async () => {
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       // First queryCP in fire() returns admin list
       mockQueryCP.mockResolvedValue([{ id: 'admin-1' }, { id: 'admin-2' }]);
 
@@ -632,7 +579,7 @@ describe('AlertService', () => {
           userId: 'admin-1',
           type: 'system_alert',
           severity: 'high', // critical → high
-          title: 'High Error Rate',
+          title: 'Server errors',
         }),
       );
       expect(mockNotifCreate).toHaveBeenCalledWith(
@@ -658,11 +605,7 @@ describe('AlertService', () => {
     });
 
     it('silently catches notification creation failures', async () => {
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       mockQueryCP.mockResolvedValue([{ id: 'admin-1' }]);
       mockNotifCreate.mockRejectedValue(new Error('notif fail'));
 
@@ -671,11 +614,7 @@ describe('AlertService', () => {
     });
 
     it('silently catches admin query failures in fire()', async () => {
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       mockQueryCP.mockRejectedValue(new Error('db down'));
 
       // Should not throw — non-critical
@@ -688,11 +627,7 @@ describe('AlertService', () => {
   describe('multiple alerts in one cycle', () => {
     it('can fire multiple alerts simultaneously', async () => {
       // High error rate
-      mockGetSnapshot.mockReturnValue({
-        requests: { total: 200 },
-        errors: { total5xx: 30 },
-        latency: { p95Ms: 100 },
-      });
+      mockServerErrors.mockResolvedValue({ total: 30, routes: [{ route: 'GET /x', count: 30 }] });
       // Unhealthy DB
       mockCheckDbHealth.mockResolvedValue({ healthy: false, latencyMs: 0 });
       // Open circuit breaker

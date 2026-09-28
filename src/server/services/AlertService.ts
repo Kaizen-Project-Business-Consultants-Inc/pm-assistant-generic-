@@ -1,7 +1,6 @@
 import { config } from '../config';
 import { redisService } from './RedisService';
 import { emailService } from './EmailService';
-import { metricsService } from './MetricsService';
 import { degradationHandler } from './agents/DegradationHandler';
 import { aiBudgetService } from './AIBudgetService';
 import { notificationService } from './NotificationService';
@@ -9,6 +8,7 @@ import { databaseService } from '../database/connection';
 import { getDegraded } from '../utils/degradedState';
 import logger from '../utils/logger';
 import { registrationActivity } from '../utils/registrationWatch';
+import { serverErrorActivity } from '../utils/serverErrorWatch';
 
 type AlertType =
   | 'error_rate_high'
@@ -60,6 +60,9 @@ interface Alert {
   title: string;
   message: string;
 }
+
+/** Server errors in the last hour or two that are worth an email */
+export const SERVER_ERROR_ALERT_MIN = 3;
 
 class AlertService {
   // Alert checks are now scheduled externally via systemd timer (pm-cron@alert-check.timer).
@@ -194,19 +197,24 @@ class AlertService {
     });
   }
 
+  /**
+   * Server errors (5xx) in the last hour or two, counted in Redis by the app.
+   *
+   * This used to read an in-memory error *rate* (10% of at least 100 requests) — but these checks
+   * run in the alert timer's own process, which serves no requests, so it always saw nothing,
+   * and this site rarely gets 100 requests an hour. A user's Morning Briefing failed for weeks
+   * unnoticed. On a site this quiet a handful of server errors is a bug worth an email.
+   */
   private async checkErrorRate(): Promise<void> {
-    const snapshot = metricsService.getSnapshot();
-    if (snapshot.requests.total < 100) return; // Not enough data
-
-    const errorRate = (snapshot.errors.total5xx / snapshot.requests.total) * 100;
-    if (errorRate >= 10) {
-      await this.fire({
-        type: 'error_rate_high',
-        severity: 'critical',
-        title: 'High Error Rate',
-        message: `Server error rate is ${errorRate.toFixed(1)}% (${snapshot.errors.total5xx} of ${snapshot.requests.total} requests). P95 latency: ${snapshot.latency.p95Ms}ms.`,
-      });
-    }
+    const { total, routes } = await serverErrorActivity();
+    if (total < SERVER_ERROR_ALERT_MIN) return;
+    const top = routes.slice(0, 5).map(r => `${r.route} (${r.count})`).join(', ');
+    await this.fire({
+      type: 'error_rate_high',
+      severity: total >= 20 ? 'critical' : 'warning',
+      title: 'Server errors',
+      message: `${total} server error${total === 1 ? '' : 's'} (HTTP 500) in the last hour or two. Where: ${top || 'unknown'}. Check the app log (journalctl -u pm-app -p err).`,
+    });
   }
 
   private async checkAIBudget(): Promise<void> {

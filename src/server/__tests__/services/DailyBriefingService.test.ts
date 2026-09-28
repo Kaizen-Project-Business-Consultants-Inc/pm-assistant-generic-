@@ -5,6 +5,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockQuery = vi.fn().mockResolvedValue([]);
 const mockQueryControlPlane = vi.fn().mockResolvedValue([]);
 
+// A signed-in member of an organisation (tests below that need "no organisation" override it)
+vi.mock('../../middleware/requestContext', () => ({
+  getTenantContext: vi.fn().mockReturnValue({ dbName: 'pmassist_t_test', orgId: 'org-1' }),
+}));
 vi.mock('../../database/connection', () => ({
   databaseService: {
     query: vi.fn(),
@@ -120,6 +124,16 @@ function setupDefaultResults(overrides: Record<number, any[]> = {}) {
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('DailyBriefingService', () => {
+  it('returns an empty briefing (not a server error) for an account with no organisation', async () => {
+    const { getTenantContext } = await import('../../middleware/requestContext');
+    (getTenantContext as any).mockReturnValueOnce(undefined);
+    queryMock.mockClear();
+    const b = await dailyBriefingService.getDailyBriefing('admin-1', 'admin');
+    expect(b.projects).toEqual([]);
+    expect(b.mine).toEqual({ tasks: [], raidItems: [] });
+    expect(queryMock).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });

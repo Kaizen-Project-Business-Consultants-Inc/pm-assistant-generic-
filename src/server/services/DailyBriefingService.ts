@@ -1,4 +1,5 @@
 import { databaseService } from '../database/connection';
+import { getTenantContext } from '../middleware/requestContext';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { toDateString } from '../utils/calendarDate';
 
@@ -102,8 +103,22 @@ const ITEM_CAP = 50;
 // Subquery to exclude parent/summary tasks (tasks that have children)
 const NOT_PARENT = `AND t.id NOT IN (SELECT DISTINCT parent_task_id FROM tasks WHERE parent_task_id IS NOT NULL)`;
 
+function emptyBriefing(userRole: string): DailyBriefing {
+  return {
+    generatedAt: new Date().toISOString(),
+    userRole,
+    actionItems: { pendingProposals: 0, pendingChangeRequests: [], unreadNotifications: { total: 0, critical: 0, high: 0 } },
+    tasksDueToday: [], tasksDueThisWeek: [], overdueTasks: [], recentHighRisks: [], upcomingMilestones: [],
+    raidWatch: [], projects: [], mine: { tasks: [], raidItems: [] }, stalledTasks: [], pendingProposals: [], raidChanges: [],
+  };
+}
+
 class DailyBriefingService {
   async getDailyBriefing(userId: string, userRole: string, scope?: string): Promise<DailyBriefing> {
+    // An account with no organisation (e.g. a platform admin) has no project database: the
+    // queries would run against the shared one, which has no project tables, and fail. Nothing
+    // to brief — say so instead of a server error.
+    if (!getTenantContext()) return emptyBriefing(userRole);
     const global = isGlobalScope(userRole, scope);
     const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
     const memberParams = global ? [] : [userId];

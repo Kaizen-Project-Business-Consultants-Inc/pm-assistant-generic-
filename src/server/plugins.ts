@@ -1,5 +1,6 @@
 import path from 'path';
 import { FastifyInstance } from 'fastify';
+import { countServerError } from './utils/serverErrorWatch';
 import fastifyStatic from '@fastify/static';
 import compress from '@fastify/compress';
 import cookie from '@fastify/cookie';
@@ -83,6 +84,13 @@ export async function registerPlugins(fastify: FastifyInstance) {
       metricsService.recordRequest(request.method, request.url, reply.statusCode, durationMs);
     });
   }
+
+  // Count server errors where the alert timer can see them (always on — this is how anyone hears)
+  fastify.addHook('onResponse', async (request, reply) => {
+    if (reply.statusCode >= 500) {
+      void countServerError(request.method, request.routeOptions?.url ?? request.url.split('?')[0]);
+    }
+  });
 
   // Server-Timing header — exposes processing time to browser Performance API
   fastify.addHook('onSend', async (request, reply) => {

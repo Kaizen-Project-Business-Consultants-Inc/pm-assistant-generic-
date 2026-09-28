@@ -759,6 +759,9 @@ This restores into a throwaway database and reports what came back. Until
 - Memory status shows `WARN` if heap usage exceeds 90% of heap total.
 - Monitor API latency, error rates, and database connection pool usage.
 - Set up alerts for repeated failures or degraded performance.
+- **Server-error alert (Sep 2026):** every HTTP 500 is counted in Redis by route (`utils/serverErrorWatch.ts`). The alert check (systemd timer `pm-cron@alert-check`, every 5 minutes) emails `ALERT_EMAIL` when there have been **3 or more** in the current or previous hour (critical at 20+), naming the routes, with a 30-minute cooldown. The old check used an in-memory error *rate* that the timer process could never see, so it never fired.
+- **Accounts with no organisation** (e.g. a platform admin) get an empty Morning Briefing instead of a server error — they have no project database.
+- **Post-deploy smoke account (production):** a dedicated test customer in its own organisation, used to log in and open the dashboard after every production deploy (read-only). Credentials are kept outside the repository.
 
 ---
 

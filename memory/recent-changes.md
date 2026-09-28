@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-28 (why problems went unnoticed — error alert, no-org briefing, prod smoke account)
+
+- The existing "High Error Rate" alert could never fire: it read `metricsService` (in-memory, per process) from the alert timer's own process, and needed ≥100 requests at ≥10% errors. Replaced with a Redis counter of 5xx by route (`utils/serverErrorWatch.ts`, onResponse hook in plugins.ts) and `checkErrorRate` = ≥3 in the current/previous hour (critical ≥20), naming routes.
+- The user's prod admin has no organisation → the briefing queried the shared DB and 500'd (no `meeting_action_items` there). `getDailyBriefing` now returns an empty briefing when there's no tenant context.
+- A dedicated prod smoke-test customer account (own org) for post-deploy checks — see auto-memory, not stored in the repo.
+
 ## 2026-09-28 (dashboard cleanup — user approved all five, auto go-ahead to prod)
 
 1. Morning Briefing split per project: "Team — needs follow-up" (Manager/Owner only; late, blocked, NEW stalled, risks, approvals incl. agent proposals, due; owner on each item, "No owner" amber) and "Yours to do" (your tasks late/blocked/due in 14 days, else next one; your RAID items). Yours items never repeat in Team. Server: `canManage`, `mine`, `stalledTasks`, `pendingProposals` on the briefing.
