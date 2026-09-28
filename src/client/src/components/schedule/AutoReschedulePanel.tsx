@@ -220,7 +220,7 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
     <>
       {/* Backdrop overlay */}
       <div
-        className="fixed inset-0 z-40 bg-black/40 transition-opacity"
+        className="fixed inset-0 z-40 bg-black/10 dark:bg-black/20 transition-opacity"
         onClick={onClose}
       />
 

@@ -172,7 +172,7 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
 
   return (
     <>
-      <div className="fixed inset-0 z-[60] bg-black/30" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 z-[60] bg-black/10 dark:bg-black/20" onClick={onClose} aria-hidden="true" />
       <div
         ref={panelRef}
         role="dialog"

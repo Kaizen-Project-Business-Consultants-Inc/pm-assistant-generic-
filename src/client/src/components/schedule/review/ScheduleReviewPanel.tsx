@@ -196,7 +196,7 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/30 transition-opacity" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 z-40 bg-black/10 dark:bg-black/20 transition-opacity" onClick={onClose} aria-hidden="true" />
       <div
         ref={panelRef}
         role="dialog"
