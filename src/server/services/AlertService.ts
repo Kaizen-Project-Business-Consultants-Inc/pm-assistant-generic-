@@ -153,6 +153,17 @@ class AlertService {
     const neverRan: string[] = [];
     const stalled: string[] = [];
 
+    // "Never ran" only counts once we've been watching for longer than the job's own interval.
+    // The jobs couldn't record runs until 28 Sep (they never connected to Redis), so without this
+    // every weekly job looked "never run" for a week and emailed every 30 minutes.
+    let watchingSince = now;
+    try {
+      const started = await redisService.get('cron:watch-start');
+      if (started) watchingSince = Number(started) || now;
+      else await redisService.set('cron:watch-start', String(now));
+    } catch { return; }
+    const watchedHours = (now - watchingSince) / (60 * 60 * 1000);
+
     for (const { job, maxQuietHours } of EXPECTED_CRON_JOBS) {
       let raw: string | null = null;
       try {
@@ -162,7 +173,7 @@ class AlertService {
       }
 
       if (!raw) {
-        neverRan.push(job);
+        if (watchedHours > maxQuietHours) neverRan.push(job);
         continue;
       }
 

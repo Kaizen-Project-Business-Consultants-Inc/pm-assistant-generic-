@@ -672,6 +672,7 @@ describe('AlertService', () => {
       // Exactly the production failure: the timer was never created, so the job has
       // no record at all and nothing ever complained.
       mockRedisGet.mockImplementation(async (key: string) => {
+        if (key === 'cron:watch-start') return String(Date.now() - 30 * 24 * 3600_000); // watching for a month
         if (key === 'cron:last:digest') return null;
         if (key?.startsWith('cron:last:')) return hoursAgo(0);
         return null;
@@ -683,6 +684,18 @@ describe('AlertService', () => {
       expect(raised).toHaveLength(1);
       expect(raised[0]).toContain('Never run on this server');
       expect(raised[0]).toContain('digest');
+    });
+
+    it('does not call a job "never run" before it has had the chance (just started watching)', async () => {
+      mockRedisGet.mockImplementation(async (key: string) => {
+        if (key === 'cron:watch-start') return String(Date.now() - 60_000); // one minute ago
+        if (key?.startsWith('cron:last:')) return null; // nothing recorded yet
+        return null;
+      });
+
+      await alertService.runChecks();
+
+      expect(alertsRaised()).toHaveLength(0);
     });
 
     it('raises an alert when a job has stopped running', async () => {
