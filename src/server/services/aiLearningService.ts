@@ -282,6 +282,8 @@ export class AILearningServiceV2 {
       const systemPrompt = accuracyInsightsPrompt.render({ accuracyReport: reportStr });
 
       const result = await claudeService.complete({
+      feature: 'accuracy_insights',
+      tier: 'light', // routine job: the cheaper model
         systemPrompt,
         userMessage: 'Analyze the accuracy report and return improvement suggestions JSON.',
         responseFormat: 'json',

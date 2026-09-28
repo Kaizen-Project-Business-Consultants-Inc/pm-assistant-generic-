@@ -5,6 +5,8 @@ import { aiBudgetService, AIBudgetExceededError } from './AIBudgetService';
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
 import logger from '../utils/logger';
 import { getRequestContext } from '../middleware/requestContext';
+import { recordAIUsage, calculateCost } from './aiUsageLogger';
+import { redisService } from './RedisService';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -18,6 +20,10 @@ export interface CompletionOptions {
   maxTokens?: number;
   temperature?: number;
   userId?: string;
+  /** What this call is for, in the usage log (defaults to the calling service's name) */
+  feature?: string;
+  /** 'light' = the cheaper model, for routine jobs (predictions, summaries, insights) */
+  tier?: 'standard' | 'light';
 }
 
 export interface TokenUsage {
@@ -54,6 +60,26 @@ const REQUEST_TIMEOUT_MS = 90_000;
 const CB_MAX_FAILURES = 5;
 const CB_RESET_MS = 60_000; // 1 minute cooldown (fast recovery for user-facing)
 const CB_HALF_OPEN_MAX = 1; // allow 1 probe request in half-open state
+
+/** The first service outside this file on the call stack, e.g. "ScheduleFixProposerService" */
+function callerFeature(): string {
+  const stack = new Error().stack?.split('\n') ?? [];
+  for (const line of stack.slice(2)) {
+    if (line.includes('node_modules') || line.includes('node:')) continue;
+    const m = /[\\/]([A-Za-z0-9_]+)\.(?:ts|js)/.exec(line);
+    if (m && m[1] !== 'claudeService' && m[1] !== 'aiUsageLogger') return m[1];
+  }
+  return 'untagged';
+}
+
+/** The whole-account monthly limit: handled everywhere the per-user "budget exceeded" error is */
+export class AIAccountCapError extends AIBudgetExceededError {
+  constructor(public spentUsd: number, public capUsd: number) {
+    super(0, 0);
+    this.message = `This month's AI spending limit has been reached ($${spentUsd.toFixed(2)} of $${capUsd}). AI features resume next month, or an admin can raise the limit.`;
+    this.name = 'AIBudgetExceededError';
+  }
+}
 
 export class AICircuitBreakerError extends Error {
   constructor(public retryAfterMs: number) {
@@ -495,6 +521,7 @@ export class ClaudeService {
     this.circuitBreaker.assertClosed();
     const budgetUserId = this.resolveUserId(options);
     if (budgetUserId) await aiBudgetService.checkBudget(budgetUserId);
+    await this.assertAccountCap();
 
     const startMs = Date.now();
     const effectiveMaxTokens = options.maxTokens ?? this.maxTokens;
@@ -504,7 +531,7 @@ export class ClaudeService {
 
     try {
       const response = await this.client!.messages.create({
-        model: this.model,
+        model: this.pickModel(options),
         max_tokens: effectiveMaxTokens,
         temperature: effectiveTemperature,
         system: systemPrompt,
@@ -519,7 +546,7 @@ export class ClaudeService {
         outputTokens: response.usage.output_tokens,
       };
 
-      this.recordUsage(usage);
+      this.recordUsage(usage, options, response.model, latencyMs);
       this.circuitBreaker.recordSuccess();
 
       return { content, usage, latencyMs, model: response.model };
@@ -544,7 +571,7 @@ export class ClaudeService {
             outputTokens: fallbackResponse.usage.output_tokens,
           };
 
-          this.recordUsage(usage);
+          this.recordUsage(usage, options, this.fallbackModel);
           this.circuitBreaker.recordSuccess();
 
           return { content, usage, latencyMs, model: fallbackResponse.model };
@@ -568,6 +595,7 @@ export class ClaudeService {
     this.circuitBreaker.assertClosed();
     const budgetUserId = this.resolveUserId(options);
     if (budgetUserId) await aiBudgetService.checkBudget(budgetUserId);
+    await this.assertAccountCap();
 
     const effectiveMaxTokens = options.maxTokens ?? this.maxTokens;
     const effectiveTemperature = options.temperature ?? this.temperature;
@@ -576,7 +604,7 @@ export class ClaudeService {
 
     try {
       const messageStream = this.client!.messages.stream({
-        model: this.model,
+        model: this.pickModel(options),
         max_tokens: effectiveMaxTokens,
         temperature: effectiveTemperature,
         system: systemPrompt,
@@ -617,7 +645,7 @@ export class ClaudeService {
         outputTokens: accumulatedOutputTokens,
       };
 
-      this.recordUsage(finalUsage);
+      this.recordUsage(finalUsage, options, this.pickModel(options));
       this.circuitBreaker.recordSuccess();
 
       yield { type: 'usage', usage: finalUsage };
@@ -695,6 +723,7 @@ export class ClaudeService {
     this.assertAvailable();
     this.circuitBreaker.assertClosed();
 
+    await this.assertAccountCap();
     const startMs = Date.now();
     const effectiveMaxTokens = options.maxTokens ?? this.maxTokens;
     const effectiveTemperature = options.temperature ?? this.temperature;
@@ -703,7 +732,7 @@ export class ClaudeService {
 
     try {
       const response = await this.client!.messages.create({
-        model: this.model,
+        model: this.pickModel(options),
         max_tokens: effectiveMaxTokens,
         temperature: effectiveTemperature,
         system: systemPrompt,
@@ -718,7 +747,7 @@ export class ClaudeService {
         outputTokens: response.usage.output_tokens,
       };
 
-      this.recordUsage(usage);
+      this.recordUsage(usage, options, response.model);
       this.circuitBreaker.recordSuccess();
 
       return {
@@ -750,6 +779,7 @@ export class ClaudeService {
     this.circuitBreaker.assertClosed();
     const budgetUserId = this.resolveUserId(options);
     if (budgetUserId) await aiBudgetService.checkBudget(budgetUserId);
+    await this.assertAccountCap();
 
     const maxIter = options.maxIterations ?? 5;
     const toolResults: Array<{ toolName: string; result: string }> = [];
@@ -762,7 +792,7 @@ export class ClaudeService {
     for (let i = 0; i < maxIter; i++) {
       const startMs = Date.now();
       const response = await this.client!.messages.create({
-        model: this.model,
+        model: this.pickModel(options),
         max_tokens: options.maxTokens ?? this.maxTokens,
         temperature: options.temperature ?? this.temperature,
         system: this.buildSystemPrompt(options.systemPrompt, options.responseFormat),
@@ -775,7 +805,7 @@ export class ClaudeService {
       totalLatencyMs += latencyMs;
       totalUsage.inputTokens += response.usage.input_tokens;
       totalUsage.outputTokens += response.usage.output_tokens;
-      this.recordUsage({ inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens });
+      this.recordUsage({ inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens }, options, response.model);
 
       // If no tool use, extract text and return
       if (response.stop_reason !== 'tool_use') {
@@ -823,7 +853,7 @@ export class ClaudeService {
 
     // Max iterations reached — get final text response
     const finalResponse = await this.client!.messages.create({
-      model: this.model,
+      model: this.pickModel(options),
       max_tokens: options.maxTokens ?? this.maxTokens,
       temperature: options.temperature ?? this.temperature,
       system: this.buildSystemPrompt(options.systemPrompt, options.responseFormat),
@@ -833,6 +863,7 @@ export class ClaudeService {
 
     totalUsage.inputTokens += finalResponse.usage.input_tokens;
     totalUsage.outputTokens += finalResponse.usage.output_tokens;
+    this.recordUsage({ inputTokens: finalResponse.usage.input_tokens, outputTokens: finalResponse.usage.output_tokens }, options, finalResponse.model);
 
     const textBlocks = finalResponse.content.filter(
       (block): block is Anthropic.TextBlock => block.type === 'text',
@@ -1004,14 +1035,57 @@ export class ClaudeService {
     return { success: false, error: `Zod validation errors:\n${errorMessage}` };
   }
 
-  private recordUsage(usage: TokenUsage): void {
+  /** This month's whole-account spend, counted in Redis as calls are recorded */
+  private monthKey(): string {
+    return `ai:spend:${new Date().toISOString().slice(0, 7)}`;
+  }
+
+  /**
+   * Stop all AI once the month's spend reaches AI_MONTHLY_CAP_USD. Background jobs have no user,
+   * so the per-user budget never applied to them. Without Redis the cap can't be counted and is
+   * skipped (the per-user budget still applies).
+   */
+  private async assertAccountCap(): Promise<void> {
+    const cap = config.AI_MONTHLY_CAP_USD;
+    if (!cap || !redisService.isConnected()) return;
+    const spent = Number(await redisService.get(this.monthKey())) || 0;
+    if (spent >= cap) {
+      throw new AIAccountCapError(spent, cap);
+    }
+  }
+
+  private pickModel(options: { tier?: 'standard' | 'light' }): string {
+    return options.tier === 'light' ? config.AI_MODEL_LIGHT : this.model;
+  }
+
+  /**
+   * Every call is written to the usage log here, tagged with its feature — before, only the
+   * features that remembered to log did (about 30% of spend), and the monthly budget cap is
+   * measured from that log.
+   */
+  private recordUsage(usage: TokenUsage, options?: { feature?: string; userId?: string }, model?: string, latencyMs = 0): void {
     this.stats.totalRequests += 1;
     this.stats.totalInputTokens += usage.inputTokens;
     this.stats.totalOutputTokens += usage.outputTokens;
-
-    const inputCost = (usage.inputTokens / 1_000_000) * config.AI_PRICING_INPUT;
-    const outputCost = (usage.outputTokens / 1_000_000) * config.AI_PRICING_OUTPUT;
-    this.stats.estimatedCost += inputCost + outputCost;
+    const usedModel = model ?? this.model;
+    const cost = calculateCost(usedModel, usage);
+    this.stats.estimatedCost += cost;
+    // Whole-account running total for the monthly cap (kept ~40 days)
+    const client = redisService.isConnected() ? redisService.getClient() : null;
+    if (client && cost > 0) {
+      const key = this.monthKey();
+      client.incrbyfloat(key, cost).then(() => client.expire(key, 40 * 24 * 3600)).catch(() => {});
+    }
+    try {
+      recordAIUsage({
+        userId: options ? this.resolveUserId(options) : getRequestContext()?.userId,
+        feature: options?.feature ?? callerFeature(),
+        model: usedModel,
+        usage,
+        latencyMs,
+        success: true,
+      });
+    } catch { /* recording must never break an AI answer */ }
   }
 
   private wrapError(error: unknown, method: string): Error {

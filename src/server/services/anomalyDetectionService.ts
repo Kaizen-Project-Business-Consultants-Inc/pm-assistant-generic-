@@ -128,6 +128,8 @@ export class AnomalyDetectionService {
       });
 
       const result = await claudeService.complete({
+      feature: 'anomaly_detection',
+      tier: 'light', // routine job: the cheaper model
         systemPrompt,
         userMessage: 'Analyze the anomalies and return the enhanced JSON.',
         responseFormat: 'json',

@@ -1,4 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { timeAgo } from '../../utils/timeAgo';
 import { Shield, DollarSign, TrendingUp, RefreshCw, MessageSquare } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
@@ -54,6 +56,16 @@ function getStatusDot(score: number): string {
 
 export function AISummaryBanner() {
   const { prefs } = useAccessibility();
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+  // Predictions are kept for a few hours (each new one is a paid AI call); this asks for new ones now
+  const refreshPredictions = async () => {
+    setRefreshing(true);
+    try {
+      const fresh = await apiService.getDashboardPredictions(true);
+      queryClient.setQueryData(['dashboard-predictions'], fresh);
+    } finally { setRefreshing(false); }
+  };
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboard-predictions'],
     queryFn: () => apiService.getDashboardPredictions(),
@@ -96,6 +108,19 @@ export function AISummaryBanner() {
       <div className="flex items-center gap-2 mb-4">
         <span className={`h-2 w-2 rounded-full ${portfolioHealthScore != null ? getStatusDot(portfolioHealthScore) : 'bg-gray-400'}`} />
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Portfolio Intelligence</h2>
+        <span className="ml-auto flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+          {data.generatedAt && <span>Updated {timeAgo(data.generatedAt)}</span>}
+          <button
+            type="button"
+            onClick={refreshPredictions}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+            title="Work out new predictions now (uses AI)"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </span>
       </div>
 
       {/* Main content: 3 columns */}

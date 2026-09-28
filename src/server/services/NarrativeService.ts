@@ -51,6 +51,8 @@ Write in plain language, no markdown. Be concise and actionable.`;
 
     try {
       const result = await claudeService.complete({
+        feature: 'narrative',
+        tier: 'light', // routine job: the cheaper model
         systemPrompt: 'You are a project intelligence assistant. Generate brief, role-appropriate narrative summaries. No markdown formatting.',
         userMessage: prompt,
         maxTokens: 300,
@@ -87,6 +89,8 @@ Write in plain language, no markdown. Be concise and actionable.`;
 
     try {
       const result = await claudeService.complete({
+        feature: 'narrative',
+        tier: 'light', // routine job: the cheaper model
         systemPrompt: 'You are a project intelligence assistant. Generate brief, role-appropriate portfolio summaries. No markdown formatting.',
         userMessage: prompt,
         maxTokens: 300,

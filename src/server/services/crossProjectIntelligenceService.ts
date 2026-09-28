@@ -221,6 +221,8 @@ export class CrossProjectIntelligenceService {
       });
 
       const result = await claudeService.complete({
+      feature: 'cross_project_intelligence',
+      tier: 'light', // routine job: the cheaper model
         systemPrompt,
         userMessage: 'Analyze the cross-project data and return the enhanced JSON.',
         responseFormat: 'json',

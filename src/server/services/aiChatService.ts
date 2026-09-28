@@ -72,6 +72,7 @@ export class AIChatService {
         const allActions: ActionResult[] = [];
 
         const result = await claudeService.completeToolLoop({
+      feature: 'chat-tools',
           systemPrompt,
           userMessage: req.message,
           conversationHistory: history,
@@ -122,6 +123,7 @@ export class AIChatService {
       } else {
         // Plain completion without tools
         const result: CompletionResult = await claudeService.complete({
+      feature: 'chat',
           systemPrompt,
           userMessage: req.message,
           conversationHistory: history,
@@ -200,6 +202,7 @@ export class AIChatService {
 
     try {
       const stream = claudeService.stream({
+      feature: 'chat-stream',
         systemPrompt,
         userMessage: req.message,
         conversationHistory: history,

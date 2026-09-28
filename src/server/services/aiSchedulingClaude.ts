@@ -83,6 +83,7 @@ export async function suggestDependenciesClaude(
     });
 
     const result = await claudeService.completeWithJsonSchema({
+      feature: 'dependency-suggestion',
       systemPrompt,
       userMessage: 'Analyze these tasks and identify all dependencies. Return valid JSON.',
       schema: AIDependencyResponseSchema,
@@ -160,6 +161,7 @@ export async function optimizeScheduleClaude(
     });
 
     const result = await claudeService.completeWithJsonSchema({
+      feature: 'schedule-optimization',
       systemPrompt,
       userMessage: 'Optimize this schedule based on the goals and constraints. Return valid JSON.',
       schema: AIScheduleOptimizationSchema,
@@ -231,6 +233,8 @@ export async function generateProjectInsightsClaude(
     });
 
     const result = await claudeService.completeWithJsonSchema({
+      feature: 'project-insights',
+      tier: 'light', // routine job: the cheaper model
       systemPrompt,
       userMessage: 'Generate comprehensive project insights based on the data provided. Return valid JSON.',
       schema: AIProjectInsightsSchema,

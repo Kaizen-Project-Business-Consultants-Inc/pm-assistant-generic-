@@ -23,7 +23,10 @@ import logger from '../utils/logger';
 import { isOverdue } from '../utils/calendarDate';
 
 const DASHBOARD_CACHE_KEY = 'predictions:dashboard';
-const DASHBOARD_CACHE_TTL = 300; // 5 minutes
+// Predictions don't change minute to minute, and every refresh is a paid AI call — the dashboard
+// and Projects pages asked again every 5 minutes (the largest routine AI cost). Refresh button: see below.
+const DASHBOARD_CACHE_TTL = 6 * 60 * 60; // 6 hours
+const DASHBOARD_REFRESH_MIN_S = 10 * 60; // a manual refresh at most every 10 minutes per person
 
 // ---------------------------------------------------------------------------
 // Project Metrics (computed inline since AIContextBuilder doesn't carry them)
@@ -474,6 +477,7 @@ export class PredictiveIntelligenceService {
       });
 
       const result = await claudeService.completeWithJsonSchema({
+      feature: 'risk_assessment',
         systemPrompt,
         userMessage: 'Analyze this project and return the risk assessment JSON.',
         schema: AIRiskAssessmentSchema,
@@ -571,6 +575,8 @@ export class PredictiveIntelligenceService {
       });
 
       const result = await claudeService.completeWithJsonSchema({
+      feature: 'weather_impact',
+      tier: 'light', // routine job: the cheaper model
         systemPrompt,
         userMessage:
           'Analyze the weather impact on this project and return the JSON assessment.',
@@ -656,6 +662,8 @@ export class PredictiveIntelligenceService {
       });
 
       const result = await claudeService.completeWithJsonSchema({
+      feature: 'budget_forecast',
+      tier: 'light', // routine job: the cheaper model
         systemPrompt,
         userMessage: 'Analyze the budget and return the forecast JSON.',
         schema: AIBudgetForecastSchema,
@@ -686,11 +694,21 @@ export class PredictiveIntelligenceService {
   async getDashboardPredictions(
     userId?: string,
     userRole?: string,
-  ): Promise<{ predictions: AIDashboardPredictions; aiPowered: boolean }> {
+    opts: { refresh?: boolean } = {},
+  ): Promise<{ predictions: AIDashboardPredictions; aiPowered: boolean; generatedAt?: string }> {
     // Check cache first — return immediately if fresh data available
     const cacheKey = `${DASHBOARD_CACHE_KEY}:${userId || 'anon'}`;
+    let skipCache = false;
+    if (opts.refresh && userId) {
+      // "Refresh" skips the saved copy, but not more than once every 10 minutes
+      const throttleKey = `${DASHBOARD_CACHE_KEY}:refresh:${userId}`;
+      if (!(await redisService.get(throttleKey))) {
+        skipCache = true;
+        await redisService.set(throttleKey, '1', DASHBOARD_REFRESH_MIN_S);
+      }
+    }
     try {
-      const cached = await redisService.get(cacheKey);
+      const cached = skipCache ? null : await redisService.get(cacheKey);
       if (cached) {
         const parsed = JSON.parse(cached);
         return parsed;
@@ -860,6 +878,8 @@ export class PredictiveIntelligenceService {
     });
 
     const result = await claudeService.completeWithJsonSchema({
+      feature: 'dashboard_predictions',
+      tier: 'light', // routine job: the cheaper model
       systemPrompt,
       userMessage: 'Generate the dashboard predictions JSON.',
       schema: AIDashboardPredictionsSchema,
@@ -889,6 +909,8 @@ export class PredictiveIntelligenceService {
   }
 
   private cacheDashboardResult(cacheKey: string, result: { predictions: AIDashboardPredictions; aiPowered: boolean }): void {
+    // Stamp when it was worked out, so the dashboard can say "Updated 2 h ago"
+    (result as { generatedAt?: string }).generatedAt = new Date().toISOString();
     redisService.set(cacheKey, JSON.stringify(result), DASHBOARD_CACHE_TTL).catch(() => {});
   }
 

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { aiUsageLogRepository } from '../database/AIUsageLogRepository';
-import { TokenUsage } from './claudeService';
+import type { TokenUsage } from './claudeService';
 import { config } from '../config';
 import logger from '../utils/logger';
 
@@ -15,13 +15,30 @@ export interface AIUsageEntry {
   requestContext?: Record<string, unknown>;
 }
 
-export function calculateCost(_model: string, usage: TokenUsage): number {
-  const inputCost = (usage.inputTokens / 1_000_000) * config.AI_PRICING_INPUT;
-  const outputCost = (usage.outputTokens / 1_000_000) * config.AI_PRICING_OUTPUT;
-  return inputCost + outputCost;
+/** US$ per million tokens by model family; the configured prices apply to anything else */
+const MODEL_PRICES: Array<[RegExp, number, number]> = [
+  [/haiku-4/, 1, 5],
+  [/haiku/, 0.8, 4],
+  [/sonnet/, 3, 15],
+];
+
+export function calculateCost(model: string, usage: TokenUsage): number {
+  const hit = MODEL_PRICES.find(([re]) => re.test(model ?? ''));
+  const [inPrice, outPrice] = hit ? [hit[1], hit[2]] : [config.AI_PRICING_INPUT, config.AI_PRICING_OUTPUT];
+  return (usage.inputTokens / 1_000_000) * inPrice + (usage.outputTokens / 1_000_000) * outPrice;
 }
 
+/**
+ * Every successful AI call is now recorded centrally by ClaudeService (tagged with the calling
+ * feature), so this only records failures — recording successes here too would count them twice.
+ * Before Sep 2026 only ~30% of calls were recorded, and the monthly budget cap measured from them.
+ */
 export function logAIUsage(entry: AIUsageEntry): void {
+  if (entry.success) return;
+  recordAIUsage(entry);
+}
+
+export function recordAIUsage(entry: AIUsageEntry): void {
   const id = randomUUID();
   const costEstimate = calculateCost(entry.model, entry.usage);
 

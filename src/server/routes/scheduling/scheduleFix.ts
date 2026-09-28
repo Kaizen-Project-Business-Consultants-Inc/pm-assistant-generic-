@@ -16,7 +16,7 @@ const rejectSchema = z.object({ feedback: z.string().max(2000).optional() });
 
 /** Map AI infra errors to their conventional status codes. */
 function handleAiError(error: any, reply: FastifyReply): FastifyReply | null {
-  if (error?.constructor?.name === 'AIBudgetExceededError') {
+  if (error?.name === 'AIBudgetExceededError') {
     return reply.status(429).send({ error: 'AI token budget exceeded. Rules-based fixes are still available.' });
   }
   if (error?.constructor?.name === 'AICircuitBreakerError') {

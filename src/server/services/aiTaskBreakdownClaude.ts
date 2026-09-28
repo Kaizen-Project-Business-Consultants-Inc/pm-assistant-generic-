@@ -48,6 +48,7 @@ export class ClaudeTaskBreakdownService {
       });
 
       const result = await claudeService.completeWithJsonSchema({
+      feature: 'task-breakdown',
         systemPrompt,
         userMessage:
           'Analyze this project and generate a comprehensive task breakdown. ' +

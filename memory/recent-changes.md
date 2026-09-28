@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-28 (AI cost control — user approved, $100/month cap)
+
+- Console export (30 Aug–28 Sep): one key "summarizer-app", Sonnet 4.5, ~$54; app's own log caught ~30%. Biggest steady cost: dashboard predictions re-asked every 5 min on Dashboard/Projects.
+- Now: central recording in `claudeService.recordUsage` (feature from options or calling service; `logAIUsage` records failures only, no double count; per-model pricing in `calculateCost`); `tier: 'light'` → `AI_MODEL_LIGHT` for predictions/summaries/insights/narratives; predictions cached 6 h + Refresh (≥10 min); `AI_MONTHLY_CAP_USD` account cap (`AIAccountCapError` extends the budget error so screens show the friendly message) + 80% alert.
+
 ## 2026-09-28 (private project data — phase 2: every read route)
 
 - ~80 more read routes gated or filtered (see SECURITY_GUIDE "Phase 2"); child-id binding for task/epic/baseline/scenario (schedules hook), automations, documents; resource screens hide other projects' names/costs; Mjuzi memory/dreaming admin/PMO only.

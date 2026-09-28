@@ -12,6 +12,7 @@ import { serverErrorActivity } from '../utils/serverErrorWatch';
 
 type AlertType =
   | 'error_rate_high'
+  | 'ai_account_spend'
   | 'ai_budget_warning'
   | 'ai_budget_critical'
   | 'circuit_breaker_open'
@@ -78,6 +79,7 @@ class AlertService {
         this.checkCronJobsRunning(),
         this.checkDegradedStart(),
         this.checkRegistrationFlood(),
+        this.checkAccountAISpend(),
       ]);
     } catch (err) {
       logger.error('[AlertService] Check cycle failed', {
@@ -114,6 +116,20 @@ class AlertService {
    * Thresholds are set for a product with a handful of signups a week: anything
    * near these is either abuse or a launch, and both are worth an email.
    */
+  /** Whole-account AI spend this month against AI_MONTHLY_CAP_USD */
+  private async checkAccountAISpend(): Promise<void> {
+    const cap = config.AI_MONTHLY_CAP_USD;
+    if (!cap || !redisService.isConnected()) return;
+    const spent = Number(await redisService.get(`ai:spend:${new Date().toISOString().slice(0, 7)}`)) || 0;
+    if (spent < cap * 0.8) return;
+    await this.fire({
+      type: 'ai_account_spend',
+      severity: spent >= cap ? 'critical' : 'warning',
+      title: spent >= cap ? 'AI spending limit reached' : 'AI spending at 80% of the monthly limit',
+      message: `AI has cost about $${spent.toFixed(2)} this month against a limit of $${cap}. ${spent >= cap ? 'AI features are paused until next month' : 'At the limit, AI features pause until next month'} unless AI_MONTHLY_CAP_USD is raised.`,
+    });
+  }
+
   private async checkRegistrationFlood(): Promise<void> {
     const { total, worstIp, worstCount } = await registrationActivity();
 

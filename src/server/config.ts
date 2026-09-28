@@ -30,6 +30,11 @@ const configSchema = z.object({
   AI_MAX_TOKENS: z.coerce.number().min(100).max(8192).default(4096),
   AI_ENABLED: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(false)),
   AI_FALLBACK_MODEL: z.string().default('claude-haiku-4-5-20251001'),
+  // Routine jobs (predictions, summaries, insights) — about a third of the standard model's price
+  AI_MODEL_LIGHT: z.string().default('claude-haiku-4-5-20251001'),
+  // Whole-account AI spend limit per calendar month in US$ (0 = no limit). Covers background jobs,
+  // which have no user and so no per-user budget. Warning email at 80%.
+  AI_MONTHLY_CAP_USD: z.coerce.number().min(0).default(100),
   AI_FALLBACK_ENABLED: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(false)),
 
   // Email Configuration (Resend)
@@ -215,6 +220,8 @@ export function validateConfiguration() {
       AI_MAX_TOKENS: process.env['AI_MAX_TOKENS'],
       AI_ENABLED: process.env['AI_ENABLED'],
       AI_FALLBACK_MODEL: process.env['AI_FALLBACK_MODEL'],
+      AI_MODEL_LIGHT: process.env['AI_MODEL_LIGHT'],
+      AI_MONTHLY_CAP_USD: process.env['AI_MONTHLY_CAP_USD'],
       AI_FALLBACK_ENABLED: process.env['AI_FALLBACK_ENABLED'],
       RESEND_API_KEY: process.env['RESEND_API_KEY'],
       RESEND_FROM_EMAIL: process.env['RESEND_FROM_EMAIL'],

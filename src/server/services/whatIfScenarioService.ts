@@ -436,6 +436,7 @@ export class WhatIfScenarioService {
         });
 
         const result = await claudeService.completeWithJsonSchema({
+      feature: 'what_if_scenario',
           systemPrompt,
           userMessage: `Model this scenario: "${sanitizeForPrompt(request.scenario)}". Return the impact analysis JSON.`,
           schema: AIScenarioResultSchema,

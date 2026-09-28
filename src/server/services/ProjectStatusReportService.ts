@@ -166,6 +166,7 @@ export class ProjectStatusReportService {
         });
 
         const result = await claudeService.complete({
+      feature: 'status-report',
           systemPrompt,
           userMessage: 'Analyze the project data and generate the comprehensive executive status report JSON.',
           responseFormat: 'json',

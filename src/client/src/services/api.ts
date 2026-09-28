@@ -544,8 +544,9 @@ class ApiService {
   // Predictions endpoints
   // -------------------------------------------------------------------------
 
-  async getDashboardPredictions() {
-    const response = await this.api.get('/predictions/dashboard');
+  /** `refresh`: ask for new AI predictions now (the server keeps them 6 hours; at most every 10 minutes) */
+  async getDashboardPredictions(refresh = false) {
+    const response = await this.api.get('/predictions/dashboard', { params: refresh ? { refresh: '1' } : undefined });
     return response.data;
   }
 

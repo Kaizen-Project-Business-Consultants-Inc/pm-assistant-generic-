@@ -15,6 +15,19 @@ vi.mock('../../config', () => ({
     AI_TEMPERATURE: 0.3,
     AI_PRICING_INPUT: 3.0,
     AI_PRICING_OUTPUT: 15.0,
+    AI_MODEL_LIGHT: 'claude-haiku-4-5-20251001',
+    AI_MONTHLY_CAP_USD: 100,
+  },
+}));
+
+// Central usage recording and the whole-account monthly limit
+const { mockRecord, redisState } = vi.hoisted(() => ({ mockRecord: vi.fn(), redisState: { connected: false, spent: '0' } }));
+vi.mock('../../services/aiUsageLogger', async (orig) => ({ ...(await orig() as object), recordAIUsage: mockRecord }));
+vi.mock('../../services/RedisService', () => ({
+  redisService: {
+    isConnected: () => redisState.connected,
+    get: vi.fn(async () => redisState.spent),
+    getClient: () => ({ incrbyfloat: vi.fn(async () => 0), expire: vi.fn(async () => 1) }),
   },
 }));
 
@@ -928,5 +941,41 @@ describe('ClaudeService', () => {
       expect(err.retryAfterMs).toBe(30000);
       expect(err.message).toContain('temporarily unavailable');
     });
+  });
+});
+
+describe('cost control (Sep 2026)', () => {
+  beforeEach(() => { vi.clearAllMocks(); redisState.connected = false; redisState.spent = '0'; });
+
+  it('records every call with the feature it was for', async () => {
+    mockCreate.mockResolvedValueOnce(mockApiResponse());
+    await makeService().complete(defaultOptions({ feature: 'dashboard_predictions' }));
+    expect(mockRecord).toHaveBeenCalledWith(expect.objectContaining({ feature: 'dashboard_predictions', success: true }));
+  });
+
+  it('names the calling service when a call does not say what it is for', async () => {
+    mockCreate.mockResolvedValueOnce(mockApiResponse());
+    await makeService().complete(defaultOptions());
+    const feature = mockRecord.mock.calls[0][0].feature;
+    expect(feature).toBeTruthy();
+    expect(feature).not.toBe('claudeService');
+  });
+
+  it('uses the cheaper model for routine jobs', async () => {
+    mockCreate.mockResolvedValueOnce(mockApiResponse({ model: 'claude-haiku-4-5-20251001' }));
+    await makeService().complete(defaultOptions({ tier: 'light' }));
+    expect(mockCreate.mock.calls[0][0].model).toBe('claude-haiku-4-5-20251001');
+  });
+
+  it("stops all AI once the month's account limit is reached", async () => {
+    redisState.connected = true; redisState.spent = '100.5';
+    await expect(makeService().complete(defaultOptions())).rejects.toMatchObject({ name: 'AIBudgetExceededError' });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('works normally under the limit', async () => {
+    redisState.connected = true; redisState.spent = '12.3';
+    mockCreate.mockResolvedValueOnce(mockApiResponse());
+    await expect(makeService().complete(defaultOptions())).resolves.toBeTruthy();
   });
 });

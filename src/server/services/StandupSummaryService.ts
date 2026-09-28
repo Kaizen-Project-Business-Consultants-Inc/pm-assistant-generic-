@@ -191,6 +191,8 @@ class StandupSummaryService {
       });
 
       const result = await claudeService.complete({
+      feature: 'standup-summary',
+      tier: 'light', // routine job: the cheaper model
         systemPrompt,
         userMessage: 'Generate a concise standup summary narrative for this project based on the changes data.',
         temperature: 0.3,

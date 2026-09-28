@@ -935,7 +935,7 @@ Rules:
         tokensUsed: result.usage.inputTokens + result.usage.outputTokens,
       };
     } catch (error: any) {
-      if (error.constructor?.name === 'AIBudgetExceededError') {
+      if (error.name === 'AIBudgetExceededError') {
         return reply.status(429).send({ error: 'AI token budget exceeded. Please try again next month or purchase a top-up.' });
       }
       if (error.constructor?.name === 'AICircuitBreakerError') {

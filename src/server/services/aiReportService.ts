@@ -84,6 +84,7 @@ export class AIReportService {
       });
 
       const result = await claudeService.complete({
+      feature: `report-${reportType}`,
         systemPrompt,
         userMessage: `Generate a comprehensive ${title} based on the provided data. Format the report in markdown.`,
         temperature: 0.3,
