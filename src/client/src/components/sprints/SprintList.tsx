@@ -28,6 +28,8 @@ interface SprintListProps {
   onSelect: (sprintId: string) => void;
   onCreate: () => void;
   onRetro?: (sprintId: string) => void;
+  /** The project's Manager/Owner — creates sprints */
+  canEdit?: boolean;
 }
 
 type SortMode = 'default' | 'date' | 'name';
@@ -74,7 +76,7 @@ function VelocitySparkline({ sprints }: { sprints: Sprint[] }) {
   );
 }
 
-export function SprintList({ projectId, onSelect, onCreate, onRetro }: SprintListProps) {
+export function SprintList({ projectId, onSelect, onCreate, onRetro, canEdit = true }: SprintListProps) {
   const [sortMode, setSortMode] = useState<SortMode>('default');
 
   const { data, isLoading, isError } = useQuery({
@@ -143,6 +145,7 @@ export function SprintList({ projectId, onSelect, onCreate, onRetro }: SprintLis
             <ArrowUpDown className="w-3 h-3" />
             <span className="hidden sm:inline capitalize">{sortMode === 'default' ? 'Status' : sortMode}</span>
           </button>
+          {canEdit && (
           <button
             onClick={onCreate}
             className="flex items-center gap-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 px-3 py-1.5 rounded-md transition-colors"
@@ -151,6 +154,7 @@ export function SprintList({ projectId, onSelect, onCreate, onRetro }: SprintLis
             <span className="hidden sm:inline">New Sprint</span>
             <span className="sm:hidden">New</span>
           </button>
+          )}
         </div>
       </div>
 

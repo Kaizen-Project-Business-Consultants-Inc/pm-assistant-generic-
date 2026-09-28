@@ -11,6 +11,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { useProjectRole } from '../../hooks/useProjectRole';
+import { ViewOnlyNote } from '../../components/ui/ViewOnlyNote';
 
 function SectionError({ message }: { message: string }) {
   return (
@@ -22,6 +24,7 @@ function SectionError({ message }: { message: string }) {
 }
 
 export function ScenariosTab({ projectId }: { projectId: string }) {
+  const { canEdit, loaded: roleLoaded } = useProjectRole(projectId);
   const [scenario, setScenario] = useState('');
   const [budgetChangePct, setBudgetChangePct] = useState<number>(0);
   const [workerChange, setWorkerChange] = useState<number>(0);
@@ -57,6 +60,10 @@ export function ScenariosTab({ projectId }: { projectId: string }) {
   };
 
   const result = mutation.data?.data;
+
+  if (roleLoaded && !canEdit) {
+    return <ViewOnlyNote className="mt-6" />;
+  }
 
   return (
     <div className="space-y-6">

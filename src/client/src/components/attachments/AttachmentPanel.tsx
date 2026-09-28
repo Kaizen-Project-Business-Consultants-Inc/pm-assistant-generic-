@@ -5,10 +5,13 @@ import { apiService } from '../../services/api';
 import { AttachmentVersionHistory } from './AttachmentVersionHistory';
 import { announce } from '../../utils/announce';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { useProjectRole } from '../../hooks/useProjectRole';
 
 interface AttachmentPanelProps {
   entityType: 'task' | 'project';
   entityId: string;
+  /** The project this belongs to (for a task); a project's own files use entityId */
+  projectId?: string;
 }
 
 function fileIcon(mime: string) {
@@ -23,7 +26,11 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) {
+export function AttachmentPanel({ entityType, entityId, projectId }: AttachmentPanelProps) {
+  // Adding and deleting files is the project's Manager/Owner's; anyone on the project can view and download
+  const roleProject = projectId ?? (entityType === 'project' ? entityId : null);
+  const { canEdit: roleCanEdit, loaded: roleLoaded } = useProjectRole(roleProject);
+  const canEdit = !roleProject || !roleLoaded || roleCanEdit;
   const queryClient = useQueryClient();
   const [dragOver, setDragOver] = useState(false);
   const [versionHistoryId, setVersionHistoryId] = useState<string | null>(null);
@@ -109,6 +116,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
       {fileError && <p className="text-xs text-red-600 dark:text-red-400">{fileError}</p>}
 
       {/* Drop zone */}
+      {canEdit && (
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -129,6 +137,7 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
           onChange={(e) => handleFiles(e.target.files)}
         />
       </div>
+      )}
 
       {/* File list */}
       {isLoading ? (
@@ -161,12 +170,14 @@ export function AttachmentPanel({ entityType, entityId }: AttachmentPanelProps) 
                 <button onClick={() => handleDownload(att)} className="p-1 text-gray-500 hover:text-primary-600" title="Download" aria-label="Download file">
                   <Download className="w-3.5 h-3.5" />
                 </button>
+                {canEdit && (
                 <button
                   onClick={() => setDeleteConfirmId(att.id)}
                   className="p-1 text-gray-500 hover:text-red-600" title="Delete" aria-label="Delete file"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
+                )}
               </div>
             </div>
           ))}

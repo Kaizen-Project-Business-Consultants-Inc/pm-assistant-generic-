@@ -24,6 +24,8 @@ import { MeetingResultPanel } from '../components/meeting/MeetingResultPanel';
 import { MeetingToRaidModal } from '../components/meeting/MeetingToRaidModal';
 import { SyncExternalMeetingModal } from '../components/meeting/SyncExternalMeetingModal';
 import { mapAnalysisToRaidCandidates, RaidCandidate } from '../utils/meetingToRaidMapper';
+import { useProjectRole } from '../hooks/useProjectRole';
+import { ViewOnlyNote } from '../components/ui/ViewOnlyNote';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -172,6 +174,8 @@ export const MeetingMinutesPage: React.FC = () => {
   // Project & schedule selectors
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>('');
+  // Analysing meetings and sending results on is the project's Manager/Owner's job
+  const { canEdit, loaded: roleLoaded } = useProjectRole(selectedProjectId || null);
 
   // Input state
   const [inputMode, setInputMode] = useState<InputMode>('paste');
@@ -463,7 +467,10 @@ export const MeetingMinutesPage: React.FC = () => {
         </div>
       ) : (
         <>
+          {roleLoaded && !canEdit && <ViewOnlyNote youCan="read past meeting analyses below" />}
+
           {/* Transcript Input Card */}
+          {canEdit && (
           <div className="card space-y-4">
             {/* Input mode tabs */}
             <div className="flex items-center gap-1 border-b border-gray-200 dark:border-gray-700 -mx-4 px-4">
@@ -697,6 +704,7 @@ export const MeetingMinutesPage: React.FC = () => {
               </div>
             )}
           </div>
+          )}
 
           {/* Analysis Results */}
           {analysisResult && (
@@ -720,6 +728,7 @@ export const MeetingMinutesPage: React.FC = () => {
                   <FileText className="w-4 h-4 text-primary-500" />
                   Analysis Results
                 </h2>
+                {canEdit && (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleSendToRaid(analysisResult)}
@@ -744,12 +753,14 @@ export const MeetingMinutesPage: React.FC = () => {
                     </button>
                   )}
                 </div>
+                )}
               </div>
 
               <MeetingResultPanel
                 analysis={analysisResult}
                 onApply={isSample ? () => {} : handleApply}
                 isApplying={applyMutation.isPending}
+                canApply={canEdit}
               />
 
               {applyMutation.isSuccess && (
@@ -837,6 +848,7 @@ export const MeetingMinutesPage: React.FC = () => {
 
                       {isExpanded && (
                         <div className="pb-3 px-2 pl-9">
+                          {canEdit && (
                           <div className="flex gap-2 mb-3">
                             <button
                               onClick={(e) => { e.stopPropagation(); handleSendToRaid(entry); }}
@@ -858,6 +870,7 @@ export const MeetingMinutesPage: React.FC = () => {
                               </button>
                             )}
                           </div>
+                          )}
                           <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
                             {entry.summary && <p className="line-clamp-3">{entry.summary}</p>}
                           </div>

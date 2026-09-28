@@ -9,6 +9,8 @@ interface AutomationListProps {
   onSelect: (id: string) => void;
   onNew: () => void;
   onEdit: (id: string) => void;
+  /** The project's Manager/Owner */
+  canEdit?: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -50,7 +52,7 @@ function formatRelativeDate(d: string | null): string {
   return date.toLocaleDateString();
 }
 
-export function AutomationList({ projectId, onSelect, onNew, onEdit }: AutomationListProps) {
+export function AutomationList({ projectId, onSelect, onNew, onEdit, canEdit = true }: AutomationListProps) {
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -148,6 +150,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Automations</h3>
           <span className="text-sm text-gray-500 dark:text-gray-400">({automations.length})</span>
         </div>
+        {canEdit && (
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowMarketplace(!showMarketplace)}
@@ -164,6 +167,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
             New Automation
           </button>
         </div>
+        )}
       </div>
 
       {/* Filter */}
@@ -246,6 +250,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                     {auto.triggerCount || 0}
                   </td>
                   <td className="px-4 py-3 text-right">
+                    {canEdit && (
                     <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => toggleMutation.mutate({ id: auto.id, status: auto.status })}
@@ -273,6 +278,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
                         <Trash2 className="w-4 h-4 text-red-500" />
                       </button>
                     </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -282,7 +288,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
       )}
 
       {/* Suggested Automations */}
-      {suggestions.length > 0 && (
+      {canEdit && suggestions.length > 0 && (
         <div className="border border-purple-200 dark:border-purple-800 rounded-lg overflow-hidden">
           <button
             onClick={() => setSuggestionsOpen(!suggestionsOpen)}
@@ -336,7 +342,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
       )}
 
       {/* Governance Packs */}
-      {packsData?.packs?.length > 0 && (
+      {canEdit && packsData?.packs?.length > 0 && (
         <div className="border border-emerald-200 dark:border-emerald-800 rounded-lg overflow-hidden">
           <button
             onClick={() => setPacksOpen(!packsOpen)}
@@ -374,7 +380,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit }: Automatio
       )}
 
       {/* Marketplace */}
-      {showMarketplace && (
+      {canEdit && showMarketplace && (
         <div className="border border-blue-200 dark:border-blue-800 rounded-lg overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 bg-blue-50 dark:bg-blue-900/20">
             <div className="flex items-center gap-2">

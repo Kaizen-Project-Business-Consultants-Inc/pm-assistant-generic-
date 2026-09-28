@@ -8,6 +8,8 @@ interface AutomationDetailProps {
   automationId: string;
   onBack: () => void;
   onEdit: () => void;
+  /** The project's Manager/Owner */
+  canEdit?: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -51,7 +53,7 @@ function ConditionTraceTree({ node, depth = 0 }: { node: any; depth?: number }) 
   );
 }
 
-export function AutomationDetail({ projectId, automationId, onBack, onEdit }: AutomationDetailProps) {
+export function AutomationDetail({ projectId, automationId, onBack, onEdit, canEdit = true }: AutomationDetailProps) {
   const queryClient = useQueryClient();
   const [testResult, setTestResult] = useState<any>(null);
 
@@ -137,6 +139,7 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
             )}
           </div>
         </div>
+        {canEdit && (
         <div className="flex items-center gap-2">
           <button
             onClick={() => testMutation.mutate()}
@@ -174,6 +177,7 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit }: Au
             Edit
           </button>
         </div>
+        )}
       </div>
 
       {/* Summary Cards */}

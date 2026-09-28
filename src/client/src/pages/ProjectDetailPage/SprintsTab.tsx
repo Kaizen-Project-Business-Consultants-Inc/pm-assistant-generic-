@@ -15,6 +15,8 @@ import { RetrospectiveBoard } from '../../components/sprints/RetrospectiveBoard'
 import { DefinitionsPanel } from '../../components/sprints/DefinitionsPanel';
 import { EpicBoard } from '../../components/sprints/EpicBoard';
 import { EpicList } from '../../components/sprints/EpicList';
+import { useProjectRole } from '../../hooks/useProjectRole';
+import { ViewOnlyNote } from '../../components/ui/ViewOnlyNote';
 
 interface SprintSummary {
   id: string;
@@ -44,6 +46,8 @@ function DayProgress({ sprint }: { sprint: SprintSummary | null }) {
 }
 
 export function SprintsTab({ projectId }: { projectId: string }) {
+  // Only the project's Manager/Owner changes sprints; everyone posts their own standups and retro notes
+  const { canEdit, loaded: roleLoaded } = useProjectRole(projectId);
   const { data: schedulesData } = useQuery({
     queryKey: ['schedules', projectId],
     queryFn: () => apiService.getSchedules(projectId),
@@ -150,8 +154,12 @@ export function SprintsTab({ projectId }: { projectId: string }) {
           </div>
         </div>
       </div>
+      {roleLoaded && !canEdit && (
+        <ViewOnlyNote youCan="post your own standups, add retrospective notes and vote" />
+      )}
       {sprintView === 'list' && (
         <SprintList
+          canEdit={canEdit}
           projectId={projectId}
           onSelect={(id) => { setSelectedSprintId(id); setSprintView('planning'); }}
           onCreate={() => { setSelectedSprintId(undefined); setSprintView('planning'); }}
@@ -163,10 +171,11 @@ export function SprintsTab({ projectId }: { projectId: string }) {
           projectId={projectId}
           scheduleId={selectedScheduleId}
           sprintId={selectedSprintId || ''}
+          canEdit={canEdit}
         />
       )}
       {sprintView === 'board' && selectedSprintId && (
-        <SprintBoard sprintId={selectedSprintId} />
+        <SprintBoard sprintId={selectedSprintId} canEdit={canEdit} />
       )}
       {sprintView === 'burndown' && selectedSprintId && (
         <SprintBurndownChart sprintId={selectedSprintId} />
@@ -187,10 +196,10 @@ export function SprintsTab({ projectId }: { projectId: string }) {
         <StandupLogPanel sprintId={selectedSprintId} projectId={projectId} />
       )}
       {sprintView === 'retro' && selectedSprintId && selectedScheduleId && (
-        <RetrospectiveBoard sprintId={selectedSprintId} projectId={projectId} scheduleId={selectedScheduleId} />
+        <RetrospectiveBoard sprintId={selectedSprintId} projectId={projectId} scheduleId={selectedScheduleId} canEdit={canEdit} />
       )}
       {sprintView === 'definitions' && (
-        <DefinitionsPanel projectId={projectId} isManager={true} />
+        <DefinitionsPanel projectId={projectId} isManager={canEdit} />
       )}
       {sprintView === 'epics' && selectedScheduleId && (
         <EpicBoard scheduleId={selectedScheduleId} />

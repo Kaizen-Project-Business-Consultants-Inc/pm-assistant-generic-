@@ -49,6 +49,8 @@ interface MeetingResultPanelProps {
   analysis: MeetingAnalysis;
   onApply: (indices: number[]) => void;
   isApplying: boolean;
+  /** The project's Manager/Owner — applies task updates to the schedule */
+  canApply?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +124,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
   analysis,
   onApply,
   isApplying,
+  canApply = true,
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('summary');
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
@@ -327,6 +330,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                 </div>
 
                 {/* Apply button */}
+                {canApply && (
                 <div className="mt-4 flex items-center justify-between">
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {selectedIndices.size} of {taskUpdates.length} selected
@@ -349,6 +353,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                     )}
                   </button>
                 </div>
+                )}
               </>
             )}
           </div>

@@ -3,11 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ThumbsUp, Trash2, ArrowRightCircle, Sparkles } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { LessonsPanel } from '../lessons/LessonsPanel';
+import { useAuthStore } from '../../stores/authStore';
 
 interface RetrospectiveBoardProps {
   sprintId: string;
   projectId: string;
   scheduleId: string;
+  /** The project's Manager/Owner — AI seed and turning action items into tasks */
+  canEdit?: boolean;
 }
 
 interface RetroItem {
@@ -26,7 +29,8 @@ const COLUMNS = [
   { id: 'action_item' as const, label: 'Action Items', color: 'red', bg: 'bg-red-50 dark:bg-red-900/10', border: 'border-red-200 dark:border-red-800', headerBg: 'bg-red-100 dark:bg-red-900/30', headerText: 'text-red-700 dark:text-red-300' },
 ];
 
-export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: RetrospectiveBoardProps) {
+export function RetrospectiveBoard({ sprintId, projectId, scheduleId, canEdit = true }: RetrospectiveBoardProps) {
+  const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [newItemContent, setNewItemContent] = useState<Record<string, string>>({});
 
@@ -90,6 +94,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: Retrospe
       {/* Toolbar */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Retrospective Board</h4>
+        {canEdit && (
         <button
           onClick={() => seedMutation.mutate()}
           disabled={seedMutation.isPending}
@@ -99,6 +104,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: Retrospe
           <Sparkles className="w-3.5 h-3.5" />
           {seedMutation.isPending ? 'Generating...' : 'AI Seed'}
         </button>
+        )}
       </div>
       {seedMutation.isError && (
         <p className="text-xs text-red-500">{(seedMutation.error as any)?.response?.data?.error || 'AI seed failed'}</p>
@@ -154,7 +160,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: Retrospe
                           </span>
                         )}
 
-                        {item.category === 'action_item' && !item.convertedTaskId && (
+                        {canEdit && item.category === 'action_item' && !item.convertedTaskId && (
                           <button
                             onClick={() => convertMutation.mutate(item.id)}
                             disabled={convertMutation.isPending}
@@ -173,6 +179,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: Retrospe
                           <span className="text-xs text-green-600 dark:text-green-400 font-medium">Converted</span>
                         )}
 
+                        {item.createdBy === user?.id && (
                         <button
                           onClick={() => deleteItemMutation.mutate(item.id)}
                           className="ml-auto p-0.5 text-gray-500 hover:text-red-500 transition-colors"
@@ -183,6 +190,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId }: Retrospe
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
+                        )}
                       </div>
                     </div>
                   );

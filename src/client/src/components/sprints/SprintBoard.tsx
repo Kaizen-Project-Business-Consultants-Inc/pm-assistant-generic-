@@ -19,6 +19,8 @@ interface BoardTask {
 
 interface SprintBoardProps {
   sprintId: string;
+  /** The project's Manager/Owner — moves cards and sets points */
+  canEdit?: boolean;
 }
 
 const COLUMNS: { id: string; label: string; headerBg: string; headerText: string; bg: string; border: string; darkHeaderBg: string; darkBg: string; darkBorder: string }[] = [
@@ -78,11 +80,12 @@ interface SprintCardProps {
   onPointsSave: (taskId: string) => void;
   onPointsKeyDown: (e: React.KeyboardEvent, taskId: string) => void;
   onPointsValueChange: (value: string) => void;
+  canEdit: boolean;
 }
 
 const SprintCard = memo(function SprintCard({
   task, dodReady, editingPointsTaskId, editingPointsValue,
-  onDragStart, onPointsClick, onPointsSave, onPointsKeyDown, onPointsValueChange,
+  onDragStart, onPointsClick, onPointsSave, onPointsKeyDown, onPointsValueChange, canEdit,
 }: SprintCardProps) {
   const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
   const points = getPoints(task);
@@ -91,9 +94,9 @@ const SprintCard = memo(function SprintCard({
 
   return (
     <div
-      draggable
-      onDragStart={(e) => onDragStart(e, task.id)}
-      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-3 shadow-sm hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20 transition-shadow cursor-grab active:cursor-grabbing"
+      draggable={canEdit}
+      onDragStart={canEdit ? (e) => onDragStart(e, task.id) : undefined}
+      className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-3 shadow-sm hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20 transition-shadow ${canEdit ? 'cursor-grab active:cursor-grabbing' : ''}`}
     >
       <div className="flex items-center gap-1.5 mb-2">
         {task.taskType && task.taskType !== 'task' && taskTypeBadge[task.taskType] && (
@@ -128,7 +131,7 @@ const SprintCard = memo(function SprintCard({
             autoFocus
             onClick={(e) => e.stopPropagation()}
           />
-        ) : (
+        ) : canEdit ? (
           <span
             className="text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
             onClick={(e) => { e.stopPropagation(); onPointsClick(task.id, points); }}
@@ -136,7 +139,11 @@ const SprintCard = memo(function SprintCard({
           >
             {points > 0 ? `${points} pts` : '+ pts'}
           </span>
-        )}
+        ) : points > 0 ? (
+          <span className="text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full">
+            {points} pts
+          </span>
+        ) : null}
         {ac && (
           <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${ac.checked === ac.total ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>
             {ac.checked}/{ac.total} AC
@@ -166,7 +173,7 @@ const SprintCard = memo(function SprintCard({
   );
 });
 
-export function SprintBoard({ sprintId }: SprintBoardProps) {
+export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [localTaskOverrides, setLocalTaskOverrides] = useState<Record<string, string>>({});
   const [wipLimits, setWipLimits] = useState<Record<string, number>>(() => loadWipLimits(sprintId));
@@ -275,7 +282,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
       e.preventDefault();
       setDragOverColumn(null);
       const taskId = e.dataTransfer.getData('text/plain');
-      if (taskId) {
+      if (taskId && canEdit) {
         const task = tasks.find((t) => t.id === taskId);
         if (task && task.status !== columnId) {
           setLocalTaskOverrides((prev) => ({ ...prev, [taskId]: columnId }));
@@ -283,7 +290,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
         }
       }
     },
-    [tasks, updateStatusMutation],
+    [tasks, updateStatusMutation, canEdit],
   );
 
   if (isLoading) {
@@ -429,6 +436,7 @@ export function SprintBoard({ sprintId }: SprintBoardProps) {
                         onPointsSave={handlePointsSave}
                         onPointsKeyDown={handlePointsKeyDown}
                         onPointsValueChange={setEditingPointsValue}
+                        canEdit={canEdit}
                       />
                     ))}
                   </div>

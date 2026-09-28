@@ -31,6 +31,8 @@ interface SprintPlanningPanelProps {
   projectId: string;
   scheduleId: string;
   sprintId: string;
+  /** The project's Manager/Owner — plans, starts and completes the sprint */
+  canEdit?: boolean;
 }
 
 const priorityBadge: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
@@ -61,7 +63,7 @@ function TaskCard({
   task: Task;
   actionLabel: string;
   actionIcon: React.ElementType;
-  onAction: () => void;
+  onAction?: () => void;
   actionColor: string;
 }) {
   const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
@@ -86,6 +88,7 @@ function TaskCard({
           {getPoints(task)} pts
         </span>
       )}
+      {onAction && (
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -96,11 +99,12 @@ function TaskCard({
       >
         <ActionIcon className="w-3.5 h-3.5" />
       </button>
+      )}
     </div>
   );
 }
 
-export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintPlanningPanelProps) {
+export function SprintPlanningPanel({ projectId, scheduleId, sprintId, canEdit = true }: SprintPlanningPanelProps) {
   const queryClient = useQueryClient();
   const [backlogSearch, setBacklogSearch] = useState('');
   const [backlogPriority, setBacklogPriority] = useState<string>('all');
@@ -212,6 +216,14 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
     );
   }
 
+  if (!sprint && !canEdit) {
+    return (
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 text-sm text-gray-600 dark:text-gray-300 text-center">
+        Choose a sprint from the list to see its plan.
+      </div>
+    );
+  }
+
   if (!sprint) {
     return (
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 max-w-lg mx-auto">
@@ -283,8 +295,8 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
     );
   }
 
-  const canStart = sprint.status === 'planning';
-  const canComplete = sprint.status === 'active';
+  const canStart = canEdit && sprint.status === 'planning';
+  const canComplete = canEdit && sprint.status === 'active';
 
   return (
     <div className="space-y-4">
@@ -386,7 +398,7 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
                   task={task}
                   actionLabel="Add to Sprint"
                   actionIcon={Plus}
-                  onAction={() => addTaskMutation.mutate(task.id)}
+                  onAction={canEdit ? () => addTaskMutation.mutate(task.id) : undefined}
                   actionColor="text-primary-600 hover:bg-primary-100 dark:hover:bg-primary-900/30"
                 />
               ))
@@ -419,7 +431,7 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId }: SprintP
                   task={task}
                   actionLabel="Remove from Sprint"
                   actionIcon={Trash2}
-                  onAction={() => removeTaskMutation.mutate(task.id)}
+                  onAction={canEdit ? () => removeTaskMutation.mutate(task.id) : undefined}
                   actionColor="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30"
                 />
               ))

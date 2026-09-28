@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Play } from 'lucide-react';
 import { apiService } from '../../services/api';
-import { useAuthStore } from '../../stores/authStore';
+import { useProjectRole } from '../../hooks/useProjectRole';
 
 const agentLabels: Record<string, string> = {
   auto_reschedule: 'Auto-Reschedule',
@@ -21,10 +21,9 @@ export function AgentActivityTab({ projectId }: { projectId: string }) {
   const [agentFilter, setAgentFilter] = useState<string>('');
   const [page, setPage] = useState(0);
   const limit = 25;
-  const { user } = useAuthStore();
   const queryClient = useQueryClient();
 
-  const canTriggerScan = user?.role === 'admin' || user?.role === 'project_manager' || user?.role === 'pmo';
+  const { canEdit: canTriggerScan } = useProjectRole(projectId);
 
   const scanMutation = useMutation({
     mutationFn: () => apiService.triggerAgentScan(projectId),

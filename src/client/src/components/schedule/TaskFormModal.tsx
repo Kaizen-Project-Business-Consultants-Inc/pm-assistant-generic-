@@ -906,7 +906,7 @@ export function TaskFormModal({
 
           {/* Attachments (edit mode only) */}
           {isEdit && task && (
-            <AttachmentPanel entityType="task" entityId={task.id} />
+            <AttachmentPanel entityType="task" entityId={task.id} projectId={projectId} />
           )}
 
           {/* Checklists (edit mode only) */}

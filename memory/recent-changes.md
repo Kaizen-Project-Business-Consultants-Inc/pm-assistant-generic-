@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-28 (hide buttons a team member can't use)
+
+- Shared `components/ui/ViewOnlyNote.tsx` + `useProjectRole` on: Sprints (New Sprint, add/remove tasks, start/complete, drag on board, points, AI seed, convert retro→task, DoR/DoD editing; retro delete only on your own notes — server rule), Meeting Minutes (analyse/upload, Send to RAID, Send Minutes, Apply), Automations (list + detail), What-if (whole tab), Agent Activity (Run AI Analysis now by project role, was global role), Documents (upload, connectors, pin, edit, reprocess, delete), attachments (upload/delete; tasks pass projectId).
+- Found: `MeetingActionItemList` / `MeetingDetailPanel` / `MeetingList` are not used by any page — action items have no screen, so assignees can't tick their own items in the UI (API works). Told the user.
+
 ## 2026-09-27 (permissions Phase 2 — every project write route gated)
 
 - Per user decisions: sprints (PM; own standups/retro/votes for any member — team_member/viewer had only 'read' scope so they could NEVER post standups before; new `ownWorkScope()`), action items (PM; assignee done/reopen/notes), meeting intelligence, attachments (+ read checks), lessons, workflows, resource assignments/requests, storage connectors, calendar task links, RAID/status report schedule/email, portal links, agent proposals, what-if scenarios, AI context config. Mjuzi/alert tool runner: `AIActionExecutor.checkProjectWrite` via new `checkProjectRoleFor` (no-request variant).
