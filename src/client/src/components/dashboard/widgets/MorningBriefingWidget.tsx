@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Sun, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sun, ChevronDown, ChevronUp, Users, CheckSquare } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/authStore';
 import { formatCalendarDate } from '../../../utils/dateUtils';
 import {
-  buildProjectBriefings, statusSummary,
+  buildProjectBriefings, statusSummary, YOURS_WINDOW_DAYS,
   type ProjectBriefing, type BriefingSection, type BriefingItem, type ItemTone, type BriefingLevel,
 } from '../../../utils/briefingByProject';
 
@@ -16,9 +16,6 @@ const VIEW_KEY = 'briefing-view';
 /** Items per section: a single project has room for more than the all-projects page */
 const ITEMS_ONE = 6;
 const ITEMS_ALL = 3;
-
-// Global roles that see the resource (assigned person) column
-const MANAGER_ROLES = ['admin', 'pmo', 'executive', 'project_manager', 'scrum_master'];
 
 const TONE_CLASSES: Record<ItemTone, string> = {
   red: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300',
@@ -43,6 +40,7 @@ const LEVEL_LABEL: Record<BriefingLevel, string> = {
 const SECTION_COLOUR: Record<BriefingSection['key'], string> = {
   late: 'text-red-700 dark:text-red-400',
   blocked: 'text-orange-700 dark:text-orange-400',
+  stalled: 'text-amber-700 dark:text-amber-400',
   risks: 'text-red-700 dark:text-red-400',
   approvals: 'text-amber-700 dark:text-amber-400',
   due: 'text-blue-700 dark:text-blue-400',
@@ -57,7 +55,6 @@ interface Props {
 export function MorningBriefingWidget({ scope }: Props) {
   const user = useAuthStore(s => s.user);
   const isViewer = user?.role === 'viewer';
-  const showResource = MANAGER_ROLES.includes(user?.role ?? '');
 
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('briefing-collapsed') === 'true'; } catch { return false; }
@@ -150,17 +147,19 @@ export function MorningBriefingWidget({ scope }: Props) {
     );
   }
 
-  const pendingProposals = briefing.actionItems?.pendingProposals ?? 0;
   const unreadTotal = briefing.actionItems?.unreadNotifications?.total ?? 0;
   const unreadCritical = briefing.actionItems?.unreadNotifications?.critical ?? 0;
   const unreadHigh = briefing.actionItems?.unreadNotifications?.high ?? 0;
 
-  const renderItem = (item: BriefingItem) => {
+  // Team items say who owns them (that's who to chase); "No owner" stands out — nobody to hold to it
+  const ownerless = (s: BriefingSection['key']) => s === 'late' || s === 'blocked' || s === 'stalled' || s === 'due';
+  const renderItem = (item: BriefingItem, showOwner = false) => {
     const second = [
       item.rowNum != null ? `Row ${item.rowNum}` : '',
       item.extra ?? '',
-      showResource && item.resourceName ? `Owner: ${item.resourceName}` : '',
+      showOwner && item.resourceName ? `Owner: ${item.resourceName}` : '',
     ].filter(Boolean).join(' · ');
+    const noOwner = showOwner && !item.resourceName;
     return (
       <li key={item.id}>
         <Link
@@ -171,7 +170,12 @@ export function MorningBriefingWidget({ scope }: Props) {
             <span className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-primary-700 dark:group-hover:text-primary-300 group-hover:underline" title={item.label}>{item.label}</span>
             {item.tag && <span className={`shrink-0 text-xs font-medium px-1.5 py-0.5 rounded ${TONE_CLASSES[item.tone]}`}>{item.tag}</span>}
           </div>
-          {second && <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5" title={second}>{second}</div>}
+          {(second || noOwner) && (
+            <div className="text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5" title={second}>
+              {second}
+              {noOwner && <>{second ? ' · ' : ''}<span className="font-semibold text-amber-700 dark:text-amber-400">No owner</span></>}
+            </div>
+          )}
         </Link>
       </li>
     );
@@ -186,7 +190,7 @@ export function MorningBriefingWidget({ scope }: Props) {
         <p className="text-sm text-gray-500 dark:text-gray-400">None</p>
       ) : (
         <ul className="space-y-0.5">
-          {s.items.slice(0, max).map(renderItem)}
+          {s.items.slice(0, max).map(i => renderItem(i, ownerless(s.key)))}
           {s.count > Math.min(max, s.items.length) && (
             <li className="pt-1">
               <Link to={s.moreLink} className="text-xs font-medium text-primary-700 dark:text-primary-300 hover:underline">
@@ -221,23 +225,90 @@ export function MorningBriefingWidget({ scope }: Props) {
     );
   };
 
+  const partHeader = (icon: JSX.Element, title: string, why: string, cls: string) => (
+    <div className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-3 py-2 rounded-t-lg border-b ${cls}`}>
+      <span className="flex items-center gap-1.5 text-sm font-bold">{icon}{title}</span>
+      <span className="text-xs text-gray-600 dark:text-gray-400">{why}</span>
+    </div>
+  );
+
+  const yoursPart = (p: ProjectBriefing, max: number) => {
+    const y = p.yours;
+    return (
+      <div className="rounded-lg border border-violet-200 dark:border-violet-800/60">
+        {partHeader(<CheckSquare className="w-4 h-4" aria-hidden="true" />, 'Yours to do', `assigned to you · next ${YOURS_WINDOW_DAYS / 7} weeks`,
+          'bg-violet-50 dark:bg-violet-900/20 text-violet-800 dark:text-violet-200 border-violet-200 dark:border-violet-800/60')}
+        {y.taskTotal === 0 && y.raid.length === 0 ? (
+          <p className="px-3 py-3 text-sm text-gray-600 dark:text-gray-400">Nothing assigned to you in this project.</p>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-3 px-3 py-3">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wide mb-1 text-violet-700 dark:text-violet-300">
+                Your tasks <span className="font-medium text-gray-500 dark:text-gray-400 tabular-nums">({y.tasks.length})</span>
+              </h4>
+              {y.tasks.length > 0 ? (
+                <ul className="space-y-0.5">{y.tasks.slice(0, max).map(i => renderItem(i))}</ul>
+              ) : (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {y.nextUp
+                    ? <>Nothing due in the next {YOURS_WINDOW_DAYS / 7} weeks. Next: <Link to={y.nextUp.link} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">{y.nextUp.label}</Link> · {y.nextUp.date}</>
+                    : 'No open tasks assigned to you.'}
+                </p>
+              )}
+              {y.taskTotal > 0 && (
+                <Link to={y.allTasksLink} className="inline-block mt-1.5 text-xs font-semibold text-primary-700 dark:text-primary-300 hover:underline">
+                  See all {y.taskTotal} of your tasks in this project →
+                </Link>
+              )}
+            </div>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wide mb-1 text-violet-700 dark:text-violet-300">
+                Your RAID items <span className="font-medium text-gray-500 dark:text-gray-400 tabular-nums">({y.raid.length})</span>
+              </h4>
+              {y.raid.length > 0 ? (
+                <ul className="space-y-0.5">
+                  {y.raid.slice(0, max).map(i => renderItem(i))}
+                  {y.raid.length > max && (
+                    <li className="pt-1"><Link to={`/project/${p.id}?tab=raid`} className="text-xs font-semibold text-primary-700 dark:text-primary-300 hover:underline">See all {y.raid.length} →</Link></li>
+                  )}
+                </ul>
+              ) : <p className="text-sm text-gray-600 dark:text-gray-400">None</p>}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const projectBody = (p: ProjectBriefing, max: number) => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-4 mt-3">
-      {p.sections.map(s => renderSection(s, max))}
+    <div className="space-y-3 mt-3">
+      {p.canManage && (
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700">
+          {partHeader(<Users className="w-4 h-4" aria-hidden="true" />, 'Team — needs follow-up', 'late, blocked, stalled or due, whoever owns it · chase the owner',
+            'bg-gray-50 dark:bg-gray-900/40 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700')}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-4 px-3 py-3">
+            {p.sections.filter(s => s.key !== 'stalled' || s.count > 0).map(s => renderSection(s, max))}
+          </div>
+        </div>
+      )}
+      {yoursPart(p, max)}
     </div>
   );
 
   const chip = (text: string, cls: string) => <span className={`text-xs font-semibold px-1.5 py-px rounded-full whitespace-nowrap ${cls}`}>{text}</span>;
   const listChips = (p: ProjectBriefing) => {
     const out: JSX.Element[] = [];
-    for (const s of p.sections) {
+    for (const s of p.canManage ? p.sections : []) {
       if (s.count === 0) continue;
       if (s.key === 'late') out.push(<span key="l">{chip(`${s.count} late`, TONE_CLASSES.red)}</span>);
       if (s.key === 'blocked') out.push(<span key="b">{chip(`${s.count} blocked`, TONE_CLASSES.orange)}</span>);
+      if (s.key === 'stalled') out.push(<span key="s">{chip(`${s.count} stalled`, TONE_CLASSES.amber)}</span>);
       if (s.key === 'risks') out.push(<span key="r">{chip(`${s.count} risk`, TONE_CLASSES.red)}</span>);
       if (s.key === 'approvals') out.push(<span key="a">{chip(`${s.count} approval`, TONE_CLASSES.amber)}</span>);
       if (s.key === 'due') out.push(<span key="d">{chip(`${s.count} due`, TONE_CLASSES.blue)}</span>);
     }
+    const mine = p.yours.tasks.length + p.yours.raid.length;
+    if (mine > 0) out.push(<span key="y">{chip(`${mine} yours`, TONE_CLASSES.purple)}</span>);
     return out.length ? out : [<span key="q" className="text-xs text-gray-500 dark:text-gray-400">Nothing needs you</span>];
   };
 
@@ -293,9 +364,6 @@ export function MorningBriefingWidget({ scope }: Props) {
                     <span className="text-gray-500 dark:text-gray-400">{' '}({[unreadCritical ? `${unreadCritical} critical` : '', unreadHigh ? `${unreadHigh} high` : ''].filter(Boolean).join(', ')})</span>
                   )}
                 </Link>
-              )}
-              {!isViewer && pendingProposals > 0 && (
-                <Link to="/agent" className="hover:underline"><span className="font-semibold tabular-nums">{pendingProposals}</span> agent proposal{pendingProposals !== 1 ? 's' : ''} to review</Link>
               )}
             </div>
           </div>

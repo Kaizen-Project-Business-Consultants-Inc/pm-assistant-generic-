@@ -20,7 +20,6 @@ import type { WidgetDef } from '../components/dashboard/WidgetRegistry';
 import { WidgetGrid } from '../components/dashboard/WidgetGrid';
 import { useDashboardPreferences } from '../hooks/useDashboardPreferences';
 import { KpiTilePM } from '../components/pm/KpiTilePM';
-import { ActionCenterPM } from '../components/pm/ActionCenterPM';
 import { ActivityFeedPM } from '../components/pm/ActivityFeedPM';
 import { MorningBriefingWidget } from '../components/dashboard/widgets/MorningBriefingWidget';
 import { VelocitySparklineWidget } from '../components/dashboard/widgets/VelocitySparklineWidget';
@@ -30,7 +29,6 @@ import { GoalsWidget } from '../components/dashboard/widgets/GoalsWidget';
 import { TeamWorkloadWidget } from '../components/dashboard/widgets/TeamWorkloadWidget';
 import { LessonsInsightsWidget } from '../components/dashboard/widgets/LessonsInsightsWidget';
 import { ChangeRequestWidget } from '../components/dashboard/widgets/ChangeRequestWidget';
-import { MyAssignmentsWidget } from '../components/dashboard/widgets/MyAssignmentsWidget';
 
 // ─── Widget registry ──────────────────────────────────────────────────────────
 
@@ -39,7 +37,6 @@ const PM_WIDGETS: WidgetDef[] = [
   { id: 'kpi',           label: 'KPI Tiles',              group: 'Overview', defaultOn: true,  size: 'full' },
   { id: 'projects',      label: 'Projects Table',         group: 'Overview', defaultOn: true,  size: 'full' },
   { id: 'briefing',      label: 'Morning Briefing',       group: 'Overview', defaultOn: true,  size: 'full' },
-  { id: 'action',        label: 'AI Suggestions',          group: 'AI',       defaultOn: true,  size: 'full' },
   // Below the fold — opt-in via Customize dropdown
   { id: 'intel',         label: 'Portfolio Intelligence',  group: 'AI',       defaultOn: false, size: 'full' },
   { id: 'trend',         label: 'Issues Trend',           group: 'Charts',   defaultOn: false, size: 'full' },
@@ -53,7 +50,6 @@ const PM_WIDGETS: WidgetDef[] = [
   { id: 'standup',       label: 'Standup Summary',        group: 'AI',       defaultOn: false, size: 'full' },
   { id: 'lessons',       label: 'Lessons & Insights',     group: 'AI',       defaultOn: false, size: 'full' },
   { id: 'change-requests', label: 'Change Requests',     group: 'Details',  defaultOn: false, size: 'third' },
-  { id: 'my-assignments',  label: 'My Assignments',       group: 'Overview', defaultOn: true,  size: 'full' },
 ];
 
 // ─── KPI computation helpers ──────────────────────────────────────────────────
@@ -227,8 +223,6 @@ export function DashboardPM() {
         return <AISummaryBanner />;
       case 'projects':
         return <ProjectTable projects={projectsWithHealth} />;
-      case 'action':
-        return <ActionCenterPM projects={projectSummaries} />;
       case 'trend':
         return <IssuesCreatedVsResolvedChart scope={undefined} />;
       case 'velocity':
@@ -251,8 +245,6 @@ export function DashboardPM() {
         return <LessonsInsightsWidget />;
       case 'change-requests':
         return <ChangeRequestWidget />;
-      case 'my-assignments':
-        return <MyAssignmentsWidget />;
       default:
         return null;
     }

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { buildProjectBriefings, statusSummary, taskLink } from '../../utils/briefingByProject';
 
+const TODAY = '2026-09-28';
+
 const fmt = (d: string) => d;
 
 // Shaped like the staging briefing for michaela@kpbc.ca on 2026-09-27
@@ -94,5 +96,76 @@ describe('statusSummary', () => {
 describe('taskLink', () => {
   it('works without a schedule id', () => {
     expect(taskLink('p', undefined, 't')).toBe('/project/p?tab=schedule&task=t');
+  });
+});
+
+describe('Team follow-up vs Yours to do (Sep 2026)', () => {
+  const withMine = {
+    ...briefing,
+    projects: briefing.projects.map(p => (p.id === 'lms' ? { ...p, canManage: false } : { ...p, canManage: true })),
+    stalledTasks: [
+      { id: 'st1', name: 'Core LMS configuration', projectId: 'loans', projectName: 'DBJ-Loans', projectCode: 'PRJ-002', scheduleId: 's-l', daysSinceStart: 20, rowNumber: 7, resourceName: 'DBJ / JV' },
+    ],
+    pendingProposals: [{ id: 'ap1', title: 'Reschedule SSD Part-1', projectId: 'loans', riskLevel: 'high', createdAt: '2026-09-27' }],
+    mine: {
+      tasks: [
+        // late AND mine: must move out of the team list
+        { id: 'l1', name: 'Gate 1 acceptance', projectId: 'loans', scheduleId: 's-l', dueDate: '2026-07-22', status: 'in_progress', overdueDays: 67, rowNumber: 3 },
+        { id: 'y1', name: 'Kick-off workshop', projectId: 'nswma', scheduleId: 's-n', dueDate: '2026-10-05', status: 'pending', overdueDays: 0 },
+        { id: 'y2', name: 'UAT with NSWMA', projectId: 'nswma', scheduleId: 's-n', dueDate: '2027-02-17', status: 'pending', overdueDays: 0 },
+      ],
+      raidItems: [
+        { id: 'r1', title: 'Design sign-off before development', type: 'decision', status: 'pending_decision', severity: 'high', dueDate: null, projectId: 'nswma' },
+        { id: 'r2', title: 'Issue inputs request', type: 'action', status: 'open', severity: 'medium', dueDate: '2026-10-16', projectId: 'nswma' },
+      ],
+    },
+  };
+  const ps = buildProjectBriefings(withMine, { showApprovals: true, formatDate: (d: string) => d, today: TODAY });
+  const get = (id: string) => ps.find(p => p.id === id)!;
+
+  it('shows a late task of yours under Yours, not in the team list', () => {
+    const loans = get('loans');
+    expect(loans.sections.find(s => s.key === 'late')!.items.map(i => i.id)).not.toContain('l1');
+    expect(loans.sections.find(s => s.key === 'late')!.count).toBe(0);
+    expect(loans.yours.tasks.map(i => i.id)).toEqual(['l1']);
+    expect(loans.yours.tasks[0].tag).toBe('67 days late');
+  });
+
+  it('keeps only the next two weeks in Yours and offers the next one after', () => {
+    const n = get('nswma');
+    expect(n.yours.tasks.map(i => i.id)).toEqual(['y1']);
+    expect(n.yours.taskTotal).toBe(2);
+    expect(n.yours.allTasksLink).toBe('/project/nswma?tab=schedule&qf=my_tasks');
+  });
+
+  it('shows the next task when nothing of yours is due soon', () => {
+    const later = buildProjectBriefings({ ...withMine, mine: { tasks: [withMine.mine.tasks[2]], raidItems: [] } },
+      { showApprovals: true, formatDate: (d: string) => d, today: TODAY });
+    const y = later.find(p => p.id === 'nswma')!.yours;
+    expect(y.tasks).toEqual([]);
+    expect(y.nextUp).toEqual({ label: 'UAT with NSWMA', date: '2027-02-17', link: '/project/nswma?tab=schedule&schedule=s-n&task=y2' });
+  });
+
+  it('lists the RAID items you own with what they need', () => {
+    const tags = get('nswma').yours.raid.map(r => r.tag);
+    expect(tags).toEqual(['Awaiting decision', 'Due 2026-10-16']);
+  });
+
+  it('adds stalled tasks and agent proposals to the team list', () => {
+    const loans = get('loans');
+    expect(loans.sections.find(s => s.key === 'stalled')!.items[0]).toMatchObject({ id: 'st1', resourceName: 'DBJ / JV', extra: 'In progress 20 days, 0% done' });
+    expect(loans.sections.find(s => s.key === 'approvals')!.items[0]).toMatchObject({ label: 'Reschedule SSD Part-1', tag: 'Agent proposal' });
+  });
+
+  it('judges a project you only view by your own work, not the team list you cannot see', () => {
+    const lms = get('lms');
+    expect(lms.canManage).toBe(false);
+    expect(lms.level).toBe('green');
+    expect(lms.quiet).toBe(true);
+    expect(statusSummary(lms)).toBe('');
+  });
+
+  it('counts your items in the summary', () => {
+    expect(statusSummary(get('nswma'))).toContain('3 yours');
   });
 });

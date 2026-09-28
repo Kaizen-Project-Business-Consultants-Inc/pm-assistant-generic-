@@ -1,5 +1,14 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-28 (dashboard cleanup — user approved all five, auto go-ahead to prod)
+
+1. Morning Briefing split per project: "Team — needs follow-up" (Manager/Owner only; late, blocked, NEW stalled, risks, approvals incl. agent proposals, due; owner on each item, "No owner" amber) and "Yours to do" (your tasks late/blocked/due in 14 days, else next one; your RAID items). Yours items never repeat in Team. Server: `canManage`, `mine`, `stalledTasks`, `pendingProposals` on the briefing.
+2. My Assignments widget + `/dashboard/my-assignments` removed (showed an archived project's task; Action Items read the old meeting list).
+3. Small text: KPI labels 14px, table progress 14px, placeholder dashes darker.
+4. AI Suggestions widget removed (repeated bell/briefing; generic items; no project).
+5. Notifications = events only: no live alerts in bell/page (alerts recomputed every visit from every project incl. sample/archived; `/alerts` now caller-scoped); store keeps server ids — **"mark read" never reached the server before (invented ids)**, so the backlog grew; badge from `/unread-count`; create() skips sample/archived projects and unread duplicates (type+linkId); RAID messages name project+item and skip the logger; workflow notifications name task+project+link; T058 drops notify step of seeded overdue workflow; 121 marks old unread read; page groups 3+ same kind/project/day; list carries projectName.
+- Also: schedule "My tasks" filter now matches tasks assigned to your linked resource (was login id only).
+
 ## 2026-09-28 (private project data — phase 1: the worst read leaks)
 
 - Audit found ~80 read routes that showed other projects' data inside an org (details in auto-memory read-access-audit-2026-09-28). User decisions: lessons stay shared; resource screens will show hours elsewhere but hide other projects' task names/costs (phase 2); two phases.

@@ -25,9 +25,9 @@ export async function alertRoutes(fastify: FastifyInstance) {
       description: 'Get all proactive alerts across projects',
       tags: ['alerts'],
     },
-    handler: async (_request: FastifyRequest, reply: FastifyReply) => {
+    handler: async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const alerts = await proactiveAlertService.generateAlerts();
+        const alerts = await proactiveAlertService.generateAlerts(request.user!);
         return { alerts, count: alerts.length };
       } catch (error) {
         logger.error('Failed to generate alerts', { error });
@@ -43,9 +43,9 @@ export async function alertRoutes(fastify: FastifyInstance) {
       description: 'Get alert summary with counts by severity and type',
       tags: ['alerts'],
     },
-    handler: async (_request: FastifyRequest, reply: FastifyReply) => {
+    handler: async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const summary = await proactiveAlertService.getAlertsSummary();
+        const summary = await proactiveAlertService.getAlertsSummary(request.user!);
         return summary;
       } catch (error) {
         logger.error('Failed to get alert summary', { error });

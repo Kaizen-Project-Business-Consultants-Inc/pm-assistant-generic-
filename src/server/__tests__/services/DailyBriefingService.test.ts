@@ -69,6 +69,10 @@ function setupDefaultResults(overrides: Record<number, any[]> = {}) {
     [],              // 17: overdue-action counts
     [],              // 18: next milestones
     [],              // 19: RAID changes
+    [],              // 20: your tasks
+    [],              // 21: your RAID items
+    [],              // 22: stalled tasks
+    [],              // 23: agent proposals
   ];
 
   for (const [idx, val] of Object.entries(overrides)) {
@@ -97,6 +101,10 @@ function setupDefaultResults(overrides: Record<number, any[]> = {}) {
     defaults[17], // overdue-action counts
     defaults[18], // next milestones
     defaults[19], // RAID changes
+    defaults[20], // your tasks
+    defaults[21], // your RAID items
+    defaults[22], // stalled tasks
+    defaults[23], // agent proposals
     defaults[11], // schedule tasks for row numbers (runs after the parallel batch)
   ];
 
@@ -277,7 +285,7 @@ describe('DailyBriefingService', () => {
 
       expect(result.overdueTasks[0].rowNumber).toBe(4); // t-1, t-2, t-9 (child of t-2), t-3
       expect(result.raidWatch[0].rowNumber).toBe(3);
-      const rowQuery = queryMock.mock.calls[18]; // after the 18 parallel queries
+      const rowQuery = queryMock.mock.calls[22]; // after the 22 parallel queries
       expect(rowQuery[0]).toContain('schedule_id IN (?)');
       expect(rowQuery[1]).toEqual(['s-1']);
     });
@@ -286,7 +294,7 @@ describe('DailyBriefingService', () => {
       setupDefaultResults();
       await dailyBriefingService.getDailyBriefing('user-1', 'admin');
       const sqls = queryMock.mock.calls.map(c => String(c[0])).filter(q => /JOIN projects p/.test(q));
-      expect(sqls.length).toBe(17); // every tenant query that joins projects
+      expect(sqls.length).toBe(21); // every tenant query that joins projects
       for (const q of sqls) expect(q).toContain('p.archived_at IS NULL');
       const projectList = queryMock.mock.calls.map(c => String(c[0])).find(q => /FROM projects p/.test(q));
       expect(projectList).toContain('p.archived_at IS NULL');
@@ -295,7 +303,7 @@ describe('DailyBriefingService', () => {
     it('skips the row-number query when no task is in the briefing', async () => {
       setupDefaultResults();
       await dailyBriefingService.getDailyBriefing('user-1', 'admin');
-      expect(queryMock).toHaveBeenCalledTimes(18);
+      expect(queryMock).toHaveBeenCalledTimes(22);
     });
 
     it('falls back to the typed "Assigned to" text for the owner name, for managers only', async () => {
@@ -666,12 +674,12 @@ describe('DailyBriefingService', () => {
       expect(result.raidWatch[0].resourceName).toBeUndefined();
     });
 
-    it('makes exactly 10 tenant queries and 1 control plane query', async () => {
+    it('makes a fixed number of queries (no per-project loops)', async () => {
       setupDefaultResults();
 
       await dailyBriefingService.getDailyBriefing('user-1', 'admin');
 
-      expect(queryMock).toHaveBeenCalledTimes(18);
+      expect(queryMock).toHaveBeenCalledTimes(22);
       expect(queryControlPlaneMock).toHaveBeenCalledTimes(1);
     });
 
@@ -715,8 +723,8 @@ describe('DailyBriefingService', () => {
     it('lists every visible project, quiet ones included, with true counts and next milestone', async () => {
       setupDefaultResults({
         12: [
-          { id: 'p-busy', name: 'DBJ-LMS', code: 'PRJ-012', projectType: 'it', methodology: 'waterfall' },
-          { id: 'p-quiet', name: 'NSWMA', code: 'PRJ-006', projectType: 'app_development', methodology: 'hybrid' },
+          { id: 'p-busy', name: 'DBJ-LMS', code: 'PRJ-012', projectType: 'it', methodology: 'waterfall', createdBy: 'user-1', myRole: null },
+          { id: 'p-quiet', name: 'NSWMA', code: 'PRJ-006', projectType: 'app_development', methodology: 'hybrid', createdBy: 'someone-else', myRole: 'viewer' },
         ],
         13: [{ projectId: 'p-busy', cnt: '63' }], // more than the item cap: counts are not capped
         15: [{ projectId: 'p-busy', cnt: 3 }],
@@ -729,11 +737,13 @@ describe('DailyBriefingService', () => {
           id: 'p-busy', name: 'DBJ-LMS', code: 'PRJ-012', projectType: 'it', methodology: 'waterfall',
           counts: { overdue: 63, dueSoon: 0, blocked: 3, openIssues: 0, overdueActions: 0 },
           nextMilestone: null,
+          canManage: true, // they created it
         },
         {
           id: 'p-quiet', name: 'NSWMA', code: 'PRJ-006', projectType: 'app_development', methodology: 'hybrid',
           counts: { overdue: 0, dueSoon: 2, blocked: 0, openIssues: 0, overdueActions: 0 },
           nextMilestone: { name: 'Design sign-off', dueDate: '2026-10-30' },
+          canManage: false, // only a viewer here: no team follow-up list
         },
       ]);
     });

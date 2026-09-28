@@ -936,12 +936,22 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   }, [tasks, searchQuery, filterStatus, filterPriority, filterAssignee]);
 
   // Quick filter counts (computed from dropdown-filtered tasks)
+  // Tasks are assigned to a resource, which may be linked to a login. "My tasks" used to compare the
+  // assignee with the login id only, so it never found tasks assigned through your resource.
+  const { data: resourcesData } = useQuery({ queryKey: ['resources'], queryFn: () => apiService.getResources(), staleTime: 300_000 });
+  const myResourceIds = useMemo(
+    () => new Set<string>(((resourcesData?.resources ?? []) as Array<{ id: string; userId?: string | null }>)
+      .filter(r => r.userId && r.userId === user?.id).map(r => r.id)),
+    [resourcesData, user?.id],
+  );
+
   const quickFilterCounts = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     const dueEnd = new Date(now);
     dueEnd.setDate(dueEnd.getDate() + dueWeeks * 7);
     const userId = user?.id;
+    const isMine = (assignedTo?: string | null) => !!assignedTo && (assignedTo === userId || myResourceIds.has(assignedTo));
 
     const counts: Record<QuickFilterType, number> = { all: dropdownFilteredTasks.length, due: 0, late: 0, at_risk: 0, my_tasks: 0, unassigned: 0 };
     for (const t of dropdownFilteredTasks) {
@@ -955,11 +965,11 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       }
       if (risk === 'late') counts.late++;
       if (risk === 'at_risk' || risk === 'critical') counts.at_risk++;
-      if (userId && t.assignedTo === userId) counts.my_tasks++;
+      if (isMine(t.assignedTo)) counts.my_tasks++;
       if (!t.assignedTo) counts.unassigned++;
     }
     return counts;
-  }, [dropdownFilteredTasks, taskRiskMap, user?.id, dueWeeks]);
+  }, [dropdownFilteredTasks, taskRiskMap, user?.id, dueWeeks, myResourceIds]);
 
   const filteredTasks = useMemo(() => {
     const base = reviewRowFilter ? dropdownFilteredTasks.filter(t => reviewRowFilter.taskIds.has(t.id)) : dropdownFilteredTasks;
@@ -980,12 +990,12 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         }
         case 'late': return risk === 'late';
         case 'at_risk': return risk === 'at_risk' || risk === 'critical';
-        case 'my_tasks': return userId ? t.assignedTo === userId : false;
+        case 'my_tasks': return !!t.assignedTo && (t.assignedTo === userId || myResourceIds.has(t.assignedTo));
         case 'unassigned': return !t.assignedTo;
         default: return true;
       }
     });
-  }, [dropdownFilteredTasks, quickFilter, taskRiskMap, user?.id, dueWeeks, reviewRowFilter]);
+  }, [dropdownFilteredTasks, quickFilter, taskRiskMap, user?.id, dueWeeks, reviewRowFilter, myResourceIds]);
 
   const hasActiveFilters = !!(searchQuery || filterStatus || filterPriority || filterAssignee || quickFilter !== 'all' || reviewRowFilter);
 

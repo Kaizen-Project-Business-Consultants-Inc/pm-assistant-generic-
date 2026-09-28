@@ -24,9 +24,14 @@ export interface ProactiveAlert {
 }
 
 export class ProactiveAlertService {
-  async generateAlerts(): Promise<ProactiveAlert[]> {
-    const projects = await projectService.findAll();
-    const active = projects.filter(p => p.status !== 'completed' && p.status !== 'cancelled');
+  /**
+   * Alerts for the projects this person can see (all of them for admin/PMO/executive) — never
+   * the sample project or an archived one. It used to scan the whole organisation for anyone.
+   */
+  async generateAlerts(user: { userId: string; role: string }): Promise<ProactiveAlert[]> {
+    const projects = await projectService.findAccessible(user);
+    const active = projects.filter(p => p.status !== 'completed' && p.status !== 'cancelled'
+      && !p.isDemo && !p.archivedAt);
     return this.generateAlertsForProjects(active);
   }
 
@@ -207,8 +212,8 @@ export class ProactiveAlertService {
     return this.generateAlertsForProjects([project]);
   }
 
-  async getAlertsSummary(): Promise<{ total: number; critical: number; warning: number; info: number; byType: Record<string, number> }> {
-    const alerts = await this.generateAlerts();
+  async getAlertsSummary(user: { userId: string; role: string }): Promise<{ total: number; critical: number; warning: number; info: number; byType: Record<string, number> }> {
+    const alerts = await this.generateAlerts(user);
     const summary = {
       total: alerts.length,
       critical: alerts.filter(a => a.severity === 'critical').length,

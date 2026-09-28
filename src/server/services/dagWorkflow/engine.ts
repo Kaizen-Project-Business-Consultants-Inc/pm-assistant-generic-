@@ -135,15 +135,20 @@ export async function executeAction(
           const project = await projSvc.findById(projectId);
           const userId = project?.projectManagerId || project?.createdBy;
           if (userId) {
+            // Say which task and project, and open that task — a bare message ("Agent detected
+            // overdue task…") told the PM nothing and piled up 46 identical copies.
+            const base = config.title || config.message || 'Workflow notification';
             await notificationService.create({
               userId,
               type: config.notificationType || 'workflow_action',
               severity: config.severity || 'medium',
-              title: config.title || config.message || 'Workflow notification',
-              message: config.message || 'A workflow action was triggered.',
+              title: task ? `${task.name}: ${base}` : base,
+              message: [config.message || 'A workflow action was triggered.', task ? `Task "${task.name}" in ${project?.name ?? 'the project'}.` : '']
+                .filter(Boolean).join(' '),
               projectId,
-              linkType: config.linkType,
-              linkId: config.linkId,
+              scheduleId: task?.scheduleId,
+              linkType: config.linkType ?? (task ? 'task' : undefined),
+              linkId: config.linkId ?? task?.id,
             });
             return { action: 'send_notification', message: config.message, notified: true };
           }

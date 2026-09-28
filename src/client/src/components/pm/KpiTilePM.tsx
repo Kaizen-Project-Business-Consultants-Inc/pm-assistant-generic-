@@ -28,8 +28,8 @@ export function KpiTilePM({ label, value, subtitle, icon: Icon, color, drillPath
         </div>
       </div>
       <p className="text-lg font-semibold leading-tight text-gray-900 dark:text-white">{value}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{label}</p>
-      {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>}
+      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{label}</p>
+      {subtitle && <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{subtitle}</p>}
     </>
   );
 

@@ -8,9 +8,15 @@ vi.mock('../../database/NotificationRepository', () => {
     markAllRead: vi.fn().mockResolvedValue(undefined),
     countByUser: vi.fn().mockResolvedValue(0),
     countUnread: vi.fn().mockResolvedValue(0),
+    hasUnread: vi.fn().mockResolvedValue(false),
   };
   return { notificationRepository: mockRepo };
 });
+
+// The project a notification is about: a real, active project unless a test says otherwise
+vi.mock('../../database/connection', () => ({
+  databaseService: { query: vi.fn().mockResolvedValue([{ isDemo: 0, archivedAt: null }]) },
+}));
 
 vi.mock('../../services/WebSocketService', () => ({
   WebSocketService: {
@@ -83,9 +89,34 @@ const sampleNotification = {
 describe('NotificationService', () => {
   let service: NotificationService;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     service = new NotificationService();
     vi.clearAllMocks();
+    mockRepo.hasUnread.mockResolvedValue(false);
+    const { databaseService } = await import('../../database/connection');
+    (databaseService.query as any).mockResolvedValue([{ isDemo: 0, archivedAt: null }]);
+  });
+
+  describe('only real, new events (Sep 2026)', () => {
+    it('never notifies about the sample project', async () => {
+      const { databaseService } = await import('../../database/connection');
+      (databaseService.query as any).mockResolvedValueOnce([{ isDemo: 1, archivedAt: null }]);
+      await service.create({ userId: 'u1', type: 'raid_item', title: 't', message: 'm', projectId: 'demo' });
+      expect(mockRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('never notifies about an archived project', async () => {
+      const { databaseService } = await import('../../database/connection');
+      (databaseService.query as any).mockResolvedValueOnce([{ isDemo: 0, archivedAt: '2026-09-24' }]);
+      await service.create({ userId: 'u1', type: 'raid_item', title: 't', message: 'm', projectId: 'old' });
+      expect(mockRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('does not pile up a second unread copy of the same thing', async () => {
+      mockRepo.hasUnread.mockResolvedValueOnce(true);
+      await service.create({ userId: 'u1', type: 'workflow_action', title: 't', message: 'm', projectId: 'p1', linkType: 'task', linkId: 'task-1' });
+      expect(mockRepo.insert).not.toHaveBeenCalled();
+    });
   });
 
   describe('create', () => {

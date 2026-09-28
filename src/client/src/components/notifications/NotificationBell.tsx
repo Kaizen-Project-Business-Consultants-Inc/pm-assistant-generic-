@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore, Notification } from '../../stores/uiStore';
 import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
-import { notificationLink, alertAsNotification } from '../../utils/notificationLink';
+import { notificationLink } from '../../utils/notificationLink';
 import { AlertActionButton } from './AlertActionButton';
 
 const typeIcons: Record<string, React.ElementType> = {
@@ -54,7 +54,6 @@ const severityTextColors: Record<Notification['severity'], string> = {
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const [fetchedOnce, setFetchedOnce] = useState(false);
   const [fetchedPersisted, setFetchedPersisted] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -62,69 +61,15 @@ export function NotificationBell() {
   const notifications = useUIStore((state) => state.notifications);
   const unreadCount = useUIStore((state) => state.unreadCount);
   const addNotification = useUIStore((state) => state.addNotification);
+  const setUnreadCount = useUIStore((state) => state.setUnreadCount);
   const dismissNotification = useUIStore((state) => state.dismissNotification);
   const markAllRead = useUIStore((state) => state.markAllRead);
 
   const displayBadge = unreadCount > 0;
   const badgeText = unreadCount > 99 ? '99+' : String(unreadCount);
 
-  // Fetch alerts on mount
-  useEffect(() => {
-    if (fetchedOnce) return;
-
-    let cancelled = false;
-
-    async function fetchAlerts() {
-      try {
-        const response = await apiService.getAlerts();
-        if (cancelled) return;
-
-        const alerts: Array<{
-          id: string;
-          type: string;
-          severity: string;
-          title: string;
-          message?: string;
-          description?: string;
-          projectId?: string;
-          projectName?: string;
-          taskId?: string;
-          scheduleId?: string;
-          suggestedActions?: Array<{ toolName: string; params: Record<string, any>; label: string }>;
-        }> = response?.alerts ?? [];
-
-        for (const alert of alerts) {
-          const type = (alert.type in typeIcons
-            ? alert.type
-            : 'info') as Notification['type'];
-
-          const severity = (['critical', 'high', 'medium', 'low'].includes(alert.severity)
-            ? alert.severity
-            : 'medium') as Notification['severity'];
-
-          addNotification({
-            type,
-            severity,
-            title: alert.title,
-            ...alertAsNotification(alert),
-            projectId: alert.projectId,
-            projectName: alert.projectName,
-            suggestedActions: alert.suggestedActions,
-            read: false,
-          });
-        }
-
-        setFetchedOnce(true);
-      } catch {
-        // Silently fail -- alerts are non-critical
-      }
-    }
-
-    fetchAlerts();
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchedOnce, addNotification]);
+  // Live "Overdue / Stalled" alerts are no longer mixed in: they were worked out again on every
+  // visit, couldn't be cleared, and repeated the Morning Briefing. Notifications are events only.
 
   // Fetch persisted notifications from DB
   useEffect(() => {
@@ -169,9 +114,15 @@ export function NotificationBell() {
             scheduleId: item.scheduleId,
             linkType: item.linkType,
             linkId: item.linkId,
+            projectName: (item as { projectName?: string }).projectName,
+            id: item.id,
+            createdAt: item.createdAt,
             read: item.isRead,
           });
         }
+        // The list is one page; the badge is the real unread total
+        const count = await apiService.getUnreadNotificationCount().catch(() => null);
+        if (!cancelled && count && typeof count.count === 'number') setUnreadCount(count.count);
 
         setFetchedPersisted(true);
       } catch {
@@ -183,7 +134,7 @@ export function NotificationBell() {
     return () => {
       cancelled = true;
     };
-  }, [fetchedPersisted, addNotification]);
+  }, [fetchedPersisted, addNotification, setUnreadCount]);
 
   // Listen for real-time WebSocket notifications
   useEffect(() => {
@@ -217,6 +168,8 @@ export function NotificationBell() {
               linkType: p.linkType,
               linkId: p.linkId,
               suggestedActions: p.suggestedActions,
+              id: p.id || undefined,
+              createdAt: p.createdAt ? String(p.createdAt).replace(' ', 'T') : undefined,
               read: false,
             });
           }

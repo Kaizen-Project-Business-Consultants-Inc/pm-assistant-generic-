@@ -264,7 +264,7 @@ export function ProjectTable({ projects }: Props) {
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{project.healthScore}</span>
                     </div>
                   ) : (
-                    <span className="text-xs text-gray-300">--</span>
+                    <span className="text-sm text-gray-400 dark:text-gray-400">—</span>
                   )}
                 </td>
 
@@ -280,7 +280,7 @@ export function ProjectTable({ projects }: Props) {
                       {project.priority}
                     </MetaPill>
                   ) : (
-                    <span className="text-xs text-gray-300">—</span>
+                    <span className="text-sm text-gray-400 dark:text-gray-400">—</span>
                   )}
                 </td>
 
@@ -298,7 +298,7 @@ export function ProjectTable({ projects }: Props) {
                         style={{ width: `${Math.min(progress, 100)}%` }}
                       />
                     </div>
-                    <span className="text-xs text-gray-600 dark:text-gray-400 w-8 text-right">{progress}%</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 w-10 text-right">{progress}%</span>
                   </div>
                 </td>
 
@@ -314,7 +314,7 @@ export function ProjectTable({ projects }: Props) {
                       {budgetPct}%
                     </span>
                   ) : (
-                    <span className="text-xs text-gray-300">—</span>
+                    <span className="text-sm text-gray-400 dark:text-gray-400">—</span>
                   )}
                 </td>
 
@@ -330,7 +330,7 @@ export function ProjectTable({ projects }: Props) {
                       {days < 0 ? `${Math.abs(days)}d overdue` : `${days}d`}
                     </span>
                   ) : (
-                    <span className="text-xs text-gray-300">—</span>
+                    <span className="text-sm text-gray-400 dark:text-gray-400">—</span>
                   )}
                 </td>
 

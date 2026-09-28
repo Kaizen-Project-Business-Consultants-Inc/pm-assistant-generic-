@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore, Notification } from '../stores/uiStore';
 import { apiService } from '../services/api';
 import { timeAgo } from '../utils/timeAgo';
-import { notificationLink, alertAsNotification } from '../utils/notificationLink';
+import { notificationLink } from '../utils/notificationLink';
 import { severityColor } from '../utils/severityColors';
 
 // ---------------------------------------------------------------------------
@@ -88,6 +88,19 @@ const severityTextColors: Record<string, string> = {
 // Component
 // ---------------------------------------------------------------------------
 
+/** Three or more of the same kind, same project, same day read as one line (e.g. an import) */
+function groupRepeats(list: Notification[]): Array<{ key: string; items: Notification[] }> {
+  const groups: Array<{ key: string; items: Notification[] }> = [];
+  const byKey = new Map<string, { key: string; items: Notification[] }>();
+  for (const n of list) {
+    const key = `${n.type}|${n.projectId ?? ''}|${String(n.createdAt).slice(0, 10)}`;
+    let g = byKey.get(key);
+    if (!g) { g = { key, items: [] }; byKey.set(key, g); groups.push(g); }
+    g.items.push(n);
+  }
+  return groups;
+}
+
 export function NotificationsPage() {
   const navigate = useNavigate();
   const notifications = useUIStore((state) => state.notifications);
@@ -95,6 +108,8 @@ export function NotificationsPage() {
   const dismissNotification = useUIStore((state) => state.dismissNotification);
   const markAllRead = useUIStore((state) => state.markAllRead);
   const unreadCount = useUIStore((state) => state.unreadCount);
+  const setUnreadCount = useUIStore((state) => state.setUnreadCount);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
 
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
@@ -111,18 +126,13 @@ export function NotificationsPage() {
     let cancelled = false;
     async function fetchAll() {
       try {
-        const [alertsRes, notifRes] = await Promise.all([
-          apiService.getAlerts().catch(() => null),
+        // Events only — the live "Overdue / Stalled" alerts repeated the Morning Briefing
+        const [notifRes, countRes] = await Promise.all([
           apiService.getNotifications(PAGE_SIZE, 0).catch(() => null),
+          apiService.getUnreadNotificationCount().catch(() => null),
         ]);
         if (cancelled) return;
-
-        const alerts = alertsRes?.alerts ?? [];
-        for (const a of alerts) {
-          const type = (a.type in typeIcons ? a.type : 'info') as Notification['type'];
-          const severity = (['critical', 'high', 'medium', 'low'].includes(a.severity) ? a.severity : 'medium') as Notification['severity'];
-          addNotification({ type, severity, title: a.title, ...alertAsNotification(a), projectId: a.projectId, projectName: a.projectName, read: false });
-        }
+        if (countRes && typeof countRes.count === 'number') setUnreadCount(countRes.count);
 
         const items = notifRes?.notifications ?? [];
         const total = notifRes?.total ?? items.length;
@@ -131,14 +141,14 @@ export function NotificationsPage() {
         for (const item of items) {
           const type = (item.type in typeIcons ? item.type : 'info') as Notification['type'];
           const severity = (['critical', 'high', 'medium', 'low'].includes(item.severity) ? item.severity : 'medium') as Notification['severity'];
-          addNotification({ type, severity, title: item.title, message: item.message, projectId: item.projectId, scheduleId: item.scheduleId, linkType: item.linkType, linkId: item.linkId, read: item.isRead });
+          addNotification({ type, severity, title: item.title, message: item.message, projectId: item.projectId, projectName: item.projectName ?? undefined, scheduleId: item.scheduleId, linkType: item.linkType, linkId: item.linkId, id: item.id, createdAt: String(item.createdAt).replace(' ', 'T'), read: item.isRead });
         }
         setFetched(true);
       } catch { /* non-critical */ }
     }
     fetchAll();
     return () => { cancelled = true; };
-  }, [fetched, notifications.length, addNotification]);
+  }, [fetched, notifications.length, addNotification, setUnreadCount]);
 
   const handleLoadMore = useCallback(async () => {
     setLoadingMore(true);
@@ -148,7 +158,7 @@ export function NotificationsPage() {
       for (const item of items) {
         const type = (item.type in typeIcons ? item.type : 'info') as Notification['type'];
         const severity = (['critical', 'high', 'medium', 'low'].includes(item.severity) ? item.severity : 'medium') as Notification['severity'];
-        addNotification({ type, severity, title: item.title, message: item.message, projectId: item.projectId, scheduleId: item.scheduleId, linkType: item.linkType, linkId: item.linkId, read: item.isRead });
+        addNotification({ type, severity, title: item.title, message: item.message, projectId: item.projectId, projectName: item.projectName ?? undefined, scheduleId: item.scheduleId, linkType: item.linkType, linkId: item.linkId, id: item.id, createdAt: String(item.createdAt).replace(' ', 'T'), read: item.isRead });
       }
       setNotifOffset(prev => prev + items.length);
       if (res?.total !== undefined) setTotalNotifications(res.total);
@@ -184,7 +194,7 @@ export function NotificationsPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">Notifications</h1>
-            <p className="text-sm text-gray-500">{notifications.length} total &middot; {unreadCount} unread</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{totalNotifications} total &middot; {unreadCount} unread</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -263,7 +273,33 @@ export function NotificationsPage() {
             <p className="text-sm text-gray-500">{notifications.length === 0 ? 'No notifications yet' : 'No notifications match your filters'}</p>
           </div>
         ) : (
-          filtered.map((n: Notification) => {
+          groupRepeats(filtered).map((g) => {
+            if (g.items.length >= 3 && !openGroups.has(g.key)) {
+              const first = g.items[0];
+              const GIcon = typeIcons[first.type] || Info;
+              const unread = g.items.filter(x => !x.read).length;
+              return (
+                <button
+                  key={g.key}
+                  type="button"
+                  onClick={() => setOpenGroups(prev => new Set(prev).add(g.key))}
+                  className="w-full text-left flex items-start gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+                  aria-expanded={false}
+                >
+                  <div className={`shrink-0 mt-0.5 ${severityTextColors[first.severity]}`}><GIcon className="w-5 h-5" /></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {g.items.length} {(typeLabels[first.type] || 'notification').toLowerCase()} notifications{first.projectName ? ` in ${first.projectName}` : ''}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                      {unread > 0 ? `${unread} unread · ` : ''}latest: {first.title} — <span className="font-medium text-primary-700 dark:text-primary-300">show all {g.items.length}</span>
+                    </p>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">{timeAgo(first.createdAt)}</span>
+                  </div>
+                </button>
+              );
+            }
+            return g.items.map((n: Notification) => {
             const Icon = typeIcons[n.type] || Info;
             const target = notificationLink(n);
             const isClickable = !!target;
@@ -311,15 +347,16 @@ export function NotificationsPage() {
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{n.message}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{n.message}</p>
                   <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-xs text-gray-500">{timeAgo(n.createdAt)}</span>
-                    <span className="text-xs text-gray-500 capitalize">{typeLabels[n.type] || n.type}</span>
-                    {n.projectName && <span className="text-xs text-primary-500">{n.projectName}</span>}
+                    <span className="text-xs text-gray-600 dark:text-gray-400">{timeAgo(n.createdAt)}</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">{typeLabels[n.type] || n.type}</span>
+                    {n.projectName && <span className="text-xs font-medium text-primary-700 dark:text-primary-300">{n.projectName}</span>}
                   </div>
                 </div>
               </div>
             );
+          });
           })
         )}
       </div>

@@ -36,7 +36,10 @@ interface UIState {
   toggleAIPanel: () => void;
   setAIPanelOpen: (open: boolean) => void;
   setAIPanelContext: (context: AIPanelContext) => void;
-  addNotification: (notification: Omit<Notification, 'id' | 'createdAt'>) => void;
+  /** `id` = the server's id (so marking read reaches the server); an id already shown is ignored */
+  addNotification: (notification: Omit<Notification, 'id' | 'createdAt'> & { id?: string; createdAt?: string }) => void;
+  /** The server's unread total — the list only holds a page of them */
+  setUnreadCount: (n: number) => void;
   dismissNotification: (id: string) => void;
   markAllRead: () => void;
   clearNotifications: () => void;
@@ -65,18 +68,25 @@ export const useUIStore = create<UIState>()(
 
       addNotification: (notification) =>
         set((state) => {
-          const id = `notif-${Date.now()}-${++notificationIdCounter}`;
+          // It used to invent an id and force "unread": marking one read sent the server an id it
+          // didn't know, so nothing was ever read and everything came back unread next visit.
+          if (notification.id && state.notifications.some((n) => n.id === notification.id)) return state;
+          const id = notification.id ?? `notif-${Date.now()}-${++notificationIdCounter}`;
           const newNotification: Notification = {
             ...notification,
             id,
-            read: false,
-            createdAt: new Date().toISOString(),
+            read: !!notification.read,
+            createdAt: notification.createdAt ?? new Date().toISOString(),
           };
+          const merged = [newNotification, ...state.notifications]
+            .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+            .slice(0, 200);
           return {
-            notifications: [newNotification, ...state.notifications].slice(0, 100),
-            unreadCount: state.unreadCount + 1,
+            notifications: merged,
+            unreadCount: newNotification.read ? state.unreadCount : state.unreadCount + 1,
           };
         }),
+      setUnreadCount: (n) => set({ unreadCount: Math.max(0, n) }),
 
       dismissNotification: (id) =>
         set((state) => {

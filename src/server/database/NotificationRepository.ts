@@ -64,6 +64,15 @@ class NotificationRepository {
     return Number(rows[0]?.cnt ?? 0);
   }
 
+  /** Is there already an unread notification about this same thing? (stops repeats piling up) */
+  async hasUnread(userId: string, type: string, linkId: string): Promise<boolean> {
+    const rows = await databaseService.queryControlPlane<{ cnt: number }>(
+      'SELECT COUNT(*) as cnt FROM notifications WHERE user_id = ? AND type = ? AND link_id = ? AND is_read = FALSE',
+      [userId, type, linkId],
+    );
+    return Number(rows[0]?.cnt ?? 0) > 0;
+  }
+
   async countUnread(userId: string): Promise<number> {
     const rows = await databaseService.queryControlPlane<{ cnt: number }>(
       'SELECT COUNT(*) as cnt FROM notifications WHERE user_id = ? AND is_read = FALSE',

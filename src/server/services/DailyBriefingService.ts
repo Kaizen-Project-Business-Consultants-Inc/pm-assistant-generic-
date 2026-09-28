@@ -39,6 +39,14 @@ export interface BriefingProject {
   /** True counts — the item lists are capped, these are not */
   counts: { overdue: number; dueSoon: number; blocked: number; openIssues: number; overdueActions: number };
   nextMilestone: { name: string; dueDate: string } | null;
+  /** The user is this project's Manager/Owner (or admin/PMO): sees the team follow-up list */
+  canManage: boolean;
+}
+
+/** Work assigned to the signed-in user — "Yours to do" in each project */
+export interface BriefingMine {
+  tasks: Array<{ id: string; name: string; projectId: string; scheduleId: string; dueDate: string | null; status: string; overdueDays: number; rowNumber?: number }>;
+  raidItems: Array<{ id: string; title: string; type: string; status: string; severity: string | null; dueDate: string | null; projectId: string }>;
 }
 
 export interface BriefingTask {
@@ -79,6 +87,11 @@ export interface DailyBriefing {
   upcomingMilestones: Array<{ id: string; name: string; projectId: string; projectName: string; projectCode: string; scheduleId: string; dueDate: string; daysUntil: number }>;
   raidWatch: RaidWatchItem[];
   projects: BriefingProject[];
+  mine: BriefingMine;
+  /** In progress for over a week with no progress recorded — the team follow-up list */
+  stalledTasks: Array<BriefingTask & { daysSinceStart: number }>;
+  /** Agent proposals waiting for a decision, by project */
+  pendingProposals: Array<{ id: string; title: string; projectId: string; riskLevel: string | null; createdAt: string }>;
   /** RAID items escalated to High/Critical or closed in the last 24 h — the team's daily digest */
   raidChanges: Array<{ id: string; projectId: string; projectName: string; projectCode: string; title: string; type: string; change: 'escalated' | 'closed'; to: string; at: string }>;
 }
@@ -138,6 +151,10 @@ class DailyBriefingService {
       actionCounts,
       nextMilestones,
       raidChangeRows,
+      mineTasks,
+      mineRaid,
+      stalledTasks,
+      proposalRows,
     ] = await Promise.all([
       // Pending proposals
       databaseService.query<any>(
@@ -308,7 +325,8 @@ class DailyBriefingService {
       ),
       // Every project the user can see (quiet ones too), for the per-project view
       databaseService.query<any>(
-        `SELECT p.id, p.name, COALESCE(p.project_code, '') AS code, p.project_type AS projectType, p.methodology
+        `SELECT p.id, p.name, COALESCE(p.project_code, '') AS code, p.project_type AS projectType, p.methodology,
+                p.created_by AS createdBy, ${global ? 'NULL' : 'pm.role'} AS myRole
          FROM projects p
          ${memberJoin}
          WHERE p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
@@ -416,10 +434,65 @@ class DailyBriefingService {
          LIMIT ${ITEM_CAP}`,
         [...memberParams]
       ),
+      // Yours to do: open leaf tasks assigned to you (through your resource), any date
+      databaseService.query<any>(
+        `SELECT t.id, t.name, p.id AS projectId, s.id AS scheduleId, t.end_date AS dueDate, t.status,
+                GREATEST(DATEDIFF(CURDATE(), t.end_date), 0) AS overdueDays
+         FROM tasks t
+         JOIN resources mr ON t.assigned_to = mr.id AND mr.user_id = ?
+         JOIN schedules s ON t.schedule_id = s.id
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
+         ${memberJoin}
+         WHERE t.status NOT IN ('completed', 'done', 'cancelled')
+           ${NOT_PARENT}
+         ORDER BY t.end_date ASC LIMIT 200`,
+        [userId, ...memberParams]
+      ),
+      // Yours to do: open RAID items you own
+      databaseService.query<any>(
+        `SELECT pr.id, pr.title, pr.type, pr.status, pr.severity, pr.due_date AS dueDate, p.id AS projectId
+         FROM project_risks pr
+         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
+         ${memberJoin}
+         WHERE pr.owner_id = ?
+           AND pr.status NOT IN ('closed', 'resolved', 'mitigated', 'cancelled', 'reversed', 'completed')
+         ORDER BY pr.due_date IS NULL, pr.due_date ASC, FIELD(pr.severity, 'critical', 'high', 'medium', 'low')
+         LIMIT 200`,
+        [...memberParams, userId]
+      ),
+      // Stalled: in progress, started over a week ago, still no progress recorded (leaf tasks)
+      databaseService.query<any>(
+        `SELECT t.id, t.name, p.name AS projectName, p.id AS projectId,
+                COALESCE(p.project_code, '') AS projectCode,
+                s.id AS scheduleId, t.sort_order AS sortOrder, t.priority,
+                DATEDIFF(CURDATE(), t.start_date) AS daysSinceStart
+                ${resourceSelect}
+         FROM tasks t
+         JOIN schedules s ON t.schedule_id = s.id
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
+         ${resourceJoin}
+         ${assignedJoin}
+         ${memberJoin}
+         WHERE t.status = 'in_progress' AND COALESCE(t.progress_percentage, 0) = 0
+           AND t.start_date < DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+           ${NOT_PARENT}
+         ORDER BY t.start_date ASC LIMIT ${ITEM_CAP}`,
+        [...assignedParams, ...memberParams]
+      ),
+      // Agent proposals waiting for a decision (listed under their project)
+      databaseService.query<any>(
+        `SELECT ap.id, ap.title, ap.project_id AS projectId, ap.risk_level AS riskLevel, ap.created_at AS createdAt
+         FROM agent_proposals ap
+         JOIN projects p ON ap.project_id = p.id AND p.archived_at IS NULL
+         ${memberJoin}
+         WHERE ap.status = 'pending'
+         ORDER BY ap.created_at DESC LIMIT ${ITEM_CAP}`,
+        [...memberParams]
+      ),
     ]);
 
     // Row numbers as shown on the schedule screen, for every schedule that has a task in the briefing
-    const scheduleIds = [...new Set([...dueToday, ...dueThisWeek, ...overdue, ...blockedTasks].map((t: any) => t.scheduleId))];
+    const scheduleIds = [...new Set([...dueToday, ...dueThisWeek, ...overdue, ...blockedTasks, ...mineTasks, ...stalledTasks].map((t: any) => t.scheduleId))];
     const rowNumbers = new Map<string, number>();
     if (scheduleIds.length > 0) {
       const scheduleTasks = await databaseService.query<any>(
@@ -530,6 +603,7 @@ class DailyBriefingService {
         overdueActions: ac.get(p.id) ?? 0,
       },
       nextMilestone: nextByProject.get(p.id) ?? null,
+      canManage: ['admin', 'pmo'].includes(userRole) || p.createdBy === userId || p.myRole === 'owner' || p.myRole === 'manager',
     }));
 
     return {
@@ -551,6 +625,21 @@ class DailyBriefingService {
       upcomingMilestones: milestones,
       raidWatch,
       projects,
+      stalledTasks: withRowNumber(stalledTasks).map((t: any) => ({ ...t, daysSinceStart: Number(t.daysSinceStart) || 0 })),
+      pendingProposals: proposalRows.map((r: any) => ({
+        id: r.id, title: r.title, projectId: r.projectId, riskLevel: r.riskLevel ?? null,
+        createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+      })),
+      mine: {
+        tasks: withRowNumber(mineTasks).map((t: any) => ({
+          id: t.id, name: t.name, projectId: t.projectId, scheduleId: t.scheduleId,
+          dueDate: toDateString(t.dueDate) ?? null, status: t.status, overdueDays: Number(t.overdueDays) || 0, rowNumber: t.rowNumber,
+        })),
+        raidItems: mineRaid.map((r: any) => ({
+          id: r.id, title: r.title, type: r.type, status: r.status, severity: r.severity ?? null,
+          dueDate: toDateString(r.dueDate) ?? null, projectId: r.projectId,
+        })),
+      },
       raidChanges: (() => {
         const seen = new Set<string>();
         const out: DailyBriefing['raidChanges'] = [];

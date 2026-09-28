@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { databaseService } from '../../database/connection';
 import { z } from 'zod';
 import { notificationService } from '../../services/NotificationService';
 import { webPushService } from '../../services/WebPushService';
@@ -24,7 +25,19 @@ export async function notificationRoutes(fastify: FastifyInstance) {
         notificationService.getByUserId(user.userId, parsedLimit, parsedOffset),
         notificationService.countByUserId(user.userId),
       ]);
-      return { notifications, total, limit: parsedLimit, offset: parsedOffset };
+      // Say which project each one is about (notifications live in the shared database, projects
+      // in the organisation's) — record numbers like R-001 mean nothing without it
+      const ids = [...new Set(notifications.map((x) => x.projectId).filter((x): x is string => !!x))];
+      const names = new Map<string, string>();
+      if (ids.length > 0) {
+        try {
+          const rows = await databaseService.query<{ id: string; name: string }>(
+            `SELECT id, name FROM projects WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
+          for (const r of rows) names.set(r.id, r.name);
+        } catch { /* names are a nicety */ }
+      }
+      const withNames = notifications.map((x) => ({ ...x, projectName: x.projectId ? names.get(x.projectId) ?? null : null }));
+      return { notifications: withNames, total, limit: parsedLimit, offset: parsedOffset };
     } catch (error) {
       logger.error('Get notifications error', { error });
       return reply.status(500).send({ error: 'Failed to fetch notifications' });

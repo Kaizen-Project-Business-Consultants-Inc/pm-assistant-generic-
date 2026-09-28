@@ -1,6 +1,7 @@
 import { riskRepository, ProjectRisk, RiskFilters, RiskStats, RaidUpdate } from '../database/RiskRepository';
 import { notificationService } from './NotificationService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
+import { projectService } from './ProjectService';
 import { databaseService } from '../database/connection';
 import { emailService } from './EmailService';
 import logger from '../utils/logger';
@@ -131,7 +132,7 @@ class RiskService {
     }).catch((error) => { logger.warn('Failed to log RAID activity', { raidItemId: risk.id, error }); });
 
     // Notify (awaited to preserve tenant DB context, but errors are non-fatal)
-    try { await this.notifyProjectManagers(data.projectId, risk); } catch (error) { logger.warn('Failed to notify PMs about RAID item', { raidItemId: risk.id, error }); }
+    try { await this.notifyProjectManagers(data.projectId, risk, data.createdBy); } catch (error) { logger.warn('Failed to notify PMs about RAID item', { raidItemId: risk.id, error }); }
 
     if (data.ownerId && data.ownerId !== data.createdBy) {
       try { await this.notifyAssignment(data.projectId, risk, data.ownerId); } catch (error) { logger.warn('Failed to notify RAID assignment', { raidItemId: risk.id, error }); }
@@ -152,10 +153,11 @@ class RiskService {
    * Notify project managers/owners about a new RAID item.
    * For 'proposed' items: "needs triage". For others: informational.
    */
-  private async notifyProjectManagers(projectId: string, risk: ProjectRisk): Promise<void> {
+  private async notifyProjectManagers(projectId: string, risk: ProjectRisk, createdBy?: string): Promise<void> {
     try {
       const members = await projectMemberRepository.findByProjectId(projectId);
-      const pmMembers = members.filter(m => ['owner', 'manager'].includes(m.role));
+      // Not the person who logged it — they know. (Imports used to notify the importer once per row.)
+      const pmMembers = members.filter(m => ['owner', 'manager'].includes(m.role) && m.userId !== createdBy);
 
       if (pmMembers.length === 0) return;
 
@@ -164,9 +166,12 @@ class RiskService {
       const title = needsTriage
         ? `New ${typeLabel} requires triage: ${risk.title}`
         : `New ${typeLabel} raised: ${risk.title}`;
+      // Record numbers (R-001) restart in every project, so always say which project
+      const project = await projectService.findById(projectId).catch(() => null);
+      const where = project?.name ? ` in ${project.name}` : '';
       const message = needsTriage
-        ? `A team member raised a new ${risk.type} that needs review. Record: ${risk.recordId || risk.id}. Severity: ${risk.severity}.`
-        : `A new ${risk.type} has been logged. Record: ${risk.recordId || risk.id}. Severity: ${risk.severity}.`;
+        ? `A team member raised a new ${risk.type}${where} that needs review: "${risk.title}" (${risk.recordId || 'new'}, ${risk.severity}).`
+        : `A new ${risk.type} was logged${where}: "${risk.title}" (${risk.recordId || 'new'}, ${risk.severity}).`;
 
       for (const pm of pmMembers) {
         await notificationService.create({

@@ -2537,7 +2537,7 @@ Destructive actions throughout the application (deleting integrations, change re
 | **Viewer** | Read-only access to assigned projects. Schedules (Gantt, Table, Kanban, Calendar) are fully read-only — no task editing, dragging, or adding. Assignment-based write permissions: log time on assigned tasks, comment on assigned tasks, update/complete/reopen/cancel meeting action items assigned to them, upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Sidebar shows only Dashboard, Projects, Lessons, Reports, AI Query, and personal items. Free — no seat consumption. |
 | **Executive** | Pure read-only — dashboards, portfolio, and reports. No edits, no comments. |
 
-**My Assignments Widget**: Viewers (and all users) see a "My Assignments" widget on the Dashboard showing all tasks, RAID items, and meeting action items assigned to them. Each section is collapsible and shows item name, status, priority, due date, and project name with links to the relevant project pages.
+**My Assignments Widget** *(removed September 2026)*: its tasks and RAID items now appear under **Yours to do** in each project of the Morning Briefing (it also showed archived projects and the old meeting action-item list).
 
 ### Keyboard Shortcuts
 
@@ -2957,7 +2957,7 @@ The unified dashboard supports toggling widget sections on/off and drag-and-drop
 3. Click **"Reset to Default Layout"** at the bottom of the Customize dropdown to restore the default widget order, visibility, and scope.
 4. Your preferences (enabled widgets, order, and scope) are saved to the server automatically and sync across devices. Changes appear instantly via localStorage cache.
 
-Available sections: Morning Briefing, KPI Tiles, Portfolio Intelligence, Projects Table, AI Suggestions, Issues Trend, Sprint Velocity, Milestones, Budget Watch, Activity Feed, Standup Summary.
+Available sections: Morning Briefing, KPI Tiles, Portfolio Intelligence, Projects Table, Issues Trend, Sprint Velocity, Milestones, Budget Watch, Activity Feed, Standup Summary.
 
 **Morning Briefing** is the top widget. It is organised **by project**, so each client's work is shown separately instead of mixed together (September 2026).
 
@@ -2965,9 +2965,15 @@ A switch at the top chooses the view:
 - **All projects** (the default) — every project on one page. Projects that need you come first, each in its own block with its late, blocked, risk, approval and due-this-week items. Projects with nothing waiting are listed at the bottom, one line each, with their next milestone.
 - **One project at a time** — a list of your projects on the left (a row of tabs on a phone) and one project's detail on the right, so there is nothing to scroll. The list never hides a project: each shows a coloured dot (red = needs you today, amber = something waiting, green = on track) and its counts, e.g. "3 late · 3 blocked". Each morning it opens on the project that needs you most. Use the arrow keys to move through the list.
 
-The app remembers which view you chose. Unread notifications and agent proposals, which don't belong to one project, sit in the bar next to the switch.
+The app remembers which view you chose. Your unread notification count sits in the bar next to the switch.
 
-Each project block has up to five sections, each with a count — **Late**, **Blocked** (with what the task is waiting on), **Risks, issues & actions** (new high/critical risks, open issues, overdue meeting actions), **Waiting for your approval** (change requests; hidden for viewers) and **Due this week** (tasks and milestones, with the real date). An empty section says "None". Counts are true totals: when a section has more than fits, **See all N →** opens the full list (late and due-soon open the schedule already filtered).
+**Two parts per project (September 2026).** Each project is split so you can tell at a glance what to *chase* from what to *do*:
+- **Team — needs follow-up** (only on projects where you are Manager or Owner): late, blocked, **stalled** (in progress for over a week with nothing recorded), risks and issues, **waiting for your approval** (change requests and the agents' proposals), and due this week — whoever owns them, with the **owner's name** on each task. **"No owner"** is shown in amber: nobody can be held to it.
+- **Yours to do** (everyone): your own tasks that are late, blocked or due in the **next 2 weeks**, and the RAID items you own. When nothing is due soon it shows your **next** task and a link to all of your tasks in that project (the schedule's "My tasks" filter). Something that is yours appears only here, never in both parts.
+
+A team member (or a Manager on some other project) only sees "Yours to do". The project list shows both counts, e.g. "3 late · 2 yours".
+
+Each team part has up to six sections, each with a count — **Late**, **Blocked** (with what the task is waiting on), **Risks, issues & actions** (new high/critical risks, open issues, overdue meeting actions), **Waiting for your approval** (change requests; hidden for viewers) and **Due this week** (tasks and milestones, with the real date). An empty section says "None". Counts are true totals: when a section has more than fits, **See all N →** opens the full list (late and due-soon open the schedule already filtered).
 
 **Clicking a task opens its schedule scrolled to that row, highlighted in amber.** It opens the right schedule when the project has several, switches to the Gantt if you were on a view without rows (Kanban, Calendar…), expands a collapsed phase that hides the task, and clears any filter or search that hides it (a note says so). The highlight fades after a few seconds. If the task has since been deleted, a note says so instead.
 
@@ -3016,7 +3022,7 @@ The **Open Risks** tile next to Portfolio Health counts how many active projects
 
 - **KPI Drill-In Pages** — Click any KPI tile to open a detailed drill-in page. Each page includes summary stat cards at the top (e.g., average health, total overdue, critical count), a sortable data table, and type-specific enrichments: Health and Overdue pages show a trend badge (improving/declining/stable); Health and Risks pages show a color-coded distribution bar; the Health table adds Schedule, Budget, and Risk sub-score columns with 30-day sparkline trends.
 - **Portfolio Intelligence** — AI-generated health ring, risk chips, budget status, and key insights. Supports dark mode.
-- **AI Suggestions** — AI-driven action list: pending agent proposals to approve (with confidence % and risk level badges), critical/high notifications to investigate, and at-risk projects to review (with health score badges). Items are prioritized by severity and confidence. This is the single source for AI-suggested next actions on the dashboard.
+- **AI Suggestions** *(removed September 2026)* — it repeated other parts of the dashboard. Agent proposals now appear under their project in the Morning Briefing ("Waiting for your approval"), urgent notifications are on the bell, and project health is the red/amber/green dot on each project.
 - **Projects Table** — Sortable table; clicking a row navigates to the project detail view (`/project/:id`).
 - **Customize** — Toggle widgets on/off, drag-and-drop to reorder, and "Reset to Default Layout" to restore defaults. Preferences sync across devices. Opt-in widgets (Sprint Snapshot, Goals Progress, Team Workload) are available but disabled by default.
 

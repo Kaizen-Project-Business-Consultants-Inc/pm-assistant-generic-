@@ -8,6 +8,7 @@ import { slackEventDispatcher } from './integrations/SlackEventDispatcher';
 import { teamsEventDispatcher } from './integrations/TeamsEventDispatcher';
 import { webPushService } from './WebPushService';
 import logger from '../utils/logger';
+import { databaseService } from '../database/connection';
 import { config } from '../config';
 
 export type { NotificationDTO } from '../database/NotificationRepository';
@@ -90,11 +91,33 @@ export interface CreateNotificationData {
 }
 
 export class NotificationService {
+  /** What create() returns when it decides not to store anything */
+  private skipped(data: CreateNotificationData, type: string, severity: string): NotificationDTO {
+    return {
+      id: '', userId: data.userId, type, severity, title: data.title, message: data.message,
+      projectId: data.projectId || null, scheduleId: data.scheduleId || null, linkType: data.linkType || null,
+      linkId: data.linkId || null, isRead: true, createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    } as NotificationDTO;
+  }
+
   async create(data: CreateNotificationData): Promise<NotificationDTO> {
     const id = uuidv4();
     const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
     const type = data.type || 'info';
     const severity = data.severity || 'medium';
+
+    // Notifications are for things that happened in real work: never for the sample project
+    // or an archived one, and never a second unread copy of the same thing.
+    if (data.projectId) {
+      try {
+        const rows = await databaseService.query<{ isDemo: number; archivedAt: string | null }>(
+          'SELECT COALESCE(is_demo, 0) AS isDemo, archived_at AS archivedAt FROM projects WHERE id = ?', [data.projectId]);
+        if (rows[0] && (Number(rows[0].isDemo) === 1 || rows[0].archivedAt)) return this.skipped(data, type, severity);
+      } catch { /* no tenant context (background job): deliver as before */ }
+    }
+    if (data.linkId && await notificationRepository.hasUnread(data.userId, type, data.linkId).catch(() => false)) {
+      return this.skipped(data, type, severity);
+    }
 
     // Look up user preferences to decide whether to deliver in-app / email
     let user;
