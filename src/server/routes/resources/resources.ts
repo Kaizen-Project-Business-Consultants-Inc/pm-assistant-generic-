@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { projectService } from '../../services/ProjectService';
 import { readableProjectIds } from '../../utils/readableProjects';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
@@ -348,7 +349,10 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     const totalProjectCost = Math.round(workload.reduce((sum, w) => sum + w.totalCost, 0) * 100) / 100;
     // Hours across all projects are shown to everyone (how busy is this person?); the money is
     // other projects' business — admin/PMO/executive only
-    if ((await readableProjectIds(request.user!)) !== 'all') {
+    // …unless the viewer is on every project anyway (then it's all their own business)
+    const readable = await readableProjectIds(request.user!);
+    const seesAll = readable === 'all' || (await projectService.findAll()).every((p) => readable.has(p.id));
+    if (!seesAll) {
       return { workload: workload.map((w) => ({ ...w, totalCost: null })), costSummary: { totalProjectCost: null } };
     }
     return { workload, costSummary: { totalProjectCost } };
