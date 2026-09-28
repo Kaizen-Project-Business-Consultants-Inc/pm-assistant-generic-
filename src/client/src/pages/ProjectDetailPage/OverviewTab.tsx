@@ -98,7 +98,8 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     enabled: !!primaryScheduleId,
     staleTime: 60_000,
   });
-  const allTasks: any[] = tasksData?.tasks || [];
+  // getTasks returns { data: [...] } — reading .tasks left milestones, due-soon and blocked lists empty
+  const allTasks: any[] = Array.isArray(tasksData?.data) ? tasksData.data : [];
   const milestones = allTasks
     .filter((t: any) => t.isMilestone || t.is_milestone)
     .sort((a: any, b: any) => {

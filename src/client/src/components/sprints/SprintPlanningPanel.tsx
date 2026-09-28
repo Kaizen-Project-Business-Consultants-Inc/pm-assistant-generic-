@@ -120,7 +120,8 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId, canEdit =
   });
 
   const sprint: Sprint | null = sprintData?.sprint ?? sprintData ?? null;
-  const allTasks: Task[] = allTasksData?.tasks ?? allTasksData ?? [];
+  // getTasks returns { data: [...] } (all pages); reading .tasks got the wrapper object and crashed the plan
+  const allTasks: Task[] = Array.isArray(allTasksData?.data) ? allTasksData.data : [];
   const sprintTasks: Task[] = sprint?.tasks ?? [];
   const sprintTaskIds = useMemo(() => new Set(sprintTasks.map((t) => t.id)), [sprintTasks]);
 

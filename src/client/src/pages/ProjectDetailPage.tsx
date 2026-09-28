@@ -8,7 +8,6 @@ import {
   TrendingUp,
   Clock,
   ShieldAlert,
-  Play,
   ChevronDown,
   Download,
   Printer,
@@ -398,16 +397,6 @@ export function ProjectDetailPage() {
                   >
                     {status.label}
                   </span>
-                  {project.status === 'planning' && !isDemo && (
-                    <button
-                      onClick={() => statusMutation.mutate({ status: 'active' })}
-                      disabled={statusMutation.isPending}
-                      className="inline-flex items-center gap-1 rounded-md bg-primary-600 px-3 py-1 text-xs font-medium text-white hover:bg-primary-700 transition-colors disabled:opacity-50"
-                    >
-                      <Play className="h-3 w-3" />
-                      Start Project
-                    </button>
-                  )}
                 </>
               )}
               <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 capitalize">
