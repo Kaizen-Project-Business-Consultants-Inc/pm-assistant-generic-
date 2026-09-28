@@ -17,6 +17,7 @@ vi.mock('../../services/ProjectService', () => ({
   projectService: {
     findAll: vi.fn(),
     findById: vi.fn(),
+    findByUserId: vi.fn(),
   },
 }));
 vi.mock('../../services/ScheduleService', () => ({
@@ -62,6 +63,7 @@ const mockIsAvailable = claudeService.isAvailable as ReturnType<typeof vi.fn>;
 const mockCompleteToolLoop = claudeService.completeToolLoop as ReturnType<typeof vi.fn>;
 const mockCompleteWithJsonSchema = claudeService.completeWithJsonSchema as ReturnType<typeof vi.fn>;
 
+const ADMIN = { userId: 'u-admin', role: 'admin' };
 const mockFindAll = projectService.findAll as ReturnType<typeof vi.fn>;
 const mockFindById = projectService.findById as ReturnType<typeof vi.fn>;
 const mockFindByProjectId = scheduleService.findByProjectId as ReturnType<typeof vi.fn>;
@@ -123,7 +125,7 @@ describe('NLQueryService', () => {
   describe('processQuery — precondition checks', () => {
     it('throws when AI_ENABLED is false', async () => {
       (config as any).AI_ENABLED = false;
-      await expect(service.processQuery('show me projects')).rejects.toThrow(
+      await expect(service.processQuery('show me projects', undefined, ADMIN)).rejects.toThrow(
         'AI features are disabled',
       );
       expect(mockCompleteToolLoop).not.toHaveBeenCalled();
@@ -131,7 +133,7 @@ describe('NLQueryService', () => {
 
     it('throws when Claude service is unavailable', async () => {
       mockIsAvailable.mockReturnValue(false);
-      await expect(service.processQuery('show me projects')).rejects.toThrow(
+      await expect(service.processQuery('show me projects', undefined, ADMIN)).rejects.toThrow(
         'AI service is unavailable',
       );
       expect(mockCompleteToolLoop).not.toHaveBeenCalled();
@@ -147,7 +149,7 @@ describe('NLQueryService', () => {
       mockCompleteToolLoop.mockResolvedValue(makeToolLoopResult());
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      const result = await service.processQuery('How are my projects doing?');
+      const result = await service.processQuery('How are my projects doing?', undefined, ADMIN);
 
       expect(mockCompleteToolLoop).toHaveBeenCalledOnce();
       expect(mockCompleteWithJsonSchema).toHaveBeenCalledOnce();
@@ -164,7 +166,7 @@ describe('NLQueryService', () => {
       mockCompleteToolLoop.mockResolvedValue(makeToolLoopResult());
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      await service.processQuery('Show budget', { projectId: 'proj-123' });
+      await service.processQuery('Show budget', { projectId: 'proj-123' }, ADMIN);
 
       const toolLoopCall = mockCompleteToolLoop.mock.calls[0][0];
       expect(toolLoopCall.userMessage).toContain('proj-123');
@@ -175,7 +177,7 @@ describe('NLQueryService', () => {
       mockCompleteToolLoop.mockResolvedValue(makeToolLoopResult());
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      await service.processQuery('Show all projects');
+      await service.processQuery('Show all projects', undefined, ADMIN);
 
       const toolLoopCall = mockCompleteToolLoop.mock.calls[0][0];
       expect(toolLoopCall.userMessage).toBe('Show all projects');
@@ -185,7 +187,7 @@ describe('NLQueryService', () => {
       mockCompleteToolLoop.mockResolvedValue(makeToolLoopResult());
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      await service.processQuery('test query');
+      await service.processQuery('test query', undefined, ADMIN);
 
       const toolLoopCall = mockCompleteToolLoop.mock.calls[0][0];
       expect(toolLoopCall.maxIterations).toBe(6);
@@ -200,7 +202,7 @@ describe('NLQueryService', () => {
       mockCompleteToolLoop.mockResolvedValue(toolResult);
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      await service.processQuery('test');
+      await service.processQuery('test', undefined, ADMIN);
 
       const structCall = mockCompleteWithJsonSchema.mock.calls[0][0];
       expect(structCall.userMessage).toContain('Raw AI answer');
@@ -218,7 +220,7 @@ describe('NLQueryService', () => {
       }));
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      const result = await service.processQuery('overview');
+      const result = await service.processQuery('overview', undefined, ADMIN);
 
       expect(result.dataSources).toEqual(['list_projects', 'get_evm_metrics']);
     });
@@ -234,7 +236,7 @@ describe('NLQueryService', () => {
       mockCompleteToolLoop.mockResolvedValue(makeToolLoopResult());
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult({ charts }));
 
-      const result = await service.processQuery('budget breakdown');
+      const result = await service.processQuery('budget breakdown', undefined, ADMIN);
 
       expect(result.charts).toEqual(charts);
     });
@@ -248,14 +250,14 @@ describe('NLQueryService', () => {
     it('propagates error when tool loop fails', async () => {
       mockCompleteToolLoop.mockRejectedValue(new Error('API timeout'));
 
-      await expect(service.processQuery('test')).rejects.toThrow('API timeout');
+      await expect(service.processQuery('test', undefined, ADMIN)).rejects.toThrow('API timeout');
     });
 
     it('propagates error when structuring call fails', async () => {
       mockCompleteToolLoop.mockResolvedValue(makeToolLoopResult());
       mockCompleteWithJsonSchema.mockRejectedValue(new Error('Parse error'));
 
-      await expect(service.processQuery('test')).rejects.toThrow('Parse error');
+      await expect(service.processQuery('test', undefined, ADMIN)).rejects.toThrow('Parse error');
     });
   });
 
@@ -272,7 +274,7 @@ describe('NLQueryService', () => {
       }));
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      const result = await service.processQuery('test');
+      const result = await service.processQuery('test', undefined, ADMIN);
       expect(result.confidence).toBe(50);
     });
 
@@ -287,7 +289,7 @@ describe('NLQueryService', () => {
       }));
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      const result = await service.processQuery('test');
+      const result = await service.processQuery('test', undefined, ADMIN);
       // 40 base + 30 (3 tools) = 70
       expect(result.confidence).toBe(70);
     });
@@ -300,7 +302,7 @@ describe('NLQueryService', () => {
       }));
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      const result = await service.processQuery('test');
+      const result = await service.processQuery('test', undefined, ADMIN);
       // 40 base + 10 (1 tool) + 10 (>500 chars) = 60
       expect(result.confidence).toBe(60);
     });
@@ -313,7 +315,7 @@ describe('NLQueryService', () => {
       }));
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      const result = await service.processQuery('test');
+      const result = await service.processQuery('test', undefined, ADMIN);
       // 40 base + 10 (1 tool) + 10 (>500) + 10 (>1500) = 70
       expect(result.confidence).toBe(70);
     });
@@ -325,7 +327,7 @@ describe('NLQueryService', () => {
       }));
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      const result = await service.processQuery('test');
+      const result = await service.processQuery('test', undefined, ADMIN);
       // 40 base + 10 (1 tool) + 10 (3+ numbers) = 60
       expect(result.confidence).toBe(60);
     });
@@ -344,7 +346,7 @@ describe('NLQueryService', () => {
       }));
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      const result = await service.processQuery('test');
+      const result = await service.processQuery('test', undefined, ADMIN);
       expect(result.confidence).toBe(100);
     });
   });
@@ -365,7 +367,7 @@ describe('NLQueryService', () => {
         return makeToolLoopResult();
       });
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
-      await service.processQuery('trigger');
+      await service.processQuery('trigger', undefined, ADMIN);
     });
 
     it('list_projects — returns project summaries', async () => {
@@ -543,6 +545,39 @@ describe('NLQueryService', () => {
     });
   });
 
+  describe('only the projects the asker can open (Sep 2026)', () => {
+    let run: (toolName: string, toolInput: Record<string, any>) => Promise<string>;
+    const mockFindByUserId = projectService.findByUserId as ReturnType<typeof vi.fn>;
+
+    beforeEach(async () => {
+      mockCompleteToolLoop.mockImplementation(async (opts: any) => { run = opts.executeToolFn; return makeToolLoopResult(); });
+      mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
+      mockFindByUserId.mockResolvedValue([{ id: 'mine', name: 'Mine', status: 'active', priority: 'medium', projectType: 'it' }]);
+      mockFindAll.mockResolvedValue([{ id: 'mine' }, { id: 'theirs' }]);
+      await service.processQuery('trigger', undefined, { userId: 'u-tm', role: 'team_member' });
+    });
+
+    it('list_projects lists only their projects, never the whole organisation', async () => {
+      const result = JSON.parse(await run('list_projects', {}));
+      expect(JSON.stringify(result)).toContain('mine');
+      expect(JSON.stringify(result)).not.toContain('theirs');
+      expect(mockFindAll).not.toHaveBeenCalled();
+    });
+
+    it("refuses another project's details", async () => {
+      const result = JSON.parse(await run('get_project_details', { projectId: 'theirs' }));
+      expect(result.error).toMatch(/not found among the projects you can see/);
+      expect(mockFindById).not.toHaveBeenCalled();
+    });
+
+    it('refuses the tasks of a schedule in another project', async () => {
+      (scheduleService as any).findById = vi.fn().mockResolvedValue({ id: 's9', projectId: 'theirs' });
+      const result = JSON.parse(await run('list_tasks', { scheduleId: 's9' }));
+      expect(result.error).toMatch(/not found among the projects you can see/);
+      expect(mockFindTasksByScheduleId).not.toHaveBeenCalled();
+    });
+  });
+
   // -----------------------------------------------------------------------
   // Tool definitions
   // -----------------------------------------------------------------------
@@ -552,7 +587,7 @@ describe('NLQueryService', () => {
       mockCompleteToolLoop.mockResolvedValue(makeToolLoopResult());
       mockCompleteWithJsonSchema.mockResolvedValue(makeStructuredResult());
 
-      await service.processQuery('test');
+      await service.processQuery('test', undefined, ADMIN);
 
       const tools = mockCompleteToolLoop.mock.calls[0][0].tools;
       expect(tools).toHaveLength(7);

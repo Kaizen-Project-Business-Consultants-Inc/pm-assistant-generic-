@@ -24,6 +24,9 @@ vi.mock('../../services/ReportBuilderService', () => ({
   },
 }));
 
+vi.mock('../../utils/readableProjects', () => ({
+  readableProjectIdsForUserId: vi.fn().mockResolvedValue(new Set(['p-1'])),
+}));
 vi.mock('../../services/EmailService', () => ({
   emailService: {
     sendReportEmail: vi.fn().mockResolvedValue(undefined),
@@ -407,7 +410,7 @@ describe('ReportScheduleService', () => {
       await service.executeOne('sched-1');
 
       expect(mockGetTemplateById).toHaveBeenCalledWith('tmpl-42');
-      expect(mockExportReport).toHaveBeenCalledWith('tmpl-42', 'csv');
+      expect(mockExportReport).toHaveBeenCalledWith('tmpl-42', 'csv', undefined, new Set(['p-1'])) // only the creator's projects;
       expect(mockSendReportEmail).toHaveBeenCalledWith(
         ['alice@test.com', 'bob@test.com'],
         'Weekly Summary',

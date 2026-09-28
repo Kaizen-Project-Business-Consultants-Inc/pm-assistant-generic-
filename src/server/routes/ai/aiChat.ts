@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
+import { requireProjectAccess, projectsOfSchedules, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { AIChatService } from '../../services/aiChatService';
 import { AICircuitBreakerError } from '../../services/claudeService';
@@ -31,6 +31,14 @@ const extractTasksSchema = z.object({
  * AIActionExecutor.checkProjectWrite (checkProjectRoleFor — the project's Manager/Owner).
  * Extracting tasks into a schedule writes directly, so it is checked here.
  */
+/** A chat "about" a project gets that project's details: the user must be on it */
+async function chatContextMember(request: FastifyRequest, reply: FastifyReply) {
+  const projectId = (request.body as { context?: { projectId?: string } } | undefined)?.context?.projectId;
+  if (!projectId) return;
+  const d = await checkProjectRole(request, projectId, 'viewer');
+  if (!d.ok) return reply.status(d.status).send(d.body);
+}
+
 const extractPM = requireProjectAccess('manager', {
   resolve: async (req) => {
     const b = req.body as { projectId?: string; scheduleId?: string } | undefined;
@@ -47,7 +55,7 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
   // POST /message — non-streaming chat
   // project check for each change: AIActionExecutor.checkProjectWrite → checkProjectRoleFor
   fastify.post('/message', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), chatContextMember],
     schema: {
       description: 'Send a message to the AI assistant (non-streaming)',
       tags: ['ai-chat'],
@@ -112,7 +120,7 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
   // POST /stream — SSE streaming chat
   // project check for each change: AIActionExecutor.checkProjectWrite → checkProjectRoleFor
   fastify.post('/stream', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), chatContextMember],
     schema: {
       description: 'Send a message to the AI assistant (SSE streaming)',
       tags: ['ai-chat'],

@@ -63,7 +63,7 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:projectId/storage-connectors — list connectors for project
-  fastify.get('/:projectId/storage-connectors', { preHandler: [requireScope('read')] }, async (request: FastifyRequest) => {
+  fastify.get('/:projectId/storage-connectors', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest) => {
     const { projectId } = request.params as { projectId: string };
     const connectors = await storageConnectorRepository.findByProject(projectId);
     return { connectors };
@@ -91,7 +91,7 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:projectId/storage-connectors/:id — get connector details
-  fastify.get('/:projectId/storage-connectors/:id', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:projectId/storage-connectors/:id', { preHandler: [requireScope('read'), requireProjectAccess('viewer'), connectorInProject] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { projectId: string; id: string };
     // Exclude 'providers' — it's handled above
     if (id === 'providers') return;
@@ -101,7 +101,8 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:projectId/storage-connectors/:id/browse — browse folders
-  fastify.get('/:projectId/storage-connectors/:id/browse', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // Browsing lists live folders using the project's cloud login: only its Manager/Owner, while setting it up
+  fastify.get('/:projectId/storage-connectors/:id/browse', { preHandler: [requireScope('read'), requireProjectAccess('manager'), connectorInProject] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { projectId: string; id: string };
     const { folderId } = request.query as { folderId?: string };
 

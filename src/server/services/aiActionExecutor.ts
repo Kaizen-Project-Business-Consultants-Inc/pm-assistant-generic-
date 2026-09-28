@@ -29,6 +29,9 @@ const AI_WRITE_TOOLS = new Set([
   'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies',
 ]);
 
+/** Tools that read one project's data: the user must be able to see that project */
+const AI_READ_TOOLS = new Set(['get_project_details', 'list_tasks', 'get_dependency_chain']);
+
 export class AIActionExecutor {
   /** Which project a tool call touches: projectId, else via scheduleId, else via taskId */
   private async projectsForTool(input: Record<string, any>): Promise<string[] | null> {
@@ -57,6 +60,18 @@ export class AIActionExecutor {
     if (projects.length > 1) return refuse("That change would link items from different projects, so I didn't make it.");
     const d = await checkProjectRoleFor({ userId: context.userId, role: context.userRole }, projects[0], 'manager');
     if (!d.ok) return refuse("Only the project's Manager or Owner can change it, so I didn't make that change.");
+    return null;
+  }
+
+  /** Reading a project through Mjuzi needs the same access as opening it in the app */
+  private async checkProjectRead(toolName: string, input: Record<string, any>, context: ActionContext): Promise<ActionResult | null> {
+    const projects = await this.projectsForTool(input);
+    const refuse = (summary: string): ActionResult => ({ success: false, toolName, summary, error: 'Not allowed' });
+    if (!projects) return refuse("I couldn't find that project.");
+    for (const projectId of projects) {
+      const d = await checkProjectRoleFor({ userId: context.userId, role: context.userRole }, projectId, 'viewer');
+      if (!d.ok) return refuse("I couldn't find that project among the projects you're on.");
+    }
     return null;
   }
 
@@ -99,6 +114,10 @@ export class AIActionExecutor {
         const denied = await this.checkProjectWrite(toolName, input, context);
         if (denied) return denied;
       }
+      if (AI_READ_TOOLS.has(toolName)) {
+        const denied = await this.checkProjectRead(toolName, input, context);
+        if (denied) return denied;
+      }
 
       let result: ActionResult;
       switch (toolName) {
@@ -116,12 +135,12 @@ export class AIActionExecutor {
         case 'remove_dependency': result = await this.removeDependency(input, context); break;
         case 'clear_all_dependencies': result = await this.clearAllDependencies(input, context); break;
         case 'get_dependency_chain': result = await this.getDependencyChain(input, context); break;
-        case 'get_projects_due_today': result = await this.getProjectsDueToday(); break;
-        case 'get_overdue_projects': result = await this.getOverdueProjects(); break;
-        case 'get_projects_by_status': result = await this.getProjectsByStatus(input); break;
-        case 'get_overdue_tasks': result = await this.getOverdueTasks(); break;
-        case 'get_high_risk_projects': result = await this.getHighRiskProjects(); break;
-        case 'get_portfolio_summary': result = await this.getPortfolioSummary(); break;
+        case 'get_projects_due_today': result = await this.getProjectsDueToday(context); break;
+        case 'get_overdue_projects': result = await this.getOverdueProjects(context); break;
+        case 'get_projects_by_status': result = await this.getProjectsByStatus(input, context); break;
+        case 'get_overdue_tasks': result = await this.getOverdueTasks(context); break;
+        case 'get_high_risk_projects': result = await this.getHighRiskProjects(context); break;
+        case 'get_portfolio_summary': result = await this.getPortfolioSummary(context); break;
         case 'remember_user_preference': result = await this.rememberUserPreference(input, context); break;
         case 'remember_correction': result = await this.rememberCorrection(input, context); break;
         case 'search_knowledge_base': result = await this.searchKnowledgeBase(input); break;
@@ -305,8 +324,8 @@ export class AIActionExecutor {
     };
   }
 
-  private async listProjects(_context: ActionContext): Promise<ActionResult> {
-    const projects = await projectService.findAll();
+  private async listProjects(context: ActionContext): Promise<ActionResult> {
+    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
     const projectList = projects.map(p => ({
       id: p.id,
       name: p.name,
@@ -608,9 +627,9 @@ export class AIActionExecutor {
     };
   }
 
-  private async getProjectsDueToday(): Promise<ActionResult> {
+  private async getProjectsDueToday(context: ActionContext): Promise<ActionResult> {
     const today = new Date().toISOString().slice(0, 10);
-    const projects = await projectService.findAll();
+    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
     const due = projects.filter(
       (p) =>
         p.endDate &&
@@ -626,9 +645,9 @@ export class AIActionExecutor {
     };
   }
 
-  private async getOverdueProjects(): Promise<ActionResult> {
+  private async getOverdueProjects(context: ActionContext): Promise<ActionResult> {
     const today = new Date().toISOString().slice(0, 10);
-    const projects = await projectService.findAll();
+    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
     const overdue = projects.filter(
       (p) =>
         p.endDate &&
@@ -651,13 +670,13 @@ export class AIActionExecutor {
     };
   }
 
-  private async getProjectsByStatus(input: Record<string, any>): Promise<ActionResult> {
+  private async getProjectsByStatus(input: Record<string, any>, context: ActionContext): Promise<ActionResult> {
     const { status } = input;
     const valid = ['planning', 'active', 'on_hold', 'completed', 'cancelled'];
     if (!valid.includes(status)) {
       return { success: false, toolName: 'get_projects_by_status', summary: `Invalid status: ${status}`, error: `Status must be one of: ${valid.join(', ')}` };
     }
-    const projects = await projectService.findAll();
+    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
     const filtered = projects.filter((p) => p.status === status);
     return {
       success: true,
@@ -667,9 +686,9 @@ export class AIActionExecutor {
     };
   }
 
-  private async getOverdueTasks(): Promise<ActionResult> {
+  private async getOverdueTasks(context: ActionContext): Promise<ActionResult> {
     const today = new Date().toISOString().slice(0, 10);
-    const projects = await projectService.findAll();
+    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
     const projectMap = new Map(projects.map(p => [p.id, p]));
 
     const allSchedules = await scheduleService.findByProjectIds(projects.map(p => p.id));
@@ -709,9 +728,9 @@ export class AIActionExecutor {
     };
   }
 
-  private async getHighRiskProjects(): Promise<ActionResult> {
+  private async getHighRiskProjects(context: ActionContext): Promise<ActionResult> {
     const today = new Date().toISOString().slice(0, 10);
-    const projects = await projectService.findAll();
+    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
 
     const highRisk = projects
       .filter((p) => p.status !== 'completed' && p.status !== 'cancelled')
@@ -742,9 +761,9 @@ export class AIActionExecutor {
     };
   }
 
-  private async getPortfolioSummary(): Promise<ActionResult> {
+  private async getPortfolioSummary(context: ActionContext): Promise<ActionResult> {
     const today = new Date().toISOString().slice(0, 10);
-    const projects = await projectService.findAll();
+    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
 
     const byStatus: Record<string, number> = {};
     let totalBudget = 0;

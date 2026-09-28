@@ -87,8 +87,10 @@ export class AnomalyDetectionService {
 
   async detectPortfolioAnomalies(
     userId?: string,
+    userRole?: string,
   ): Promise<AIAnomalyReport> {
-    const portfolio = await this.contextBuilder.buildPortfolioContext();
+    // Only the projects this person can see (the whole portfolio used to be scanned for anyone)
+    const portfolio = await this.contextBuilder.buildPortfolioContext({ userId, role: userRole });
     const anomalies: AIAnomaly[] = [];
 
     for (const p of portfolio.projects) {

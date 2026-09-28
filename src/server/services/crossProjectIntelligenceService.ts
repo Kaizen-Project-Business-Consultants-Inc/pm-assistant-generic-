@@ -110,8 +110,10 @@ export class CrossProjectIntelligenceService {
 
   async analyzePortfolio(
     userId?: string,
+    userRole?: string,
   ): Promise<{ insight: AICrossProjectInsight; aiPowered: boolean }> {
-    const portfolio = await this.contextBuilder.buildPortfolioContext();
+    // Only the projects this person can see (the whole portfolio used to be analysed for anyone)
+    const portfolio = await this.contextBuilder.buildPortfolioContext({ userId, role: userRole });
 
     // 1. Resource conflicts
     //    No per-user task assignment tracking in the generic version — return empty

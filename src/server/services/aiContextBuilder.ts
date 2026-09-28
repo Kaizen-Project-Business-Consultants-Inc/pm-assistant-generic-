@@ -1,4 +1,5 @@
 import { FastifyInstance } from 'fastify';
+import { GLOBAL_READ_ROLES } from '../constants/roles';
 import { ProjectService } from './ProjectService';
 import { ScheduleService, type Task } from './ScheduleService';
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
@@ -139,7 +140,8 @@ export class AIContextBuilder {
   }
 
   async buildPortfolioContext(opts?: { userId?: string; role?: string }): Promise<PortfolioContext> {
-    const isAdmin = !opts?.userId || opts?.role === 'admin' || opts?.role === 'executive';
+    // No user = a background job; a person sees all projects only as admin/PMO/executive
+    const isAdmin = !opts?.userId || GLOBAL_READ_ROLES.includes(opts?.role ?? '');
     const projects = isAdmin
       ? await this.projectService.findAll()
       : await this.projectService.findByUserId(opts!.userId!);

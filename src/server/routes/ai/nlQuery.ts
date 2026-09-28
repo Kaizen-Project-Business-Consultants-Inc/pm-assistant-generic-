@@ -3,6 +3,7 @@ import { NLQueryService } from '../../services/NLQueryService';
 import { NLQueryRequestSchema } from '../../schemas/nlQuerySchemas';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { checkProjectRole } from '../../middleware/requireProjectAccess';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import { rateLimiter } from '../../middleware/rateLimiter';
@@ -63,10 +64,16 @@ export async function nlQueryRoutes(fastify: FastifyInstance) {
           return reply.code(429).send({ error: 'Rate limit exceeded. Please try again later.' });
         }
 
+        // A question "about" a project needs access to it; answers only use projects the user can open
+        if (parsed.data.context?.projectId) {
+          const d = await checkProjectRole(request, parsed.data.context.projectId, 'viewer');
+          if (!d.ok) return reply.status(d.status).send(d.body);
+        }
+
         const result = await nlQueryService.processQuery(
           parsed.data.query,
           parsed.data.context,
-          userId,
+          { userId, role: user.role },
         );
 
         return result;

@@ -42,7 +42,7 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
         return reply.send({ data: generateSampleAnomalies(), aiPowered: false, sample: true });
       }
       const userId = request.user!.userId;
-      const report = await anomalyService.detectPortfolioAnomalies(userId);
+      const report = await anomalyService.detectPortfolioAnomalies(userId, request.user!.role);
       return reply.send({ data: report, aiPowered: report.aiPowered });
     } catch (err) {
       fastify.log.error({ err }, 'Portfolio anomaly detection failed');
@@ -77,7 +77,7 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
         return reply.send({ data: generateSampleCrossProject(), aiPowered: false, sample: true });
       }
       const userId = request.user!.userId;
-      const { insight, aiPowered } = await crossProjectService.analyzePortfolio(userId);
+      const { insight, aiPowered } = await crossProjectService.analyzePortfolio(userId, request.user!.role);
       return reply.send({ data: insight, aiPowered });
     } catch (err) {
       fastify.log.error({ err }, 'Cross-project analysis failed');

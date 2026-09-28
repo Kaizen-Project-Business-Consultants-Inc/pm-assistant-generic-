@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { claudeService } from '../services/claudeService';
 import { projectService } from '../services/ProjectService';
+import { GLOBAL_READ_ROLES } from '../constants/roles';
 import { scheduleService } from '../services/ScheduleService';
 import { resourceService } from '../services/ResourceService';
 import { criticalPathService } from '../services/CriticalPathService';
@@ -159,14 +160,43 @@ function buildToolDefinitions(): Anthropic.Tool[] {
 // Tool execution dispatcher
 // ---------------------------------------------------------------------------
 
+/** Who is asking: answers only use projects they can open (admin/PMO/executive: all) */
+export interface NLQueryUser { userId: string; role: string }
+
+/** The tool runner for one person — every tool is limited to the projects they can read */
+function toolsFor(user: NLQueryUser) {
+  let accessible: Promise<Set<string> | 'all'> | null = null;
+  const allowed = () => (accessible ??= (async () => GLOBAL_READ_ROLES.includes(user.role)
+    ? 'all' as const
+    : new Set((await projectService.findByUserId(user.userId)).map((p) => p.id)))());
+  const canRead = async (projectId?: string | null) => {
+    const a = await allowed();
+    return !!projectId && (a === 'all' || a.has(projectId));
+  };
+  const scheduleProject = async (scheduleId?: string) =>
+    scheduleId ? (await scheduleService.findById(scheduleId))?.projectId ?? null : null;
+  const notFound = (what: string) => JSON.stringify({ error: `${what} not found among the projects you can see` });
+
+  return async (toolName: string, toolInput: Record<string, any>): Promise<string> => {
+    if ((await allowed()) === 'all') return executeToolFn(toolName, toolInput, user, allowed);
+    if (['get_project_details', 'get_resource_workload', 'get_evm_metrics'].includes(toolName)
+      && !(await canRead(toolInput.projectId))) return notFound(`Project ${toolInput.projectId}`);
+    if (['list_tasks', 'get_critical_path'].includes(toolName)
+      && !(await canRead(await scheduleProject(toolInput.scheduleId)))) return notFound(`Schedule ${toolInput.scheduleId}`);
+    return executeToolFn(toolName, toolInput, user, allowed);
+  };
+}
+
 async function executeToolFn(
   toolName: string,
   toolInput: Record<string, any>,
+  user: NLQueryUser,
+  allowed: () => Promise<Set<string> | 'all'>,
 ): Promise<string> {
   switch (toolName) {
     // ----- list_projects -----
     case 'list_projects': {
-      const projects = await projectService.findAll();
+      const projects = (await allowed()) === 'all' ? await projectService.findAll() : await projectService.findByUserId(user.userId);
       const summary = projects.map((p) => ({
         id: p.id,
         name: p.name,
@@ -317,8 +347,11 @@ async function executeToolFn(
 
     // ----- aggregate_portfolio_stats -----
     case 'aggregate_portfolio_stats': {
-      const projects = await projectService.findAll();
-      const allTasks = await scheduleService.findAllTasks();
+      const projects = (await allowed()) === 'all' ? await projectService.findAll() : await projectService.findByUserId(user.userId);
+      const allTasks = (await allowed()) === 'all'
+        ? await scheduleService.findAllTasks()
+        : await scheduleService.findTasksByScheduleIds(
+          (await Promise.all(projects.map((p) => scheduleService.findByProjectId(p.id)))).flat().map((sch) => sch.id));
 
       const totalBudgetAllocated = projects.reduce((s, p) => s + (p.budgetAllocated ?? 0), 0);
       const totalBudgetSpent = projects.reduce((s, p) => s + (p.budgetSpent ?? 0), 0);
@@ -385,8 +418,8 @@ export class NLQueryService {
    */
   async processQuery(
     query: string,
-    context?: { projectId?: string },
-    userId?: string,
+    context: { projectId?: string } | undefined,
+    user: NLQueryUser,
   ): Promise<NLQueryResult> {
     if (!config.AI_ENABLED) {
       throw new Error(
@@ -415,7 +448,7 @@ export class NLQueryService {
       systemPrompt: TOOL_LOOP_SYSTEM_PROMPT,
       userMessage,
       tools,
-      executeToolFn,
+      executeToolFn: toolsFor(user),
       maxIterations: 6,
       temperature: 0.2,
     });

@@ -19,6 +19,8 @@ export interface RagSearchOptions {
   documentType?: EmbeddingDocumentType;
   topK?: number;
   threshold?: number;
+  /** Drop meeting analyses from projects outside this list (lessons are shared org-wide) */
+  readableProjectIds?: Set<string> | 'all';
 }
 
 // ---------------------------------------------------------------------------
@@ -80,7 +82,11 @@ export class RagService {
       options?.threshold,
     );
 
-    return this.enrichResults(similar);
+    const results = await this.enrichResults(similar);
+    const readable = options?.readableProjectIds;
+    if (!readable || readable === 'all') return results;
+    return results.filter((r) => r.documentType !== 'meeting'
+      || (r.document && readable.has((r.document as MeetingAnalysis).projectId)));
   }
 
   // -------------------------------------------------------------------------

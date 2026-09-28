@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-28 (private project data — phase 1: the worst read leaks)
+
+- Audit found ~80 read routes that showed other projects' data inside an org (details in auto-memory read-access-audit-2026-09-28). User decisions: lessons stay shared; resource screens will show hours elsewhere but hide other projects' task names/costs (phase 2); two phases.
+- Phase 1: `?scope=portfolio` escape closed (analyticsSummary, dashboardData, DailyBriefingService); Mjuzi read tools + chat project context; NLQueryService per-user tools; RAG meeting results filtered; report builder + scheduled reports filtered (and task sections now match via schedules — tasks have no project_id, so "filter by project" on tasks was broken); anomalies/cross-project scoped; export gated (needed explicit resolve); storage connector GETs gated, browse = Manager/Owner. `GLOBAL_READ_ROLES` now includes PMO for AI portfolio context (was admin/executive only).
+- Prod has 0 project_members rows (each org: creator + sample project) — "accessible" = created_by OR member OR demo, same as the Projects list, so nobody's dashboard empties.
+
 ## 2026-09-28 (hide buttons a team member can't use)
 
 - Shared `components/ui/ViewOnlyNote.tsx` + `useProjectRole` on: Sprints (New Sprint, add/remove tasks, start/complete, drag on board, points, AI seed, convert retro→task, DoR/DoD editing; retro delete only on your own notes — server rule), Meeting Minutes (analyse/upload, Send to RAID, Send Minutes, Apply), Automations (list + detail), What-if (whole tab), Agent Activity (Run AI Analysis now by project role, was global role), Documents (upload, connectors, pin, edit, reprocess, delete), attachments (upload/delete; tasks pass projectId).

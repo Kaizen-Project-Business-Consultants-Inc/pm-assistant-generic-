@@ -14,7 +14,8 @@ export async function analyticsSummaryRoutes(fastify: FastifyInstance) {
 
       const { scope } = request.query as { scope?: string };
       const globalRoles = ['admin', 'executive', 'pmo'];
-      const isGlobal = globalRoles.includes(user.role) || scope === 'portfolio';
+      // '?scope=portfolio' used to make ANY role see every project; only admin/PMO/executive get it
+      const isGlobal = globalRoles.includes(user.role);
 
       const summary = isGlobal
         ? await analyticsSummaryService.getSummaryAll()

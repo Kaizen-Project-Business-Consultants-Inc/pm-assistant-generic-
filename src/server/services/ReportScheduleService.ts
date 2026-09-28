@@ -5,6 +5,7 @@ import { emailService } from './EmailService';
 import { projectStatusReportService } from './ProjectStatusReportService';
 import { raidReportService } from './RAIDReportService';
 import logger from '../utils/logger';
+import { readableProjectIdsForUserId } from '../utils/readableProjects';
 
 export type { ReportSchedule } from '../database/ReportScheduleRepository';
 
@@ -109,7 +110,8 @@ export class ReportScheduleService {
       } else {
         const template = await reportBuilderService.getTemplateById(schedule.templateId);
         if (!template) throw new Error('Template not found');
-        const { data: csvContent } = await reportBuilderService.exportReport(schedule.templateId, 'csv');
+        // Runs as the person who scheduled it: only the projects they can read
+        const { data: csvContent } = await reportBuilderService.exportReport(schedule.templateId, 'csv', undefined, await readableProjectIdsForUserId(schedule.createdBy));
         await emailService.sendReportEmail(schedule.recipients, template.name, csvContent as string);
       }
 
@@ -170,7 +172,8 @@ export class ReportScheduleService {
           continue;
         }
 
-        const { data: csvContent } = await reportBuilderService.exportReport(schedule.templateId, 'csv');
+        // Runs as the person who scheduled it: only the projects they can read
+        const { data: csvContent } = await reportBuilderService.exportReport(schedule.templateId, 'csv', undefined, await readableProjectIdsForUserId(schedule.createdBy));
 
         await emailService.sendReportEmail(
           schedule.recipients,

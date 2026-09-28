@@ -4,6 +4,7 @@ import { projectService } from '../../services/ProjectService';
 import { criticalPathService } from '../../services/CriticalPathService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
@@ -13,7 +14,9 @@ export async function exportRoutes(fastify: FastifyInstance) {
 
   // GET /exports/projects/:id/export?format=csv|json
   // Trial users get sample export data with an upgrade prompt.
-  fastify.get('/projects/:id/export', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // The whole project goes out in the file: the caller must be on the project (':id' here isn't
+  // under /api/v1/projects, so it has to be resolved explicitly)
+  fastify.get('/projects/:id/export', { preHandler: [requireScope('read'), requireProjectAccess('viewer', { resolve: async (req) => (req.params as { id: string }).id })] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const { format } = request.query as { format?: string };

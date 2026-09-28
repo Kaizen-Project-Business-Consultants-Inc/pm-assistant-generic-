@@ -536,14 +536,14 @@ describe('DailyBriefingService', () => {
       expect(firstCallArgs[1]).toEqual(['user-1']);
     });
 
-    it('uses portfolio scope override to get global view for non-global role', async () => {
+    it("ignores '?scope=portfolio' for a non-global role — it used to show every project to anyone", async () => {
       setupDefaultResults();
 
       await dailyBriefingService.getDailyBriefing('user-1', 'project_manager', 'portfolio');
 
-      // portfolio scope makes it global, so no member params
+      // still limited to their projects: the member join carries their user id
       const firstCallArgs = queryMock.mock.calls[0];
-      expect(firstCallArgs[1]).toEqual([]);
+      expect(firstCallArgs[1]).toContain('user-1');
     });
 
     it('includes resource info in tasks for manager roles', async () => {

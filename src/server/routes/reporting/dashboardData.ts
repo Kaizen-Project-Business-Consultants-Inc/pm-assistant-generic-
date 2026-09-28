@@ -5,8 +5,10 @@ import { databaseService } from '../../database/connection';
 
 const globalRoles = ['admin', 'executive', 'pmo'];
 
-function isGlobalScope(userRole: string, scope?: string): boolean {
-  return globalRoles.includes(userRole) || scope === 'portfolio';
+// '?scope=portfolio' used to make ANY role see every project. The whole portfolio is only for
+// admin/PMO/executive; everyone else sees their own projects whatever they ask for.
+function isGlobalScope(userRole: string, _scope?: string): boolean {
+  return globalRoles.includes(userRole);
 }
 
 export async function dashboardDataRoutes(fastify: FastifyInstance) {

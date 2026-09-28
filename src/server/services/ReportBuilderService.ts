@@ -108,10 +108,14 @@ class ReportBuilderService {
     await reportTemplateRepository.delete(id);
   }
 
-  async generateReport(templateId: string, params?: {
+  /**
+   * `readable`: the projects the person running it may read ('all' for admin/PMO/executive).
+   * Every section is limited to them — reports used to query the whole organisation.
+   */
+  async generateReport(templateId: string, params: {
     dateRange?: { start: string; end: string };
     projectId?: string;
-  }): Promise<GeneratedReport> {
+  } | undefined, readable: Set<string> | 'all'): Promise<GeneratedReport> {
     const template = await this.getTemplateById(templateId);
     if (!template) throw new Error('Report template not found');
 
@@ -124,7 +128,7 @@ class ReportBuilderService {
         ...(params?.projectId ? { projectId: params.projectId } : {}),
       };
 
-      const data = await this.executeSectionQuery(section.type, section.dataSource, mergedFilters, section.groupBy, section.columns);
+      const data = await this.executeSectionQuery(section.type, section.dataSource, mergedFilters, section.groupBy, section.columns, readable);
       sections.push({
         title: section.title || `${section.dataSource} ${section.type}`,
         type: section.type,
@@ -141,12 +145,13 @@ class ReportBuilderService {
     filters: ReportSectionConfig['filters'],
     groupBy?: string,
     columns?: string[],
+    readable: Set<string> | 'all' = new Set(),
   ): Promise<any> {
     // Normalize kpi_card → kpi (designer sends kpi_card, service expects kpi)
     const normalizedType = type === 'kpi_card' ? 'kpi' : type;
 
     const tableName = this.getTableName(dataSource);
-    const { whereClause, whereParams } = this.buildWhereClause(dataSource, filters);
+    const { whereClause, whereParams } = this.buildWhereClause(dataSource, filters, readable);
 
     if (normalizedType === 'kpi') {
       return this.executeKpiQuery(dataSource, tableName, whereClause, whereParams);
@@ -191,17 +196,33 @@ class ReportBuilderService {
   private buildWhereClause(
     dataSource: DataSource,
     filters?: ReportSectionConfig['filters'],
+    readable: Set<string> | 'all' = new Set(),
   ): { whereClause: string; whereParams: any[] } {
     const conditions: string[] = [];
     const params: any[] = [];
 
-    if (!filters) return { whereClause: '', whereParams: [] };
+    // Only the projects this person can read (the resource pool is organisation data)
+    if (readable !== 'all' && dataSource !== 'resources') {
+      const inList = [...readable].map(() => '?').join(', ');
+      if (readable.size === 0) conditions.push('1 = 0');
+      else {
+        conditions.push(dataSource === 'projects' || dataSource === 'budgets' ? `id IN (${inList})`
+          // tasks have no project_id — they belong to a schedule
+          : dataSource === 'tasks' ? `schedule_id IN (SELECT id FROM schedules WHERE project_id IN (${inList}))`
+          : `project_id IN (${inList})`);
+        params.push(...readable);
+      }
+    }
+
+    if (!filters) return { whereClause: conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '', whereParams: params };
 
     if (filters.projectId) {
       if (dataSource === 'projects' || dataSource === 'budgets') {
         conditions.push('id = ?');
       } else if (dataSource === 'resources') {
         // resources don't have project_id, skip
+      } else if (dataSource === 'tasks') {
+        conditions.push('schedule_id IN (SELECT id FROM schedules WHERE project_id = ?)');
       } else {
         conditions.push('project_id = ?');
       }
@@ -578,11 +599,11 @@ class ReportBuilderService {
     return { sections };
   }
 
-  async exportReport(templateId: string, format: 'csv' | 'pdf', params?: {
+  async exportReport(templateId: string, format: 'csv' | 'pdf', params: {
     dateRange?: { start: string; end: string };
     projectId?: string;
-  }): Promise<{ data: string | GeneratedReport; contentType: string }> {
-    const report = await this.generateReport(templateId, params);
+  } | undefined, readable: Set<string> | 'all'): Promise<{ data: string | GeneratedReport; contentType: string }> {
+    const report = await this.generateReport(templateId, params, readable);
 
     if (format === 'csv') {
       const csvString = this.reportToCsv(report);

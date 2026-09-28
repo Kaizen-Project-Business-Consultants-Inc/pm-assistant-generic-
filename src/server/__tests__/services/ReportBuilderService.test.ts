@@ -44,7 +44,7 @@ describe('ReportBuilderService', () => {
         // Mock KPI query for projects
         .mockResolvedValueOnce([{ total: 5, avg_progress: 42 }]);
 
-      const report = await reportBuilderService.generateReport('t1');
+      const report = await reportBuilderService.generateReport('t1', undefined, 'all');
       expect(report.sections).toHaveLength(1);
       // type in output preserves the original config type
       expect(report.sections[0].type).toBe('kpi_card');
@@ -70,7 +70,7 @@ describe('ReportBuilderService', () => {
           total_projects: 3, total_allocated: 100000, total_spent: 75000, avg_budget: 33333,
         }]);
 
-      const report = await reportBuilderService.generateReport('t1');
+      const report = await reportBuilderService.generateReport('t1', undefined, 'all');
       const kpis = report.sections[0].data.kpis;
       expect(kpis).toHaveLength(4);
       expect(kpis[0]).toEqual({ label: 'Total Projects', value: 3 });
@@ -89,7 +89,7 @@ describe('ReportBuilderService', () => {
         }])
         .mockResolvedValueOnce([{ total: 10, completed: 7 }]);
 
-      const report = await reportBuilderService.generateReport('t1');
+      const report = await reportBuilderService.generateReport('t1', undefined, 'all');
       const kpis = report.sections[0].data.kpis;
       expect(kpis).toHaveLength(3);
       expect(kpis[2]).toEqual({ label: 'Completion Rate', value: '70%' });
@@ -106,7 +106,7 @@ describe('ReportBuilderService', () => {
         }])
         .mockResolvedValueOnce([{ total_entries: 50, total_hours: 200, avg_hours: 4 }]);
 
-      const report = await reportBuilderService.generateReport('t1');
+      const report = await reportBuilderService.generateReport('t1', undefined, 'all');
       const kpis = report.sections[0].data.kpis;
       expect(kpis).toHaveLength(3);
       expect(kpis[0]).toEqual({ label: 'Total Entries', value: 50 });
@@ -132,7 +132,7 @@ describe('ReportBuilderService', () => {
           { label: 'planning', value: 3 },
         ]);
 
-      const report = await reportBuilderService.generateReport('t1');
+      const report = await reportBuilderService.generateReport('t1', undefined, 'all');
       expect(report.sections[0].data.chartData).toHaveLength(2);
       expect(report.sections[0].data.chartData[0]).toEqual({ label: 'active', value: 5 });
     });
@@ -148,11 +148,45 @@ describe('ReportBuilderService', () => {
         }])
         .mockResolvedValueOnce([{ label: 'active', value: 2 }]);
 
-      await reportBuilderService.generateReport('t1');
+      await reportBuilderService.generateReport('t1', undefined, 'all');
       // The SQL should use 'status' not the injected value
       const chartQueryCall = mockQuery.mock.calls[1];
       expect(chartQueryCall[0]).toContain('status');
       expect(chartQueryCall[0]).not.toContain('DROP');
+    });
+  });
+
+  describe('only the projects the person can read (Sep 2026)', () => {
+    it('limits RAID rows to their projects', async () => {
+      mockQuery.mockResolvedValueOnce([{
+          id: 't1', user_id: 'u1', name: 'Mine', description: null,
+          config: JSON.stringify({ sections: [{ type: 'table', dataSource: 'raid_items' }] }),
+          is_shared: false, created_at: '2026-01-01', updated_at: '2026-01-01',
+        }]).mockResolvedValueOnce([]);
+      await reportBuilderService.generateReport('t1', undefined, new Set(['p-1', 'p-2']));
+      const [sql, params] = mockQuery.mock.calls[1];
+      expect(sql).toContain('project_id IN (?, ?)');
+      expect(params).toEqual(expect.arrayContaining(['p-1', 'p-2']));
+    });
+
+    it('matches tasks through their schedule (tasks have no project column)', async () => {
+      mockQuery.mockResolvedValueOnce([{
+          id: 't1', user_id: 'u1', name: 'Mine', description: null,
+          config: JSON.stringify({ sections: [{ type: 'table', dataSource: 'tasks' }] }),
+          is_shared: false, created_at: '2026-01-01', updated_at: '2026-01-01',
+        }]).mockResolvedValueOnce([]);
+      await reportBuilderService.generateReport('t1', undefined, new Set(['p-1']));
+      expect(mockQuery.mock.calls[1][0]).toContain('schedule_id IN (SELECT id FROM schedules WHERE project_id IN (?))');
+    });
+
+    it('returns nothing when they can read no projects', async () => {
+      mockQuery.mockResolvedValueOnce([{
+          id: 't1', user_id: 'u1', name: 'Mine', description: null,
+          config: JSON.stringify({ sections: [{ type: 'table', dataSource: 'projects' }] }),
+          is_shared: false, created_at: '2026-01-01', updated_at: '2026-01-01',
+        }]).mockResolvedValueOnce([]);
+      await reportBuilderService.generateReport('t1', undefined, new Set());
+      expect(mockQuery.mock.calls[1][0]).toContain('1 = 0');
     });
   });
 
@@ -174,7 +208,7 @@ describe('ReportBuilderService', () => {
           { id: 'p2', project_name: 'Beta', status: 'planning' },
         ]);
 
-      const report = await reportBuilderService.generateReport('t1');
+      const report = await reportBuilderService.generateReport('t1', undefined, 'all');
       const table = report.sections[0].data.table;
       expect(table.headers).toEqual(['Id', 'Project Name', 'Status']);
       expect(table.rows).toHaveLength(2);
@@ -192,7 +226,7 @@ describe('ReportBuilderService', () => {
         }])
         .mockResolvedValueOnce([]);
 
-      const report = await reportBuilderService.generateReport('t1');
+      const report = await reportBuilderService.generateReport('t1', undefined, 'all');
       expect(report.sections[0].data.table).toEqual({ headers: [], rows: [] });
     });
   });

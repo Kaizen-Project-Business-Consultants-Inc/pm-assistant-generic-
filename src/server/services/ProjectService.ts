@@ -2,6 +2,7 @@ import { getActorSource } from '../middleware/requestContext';
 import { projectRepository } from '../database/ProjectRepository';
 import { CachedRepository } from '../database/CachedRepository';
 import { projectMemberService } from './ProjectMemberService';
+import { GLOBAL_READ_ROLES } from '../constants/roles';
 import { userService } from './UserService';
 import { auditLedgerService } from './AuditLedgerService';
 import { policyEngineService } from './PolicyEngineService';
@@ -88,6 +89,15 @@ export class ProjectService {
 
   async findAll(): Promise<Project[]> {
     return projectRepository.findAll();
+  }
+
+  /**
+   * Projects this person may read: everything for admin/PMO/executive, otherwise the ones they
+   * created, are a member of, or the sample project. Use this — not findAll() — anywhere a
+   * request (or Mjuzi acting for someone) lists projects.
+   */
+  async findAccessible(user: { userId: string; role: string }): Promise<Project[]> {
+    return GLOBAL_READ_ROLES.includes(user.role) ? projectRepository.findAll() : projectRepository.findByUserId(user.userId);
   }
 
   async findByName(name: string): Promise<Project | null> {

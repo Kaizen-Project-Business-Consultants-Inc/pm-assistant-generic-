@@ -7,8 +7,10 @@ const managerRoles = ['admin', 'pmo', 'executive', 'project_manager', 'scrum_mas
 // Roles that only see tasks assigned to them (not all project tasks)
 const restrictedRoles = ['viewer', 'team_member'];
 
-function isGlobalScope(userRole: string, scope?: string): boolean {
-  return globalRoles.includes(userRole) || scope === 'portfolio';
+// '?scope=portfolio' used to make ANY role see every project. The whole portfolio is only for
+// admin/PMO/executive; everyone else sees their own projects whatever they ask for.
+function isGlobalScope(userRole: string, _scope?: string): boolean {
+  return globalRoles.includes(userRole);
 }
 
 export interface RaidWatchItem {

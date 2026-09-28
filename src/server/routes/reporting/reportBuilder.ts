@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { reportBuilderService } from '../../services/ReportBuilderService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { readableProjectIds } from '../../utils/readableProjects';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
@@ -134,7 +135,7 @@ export async function reportBuilderRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       const body = generateReportParamsSchema.parse(request.body);
-      const report = await reportBuilderService.generateReport(id, body ?? undefined);
+      const report = await reportBuilderService.generateReport(id, body ?? undefined, await readableProjectIds(request.user!));
       return { report };
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
@@ -148,7 +149,7 @@ export async function reportBuilderRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       const { format } = exportReportSchema.parse(request.body);
-      const result = await reportBuilderService.exportReport(id, format);
+      const result = await reportBuilderService.exportReport(id, format, undefined, await readableProjectIds(request.user!));
       return { result };
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
