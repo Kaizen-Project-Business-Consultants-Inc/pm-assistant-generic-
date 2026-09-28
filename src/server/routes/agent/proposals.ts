@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { readableProjectIds } from '../../utils/readableProjects';
+import { requireProjectAccess, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -34,8 +35,14 @@ export async function proposalRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const query = request.query as { projectId?: string; status?: string; agentId?: string; limit?: string; offset?: string };
+      // Only proposals for projects the caller can open (it listed every project's)
+      if (query.projectId) {
+        const d = await checkProjectRole(request, query.projectId, 'viewer');
+        if (!d.ok) return reply.status(d.status).send(d.body);
+      }
       const result = await actionProposalService.list({
         projectId: query.projectId,
+        projectIds: await readableProjectIds(request.user!),
         status: query.status as import('../../services/agents/ActionProposalService').ProposalStatus | undefined,
         agentId: query.agentId,
         limit: query.limit ? Number(query.limit) : undefined,
@@ -50,7 +57,7 @@ export async function proposalRoutes(fastify: FastifyInstance) {
 
   // Get proposal by ID
   fastify.get('/:id', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), proposalMember],
     schema: { description: 'Get agent proposal by ID', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -150,7 +157,7 @@ export async function proposalRoutes(fastify: FastifyInstance) {
 
   // Get proposal actions
   fastify.get('/:id/actions', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), proposalMember],
     schema: { description: 'Get actions for an agent proposal', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

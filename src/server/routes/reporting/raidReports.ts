@@ -94,7 +94,7 @@ export async function raidReportRoutes(fastify: FastifyInstance) {
 
   // List schedules for a project
   fastify.get('/schedules/:projectId', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };

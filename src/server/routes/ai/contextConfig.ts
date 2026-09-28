@@ -21,12 +21,33 @@ async function contextScopeGate(request: FastifyRequest, reply: FastifyReply) {
   }
 }
 
+/** Reading AI settings: a project's by its members; the organisation's by anyone in it; a user's by that user */
+async function contextScopeReadGate(request: FastifyRequest, reply: FastifyReply) {
+  const { scope, scopeId } = request.params as { scope: string; scopeId: string };
+  if (scope === 'project') {
+    const d = await checkProjectRole(request, scopeId, 'viewer');
+    if (!d.ok) return reply.status(d.status).send(d.body);
+  } else if (scope === 'user' && scopeId !== request.user!.userId && !['admin', 'pmo'].includes(request.user!.role)) {
+    return reply.status(403).send({ error: 'Forbidden', message: 'You can only see your own AI settings.' });
+  }
+}
+/** `?projectId=` on the merged-settings and preview reads */
+async function queryProjectMember(request: FastifyRequest, reply: FastifyReply) {
+  const { projectId } = request.query as { projectId?: string };
+  if (!projectId) return;
+  const d = await checkProjectRole(request, projectId, 'viewer');
+  if (!d.ok) return reply.status(d.status).send(d.body);
+}
+const historyAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
+  if (!['admin', 'pmo'].includes(request.user!.role)) return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can see settings history.' });
+};
+
 export async function contextConfigRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /api/v1/context/config — resolved config for current user
   fastify.get('/config', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), queryProjectMember],
     schema: { description: 'Get resolved AI context config for current user', tags: ['context'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -48,7 +69,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/context/config/:scope/:scopeId — raw config at specific scope
   fastify.get('/config/:scope/:scopeId', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), contextScopeReadGate],
     schema: { description: 'Get raw config at a specific scope', tags: ['context'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -137,7 +158,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/context/config/history/:configId — version history
   fastify.get('/config/history/:configId', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), historyAdmin],
     schema: { description: 'Get config version history', tags: ['context'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -152,7 +173,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/context/preview — preview resolved context as AI would see it
   fastify.get('/preview', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), queryProjectMember],
     schema: { description: 'Preview resolved AI context', tags: ['context'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

@@ -34,7 +34,7 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
   // GET /:scheduleId/delays — detect delayed tasks
   // Trial users get sample delay data with an upgrade prompt.
   fastify.get('/:scheduleId/delays', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
     schema: { description: 'Detect delayed tasks in a schedule', tags: ['auto-reschedule'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -61,7 +61,7 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
   // GET /:scheduleId/proposals — list proposals for a schedule
   // Trial users get sample proposals with an upgrade prompt.
   fastify.get('/:scheduleId/proposals', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
     schema: { description: 'List reschedule proposals for a schedule', tags: ['auto-reschedule'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

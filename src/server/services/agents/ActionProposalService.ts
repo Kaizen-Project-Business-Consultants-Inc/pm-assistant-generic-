@@ -246,6 +246,8 @@ export class ActionProposalService {
 
   async list(filters: {
     projectId?: string;
+    /** Only these projects ('all' or omitted = no limit) — a person's readable projects */
+    projectIds?: Set<string> | 'all';
     status?: ProposalStatus;
     agentId?: string;
     limit?: number;
@@ -253,6 +255,11 @@ export class ActionProposalService {
   }): Promise<{ proposals: Proposal[]; total: number }> {
     let where = '1=1';
     const params: unknown[] = [];
+
+    if (filters.projectIds && filters.projectIds !== 'all') {
+      if (filters.projectIds.size === 0) where += ' AND 1=0';
+      else { where += ` AND project_id IN (${[...filters.projectIds].map(() => '?').join(',')})`; params.push(...filters.projectIds); }
+    }
 
     if (filters.projectId) { where += ' AND project_id = ?'; params.push(filters.projectId); }
     if (filters.status) { where += ' AND status = ?'; params.push(filters.status); }

@@ -6,7 +6,7 @@ import { timeEntryRepository } from '../../database/TimeEntryRepository';
 import { timesheetSubmissionRepository } from '../../database/TimesheetSubmissionRepository';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
 import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAccess';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
@@ -64,7 +64,12 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   });
 
   // GET /task/:taskId — entries for a task
-  fastify.get('/task/:taskId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/task/:taskId', { preHandler: [requireScope('read'), requireProjectAccess('viewer', {
+    resolve: async (req) => {
+      const t = await scheduleService.findTaskById((req.params as { taskId: string }).taskId);
+      return t ? projectsOfSchedules([t.scheduleId]) : null;
+    },
+  })] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { taskId } = request.params as { taskId: string };
       const entries = await timeEntryService.getByTask(taskId);

@@ -113,6 +113,11 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
 
       const { id } = request.params as { id: string };
       const { since } = request.query as { since?: string };
+      // Your own keys only (any key's usage log — pages called, addresses — was readable by id)
+      const mine = await apiKeyService.listKeys(user.userId);
+      if (!mine.some((k) => k.id === id) && user.role !== 'admin') {
+        return reply.status(404).send({ error: 'Not found', message: 'API key not found' });
+      }
       const usage = await apiKeyService.getUsageStats(id, since);
       return { usage };
     } catch (error) {

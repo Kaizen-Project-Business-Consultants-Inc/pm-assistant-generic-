@@ -80,7 +80,7 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
   });
 
   // GET /values/:entityType/:entityId — get values for an entity
-  fastify.get('/values/:entityType/:entityId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/values/:entityType/:entityId', { preHandler: [requireScope('read'), requireProjectAccess('viewer', { resolve: async (req) => (req.query as { projectId?: string }).projectId ?? null })] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { entityType, entityId } = request.params as { entityType: string; entityId: string };
       const { projectId } = request.query as { projectId: string };

@@ -24,7 +24,7 @@ export async function resourceLevelingRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /:scheduleId/histogram — resource histogram
-  fastify.get('/:scheduleId/histogram', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:scheduleId/histogram', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
       const histogram = await resourceLevelingService.getResourceHistogram(scheduleId);

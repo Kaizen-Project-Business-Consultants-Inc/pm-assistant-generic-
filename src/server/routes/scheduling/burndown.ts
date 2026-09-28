@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { burndownService } from '../../services/BurndownService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -8,7 +9,7 @@ export async function burndownRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /:scheduleId — burndown + burnup data
-  fastify.get('/:scheduleId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:scheduleId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
       const data = await burndownService.getBurndownData(scheduleId);
@@ -20,7 +21,7 @@ export async function burndownRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:scheduleId/velocity — velocity trend
-  fastify.get('/:scheduleId/velocity', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:scheduleId/velocity', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
       const data = await burndownService.getVelocityData(scheduleId);

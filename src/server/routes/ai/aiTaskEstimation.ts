@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { aiTaskEstimationService } from '../../services/AiTaskEstimationService';
 import { authMiddleware } from '../../middleware/auth';
@@ -16,7 +17,7 @@ export async function aiTaskEstimationRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST / — estimate task duration using AI + historical data
-  fastify.post('/', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: [requireScope('read'), requireProjectAccess('viewer', { resolve: async (req) => (req.body as { projectId?: string } | undefined)?.projectId ?? null })] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = estimateBodySchema.parse(request.body);
       const result = await aiTaskEstimationService.estimate(body);

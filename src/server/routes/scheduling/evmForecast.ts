@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { evmForecastService } from '../../services/EVMForecastService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -11,7 +12,7 @@ export async function evmForecastRoutes(fastify: FastifyInstance) {
   // GET /:projectId — returns metrics immediately (AI included if cached)
   // Trial users get sample data with an upgrade prompt.
   fastify.get('/:projectId', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -44,7 +45,7 @@ export async function evmForecastRoutes(fastify: FastifyInstance) {
 
   // GET /:projectId/ai — returns AI predictions (generates if not cached)
   fastify.get('/:projectId/ai', {
-    preHandler: [requireScope('read'), requireFeature('evm')],
+    preHandler: [requireScope('read'), requireFeature('evm'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -65,7 +66,7 @@ export async function evmForecastRoutes(fastify: FastifyInstance) {
 
   // GET /:projectId/task-variances — per-task cost/schedule variance for Pareto analysis
   fastify.get('/:projectId/task-variances', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };

@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { monteCarloService } from '../../services/MonteCarloService';
 import { MonteCarloConfigSchema } from '../../schemas/monteCarloSchemas';
 import { authMiddleware } from '../../middleware/auth';
@@ -10,7 +11,7 @@ export async function monteCarloRoutes(fastify: FastifyInstance) {
 
   // POST /:scheduleId/simulate — Run Monte Carlo simulation for a schedule
   // Trial users get sample results with an upgrade prompt.
-  fastify.post('/:scheduleId/simulate', { preHandler: [requireScope('write')] }, async (
+  fastify.post('/:scheduleId/simulate', { preHandler: [requireScope('write'), requireProjectAccess('viewer')] }, async (
     request: FastifyRequest,
     reply: FastifyReply,
   ) => {

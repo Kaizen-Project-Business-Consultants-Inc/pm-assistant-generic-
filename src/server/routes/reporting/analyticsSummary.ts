@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { analyticsSummaryService } from '../../services/AnalyticsSummaryService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -28,7 +29,7 @@ export async function analyticsSummaryRoutes(fastify: FastifyInstance) {
   });
 
   // GET /summary/project/:id — Single project analytics summary (auth required)
-  fastify.get('/summary/project/:id', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/summary/project/:id', { preHandler: [requireScope('read'), requireProjectAccess('viewer', { resolve: async (req) => (req.params as { id: string }).id })] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });

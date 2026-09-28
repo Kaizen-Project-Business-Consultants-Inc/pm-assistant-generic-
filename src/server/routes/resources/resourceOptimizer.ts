@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { resourceOptimizerService } from '../../services/ResourceOptimizerService';
 import { authMiddleware } from '../../middleware/auth';
@@ -19,7 +20,7 @@ export async function resourceOptimizerRoutes(fastify: FastifyInstance) {
 
   // GET /:projectId/forecast
   fastify.get('/:projectId/forecast', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
     schema: {
       description: 'Predict resource bottlenecks and generate capacity forecast for a project',
       tags: ['resource-optimizer'],

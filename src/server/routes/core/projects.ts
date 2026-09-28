@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { readableProjectIds } from '../../utils/readableProjects';
 import { z } from 'zod';
 import { projectService } from '../../services/ProjectService';
 import { authMiddleware } from '../../middleware/auth';
@@ -424,7 +425,9 @@ export async function projectRoutes(fastify: FastifyInstance) {
       const userId = request.user!.userId;
       const projectIds = await favouriteProjectRepository.getByUserId(userId);
       if (projectIds.length === 0) return { projects: [] };
-      const projects = await projectRepository.findByIds(projectIds);
+      // A favourite you've since lost access to is not shown (it used to return the full project)
+      const readable = await readableProjectIds(request.user!);
+      const projects = (await projectRepository.findByIds(projectIds)).filter((p) => readable === 'all' || readable.has(p.id));
       return { projects: projects.map((p) => ({ ...toProjectDTO(p), isFavourite: true })) };
     } catch (error) {
       logger.error('Get favourite projects error', { error });
@@ -433,7 +436,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/:id/favourite', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
     schema: { description: 'Add project to favourites', tags: ['projects'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

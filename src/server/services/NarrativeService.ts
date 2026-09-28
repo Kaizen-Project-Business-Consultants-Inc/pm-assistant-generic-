@@ -62,8 +62,9 @@ Write in plain language, no markdown. Be concise and actionable.`;
     }
   }
 
-  async generatePortfolioNarrative(role: UserRole): Promise<string> {
-    const allProjects = await projectService.findAll();
+  async generatePortfolioNarrative(role: UserRole, asker?: { userId: string; role: string }): Promise<string> {
+    // The asker's projects only (all of them for admin/PMO/executive) — it used every project
+    const allProjects = asker ? await projectService.findAccessible(asker) : await projectService.findAll();
     const activeProjects = allProjects.filter(p => p.status === 'active' || p.status === 'planning');
 
     if (!claudeService.isAvailable()) {

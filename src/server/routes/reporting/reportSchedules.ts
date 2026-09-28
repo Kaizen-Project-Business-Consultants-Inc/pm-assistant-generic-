@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { checkProjectRole } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -16,6 +17,17 @@ const createScheduleSchema = z.object({
 });
 
 const updateScheduleSchema = createScheduleSchema.partial();
+
+/**
+ * A report schedule (and its recipients) is visible to whoever set it up, admin/PMO, and — for a
+ * project's status/RAID report ("status-report::<projectId>") — that project's members.
+ */
+async function canSeeSchedule(request: FastifyRequest, schedule: { createdBy?: string; templateId?: string }): Promise<boolean> {
+  const user = request.user!;
+  if (schedule.createdBy === user.userId || ['admin', 'pmo'].includes(user.role)) return true;
+  const projectId = schedule.templateId?.includes('::') ? schedule.templateId.split('::')[1] : null;
+  return !!projectId && (await checkProjectRole(request, projectId, 'viewer')).ok;
+}
 
 export async function reportScheduleRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -91,6 +103,7 @@ export async function reportScheduleRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const schedule = await reportScheduleService.getById(id);
       if (!schedule) return reply.status(404).send({ error: 'Schedule not found' });
+      if (!(await canSeeSchedule(request, schedule))) return reply.status(404).send({ error: 'Schedule not found' });
       return { schedule };
     } catch (error) {
       logger.error('Get report schedule error', { error });
@@ -102,7 +115,10 @@ export async function reportScheduleRoutes(fastify: FastifyInstance) {
   fastify.get('/template/:templateId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { templateId } = request.params as { templateId: string };
-      const schedules = await reportScheduleService.getByTemplateId(templateId);
+      const schedules = [];
+      for (const sch of await reportScheduleService.getByTemplateId(templateId)) {
+        if (await canSeeSchedule(request, sch)) schedules.push(sch);
+      }
       return { schedules };
     } catch (error) {
       logger.error('Get template schedules error', { error });

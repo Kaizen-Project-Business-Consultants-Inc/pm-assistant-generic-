@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { PredictiveIntelligenceService } from '../../services/predictiveIntelligence';
 import { sCurveService } from '../../services/SCurveService';
 import { scheduleService } from '../../services/ScheduleService';
@@ -30,7 +31,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
 
   // GET /project/:projectId/risks — Full risk assessment
   fastify.get('/project/:projectId/risks', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -45,7 +46,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
 
   // GET /project/:projectId/weather — Weather impact analysis
   fastify.get('/project/:projectId/weather', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -60,7 +61,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
 
   // GET /project/:projectId/budget — Budget forecast with EVM
   fastify.get('/project/:projectId/budget', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -75,7 +76,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
 
   // GET /project/:projectId/health — Composite health score
   fastify.get('/project/:projectId/health', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -90,7 +91,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
 
   // GET /project/:projectId/evm/s-curve — S-Curve data
   fastify.get('/project/:projectId/evm/s-curve', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -104,7 +105,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
 
   // GET /project/:projectId/scope-creep — Scope creep indicators
   fastify.get('/project/:projectId/scope-creep', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -169,7 +170,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
 
   // GET /project/:projectId/task-slips — Task slip predictions
   fastify.get('/project/:projectId/task-slips', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -183,7 +184,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
 
   // GET /project/:projectId/health/history — Health score history for sparklines
   fastify.get('/project/:projectId/health/history', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };

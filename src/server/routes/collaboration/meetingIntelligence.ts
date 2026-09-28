@@ -198,7 +198,7 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
   // ---------------------------------------------------------------------------
 
   fastify.get('/project/:projectId/history', {
-    preHandler: [requireScope('read'), requireFeature('meeting_intelligence')],
+    preHandler: [requireScope('read'), requireFeature('meeting_intelligence'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };

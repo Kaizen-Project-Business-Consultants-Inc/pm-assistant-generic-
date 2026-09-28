@@ -157,10 +157,11 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
 
   // GET /:projectId/documents/:documentId — full document with insights + linked entities
   fastify.get('/:projectId/documents/:documentId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { documentId } = request.params as { projectId: string; documentId: string };
+    const { projectId, documentId } = request.params as { projectId: string; documentId: string };
 
     const document = await projectDocumentRepository.findById(documentId);
-    if (!document) return reply.status(404).send({ error: 'Document not found' });
+    // Another project's document must not be readable through this project's URL
+    if (!document || (document as any).projectId !== projectId) return reply.status(404).send({ error: 'Document not found' });
 
     const entityLinks = await documentEntityLinkRepository.findByDocument(documentId);
 

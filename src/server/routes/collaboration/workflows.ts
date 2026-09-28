@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { readableProjectIds } from '../../utils/readableProjects';
 import { checkProjectRole, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { databaseService } from '../../database/connection';
 import { z } from 'zod';
@@ -97,6 +98,34 @@ const workflowPM = async (request: FastifyRequest, reply: FastifyReply) => {
   }
 };
 /** Resume a paused run: its workflow's project */
+/** Reading a workflow: organisation-wide ones by anyone; a project's by that project's members */
+async function requireMemberIfProject(request: FastifyRequest, reply: FastifyReply, projectId: string | null | undefined) {
+  if (!projectId) return;
+  const d = await checkProjectRole(request, projectId, 'viewer');
+  if (!d.ok) return reply.status(d.status).send(d.body);
+}
+const workflowReader = async (request: FastifyRequest, reply: FastifyReply) => {
+  const wf = await workflowProject((request.params as { id: string }).id);
+  if (!wf.found) return reply.status(404).send({ error: 'Workflow not found' });
+  await requireMemberIfProject(request, reply, wf.projectId);
+};
+const executionReader = async (request: FastifyRequest, reply: FastifyReply) => {
+  const rows = await databaseService.query<{ workflow_id: string }>('SELECT workflow_id FROM workflow_executions WHERE id = ?', [(request.params as { id: string }).id]);
+  if (!rows.length) return reply.status(404).send({ error: 'Execution not found' });
+  await requireMemberIfProject(request, reply, (await workflowProject(rows[0].workflow_id)).projectId);
+};
+/** Execution lists: for one workflow the caller can read (the whole log is for admin/PMO) */
+const executionListReader = async (request: FastifyRequest, reply: FastifyReply) => {
+  const { workflowId } = request.query as { workflowId?: string };
+  if (!workflowId) {
+    if (['admin', 'pmo'].includes(request.user!.role)) return;
+    return reply.status(400).send({ error: 'workflowId required', message: 'Choose a workflow to see its runs.' });
+  }
+  const wf = await workflowProject(workflowId);
+  if (!wf.found) return reply.status(404).send({ error: 'Workflow not found' });
+  await requireMemberIfProject(request, reply, wf.projectId);
+};
+
 const executionPM = async (request: FastifyRequest, reply: FastifyReply) => {
   const rows = await databaseService.query<{ workflow_id: string }>('SELECT workflow_id FROM workflow_executions WHERE id = ?', [(request.params as { id: string }).id]);
   if (!rows.length) return reply.status(404).send({ error: 'Execution not found' });
@@ -165,7 +194,14 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       }
 
       const { projectId } = request.query as { projectId?: string };
-      const definitions = await dagWorkflowService.listDefinitions(projectId);
+      if (projectId) {
+        const d = await checkProjectRole(request, projectId, 'viewer');
+        if (!d.ok) return reply.status(d.status).send(d.body);
+      }
+      // Organisation-wide workflows, plus those of projects the caller is on
+      const readable = await readableProjectIds(request.user!);
+      const definitions = (await dagWorkflowService.listDefinitions(projectId))
+        .filter((d: any) => !d.projectId || readable === 'all' || readable.has(d.projectId));
       return { definitions };
     } catch (error) {
       logger.error('List workflows error', { error });
@@ -175,7 +211,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/workflows/:id — get definition with nodes + edges
   fastify.get('/:id', {
-    preHandler: [requireScope('read'), requireFeature('workflows')],
+    preHandler: [requireScope('read'), requireFeature('workflows'), workflowReader],
     schema: { description: 'Get workflow definition with graph', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -289,7 +325,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/workflows/executions — list executions
   fastify.get('/executions', {
-    preHandler: [requireScope('read'), requireFeature('workflows')],
+    preHandler: [requireScope('read'), requireFeature('workflows'), executionListReader],
     schema: { description: 'List workflow executions', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -307,7 +343,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/workflows/executions/:id — get execution detail
   fastify.get('/executions/:id', {
-    preHandler: [requireScope('read'), requireFeature('workflows')],
+    preHandler: [requireScope('read'), requireFeature('workflows'), executionReader],
     schema: { description: 'Get workflow execution details', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

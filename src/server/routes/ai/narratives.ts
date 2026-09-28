@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { narrativeService } from '../../services/NarrativeService';
@@ -8,7 +9,7 @@ export async function narrativeRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   fastify.get('/project/:projectId', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
     schema: { description: 'Get AI narrative for a specific project', tags: ['narratives'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -28,7 +29,7 @@ export async function narrativeRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const role = request.user!.role || 'team_member';
-      const narrative = await narrativeService.generatePortfolioNarrative(role as any);
+      const narrative = await narrativeService.generatePortfolioNarrative(role as any, { userId: request.user!.userId, role });
       return { narrative };
     } catch (error) {
       logger.error('Generate portfolio narrative error', { error });

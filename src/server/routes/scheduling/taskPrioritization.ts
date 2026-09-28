@@ -35,7 +35,13 @@ export async function taskPrioritizationRoutes(fastify: FastifyInstance) {
 
   // GET /:projectId/:scheduleId/prioritize — get AI-prioritized task list
   fastify.get('/:projectId/:scheduleId/prioritize', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer', {
+      resolve: async (req) => {
+        const { projectId, scheduleId } = req.params as { projectId: string; scheduleId: string };
+        const sched = await projectsOfSchedules([scheduleId]);
+        return sched && sched[0] === projectId ? projectId : null;
+      },
+    })],
     schema: { description: 'Get AI-prioritized task ranking for a schedule', tags: ['task-prioritization'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

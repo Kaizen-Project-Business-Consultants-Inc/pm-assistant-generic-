@@ -60,6 +60,27 @@ const checklistTaskPM = requireProjectAccess('manager', {
     return projects && (!bodyProject || bodyProject === projects[0]) ? projects[0] : null;
   },
 });
+/** Reading a task's DoR/DoD: anyone on the task's project */
+const checklistTaskMember = requireProjectAccess('viewer', {
+  resolve: async (req) => {
+    const task = await scheduleService.findTaskById((req.params as { taskId: string }).taskId);
+    return task ? projectsOfSchedules([task.scheduleId]) : null;
+  },
+});
+/** Readiness for a list of tasks: every task's project (at most 200 tasks) */
+const bulkTasksMember = requireProjectAccess('viewer', {
+  resolve: async (req) => {
+    const ids = String((req.query as { taskIds?: string }).taskIds ?? '').split(',').filter(Boolean).slice(0, 200);
+    if (ids.length === 0) return null;
+    const schedules = new Set<string>();
+    for (const id of ids) {
+      const t = await scheduleService.findTaskById(id);
+      if (!t) return null;
+      schedules.add(t.scheduleId);
+    }
+    return projectsOfSchedules([...schedules]);
+  },
+});
 const checklistPM = requireProjectAccess('manager', {
   resolve: async (req) => {
     const { checklistId } = req.params as { checklistId: string };
@@ -108,7 +129,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:id — get sprint by id
-  fastify.get('/:id', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id', { preHandler: [requireScope('read'), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.getById(id);
@@ -217,7 +238,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:id/board — sprint board
-  fastify.get('/:id/board', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/board', { preHandler: [requireScope('read'), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.getById(id);
@@ -231,7 +252,7 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:id/burndown — sprint burndown
-  fastify.get('/:id/burndown', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/burndown', { preHandler: [requireScope('read'), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.getById(id);
@@ -321,7 +342,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // GET /:id/cumulative-flow — cumulative flow diagram data
-  fastify.get('/:id/cumulative-flow', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/cumulative-flow', { preHandler: [requireScope('read'), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.getById(id);
@@ -335,7 +356,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // GET /:id/capacity — capacity recommendation
-  fastify.get('/:id/capacity', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/capacity', { preHandler: [requireScope('read'), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.getById(id);
@@ -396,7 +417,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // GET /:id/standups?date=YYYY-MM-DD — get team standups for date
-  fastify.get('/:id/standups', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/standups', { preHandler: [requireScope('read'), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const { date } = request.query as { date?: string };
@@ -410,7 +431,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // GET /:id/standups/timeline — get date list with entry counts
-  fastify.get('/:id/standups/timeline', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/standups/timeline', { preHandler: [requireScope('read'), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const timeline = await standupEntryService.getTimeline(id);
@@ -463,7 +484,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   // =========================================================================
 
   // GET /:id/retro — get retro board (items + user votes)
-  fastify.get('/:id/retro', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/retro', { preHandler: [requireScope('read'), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const user = request.user!;
@@ -615,7 +636,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // GET /checklists/:taskId — get task checklists
-  fastify.get('/checklists/:taskId', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/checklists/:taskId', { preHandler: [requireScope('read'), checklistTaskMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { taskId } = request.params as { taskId: string };
       const checklists = await scrumDefinitionService.getTaskChecklists(taskId);
@@ -664,7 +685,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // GET /checklists/bulk/:type — bulk readiness query
-  fastify.get('/checklists/bulk/:type', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/checklists/bulk/:type', { preHandler: [requireScope('read'), bulkTasksMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { type } = request.params as { type: string };
       if (type !== 'dor' && type !== 'dod') return reply.status(400).send({ error: 'Type must be dor or dod' });

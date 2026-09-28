@@ -24,6 +24,19 @@ const syncIntegrationSchema = z.object({
   direction: z.enum(['push', 'pull']),
 });
 
+/**
+ * An integration belongs to the person who connected it; its settings can hold keys for outside
+ * services. Only they (or an admin) may read, change, test, sync or delete it — any signed-in
+ * member of the organisation could before (Sep 2026).
+ */
+const integrationOwner = async (request: FastifyRequest, reply: FastifyReply) => {
+  const integration = await integrationService.getById((request.params as { id: string }).id);
+  if (!integration) return reply.status(404).send({ error: 'Not found', message: 'Integration not found' });
+  if (integration.userId !== request.user!.userId && request.user!.role !== 'admin') {
+    return reply.status(404).send({ error: 'Not found', message: 'Integration not found' });
+  }
+};
+
 export async function integrationRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -54,7 +67,7 @@ export async function integrationRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:id — get integration by id
-  fastify.get('/:id', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id', { preHandler: [requireScope('read'), integrationOwner] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const integration = await integrationService.getById(id);
@@ -67,7 +80,7 @@ export async function integrationRoutes(fastify: FastifyInstance) {
   });
 
   // PUT /:id — update integration
-  fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/:id', { preHandler: [requireScope('write'), integrationOwner] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const existing = await integrationService.getById(id);
@@ -83,7 +96,7 @@ export async function integrationRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:id — delete integration
-  fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id', { preHandler: [requireScope('write'), integrationOwner] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const existing = await integrationService.getById(id);
@@ -97,7 +110,7 @@ export async function integrationRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/test — test connection
-  fastify.post('/:id/test', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/test', { preHandler: [requireScope('write'), integrationOwner] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const result = await integrationService.testConnection(id);
@@ -109,7 +122,7 @@ export async function integrationRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/sync — sync integration
-  fastify.post('/:id/sync', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/sync', { preHandler: [requireScope('write'), integrationOwner] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const { direction } = syncIntegrationSchema.parse(request.body);
@@ -123,7 +136,7 @@ export async function integrationRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:id/log — get sync log
-  fastify.get('/:id/log', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/log', { preHandler: [requireScope('read'), integrationOwner] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const log = await integrationService.getSyncLog(id);

@@ -104,11 +104,23 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
   // A task named in the URL must belong to the schedule in the URL — access is checked
   // against that schedule's project, so a task from another project must not slip through.
+  // Same for an epic, a baseline, and a scenario (another schedule) — it must be in the same project.
   fastify.addHook('preHandler', async (request, reply) => {
-    const p = request.params as { scheduleId?: string; taskId?: string } | undefined;
-    if (!p?.taskId || !p.scheduleId || reply.sent) return;
-    const task = await scheduleService.findTaskById(p.taskId);
-    if (!task || task.scheduleId !== p.scheduleId) return reply.status(404).send({ error: 'Not found', message: 'Task not found in this schedule' });
+    const p = request.params as { scheduleId?: string; taskId?: string; epicId?: string; baselineId?: string; scenarioId?: string } | undefined;
+    if (!p?.scheduleId || reply.sent) return;
+    for (const id of [p.taskId, p.epicId]) {
+      if (!id) continue;
+      const task = await scheduleService.findTaskById(id);
+      if (!task || task.scheduleId !== p.scheduleId) return reply.status(404).send({ error: 'Not found', message: 'Task not found in this schedule' });
+    }
+    if (p.baselineId) {
+      const b = await baselineService.findById(p.baselineId);
+      if (!b || b.scheduleId !== p.scheduleId) return reply.status(404).send({ error: 'Not found', message: 'Baseline not found for this schedule' });
+    }
+    if (p.scenarioId) {
+      const [base, other] = await Promise.all([scheduleService.findById(p.scheduleId), scheduleService.findById(p.scenarioId)]);
+      if (!base || !other || base.projectId !== other.projectId) return reply.status(404).send({ error: 'Not found', message: 'Scenario not found in this project' });
+    }
   });
 
   // dagWorkflowService is a singleton — no instantiation needed

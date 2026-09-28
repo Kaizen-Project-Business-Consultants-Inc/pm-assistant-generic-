@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { readableProjectIds } from '../../utils/readableProjects';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { parse as csvParse } from 'csv-parse/sync';
@@ -342,9 +343,14 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /resources/workload - Global cross-project workload (#2)
-  fastify.get('/workload', { preHandler: [requireScope('read')] }, async (_request: FastifyRequest, _reply: FastifyReply) => {
+  fastify.get('/workload', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
     const workload = await resourceService.computeGlobalWorkload();
     const totalProjectCost = Math.round(workload.reduce((sum, w) => sum + w.totalCost, 0) * 100) / 100;
+    // Hours across all projects are shown to everyone (how busy is this person?); the money is
+    // other projects' business — admin/PMO/executive only
+    if ((await readableProjectIds(request.user!)) !== 'all') {
+      return { workload: workload.map((w) => ({ ...w, totalCost: null })), costSummary: { totalProjectCost: null } };
+    }
     return { workload, costSummary: { totalProjectCost } };
   });
 
@@ -468,15 +474,25 @@ export async function resourceRoutes(fastify: FastifyInstance) {
 
     const assignments = await resourceService.findAssignmentsByResource(id);
 
-    // Gather task names for each assignment
+    // Gather task names for each assignment — but only for projects the viewer is on; elsewhere
+    // the hours count, the task and project stay private ("Work on another project")
+    const readable = await readableProjectIds(request.user!);
+    const projectOfSchedule = new Map<string, string | null>();
+    const visible = async (scheduleId: string) => {
+      if (readable === 'all') return true;
+      if (!projectOfSchedule.has(scheduleId)) projectOfSchedule.set(scheduleId, (await scheduleService.findById(scheduleId))?.projectId ?? null);
+      const pid = projectOfSchedule.get(scheduleId);
+      return !!pid && readable.has(pid);
+    };
     const taskDetails: Array<{ assignmentId: string; taskId: string; taskName: string; scheduleId: string; hoursPerWeek: number; startDate: string; endDate: string }> = [];
     for (const a of assignments) {
-      const task = await scheduleService.findTaskById(a.taskId);
+      const show = await visible(a.scheduleId);
+      const task = show ? await scheduleService.findTaskById(a.taskId) : null;
       taskDetails.push({
-        assignmentId: a.id,
-        taskId: a.taskId,
-        taskName: task?.name || 'Unknown Task',
-        scheduleId: a.scheduleId,
+        assignmentId: show ? a.id : '',
+        taskId: show ? a.taskId : '',
+        taskName: show ? (task?.name || 'Unknown Task') : 'Work on another project',
+        scheduleId: show ? a.scheduleId : '',
         hoursPerWeek: a.hoursPerWeek,
         startDate: a.startDate,
         endDate: a.endDate,
@@ -558,9 +574,22 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /resources/project-allocations — Enhancement A: project allocations for all resources
-  fastify.get('/project-allocations', { preHandler: [requireScope('read')] }, async (_request: FastifyRequest, _reply: FastifyReply) => {
+  fastify.get('/project-allocations', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
     const allocations = await taskAssignmentService.getProjectAllocationsForAllResources();
-    return { allocations };
+    // Other projects' names are merged into one "Other projects" line (hours still add up)
+    const readable = await readableProjectIds(request.user!);
+    if (readable === 'all') return { allocations };
+    const out: typeof allocations = {};
+    for (const [rid, list] of Object.entries(allocations)) {
+      const mine = list.filter((a) => readable.has(a.projectId));
+      const others = list.filter((a) => !readable.has(a.projectId));
+      out[rid] = others.length === 0 ? mine : [...mine, {
+        projectId: '', projectName: 'Other projects', scheduleName: '',
+        totalHoursPlanned: others.reduce((n, a) => n + a.totalHoursPlanned, 0),
+        taskCount: others.reduce((n, a) => n + a.taskCount, 0),
+      }];
+    }
+    return { allocations: out };
   });
 
   // GET /resources/usage/:projectId — Enhancement B: MPP-style resource usage for a project

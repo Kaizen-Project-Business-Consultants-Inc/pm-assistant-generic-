@@ -15,6 +15,16 @@ import type { AutomationEvent } from '../../services/automation/types';
 
 export async function automationRoutes(fastify: FastifyInstance) {
   fastify.addHook('onRequest', authMiddleware);
+  // An automation named in the URL must belong to the project in the URL (access is checked on
+  // that project; reading or changing another project's automation through it used to work)
+  fastify.addHook('preHandler', async (request, reply) => {
+    const p = request.params as { projectId?: string; id?: string } | undefined;
+    if (!p?.projectId || !p.id || reply.sent) return;
+    const url = request.routeOptions?.url ?? '';
+    if (!/\/automations\/:id(\/|$)/.test(url)) return;
+    const rule: any = await automationService.findById(p.id);
+    if (!rule || rule.projectId !== p.projectId) return reply.status(404).send({ error: 'Not found', message: 'Automation not found in this project' });
+  });
 
   // GET /projects/:projectId/automations/event-types
   fastify.get('/:projectId/automations/event-types', {

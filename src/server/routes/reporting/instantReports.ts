@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -14,7 +15,7 @@ export async function instantReportRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   fastify.post('/generate', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer', { resolve: async (req) => (req.body as { projectId?: string } | undefined)?.projectId ?? null })],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = generateSchema.parse(request.body);
 

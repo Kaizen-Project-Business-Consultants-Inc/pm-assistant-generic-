@@ -53,7 +53,7 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /:projectId/storage-connectors/providers — list available providers
-  fastify.get('/:projectId/storage-connectors/providers', { preHandler: [requireScope('read')] }, async () => {
+  fastify.get('/:projectId/storage-connectors/providers', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async () => {
     const providers = ALL_PROVIDERS.map(p => ({
       id: p,
       label: getProviderLabel(p),

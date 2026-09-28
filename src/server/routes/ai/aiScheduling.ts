@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess, checkProjectRole, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { ClaudeTaskBreakdownService } from '../../services/aiTaskBreakdownClaude';
 import {
@@ -33,7 +34,13 @@ export async function aiSchedulingRoutes(fastify: FastifyInstance) {
 
   // Analyze project and generate AI task breakdown
   fastify.post('/analyze-project', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), async (req: FastifyRequest, reply: FastifyReply) => {
+      // Only when it's about an existing project (describing a new one needs no project)
+      const projectId = (req.body as { projectId?: string } | undefined)?.projectId;
+      if (!projectId) return;
+      const d = await checkProjectRole(req, projectId, 'viewer');
+      if (!d.ok) return reply.status(d.status).send(d.body);
+    }],
     schema: {
       description: 'Analyze project and generate AI task breakdown',
       tags: ['ai-scheduling'],
@@ -90,7 +97,7 @@ export async function aiSchedulingRoutes(fastify: FastifyInstance) {
 
   // Optimize schedule
   fastify.post('/optimize-schedule', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), requireProjectAccess('viewer', { resolve: async (req) => projectsOfSchedules([(req.body as { scheduleId?: string } | undefined)?.scheduleId]) })],
     schema: {
       description: 'Optimize existing schedule using AI',
       tags: ['ai-scheduling'],
@@ -119,7 +126,7 @@ export async function aiSchedulingRoutes(fastify: FastifyInstance) {
 
   // Get AI insights for project
   fastify.get('/insights/:projectId', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
     schema: {
       description: 'Get AI insights for project',
       tags: ['ai-scheduling'],

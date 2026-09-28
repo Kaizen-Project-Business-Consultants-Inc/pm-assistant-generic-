@@ -3,12 +3,19 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { versionedMemoryService } from '../../services/context/VersionedMemoryService';
 
+/** Mjuzi's internal memory spans every project: admin/PMO only (the app only shows it to admins) */
+const adminOrPmo = async (request: FastifyRequest, reply: FastifyReply) => {
+  if (!['admin', 'pmo'].includes(request.user!.role)) {
+    return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can see this.' });
+  }
+};
+
 export async function versionedMemoryRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /api/v1/memory — list memories
   fastify.get('/', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), adminOrPmo],
     schema: { description: 'List versioned memories', tags: ['memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -37,7 +44,7 @@ export async function versionedMemoryRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/memory/:id — get memory with version_hash
   fastify.get('/:id', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), adminOrPmo],
     schema: { description: 'Get a versioned memory by ID', tags: ['memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -55,7 +62,7 @@ export async function versionedMemoryRoutes(fastify: FastifyInstance) {
 
   // PUT /api/v1/memory/:id — update with optimistic locking
   fastify.put('/:id', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), adminOrPmo],
     schema: { description: 'Update a versioned memory', tags: ['memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -93,7 +100,7 @@ export async function versionedMemoryRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/v1/memory/:id — soft delete with audit log
   fastify.delete('/:id', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), adminOrPmo],
     schema: { description: 'Delete a versioned memory', tags: ['memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -113,7 +120,7 @@ export async function versionedMemoryRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/memory/:id/rollback — rollback to previous version
   fastify.post('/:id/rollback', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), adminOrPmo],
     schema: { description: 'Rollback memory to previous version', tags: ['memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -133,7 +140,7 @@ export async function versionedMemoryRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/memory/:id/history — change log for a memory
   fastify.get('/:id/history', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), adminOrPmo],
     schema: { description: 'Get memory change history', tags: ['memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

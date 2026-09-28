@@ -46,7 +46,7 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/projects/:projectId/members
   fastify.get('/:projectId/members', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
     schema: { description: 'Get project members', tags: ['members'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

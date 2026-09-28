@@ -5,12 +5,19 @@ import { agentMemoryService, type MemoryType } from '../../services/AgentMemoryS
 
 const VALID_MEMORY_TYPES: MemoryType[] = ['session', 'project', 'role', 'reflection'];
 
+/** Mjuzi's internal memory spans every project: admin/PMO only (the app only shows it to admins) */
+const adminOrPmo = async (request: FastifyRequest, reply: FastifyReply) => {
+  if (!['admin', 'pmo'].includes(request.user!.role)) {
+    return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can see this.' });
+  }
+};
+
 export async function agentMemoryRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /api/v1/agent/memory — recall memories
   fastify.get('/', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), adminOrPmo],
     schema: { description: 'Recall agent memories', tags: ['agent-memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -45,7 +52,7 @@ export async function agentMemoryRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/agent/memory — store a memory
   fastify.post('/', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), adminOrPmo],
     schema: { description: 'Store an agent memory', tags: ['agent-memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -84,7 +91,7 @@ export async function agentMemoryRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/v1/agent/memory — forget memories
   fastify.delete('/', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), adminOrPmo],
     schema: { description: 'Forget agent memories', tags: ['agent-memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -119,7 +126,7 @@ export async function agentMemoryRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/agent/memory/reflections — get reflections for an agent
   fastify.get('/reflections', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), adminOrPmo],
     schema: { description: 'Get agent reflections', tags: ['agent-memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

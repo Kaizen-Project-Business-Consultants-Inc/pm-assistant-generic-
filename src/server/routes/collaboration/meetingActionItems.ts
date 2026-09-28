@@ -97,8 +97,14 @@ export async function meetingActionItemRoutes(fastify: FastifyInstance) {
   });
 
   // GET /summary — counts by status + overdue
-  fastify.get('/summary', { preHandler: [requireScope('read')] }, async (request: FastifyRequest) => {
+  fastify.get('/summary', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { projectId } = request.query as { projectId?: string };
+    if (projectId) {
+      const d = await checkProjectRole(request, projectId, 'viewer');
+      if (!d.ok) return reply.status(d.status).send(d.body);
+    } else if (!['admin', 'pmo', 'executive'].includes(request.user!.role)) {
+      return reply.status(400).send({ error: 'projectId required', message: 'Choose a project.' });
+    }
     const summary = await meetingActionItemService.getSummary(projectId);
     return { summary };
   });

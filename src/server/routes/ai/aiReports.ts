@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { AIReportService, ReportType } from '../../services/aiReportService';
@@ -27,7 +28,7 @@ export async function aiReportRoutes(fastify: FastifyInstance) {
 
   // POST /generate — generate a report
   fastify.post('/generate', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), requireProjectAccess('viewer', { resolve: async (req) => (req.body as { projectId?: string } | undefined)?.projectId ?? null })],
     schema: {
       description: 'Generate an AI report',
       tags: ['ai-reports'],

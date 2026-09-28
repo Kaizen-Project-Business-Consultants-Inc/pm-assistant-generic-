@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { readableProjectIds } from '../../utils/readableProjects';
+import { requireProjectAccess, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -36,6 +37,9 @@ const updateSchema = z.object({
 const requestPM = requireProjectAccess('manager', {
   resolve: async (req) => (await resourceRequestService.getRequest((req.params as { id: string }).id))?.projectId ?? null,
 });
+const requestMember = requireProjectAccess('viewer', {
+  resolve: async (req) => (await resourceRequestService.getRequest((req.params as { id: string }).id))?.projectId ?? null,
+});
 const resourceManagerOnly = async (request: FastifyRequest, reply: FastifyReply) => {
   if (!['admin', 'pmo'].includes(request.user!.role)) {
     return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can approve, reject or fulfil resource requests.' });
@@ -46,26 +50,33 @@ export async function resourceRequestRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET / — list resource requests
-  fastify.get('/', { preHandler: [requireScope('read')] }, async (request: FastifyRequest) => {
+  fastify.get('/', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { projectId, status, priority } = request.query as { projectId?: string; status?: string; priority?: string };
-    const requests = await resourceRequestService.getRequests({ projectId, status, priority });
+    if (projectId) {
+      const d = await checkProjectRole(request, projectId, 'viewer');
+      if (!d.ok) return reply.status(d.status).send(d.body);
+    }
+    // Only requests for projects the caller is on (admin/PMO see all)
+    const readable = await readableProjectIds(request.user!);
+    const requests = (await resourceRequestService.getRequests({ projectId, status, priority }))
+      .filter((r: any) => readable === 'all' || readable.has(r.projectId));
     return { requests };
   });
 
   // GET /pending — pending approvals
-  fastify.get('/pending', { preHandler: [requireScope('read')] }, async () => {
+  fastify.get('/pending', { preHandler: [requireScope('read'), resourceManagerOnly] }, async () => {
     const requests = await resourceRequestService.getPendingApprovals();
     return { requests };
   });
 
   // GET /summary — counts by status
-  fastify.get('/summary', { preHandler: [requireScope('read')] }, async () => {
+  fastify.get('/summary', { preHandler: [requireScope('read'), resourceManagerOnly] }, async () => {
     const summary = await resourceRequestService.getSummary();
     return { summary };
   });
 
   // GET /:id — detail
-  fastify.get('/:id', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id', { preHandler: [requireScope('read'), requestMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
     const rr = await resourceRequestService.getRequest(id);
     if (!rr) return reply.status(404).send({ error: 'Resource request not found' });

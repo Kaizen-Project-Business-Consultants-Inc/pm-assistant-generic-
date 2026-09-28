@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { readableProjectIds } from '../../utils/readableProjects';
 import { databaseService } from '../../database/connection';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { AnomalyDetectionService } from '../../services/anomalyDetectionService';
@@ -51,7 +52,7 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/anomalies/project/:projectId', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       if (await isTrialUser(request)) {
@@ -86,7 +87,7 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/cross-project/similar/:projectId', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       if (await isTrialUser(request)) {
@@ -95,7 +96,10 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
       const { projectId } = request.params as { projectId: string };
       const userId = request.user!.userId;
       const { similar, aiPowered } = await crossProjectService.findSimilarProjects(projectId, userId);
-      return reply.send({ data: similar, aiPowered });
+      // Past projects' names and budgets only where the caller was on them
+      const readable = await readableProjectIds(request.user!);
+      const visible = (similar ?? []).filter((x: any) => readable === 'all' || readable.has(x.projectId));
+      return reply.send({ data: visible, aiPowered });
     } catch (err) {
       fastify.log.error({ err }, 'Similar projects search failed');
       return reply.status(500).send({ error: 'Failed to find similar projects' });
@@ -104,7 +108,7 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
 
   // What-If Scenarios — baseline for client-side slider calculations (#12)
   fastify.get('/scenarios/baseline/:projectId', {
-    preHandler: [requireScope('read'), requireFeature('cross_project_intelligence')],
+    preHandler: [requireScope('read'), requireFeature('cross_project_intelligence'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       if (await isTrialUser(request)) {
@@ -162,7 +166,7 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
 
   // What-If Scenarios — get history for a project
   fastify.get('/scenarios/history/:projectId', {
-    preHandler: [requireScope('read'), requireFeature('cross_project_intelligence')],
+    preHandler: [requireScope('read'), requireFeature('cross_project_intelligence'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };

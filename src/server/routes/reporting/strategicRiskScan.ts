@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -20,7 +21,7 @@ export async function strategicRiskScanRoutes(fastify: FastifyInstance) {
 
   // Run a strategic risk scan (background mode via WebSocket)
   fastify.post('/scan', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), requireProjectAccess('viewer', { resolve: async (req) => (req.body as { projectId?: string } | undefined)?.projectId ?? null })],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;

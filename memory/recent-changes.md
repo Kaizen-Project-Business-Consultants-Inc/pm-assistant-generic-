@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-28 (private project data — phase 2: every read route)
+
+- ~80 more read routes gated or filtered (see SECURITY_GUIDE "Phase 2"); child-id binding for task/epic/baseline/scenario (schedules hook), automations, documents; resource screens hide other projects' names/costs; Mjuzi memory/dreaming admin/PMO only.
+- Found on the way: another user's integration settings (may hold outside-service keys) and API-key usage logs were readable by id — owner/admin only now.
+- `routeReadGuard.test.ts` (probe-proven) + READ_OK allowlist with reasons; read-POSTs checked by name.
+- Also: push skip without tenant; staging stale dist removed.
+
 ## 2026-09-28 (why problems went unnoticed — error alert, no-org briefing, prod smoke account)
 
 - The existing "High Error Rate" alert could never fire: it read `metricsService` (in-memory, per process) from the alert timer's own process, and needed ≥100 requests at ≥10% errors. Replaced with a Redis counter of 5xx by route (`utils/serverErrorWatch.ts`, onResponse hook in plugins.ts) and `checkErrorRate` = ≥3 in the current/previous hour (critical ≥20), naming routes.
