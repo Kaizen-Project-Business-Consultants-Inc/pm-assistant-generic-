@@ -157,6 +157,13 @@ describe('Team follow-up vs Yours to do (Sep 2026)', () => {
     expect(loans.sections.find(s => s.key === 'approvals')!.items[0]).toMatchObject({ label: 'Reschedule SSD Part-1', tag: 'Agent proposal' });
   });
 
+  it('does not list a late task again as stalled', () => {
+    const dup = buildProjectBriefings({ ...withMine, stalledTasks: [...withMine.stalledTasks,
+      { id: 'm2', name: 'SSD Part-1', projectId: 'lms', projectName: 'DBJ-LMS', projectCode: 'PRJ-012', scheduleId: 's-m', daysSinceStart: 30 }] },
+      { showApprovals: true, formatDate: (d: string) => d, today: TODAY });
+    expect(dup.find(p => p.id === 'lms')!.sections.find(s => s.key === 'stalled')!.count).toBe(0);
+  });
+
   it('judges a project you only view by your own work, not the team list you cannot see', () => {
     const lms = get('lms');
     expect(lms.canManage).toBe(false);

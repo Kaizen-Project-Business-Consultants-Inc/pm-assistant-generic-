@@ -12,10 +12,10 @@ import logger from '../../utils/logger';
  * re-notified. Runs inside a tenant context (see cronManager.forEachTenant).
  */
 export async function runScheduleReview(): Promise<number> {
-  let rows: Array<{ id: string; project_id: string }>;
+  let rows: Array<{ id: string; project_id: string; name?: string }>;
   try {
     rows = await databaseService.query(
-      `SELECT s.id, s.project_id
+      `SELECT s.id, s.project_id, s.name
          FROM schedules s
          JOIN projects p ON p.id = s.project_id
         WHERE p.status IN ('active', 'in_progress', 'planning')
@@ -50,11 +50,13 @@ export async function runScheduleReview(): Promise<number> {
       }
 
       const severity: 'high' | 'medium' = newCritical ? 'high' : 'medium';
+      // Say which schedule and what was found — "a new critical issue was found" told nobody anything
+      const worst = (current.findings ?? []).find(f => f.severity === (newCritical ? 'critical' : 'high'));
       const reason = newCritical
-        ? 'a new critical issue was found'
+        ? `new critical issue — ${worst?.message ?? worst?.rule ?? 'see the review'}`
         : scoreDropped
-          ? `its health score dropped to ${current.score}`
-          : 'a new high-severity issue was found';
+          ? `health score dropped from ${previous?.score} to ${current.score}`
+          : `new high-severity issue — ${worst?.message ?? worst?.rule ?? 'see the review'}`;
 
       let recipients: Array<{ user_id: string }> = [];
       try {
@@ -70,8 +72,8 @@ export async function runScheduleReview(): Promise<number> {
           userId: r.user_id,
           type: 'schedule_review',
           severity,
-          title: 'Schedule health changed',
-          message: `A schedule needs attention: ${reason}.`,
+          title: `Schedule health: ${row.name ?? 'schedule'} (score ${current.score})`,
+          message: `${row.name ?? 'A schedule'}: ${reason}.`,
           projectId: row.project_id || undefined,
           scheduleId: row.id,
           linkType: 'schedule',

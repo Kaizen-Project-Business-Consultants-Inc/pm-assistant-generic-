@@ -120,6 +120,20 @@ export function NotificationsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const PAGE_SIZE = 20;
 
+  // The totals always come from the server (the bell may already have loaded the list)
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([apiService.getNotifications(1, 0).catch(() => null), apiService.getUnreadNotificationCount().catch(() => null)])
+      .then(([list, count]) => {
+        if (cancelled) return;
+        if (typeof list?.total === 'number') setTotalNotifications(list.total);
+        if (count && typeof count.count === 'number') setUnreadCount(count.count);
+        if (notifications.length > 0 && notifOffset === 0) setNotifOffset(notifications.length);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fetch persisted notifications if not already loaded
   useEffect(() => {
     if (fetched || notifications.length > 0) return;

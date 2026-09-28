@@ -213,7 +213,9 @@ export function buildProjectBriefings(
   // Stalled: in progress for over a week with nothing recorded — someone to ask
   for (const t of briefing.stalledTasks ?? []) {
     const p = ensure(t.projectId, t.projectName, t.projectCode);
-    if (mineIds.has(t.id)) continue;
+    // Already listed as late or blocked (or yours): once is enough
+    if (mineIds.has(t.id) || p.late.some(x => x.id === t.id) || p.blocked.some(x => x.id === t.id)
+      || (briefing.overdueTasks ?? []).some((x: any) => x.id === t.id)) continue;
     p.stalled.push({
       id: t.id, label: t.name, rowNum: t.rowNumber ?? undefined, tone: 'amber', tag: 'No progress',
       extra: `In progress ${plural(Number(t.daysSinceStart) || 0, 'day')}, 0% done`,
