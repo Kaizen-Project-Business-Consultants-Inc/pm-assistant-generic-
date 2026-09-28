@@ -34,6 +34,18 @@ export class RedisService {
     }
   }
 
+  /**
+   * Connect and wait until it's up (or give up after `ms`). Short-lived scripts need this: the
+   * scheduled jobs never connected at all, so every Redis-based alert check saw nothing.
+   */
+  async connectAndWait(url: string, ms = 3000): Promise<boolean> {
+    if (this.connected) return true;
+    this.connect(url);
+    const started = Date.now();
+    while (!this.connected && Date.now() - started < ms) await new Promise((r) => setTimeout(r, 50));
+    return this.connected;
+  }
+
   isConnected(): boolean {
     return this.connected;
   }

@@ -46,6 +46,13 @@ async function run() {
       process.exit(1);
     }
 
+    // Redis: the alert checks (server errors, signup floods) and cooldowns live there. Jobs never
+    // connected before, so those alerts could not fire from the timer. Optional, like the app.
+    if (config.REDIS_URL) {
+      const ok = await redisService.connectAndWait(config.REDIS_URL);
+      console.log(`[cron-runner] Redis ${ok ? 'connected' : 'unavailable — Redis-based checks skipped'}`);
+    }
+
     switch (JOB_NAME) {
       case 'agent-scan': {
         if (!config.AGENT_ENABLED) {
