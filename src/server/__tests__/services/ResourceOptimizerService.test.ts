@@ -9,7 +9,7 @@ vi.mock('../../services/ResourceService', () => ({
   resourceService: {
     computeWorkload: (...args: any[]) => mockComputeWorkload(...args),
     findAllResources: (...args: any[]) => mockFindAllResources(...args),
-    findAssignmentsBySchedule: (...args: any[]) => mockFindAssignmentsBySchedule(...args),
+    findEffectiveAssignments: (filter: { scheduleIds?: string[] }) => mockFindAssignmentsBySchedule(filter?.scheduleIds?.[0]),
   },
 }));
 
