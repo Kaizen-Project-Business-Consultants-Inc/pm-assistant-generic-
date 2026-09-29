@@ -5,6 +5,7 @@
 - Found: the Workload Heatmap read only `resource_assignments` (hours bookings) — empty on staging — while people are assigned via `task_assignments` (% on the task, 16 rows) and `tasks.assigned_to` (holds a resource id; 29 tasks). Heatmap showed nothing.
 - `ResourceRepository.findEffectiveAssignments` merges all three (hours > % > Assigned to per task+person; excludes headings, milestones, undated, archived, demo). Switched: computeWorkload, computeGlobalWorkload, utilization history, checkAssignmentConflicts, resource profile (derived rows not deletable), capacity-by-role, ResourceOptimizerService.
 - Gantt Conflicts: was "same Assigned-to text, overlapping dates"; now `utils/resourceConflicts.ts` over `/resources/workload` (>100% in a week the task touches), hover note, See Workload Heatmap link (`/resources?tab=workload` opens All Projects).
+- Heatmap week headings showed the day before (new Date("YYYY-MM-DD") in a west-of-UTC browser); ResourceManagementPage + project ResourcesTab now use formatCalendarDate.
 - Exposed: tenants lacked `time_entries.rate_type` / `resources.overtime_rate_hourly` (migration 080 was control-plane only) → per-project workload 500 for anyone linked to a user. Added `T059_rate_type_columns.sql`.
 - **Not done:** Resource Histogram + levelling (`ResourceLevelingService`) still count Assigned-to only at 8 h/day and use it as a *name* (it's a resource id) — follow-up.
 

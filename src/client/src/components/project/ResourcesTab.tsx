@@ -96,9 +96,9 @@ function utilColor(pct: number): string {
   return UTIL_COLORS.critical;
 }
 
+/** "12 Oct"-style label for a week-start calendar day — never shifted by the viewer's time zone */
 function formatWeek(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return formatCalendarDate(dateStr, { month: 'short', day: 'numeric' });
 }
 
 type SubTab = 'team' | 'workload' | 'histogram' | 'forecast' | 'leveling' | 'trends' | 'capacity';
