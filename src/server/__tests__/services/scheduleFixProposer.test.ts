@@ -233,6 +233,14 @@ describe('milestone lines that span days are split, not flagged (user rule, 2026
     ]);
   });
 
+  it("names the deliverable when the source only says 'Final', and points a go-live gate at Go-Live", async () => {
+    const { milestoneSplitParts } = await import('../../services/scheduleReview/fixProposer');
+    expect(milestoneSplitParts('Gate 2 – Task 2 Final Acceptance (MILESTONE- 2)', 6, null).map(p => p.name))
+      .toEqual(['Approve Task 2 Deliverables', 'Task 2 Deliverables Approved', 'Gate 2 Approved']);
+    expect(milestoneSplitParts('Gate 4 – Task 4 Final Acceptance (MILESTONE - 3) GO-LIVE', 7, null).map(p => p.name))
+      .toEqual(['Approve Task 4 Deliverables', 'Task 4 Deliverables Approved', 'Gate 4 Approved: proceed to Go-Live']);
+  });
+
   it('a sign-off line with no review becomes approve + approved', async () => {
     const { milestoneSplitParts } = await import('../../services/scheduleReview/fixProposer');
     const parts = milestoneSplitParts('UAT sign-off', 4, null);

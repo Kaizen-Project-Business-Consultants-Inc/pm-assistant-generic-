@@ -396,24 +396,32 @@ const addDays = (ymd: string, n: number) => new Date(Date.parse(`${ymd}T00:00:00
  */
 export function milestoneSplitParts(name: string, span: number, nextPhase?: string | null): SplitPart[] {
   const gate = /\bgate\s*(\d+)/i.exec(name)?.[1] ?? null;
+  const taskNo = /\btask\s*(\d+)/i.exec(name)?.[1] ?? null;
+  const goLive = /\bgo[\s-]?live\b/i.test(name);
   const hasReview = /\breview/i.test(name);
-  const deliverable = name
+  let deliverable = name
     .replace(/\(\s*milestone[^)]*\)/gi, ' ')
     .replace(/\bmilestone\s*[-–]?\s*\d*/gi, ' ')
     .replace(/\bgate\s*\d+\s*[:–-]?/gi, ' ')
     .replace(/\btask\s*\d+\s*[:–-]?/gi, ' ')
     .replace(/\b(reviews?|reviewed|acceptance|accepted|accept|approvals?|approved|approve|sign[\s-]?offs?|signed[\s-]?off)\b/gi, ' ')
+    .replace(/\bgo[\s-]?live\b/gi, ' ')
     .replace(/\s*(&|\band\b|\+)\s*/gi, ' ')
     .replace(/[:–-]+\s*$/g, ' ')
     .replace(/^\s*[:–-]+/g, ' ')
     .replace(/\s{2,}/g, ' ')
-    .trim() || (gate ? `Gate ${gate} deliverable` : name.trim());
+    .trim();
+  // "Final", "Project", "Stage" don't name a thing — fall back to the task's (or gate's) deliverables
+  if (!deliverable.replace(/\b(final|project|stage|phase|deliverables?|the|of)\b/gi, '').trim()) {
+    deliverable = taskNo ? `Task ${taskNo} Deliverables` : gate ? `Gate ${gate} Deliverables` : name.trim();
+  }
   const approveDays = Math.max(1, Math.min(5, Math.round(span * 0.3)));
   const parts: SplitPart[] = [];
   if (hasReview) parts.push({ name: `Review ${deliverable}`, isMilestone: false, days: Math.max(1, span - approveDays) });
   parts.push({ name: `Approve ${deliverable}`, isMilestone: false, days: hasReview ? approveDays : span });
   parts.push({ name: `${deliverable} Approved`, isMilestone: true, days: 0 });
-  if (gate) parts.push({ name: `Gate ${gate} Approved${nextPhase ? `: proceed to ${nextPhase}` : ''}`, isMilestone: true, days: 0 });
+  const onward = nextPhase ?? (goLive ? 'Go-Live' : null);
+  if (gate) parts.push({ name: `Gate ${gate} Approved${onward ? `: proceed to ${onward}` : ''}`, isMilestone: true, days: 0 });
   return parts;
 }
 
