@@ -40,8 +40,8 @@ interface WorkloadEntry {
   isOverAllocated: boolean;
 }
 
-interface HistogramDemand { date: string; hours: number; }
-interface HistogramResource { resourceName: string; demand: HistogramDemand[]; }
+interface HistogramDemand { date: string; hours: number; capacity?: number; }
+interface HistogramResource { resourceName: string; capacityPerDay?: number; demand: HistogramDemand[]; }
 interface OverAllocation { resourceName: string; date: string; demand: number; capacity: number; }
 interface HistogramData { resources: HistogramResource[]; overAllocations: OverAllocation[]; }
 
@@ -931,7 +931,8 @@ export function ResourceManagementPage() {
                   )}
 
                   {histogram.resources.map(res => {
-                    const maxH = Math.max(...res.demand.map(d => d.hours), 8);
+                    const cap = res.capacityPerDay ?? 8; // the person's normal day (weekly capacity ÷ 5)
+                    const maxH = Math.max(...res.demand.map(d => d.hours), cap);
                     const chartH = 120;
                     const barW = Math.max(4, Math.min(20, 600 / Math.max(res.demand.length, 1)));
                     const chartW = res.demand.length * (barW + 2) + 40;
@@ -941,11 +942,11 @@ export function ResourceManagementPage() {
                         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{res.resourceName}</h3>
                         <div className="overflow-x-auto">
                           <svg width={chartW} height={chartH + 30} className="block">
-                            <line x1={30} y1={chartH - (8 / maxH) * chartH} x2={chartW} y2={chartH - (8 / maxH) * chartH} stroke="#ef4444" strokeWidth={1} strokeDasharray="4 2" />
-                            <text x={0} y={chartH - (8 / maxH) * chartH + 4} fontSize={9} fill="#ef4444">8h</text>
+                            <line x1={30} y1={chartH - (cap / maxH) * chartH} x2={chartW} y2={chartH - (cap / maxH) * chartH} stroke="#ef4444" strokeWidth={1} strokeDasharray="4 2" />
+                            <text x={0} y={chartH - (cap / maxH) * chartH + 4} fontSize={9} fill="#ef4444">{cap}h</text>
                             {res.demand.map((d, i) => {
                               const h = (d.hours / maxH) * chartH;
-                              const isOver = d.hours > 8;
+                              const isOver = d.hours > (d.capacity ?? cap) + 0.01;
                               return (
                                 <g key={i}>
                                   <rect x={30 + i * (barW + 2)} y={chartH - h} width={barW} height={h} fill={isOver ? '#ef4444' : '#3b82f6'} opacity={0.8} rx={1} />

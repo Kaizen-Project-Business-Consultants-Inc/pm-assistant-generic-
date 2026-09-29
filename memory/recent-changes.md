@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-29 (Histogram + levelling on real bookings; review v1.5)
+
+- `ResourceLevelingService` rewritten on `findEffectiveAssignments`: per working day (hoursPerWeek/5), other projects as background load, capacity per person/day (availability), names not ids. Levelling: smallest delay within float with fewest over-capacity days (old code took the first "improvement" and never removed the task's own load); reassignment only to people with room. Charts (Resources page, project Resources tab, ResourceHistogram) draw each person's day, not a fixed 8 h.
+- Schedule Review v1.5: R35 heading over one task, R36 heading with > 15 direct tasks (both low).
+
 ## 2026-09-29 (warning while allocating a resource)
 
 - `ResourceService.checkLoad` + `POST /resources/load-check` (READ_POSTS entry); client `ResourceLoadWarning` (task form: Assigned To + each Resource row) and a pop-up after inline Assigned To edits (`ScheduleTab.warnIfOverloaded`); text from `utils/resourceLoad.describeOverload`. Resource rows are now a picker (were free text, so typed names never matched a resource).

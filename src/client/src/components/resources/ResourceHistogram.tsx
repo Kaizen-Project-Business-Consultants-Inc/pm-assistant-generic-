@@ -9,10 +9,13 @@ import { formatCalendarDate } from '../../utils/dateUtils';
 interface ResourceDemand {
   date: string;
   hours: number;
+  capacity?: number;
 }
 
 interface ResourceEntry {
   resourceName: string;
+  /** The person's normal working day (weekly capacity ÷ 5) */
+  capacityPerDay?: number;
   demand: ResourceDemand[];
 }
 
@@ -34,6 +37,7 @@ interface ResourceHistogramProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Fallback when the server doesn't send a person's day (older responses) */
 const CAPACITY_HOURS = 8;
 
 function formatDate(dateStr: string): string {
@@ -125,7 +129,7 @@ export function ResourceHistogram({ data }: ResourceHistogramProps) {
             isOverAllocated = true;
           }
         }
-        // For "all combined", capacity line = 8 * number of resources
+        // For "all combined", the capacity line is everyone's normal day added up
       } else {
         totalHours = demandMap.get(selectedResource)?.get(date) ?? 0;
         isOverAllocated = overAllocSet.has(`${selectedResource}|${date}`);
@@ -134,9 +138,10 @@ export function ResourceHistogram({ data }: ResourceHistogramProps) {
       return { date, hours: totalHours, isOverAllocated };
     });
 
+    const dayOf = (r: ResourceEntry) => r.capacityPerDay ?? CAPACITY_HOURS;
     const capacityLine = isAll
-      ? CAPACITY_HOURS * data.resources.length
-      : CAPACITY_HOURS;
+      ? data.resources.reduce((sum, r) => sum + dayOf(r), 0)
+      : dayOf(data.resources.find((r) => r.resourceName === selectedResource) ?? { resourceName: '', demand: [] });
 
     // SVG dimensions
     const svgW = 800;

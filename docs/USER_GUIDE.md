@@ -827,6 +827,8 @@ The Budget tab within each project provides comprehensive expense tracking and b
 2. Add team members by assigning them to the project.
 3. Set each resource's role, availability, and hourly rate.
 
+**Resource Histogram and Level Resources (Sep 2026)** use the same bookings as the Workload Heatmap, by working day: each person's hours per day (a % on the task, Assigned To at 100%, hours bookings — weekly hours ÷ 5, Monday–Friday), including their other live projects, against their own day (weekly capacity ÷ 5, lower in a week with time off). People are shown by name. **Level Resources** delays non-critical tasks within their float, choosing the smallest delay that clears the most over-capacity days; work on other projects never moves. Tasks that still overload someone get a suggested replacement with matching skills **and room on those days**.
+
 ### Workload Heatmap
 
 The workload heatmap shows resource utilization across time. It counts every way a person is booked (September 2026): a person and % on a task (50% of a 40-hour week is 20 hours), the task's **Assigned to** person (100%), and hours-per-week bookings made here. One booking per task and person — an hours booking wins over a %, a % over Assigned to. Headings, milestones, undated tasks, archived projects and the sample project don't count. (Before this, only the hours-per-week bookings counted, so the Heatmap was usually empty.)
@@ -2662,6 +2664,8 @@ A plan with no summary tasks at all ("Flat hierarchy") is now **High**, so it sh
 Tick what you want and **Apply**; **Undo** reverses everything, including dates. If nothing comes back, either nothing needs splitting or adding, or your plan doesn't include AI.
 
 **Propose fixes:** The review does not just tell you what is wrong — it offers to fix it. In the review panel click **Propose fixes** and Kovarti lists concrete changes: link tasks in sequence, flag gates as milestones, and group loose tasks under a phase. Each suggestion has a plain-English reason and a confidence, and the confident ones are pre-ticked. Tick the ones you want and click **Apply selected**; the score updates so you can see the improvement, and a single **Undo** puts everything back if you change your mind. Nothing is ever changed without you approving it.
+
+**Tasks under a heading (rules v1.5, Sep 2026).** No standard sets a number, but a heading over a **single task** adds nothing (flagged, low — move the task up and remove the heading), and a heading with **more than 15 tasks directly under it** is hard to read (flagged, low — split it into sub-phases of about 3–10 tasks; select them and use **Group**).
 
 **Ongoing tasks booked full-time (rules v1.4, Sep 2026).** A task that runs a month or more and sounds like reporting, meetings or oversight ("Weekly status report and RAID review", "Steering committee", "Project management and governance") is flagged (low) when its person has no % — or 100% — on it. With no %, the person counts as full-time in the Workload Heatmap and the Gantt's Conflicts, so a PM with a 20-week status-report task shows 100%+ for 20 weeks. Fix: open the task, add the person under resources with a realistic % (often 10–20%).
 

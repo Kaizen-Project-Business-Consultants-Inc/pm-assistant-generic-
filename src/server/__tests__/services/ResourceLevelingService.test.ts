@@ -21,9 +21,18 @@ vi.mock('../../services/CriticalPathService', () => ({
 }));
 
 const mockFindAllResources = vi.fn();
+const mockFindEffective = vi.fn();
 vi.mock('../../services/ResourceService', () => ({
   resourceService: {
     findAllResources: (...args: any[]) => mockFindAllResources(...args),
+    findEffectiveAssignments: (...args: any[]) => mockFindEffective(...args),
+  },
+}));
+
+const mockCapacityBatch = vi.fn();
+vi.mock('../../services/ResourceAvailabilityService', () => ({
+  resourceAvailabilityService: {
+    getEffectiveCapacityBatch: (...args: any[]) => mockCapacityBatch(...args),
   },
 }));
 
@@ -111,523 +120,109 @@ describe('ResourceLevelingService', () => {
     service = new ResourceLevelingService();
   });
 
+  // Bookings as the Workload Heatmap counts them: hours per week per task and person
+  const booking = (taskId: string, resourceId: string, hoursPerWeek: number, startDate: string, endDate: string, scheduleId = 'sch-1') =>
+    ({ id: `task:${taskId}:${resourceId}`, taskId, resourceId, scheduleId, hoursPerWeek, startDate, endDate, source: 'task' });
+  /** First call = this schedule's bookings, second = everyone's in the date range */
+  function bookings(here: any[], elsewhere: any[] = []) {
+    mockFindEffective.mockImplementation(async (f: any) => (f?.scheduleIds ? here : [...here, ...elsewhere]));
+  }
+
   // ── getResourceHistogram ──────────────────────────────────────────
 
   describe('getResourceHistogram', () => {
-    it('returns empty histogram when no tasks exist', async () => {
+    beforeEach(() => {
       mockFindTasksByScheduleId.mockResolvedValue([]);
-
-      const result = await service.getResourceHistogram('sch-1');
-
-      expect(result.resources).toEqual([]);
-      expect(result.overAllocations).toEqual([]);
-      expect(mockFindTasksByScheduleId).toHaveBeenCalledWith('sch-1');
+      mockFindAllResources.mockResolvedValue([makeResource('alice', 'Alice'), makeResource('bob', 'Bob')]);
+      mockCapacityBatch.mockResolvedValue(new Map());
     });
 
-    it('skips tasks without assignedTo', async () => {
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', { assignedTo: null }),
-      ]);
-
-      const result = await service.getResourceHistogram('sch-1');
-
-      expect(result.resources).toEqual([]);
+    it('is empty when nobody is booked on the schedule', async () => {
+      bookings([]);
+      expect(await service.getResourceHistogram('sch-1')).toEqual({ resources: [], overAllocations: [] });
     });
 
-    it('skips tasks without startDate or endDate', async () => {
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', { startDate: null }),
-        makeTask('t2', 'Task 2', { endDate: null }),
-      ]);
-
-      const result = await service.getResourceHistogram('sch-1');
-
-      expect(result.resources).toEqual([]);
+    it('counts working days only, at weekly hours ÷ 5, named by the person (not an id)', async () => {
+      bookings([booking('t1', 'alice', 20, '2026-01-09', '2026-01-12')]); // Fri → Mon
+      const h = await service.getResourceHistogram('sch-1');
+      expect(h.resources).toEqual([{
+        resourceName: 'Alice', resourceId: 'alice', capacityPerDay: 8,
+        demand: [{ date: '2026-01-09', hours: 4, capacity: 8 }, { date: '2026-01-12', hours: 4, capacity: 8 }],
+      }]);
+      expect(h.overAllocations).toEqual([]);
     });
 
-    it('skips cancelled and completed tasks', async () => {
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', { status: 'cancelled' }),
-        makeTask('t2', 'Task 2', { status: 'completed' }),
-      ]);
-
-      const result = await service.getResourceHistogram('sch-1');
-
-      expect(result.resources).toEqual([]);
+    it('adds their other projects and flags days over that day\'s capacity', async () => {
+      bookings(
+        [booking('t1', 'alice', 40, '2026-01-05', '2026-01-06')],
+        [booking('x', 'alice', 20, '2026-01-06', '2026-01-06', 'other-sch'), booking('y', 'bob', 40, '2026-01-05', '2026-01-06', 'other-sch')],
+      );
+      const h = await service.getResourceHistogram('sch-1');
+      expect(h.resources.map(r => r.resourceName)).toEqual(['Alice']); // Bob isn't on this schedule
+      expect(h.overAllocations).toEqual([{ resourceName: 'Alice', date: '2026-01-06', demand: 12, capacity: 8 }]);
     });
 
-    it('calculates demand for a single task spanning multiple days', async () => {
-      // Task from Jan 5 to Jan 7 = 2 days of demand
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-07',
-        }),
-      ]);
-
-      const result = await service.getResourceHistogram('sch-1');
-
-      expect(result.resources).toHaveLength(1);
-      expect(result.resources[0].resourceName).toBe('Alice');
-      expect(result.resources[0].demand).toHaveLength(2);
-      expect(result.resources[0].demand[0]).toEqual({ date: '2026-01-05', hours: 8 });
-      expect(result.resources[0].demand[1]).toEqual({ date: '2026-01-06', hours: 8 });
-      expect(result.overAllocations).toEqual([]);
-    });
-
-    it('detects over-allocation when resource has overlapping tasks', async () => {
-      // Two tasks for Alice on the same dates
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-
-      const result = await service.getResourceHistogram('sch-1');
-
-      expect(result.resources).toHaveLength(1);
-      // Both tasks contribute 8h on Jan 5 = 16h total
-      expect(result.resources[0].demand[0]).toEqual({ date: '2026-01-05', hours: 16 });
-      expect(result.overAllocations).toHaveLength(1);
-      expect(result.overAllocations[0]).toEqual({
-        resourceName: 'Alice',
-        date: '2026-01-05',
-        demand: 16,
-        capacity: 8,
-      });
-    });
-
-    it('tracks multiple resources independently', async () => {
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Bob',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-
-      const result = await service.getResourceHistogram('sch-1');
-
-      expect(result.resources).toHaveLength(2);
-      const alice = result.resources.find(r => r.resourceName === 'Alice');
-      const bob = result.resources.find(r => r.resourceName === 'Bob');
-      expect(alice).toBeDefined();
-      expect(bob).toBeDefined();
-      // No over-allocation since different resources
-      expect(result.overAllocations).toEqual([]);
-    });
-
-    it('handles same-day start and end (1-day task)', async () => {
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-05',
-        }),
-      ]);
-
-      const result = await service.getResourceHistogram('sch-1');
-
-      // daysBetween is 0, max(1,0)=1, so 1 day of demand
-      expect(result.resources).toHaveLength(1);
-      expect(result.resources[0].demand).toHaveLength(1);
-      expect(result.resources[0].demand[0]).toEqual({ date: '2026-01-05', hours: 8 });
-    });
-
-    it('sorts demand dates chronologically', async () => {
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-10',
-          endDate: '2026-01-11',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-
-      const result = await service.getResourceHistogram('sch-1');
-
-      const dates = result.resources[0].demand.map(d => d.date);
-      expect(dates).toEqual([...dates].sort());
+    it('a week with time off lowers the day capacity', async () => {
+      bookings([booking('t1', 'alice', 40, '2026-01-05', '2026-01-05')]);
+      mockCapacityBatch.mockResolvedValue(new Map([['alice', new Map([['2026-01-05', 20]])]]));
+      const h = await service.getResourceHistogram('sch-1');
+      expect(h.overAllocations).toEqual([{ resourceName: 'Alice', date: '2026-01-05', demand: 8, capacity: 4 }]);
     });
   });
 
   // ── levelResources ────────────────────────────────────────────────
 
   describe('levelResources', () => {
-    it('returns early with no adjustments when there are no over-allocations', async () => {
-      // Single task, no overlap
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-      mockCalculateCriticalPath.mockResolvedValue({
-        criticalPathTaskIds: [],
-        tasks: [makeCPMTask('t1', { totalFloat: 5 })],
-        projectDuration: 10,
-      });
-
-      const result = await service.levelResources('sch-1');
-
-      expect(result.adjustedTasks).toEqual([]);
-      expect(result.overAllocations).toEqual([]);
-      expect(result.reassignmentSuggestions).toEqual([]);
-    });
-
-    it('delays non-critical tasks with float to resolve over-allocation', async () => {
-      // Two tasks for Alice on same day. t2 is non-critical with float.
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-      mockCalculateCriticalPath.mockResolvedValue({
-        criticalPathTaskIds: ['t1'],
-        tasks: [
-          makeCPMTask('t1', { totalFloat: 0, isCritical: true }),
-          makeCPMTask('t2', { totalFloat: 5, isCritical: false }),
-        ],
-        projectDuration: 10,
-      });
-
-      const result = await service.levelResources('sch-1');
-
-      expect(result.adjustedTasks.length).toBeGreaterThanOrEqual(1);
-      const adj = result.adjustedTasks.find(a => a.taskId === 't2');
-      expect(adj).toBeDefined();
-      expect(adj!.originalStart).toBe('2026-01-05');
-      expect(adj!.newStart).not.toBe('2026-01-05');
-      expect(adj!.reason).toContain('Delayed');
-      expect(adj!.reason).toContain('Alice');
-    });
-
-    it('does not delay critical-path tasks', async () => {
-      // Both tasks critical, overlapping
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-      mockCalculateCriticalPath.mockResolvedValue({
-        criticalPathTaskIds: ['t1', 't2'],
-        tasks: [
-          makeCPMTask('t1', { totalFloat: 0, isCritical: true }),
-          makeCPMTask('t2', { totalFloat: 0, isCritical: true }),
-        ],
-        projectDuration: 10,
-      });
-
-      const result = await service.levelResources('sch-1');
-
-      // No tasks should be adjusted — both are critical
-      expect(result.adjustedTasks).toEqual([]);
-      // Over-allocations remain
-      expect(result.overAllocations.length).toBeGreaterThan(0);
-    });
-
-    it('does not delay tasks with zero float', async () => {
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-      mockCalculateCriticalPath.mockResolvedValue({
-        criticalPathTaskIds: ['t1'],
-        tasks: [
-          makeCPMTask('t1', { totalFloat: 0, isCritical: true }),
-          makeCPMTask('t2', { totalFloat: 0, isCritical: false }),
-        ],
-        projectDuration: 10,
-      });
-
-      const result = await service.levelResources('sch-1');
-
-      expect(result.adjustedTasks).toEqual([]);
-    });
-
-    it('generates reassignment suggestions when over-allocations remain', async () => {
-      // Two critical tasks for Alice — can't delay, so reassignment needed
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-          description: 'frontend development',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-          description: 'frontend work',
-        }),
-      ]);
-      mockCalculateCriticalPath.mockResolvedValue({
-        criticalPathTaskIds: ['t1', 't2'],
-        tasks: [
-          makeCPMTask('t1', { totalFloat: 0, isCritical: true }),
-          makeCPMTask('t2', { totalFloat: 0, isCritical: true }),
-        ],
-        projectDuration: 10,
-      });
+    beforeEach(() => {
       mockFindAllResources.mockResolvedValue([
-        makeResource('r1', 'Alice', { skills: [{ name: 'frontend', level: 5 }] }),
-        makeResource('r2', 'Bob', { skills: [{ name: 'frontend', level: 4 }] }),
+        makeResource('alice', 'Alice'),
+        makeResource('bob', 'Bob', { skills: [{ name: 'testing', level: 4 }] }),
+        makeResource('carl', 'Carl', { skills: [{ name: 'testing', level: 5 }], isActive: false }),
       ]);
-
-      const result = await service.levelResources('sch-1');
-
-      expect(result.reassignmentSuggestions.length).toBeGreaterThan(0);
-      const suggestion = result.reassignmentSuggestions[0];
-      expect(suggestion.currentResource).toBe('Alice');
-      expect(suggestion.suggestedResource).toBe('Bob');
-      expect(suggestion.suggestedResourceId).toBe('r2');
-      expect(suggestion.matchScore).toBeGreaterThan(0);
-      expect(suggestion.reason).toContain('over-allocated');
+      mockCapacityBatch.mockResolvedValue(new Map());
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('a', 'Build API', { startDate: '2026-01-05', endDate: '2026-01-06' }),
+        makeTask('b', 'Write testing plan', { startDate: '2026-01-05', endDate: '2026-01-06' }),
+      ]);
     });
 
-    it('excludes inactive resources from reassignment suggestions', async () => {
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-      mockCalculateCriticalPath.mockResolvedValue({
-        criticalPathTaskIds: ['t1', 't2'],
-        tasks: [
-          makeCPMTask('t1', { totalFloat: 0, isCritical: true }),
-          makeCPMTask('t2', { totalFloat: 0, isCritical: true }),
-        ],
-        projectDuration: 10,
-      });
-      // Only inactive alternative resource
-      mockFindAllResources.mockResolvedValue([
-        makeResource('r1', 'Alice', { isActive: true }),
-        makeResource('r2', 'Bob', { isActive: false, skills: [{ name: 'dev', level: 5 }] }),
-      ]);
+    it('does nothing when nobody is over capacity', async () => {
+      bookings([booking('a', 'alice', 40, '2026-01-05', '2026-01-06')]);
+      mockCalculateCriticalPath.mockResolvedValue({ tasks: [makeCPMTask('a', { totalFloat: 5 })], criticalPathTaskIds: [] });
+      const r = await service.levelResources('sch-1');
+      expect(r.adjustedTasks).toEqual([]);
+      expect(r.overAllocations).toEqual([]);
+    });
 
-      const result = await service.levelResources('sch-1');
+    it('delays the non-critical task with float until its person has room', async () => {
+      bookings([booking('a', 'alice', 40, '2026-01-05', '2026-01-06'), booking('b', 'alice', 40, '2026-01-05', '2026-01-06')]);
+      mockCalculateCriticalPath.mockResolvedValue({ tasks: [makeCPMTask('a'), makeCPMTask('b', { totalFloat: 5 })], criticalPathTaskIds: ['a'] });
+      const r = await service.levelResources('sch-1');
+      expect(r.adjustedTasks).toEqual([expect.objectContaining({ taskId: 'b', originalStart: '2026-01-05', newStart: '2026-01-07', newEnd: '2026-01-08' })]);
+      expect(r.adjustedTasks[0].reason).toContain('Alice');
+      expect(r.overAllocations).toEqual([]);
+      expect(r.leveledDemand[0].demand.map(d => [d.date, d.hours])).toEqual([['2026-01-05', 8], ['2026-01-06', 8], ['2026-01-07', 8], ['2026-01-08', 8]]);
+    });
 
-      // Bob is inactive, so no suggestions for Bob
-      const bobSuggestions = result.reassignmentSuggestions.filter(
-        s => s.suggestedResource === 'Bob'
+    it('never moves critical or zero-float tasks, and suggests an active person with skills and room', async () => {
+      bookings([booking('a', 'alice', 40, '2026-01-05', '2026-01-06'), booking('b', 'alice', 40, '2026-01-05', '2026-01-06')]);
+      mockCalculateCriticalPath.mockResolvedValue({ tasks: [makeCPMTask('a'), makeCPMTask('b')], criticalPathTaskIds: ['a'] });
+      const r = await service.levelResources('sch-1');
+      expect(r.adjustedTasks).toEqual([]);
+      expect(r.overAllocations.length).toBe(2);
+      expect(r.reassignmentSuggestions).toEqual([expect.objectContaining({ taskId: 'b', currentResource: 'Alice', suggestedResource: 'Bob', suggestedResourceId: 'bob' })]);
+    });
+
+    it('does not suggest someone who is full themselves', async () => {
+      bookings(
+        [booking('a', 'alice', 40, '2026-01-05', '2026-01-06'), booking('b', 'alice', 40, '2026-01-05', '2026-01-06')],
+        [booking('z', 'bob', 40, '2026-01-05', '2026-01-06', 'other-sch')],
       );
-      expect(bobSuggestions).toEqual([]);
-    });
-
-    it('handles resource service failure gracefully for reassignment suggestions', async () => {
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-      mockCalculateCriticalPath.mockResolvedValue({
-        criticalPathTaskIds: ['t1', 't2'],
-        tasks: [
-          makeCPMTask('t1', { totalFloat: 0, isCritical: true }),
-          makeCPMTask('t2', { totalFloat: 0, isCritical: true }),
-        ],
-        projectDuration: 10,
-      });
-      mockFindAllResources.mockRejectedValue(new Error('DB connection error'));
-
-      const result = await service.levelResources('sch-1');
-
-      // Should still return leveling results, just no suggestions
-      expect(result.reassignmentSuggestions).toEqual([]);
-      expect(result.overAllocations.length).toBeGreaterThan(0);
-    });
-
-    it('sorts non-critical tasks by float descending (most flexible first)', async () => {
-      // Three tasks for Alice on same day. t2 has more float than t3.
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t3', 'Task 3', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-      mockCalculateCriticalPath.mockResolvedValue({
-        criticalPathTaskIds: ['t1'],
-        tasks: [
-          makeCPMTask('t1', { totalFloat: 0, isCritical: true }),
-          makeCPMTask('t2', { totalFloat: 10, isCritical: false }),
-          makeCPMTask('t3', { totalFloat: 2, isCritical: false }),
-        ],
-        projectDuration: 20,
-      });
-
-      const result = await service.levelResources('sch-1');
-
-      // t2 (float=10) should be tried first, then t3 (float=2)
-      // At least one should be adjusted
-      expect(result.adjustedTasks.length).toBeGreaterThanOrEqual(1);
-      // The first adjustment should be for the task with the most float
-      if (result.adjustedTasks.length >= 1) {
-        expect(result.adjustedTasks[0].taskId).toBe('t2');
-      }
-    });
-
-    it('assigns default low score to resources with no skills', async () => {
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-      mockCalculateCriticalPath.mockResolvedValue({
-        criticalPathTaskIds: ['t1', 't2'],
-        tasks: [
-          makeCPMTask('t1', { totalFloat: 0, isCritical: true }),
-          makeCPMTask('t2', { totalFloat: 0, isCritical: true }),
-        ],
-        projectDuration: 10,
-      });
-      mockFindAllResources.mockResolvedValue([
-        makeResource('r1', 'Alice', { skills: [] }),
-        makeResource('r2', 'Bob', { skills: [] }), // no skills = score 10
-      ]);
-
-      const result = await service.levelResources('sch-1');
-
-      // Bob has no skills, so match score = 10 (default low)
-      if (result.reassignmentSuggestions.length > 0) {
-        expect(result.reassignmentSuggestions[0].matchScore).toBe(10);
-      }
-    });
-
-    it('handles tasks with no CPM entry (defaults to zero float)', async () => {
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-      mockCalculateCriticalPath.mockResolvedValue({
-        criticalPathTaskIds: [],
-        tasks: [], // No CPM data at all
-        projectDuration: 10,
-      });
-
-      const result = await service.levelResources('sch-1');
-
-      // With zero float and not critical, tasks won't be delayed
-      expect(result.adjustedTasks).toEqual([]);
-    });
-
-    it('updates leveled demand correctly after shifting a task', async () => {
-      // Two tasks for Alice overlapping on Jan 5. t2 can be delayed.
-      mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Task 1', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-        makeTask('t2', 'Task 2', {
-          assignedTo: 'Alice',
-          startDate: '2026-01-05',
-          endDate: '2026-01-06',
-        }),
-      ]);
-      mockCalculateCriticalPath.mockResolvedValue({
-        criticalPathTaskIds: ['t1'],
-        tasks: [
-          makeCPMTask('t1', { totalFloat: 0, isCritical: true }),
-          makeCPMTask('t2', { totalFloat: 5, isCritical: false }),
-        ],
-        projectDuration: 10,
-      });
-
-      const result = await service.levelResources('sch-1');
-
-      // Leveled demand should show reduced hours on the original date
-      const aliceLeveled = result.leveledDemand.find(r => r.resourceName === 'Alice');
-      expect(aliceLeveled).toBeDefined();
-
-      // Original date (Jan 5) should now be 8h (only t1), not 16h
-      const jan5 = aliceLeveled!.demand.find(d => d.date === '2026-01-05');
-      if (jan5) {
-        expect(jan5.hours).toBeLessThanOrEqual(8);
-      }
+      mockCalculateCriticalPath.mockResolvedValue({ tasks: [makeCPMTask('a'), makeCPMTask('b')], criticalPathTaskIds: ['a'] });
+      const r = await service.levelResources('sch-1');
+      expect(r.reassignmentSuggestions).toEqual([]);
     });
   });
-
-  // ── applyLeveledDates ─────────────────────────────────────────────
 
   describe('applyLeveledDates', () => {
     const adjustments = [
