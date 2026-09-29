@@ -10,15 +10,26 @@ import { requireProjectAccess, checkProjectRole } from '../../middleware/require
 import { notificationService } from '../../services/NotificationService';
 import logger from '../../utils/logger';
 
+const ROLE_MESSAGE = 'Choose a role: Viewer, Manager or Owner. (Editor was removed.)';
+const roleSchema = z.enum(['owner', 'manager', 'viewer'], { message: ROLE_MESSAGE }); // Editor removed Sep 2026
+
 const addMemberSchema = z.object({
   userId: z.string().optional(),
-  userName: z.string().min(1),
-  email: z.string().email(),
-  role: z.enum(['owner', 'manager', 'viewer']), // Editor removed Sep 2026
+  userName: z.string({ message: "Enter the person's name." }).trim().min(1, "Enter the person's name."),
+  email: z.string({ message: 'Enter their email address.' }).email('Enter a valid email address, e.g. name@company.com.'),
+  role: roleSchema,
 });
 
+/**
+ * The message for a bad add/update-member request: the first thing actually wrong. It used
+ * to always say "Choose a role", even when the role was fine and the name or email was missing.
+ */
+export function memberValidationMessage(err: z.ZodError): string {
+  return err.issues[0]?.message || ROLE_MESSAGE;
+}
+
 const updateRoleSchema = z.object({
-  role: z.enum(['owner', 'manager', 'viewer']), // Editor removed Sep 2026
+  role: roleSchema,
 });
 
 /** Owner is granted only by an Owner of the project, or an admin/PMO */
@@ -129,7 +140,7 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
       return reply.status(201).send({ member });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return reply.status(400).send({ error: 'Validation error', message: 'Choose a role: Viewer, Manager or Owner. (Editor was removed.)' });
+        return reply.status(400).send({ error: 'Validation error', message: memberValidationMessage(error) });
       }
       logger.error('Add member error', { error: error?.message || error, stack: error?.stack });
       return reply.status(500).send({ error: 'Internal server error', message: error?.message });
@@ -153,7 +164,7 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
       return { member };
     } catch (error) {
       if (error instanceof LastOwnerError) return reply.status(409).send({ error: 'last_owner', message: error.message });
-      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', message: 'Choose a role: Viewer, Manager or Owner. (Editor was removed.)' });
+      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', message: memberValidationMessage(error) });
       logger.error('Update member error', { error });
       return reply.status(500).send({ error: 'Internal server error' });
     }
