@@ -54,6 +54,7 @@ import { GanttLeftPanelHeader } from './gantt/GanttLeftPanelHeader';
 import { GanttLeftPanelRow } from './gantt/GanttLeftPanelRow';
 import { GanttTimelineBar } from './gantt/GanttTimelineBar';
 import { isCalendarOverdue } from '../../utils/dateUtils';
+import { workingDaysBetween, finishAfterWorkingDays, type WorkCalendar } from '../../utils/workingDays';
 
 // Re-export types for external consumers
 export type { TaskDependencyRef, GanttTask } from './gantt/types';
@@ -103,6 +104,7 @@ export function GanttChart({
   reviewFlagMap,
   focusTaskId,
   highlightTaskIds,
+  workCalendar,
   allTasks,
   onBulkLink,
   onGroupTasks,
@@ -185,6 +187,8 @@ export function GanttChart({
   focusTaskId?: string | null;
   /** Rows to keep highlighted (amber) — e.g. the tasks a Propose-fixes suggestion changes */
   highlightTaskIds?: Set<string>;
+  /** Project calendar, so Duration counts working days */
+  workCalendar?: WorkCalendar | null;
 }) {
   const criticalSet = useMemo(() => new Set(criticalPathTaskIds || []), [criticalPathTaskIds]);
   const baselineMap = useMemo(() => {
@@ -707,10 +711,7 @@ export function GanttChart({
         case 'name': return (task.name || '').toLowerCase();
         case 'startDate': return task.startDate || '';
         case 'endDate': return task.endDate || '';
-        case 'duration': {
-          const s = toDate(task.startDate), e = toDate(task.endDate);
-          return s && e ? daysBetween(s, e) : 0;
-        }
+        case 'duration': return workingDaysBetween(task.startDate, task.endDate, workCalendar) ?? 0;
         case 'estimatedDays': return task.estimatedDays ?? 0;
         case 'estimatedDurationHours': return task.estimatedDurationHours ?? 0;
         case 'progressPercentage': return task.progressPercentage ?? 0;
@@ -757,7 +758,7 @@ export function GanttChart({
       }
     }
     return result;
-  }, [filteredRows, sortField, sortDirection]);
+  }, [filteredRows, sortField, sortDirection, workCalendar]);
 
   const allSelected = rows.length > 0 && rows.every(r => selectedIds.has(r.task.id));
 
@@ -1077,9 +1078,8 @@ export function GanttChart({
       case 'startDate': return task.startDate?.split('T')[0] || '';
       case 'endDate': return task.endDate?.split('T')[0] || '';
       case 'duration': {
-        const s = toDate(task.startDate);
-        const e = toDate(task.endDate);
-        return s && e ? String(daysBetween(s, e)) : '';
+        const d = workingDaysBetween(task.startDate, task.endDate, workCalendar);
+        return d != null ? String(d) : '';
       }
       case 'estimatedDays': return task.estimatedDays != null ? String(task.estimatedDays) : '';
       case 'estimatedDurationHours': return task.estimatedDurationHours != null ? String(task.estimatedDurationHours) : '';
@@ -1109,7 +1109,7 @@ export function GanttChart({
       }
       default: return '';
     }
-  }, [rowNumMap]);
+  }, [rowNumMap, workCalendar]);
 
   // Column auto-fit: measure text width and set width to max + padding
   const getGanttCellText = useCallback((task: GanttTask, colKey: string): string => {
@@ -1119,8 +1119,8 @@ export function GanttChart({
       case 'start': return task.startDate ? formatShortDate(new Date(task.startDate), new Date().getFullYear()) : '';
       case 'end': return task.endDate ? formatShortDate(new Date(task.endDate), new Date().getFullYear()) : '';
       case 'dur': {
-        const s = toDate(task.startDate), en = toDate(task.endDate);
-        return s && en ? `${daysBetween(s, en)}d` : '';
+        const d = workingDaysBetween(task.startDate, task.endDate, workCalendar);
+        return d != null ? `${d}d` : '';
       }
       case 'est': return task.estimatedDays != null ? `${task.estimatedDays}d` : '';
       case 'work': return task.estimatedDurationHours != null ? `${task.estimatedDurationHours}h` : '';
@@ -1131,7 +1131,7 @@ export function GanttChart({
       case 'notes': return task.description || '';
       default: return '';
     }
-  }, [getTaskFieldValue]);
+  }, [getTaskFieldValue, workCalendar]);
 
   const autoFitGanttColumn = useCallback((colKey: string) => {
     if (!measureCanvasRef.current) {
@@ -1196,13 +1196,13 @@ export function GanttChart({
     // Duration: compute new endDate
     if (field === 'duration') {
       const days = parseInt(value.replace(/d$/i, ''), 10);
-      if (isNaN(days) || days < 1 || !task.startDate) { cancelEditing(); return; }
-      const newEnd = new Date(task.startDate);
-      newEnd.setDate(newEnd.getDate() + days);
+      // Working days, start day included: 2 on a Thursday finishes Friday, 3 finishes Monday
+      const newEnd = isNaN(days) ? null : finishAfterWorkingDays(task.startDate, days, workCalendar);
+      if (!newEnd) { cancelEditing(); return; }
       setSavingCell({ taskId, field });
       setEditingCell(null);
       setEditValue('');
-      onTaskUpdate(taskId, { endDate: newEnd.toISOString().split('T')[0] });
+      onTaskUpdate(taskId, { endDate: newEnd });
       setTimeout(() => {
         setSavingCell(null);
         setSavedCell({ taskId, field });
@@ -1253,7 +1253,7 @@ export function GanttChart({
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
     }, 300);
-  }, [onTaskUpdate, tasks, getTaskFieldValue, cancelEditing, parsePredecessorInput]);
+  }, [onTaskUpdate, tasks, getTaskFieldValue, cancelEditing, parsePredecessorInput, workCalendar]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent, taskId: string, field: EditableField) => {
     if (e.key === 'Enter') { e.preventDefault(); saveEdit(taskId, field, editValue); }
@@ -2491,6 +2491,7 @@ export function GanttChart({
                 rowIdx={rowIdx}
                 isActive={activeTaskId === task.id}
                 isFocused={focusTaskId === task.id || !!highlightTaskIds?.has(task.id)}
+                workCalendar={workCalendar}
                 isSelected={selectedIds.has(task.id)}
                 isParent={parentTaskIds.has(task.id)}
                 isCollapsed={collapsedIds.has(task.id)}

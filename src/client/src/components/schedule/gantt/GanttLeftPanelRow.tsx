@@ -3,13 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { ResourceQuickAssign } from '../ResourceQuickAssign';
 import { ResourcePickerDropdown } from '../ResourcePickerDropdown';
 import { apiService } from '../../../services/api';
+import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
 import {
   type GanttTask,
   type GanttColDef,
   type EditableField,
   GANTT_COLUMNS,
   toDate,
-  daysBetween,
   formatShortDate,
   barColors,
   priorityDot,
@@ -31,6 +31,8 @@ export interface GanttLeftPanelRowProps {
   isActive: boolean;
   /** Opened from a link (Morning Briefing) — highlighted until the page clears it */
   isFocused?: boolean;
+  /** Project calendar, so Duration counts working days */
+  workCalendar?: WorkCalendar | null;
   isSelected: boolean;
   isParent: boolean;
   isCollapsed: boolean;
@@ -135,6 +137,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   rowIdx,
   isActive,
   isFocused,
+  workCalendar,
   isSelected,
   isParent,
   isCollapsed,
@@ -482,7 +485,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
                 placeholder="days"
               />
             ) : (
-              start && end ? `${daysBetween(start, end)}d` : '\u2014'
+              workingDaysBetween(task.startDate, task.endDate, workCalendar) != null ? `${workingDaysBetween(task.startDate, task.endDate, workCalendar)}d` : '\u2014'
             )}
           </div>
         );

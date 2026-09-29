@@ -1,3 +1,4 @@
+import type { WorkCalendar } from '../../../utils/workingDays';
 import type { OnBulkLink } from '../BulkLinkControls';
 import type { OnGroupTasks } from '../BulkGroupControls';
 import type { GanttTask } from '../GanttChart';
@@ -67,6 +68,8 @@ export interface TableViewProps {
   focusTaskId?: string | null;
   /** Rows to keep highlighted (amber) — e.g. the tasks a Propose-fixes suggestion changes */
   highlightTaskIds?: Set<string>;
+  /** Project calendar, so Duration counts working days */
+  workCalendar?: WorkCalendar | null;
 }
 
 export const barColors: Record<string, { bg: string; text: string }> = {

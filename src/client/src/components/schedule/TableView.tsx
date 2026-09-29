@@ -25,8 +25,9 @@ import {
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
+import { workingDaysBetween, finishAfterWorkingDays } from '../../utils/workingDays';
 
-export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds }: TableViewProps) {
+export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
@@ -244,12 +245,9 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       case 'assignedTo': return (task.assignedTo || '').toLowerCase();
       case 'notes': return (task.description || '').toLowerCase();
       case 'duration': {
-        if (task.estimatedDays != null) return task.estimatedDays;
-        if (task.startDate && task.endDate) {
-          const diff = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000);
-          return diff > 0 ? diff : 0;
-        }
-        return 0;
+        const span = workingDaysBetween(task.startDate, task.endDate, workCalendar);
+        if (span) return span;
+        return task.estimatedDays ?? 0;
       }
       case 'earlyStart': return cpmMap.get(task.id)?.ES ?? Infinity;
       case 'earlyFinish': return cpmMap.get(task.id)?.EF ?? Infinity;
@@ -268,7 +266,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       case 'baselineCost': return (task as any).baselineCost ?? Infinity;
       default: return '';
     }
-  }, [cpmMap, baselineMap]);
+  }, [cpmMap, baselineMap, workCalendar]);
 
   // Build hierarchical ordering
   const levelMap = useMemo(() => {
@@ -556,7 +554,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       case 'notes': return task.description || '';
       case 'duration': {
         if (task.startDate && task.endDate) {
-          const diff = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000);
+          const diff = (workingDaysBetween(task.startDate, task.endDate, workCalendar) ?? 0);
           return String(diff > 0 ? diff : 0);
         }
         return task.estimatedDays != null ? String(task.estimatedDays) : '';
@@ -591,7 +589,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       case 'constraintDate': return (task as any).constraintDate || '';
       default: return '';
     }
-  }, [rowNumMap]);
+  }, [rowNumMap, workCalendar]);
 
   // Column auto-fit
   const getCellText = useCallback((task: GanttTask, colKey: ColumnKey): string => {
@@ -605,7 +603,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       case 'assignedTo': return task.assignedTo || '\u2014';
       case 'duration': {
         if (task.startDate && task.endDate) {
-          const diff = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000);
+          const diff = (workingDaysBetween(task.startDate, task.endDate, workCalendar) ?? 0);
           return diff > 0 ? `${diff}d` : '\u2014';
         }
         return task.estimatedDays != null ? `${task.estimatedDays}d` : '\u2014';
@@ -630,7 +628,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       case 'rowNum': return String(rowNumMap.get(task.id) || '\u2014');
       default: return '\u2014';
     }
-  }, [wbsMap, rowNumMap, getTaskFieldValue, successorMap]);
+  }, [wbsMap, rowNumMap, getTaskFieldValue, successorMap, workCalendar]);
 
   const autoFitColumn = useCallback((colKey: ColumnKey) => {
     if (!measureCanvasRef.current) {
@@ -687,13 +685,13 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
 
     if (field === 'duration') {
       const days = parseInt(value.replace(/d$/i, ''), 10);
-      if (isNaN(days) || days < 1 || !task.startDate) { cancelEditing(); return; }
-      const newEnd = new Date(task.startDate);
-      newEnd.setDate(newEnd.getDate() + days);
+      // Working days, start day included: 2 on a Thursday finishes Friday, 3 finishes Monday
+      const newEnd = isNaN(days) ? null : finishAfterWorkingDays(task.startDate, days, workCalendar);
+      if (!newEnd) { cancelEditing(); return; }
       setSavingCell({ taskId, field });
       setEditingCell(null);
       setEditValue('');
-      onTaskUpdate?.(taskId, { endDate: newEnd.toISOString().split('T')[0] });
+      onTaskUpdate?.(taskId, { endDate: newEnd });
       setTimeout(() => {
         setSavingCell(null);
         setSavedCell({ taskId, field });
@@ -749,7 +747,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
     }, 300);
-  }, [tasks, getTaskFieldValue, cancelEditing, onTaskUpdate, parsePredecessorInput]);
+  }, [tasks, getTaskFieldValue, cancelEditing, onTaskUpdate, parsePredecessorInput, workCalendar]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent, taskId: string, field: EditableField) => {
     if (e.key === 'Enter') { e.preventDefault(); saveEdit(taskId, field, editValue); }
@@ -1378,7 +1376,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       case 'duration': {
         let days: number | null = null;
         if (task.startDate && task.endDate) {
-          const diff = Math.round((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / 86400000);
+          const diff = (workingDaysBetween(task.startDate, task.endDate, workCalendar) ?? 0);
           if (diff > 0) days = diff;
         }
         if (days == null && task.estimatedDays != null) days = task.estimatedDays;

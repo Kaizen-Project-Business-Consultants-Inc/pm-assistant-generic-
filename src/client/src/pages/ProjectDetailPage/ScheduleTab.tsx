@@ -54,6 +54,7 @@ import { buildTaskRiskMap, DEFAULT_RISK_THRESHOLDS, type RiskThresholds } from '
 import { useAuthStore } from '../../stores/authStore';
 import { announce } from '../../utils/announce';
 import { isCalendarOverdue } from '../../utils/dateUtils';
+import type { WorkCalendar } from '../../utils/workingDays';
 
 
 /** " · 3 tasks moved later" — appended to link messages when the re-flow moved dates */
@@ -488,11 +489,16 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   const { data: nwdData } = useQuery({
     queryKey: ['nonWorkingDates', projectId, taskDateRange?.start, taskDateRange?.end],
     queryFn: () => apiService.getNonWorkingDates(projectId, taskDateRange!.start, taskDateRange!.end),
-    enabled: !!taskDateRange && viewMode === 'gantt',
+    enabled: !!taskDateRange && (viewMode === 'gantt' || viewMode === 'table'),
     staleTime: 5 * 60 * 1000,
   });
 
   const nonWorkingDates = useMemo(() => new Set(nwdData?.dates || []), [nwdData]);
+  // The project calendar for the Duration column (working days). Until it loads, weekends are off.
+  const workCalendar = useMemo<WorkCalendar | null>(
+    () => (nwdData && taskDateRange ? { nonWorking: nonWorkingDates, from: taskDateRange.start, to: taskDateRange.end } : null),
+    [nwdData, nonWorkingDates, taskDateRange],
+  );
 
   // What-if scenarios
   const { data: scenariosData } = useQuery({
@@ -1342,6 +1348,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           scheduleId={schedule.id}
           focusTaskId={focusTaskId}
           highlightTaskIds={highlightTaskIds}
+          workCalendar={workCalendar}
           onTaskSelect={(task) => setActiveTaskId(task.id)}
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}
@@ -1421,6 +1428,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           reviewFlagMap={reviewFlagMap}
           focusTaskId={focusTaskId}
           highlightTaskIds={highlightTaskIds}
+          workCalendar={workCalendar}
           onTaskSelect={(task) => setActiveTaskId(task.id)}
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}
