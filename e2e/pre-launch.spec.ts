@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-// TechStart E-Commerce Platform on staging (mike_todo's tenant)
-const PROJECT_ID = '54839f0a-8e9e-4f64-bc96-eef022132444';
-const PROJECT_NAME = 'TechStart';
+// "QA – team member checks" in the QA Staging Co company, owned by the QA PM login
+// (e2e/staging-helpers.ts). The old TechStart project belonged to mike_todo, who no longer exists.
+const PROJECT_ID = '94dbbc5a-a9d4-4113-b7d5-e0761b142bc4';
+const PROJECT_NAME = 'QA . team member checks';
 
 test.describe('Pre-Launch Staging Tests', () => {
   // Auth is handled by globalSetup — storageState is injected automatically

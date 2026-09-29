@@ -26,8 +26,10 @@ async function openColumnPicker(page: import('@playwright/test').Page) {
 }
 
 test.describe('Gantt Table — MPP Columns', () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page);
+  test.beforeEach(async ({ page }, testInfo) => {
+    // Against real staging the session comes from globalSetup (storageState); the fake
+    // sign-in is only for the mocked run — using it there waited forever for a login form
+    if (!testInfo.project.use.storageState) await login(page);
   });
 
   test('column picker shows Actual Start and Actual Finish', async ({ page }) => {
