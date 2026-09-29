@@ -137,7 +137,9 @@ export class ScheduleFixProposerService {
       try {
         const ai = await this.aiSuggestions(schedule.projectId, tasks, userId);
         if (ai.groupings.length > 0) fixes = [...fixes.filter(f => f.type !== 'set_parent'), ...ai.groupings];
-        fixes = [...fixes, ...ai.splits, ...ai.phases];
+        // A milestone-named line already has the rule-based split (review / approve / approved / gate)
+        const ruleSplits = new Set(fixes.filter(f => f.type === 'split_task').map(f => f.taskId));
+        fixes = [...fixes, ...ai.splits.filter(f => !ruleSplits.has(f.taskId)), ...ai.phases];
         if (ai.groupings.length + ai.splits.length + ai.phases.length > 0) source = 'ai';
       } catch (err: any) {
         // Includes the plan having no AI allowance (Basic/Trial): rules-only fixes stand.

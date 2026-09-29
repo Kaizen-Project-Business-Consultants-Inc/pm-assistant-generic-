@@ -166,12 +166,38 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
     }
   }
 
-  // --- set_milestone: tasks R05 flagged (named a milestone but not marked) ---
+  // --- a "milestone" that spans days (R04/R05): split it into the work and the milestones ---
+  // Flagging it would squeeze days of work into a day (it happened to DBJ-Loans, Sep 2026).
+  const splitDone = new Set<string>();
+  for (const f of findings.filter(f => f.ruleId === 'R04' || f.ruleId === 'R05')) {
+    for (const taskId of f.taskIds) {
+      const t = byId.get(taskId);
+      if (!t || splitDone.has(t.id) || t.isSummary) continue;
+      const s = t.startDate ? String(t.startDate).slice(0, 10) : '';
+      const e = t.endDate ? String(t.endDate).slice(0, 10) : '';
+      if (!s || !e) continue;
+      const span = calendarDaySpan(s, e);
+      if (span < 2) continue;
+      const parts = milestoneSplitParts(t.name, span, nextPhaseName(t, tasks));
+      splitDone.add(t.id);
+      fixes.push(build({
+        id: `split:${t.id}`,
+        type: 'split_task',
+        confidence: 0.85,
+        reason: `'${t.name}' is ${span} days of work named as a milestone. A milestone takes zero days: it marks the point when something becomes true. Split it into the work and the milestones.`,
+        taskId: t.id,
+        taskName: t.name,
+        parts,
+      }));
+    }
+  }
+
+  // --- set_milestone: tasks R05 flagged (named a milestone but not marked) — single-day ones only ---
   const r05 = findings.find(f => f.ruleId === 'R05');
   if (r05) {
     for (const taskId of r05.taskIds) {
       const t = byId.get(taskId);
-      if (!t || t.isMilestone) continue;
+      if (!t || t.isMilestone || splitDone.has(t.id)) continue;
       fixes.push(build({
         id: `set_milestone:${t.id}`,
         type: 'set_milestone',
@@ -359,6 +385,52 @@ const addDays = (ymd: string, n: number) => new Date(Date.parse(`${ymd}T00:00:00
  * work parts than days they run in parallel over the whole span. A milestone sits on the
  * last day of the work before it (or the task's first day if it comes first).
  */
+/**
+ * How a milestone-named line that spans days is split (user's rule, 2026-09-29, option A):
+ *   Review <deliverable>        task — the review work
+ *   Approve <deliverable>       task — the approval window (about 30% of the span, 1-5 days)
+ *   <deliverable> Approved      milestone — 0 days
+ *   Gate N Approved: proceed to <next phase>   milestone — 0 days (only when the line names a gate)
+ * Tasks are verb + object; milestones are object + past participle. The source's wording
+ * ("Acceptance", "(MILESTONE - 1)") is not carried over.
+ */
+export function milestoneSplitParts(name: string, span: number, nextPhase?: string | null): SplitPart[] {
+  const gate = /\bgate\s*(\d+)/i.exec(name)?.[1] ?? null;
+  const hasReview = /\breview/i.test(name);
+  const deliverable = name
+    .replace(/\(\s*milestone[^)]*\)/gi, ' ')
+    .replace(/\bmilestone\s*[-–]?\s*\d*/gi, ' ')
+    .replace(/\bgate\s*\d+\s*[:–-]?/gi, ' ')
+    .replace(/\btask\s*\d+\s*[:–-]?/gi, ' ')
+    .replace(/\b(reviews?|reviewed|acceptance|accepted|accept|approvals?|approved|approve|sign[\s-]?offs?|signed[\s-]?off)\b/gi, ' ')
+    .replace(/\s*(&|\band\b|\+)\s*/gi, ' ')
+    .replace(/[:–-]+\s*$/g, ' ')
+    .replace(/^\s*[:–-]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim() || (gate ? `Gate ${gate} deliverable` : name.trim());
+  const approveDays = Math.max(1, Math.min(5, Math.round(span * 0.3)));
+  const parts: SplitPart[] = [];
+  if (hasReview) parts.push({ name: `Review ${deliverable}`, isMilestone: false, days: Math.max(1, span - approveDays) });
+  parts.push({ name: `Approve ${deliverable}`, isMilestone: false, days: hasReview ? approveDays : span });
+  parts.push({ name: `${deliverable} Approved`, isMilestone: true, days: 0 });
+  if (gate) parts.push({ name: `Gate ${gate} Approved${nextPhase ? `: proceed to ${nextPhase}` : ''}`, isMilestone: true, days: 0 });
+  return parts;
+}
+
+/** The phase after the one this task sits in (for "Gate N Approved: proceed to <next phase>") */
+function nextPhaseName(t: ReviewTask, all: ReviewTask[]): string | null {
+  if (!t.parentTaskId) return null;
+  const parent = all.find(x => x.id === t.parentTaskId);
+  if (!parent) return null;
+  const peers = all
+    .filter(x => (x.parentTaskId ?? null) === (parent.parentTaskId ?? null) && (x.isSummary || all.some(c => c.parentTaskId === x.id)))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  const next = peers[peers.findIndex(x => x.id === parent.id) + 1];
+  const nm = next?.name?.trim();
+  // A bare code like "T2" isn't a phase name worth quoting
+  return nm && nm.length > 3 ? nm : null;
+}
+
 export function planSplitDates(start: string, end: string, parts: SplitPart[]): Array<SplitPart & { startDate: string; endDate: string }> {
   const s = start.slice(0, 10);
   const e = end.slice(0, 10);

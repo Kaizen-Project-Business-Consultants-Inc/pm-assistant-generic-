@@ -220,3 +220,22 @@ describe('Phase 2 — split bundled tasks, add missing phases', () => {
     expect(tight.every(p => p.startDate === '2026-10-01' && p.endDate === '2026-10-01')).toBe(true); // more parts than days: parallel
   });
 });
+
+describe('milestone lines that span days are split, not flagged (user rule, 2026-09-29)', () => {
+  it("splits the DBJ line into review, approve, approved and gate — in PM wording, not the source's", async () => {
+    const { milestoneSplitParts } = await import('../../services/scheduleReview/fixProposer');
+    const parts = milestoneSplitParts('Gate 1 – Task 1 Inception Report Review & Acceptance  (MILESTONE - 1)', 10, 'Detailed Design');
+    expect(parts).toEqual([
+      { name: 'Review Inception Report', isMilestone: false, days: 7 },
+      { name: 'Approve Inception Report', isMilestone: false, days: 3 },
+      { name: 'Inception Report Approved', isMilestone: true, days: 0 },
+      { name: 'Gate 1 Approved: proceed to Detailed Design', isMilestone: true, days: 0 },
+    ]);
+  });
+
+  it('a sign-off line with no review becomes approve + approved', async () => {
+    const { milestoneSplitParts } = await import('../../services/scheduleReview/fixProposer');
+    const parts = milestoneSplitParts('UAT sign-off', 4, null);
+    expect(parts.map(p => p.name)).toEqual(['Approve UAT', 'UAT Approved']);
+  });
+});

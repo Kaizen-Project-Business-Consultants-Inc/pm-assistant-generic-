@@ -449,7 +449,7 @@ describe('1.2 project-type profiles and summary checks', () => {
   }
 
   it('bumps the rules version', () => {
-    expect(reviewSchedule(input([])).rulesVersion).toBe('1.2');
+    expect(reviewSchedule(input([])).rulesVersion).toBe('1.3') // 1.3: R33 milestone names state an outcome; R04 suggests a split;
   });
 
   it('a complete IT/SDLC plan raises no phase or milestone findings', () => {
@@ -532,5 +532,28 @@ describe('1.2 project-type profiles and summary checks', () => {
     expect(r30[0].message).toContain('2026-10-01 to 2026-10-06');
     phase.startDate = '2026-10-01'; phase.endDate = '2026-10-06';
     expect(ids(evaluateRules(input([phase, early])).findings)).not.toContain('R30');
+  });
+});
+
+describe('R33 — a milestone name says what becomes true', () => {
+  it("flags 'Acceptance' and 'Gate 1', not 'Inception Report Approved' or 'Go-Live'", () => {
+    const { findings } = reviewSchedule(input([
+      task({ name: 'Acceptance', isMilestone: true, startDate: '2026-07-31', endDate: '2026-07-31' }),
+      task({ name: 'Gate 1', isMilestone: true, startDate: '2026-07-31', endDate: '2026-07-31' }),
+      task({ name: 'Inception Report Approved', isMilestone: true, startDate: '2026-07-31', endDate: '2026-07-31' }),
+      task({ name: 'System Go-Live', isMilestone: true, startDate: '2026-12-01', endDate: '2026-12-01' }),
+    ]));
+    const r33 = rule(findings, 'R33');
+    expect(r33).toHaveLength(1);
+    expect((r33[0] as any).message).toContain('Acceptance');
+    expect((r33[0] as any).message).toContain('Gate 1');
+    expect((r33[0] as any).message).not.toContain('Inception Report Approved');
+  });
+
+  it('R04 now says a milestone takes zero days and suggests the split', () => {
+    const { findings } = reviewSchedule(input([
+      task({ name: 'Gate 1 – Inception Report Review & Acceptance (MILESTONE - 1)', isMilestone: true, startDate: '2026-07-22', endDate: '2026-07-31' }),
+    ]));
+    expect((rule(findings, 'R04')[0] as any).message).toContain('A milestone takes zero days');
   });
 });

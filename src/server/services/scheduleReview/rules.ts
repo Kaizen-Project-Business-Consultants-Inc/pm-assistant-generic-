@@ -10,7 +10,7 @@
 
 import { profileFor, matchesAny, type DomainProfile } from './domainProfiles';
 
-export const RULES_VERSION = '1.2';
+export const RULES_VERSION = '1.3';
 
 // 1.2 (2026-09-25): project-type profiles (IT / Web Design / Web Application / App
 // Development) for task-length limits, expected phases (R31) and key milestones (R32);
@@ -154,6 +154,7 @@ export const RULES: Record<string, RuleMeta> = {
   R30: { id: 'R30', name: "Summary dates don't cover its tasks", severity: 'medium', scope: 'task' },
   R31: { id: 'R31', name: 'Standard phases missing', severity: 'medium', scope: 'schedule' },
   R32: { id: 'R32', name: 'Key milestones missing', severity: 'low', scope: 'schedule' },
+  R33: { id: 'R33', name: "Milestone name doesn't say what becomes true", severity: 'low', scope: 'task' },
 };
 
 const MAX_DEDUCTION: Record<Severity, number> = { critical: 25, high: 12, medium: 6, low: 2, info: 0 };
@@ -162,6 +163,8 @@ const FULL_DEDUCTION_FRACTION = 0.2;
 
 /** Strong milestone signals: the word itself, or a numbered gate. */
 const MILESTONE_NAME = /\bmilestone\b|\bgate\s*-?\s*\d/i;
+/** A past-participle outcome (or an event that is itself a state) — what a milestone name should state */
+const MILESTONE_OUTCOME = /\b(approved|accepted|signed[\s-]?off|completed?|done|delivered|awarded|received|issued|passed|closed|started|kicked[\s-]?off|launched|live|achieved|reached|ready|agreed|confirmed|handed[\s-]?over|released|deployed|submitted|finished|opened|decided)\b/i;
 /** Weaker signals that only count when the task is not also described as work. */
 const MILESTONE_EVENT = /\b(sign[\s-]?off|acceptance|go[\s-]?live|approval)\b/i;
 const WORK_VERB = /\b(review|test|testing|execution|cutover|preparation|remediation|configuration|migration|training|support|development|build)\b/i;
@@ -337,7 +340,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   const msWithDuration = g.all.filter(t => isMilestoneLike(t) && ymd(t.startDate) && ymd(t.endDate) && ymd(t.startDate) !== ymd(t.endDate) && !t.isSummary);
   for (const t of msWithDuration) {
     const span = calendarDaySpan(ymd(t.startDate)!, ymd(t.endDate)!);
-    findings.push(make('R04', [t.id], `'${t.name}' spans ${plural(span, 'day')}. A milestone is a decision on a single day.`));
+    findings.push(make('R04', [t.id], `'${t.name}' spans ${plural(span, 'day')}. A milestone takes zero days: it marks the point when something becomes true. Split it into the work (e.g. 'Review …', 'Approve …') and the milestone ('… Approved').`));
   }
 
   // R05 — Milestone not flagged
@@ -620,8 +623,16 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     }
     const missingMilestones = findMissingMilestones(g.all, profile);
     if (missingMilestones.length > 0) {
-      findings.push(make('R32', [], `For ${profile.description}, expected milestones include ${profile.milestones.map(m => m.label).join(', ')}. None found for ${missingMilestones.join(', ')}. Add ${missingMilestones.length === 1 ? 'it as a milestone' : 'them as milestones'} (a single day, flagged as a milestone).`));
+      findings.push(make('R32', [], `For ${profile.description}, expected milestones include ${profile.milestones.map(m => m.label).join(', ')}. None found for ${missingMilestones.join(', ')}. Add ${missingMilestones.length === 1 ? 'it as a milestone' : 'them as milestones'} (zero days, named as the outcome — e.g. 'Design Approved').`));
     }
+  }
+
+  // R33 — A milestone's name should say what becomes true ("Inception Report Approved"), not an
+  // activity or a label ("Acceptance", "Gate 1", "Sign-off"). Tasks are verb + object; milestones
+  // are object + past participle (user's rule, 2026-09-29).
+  const vague = g.all.filter(t => !t.isSummary && !!t.isMilestone && !MILESTONE_OUTCOME.test(t.name || ''));
+  if (vague.length > 0) {
+    findings.push(make('R33', vague.map(t => t.id), `${plural(vague.length, 'milestone')} ${vague.length === 1 ? "doesn't" : "don't"} say what becomes true: ${listNames(vague)}. Name a milestone as the outcome — '<thing> Approved', '<thing> Accepted', 'Go-Live Complete'.`));
   }
 
   return { findings, skipped, leafTaskCount: n };
