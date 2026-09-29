@@ -449,7 +449,7 @@ describe('1.2 project-type profiles and summary checks', () => {
   }
 
   it('bumps the rules version', () => {
-    expect(reviewSchedule(input([])).rulesVersion).toBe('1.3') // 1.3: R33 milestone names state an outcome; R04 suggests a split;
+    expect(reviewSchedule(input([])).rulesVersion).toBe('1.4') // 1.3: R33 milestone names state an outcome; R04 suggests a split;
   });
 
   it('a complete IT/SDLC plan raises no phase or milestone findings', () => {
@@ -555,5 +555,23 @@ describe('R33 — a milestone name says what becomes true', () => {
       task({ name: 'Gate 1 – Inception Report Review & Acceptance (MILESTONE - 1)', isMilestone: true, startDate: '2026-07-22', endDate: '2026-07-31' }),
     ]));
     expect((rule(findings, 'R04')[0] as any).message).toContain('A milestone takes zero days');
+  });
+});
+
+describe('R34 — ongoing reporting/meetings booked full-time', () => {
+  const long = { startDate: '2026-10-12', endDate: '2027-02-26' };
+  it('flags a months-long status report assigned with no %, not one with a % or a short one', () => {
+    const { findings } = reviewSchedule(input([
+      task({ id: 'a', name: 'Weekly status report and RAID review (recurring)', assignedTo: 'michael', ...long }),
+      task({ id: 'b', name: 'Steering committee meetings', assignments: [{ resourceId: 'm', allocationPct: 10 }], ...long }),
+      task({ id: 'c', name: 'Kick-off status meeting', assignedTo: 'michael', startDate: '2026-10-12', endDate: '2026-10-16' }),
+      task({ id: 'd', name: 'Build payments API', assignedTo: 'dev', ...long }),
+      task({ id: 'e', name: 'Monthly progress report', ...long }),
+      task({ id: 'f', name: 'Project management and governance', assignments: [{ resourceId: 'm', allocationPct: 100 }], ...long }),
+    ]));
+    const r34 = rule(findings, 'R34');
+    expect(r34).toHaveLength(1);
+    expect((r34[0] as any).taskIds).toEqual(['a', 'f']);
+    expect((r34[0] as any).message).toContain('10–20%');
   });
 });

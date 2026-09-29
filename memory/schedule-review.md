@@ -2,6 +2,9 @@
 
 Source of truth: Claude Doc "Schedule Review Spec" (https://claude.ai/code/artifact/3ca60bdf-7674-4668-b205-020981c1edc7), also exported as PDF to the user on 2026-09-16. This file carries enough of it to keep building without the doc.
 
+## Rules v1.4 (2026-09-29) — R34 ongoing task booked full-time
+- Low. Leaf, not milestone, ≥28 days, name matches `ONGOING_WORK` (status report, RAID, stand-up, check-in, governance, steering, PM, PMO, recurring, weekly/monthly, progress report, reporting, coordination, oversight), and assigned with no % or any person at ≥100%. Review tasks now carry `allocationPct`. Prompted by NSWMA: Michael 300% from a 20-week "Weekly status report and RAID review" at 100%.
+
 ## Rules v1.3 (2026-09-29) — milestones
 - User's rules: a milestone takes zero days; tasks = verb + object, milestones = object + past participle; don't perpetuate wrong source wording; option A split (Review → Approve → X Approved → Gate N Approved: proceed to <next step> — next phase, else the task waiting on the gate, else the next line; never guessed from "GO-LIVE").
 - `fixProposer.milestoneSplitParts` + split fix for R04/R05 lines spanning ≥2 days (was set_milestone, which collapsed DBJ-Loans' Gate 1 to one day); AI splits skipped for those lines. R04 wording; R33 (low) milestone name doesn't state an outcome. RULES_VERSION 1.3 (no alert across the version change).

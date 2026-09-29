@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-29 (Schedule Review R34, rules v1.4)
+
+- Flags month-plus reporting/meeting/oversight tasks booked full-time (no % or 100%) — they inflate workload and Conflicts. See `memory/schedule-review.md`.
+
 ## 2026-09-28 (Workload counts real assignments; Gantt Conflicts uses it)
 
 - Found: the Workload Heatmap read only `resource_assignments` (hours bookings) — empty on staging — while people are assigned via `task_assignments` (% on the task, 16 rows) and `tasks.assigned_to` (holds a resource id; 29 tasks). Heatmap showed nothing.

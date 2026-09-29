@@ -2779,6 +2779,8 @@ The column mapping component (`ColumnMapper`) is shared between the "From File" 
 
 ### Schedule Review (automatic after import, on demand from the toolbar)
 
+*Rules v1.4 (Sep 2026) adds R34 "Ongoing task books someone full-time" (low): a leaf task spanning 28+ days whose name reads as reporting / meetings / oversight (status report, RAID, stand-up, steering, governance, weekly, monthly, …) and whose person has no allocation % or 100%. Such tasks count as full-time in workload and the Gantt's Conflicts.*
+
 Schedule Review is a deterministic quality check that tells a PM whether a schedule can predict and control delivery, or is still a tracking sheet. It runs automatically after every CSV/Excel/XML import and on demand from the **Review** button (placed after Columns in both Table and Gantt toolbars). No AI is involved in this phase: the same schedule always produces the same findings and the same score.
 
 **Schedule Health Score (0–100).** Start at 100; each rule that fires deducts points scaled by the share of leaf tasks it affects (full deduction at 20% or more), capped per rule at Critical 25, High 12, Medium 6, Low 2, Info 0. Bands: 0–39 *Tracking sheet*, 40–69 *Needs work*, 70–89 *Controllable*, 90–100 *Fit for control*. The panel shows the points each finding cost, so the number is reproducible.

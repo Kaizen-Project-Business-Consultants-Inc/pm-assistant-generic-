@@ -124,7 +124,7 @@ function toReviewTask(t: Awaited<ReturnType<typeof scheduleService.findTasksBySc
     estimatedDurationHours: t.estimatedDurationHours,
     progressPercentage: t.progressPercentage,
     assignedTo: t.assignedTo,
-    assignments: t.assignments?.map(a => ({ resourceId: a.resourceId })),
+    assignments: t.assignments?.map(a => ({ resourceId: a.resourceId, allocationPct: a.allocationPct })),
     isMilestone: t.isMilestone,
     isSummary: t.isSummary,
     parentTaskId: t.parentTaskId,

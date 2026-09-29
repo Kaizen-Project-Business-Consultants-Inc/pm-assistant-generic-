@@ -10,7 +10,7 @@
 
 import { profileFor, matchesAny, type DomainProfile } from './domainProfiles';
 
-export const RULES_VERSION = '1.3';
+export const RULES_VERSION = '1.4';
 
 // 1.2 (2026-09-25): project-type profiles (IT / Web Design / Web Application / App
 // Development) for task-length limits, expected phases (R31) and key milestones (R32);
@@ -36,7 +36,7 @@ export interface ReviewTask {
   estimatedDurationHours?: number | null;
   progressPercentage?: number | null;
   assignedTo?: string | null;
-  assignments?: Array<{ resourceId: string }> | null;
+  assignments?: Array<{ resourceId: string; allocationPct?: number | null }> | null;
   isMilestone?: boolean | null;
   isSummary?: boolean | null;
   parentTaskId?: string | null;
@@ -155,6 +155,7 @@ export const RULES: Record<string, RuleMeta> = {
   R31: { id: 'R31', name: 'Standard phases missing', severity: 'medium', scope: 'schedule' },
   R32: { id: 'R32', name: 'Key milestones missing', severity: 'low', scope: 'schedule' },
   R33: { id: 'R33', name: "Milestone name doesn't say what becomes true", severity: 'low', scope: 'task' },
+  R34: { id: 'R34', name: 'Ongoing task books someone full-time', severity: 'low', scope: 'task' },
 };
 
 const MAX_DEDUCTION: Record<Severity, number> = { critical: 25, high: 12, medium: 6, low: 2, info: 0 };
@@ -635,8 +636,28 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     findings.push(make('R33', vague.map(t => t.id), `${plural(vague.length, 'milestone')} ${vague.length === 1 ? "doesn't" : "don't"} say what becomes true: ${listNames(vague)}. Name a milestone as the outcome — '<thing> Approved', '<thing> Accepted', 'Go-Live Complete'.`));
   }
 
+  // R34 — Reporting, meetings and oversight that run for a month or more rarely take someone's
+  // whole week, but with no % on the person they count as 100% in workload and the Gantt's
+  // Conflicts (NSWMA: "Weekly status report and RAID review" kept the PM at 100%+ for 20 weeks).
+  const fullTimeOverhead = g.leaves.filter(t => {
+    if (t.isMilestone) return false;
+    const s = ymd(t.startDate);
+    const e = ymd(t.endDate);
+    if (!s || !e || calendarDaySpan(s, e) < ONGOING_MIN_DAYS || !ONGOING_WORK.test(t.name || '')) return false;
+    const people = t.assignments || [];
+    if (people.length > 0) return people.some(a => (a.allocationPct ?? 100) >= 100);
+    return !!(t.assignedTo || '').trim();
+  });
+  if (fullTimeOverhead.length > 0) {
+    findings.push(make('R34', fullTimeOverhead.map(t => t.id), `${plural(fullTimeOverhead.length, 'ongoing task')} ${fullTimeOverhead.length === 1 ? 'books' : 'book'} someone full-time for a month or more: ${listNames(fullTimeOverhead)}. Reporting, meetings and oversight take part of a week — add the person on the task with a % (e.g. 10–20%) so workload and Conflicts show their real load.`));
+  }
+
   return { findings, skipped, leafTaskCount: n };
 }
+
+/** R34: a task this long that sounds like reporting, meetings or oversight */
+const ONGOING_MIN_DAYS = 28;
+const ONGOING_WORK = /\b(status (reports?|updates?|meetings?)|raid|stand-?ups?|check-?ins?|governance|steering|project management|pmo|recurring|weekly|fortnightly|bi-?weekly|monthly|progress (reports?|meetings?)|reporting|coordination|oversight)\b/i;
 
 /**
  * Standard phases of the profile that no task covers. Phases are work, so only
