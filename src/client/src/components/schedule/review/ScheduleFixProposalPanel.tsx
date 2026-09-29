@@ -24,6 +24,7 @@ interface ProposedFix {
   gateName?: string;
   bufferDays?: number;
   parts?: Array<{ name: string; isMilestone: boolean; days: number }>;
+  replace?: boolean;
   phaseLabel?: string;
   newTaskName?: string;
   newTaskDays?: number;
@@ -82,7 +83,7 @@ function fixText(f: ProposedFix): string {
   if (f.type === 'insert_buffer') return `Add a ${f.bufferDays}-day buffer before '${f.gateName}'`;
   if (f.type === 'split_task') {
     const steps = (f.parts ?? []).map((p, i) => `${i + 1}. ${p.name}${p.isMilestone ? ' (milestone)' : ''}`).join('  ');
-    return `Split '${f.taskName}' into: ${steps}`;
+    return f.replace ? `Replace '${f.taskName}' with: ${steps}` : `Split '${f.taskName}' into: ${steps}`;
   }
   if (f.type === 'add_task') {
     const where = f.afterTaskName ? ` after '${f.afterTaskName}'` : '';

@@ -33,8 +33,10 @@ export interface ProposedFix {
   gateTaskId?: string;     // the gate/milestone to protect
   gateName?: string;
   bufferDays?: number;     // size of the buffer task to insert before the gate
-  // split_task — the task (taskId/taskName) becomes a summary over these parts, in order
+  // split_task — the task (taskId/taskName) becomes a summary over these parts, in order;
+  // with replace, the parts take the task's place instead (a milestone line is not a phase)
   parts?: SplitPart[];
+  replace?: boolean;
   // add_task — a missing standard phase, added as one linked task
   phaseLabel?: string;     // "Testing"
   newTaskName?: string;    // "System and user acceptance testing"
@@ -188,6 +190,7 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
         taskId: t.id,
         taskName: t.name,
         parts,
+        replace: true,
       }));
     }
   }

@@ -3,6 +3,7 @@
 ## 2026-09-28 (gate "proceed to" names the real next step)
 
 - `nextStepName` in `scheduleReview/fixProposer.ts`: next phase → else the task waiting on the gate (not FF) → else the next line. Dropped the "GO-LIVE in the name → proceed to Go-Live" guess: DBJ-Loans Gate 4 is the sign-off after cutover and leads into Post-Go-Live Support.
+- Milestone splits now REPLACE the line (`replace: true` on the fix; the task becomes the first part, `restore_task` undo op) instead of becoming a summary over the parts — user: "you made task 5 a summary task".
 - DBJ-Loans (staging, michaela) repaired by hand: Gates 1, 2, 4 restored and split; gate names; link Desk Review → Review Inception Report; Gate 3 → "UAT Signed Off (Gate 3)"; FF link Go-Live Execution → Approve Task 4 Deliverables. Finish unchanged 20 Mar 2027.
 
 ## 2026-09-28 (AI cost control — user approved, $100/month cap)

@@ -204,6 +204,37 @@ describe('ScheduleFixProposerService', () => {
     expect(res.appliedCount).toBe(1);
   });
 
+  it('applies a replacing split: the milestone line becomes the first part, no summary, undo restores it', async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const prop = { ...PROPOSAL, proposalData: { fixes: [
+      { id: 'split:g1', type: 'split_task', confidence: 0.85, reason: 'x', defaultChecked: true, taskId: 'g1', taskName: 'Gate 1 – Inception Report Review & Acceptance', replace: true,
+        parts: [{ name: 'Review Inception Report', isMilestone: false, days: 7 }, { name: 'Approve Inception Report', isMilestone: false, days: 3 },
+          { name: 'Inception Report Approved', isMilestone: true, days: 0 }] },
+    ] } };
+    vi.mocked(repo.findById).mockResolvedValue({ ...prop } as any);
+    vi.mocked(scheduleService.createTask).mockResolvedValueOnce({ id: 'p2' } as any).mockResolvedValueOnce({ id: 'p3' } as any);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue([
+      { id: 'pre', name: 'Desk review', dependencies: [] },
+      { id: 'g1', name: 'Gate 1 – Inception Report Review & Acceptance', startDate: '2026-07-22', endDate: '2026-07-31', parentTaskId: 'ph', isMilestone: false, estimatedDays: 10,
+        dependencies: [{ dependencyId: 'pre', dependencyType: 'FS', lagDays: 0 }] },
+      { id: 'nxt', name: 'System study', dependencies: [{ dependencyId: 'g1', dependencyType: 'FS', lagDays: 0 }] },
+    ] as any);
+
+    await (await svc()).apply('s1', 'prop-1', ['split:g1'], 'u1');
+
+    expect(scheduleService.updateTask).toHaveBeenCalledWith('g1', expect.objectContaining({ name: 'Review Inception Report', isMilestone: false, startDate: '2026-07-22' }));
+    expect(scheduleService.createTask).toHaveBeenNthCalledWith(1, expect.objectContaining({ name: 'Approve Inception Report', parentTaskId: 'ph', afterTaskId: 'g1' }));
+    expect(scheduleService.createTask).toHaveBeenNthCalledWith(2, expect.objectContaining({ name: 'Inception Report Approved', parentTaskId: 'ph', afterTaskId: 'p2', isMilestone: true }));
+    expect(scheduleService.addDependency).toHaveBeenCalledWith('p2', 'g1', 'FS', 0);
+    expect(scheduleService.addDependency).toHaveBeenCalledWith('p3', 'p2', 'FF', 0);
+    expect(scheduleService.removeDependency).not.toHaveBeenCalledWith('g1', 'pre');       // keeps its predecessor
+    expect(scheduleService.addDependency).toHaveBeenCalledWith('nxt', 'p3', 'FS', 0);     // successor waits on the last part
+    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    expect(log[0]).toEqual({ op: 'restore_task', taskId: 'g1', oldValue: { name: 'Gate 1 – Inception Report Review & Acceptance', isMilestone: false, estimatedDays: 10, startDate: '2026-07-22', endDate: '2026-07-31' } });
+    expect(log.map(a => a.op)).toEqual(['restore_task', 'delete_task', 'delete_task', 'readd_dependency', 'remove_dependency']);
+  });
+
   it('applies add_task: one task after its anchor, linked both ways, removed on undo', async () => {
     const { scheduleService } = await import('../../services/ScheduleService');
     const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');

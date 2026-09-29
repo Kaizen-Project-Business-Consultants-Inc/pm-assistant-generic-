@@ -358,11 +358,27 @@ export class ScheduleFixProposerService {
         const planned = planSplitDates(String(t.startDate), String(t.endDate), f.parts);
         const created: string[] = [];
         let after = t.id;
-        for (const part of planned) {
+        // Replace (a milestone-named line): the task itself becomes the first part, so its
+        // row, predecessors and history stay; the other parts follow it at the same level.
+        let toCreate = planned;
+        if (f.replace) {
+          const [head, ...rest] = planned;
+          applied.push({
+            op: 'restore_task', taskId: t.id,
+            oldValue: { name: t.name, isMilestone: !!t.isMilestone, estimatedDays: t.estimatedDays ?? null, startDate: String(t.startDate).slice(0, 10), endDate: String(t.endDate).slice(0, 10) },
+          });
+          await scheduleService.updateTask(t.id, {
+            name: head.name, isMilestone: head.isMilestone, startDate: head.startDate, endDate: head.endDate,
+            estimatedDays: head.isMilestone ? 0 : head.days,
+          } as any);
+          created.push(t.id);
+          toCreate = rest;
+        }
+        for (const part of toCreate) {
           const child = await scheduleService.createTask({
             scheduleId,
             name: part.name,
-            parentTaskId: t.id,
+            parentTaskId: f.replace ? (t.parentTaskId || undefined) : t.id,
             afterTaskId: after,
             startDate: part.startDate,
             endDate: part.endDate,
@@ -385,7 +401,7 @@ export class ScheduleFixProposerService {
         }
         const first = created[0];
         const last = created[created.length - 1];
-        for (const d of t.dependencies || []) {
+        for (const d of f.replace ? [] : t.dependencies || []) { // replaced: the task is the first part and keeps them
           await scheduleService.addDependency(first, d.dependencyId, (d.dependencyType || 'FS') as any, d.lagDays ?? 0);
           await scheduleService.removeDependency(t.id, d.dependencyId);
           applied.push({ op: 'readd_dependency', taskId: t.id, dependencyId: d.dependencyId, dependencyType: (d.dependencyType || 'FS') as any, lagDays: d.lagDays ?? 0 });
@@ -524,6 +540,13 @@ export class ScheduleFixProposerService {
           case 'delete_task':
             await scheduleService.deleteTask(action.taskId!);
             break;
+          case 'restore_task': {
+            const o = action.oldValue as { name: string; isMilestone: boolean; estimatedDays: number | null; startDate: string; endDate: string };
+            await scheduleService.updateTask(action.taskId!, {
+              name: o.name, isMilestone: o.isMilestone, estimatedDays: o.estimatedDays ?? undefined, startDate: o.startDate, endDate: o.endDate,
+            } as any);
+            break;
+          }
         }
       } catch (err: any) {
         logger.warn('[ScheduleFix] undo step failed', { proposalId, op: action.op, error: err?.message });
