@@ -449,7 +449,7 @@ describe('1.2 project-type profiles and summary checks', () => {
   }
 
   it('bumps the rules version', () => {
-    expect(reviewSchedule(input([])).rulesVersion).toBe('1.4') // 1.3: R33 milestone names state an outcome; R04 suggests a split;
+    expect(reviewSchedule(input([])).rulesVersion).toBe('1.5') // 1.3: R33 milestone names state an outcome; R04 suggests a split;
   });
 
   it('a complete IT/SDLC plan raises no phase or milestone findings', () => {
@@ -573,5 +573,25 @@ describe('R34 — ongoing reporting/meetings booked full-time', () => {
     expect(r34).toHaveLength(1);
     expect((r34[0] as any).taskIds).toEqual(['a', 'f']);
     expect((r34[0] as any).message).toContain('10–20%');
+  });
+});
+
+describe('R35 / R36 — how many tasks sit directly under a heading', () => {
+  it('flags a heading over one task and one over more than 15, not a normal phase', () => {
+    const kids = (parent: string, count: number, prefix: string) =>
+      Array.from({ length: count }, (_, i) => task({ id: `${prefix}${i}`, name: `${prefix} task ${i}`, parentTaskId: parent, startDate: '2026-10-05', endDate: '2026-10-09' }));
+    const { findings } = reviewSchedule(input([
+      task({ id: 'solo', name: 'Gate 1', isSummary: true, startDate: '2026-10-05', endDate: '2026-10-09' }),
+      ...kids('solo', 1, 's'),
+      task({ id: 'ok', name: 'Design', isSummary: true, startDate: '2026-10-05', endDate: '2026-10-09' }),
+      ...kids('ok', 6, 'd'),
+      task({ id: 'big', name: 'Build', isSummary: true, startDate: '2026-10-05', endDate: '2026-10-09' }),
+      ...kids('big', 16, 'b'),
+    ]));
+    const r35 = rule(findings, 'R35');
+    const r36 = rule(findings, 'R36');
+    expect((r35[0] as any).taskIds).toEqual(['solo']);
+    expect((r36[0] as any).taskIds).toEqual(['big']);
+    expect((r36[0] as any).message).toContain("'Build' (16)");
   });
 });

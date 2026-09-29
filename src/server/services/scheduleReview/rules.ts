@@ -10,7 +10,7 @@
 
 import { profileFor, matchesAny, type DomainProfile } from './domainProfiles';
 
-export const RULES_VERSION = '1.4';
+export const RULES_VERSION = '1.5';
 
 // 1.2 (2026-09-25): project-type profiles (IT / Web Design / Web Application / App
 // Development) for task-length limits, expected phases (R31) and key milestones (R32);
@@ -156,6 +156,8 @@ export const RULES: Record<string, RuleMeta> = {
   R32: { id: 'R32', name: 'Key milestones missing', severity: 'low', scope: 'schedule' },
   R33: { id: 'R33', name: "Milestone name doesn't say what becomes true", severity: 'low', scope: 'task' },
   R34: { id: 'R34', name: 'Ongoing task books someone full-time', severity: 'low', scope: 'task' },
+  R35: { id: 'R35', name: 'Heading over a single task', severity: 'low', scope: 'task' },
+  R36: { id: 'R36', name: 'Heading with too many tasks directly under it', severity: 'low', scope: 'task' },
 };
 
 const MAX_DEDUCTION: Record<Severity, number> = { critical: 25, high: 12, medium: 6, low: 2, info: 0 };
@@ -652,8 +654,23 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     findings.push(make('R34', fullTimeOverhead.map(t => t.id), `${plural(fullTimeOverhead.length, 'ongoing task')} ${fullTimeOverhead.length === 1 ? 'books' : 'book'} someone full-time for a month or more: ${listNames(fullTimeOverhead)}. Reporting, meetings and oversight take part of a week — add the person on the task with a % (e.g. 10–20%) so workload and Conflicts show their real load.`));
   }
 
+  // R35 / R36 — How much sits directly under a heading. No standard sets a number, but a heading
+  // over one task adds nothing, and more than ~15 lines under one heading is hard to read — the
+  // usual guidance is about 3–10 (user discussion, 2026-09-29).
+  const single = g.summaries.filter(s => (g.childrenOf.get(s.id) || []).length === 1);
+  if (single.length > 0) {
+    findings.push(make('R35', single.map(t => t.id), `${plural(single.length, 'heading')} ${single.length === 1 ? 'has' : 'have'} only one task under ${single.length === 1 ? 'it' : 'them'}: ${listNames(single)}. A heading over one task adds nothing — move the task up a level and remove the heading, or group more of the related work under it.`));
+  }
+  const crowded = g.summaries.filter(s => (g.childrenOf.get(s.id) || []).length > MAX_DIRECT_CHILDREN);
+  if (crowded.length > 0) {
+    findings.push(make('R36', crowded.map(t => t.id), `${plural(crowded.length, 'heading')} ${crowded.length === 1 ? 'has' : 'have'} more than ${MAX_DIRECT_CHILDREN} tasks directly under ${crowded.length === 1 ? 'it' : 'them'}: ${crowded.slice(0, 3).map(s => `'${s.name}' (${(g.childrenOf.get(s.id) || []).length})`).join(', ')}${crowded.length > 3 ? ` and ${crowded.length - 3} more` : ''}. Split the work into sub-phases (about 3–10 tasks each) so the plan can be read at a glance — select the tasks and use Group.`));
+  }
+
   return { findings, skipped, leafTaskCount: n };
 }
+
+/** R36: more than this many tasks directly under one heading */
+const MAX_DIRECT_CHILDREN = 15;
 
 /** R34: a task this long that sounds like reporting, meetings or oversight */
 const ONGOING_MIN_DAYS = 28;

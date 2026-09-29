@@ -2,6 +2,9 @@
 
 Source of truth: Claude Doc "Schedule Review Spec" (https://claude.ai/code/artifact/3ca60bdf-7674-4668-b205-020981c1edc7), also exported as PDF to the user on 2026-09-16. This file carries enough of it to keep building without the doc.
 
+## Rules v1.5 (2026-09-29) — R35 / R36 tasks under a heading
+- R35 (low): summary with exactly one direct child. R36 (low): summary with more than 15 direct children (`MAX_DIRECT_CHILDREN`). No standard number; user discussion: never 1, ~3–10 typical.
+
 ## Rules v1.4 (2026-09-29) — R34 ongoing task booked full-time
 - Low. Leaf, not milestone, ≥28 days, name matches `ONGOING_WORK` (status report, RAID, stand-up, check-in, governance, steering, PM, PMO, recurring, weekly/monthly, progress report, reporting, coordination, oversight), and assigned with no % or any person at ≥100%. Review tasks now carry `allocationPct`. Prompted by NSWMA: Michael 300% from a 20-week "Weekly status report and RAID review" at 100%.
 
