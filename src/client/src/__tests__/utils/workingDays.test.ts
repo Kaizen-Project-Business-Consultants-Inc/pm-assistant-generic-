@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { workingDaysBetween, finishAfterWorkingDays, type WorkCalendar } from '../../utils/workingDays';
+import { workingDaysBetween, finishAfterWorkingDays, addCalendarDays, nextWorkingDay, previousWorkingDay, moveKeepingWorkingLength, snapSpanToWorkingDays, type WorkCalendar } from '../../utils/workingDays';
 
 // Oct 2026: Thu 8, Fri 9, Sat 10, Sun 11, Mon 12, Tue 13
 describe('workingDaysBetween', () => {
@@ -42,5 +42,58 @@ describe('finishAfterWorkingDays', () => {
   it('null for bad input', () => {
     expect(finishAfterWorkingDays('2026-10-08', 0)).toBeNull();
     expect(finishAfterWorkingDays(null, 2)).toBeNull();
+  });
+});
+
+describe('addCalendarDays', () => {
+  it('adds and subtracts calendar days across a month end', () => {
+    expect(addCalendarDays('2026-10-30', 3)).toBe('2026-11-02');
+    expect(addCalendarDays('2026-11-02', -3)).toBe('2026-10-30');
+    expect(addCalendarDays('bad', 1)).toBeNull();
+  });
+});
+
+describe('nextWorkingDay / previousWorkingDay', () => {
+  it('a working day stays put', () => {
+    expect(nextWorkingDay('2026-10-08')).toBe('2026-10-08');
+    expect(previousWorkingDay('2026-10-08')).toBe('2026-10-08');
+  });
+  it('a weekend day goes to Monday (next) or Friday (previous)', () => {
+    expect(nextWorkingDay('2026-10-10')).toBe('2026-10-12');
+    expect(previousWorkingDay('2026-10-11')).toBe('2026-10-09');
+  });
+  it('skips a holiday and honours a Saturday marked working', () => {
+    const cal: WorkCalendar = { nonWorking: new Set(['2026-10-09', '2026-10-11', '2026-10-12']), from: '2026-10-01', to: '2026-10-31' };
+    expect(nextWorkingDay('2026-10-09', cal)).toBe('2026-10-10'); // Sat is working
+    expect(nextWorkingDay('2026-10-11', cal)).toBe('2026-10-13');
+    expect(previousWorkingDay('2026-10-12', cal)).toBe('2026-10-10');
+  });
+});
+
+describe('moveKeepingWorkingLength', () => {
+  it('keeps the working-day length: a Thu–Fri task dropped on Fri runs Fri–Mon', () => {
+    expect(moveKeepingWorkingLength('2026-10-08', '2026-10-09', '2026-10-09')).toEqual({ start: '2026-10-09', end: '2026-10-12' });
+  });
+  it('a drop on a Saturday starts on Monday', () => {
+    expect(moveKeepingWorkingLength('2026-10-08', '2026-10-09', '2026-10-10')).toEqual({ start: '2026-10-12', end: '2026-10-13' });
+  });
+  it('skips a holiday inside the new span', () => {
+    const cal: WorkCalendar = { nonWorking: new Set(['2026-10-10', '2026-10-11', '2026-10-13']), from: '2026-10-01', to: '2026-10-31' };
+    expect(moveKeepingWorkingLength('2026-10-05', '2026-10-06', '2026-10-12', cal)).toEqual({ start: '2026-10-12', end: '2026-10-14' });
+  });
+  it('a milestone keeps start = finish, on a working day', () => {
+    expect(moveKeepingWorkingLength('2026-10-08', '2026-10-08', '2026-10-11', null, true)).toEqual({ start: '2026-10-12', end: '2026-10-12' });
+  });
+  it('a task sitting only on a weekend moves as one day', () => {
+    expect(moveKeepingWorkingLength('2026-10-10', '2026-10-11', '2026-10-14')).toEqual({ start: '2026-10-14', end: '2026-10-14' });
+  });
+});
+
+describe('snapSpanToWorkingDays', () => {
+  it('start forward, finish back', () => {
+    expect(snapSpanToWorkingDays('2026-10-10', '2026-10-18')).toEqual({ start: '2026-10-12', end: '2026-10-16' });
+  });
+  it('a span wholly on a weekend becomes one day on the next working day', () => {
+    expect(snapSpanToWorkingDays('2026-10-10', '2026-10-11')).toEqual({ start: '2026-10-12', end: '2026-10-12' });
   });
 });

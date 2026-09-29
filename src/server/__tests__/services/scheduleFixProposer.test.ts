@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { proposeFixesDeterministic, buildGroupingFixes, splitCandidates, buildSplitFixes, buildPhaseFixes, planSplitDates } from '../../services/scheduleReview/fixProposer';
 import type { Finding, ReviewTask } from '../../services/scheduleReview/rules';
+import { weekdaysOnly } from '../../utils/workingDays';
 
 let seq = 0;
 function task(over: Partial<ReviewTask> & { name: string }): ReviewTask {
@@ -62,18 +63,19 @@ describe('proposeFixesDeterministic', () => {
 
   it('proposes set_duration when estimatedDays disagrees with the date span, not when it agrees', () => {
     seq = 0;
+    // Mon 5 - Mon 19 Oct is 11 working days, start day counted
     const wrong = task({ id: 'w', name: 'Build', startDate: '2026-10-05', endDate: '2026-10-19', estimatedDays: 1 });
-    const right = task({ id: 'r', name: 'Design', startDate: '2026-10-05', endDate: '2026-10-19', estimatedDays: 14 });
+    const right = task({ id: 'r', name: 'Design', startDate: '2026-10-05', endDate: '2026-10-19', estimatedDays: 11 });
     const fixes = proposeFixesDeterministic([], [wrong, right]);
     const dur = fixes.filter(f => f.type === 'set_duration');
     expect(dur.map(d => d.taskId)).toEqual(['w']);
-    expect(dur[0].newDuration).toBe(14);
+    expect(dur[0].newDuration).toBe(11);
     expect(dur[0].defaultChecked).toBe(true);
   });
 
   it('proposes a buffer before a gate that already has a predecessor, sized ~15% of the feeder', () => {
     seq = 0;
-    const work = task({ id: 'p', name: 'Build work', startDate: '2026-10-01', endDate: '2026-10-21' }); // ~20 days
+    const work = task({ id: 'p', name: 'Build work', startDate: '2026-10-01', endDate: '2026-10-28' }); // 20 working days
     const gate = task({ id: 'g', name: 'Gate 1', isMilestone: true, dependencies: [{ dependencyId: 'p' }] });
     const buf = proposeFixesDeterministic([], [work, gate]).filter(f => f.type === 'insert_buffer');
     expect(buf).toHaveLength(1);
@@ -210,25 +212,65 @@ describe('Phase 2 — split bundled tasks, add missing phases', () => {
       { name: 'Circulate BRD', isMilestone: false, days: 8 },
       { name: 'BRD approved', isMilestone: true, days: 0 },
     ]);
+    // Thu 1 - Sat 10 Oct: the working days are Thu 1 - Fri 9 (7 days); nothing lands on the weekend
     expect(plan).toEqual([
-      { name: 'Circulate BRD', isMilestone: false, days: 8, startDate: '2026-10-01', endDate: '2026-10-10' },
-      { name: 'BRD approved', isMilestone: true, days: 0, startDate: '2026-10-10', endDate: '2026-10-10' },
+      { name: 'Circulate BRD', isMilestone: false, days: 7, startDate: '2026-10-01', endDate: '2026-10-09' },
+      { name: 'BRD approved', isMilestone: true, days: 0, startDate: '2026-10-09', endDate: '2026-10-09' },
     ]);
     const three = planSplitDates('2026-10-01', '2026-10-10', [
       { name: 'Draft', isMilestone: false, days: 3 },
       { name: 'Review', isMilestone: false, days: 2 },
       { name: 'Signed', isMilestone: true, days: 0 },
     ]);
-    expect(three.map(p => [p.startDate, p.endDate])).toEqual([['2026-10-01', '2026-10-06'], ['2026-10-07', '2026-10-10'], ['2026-10-10', '2026-10-10']]);
+    expect(three.map(p => [p.startDate, p.endDate, p.days])).toEqual([['2026-10-01', '2026-10-06', 4], ['2026-10-07', '2026-10-09', 3], ['2026-10-09', '2026-10-09', 0]]);
   });
 
   it('planSplitDates always fills the span exactly and gives each work part at least a day', () => {
-    const plan = planSplitDates('2026-10-01', '2026-10-03', [
+    const plan = planSplitDates('2026-10-05', '2026-10-07', [
       { name: 'A', isMilestone: false, days: 30 }, { name: 'B', isMilestone: false, days: 1 }, { name: 'C', isMilestone: false, days: 1 },
     ]);
-    expect(plan.map(p => [p.startDate, p.endDate])).toEqual([['2026-10-01', '2026-10-01'], ['2026-10-02', '2026-10-02'], ['2026-10-03', '2026-10-03']]);
+    expect(plan.map(p => [p.startDate, p.endDate])).toEqual([['2026-10-05', '2026-10-05'], ['2026-10-06', '2026-10-06'], ['2026-10-07', '2026-10-07']]);
     const tight = planSplitDates('2026-10-01', '2026-10-01', [{ name: 'A', isMilestone: false, days: 1 }, { name: 'B', isMilestone: false, days: 1 }]);
     expect(tight.every(p => p.startDate === '2026-10-01' && p.endDate === '2026-10-01')).toBe(true); // more parts than days: parallel
+  });
+});
+
+describe('working days (project calendar)', () => {
+  const holidayMon = (d: Date) => weekdaysOnly(d) && d.toISOString().slice(0, 10) !== '2026-10-12';
+
+  it('planSplitDates skips weekends and project holidays inside the span', () => {
+    // Fri 9 - Wed 14 Oct with Mon 12 off: working days Fri 9, Tue 13, Wed 14
+    const plan = planSplitDates('2026-10-09', '2026-10-14', [
+      { name: 'Review', isMilestone: false, days: 2 }, { name: 'Approve', isMilestone: false, days: 1 }, { name: 'Approved', isMilestone: true, days: 0 },
+    ], holidayMon);
+    expect(plan.map(p => [p.name, p.startDate, p.endDate, p.days])).toEqual([
+      ['Review', '2026-10-09', '2026-10-13', 2], ['Approve', '2026-10-14', '2026-10-14', 1], ['Approved', '2026-10-14', '2026-10-14', 0],
+    ]);
+  });
+
+  it('a split milestone line counts its working days and passes the calendar through', () => {
+    seq = 0;
+    // Fri 9 - Tue 13 Oct: 3 working days on Mon-Fri, 2 with the Monday holiday
+    const ms = task({ id: 'm', name: 'UAT sign-off', startDate: '2026-10-09', endDate: '2026-10-13', isMilestone: true });
+    const weekdays = proposeFixesDeterministic([finding('R04', ['m'])], [ms]).find(f => f.type === 'split_task')!;
+    expect(weekdays.reason).toContain('is 3 days of work');
+    const holiday = proposeFixesDeterministic([finding('R04', ['m'])], [ms], holidayMon).find(f => f.type === 'split_task')!;
+    expect(holiday.reason).toContain('is 2 days of work');
+    // A line over a weekend only has fewer than 2 working days: nothing to split
+    const weekend = task({ id: 'w', name: 'Sign-off', startDate: '2026-10-10', endDate: '2026-10-11', isMilestone: true });
+    expect(proposeFixesDeterministic([finding('R04', ['w'])], [weekend]).some(f => f.type === 'split_task')).toBe(false);
+  });
+
+  it('set_duration and the buffer size use the calendar given', () => {
+    seq = 0;
+    // Fri 9 - Tue 13 Oct is 2 working days when Mon 12 is a holiday: an estimate of 5 disagrees
+    const t = task({ id: 't', name: 'Build', startDate: '2026-10-09', endDate: '2026-10-13', estimatedDays: 5 });
+    expect(proposeFixesDeterministic([], [t], holidayMon).find(f => f.type === 'set_duration')?.newDuration).toBe(2);
+    // Every day worked: Thu 1 - Tue 20 Oct is 20 days → 15% = 3
+    seq = 0;
+    const work = task({ id: 'p', name: 'Build work', startDate: '2026-10-01', endDate: '2026-10-20' });
+    const gate = task({ id: 'g', name: 'Gate 1', isMilestone: true, dependencies: [{ dependencyId: 'p' }] });
+    expect(proposeFixesDeterministic([], [work, gate], () => true).find(f => f.type === 'insert_buffer')?.bufferDays).toBe(3);
   });
 });
 

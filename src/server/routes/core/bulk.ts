@@ -7,6 +7,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { scheduleService } from '../../services/ScheduleService';
 import logger from '../../utils/logger';
+import { type IsWorking, weekdaysOnly, utcDay, ymdOf, finishFor } from '../../utils/workingDays';
 import { queueReviewRerun } from '../../services/scheduleReview/autoRerun';
 import { changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues } from '../../services/ChangeHistoryService';
 
@@ -140,6 +141,25 @@ const bulkStatusSchema = z.object({
 // Routes
 // ---------------------------------------------------------------------------
 
+/**
+ * The finish to store for a bulk-created task. A given finish is kept as given; with a
+ * start and a duration but no finish, the finish counts WORKING days from the project
+ * calendar with the start day included (a milestone finishes on its start). Otherwise
+ * none, as before.
+ */
+export function bulkFinishDate(
+  t: { startDate?: string; endDate?: string; estimatedDays?: number; isMilestone?: boolean },
+  isWorking: IsWorking,
+): string | null {
+  if (t.endDate) return t.endDate;
+  if (!t.startDate) return null;
+  const days = t.isMilestone ? 0 : t.estimatedDays;
+  if (days == null) return null;
+  const start = utcDay(t.startDate);
+  if (isNaN(start.getTime())) return null;
+  return ymdOf(finishFor(start, days, isWorking));
+}
+
 export async function bulkRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
   // -----------------------------------------------------------------------
@@ -163,6 +183,10 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       // via a rollup recompute, not by writing the column directly, so every
       // parent that got a new child needs one (deduped, outside the transaction).
       const parentsToRecompute = new Set<string>();
+
+      // The project calendar, read only when some task needs its finish worked out
+      const needsFinish = body.tasks.some(t => !t.endDate && t.startDate && (t.isMilestone || t.estimatedDays != null));
+      const isWorking: IsWorking = needsFinish ? await scheduleService.workingDayTest(body.scheduleId) : weekdaysOnly;
 
       await databaseService.transaction(async (connection) => {
         // Each task gets its own position (sort_order), after the schedule's existing tasks
@@ -192,7 +216,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
                 body.scheduleId,
                 t.name,
                 t.startDate || null,
-                t.endDate || null,
+                bulkFinishDate(t, isWorking),
                 t.estimatedDays ?? null,
                 t.progressPercentage ?? 0,
                 t.status || 'pending',

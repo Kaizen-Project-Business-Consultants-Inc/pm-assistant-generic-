@@ -15,16 +15,21 @@ const mockScheduleCreate = vi.fn();
 const mockScheduleCreateTask = vi.fn();
 const mockScheduleFindByProjectId = vi.fn();
 const mockScheduleFindTasksByScheduleIds = vi.fn();
+const mockWorkingDayTest = vi.fn();
 vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
     create: (...args: any[]) => mockScheduleCreate(...args),
     createTask: (...args: any[]) => mockScheduleCreateTask(...args),
     findByProjectId: (...args: any[]) => mockScheduleFindByProjectId(...args),
     findTasksByScheduleIds: (...args: any[]) => mockScheduleFindTasksByScheduleIds(...args),
+    workingDayTest: (...args: any[]) => mockWorkingDayTest(...args),
   },
 }));
 
 import { TemplateService } from '../../services/TemplateService';
+import { weekdaysOnly } from '../../utils/workingDays';
+
+const ymd = (d: any) => new Date(d).toISOString().slice(0, 10);
 
 describe('TemplateService', () => {
   let service: TemplateService;
@@ -32,6 +37,7 @@ describe('TemplateService', () => {
   beforeEach(() => {
     service = new TemplateService();
     vi.clearAllMocks();
+    mockWorkingDayTest.mockResolvedValue(weekdaysOnly);
   });
 
   // ── findAll ──────────────────────────────────────────────────────────────
@@ -368,6 +374,89 @@ describe('TemplateService', () => {
           expect(dep.dependencyId).toMatch(/^task-/);
         }
       }
+    });
+  });
+
+  // ── applyTemplate: working days ──────────────────────────────────────────
+
+  describe('applyTemplate working days', () => {
+    let created: any[];
+    beforeEach(() => {
+      created = [];
+      mockProjectCreate.mockResolvedValue({ id: 'proj-wd' });
+      mockScheduleCreate.mockResolvedValue({ id: 'sched-wd' });
+      mockScheduleCreateTask.mockImplementation(async (data: any) => {
+        const t = { id: `t-${created.length}`, ...data };
+        created.push(t);
+        return t;
+      });
+    });
+
+    const apply = async (tasks: any[], startDate: string, estimatedDurationDays = 10) => {
+      const tpl = await service.create({
+        name: 'WD', description: '', projectType: 'other', category: 'custom', isBuiltIn: false,
+        createdBy: 'u', estimatedDurationDays, tasks, tags: [],
+      } as any);
+      await service.applyTemplate({ templateId: tpl.id, projectName: 'P', startDate, priority: 'medium', userId: 'u' });
+      await service.delete(tpl.id);
+      return (name: string) => created.find(t => t.name === name);
+    };
+    const tt = (o: any) => ({ description: '', priority: 'medium', parentRefId: null, dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: false, ...o });
+
+    it('counts offsets, durations and FS links in working days on the project calendar', async () => {
+      // Mon 12 Oct 2026 is a holiday on the project calendar
+      mockWorkingDayTest.mockResolvedValue((d: Date) => weekdaysOnly(d) && ymd(d) !== '2026-10-12');
+      const get = await apply([
+        tt({ refId: 'a', name: 'A', estimatedDays: 5 }),                                   // Thu 1 Oct
+        tt({ refId: 'b', name: 'B', estimatedDays: 2, dependencyRefId: 'a' }),              // after A
+        tt({ refId: 'c', name: 'C', estimatedDays: 1, offsetDays: 5 }),                     // 5 working days in
+        tt({ refId: 'm', name: 'M', estimatedDays: 0, isMilestone: true, dependencyRefId: 'b' }),
+      ], '2026-10-01');
+
+      expect(mockWorkingDayTest).toHaveBeenCalledWith('sched-wd');
+      expect([ymd(get('A').startDate), ymd(get('A').endDate)]).toEqual(['2026-10-01', '2026-10-07']);
+      expect([ymd(get('B').startDate), ymd(get('B').endDate)]).toEqual(['2026-10-08', '2026-10-09']);
+      expect([ymd(get('C').startDate), ymd(get('C').endDate)]).toEqual(['2026-10-08', '2026-10-08']);
+      // FS after Fri 9 Oct skips the weekend and the Monday holiday
+      expect([ymd(get('M').startDate), ymd(get('M').endDate)]).toEqual(['2026-10-13', '2026-10-13']);
+      expect(get('M').estimatedDays).toBe(0);
+    });
+
+    it('a start on a weekend puts the first task on Monday; the project end is weekdays from the start', async () => {
+      const get = await apply([tt({ refId: 'a', name: 'A', estimatedDays: 1 })], '2026-10-03', 10);
+      expect(ymd(get('A').startDate)).toBe('2026-10-05');
+      expect(ymd(get('A').endDate)).toBe('2026-10-05');
+      const p = mockProjectCreate.mock.calls[0][0];
+      expect(ymd(p.startDate)).toBe('2026-10-03');     // the user's own start is kept
+      expect(ymd(p.endDate)).toBe('2026-10-16');       // 10 working days from Mon 5 Oct
+    });
+
+    it('falls back to Mon–Fri when the calendar cannot be read', async () => {
+      mockWorkingDayTest.mockRejectedValue(new Error('db down'));
+      const get = await apply([tt({ refId: 'a', name: 'A', estimatedDays: 3 })], '2026-10-02');
+      expect([ymd(get('A').startDate), ymd(get('A').endDate)]).toEqual(['2026-10-02', '2026-10-06']);
+    });
+  });
+
+  describe('saveFromProject working days', () => {
+    it('stores offsets and durations as working days on the source calendar', async () => {
+      mockWorkingDayTest.mockResolvedValue((d: Date) => weekdaysOnly(d) && ymd(d) !== '2026-10-12');
+      mockProjectFindById.mockResolvedValue({ id: 'p', name: 'Src', projectType: 'it', category: 'x' });
+      mockScheduleFindByProjectId.mockResolvedValue([{ id: 's', startDate: '2026-10-01' }]);
+      mockScheduleFindTasksByScheduleIds.mockResolvedValue([
+        // No stored duration: Fri 9 → Tue 13 Oct spans Fri, Tue (Mon is a holiday) = 2 days
+        { id: 'x', scheduleId: 's', name: 'X', startDate: '2026-10-09', endDate: '2026-10-13', dependencies: [] },
+        { id: 'y', scheduleId: 's', name: 'Y', startDate: '2026-10-01', endDate: '2026-10-01', dependencies: [] },
+      ]);
+      const tpl = await service.saveFromProject({ projectId: 'p', templateName: 'T', description: '', tags: [], userId: 'u' });
+      const x = tpl.tasks.find(t => t.name === 'X')!;
+      const y = tpl.tasks.find(t => t.name === 'Y')!;
+      expect(x.offsetDays).toBe(6);       // Thu 1 → Fri 9 Oct: 6 working days later
+      expect(x.estimatedDays).toBe(2);
+      expect(y.offsetDays).toBe(0);
+      expect(y.estimatedDays).toBe(1);    // a same-day task is 1 day
+      expect(mockWorkingDayTest).toHaveBeenCalledWith('s');
+      await service.delete(tpl.id);
     });
   });
 

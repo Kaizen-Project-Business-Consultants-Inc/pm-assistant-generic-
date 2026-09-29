@@ -29,6 +29,7 @@ import {
   type DurationSample,
 } from '../../utils/importHeuristics';
 import { nameSaysMilestone } from '../../services/scheduleReview/rules';
+import { type IsWorking, finishFor, utcDay, ymdOf } from '../../utils/workingDays';
 
 /** Truthy string test for boolean-ish import columns (yes/y/true/1/x). */
 function isTruthyFlag(v: string | undefined | null): boolean {
@@ -174,6 +175,18 @@ function toDateStr(val: string | undefined | null): string | null {
   const d = new Date(val.trim());
   if (isNaN(d.getTime())) return null;
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Finish date for a structured-import row: the file's own Finish when it has one,
+ * else the Start plus the duration in WORKING days (start day counted), else none.
+ */
+export function structuredFinish(
+  startDate: string | null, endDate: string | null, duration: number | undefined, isWorking: IsWorking,
+): string | null {
+  if (endDate) return endDate;
+  if (!startDate || !duration) return null;
+  return ymdOf(finishFor(utcDay(startDate), duration, isWorking));
 }
 
 export async function importRoutes(fastify: FastifyInstance) {
@@ -712,6 +725,7 @@ Return a JSON object mapping unmapped headers to target fields.`;
       const succeeded: number[] = [];
       const failed: { row: number; error: string }[] = [];
       const warnings: string[] = [];
+      let isWorking: IsWorking | undefined; // the project calendar, read on first need
 
       for (let i = 0; i < body.tasks.length; i++) {
         const t = body.tasks[i];
@@ -726,13 +740,13 @@ Return a JSON object mapping unmapped headers to target fields.`;
             parentTaskId = levelStack[levelStack.length - 1].taskId;
           }
 
-          // Compute end date from duration if missing
-          let endDate = t.endDate ? toDateStr(t.endDate) : null;
+          // The file's own Start/Finish are kept as given; a missing Finish comes from
+          // the duration in working days on the project calendar
           const startDate = t.startDate ? toDateStr(t.startDate) : null;
+          let endDate = t.endDate ? toDateStr(t.endDate) : null;
           if (!endDate && startDate && t.duration) {
-            const s = new Date(startDate);
-            s.setDate(s.getDate() + t.duration);
-            endDate = s.toISOString().slice(0, 10);
+            isWorking ??= await scheduleService.workingDayTest(scheduleId);
+            endDate = structuredFinish(startDate, null, t.duration, isWorking);
           }
 
           const isMilestone = t.isMilestone === true || t.duration === 0;

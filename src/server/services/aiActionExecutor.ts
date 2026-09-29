@@ -9,6 +9,7 @@ import { policyEngineService } from './PolicyEngineService';
 import { deadLetterService } from './DeadLetterService';
 import { agentMemoryService } from './AgentMemoryService';
 import { knowledgeBaseService } from './KnowledgeBaseService';
+import { utcDay, ymdOf, finishFor, shiftWorking, workingDaysAfter } from '../utils/workingDays';
 
 export interface ActionResult {
   success: boolean;
@@ -316,11 +317,23 @@ export class AIActionExecutor {
     if (endDate) dateChanges.push(`end: ${endDate}`);
     if (dueDate) dateChanges.push(`due: ${dueDate}`);
 
+    // The given dates are kept; when the finish moved, successors follow it in working
+    // days (the same cascade as a manual edit)
+    const oldEnd = existing.endDate ? utcDay(existing.endDate) : null;
+    const newEnd = task?.endDate ? utcDay(task.endDate) : null;
+    let pushed: Array<{ id: string; name: string; newStart: string; newEnd: string }> = [];
+    if (oldEnd && newEnd && !isNaN(oldEnd.getTime()) && !isNaN(newEnd.getTime()) && oldEnd.getTime() !== newEnd.getTime()) {
+      const cascade = await scheduleService.cascadeReschedule(taskId, oldEnd, newEnd);
+      pushed = cascade.affectedTasks.map(c => ({ id: c.taskId, name: c.taskName, newStart: c.newStartDate, newEnd: c.newEndDate }));
+    }
+
     return {
       success: true,
       toolName: 'reschedule_task',
-      summary: `Rescheduled task "${existing.name}" (${taskId}): ${dateChanges.join(', ')}${reason ? `. Reason: ${reason}` : ''}`,
-      data: { taskId, name: task?.name, startDate, endDate, dueDate },
+      summary: `Rescheduled task "${existing.name}" (${taskId}): ${dateChanges.join(', ')}`
+        + `${pushed.length ? `; ${pushed.length} downstream task${pushed.length === 1 ? '' : 's'} moved to follow` : ''}`
+        + `${reason ? `. Reason: ${reason}` : ''}`,
+      data: { taskId, name: task?.name, startDate, endDate, dueDate, affectedTasks: pushed },
     };
   }
 
@@ -438,63 +451,53 @@ export class AIActionExecutor {
       return { success: false, toolName: 'cascade_reschedule', summary: `Task '${taskId}' not found`, error: 'Task not found' };
     }
 
-    // Calculate the delta in milliseconds
-    let deltaMs = 0;
-    if (newStartDate && target.startDate) {
-      deltaMs = new Date(newStartDate).getTime() - new Date(target.startDate).getTime();
-    } else if (newEndDate && target.endDate) {
-      deltaMs = new Date(newEndDate).getTime() - new Date(target.endDate).getTime();
-    }
-
-    if (deltaMs === 0 && !newStartDate && !newEndDate) {
+    if (!newStartDate && !newEndDate) {
       return { success: false, toolName: 'cascade_reschedule', summary: 'No date change specified', error: 'Provide newStartDate or newEndDate' };
     }
 
-    // Update the target task
+    // Dates the AI supplies are kept as given; a date it leaves out is derived in WORKING
+    // days from the project calendar, keeping the task's working-day length.
+    const isWorking = await scheduleService.workingDayTest(target.scheduleId);
+    const oldStart = target.startDate ? utcDay(target.startDate) : null;
+    const oldEnd = target.endDate ? utcDay(target.endDate) : null;
+    const length = oldStart && oldEnd && oldEnd >= oldStart
+      ? workingDaysAfter(oldStart, oldEnd, isWorking) + (isWorking(oldStart) ? 1 : 0)
+      : null;
+
     const targetUpdate: Record<string, any> = {};
-    if (newStartDate) targetUpdate.startDate = new Date(newStartDate);
-    if (newEndDate) targetUpdate.endDate = new Date(newEndDate);
-    // If only start changed, shift end by same delta
-    if (newStartDate && !newEndDate && target.endDate) {
-      targetUpdate.endDate = new Date(new Date(target.endDate).getTime() + deltaMs);
+    if (newStartDate) targetUpdate.startDate = ymdOf(utcDay(newStartDate));
+    if (newEndDate) targetUpdate.endDate = ymdOf(utcDay(newEndDate));
+    if (newStartDate && !newEndDate && length !== null) {
+      targetUpdate.endDate = ymdOf(finishFor(utcDay(newStartDate), length, isWorking));
     }
-    // If only end changed, shift start by same delta
-    if (newEndDate && !newStartDate && target.startDate) {
-      targetUpdate.startDate = new Date(new Date(target.startDate).getTime() + deltaMs);
+    if (newEndDate && !newStartDate && length !== null) {
+      const end = utcDay(newEndDate);
+      const back = Math.max(0, isWorking(end) ? length - 1 : length);
+      targetUpdate.startDate = ymdOf(shiftWorking(end, -back, isWorking));
     }
     await scheduleService.updateTask(taskId, targetUpdate);
 
-    // Find and shift all downstream dependents
-    const downstream = await scheduleService.findAllDownstreamTasks(taskId);
+    // Successors follow the new finish in working days (lag in working days; a
+    // successor never lands on a day off) — the same cascade as a manual edit.
+    const newEnd = targetUpdate.endDate ? utcDay(targetUpdate.endDate) : null;
     const affected: Array<{ id: string; name: string; newStart?: string; newEnd?: string }> = [];
-
-    for (const dep of downstream) {
-      const depUpdate: Record<string, any> = {};
-      if (dep.startDate) {
-        depUpdate.startDate = new Date(new Date(dep.startDate).getTime() + deltaMs);
+    if (oldEnd && newEnd && newEnd.getTime() !== oldEnd.getTime()) {
+      const cascade = await scheduleService.cascadeReschedule(taskId, oldEnd, newEnd);
+      for (const c of cascade.affectedTasks) {
+        affected.push({ id: c.taskId, name: c.taskName, newStart: c.newStartDate || undefined, newEnd: c.newEndDate || undefined });
       }
-      if (dep.endDate) {
-        depUpdate.endDate = new Date(new Date(dep.endDate).getTime() + deltaMs);
-      }
-      if (dep.dueDate) {
-        depUpdate.dueDate = new Date(new Date(dep.dueDate).getTime() + deltaMs);
-      }
-      await scheduleService.updateTask(dep.id, depUpdate);
-      affected.push({
-        id: dep.id,
-        name: dep.name,
-        newStart: depUpdate.startDate?.toISOString().split('T')[0],
-        newEnd: depUpdate.endDate?.toISOString().split('T')[0],
-      });
     }
 
-    const deltaDays = Math.round(deltaMs / (1000 * 60 * 60 * 24));
+    // How far the task moved, in working days (by its finish, else its start)
+    let deltaDays = 0;
+    if (oldEnd && newEnd) deltaDays = workingDaysAfter(oldEnd, newEnd, isWorking);
+    else if (oldStart && targetUpdate.startDate) deltaDays = workingDaysAfter(oldStart, utcDay(targetUpdate.startDate), isWorking);
     const direction = deltaDays > 0 ? 'forward' : 'back';
 
     return {
       success: true,
       toolName: 'cascade_reschedule',
-      summary: `Rescheduled "${target.name}" and ${affected.length} downstream task${affected.length === 1 ? '' : 's'} by ${Math.abs(deltaDays)} day${Math.abs(deltaDays) === 1 ? '' : 's'} ${direction}${reason ? `. Reason: ${reason}` : ''}`,
+      summary: `Rescheduled "${target.name}" and ${affected.length} downstream task${affected.length === 1 ? '' : 's'} by ${Math.abs(deltaDays)} working day${Math.abs(deltaDays) === 1 ? '' : 's'} ${direction}${reason ? `. Reason: ${reason}` : ''}`,
       data: {
         target: { id: taskId, name: target.name, ...targetUpdate },
         affectedTasks: affected,

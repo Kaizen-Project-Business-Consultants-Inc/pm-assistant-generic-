@@ -16,8 +16,28 @@ import {
   RescheduleAIResponse,
 } from '../schemas/autoRescheduleSchemas';
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
+import { calendarService } from './CalendarService';
+import { scheduleRecomputeService } from './ScheduleRecomputeService';
+import {
+  type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, utcDay, ymdOf, finishFor,
+} from '../utils/workingDays';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * Put dates the AI proposed onto the project calendar: a start on a day off moves to
+ * the next working day and the task keeps its working-day length (start day counted).
+ * Dates that don't parse are returned unchanged.
+ */
+export function snapToWorking(startStr: string, endStr: string, isWorking: IsWorking): { start: string; end: string } {
+  const s = utcDay(startStr);
+  const e = utcDay(endStr);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return { start: startStr, end: endStr };
+  const start = onOrAfterWorking(s, isWorking);
+  if (e < s) return { start: ymdOf(start), end: ymdOf(onOrAfterWorking(e, isWorking)) };
+  const length = workingDaysAfter(s, e, isWorking) + (isWorking(s) ? 1 : 0);
+  return { start: ymdOf(start), end: ymdOf(finishFor(start, length, isWorking)) };
+}
 
 function toDateStr(d: Date): string {
   return d.toISOString().split('T')[0];
@@ -56,8 +76,45 @@ export class AutoRescheduleService {
   // Detect Delays
   // ---------------------------------------------------------------------------
 
+  /** The schedule's project calendar; Mon–Fri if it can't be read */
+  private async calendarFor(scheduleId: string): Promise<IsWorking> {
+    try {
+      const f = await this.scheduleService.workingDayTest(scheduleId);
+      if (typeof f === 'function') return f;
+    } catch { /* fall through to Mon–Fri */ }
+    return weekdaysOnly;
+  }
+
+  /**
+   * Plain-language description of the project's days off between two dates, for the
+   * AI prompt: which weekdays are off, the holidays in range, and extra working days.
+   */
+  private async describeDaysOff(projectId: string | undefined, from: string, to: string): Promise<string> {
+    const fallback = 'Working weekdays: Monday to Friday. Saturdays and Sundays are days off.';
+    if (!projectId) return fallback;
+    try {
+      const spec = await calendarService.calendarSpec(projectId);
+      const offDates = await calendarService.getNonWorkingDates(projectId, from, to);
+      const workDays = [...spec.workingDays].sort((a, b) => a - b);
+      const offWeekdays = [0, 1, 2, 3, 4, 5, 6].filter(d => !workDays.includes(d));
+      const holidays = offDates.filter(d => !offWeekdays.includes(utcDay(d).getUTCDay()));
+      const extraWorking = [...spec.working].filter(d => d >= from && d <= to).sort();
+      const lines = [
+        `Working weekdays: ${workDays.map(d => WEEKDAY_NAMES[d]).join(', ') || 'none'}.`,
+        `Weekdays that are always off: ${offWeekdays.map(d => WEEKDAY_NAMES[d]).join(', ') || 'none'}.`,
+        `Holidays (days off) between ${from} and ${to}: ${holidays.length ? holidays.join(', ') : 'none'}.`,
+      ];
+      if (extraWorking.length) lines.push(`Extra working days (worked although the weekday is normally off): ${extraWorking.join(', ')}.`);
+      return lines.join('\n');
+    } catch (err: any) {
+      logger.warn('[AutoReschedule] could not read the project calendar for the prompt', { projectId, error: err?.message });
+      return fallback;
+    }
+  }
+
   async detectDelays(scheduleId: string): Promise<DelayedTask[]> {
     const tasks = await this.scheduleService.findTasksByScheduleId(scheduleId);
+    const isWorking = await this.calendarFor(scheduleId);
     const criticalPathResult = await this.criticalPathService.calculateCriticalPath(scheduleId);
     const criticalIds = new Set(criticalPathResult.criticalPathTaskIds);
 
@@ -103,21 +160,21 @@ export class AutoRescheduleService {
           estimatedEndDate = new Date(now.getTime() + estimatedRemainingMs);
         }
 
-        const delayDays = Math.ceil(
-          (estimatedEndDate.getTime() - endDate.getTime()) / DAY_MS,
-        );
+        // The estimate lands on a working day; the delay is counted in working days
+        estimatedEndDate = onOrAfterWorking(utcDay(estimatedEndDate), isWorking);
+        const delayDays = workingDaysAfter(utcDay(endDate), estimatedEndDate, isWorking);
 
         if (delayDays <= 0) continue;
 
         const isOnCriticalPath = criticalIds.has(task.id);
 
-        // Determine severity
+        // Determine severity (working days: 10 ≈ two weeks, 15 ≈ three, 5 ≈ one)
         let severity: 'low' | 'medium' | 'high' | 'critical';
-        if (isOnCriticalPath && delayDays > 14) {
+        if (isOnCriticalPath && delayDays > 10) {
           severity = 'critical';
-        } else if (isOnCriticalPath || delayDays > 21) {
+        } else if (isOnCriticalPath || delayDays > 15) {
           severity = 'high';
-        } else if (delayDays > 7) {
+        } else if (delayDays > 5) {
           severity = 'medium';
         } else {
           severity = 'low';
@@ -158,6 +215,7 @@ export class AutoRescheduleService {
     }
 
     const originalEndDate = toDateStr(new Date(schedule.endDate));
+    const isWorking = await this.calendarFor(scheduleId);
 
     // Build task summary for AI context
     const taskSummary = allTasks.map((t) => ({
@@ -187,14 +245,27 @@ Rules:
 - Minimize the overall project end date impact.
 - Prefer compressing non-critical-path tasks over extending the critical path.
 - Dates must be in YYYY-MM-DD format.
+- Durations, delays and lag count WORKING days from the project calendar given below; a task of N days includes its start day.
+- Every proposedStartDate and proposedEndDate MUST be a working day — never a weekday that is off, and never a listed holiday.
 - Be realistic with proposed dates — account for the delays already detected.
 - proposedEndDate in estimatedImpact should be the latest proposedEndDate among all tasks, or the original end date if it's later.
-- daysChange should be positive if the project is extended, negative if shortened, 0 if unchanged.`;
+- daysChange (in working days) should be positive if the project is extended, negative if shortened, 0 if unchanged.`;
+
+      // The project's days off across the plan, with about six months' room for it to grow
+      const planDates = [originalEndDate];
+      for (const t of taskSummary) { if (t.startDate) planDates.push(t.startDate); if (t.endDate) planDates.push(t.endDate); }
+      const sortedDates = planDates.filter(d => !isNaN(utcDay(d).getTime())).sort();
+      const rangeFrom = sortedDates[0] ?? originalEndDate;
+      const rangeTo = ymdOf(shiftWorking(utcDay(sortedDates[sortedDates.length - 1] ?? originalEndDate), 130, weekdaysOnly));
+      const daysOff = await this.describeDaysOff(schedule.projectId, rangeFrom, rangeTo);
 
       const userMessage = `Here is the current schedule state:
 
 Schedule: ${schedule.name} (${scheduleId})
 Original End Date: ${originalEndDate}
+
+Project calendar (proposed dates must be working days):
+${daysOff}
 
 All Tasks:
 ${JSON.stringify(taskSummary, null, 2)}
@@ -216,25 +287,34 @@ Please propose date changes to reschedule affected tasks with minimal disruption
 
       const aiResponse = aiResult.data;
 
-      // Map AI proposed changes to full ProposedChange objects with current dates
+      // Map AI proposed changes to full ProposedChange objects with current dates. A
+      // proposed date on a day off is put back on the calendar (start → next working
+      // day, the task keeps its working-day length).
       proposedChanges = aiResponse.proposedChanges.map((pc) => {
         const task = allTasks.find((t) => t.id === pc.taskId);
+        const snapped = snapToWorking(pc.proposedStartDate, pc.proposedEndDate, isWorking);
         return {
           taskId: pc.taskId,
           taskName: pc.taskName,
           currentStartDate: task?.startDate ? toDateStr(new Date(task.startDate)) : '',
           currentEndDate: task?.endDate ? toDateStr(new Date(task.endDate)) : '',
-          proposedStartDate: pc.proposedStartDate,
-          proposedEndDate: pc.proposedEndDate,
+          proposedStartDate: snapped.start,
+          proposedEndDate: snapped.end,
           reason: pc.reason,
         };
       });
 
+      // The new finish and its change in working days, from the (snapped) proposed dates
+      const latestAiEnd = proposedChanges.reduce((latest, pc) => {
+        const d = utcDay(pc.proposedEndDate);
+        return !isNaN(d.getTime()) && d > latest ? d : latest;
+      }, utcDay(originalEndDate));
+
       rationale = aiResponse.rationale;
       estimatedImpact = {
         originalEndDate,
-        proposedEndDate: aiResponse.estimatedImpact.proposedEndDate,
-        daysChange: aiResponse.estimatedImpact.daysChange,
+        proposedEndDate: ymdOf(latestAiEnd),
+        daysChange: workingDaysAfter(utcDay(originalEndDate), latestAiEnd, isWorking),
         criticalPathImpact: aiResponse.estimatedImpact.criticalPathImpact,
       };
     } else {
@@ -247,7 +327,8 @@ Please propose date changes to reschedule affected tasks with minimal disruption
 
         const currentStart = toDateStr(new Date(task.startDate));
         const currentEnd = toDateStr(new Date(task.endDate));
-        const newEndDate = new Date(new Date(task.endDate).getTime() + delayed.delayDays * DAY_MS);
+        // The finish moves out by the delay, in working days
+        const newEndDate = shiftWorking(utcDay(task.endDate), delayed.delayDays, isWorking);
 
         proposedChanges.push({
           taskId: task.id,
@@ -256,7 +337,7 @@ Please propose date changes to reschedule affected tasks with minimal disruption
           currentEndDate: currentEnd,
           proposedStartDate: currentStart,
           proposedEndDate: toDateStr(newEndDate),
-          reason: `Task is ${delayed.delayDays} days behind schedule (${delayed.currentProgress}% complete vs expected progress). Extending end date to accommodate current velocity.`,
+          reason: `Task is ${delayed.delayDays} working days behind schedule (${delayed.currentProgress}% complete vs expected progress). Extending end date to accommodate current velocity.`,
         });
 
         // Also shift dependent tasks
@@ -265,16 +346,18 @@ Please propose date changes to reschedule affected tasks with minimal disruption
           if (!dep.startDate || !dep.endDate) continue;
           if (dep.status === 'completed' || dep.status === 'cancelled') continue;
 
-          const depCurrentStart = new Date(dep.startDate);
-          const depCurrentEnd = new Date(dep.endDate);
-          const depDuration = depCurrentEnd.getTime() - depCurrentStart.getTime();
+          const depCurrentStart = utcDay(dep.startDate);
+          const depCurrentEnd = utcDay(dep.endDate);
+          // Keep the dependent's length in working days
+          const depDuration = Math.max(0, workingDaysAfter(depCurrentStart, depCurrentEnd, isWorking));
+          const lag = dep.dependencies.find(d => d.dependencyId === task.id)?.lagDays ?? 0;
 
-          // New start is after the delayed task's new end
-          const depNewStart = new Date(newEndDate.getTime() + DAY_MS);
-          const depNewEnd = new Date(depNewStart.getTime() + depDuration);
+          // New start: the working day after the delayed task's new finish (plus lag)
+          const depNewStart = onOrAfterWorking(shiftWorking(newEndDate, lag + 1, isWorking), isWorking);
+          const depNewEnd = shiftWorking(depNewStart, depDuration, isWorking);
 
-          // Only add if not already in proposedChanges
-          if (!proposedChanges.find((pc) => pc.taskId === dep.id)) {
+          // Only push later, and only once
+          if (depNewStart > depCurrentStart && !proposedChanges.find((pc) => pc.taskId === dep.id)) {
             proposedChanges.push({
               taskId: dep.id,
               taskName: dep.name,
@@ -290,13 +373,12 @@ Please propose date changes to reschedule affected tasks with minimal disruption
 
       // Calculate impact
       const latestProposedEnd = proposedChanges.reduce((latest, pc) => {
-        const d = new Date(pc.proposedEndDate);
+        const d = utcDay(pc.proposedEndDate);
         return d > latest ? d : latest;
-      }, new Date(originalEndDate));
+      }, utcDay(originalEndDate));
 
-      const daysChange = Math.round(
-        (latestProposedEnd.getTime() - new Date(originalEndDate).getTime()) / DAY_MS,
-      );
+      // In working days from the project calendar
+      const daysChange = workingDaysAfter(utcDay(originalEndDate), latestProposedEnd, isWorking);
 
       rationale = delayedTasks.length > 0
         ? `Detected ${delayedTasks.length} delayed task(s). Proposed date adjustments extend delayed tasks to match current velocity and shift dependent tasks accordingly.`
@@ -403,6 +485,24 @@ Please propose date changes to reschedule affected tasks with minimal disruption
         },
         source: 'system',
       }).catch(err => deadLetterService.capture('audit.reschedule', { proposalId, taskId: change.taskId }, err));
+    }
+
+    // Successors follow the new dates: anything now starting before its predecessor
+    // allows is pushed later, in working days (never pulled earlier; audited).
+    const movedIds = proposal.proposedChanges.map(c => c.taskId);
+    if (movedIds.length) {
+      try {
+        const { deltas } = await scheduleRecomputeService.recompute(proposal.scheduleId, { onlyFrom: movedIds, reason: 'ai_reschedule' });
+        // Tasks the re-flow moved are part of this change, so Undo restores them too
+        const known = new Set(before.map(b => b.taskId));
+        if (before.length) {
+          for (const d of deltas) {
+            if (!known.has(d.taskId)) before.push({ taskId: d.taskId, startDate: d.oldStart, endDate: d.oldEnd });
+          }
+        }
+      } catch (err: any) {
+        logger.warn('[AutoReschedule] successors could not be re-flowed after accepting', { proposalId, error: err?.message });
+      }
     }
 
     try {

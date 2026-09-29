@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { weekdaysOnly, workingDaysAfter } from '../../utils/workingDays';
 import { ProjectAnalysis } from '../../services/aiTaskBreakdown';
 
 // Declare mock functions via vi.hoisted so they're available when vi.mock factories run
@@ -277,11 +278,10 @@ describe('AIProjectCreatorService', () => {
 
       await service.createProjectFromDescription('No duration project', 'user-7');
 
+      // Working days on Mon–Fri, the start day counted
       const createCall = mockProjectCreate.mock.calls[0][0];
-      const startDate = new Date(createCall.startDate);
-      const endDate = new Date(createCall.endDate);
-      const diffDays = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      expect(diffDays).toBe(90);
+      expect(1 + workingDaysAfter(createCall.startDate, createCall.endDate, weekdaysOnly)).toBe(90);
+      expect(weekdaysOnly(createCall.endDate)).toBe(true);
     });
 
     it('uses the actual estimatedDuration when provided', async () => {
@@ -293,10 +293,8 @@ describe('AIProjectCreatorService', () => {
       await service.createProjectFromDescription('45 day project', 'user-8');
 
       const createCall = mockProjectCreate.mock.calls[0][0];
-      const startDate = new Date(createCall.startDate);
-      const endDate = new Date(createCall.endDate);
-      const diffDays = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      expect(diffDays).toBe(45);
+      expect(1 + workingDaysAfter(createCall.startDate, createCall.endDate, weekdaysOnly)).toBe(45);
+      expect(weekdaysOnly(createCall.endDate)).toBe(true);
     });
 
     it('uses "other" category when projectType is falsy', async () => {
@@ -435,10 +433,38 @@ describe('AIProjectCreatorService', () => {
       await service.createProjectFromDescription('Vague project', 'user-15');
 
       const taskCall = mockCreateTask.mock.calls[0][0];
-      const now = new Date();
-      const dueDate = new Date(taskCall.dueDate);
-      const diffDays = Math.round((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      expect(diffDays).toBe(7);
+      expect(1 + workingDaysAfter(taskCall.startDate, taskCall.dueDate, weekdaysOnly)).toBe(7);
+    });
+
+    describe('working days', () => {
+      afterEach(() => vi.useRealTimers());
+
+      it('on a Saturday, starts the project and its tasks on Monday and counts durations on weekdays', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-10-03T10:00:00Z')); // Saturday
+        const analysis = createMockAnalysis({
+          estimatedDuration: 10,
+          taskSuggestions: [{
+            id: 't1', name: 'Two-day task', description: '', estimatedDays: 2, complexity: 'low',
+            priority: 'medium', dependencies: [], riskLevel: 10, category: 'dev', skills: [], deliverables: [],
+          }],
+        });
+        mockAnalyzeProject.mockResolvedValue({ analysis, aiPowered: true });
+        mockProjectCreate.mockResolvedValue({ id: 'proj-wd' });
+        mockScheduleCreate.mockResolvedValue({ id: 'sched-wd' });
+        mockCreateTask.mockResolvedValue({ id: 'task-wd' });
+
+        await service.createProjectFromDescription('Weekend project', 'user-wd');
+
+        const p = mockProjectCreate.mock.calls[0][0];
+        expect(p.startDate.toISOString().slice(0, 10)).toBe('2026-10-05'); // Monday
+        expect(p.endDate.toISOString().slice(0, 10)).toBe('2026-10-16');   // 10 working days
+        const s = mockScheduleCreate.mock.calls[0][0];
+        expect(s.startDate.toISOString().slice(0, 10)).toBe('2026-10-05');
+        const t = mockCreateTask.mock.calls[0][0];
+        expect(t.startDate.toISOString().slice(0, 10)).toBe('2026-10-05');
+        expect(t.dueDate.toISOString().slice(0, 10)).toBe('2026-10-06');   // Mon + 2 days → Tue
+      });
     });
 
     it('reports aiPowered=false in result and log when AI was not used', async () => {

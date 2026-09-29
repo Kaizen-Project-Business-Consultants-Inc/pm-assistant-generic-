@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { moveKeepingWorkingLength, type WorkCalendar } from '../../utils/workingDays';
 
 const barColors: Record<string, string> = {
   completed: 'bg-green-500',
@@ -17,6 +18,8 @@ interface CalendarViewProps {
   tasks: GanttTask[];
   onTaskClick: (task: GanttTask) => void;
   onTaskReschedule?: (taskId: string, newStartDate: string, newEndDate: string) => void;
+  /** Project calendar: a dropped task starts on a working day and keeps its length in working days */
+  workCalendar?: WorkCalendar | null;
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -54,7 +57,7 @@ function taskStartsOnDay(task: GanttTask, day: Date): boolean {
   return isSameDay(day, toDateOnly(task.startDate));
 }
 
-export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarViewProps) {
+export function CalendarView({ tasks, onTaskClick, onTaskReschedule, workCalendar }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [mode, setMode] = useState<CalendarMode>('month');
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
@@ -119,19 +122,14 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule }: CalendarV
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const targetDate = new Date(targetDateStr);
-    const oldStart = task.startDate ? toDateOnly(task.startDate) : null;
-    const oldEnd = task.endDate ? toDateOnly(task.endDate) : null;
-
-    if (oldStart && oldEnd) {
-      const duration = Math.round((oldEnd.getTime() - oldStart.getTime()) / 86400000);
-      const newEnd = new Date(targetDate);
-      newEnd.setDate(newEnd.getDate() + duration);
-      onTaskReschedule(taskId, toISODate(targetDate), toISODate(newEnd));
-    } else {
-      onTaskReschedule(taskId, toISODate(targetDate), toISODate(targetDate));
-    }
-  }, [tasks, onTaskReschedule]);
+    // Start on the dropped day (next working day if it's off) and keep the working-day length
+    const oldStart = task.startDate || task.endDate;
+    const oldEnd = task.endDate || task.startDate;
+    const moved = moveKeepingWorkingLength(
+      oldStart, oldEnd, targetDateStr, workCalendar, !!task.isMilestone || !task.startDate || !task.endDate,
+    );
+    if (moved) onTaskReschedule(taskId, moved.start, moved.end);
+  }, [tasks, onTaskReschedule, workCalendar]);
 
   // Task pill renderer
   const renderTaskPill = (task: GanttTask, day: Date, compact = false) => {

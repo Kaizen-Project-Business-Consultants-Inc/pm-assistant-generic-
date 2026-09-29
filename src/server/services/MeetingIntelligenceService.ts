@@ -4,6 +4,7 @@ import { resourceService, Resource } from './ResourceService';
 import { config } from '../config';
 import logger from '../utils/logger';
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
+import { utcDay } from '../utils/workingDays';
 import { meetingAnalysisRepository } from '../database/MeetingAnalysisRepository';
 import { ragService } from './RagService';
 import {
@@ -308,7 +309,19 @@ Analyze this meeting transcript and extract all actionable information.`;
               rescheduleData.endDate = update.newEndDate;
             if (update.assignee) rescheduleData.assignedTo = update.assignee;
 
-            await scheduleService.updateTask(rescheduleTaskId, rescheduleData);
+            const rescheduled = await scheduleService.updateTask(rescheduleTaskId, rescheduleData);
+
+            // The meeting's dates are kept as given; if the finish moved, successors
+            // follow in working days (the same cascade as a manual edit)
+            const oldEnd = taskToReschedule.endDate ? utcDay(taskToReschedule.endDate) : null;
+            const newEnd = rescheduled?.endDate ? utcDay(rescheduled.endDate) : null;
+            if (oldEnd && newEnd && !isNaN(oldEnd.getTime()) && !isNaN(newEnd.getTime()) && oldEnd.getTime() !== newEnd.getTime()) {
+              try {
+                await scheduleService.cascadeReschedule(rescheduleTaskId, oldEnd, newEnd);
+              } catch (err: any) {
+                logger.warn('[MeetingIntelligence] successors could not follow the rescheduled task', { taskId: rescheduleTaskId, error: err?.message });
+              }
+            }
             applied++;
             analysis.appliedItems.push(index);
             break;

@@ -374,7 +374,7 @@ The **⋯ overflow menu** (the "More actions" button at the right of the toolbar
    - **Assigned To** -- Team member responsible.
    - **Description** -- Detailed task notes.
    - **Story Points** -- Agile estimation value.
-   - **Recurrence** -- Set a recurring schedule (Daily, Weekly, Biweekly, or Monthly). For Weekly/Biweekly, select specific days. When you save a recurring template, task instances are automatically expanded up to 90 days ahead (capped at 100 instances). The template task displays a blue repeat icon on its Gantt bar. Generated instances also show a repeat icon and link back to their parent template. To regenerate instances after editing a template, delete existing children and re-save.
+   - **Recurrence** -- Set a recurring schedule (Daily, Weekly, Biweekly, or Monthly). For Weekly/Biweekly, select specific days. When you save a recurring template, task instances are automatically expanded up to 90 days ahead (capped at 100 instances). Daily repeats skip weekends and holidays (the project's working calendar); a weekly, fortnightly or monthly repeat that falls on a day off moves to the next working day. The template task displays a blue repeat icon on its Gantt bar. Generated instances also show a repeat icon and link back to their parent template. To regenerate instances after editing a template, delete existing children and re-save.
 3. Click **Save** to add the task.
 
 ### Task Hierarchy
@@ -503,7 +503,7 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - **Predecessor column (Pred)** shows all predecessors as a comma-separated list in compact row-number format (e.g. "3FS+2d,5SS,7") with a colour-coded health dot: green (done), yellow (in progress), red (overdue). Click to edit inline using the same MS Project notation.
 - **Successor column (Succ)** shows which tasks depend on the current task — the inverse of the Predecessor column. Format is the same compact row-number notation with dependency type and lag (e.g. `5FS`, `3SS+2d`). Hover the cell to see a tooltip with the full successor task names. This column is **read-only** — to change a dependency, edit the successor task's Predecessor field. Hidden by default; toggle on via the Columns picker.
 - **Dependency arrows** are drawn for each predecessor individually, colour-coded by that predecessor's health: green for completed, yellow for in-progress, red for overdue. Hover over any arrow to see a tooltip showing the predecessor name, successor name, dependency type, and lag days.
-- **Drag-and-drop rescheduling**: Drag a bar to move the task to new dates. Drag the right edge to resize (change end date only). Changes automatically cascade through dependencies. The timeline **auto-scrolls** when you drag near the left or right edge of the viewport.
+- **Drag-and-drop rescheduling**: Drag a bar to move the task to new dates. It lands on working days: dropped on a Saturday it starts on Monday, and it keeps its length in working days (a 3-day task moved to a Thursday runs Thursday, Friday, Monday). Drag the right edge to resize (change end date only); a finish dropped on a day off goes back to the last working day before it. Drawing a new bar on the timeline also snaps to working days. The same applies when you drag a task to another day in the Calendar view. Changes automatically cascade through dependencies. The timeline **auto-scrolls** when you drag near the left or right edge of the viewport.
 - **Interactive dependency drawing**: Hover over a task bar to see connector dots at the left (start) and right (finish) edges. Drag from a dot to another task bar to create a dependency link. The dependency type (FS/SS/FF/SF) is determined by which edges you drag from and to. A dashed blue preview line and target row highlight guide you during the drag.
 - **Recurring task indicator**: Template tasks display a repeat icon on their bar.
 - **Milestones**: Tasks marked as milestones appear as diamonds instead of bars.
@@ -1742,7 +1742,7 @@ On the dashboard, the **Portfolio Intelligence** banner provides an AI-generated
 
 ### Auto-Reschedule
 
-When delays are detected, the AI can suggest schedule adjustments that minimize overall project impact. Review and accept or reject proposed changes.
+When delays are detected, the AI can suggest schedule adjustments that minimize overall project impact. Review and accept or reject proposed changes. Delays and proposed moves are counted in **working days** from the project's working calendar (the AI is told the project's days off, and any proposed date that lands on one is moved to the next working day). Delay severity: 5+ working days behind is medium, 10+ high, 15+ critical. Accepting a proposal also moves the tasks that follow the ones it changed; they are included in its Schedule History line and its Undo.
 
 ### Task Slip Predictions
 
@@ -1853,14 +1853,14 @@ Templates let you save and reuse project structures.
 1. Open a project with a well-defined schedule.
 2. Click the **Actions** dropdown (top-right of the project header) and select **Save as Template**.
 3. Enter a template name and description.
-4. The template captures the full task hierarchy, dependencies, durations, and structure (but not specific dates or assignments).
+4. The template captures the full task hierarchy, dependencies, durations, and structure (but not specific dates or assignments). Durations and each task's position are stored in **working days** (Sep 2026).
 
 ### Using a Template
 
 1. When creating a new project or schedule, click **Use Template** or open the **Template Picker**.
 2. Browse available templates. Each shows a preview card with the template name, description, and task count.
 3. Click **Preview** to see the full task structure before applying.
-4. Click **Apply** to populate your schedule with the template's tasks.
+4. Click **Apply** to populate your schedule with the template's tasks. Tasks are laid out in working days from the start date you pick, on the new project's working calendar: nothing starts or finishes on a weekend or holiday, and a start date on a Saturday means the first tasks start on Monday. Templates saved before September 2026 stored calendar days; they are now read as working days, so a plan built from one comes out a little longer than before.
 
 ### Customizing a Template
 

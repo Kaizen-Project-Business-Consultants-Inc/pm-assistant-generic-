@@ -5,8 +5,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockFindTasksByScheduleId = vi.fn();
 const mockFindTaskById = vi.fn();
 const mockUpdateTask = vi.fn();
+const mockWorkingDayTest = vi.fn();
 vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
+    workingDayTest: (...args: any[]) => mockWorkingDayTest(...args),
     findTasksByScheduleId: (...args: any[]) => mockFindTasksByScheduleId(...args),
     findTaskById: (...args: any[]) => mockFindTaskById(...args),
     updateTask: (...args: any[]) => mockUpdateTask(...args),
@@ -117,6 +119,7 @@ describe('ResourceLevelingService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWorkingDayTest.mockReset(); // no calendar → Mon–Fri
     service = new ResourceLevelingService();
   });
 
@@ -221,6 +224,53 @@ describe('ResourceLevelingService', () => {
       mockCalculateCriticalPath.mockResolvedValue({ tasks: [makeCPMTask('a'), makeCPMTask('b')], criticalPathTaskIds: ['a'] });
       const r = await service.levelResources('sch-1');
       expect(r.reassignmentSuggestions).toEqual([]);
+    });
+
+    it('delays in working days on the project calendar: over the weekend and a holiday, length kept', async () => {
+      // Mon 12 Jan 2026 is a project holiday
+      mockWorkingDayTest.mockResolvedValue((d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && d.toISOString().slice(0, 10) !== '2026-01-12');
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('a', 'Build API', { startDate: '2026-01-08', endDate: '2026-01-09' }),
+        makeTask('b', 'Write testing plan', { startDate: '2026-01-08', endDate: '2026-01-09' }),
+      ]);
+      bookings([booking('a', 'alice', 40, '2026-01-08', '2026-01-09'), booking('b', 'alice', 40, '2026-01-08', '2026-01-09')]);
+      mockCalculateCriticalPath.mockResolvedValue({ tasks: [makeCPMTask('a'), makeCPMTask('b', { totalFloat: 10 })], criticalPathTaskIds: ['a'] });
+      const r = await service.levelResources('sch-1');
+      // Thu–Fri → skips Sat, Sun and the Monday holiday → Tue 13 – Wed 14 (two working days)
+      expect(r.adjustedTasks).toEqual([expect.objectContaining({ taskId: 'b', newStart: '2026-01-13', newEnd: '2026-01-14' })]);
+      expect(r.adjustedTasks[0].reason).toContain('2 working days');
+      expect(r.leveledDemand[0].demand.map(d => d.date)).toEqual(['2026-01-08', '2026-01-09', '2026-01-13', '2026-01-14']);
+    });
+
+    it('does not delay past the float (float is in calendar days)', async () => {
+      // Float of 3 calendar days after Fri 9 Jan reaches Mon 12 only → 1 working day, not enough
+      mockWorkingDayTest.mockResolvedValue((d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6);
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('a', 'Build API', { startDate: '2026-01-08', endDate: '2026-01-09' }),
+        makeTask('b', 'Write testing plan', { startDate: '2026-01-08', endDate: '2026-01-09' }),
+      ]);
+      bookings([booking('a', 'alice', 40, '2026-01-08', '2026-01-09'), booking('b', 'alice', 40, '2026-01-08', '2026-01-09')]);
+      mockCalculateCriticalPath.mockResolvedValue({ tasks: [makeCPMTask('a'), makeCPMTask('b', { totalFloat: 3 })], criticalPathTaskIds: ['a'] });
+      const r = await service.levelResources('sch-1');
+      // One working day later (Fri 9 – Mon 12) halves the overload; that's as far as the float allows
+      expect(r.adjustedTasks).toEqual([expect.objectContaining({ taskId: 'b', newStart: '2026-01-09', newEnd: '2026-01-12' })]);
+    });
+  });
+
+  describe('getResourceHistogram on the project calendar', () => {
+    it('leaves out the project\'s holidays and counts its extra working days', async () => {
+      mockFindTasksByScheduleId.mockResolvedValue([]);
+      mockFindAllResources.mockResolvedValue([makeResource('alice', 'Alice')]);
+      mockCapacityBatch.mockResolvedValue(new Map());
+      // Mon 12 Jan off, Sat 10 Jan worked
+      mockWorkingDayTest.mockResolvedValue((d: Date) => {
+        const ymd = d.toISOString().slice(0, 10);
+        if (ymd === '2026-01-10') return true;
+        return d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && ymd !== '2026-01-12';
+      });
+      bookings([booking('t1', 'alice', 20, '2026-01-09', '2026-01-13')]);
+      const h = await service.getResourceHistogram('sch-1');
+      expect(h.resources[0].demand.map(d => d.date)).toEqual(['2026-01-09', '2026-01-10', '2026-01-13']);
     });
   });
 

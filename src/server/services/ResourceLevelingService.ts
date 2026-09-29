@@ -4,6 +4,7 @@ import { resourceService } from './ResourceService';
 import type { Resource, ResourceAssignment } from './ResourceService';
 import { resourceAvailabilityService } from './ResourceAvailabilityService';
 import logger from '../utils/logger';
+import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, utcDay, ymdOf } from '../utils/workingDays';
 
 // --- Interfaces ---
 
@@ -67,22 +68,67 @@ export interface LevelingResult {
 const DAY_MS = 86_400_000;
 const at = (d: string) => Date.parse(`${d.slice(0, 10)}T00:00:00Z`);
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+/** Calendar-day offset — only for date-range windows (queries, week buckets), never task dates */
 const addDays = (d: string, n: number) => iso(at(d) + n * DAY_MS);
-const isWorkday = (d: string) => { const w = new Date(at(d)).getUTCDay(); return w !== 0 && w !== 6; };
 const mondayOf = (d: string) => iso(at(d) - ((new Date(at(d)).getUTCDay() + 6) % 7) * DAY_MS);
 const EPS = 0.01;
 
 /** Hours per working day that one booking puts on its person */
 const perDay = (a: ResourceAssignment) => a.hoursPerWeek / 5;
 
-/** Working days a task spans once moved `shift` calendar days later */
-function workdays(start: string, end: string, shift = 0): string[] {
-  const out: string[] = [];
-  for (let t = at(start) + shift * DAY_MS; t <= at(end) + shift * DAY_MS; t += DAY_MS) {
-    const d = iso(t);
-    if (isWorkday(d)) out.push(d);
+const everyDay: IsWorking = () => true;
+
+/**
+ * The project's working days in order (weekends and holidays skipped, days the
+ * calendar marks working counted), grown on demand. A task moved `shift` working days
+ * later keeps its working-day length and never starts or finishes on a day off.
+ */
+export class WorkingDayLadder {
+  private days: string[];
+  constructor(first: string, private isWorking: IsWorking) {
+    this.days = [ymdOf(onOrAfterWorking(utcDay(first), isWorking))];
   }
-  return out;
+  private at(i: number): string {
+    while (this.days.length <= i) this.days.push(ymdOf(shiftWorking(utcDay(this.days[this.days.length - 1]), 1, this.isWorking)));
+    return this.days[i];
+  }
+  /** Index of the first working day on or after d (the ladder grows to reach it) */
+  private firstFrom(d: string): number {
+    while (this.days[this.days.length - 1] < d) this.at(this.days.length);
+    let lo = 0, hi = this.days.length - 1;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (this.days[mid] < d) lo = mid + 1; else hi = mid; }
+    return lo;
+  }
+  /** Where a task sits on the ladder: first working day index and its working-day length */
+  private span(start: string, end: string): { i: number; len: number } {
+    const e = end.slice(0, 10);
+    const i = this.firstFrom(start.slice(0, 10));
+    let len = 0;
+    while (this.at(i + len) <= e) len++;
+    return { i, len };
+  }
+  /** The working days a task covers once moved `shift` working days later */
+  workdays(start: string, end: string, shift = 0): string[] {
+    const { i, len } = this.span(start, end);
+    const out: string[] = [];
+    for (let k = 0; k < len; k++) out.push(this.at(i + shift + k));
+    return out;
+  }
+  /** A task's dates moved `shift` working days later, keeping its working-day length */
+  moved(start: string, end: string, shift: number): { start: string; end: string } {
+    const { i, len } = this.span(start, end);
+    return { start: this.at(i + shift), end: this.at(i + shift + Math.max(0, len - 1)) };
+  }
+  /** Working days after `end`, up to and including `calendarDays` calendar days later (float is in calendar days) */
+  workingDaysWithin(end: string, calendarDays: number): number {
+    const e = end.slice(0, 10);
+    const limit = ymdOf(shiftWorking(utcDay(e), calendarDays, everyDay));
+    let k = this.firstFrom(e);
+    if (this.at(k) === e) k++;
+    let n = 0;
+    for (; this.at(k) <= limit; k++) n++;
+    return n;
+  }
 }
 
 /**
@@ -99,6 +145,8 @@ interface Model {
   /** resourceId → date → hours (everything: this schedule + other projects) */
   demand: Map<string, Map<string, number>>;
   capacityOf: (resourceId: string, date: string) => number;
+  /** The project's working days */
+  cal: WorkingDayLadder;
 }
 
 export class ResourceLevelingService {
@@ -118,6 +166,15 @@ export class ResourceLevelingService {
     const elsewhere = (await resourceService.findEffectiveAssignments({ from, to }))
       .filter(a => a.scheduleId !== scheduleId);
 
+    // Days are counted on this project's calendar (Mon–Fri if it can't be read)
+    let isWorking: IsWorking = weekdaysOnly;
+    try {
+      const f = await scheduleService.workingDayTest(scheduleId);
+      if (typeof f === 'function') isWorking = f;
+    } catch { /* Mon–Fri */ }
+    const firstDay = [...here, ...elsewhere].reduce((m, a) => (a.startDate.slice(0, 10) < m ? a.startDate.slice(0, 10) : m), from);
+    const cal = new WorkingDayLadder(firstDay, isWorking);
+
     const all = (await resourceService.findAllResources()).filter(r => r.isActive || people.has(r.id));
     const resources = new Map(all.map(r => [r.id, r]));
     const weeks: Date[] = [];
@@ -135,7 +192,7 @@ export class ResourceLevelingService {
     const add = (a: ResourceAssignment, sign = 1, shift = 0) => {
       if (!demand.has(a.resourceId)) demand.set(a.resourceId, new Map());
       const m = demand.get(a.resourceId)!;
-      for (const d of workdays(a.startDate, a.endDate, shift)) m.set(d, Math.max(0, (m.get(d) ?? 0) + sign * perDay(a)));
+      for (const d of cal.workdays(a.startDate, a.endDate, shift)) m.set(d, Math.max(0, (m.get(d) ?? 0) + sign * perDay(a)));
     };
     for (const a of elsewhere) add(a);
     const bookings = new Map<string, ResourceAssignment[]>();
@@ -144,7 +201,7 @@ export class ResourceLevelingService {
       if (!bookings.has(a.taskId)) bookings.set(a.taskId, []);
       bookings.get(a.taskId)!.push(a);
     }
-    return { tasks, resources, bookings, demand, capacityOf };
+    return { tasks, resources, bookings, demand, capacityOf, cal };
   }
 
   private toHistogram(m: Model, onlyIds?: Set<string>): ResourceHistogram {
@@ -206,13 +263,13 @@ export class ResourceLevelingService {
     const load = (rid: string, d: string) => m.demand.get(rid)?.get(d) ?? 0;
     const shiftBooking = (a: ResourceAssignment, sign: number, shift: number) => {
       const map = m.demand.get(a.resourceId)!;
-      for (const d of workdays(a.startDate, a.endDate, shift)) map.set(d, Math.max(0, (map.get(d) ?? 0) + sign * perDay(a)));
+      for (const d of m.cal.workdays(a.startDate, a.endDate, shift)) map.set(d, Math.max(0, (map.get(d) ?? 0) + sign * perDay(a)));
     };
     /** Over-capacity person-days this task causes/sits in when placed `shift` days later (its own load removed first) */
     const overDays = (list: ResourceAssignment[], shift: number) => {
       let n = 0;
       for (const a of list) {
-        for (const d of workdays(a.startDate, a.endDate, shift)) if (load(a.resourceId, d) + perDay(a) > m.capacityOf(a.resourceId, d) + EPS) n++;
+        for (const d of m.cal.workdays(a.startDate, a.endDate, shift)) if (load(a.resourceId, d) + perDay(a) > m.capacityOf(a.resourceId, d) + EPS) n++;
       }
       return n;
     };
@@ -230,11 +287,13 @@ export class ResourceLevelingService {
       if (work > MAX_WORK) { logger.warn(`Resource leveling stopped early for schedule ${scheduleId}`); break; }
       for (const a of x.list) shiftBooking(a, -1, 0);
       const before = overDays(x.list, 0);
-      // The smallest delay within float that leaves the fewest over-capacity days (stop at zero)
+      // The smallest delay within float that leaves the fewest over-capacity days (stop at
+      // zero). Delays are working days; the float (calendar days) caps how far it may go.
       let best = 0;
       let bestCount = before;
       if (before > 0) {
-        for (let delay = 1; delay <= Math.min(x.float, 365) && bestCount > 0; delay++) {
+        const maxDelay = Math.min(m.cal.workingDaysWithin(String(x.task!.endDate), Math.min(x.float, 365)), 365);
+        for (let delay = 1; delay <= maxDelay && bestCount > 0; delay++) {
           work += x.list.length * 5;
           const n = overDays(x.list, delay);
           if (n < bestCount) { best = delay; bestCount = n; }
@@ -244,17 +303,18 @@ export class ResourceLevelingService {
       if (best > 0) {
         const t = x.task!;
         const names = [...new Set(x.list.map(a => m.resources.get(a.resourceId)?.name ?? 'someone'))].join(', ');
+        const to = m.cal.moved(String(t.startDate), String(t.endDate), best);
         adjustedTasks.push({
           taskId: t.id,
           taskName: t.name,
           originalStart: String(t.startDate).slice(0, 10),
           originalEnd: String(t.endDate).slice(0, 10),
-          newStart: addDays(String(t.startDate), best),
-          newEnd: addDays(String(t.endDate), best),
-          reason: `Delayed ${best} day${best === 1 ? '' : 's'} so ${names} ${x.list.length === 1 ? 'is' : 'are'} no longer over capacity (float: ${x.float} days)`,
+          newStart: to.start,
+          newEnd: to.end,
+          reason: `Delayed ${best} working day${best === 1 ? '' : 's'} so ${names} ${x.list.length === 1 ? 'is' : 'are'} no longer over capacity (float: ${x.float} days)`,
         });
         // the task now sits later — later tasks are judged against the moved load
-        for (const a of x.list) { a.startDate = addDays(a.startDate, best); a.endDate = addDays(a.endDate, best); }
+        for (const a of x.list) { const mv = m.cal.moved(a.startDate, a.endDate, best); a.startDate = mv.start; a.endDate = mv.end; }
       }
     }
 
@@ -271,7 +331,7 @@ export class ResourceLevelingService {
       for (const a of list) {
         const who = m.resources.get(a.resourceId);
         if (!who) continue;
-        const days = workdays(a.startDate, a.endDate);
+        const days = m.cal.workdays(a.startDate, a.endDate);
         if (!days.some(d => overSet.has(`${who.name}|${d}`))) continue;
         const words = new Set(`${t.name} ${t.description || ''}`.toLowerCase().split(/\s+/).filter(w => w.length > 2));
         let best: { r: Resource; score: number } | null = null;

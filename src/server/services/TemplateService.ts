@@ -3,6 +3,7 @@ import { projectService } from './ProjectService';
 import { scheduleService } from './ScheduleService';
 import { consultingEngagementTemplates } from './templates/consultingEngagements';
 import logger from '../utils/logger';
+import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, finishFor, utcDay, ymdOf } from '../utils/workingDays';
 
 /** The RAID log scores 1-5; templates express probability and impact in words. */
 const SCORE = { low: 2, medium: 3, high: 4 } as const;
@@ -554,9 +555,11 @@ export class TemplateService {
     const idx = this.templates.findIndex(t => t.id === input.templateId);
     if (idx !== -1) TemplateService.templates[idx].usageCount++;
 
-    const startDate = new Date(input.startDate);
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + template.estimatedDurationDays);
+    // Template offsets and durations are WORKING days. The new project has no calendar
+    // of its own yet (it defaults to Mon–Fri), so the project's target finish is counted
+    // on weekdays; the tasks below use the project calendar once it exists.
+    const startDate = utcDay(input.startDate);
+    const endDate = finishFor(startDate, template.estimatedDurationDays, weekdaysOnly);
 
     // 1. Create Project
     const project = await projectService.create({
@@ -612,25 +615,24 @@ export class TemplateService {
     // 4. Topological sort tasks (parents first, then by dependency order)
     const sorted = this.topologicalSort(tasksToCreate);
 
-    // 4. Create tasks with dependency resolution
+    // 4. Create tasks with dependency resolution. Offsets, durations and FS steps count
+    // working days on the project's calendar, and no task starts or finishes on a day off.
+    const isWorking = await this.workingDayTestFor(schedule.id);
+    const firstWorking = onOrAfterWorking(startDate, isWorking);
     const refIdToTaskId = new Map<string, string>();
     const createdTasks: any[] = [];
 
     for (const tt of sorted) {
-      const taskStart = new Date(startDate);
-      taskStart.setDate(taskStart.getDate() + tt.offsetDays);
+      let taskStart = shiftWorking(firstWorking, Math.max(0, Math.round(tt.offsetDays || 0)), isWorking);
 
       // If this task depends on another, calculate start from dependency end
       if (tt.dependencyRefId && refIdToTaskId.has(tt.dependencyRefId)) {
         const depTask = createdTasks.find(t => t.id === refIdToTaskId.get(tt.dependencyRefId!));
         if (depTask && depTask.endDate) {
-          const depEnd = new Date(depTask.endDate);
           if (tt.dependencyType === 'FS') {
-            taskStart.setTime(depEnd.getTime());
-            taskStart.setDate(taskStart.getDate() + 1);
-          } else if (tt.dependencyType === 'SS') {
-            const depStart = new Date(depTask.startDate);
-            taskStart.setTime(depStart.getTime());
+            taskStart = shiftWorking(utcDay(depTask.endDate), 1, isWorking);
+          } else if (tt.dependencyType === 'SS' && depTask.startDate) {
+            taskStart = utcDay(depTask.startDate);
           }
         }
       }
@@ -639,15 +641,13 @@ export class TemplateService {
       if (tt.parentRefId && refIdToTaskId.has(tt.parentRefId)) {
         const parentTask = createdTasks.find(t => t.id === refIdToTaskId.get(tt.parentRefId!));
         if (parentTask && parentTask.startDate) {
-          const parentStart = new Date(parentTask.startDate);
-          if (taskStart < parentStart) {
-            taskStart.setTime(parentStart.getTime());
-          }
+          const parentStart = utcDay(parentTask.startDate);
+          if (taskStart < parentStart) taskStart = parentStart;
         }
       }
 
-      const taskEnd = new Date(taskStart);
-      taskEnd.setDate(taskEnd.getDate() + tt.estimatedDays);
+      taskStart = onOrAfterWorking(taskStart, isWorking);
+      const taskEnd = finishFor(taskStart, tt.estimatedDays, isWorking);
 
       const depId = tt.dependencyRefId ? refIdToTaskId.get(tt.dependencyRefId) : undefined;
       const task = await scheduleService.createTask({
@@ -717,6 +717,8 @@ export class TemplateService {
       try {
         const { frequency, dayOfWeek, description } = template.reportCadence;
         const dayCode = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'][(dayOfWeek ?? 5) - 1] ?? 'FR';
+        // The report task starts on the project's first working day (a Saturday start moves to Monday)
+        const reportStart = ymdOf(onOrAfterWorking(utcDay(input.startDate), await scheduleService.workingDayTest(schedule.id)));
         const reportTask = await scheduleService.createTask({
           scheduleId: schedule.id,
           name: frequency === 'monthly' ? 'Issue monthly status report' : `Issue ${frequency} status report`,
@@ -724,8 +726,8 @@ export class TemplateService {
           status: 'pending',
           priority: 'high',
           estimatedDays: 1,
-          startDate: input.startDate,
-          endDate: input.startDate,
+          startDate: reportStart,
+          endDate: reportStart,
           recurrenceRule: frequency === 'monthly'
             ? 'FREQ=MONTHLY'
             : `FREQ=${frequency === 'biweekly' ? 'BIWEEKLY' : 'WEEKLY'};BYDAY=${dayCode}`,
@@ -772,6 +774,7 @@ export class TemplateService {
 
     for (const schedule of schedules) {
       const tasks = tasksBySchedule.get(schedule.id) ?? [];
+      const isWorking = await this.workingDayTestFor(schedule.id);
       const taskIdToRefId = new Map<string, string>();
 
       // Build refId map
@@ -787,13 +790,15 @@ export class TemplateService {
         const firstDep = t.dependencies?.[0];
         const depRefId = firstDep ? taskIdToRefId.get(firstDep.dependencyId) || null : null;
 
-        // Calculate offset from schedule start
+        // Offset from the schedule's first working day, in working days on the source
+        // project's calendar (applying the template counts them the same way).
         const offsetDays = t.startDate && schedule.startDate
-          ? Math.max(0, Math.round((new Date(t.startDate).getTime() - new Date(schedule.startDate).getTime()) / (1000 * 60 * 60 * 24)))
+          ? Math.max(0, workingDaysAfter(onOrAfterWorking(utcDay(schedule.startDate), isWorking), onOrAfterWorking(utcDay(t.startDate), isWorking), isWorking))
           : 0;
 
+        // Duration in working days, the start day counted (a same-day task is 1 day)
         const estimatedDays = t.estimatedDays || (t.startDate && t.endDate
-          ? Math.max(1, Math.round((new Date(t.endDate).getTime() - new Date(t.startDate).getTime()) / (1000 * 60 * 60 * 24)))
+          ? Math.max(1, 1 + workingDaysAfter(onOrAfterWorking(utcDay(t.startDate), isWorking), utcDay(t.endDate), isWorking))
           : 1);
 
         const hasChildren = tasks.some(child => child.parentTaskId === t.id);
@@ -832,6 +837,15 @@ export class TemplateService {
       tasks: templateTasks,
       tags: input.tags,
     });
+  }
+
+  /** The schedule's project calendar; Mon–Fri when it cannot be read */
+  private async workingDayTestFor(scheduleId: string): Promise<IsWorking> {
+    try {
+      return (await scheduleService.workingDayTest(scheduleId)) ?? weekdaysOnly;
+    } catch {
+      return weekdaysOnly;
+    }
   }
 
   private topologicalSort(tasks: TemplateTask[]): TemplateTask[] {

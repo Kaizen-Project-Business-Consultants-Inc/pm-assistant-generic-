@@ -6,11 +6,11 @@ import {
   HEADER_H,
   ROW_H,
   toDate,
-  daysBetween,
   formatShortDate,
   healthColor,
 } from './types';
 import { getInitials, getAvatarHex } from '../../ui/Avatar';
+import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -51,6 +51,8 @@ export interface GanttTimelineBarProps {
   onDepDrawMouseDown?: (e: React.MouseEvent, task: GanttTask, edge: 'start' | 'finish') => void;
   hasOnTaskUpdate: boolean;
   riskLevel?: import('../../../utils/taskRiskAssessment').TaskRiskLevel;
+  /** Project calendar, so the tooltip's length counts working days */
+  workCalendar?: WorkCalendar | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +88,7 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
   onDepDrawMouseDown,
   hasOnTaskUpdate,
   riskLevel,
+  workCalendar,
 }: GanttTimelineBarProps) {
   // Resource name lookup (shared cache with GanttLeftPanelRow)
   const { data: resourceData } = useQuery({
@@ -378,7 +381,7 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
         </div>
         <div className="text-gray-300 mt-0.5">
           {formatShortDate(start, new Date().getFullYear())} — {formatShortDate(end, new Date().getFullYear())} &middot;{' '}
-          {daysBetween(start, end)}d &middot; {pct}% complete
+          {workingDaysBetween(task.startDate, task.endDate, workCalendar) ?? 0}d &middot; {pct}% complete
           {floatDays > 0 && <span className="text-yellow-400"> &middot; Float: {floatDays}d</span>}
         </div>
         {assigneeName && (

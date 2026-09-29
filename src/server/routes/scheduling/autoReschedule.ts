@@ -10,6 +10,7 @@ import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
+import { weekdaysOnly, onOrAfterWorking, shiftWorking, utcDay, ymdOf } from '../../utils/workingDays';
 
 const rejectBodySchema = z.object({
   feedback: z.string().optional(),
@@ -195,17 +196,18 @@ function generateSampleDelays() {
 
 function generateSampleProposals() {
   const today = new Date();
-  const addDays = (n: number) => new Date(today.getTime() + n * 86400000).toISOString().slice(0, 10);
+  // n working days (Mon–Fri) from today — the sample never lands on a weekend
+  const addDays = (n: number) => ymdOf(shiftWorking(onOrAfterWorking(utcDay(today), weekdaysOnly), n, weekdaysOnly));
   return [
     {
       id: 'sample-prop-1',
       status: 'pending',
       rationale: 'Shift downstream tasks to absorb API integration delay while maintaining critical path integrity.',
       changes: [
-        { taskId: 's4', taskName: 'Integration Testing', currentStart: addDays(5), currentEnd: addDays(15), proposedStart: addDays(13), proposedEnd: addDays(23), reason: 'Delayed due to API integration dependency' },
-        { taskId: 's5', taskName: 'User Acceptance Testing', currentStart: addDays(16), currentEnd: addDays(25), proposedStart: addDays(24), proposedEnd: addDays(33), reason: 'Cascading delay from integration testing' },
+        { taskId: 's4', taskName: 'Integration Testing', currentStart: addDays(4), currentEnd: addDays(11), proposedStart: addDays(12), proposedEnd: addDays(19), reason: 'Delayed due to API integration dependency' },
+        { taskId: 's5', taskName: 'User Acceptance Testing', currentStart: addDays(12), currentEnd: addDays(18), proposedStart: addDays(20), proposedEnd: addDays(26), reason: 'Cascading delay from integration testing' },
       ],
-      estimatedImpact: { originalEndDate: addDays(25), proposedEndDate: addDays(33), daysChange: 8 },
+      estimatedImpact: { originalEndDate: addDays(18), proposedEndDate: addDays(26), daysChange: 8 },
       createdAt: new Date().toISOString(),
     },
   ];

@@ -12,6 +12,7 @@ import { config } from '../config';
 import { AILearningServiceV2 } from './aiLearningService';
 import { auditLedgerService } from './AuditLedgerService';
 import logger from '../utils/logger';
+import { type IsWorking, weekdaysOnly, shiftWorking, finishFor, utcDay, ymdOf } from '../utils/workingDays';
 import {
   proposeFixesDeterministic,
   buildGroupingFixes,
@@ -131,7 +132,7 @@ export class ScheduleFixProposerService {
     // always the base. When the PM opts into AI, we ask it ONLY for phase groupings
     // and merge them in (replacing any prefix-based grouping guesses). This keeps
     // the AI reply small so it returns fast and never truncates on big schedules.
-    let fixes: ProposedFix[] = proposeFixesDeterministic(review.findings, tasks);
+    let fixes: ProposedFix[] = proposeFixesDeterministic(review.findings, tasks, await this.workingDayTest(scheduleId));
     let source: 'ai' | 'rules' = 'rules';
     if (useAi && config.AI_ENABLED && claudeService.isAvailable() && leafCount <= 80) {
       try {
@@ -240,6 +241,8 @@ export class ScheduleFixProposerService {
     const before = await scheduleReviewService.latest(scheduleId);
     const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
     const taskById = new Map(tasks.map(t => [t.id, t]));
+    // Dates the fixes pick land on working days of the project calendar
+    const isWorking = await this.workingDayTest(scheduleId);
 
     // Snapshot before touching anything, so the PM can fall back to it.
     let baselineId: string | null = null;
@@ -331,10 +334,17 @@ export class ScheduleFixProposerService {
         const preds = (gate.dependencies || []).map(d => ({ id: d.dependencyId, type: (d.dependencyType || 'FS') as 'FS' | 'SS' | 'FF' | 'SF', lag: d.lagDays ?? 0 }));
         if (preds.length === 0) { skipped.push({ fixId: f.id, reason: 'gate has no predecessor to buffer' }); continue; }
 
+        // The buffer runs from the first working day after its latest feeder finishes, for
+        // its length in working days (the re-flow below settles the final dates).
+        const feederEnds = preds.map(p => taskById.get(p.id)?.endDate).filter(Boolean).map(e => ymdOf(utcDay(e)));
+        const latestFeederEnd = feederEnds.sort().pop();
+        const bufferStart = latestFeederEnd ? shiftWorking(utcDay(latestFeederEnd), 1, isWorking) : null;
         const buffer = await scheduleService.createTask({
           scheduleId,
           name: `Buffer before ${f.gateName ?? gate.name}`,
           estimatedDays: f.bufferDays ?? 1,
+          startDate: bufferStart ? ymdOf(bufferStart) : undefined,
+          endDate: bufferStart ? ymdOf(finishFor(bufferStart, f.bufferDays ?? 1, isWorking)) : undefined,
           createdBy: userId ?? 'system',
         });
         applied.push({ op: 'delete_task', taskId: buffer.id });
@@ -362,7 +372,7 @@ export class ScheduleFixProposerService {
         const t = taskById.get(f.taskId!);
         if (!t || !t.startDate || !t.endDate || !f.parts?.length) { skipped.push({ fixId: f.id, reason: 'task not found or has no dates' }); continue; }
         if (tasks.some(x => x.parentTaskId === t.id)) { skipped.push({ fixId: f.id, reason: 'task already has tasks under it' }); continue; }
-        const planned = planSplitDates(String(t.startDate), String(t.endDate), f.parts);
+        const planned = planSplitDates(String(t.startDate), String(t.endDate), f.parts, isWorking);
         const created: string[] = [];
         let after = t.id;
         // Replace (a milestone-named line): the task itself becomes the first part, so its
@@ -431,8 +441,10 @@ export class ScheduleFixProposerService {
     for (const f of fixes.filter(f => f.type === 'add_task')) {
       try {
         const anchor = f.afterTaskId ? taskById.get(f.afterTaskId) : undefined;
-        const start = anchor?.endDate ? new Date(Date.parse(String(anchor.endDate).slice(0, 10) + 'T00:00:00Z') + 86_400_000).toISOString().slice(0, 10) : undefined;
-        const end = start ? new Date(Date.parse(start + 'T00:00:00Z') + ((f.newTaskDays ?? 5) - 1) * 86_400_000).toISOString().slice(0, 10) : undefined;
+        // Starts the first working day after its anchor finishes; its length is working days
+        const startDay = anchor?.endDate ? shiftWorking(utcDay(anchor.endDate), 1, isWorking) : null;
+        const start = startDay ? ymdOf(startDay) : undefined;
+        const end = startDay ? ymdOf(finishFor(startDay, f.newTaskDays ?? 5, isWorking)) : undefined;
         const created = await scheduleService.createTask({
           scheduleId,
           name: f.newTaskName!,
@@ -502,6 +514,15 @@ export class ScheduleFixProposerService {
       warning,
       dateDeltas: recompute.deltas.slice(0, 50),
     };
+  }
+
+  /** The schedule's project calendar; Mon-Fri when it cannot be read */
+  private async workingDayTest(scheduleId: string): Promise<IsWorking> {
+    try {
+      return (await scheduleService.workingDayTest(scheduleId)) ?? weekdaysOnly;
+    } catch {
+      return weekdaysOnly;
+    }
   }
 
   /** Reverse an applied proposal, then re-score. */

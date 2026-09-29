@@ -7,7 +7,8 @@
  * when the AI proposer is unavailable, so it must stand on its own.
  */
 
-import { calendarDaySpan, isMilestoneLike, BUFFER_NAME, type Finding, type ReviewTask } from './rules';
+import { isMilestoneLike, BUFFER_NAME, type Finding, type ReviewTask } from './rules';
+import { type IsWorking, weekdaysOnly, workingDaysAfter, onOrAfterWorking, shiftWorking, utcDay, ymdOf } from '../../utils/workingDays';
 
 export type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration' | 'insert_buffer' | 'split_task' | 'add_task';
 
@@ -51,7 +52,7 @@ export interface SplitPart {
   name: string;
   /** Approvals, sign-offs, hand-over events: a one-day milestone, not work */
   isMilestone: boolean;
-  /** Suggested length in calendar days (work parts); rescaled to the task's own span */
+  /** Suggested length in working days (work parts); rescaled to the task's own span */
   days: number;
 }
 
@@ -113,11 +114,19 @@ function isLeaf(t: ReviewTask, hasChildren: Set<string>): boolean {
   return !t.isSummary && !hasChildren.has(t.id);
 }
 
-/** A task's duration in calendar days (end - start), falling back to estimatedDays. */
-function durationDays(t: ReviewTask): number {
+/** Working days from start to end inclusive (the start day counts when it is worked) */
+export function workingSpan(start: string, end: string, isWorking: IsWorking): number {
+  const s = utcDay(start);
+  const e = utcDay(end);
+  if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return 0;
+  return workingDaysAfter(s, e, isWorking) + (isWorking(s) ? 1 : 0);
+}
+
+/** A task's duration in working days (its dates, start day counted), falling back to estimatedDays. */
+function durationDays(t: ReviewTask, isWorking: IsWorking): number {
   const s = t.startDate ? String(t.startDate).slice(0, 10) : '';
   const e = t.endDate ? String(t.endDate).slice(0, 10) : '';
-  if (s && e) return Math.max(1, calendarDaySpan(s, e) - 1);
+  if (s && e) return Math.max(1, workingSpan(s, e, isWorking));
   if (t.estimatedDays && t.estimatedDays > 0) return t.estimatedDays;
   return 1;
 }
@@ -125,8 +134,10 @@ function durationDays(t: ReviewTask): number {
 /**
  * Propose structural fixes from a review's findings and task list.
  * Order is stable: dependencies, then milestones, then phase parents.
+ * Day counts (spans, durations, buffer sizes) are WORKING days of the project calendar
+ * (`isWorking`; Mon-Fri when not given), the start day counted.
  */
-export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask[]): ProposedFix[] {
+export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask[], isWorking: IsWorking = weekdaysOnly): ProposedFix[] {
   const fixes: ProposedFix[] = [];
   const byId = new Map(tasks.map(t => [t.id, t]));
   const hasChildren = new Set<string>();
@@ -183,7 +194,7 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
       const s = t.startDate ? String(t.startDate).slice(0, 10) : '';
       const e = t.endDate ? String(t.endDate).slice(0, 10) : '';
       if (!s || !e) continue;
-      const span = calendarDaySpan(s, e);
+      const span = workingSpan(s, e, isWorking);
       if (span < 2) continue;
       const parts = milestoneSplitParts(t.name, span, nextStepName(t, tasks));
       splitDone.add(t.id);
@@ -222,14 +233,14 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
     const s = t.startDate ? String(t.startDate).slice(0, 10) : '';
     const e = t.endDate ? String(t.endDate).slice(0, 10) : '';
     if (!s || !e) continue;
-    const span = calendarDaySpan(s, e); // inclusive count, matches R12's detection
+    const span = workingSpan(s, e, isWorking); // working days, start day counted
     if (span < 2) continue;
     const days = Number(t.estimatedDays ?? 0);
     // Disagrees if estimatedDays is off the span by >50%, or is a sub-day value over a multi-day span.
     const disagrees = (days > 0 && Math.abs(days - span) / span > 0.5) || (days > 0 && days < 1);
     if (!disagrees) continue;
-    // The app stores duration as end - start (exclusive), so target = span - 1.
-    const target = Math.max(1, span - 1);
+    // A duration counts working days with the start day included, so it equals the span.
+    const target = span;
     fixes.push(build({
       id: `set_duration:${t.id}`,
       type: 'set_duration',
@@ -273,7 +284,7 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
     const preds = (t.dependencies || []).map(d => byId.get(d.dependencyId)).filter(Boolean) as ReviewTask[];
     if (preds.length === 0) continue;                                   // nothing feeding it yet
     if (preds.some(p => BUFFER_NAME.test(p.name || ''))) continue;      // already buffered
-    const longest = Math.max(...preds.map(durationDays));
+    const longest = Math.max(...preds.map(p => durationDays(p, isWorking)));
     const bufferDays = Math.max(1, Math.round(0.15 * longest));
     fixes.push(build({
       id: `insert_buffer:${t.id}`,
@@ -383,16 +394,16 @@ export function buildPhaseFixes(
   return out;
 }
 
-const DAY = 86_400_000;
-const addDays = (ymd: string, n: number) => new Date(Date.parse(`${ymd}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
-
-/**
- * Share a task's own dates across its split parts, in order, in calendar days (the app's
- * date math). Work parts are scaled to fill the task's span exactly — the summary keeps
- * the original dates — by largest remainder, at least one day each; if there are more
- * work parts than days they run in parallel over the whole span. A milestone sits on the
- * last day of the work before it (or the task's first day if it comes first).
- */
+/** The working days from start to end inclusive, as YYYY-MM-DD (bounded: a task is at most a few years) */
+function workingDaysIn(start: string, end: string, isWorking: IsWorking): string[] {
+  const out: string[] = [];
+  const e = utcDay(end);
+  for (let c = onOrAfterWorking(utcDay(start), isWorking), i = 0; c <= e && i < 3660; i++) {
+    out.push(ymdOf(c));
+    c = shiftWorking(c, 1, isWorking);
+  }
+  return out;
+}
 /**
  * How a milestone-named line that spans days is split (user's rule, 2026-09-29, option A):
  *   Review <deliverable>        task — the review work
@@ -462,10 +473,22 @@ export function nextStepName(t: ReviewTask, all: ReviewTask[]): string | null {
   return usable(later[0]);
 }
 
-export function planSplitDates(start: string, end: string, parts: SplitPart[]): Array<SplitPart & { startDate: string; endDate: string }> {
-  const s = start.slice(0, 10);
-  const e = end.slice(0, 10);
-  const span = Math.max(1, Math.round((Date.parse(`${e}T00:00:00Z`) - Date.parse(`${s}T00:00:00Z`)) / DAY) + 1);
+/**
+ * Share a task's own dates across its split parts, in order, over the WORKING days inside
+ * the task's span (project calendar; Mon-Fri when not given), so no part starts or
+ * finishes on a day off. Work parts are scaled to fill those days exactly by largest
+ * remainder, at least one day each, and each part's `days` becomes its share; if there
+ * are more work parts than days they run in parallel over the whole span. A milestone
+ * (0 days) sits on the last day of the work before it (or the first working day if it
+ * comes first).
+ */
+export function planSplitDates(start: string, end: string, parts: SplitPart[], isWorking: IsWorking = weekdaysOnly): Array<SplitPart & { startDate: string; endDate: string }> {
+  // A span with no working day at all keeps its own first day (nothing better to offer)
+  const found = workingDaysIn(start.slice(0, 10), end.slice(0, 10), isWorking);
+  const days = found.length > 0 ? found : [start.slice(0, 10)];
+  const s = days[0];
+  const e = days[days.length - 1];
+  const span = days.length;
   const work = parts.filter(p => !p.isMilestone);
   const parallel = work.length > span;
   let alloc: number[] = [];
@@ -480,24 +503,24 @@ export function planSplitDates(start: string, end: string, parts: SplitPart[]): 
     for (let k = 0; left > 0; k = (k + 1) % order.length, left--) alloc[order[k].i]++;
   }
   const out: Array<SplitPart & { startDate: string; endDate: string }> = [];
-  let cursor = s;
+  let cursor = 0; // index into the working days
   let lastEnd: string | null = null;
   let w = 0;
   for (const p of parts) {
     if (p.isMilestone) {
       const day = lastEnd ?? s;
-      out.push({ ...p, startDate: day, endDate: day });
+      out.push({ ...p, days: 0, startDate: day, endDate: day });
       continue;
     }
     if (parallel) {
-      out.push({ ...p, startDate: s, endDate: e });
+      out.push({ ...p, days: span, startDate: s, endDate: e });
       lastEnd = e;
       continue;
     }
-    const pe = addDays(cursor, alloc[w] - 1);
-    out.push({ ...p, startDate: cursor, endDate: pe });
+    const pe = days[cursor + alloc[w] - 1];
+    out.push({ ...p, days: alloc[w], startDate: days[cursor], endDate: pe });
     lastEnd = pe;
-    cursor = addDays(pe, 1);
+    cursor += alloc[w];
     w++;
   }
   return out;

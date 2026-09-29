@@ -8,7 +8,7 @@ import { calendarService } from './CalendarService';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, finishFor } from '../utils/workingDays';
 
 /** Why dates moved — recorded on every task.reschedule audit entry */
-export type RescheduleReason = 'link_added' | 'schedule_review_fix' | 'undo' | 'calendar_change' | 'days_off_cleanup';
+export type RescheduleReason = 'link_added' | 'schedule_review_fix' | 'undo' | 'calendar_change' | 'days_off_cleanup' | 'ai_reschedule';
 
 /**
  * One audit entry per moved task (action `task.reschedule`), with before/after dates.

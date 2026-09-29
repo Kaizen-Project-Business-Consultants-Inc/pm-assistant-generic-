@@ -60,3 +60,68 @@ export function finishAfterWorkingDays(start: string | null | undefined, days: n
   }
   return null;
 }
+
+/** The calendar day `n` days after (or before, when negative) `date`. Null for a bad date. */
+export function addCalendarDays(date: string | null | undefined, n: number): string | null {
+  const s = ymd(date);
+  if (!s || !Number.isFinite(n)) return null;
+  const d = new Date(s + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + Math.round(n));
+  return d.toISOString().slice(0, 10);
+}
+
+/** `date` itself when it is a working day, else the next working day after it. */
+export function nextWorkingDay(date: string | null | undefined, cal?: WorkCalendar | null): string | null {
+  let cursor = ymd(date);
+  for (let guard = 0; cursor && guard < 20000; guard++) {
+    if (isWorkingDay(cursor, cal)) return cursor;
+    cursor = addCalendarDays(cursor, 1);
+  }
+  return null;
+}
+
+/** `date` itself when it is a working day, else the last working day before it. */
+export function previousWorkingDay(date: string | null | undefined, cal?: WorkCalendar | null): string | null {
+  let cursor = ymd(date);
+  for (let guard = 0; cursor && guard < 20000; guard++) {
+    if (isWorkingDay(cursor, cal)) return cursor;
+    cursor = addCalendarDays(cursor, -1);
+  }
+  return null;
+}
+
+/**
+ * Move a task so it starts on `targetStart` (pushed to the next working day when that is a
+ * day off) and keeps its length in working days. A milestone keeps start = finish.
+ * A task with no working days in its old span is treated as 1 day long.
+ */
+export function moveKeepingWorkingLength(
+  oldStart: string | null | undefined,
+  oldEnd: string | null | undefined,
+  targetStart: string | null | undefined,
+  cal?: WorkCalendar | null,
+  isMilestone = false,
+): { start: string; end: string } | null {
+  const start = nextWorkingDay(targetStart, cal);
+  if (!start) return null;
+  if (isMilestone) return { start, end: start };
+  const length = Math.max(1, workingDaysBetween(oldStart, oldEnd, cal) ?? 1);
+  const end = finishAfterWorkingDays(start, length, cal);
+  return end ? { start, end } : null;
+}
+
+/**
+ * Snap a span picked by dragging: the start goes forward to a working day, the finish back
+ * to one, and the finish is never before the start (at least one day).
+ */
+export function snapSpanToWorkingDays(
+  start: string | null | undefined,
+  end: string | null | undefined,
+  cal?: WorkCalendar | null,
+): { start: string; end: string } | null {
+  const s = nextWorkingDay(start, cal);
+  const rawEnd = ymd(end);
+  if (!s || !rawEnd) return null;
+  const e = previousWorkingDay(rawEnd, cal);
+  return { start: s, end: e && e >= s ? e : s };
+}

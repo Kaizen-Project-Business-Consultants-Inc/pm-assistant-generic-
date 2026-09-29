@@ -1,9 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ── Mocks ────────────────────────────────────────────────────────────
 const mockQuery = vi.fn();
 vi.mock('../../database/connection', () => ({
   databaseService: { query: (...args: any[]) => mockQuery(...args) },
+}));
+
+// The project calendar. Most tests below count every day as worked so they are
+// independent of today's weekday; the working-day tests set a real calendar.
+const everyDay = () => true;
+const mockWorkingDayTest = vi.fn(async (_scheduleId: string): Promise<(d: Date) => boolean> => everyDay);
+vi.mock('../../services/ScheduleService', () => ({
+  scheduleService: { workingDayTest: (id: string) => mockWorkingDayTest(id) },
 }));
 
 vi.mock('uuid', () => ({
@@ -13,8 +21,10 @@ vi.mock('uuid', () => ({
 import {
   parseRecurrenceRule,
   getNextOccurrence,
+  instanceDate,
   RecurrenceService,
 } from '../../services/RecurrenceService';
+import { weekdaysOnly } from '../../utils/workingDays';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 function makeTemplate(overrides: Record<string, any> = {}) {
@@ -199,6 +209,7 @@ describe('RecurrenceService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWorkingDayTest.mockImplementation(async () => everyDay);
     service = new RecurrenceService();
   });
 
@@ -460,6 +471,90 @@ describe('RecurrenceService', () => {
       expect(params[5]).toBeNull();       // assigned_to
       expect(params[6]).toBeNull();       // estimated_days
       expect(params[9]).toBeNull();       // parent_task_id
+    });
+  });
+
+  // ── working days (project calendar) ────────────────────────────────
+  describe('working days', () => {
+    const inserts = () => mockQuery.mock.calls
+      .filter((c: any[]) => typeof c[0] === 'string' && c[0].includes('INSERT INTO tasks'))
+      .map((c: any[]) => ({ start: c[1][7], end: c[1][8] }));
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-10-01T12:00:00Z')); // a Thursday
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it('DAILY skips weekends and project holidays', async () => {
+      // Mon 5 Oct is a holiday on this project
+      mockWorkingDayTest.mockImplementation(async () => (d: Date) => weekdaysOnly(d) && d.toISOString().slice(0, 10) !== '2026-10-05');
+      mockQuery
+        .mockResolvedValueOnce([makeTemplate({ start_date: '2026-10-01', recurrence_rule: 'FREQ=DAILY' })])
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([]);
+      await service.expandTemplate('tpl-1', 6); // horizon Wed 7 Oct
+      expect(inserts().map(i => i.start)).toEqual(['2026-10-02', '2026-10-06', '2026-10-07']);
+      expect(mockWorkingDayTest).toHaveBeenCalledWith('sch-1');
+    });
+
+    it('WEEKLY on a holiday moves to the next working day, and the pattern keeps its weekday', async () => {
+      mockWorkingDayTest.mockImplementation(async () => (d: Date) => weekdaysOnly(d) && d.toISOString().slice(0, 10) !== '2026-10-12');
+      mockQuery
+        .mockResolvedValueOnce([makeTemplate({ start_date: '2026-10-05', recurrence_rule: 'FREQ=WEEKLY;BYDAY=MO' })])
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([]);
+      await service.expandTemplate('tpl-1', 20); // horizon 21 Oct
+      expect(inserts().map(i => i.start)).toEqual(['2026-10-13', '2026-10-19']);
+    });
+
+    it('two pattern dates that move onto the same working day create one instance', async () => {
+      mockWorkingDayTest.mockImplementation(async () => weekdaysOnly);
+      mockQuery
+        .mockResolvedValueOnce([makeTemplate({ start_date: '2026-10-02', recurrence_rule: 'FREQ=WEEKLY;BYDAY=SA,SU,MO' })])
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([]);
+      await service.expandTemplate('tpl-1', 5); // horizon Tue 6 Oct
+      expect(inserts().map(i => i.start)).toEqual(['2026-10-05']);
+    });
+
+    it('a MONTHLY date on a weekend moves to Monday', async () => {
+      mockWorkingDayTest.mockImplementation(async () => weekdaysOnly);
+      mockQuery
+        .mockResolvedValueOnce([makeTemplate({ start_date: '2026-09-17', recurrence_rule: 'FREQ=MONTHLY;BYMONTHDAY=17' })])
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([]);
+      await service.expandTemplate('tpl-1', 30);
+      expect(inserts().map(i => i.start)).toEqual(['2026-10-19']); // 17 Oct 2026 is a Saturday
+    });
+
+    it('an instance finishes after its duration in working days, the start day counted', async () => {
+      mockWorkingDayTest.mockImplementation(async () => weekdaysOnly);
+      mockQuery
+        .mockResolvedValueOnce([makeTemplate({ start_date: '2026-10-01', recurrence_rule: 'FREQ=DAILY', estimated_days: 2 })])
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([]);
+      await service.expandTemplate('tpl-1', 1); // horizon Fri 2 Oct
+      expect(inserts()).toEqual([{ start: '2026-10-02', end: '2026-10-05' }]); // Fri + 2 days → Mon
+    });
+
+    it('falls back to Mon–Fri when the calendar cannot be read', async () => {
+      mockWorkingDayTest.mockRejectedValue(new Error('db down'));
+      mockQuery
+        .mockResolvedValueOnce([makeTemplate({ start_date: '2026-10-01', recurrence_rule: 'FREQ=DAILY' })])
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([]);
+      await service.expandTemplate('tpl-1', 5); // horizon Tue 6 Oct
+      expect(inserts().map(i => i.start)).toEqual(['2026-10-02', '2026-10-05', '2026-10-06']);
+    });
+
+    it('instanceDate keeps a working day and moves a day off forward', () => {
+      expect(formatDate(instanceDate(new Date('2026-10-02'), weekdaysOnly))).toBe('2026-10-02');
+      expect(formatDate(instanceDate(new Date('2026-10-03'), weekdaysOnly))).toBe('2026-10-05');
+    });
+
+    it('getNextOccurrence DAILY with a calendar steps to the next working day', () => {
+      expect(formatDate(getNextOccurrence({ freq: 'DAILY' }, new Date('2026-10-02'), weekdaysOnly))).toBe('2026-10-05');
     });
   });
 

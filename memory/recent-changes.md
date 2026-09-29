@@ -10,7 +10,8 @@
 - UI: Working calendar button (indigo) + panel, Settings → Company holidays, shared `CalendarChangePreview`, task-form day-off warning.
 - `scripts/moveTasksOffDaysOff.ts` — ran on staging: 182 tasks in 26 plans (michaela: NSWMA 8, DBJ-LMS 11, DBJ-Loans 12). Must run on prod at the first prod deploy (DEPLOYMENT_GUIDE checklist).
 - Ratchet guard `workingDaysGuard.test.ts`. Also: Propose-fixes suggestion click highlights rows (only the box selects), panels no longer steal focus on re-render.
-- Still to do (plan steps 3–4): AI reschedule, levelling, templates, recurrence, import, AI project creator, review-fix phase/buffer/split, meetings, bulk, Gantt drag/resize/drag-create, Calendar-view drag; then CPM/float, early/late dates, Monte Carlo, review rules, S-curve/EVM, baseline, burndown, tooltip.
+- Step 3 done same day (staging): AutoReschedule (working-day delays; severity 5/10/15 wd; AI prompt told the calendar; off-day dates snapped; accept re-flows successors, in Undo), levelling (project calendar), AI actions + meeting reschedules cascade in working days, bulk create finish, templates (apply + save in working days; report task on first working day), recurrence (DAILY skips days off), AI project creator (Mon–Fri), import (structuredFinish), review-fix phase/buffer/split in working days, Gantt drag/resize/drag-create + Calendar-view drag snap, bar tooltip. Left alone: bulk update (no cascade — would overwrite given successor dates).
+- Still to do (step 4): CPM/float, early/late dates, Monte Carlo dates, review rules (R12 still calendar days), S-curve/EVM, baseline variance, sprint burndown, what-if metrics.
 
 ## 2026-09-29 (user guide inside the app)
 

@@ -29,6 +29,7 @@ vi.mock('../../services/ScheduleService', () => ({
     findTaskById: vi.fn().mockResolvedValue(null),
     createTask: vi.fn().mockResolvedValue({}),
     updateTask: vi.fn().mockResolvedValue({}),
+    cascadeReschedule: vi.fn().mockResolvedValue({ affectedTasks: [] }),
     logActivity: vi.fn().mockResolvedValue(undefined),
   },
   Task: {},
@@ -498,6 +499,32 @@ describe('MeetingIntelligenceService', () => {
           endDate: '2026-10-15',
         }),
       );
+    });
+
+    it('pushes successors in working days when the meeting moved the finish', async () => {
+      mockSchedule.findTaskById.mockResolvedValue({ id: 'task-2', name: 'Design landing page', startDate: '2026-09-15', endDate: '2026-09-30' });
+      mockSchedule.updateTask.mockResolvedValue({ id: 'task-2', startDate: '2026-10-01', endDate: '2026-10-15' });
+
+      const result = await service.applyChanges('ma-abc123', [2]);
+
+      expect(result.applied).toBe(1);
+      expect(mockSchedule.cascadeReschedule).toHaveBeenCalledWith(
+        'task-2', new Date('2026-09-30T00:00:00Z'), new Date('2026-10-15T00:00:00Z'),
+      );
+    });
+
+    it('does not cascade when the finish did not move, and still applies if the cascade fails', async () => {
+      mockSchedule.findTaskById.mockResolvedValue({ id: 'task-2', name: 'Design landing page', startDate: '2026-09-15', endDate: '2026-10-15' });
+      mockSchedule.updateTask.mockResolvedValue({ id: 'task-2', startDate: '2026-10-01', endDate: '2026-10-15' });
+      expect((await service.applyChanges('ma-abc123', [2])).applied).toBe(1);
+      expect(mockSchedule.cascadeReschedule).not.toHaveBeenCalled();
+
+      mockSchedule.findTaskById.mockResolvedValue({ id: 'task-2', name: 'Design landing page', startDate: '2026-09-15', endDate: '2026-09-30' });
+      mockSchedule.cascadeReschedule.mockRejectedValueOnce(new Error('db down'));
+      mockAnalysisRepo.findById.mockResolvedValue(makeSampleDbRow());
+      const again = await service.applyChanges('ma-abc123', [2]);
+      expect(again.applied).toBe(1);
+      expect(again.errors).toHaveLength(0);
     });
 
     it('applies multiple indices at once', async () => {

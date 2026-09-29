@@ -4,6 +4,7 @@ import { ProjectService, Project } from './ProjectService';
 import { ScheduleService, Schedule, Task } from './ScheduleService';
 import { ProjectAnalysis } from './aiTaskBreakdown';
 import { logAIUsage } from './aiUsageLogger';
+import { weekdaysOnly, onOrAfterWorking, finishFor, utcDay } from '../utils/workingDays';
 
 export interface NLProjectResult {
   project: Project;
@@ -40,9 +41,10 @@ export class AIProjectCreatorService {
 
     // 2. Derive project name and dates from analysis
     const projectName = this.deriveProjectName(description, analysis);
-    const now = new Date();
-    const endDate = new Date(now);
-    endDate.setDate(endDate.getDate() + (analysis.estimatedDuration || 90));
+    // Durations are WORKING days. The new project has no calendar of its own yet (it
+    // defaults to Mon–Fri), so it starts on the first weekday on or after today.
+    const now = onOrAfterWorking(utcDay(new Date()), weekdaysOnly);
+    const endDate = finishFor(now, analysis.estimatedDuration || 90, weekdaysOnly);
 
     const project = await this.projectService.create({
       name: projectName,
@@ -70,8 +72,7 @@ export class AIProjectCreatorService {
     const taskSuggestions = analysis.taskSuggestions || [];
 
     for (const suggestion of taskSuggestions) {
-      const dueDate = new Date(now);
-      dueDate.setDate(dueDate.getDate() + (suggestion.estimatedDays || 7));
+      const dueDate = finishFor(now, suggestion.estimatedDays || 7, weekdaysOnly);
 
       const task = await this.scheduleService.createTask({
         scheduleId: schedule.id,
@@ -79,6 +80,7 @@ export class AIProjectCreatorService {
         description: suggestion.description,
         priority: suggestion.priority as 'low' | 'medium' | 'high' | 'urgent' || 'medium',
         estimatedDays: suggestion.estimatedDays,
+        startDate: now,
         dueDate,
         createdBy: userId,
       });

@@ -491,7 +491,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   const { data: nwdData } = useQuery({
     queryKey: ['nonWorkingDates', projectId, taskDateRange?.start, taskDateRange?.end],
     queryFn: () => apiService.getNonWorkingDates(projectId, taskDateRange!.start, taskDateRange!.end),
-    enabled: !!taskDateRange && (viewMode === 'gantt' || viewMode === 'table'),
+    enabled: !!taskDateRange && (viewMode === 'gantt' || viewMode === 'table' || viewMode === 'calendar'),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -1473,6 +1473,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           onTaskReschedule={canEdit ? (taskId, newStart, newEnd) => {
             updateTaskWithUndo(taskId, { startDate: newStart, endDate: newEnd });
           } : undefined}
+          workCalendar={workCalendar}
         />
       )}
       {viewMode === 'network' && (

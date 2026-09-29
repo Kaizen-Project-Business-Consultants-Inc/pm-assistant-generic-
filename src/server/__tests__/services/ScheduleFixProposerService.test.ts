@@ -18,6 +18,8 @@ vi.mock('../../services/ScheduleService', () => ({
     updateTask: vi.fn().mockResolvedValue({ id: 't' }),
     createTask: vi.fn().mockResolvedValue({ id: 'phase-new' }),
     deleteTask: vi.fn().mockResolvedValue(true),
+    // Mon-Fri; a test can set a project calendar with holidays
+    workingDayTest: vi.fn(async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6),
   },
 }));
 
@@ -192,8 +194,9 @@ describe('ScheduleFixProposerService', () => {
 
     const res = await (await svc()).apply('s1', 'prop-1', ['sp1'], 'u1');
 
-    expect(scheduleService.createTask).toHaveBeenNthCalledWith(1, expect.objectContaining({ name: 'Circulate BRD', parentTaskId: 'brd', afterTaskId: 'brd', startDate: '2026-10-01', endDate: '2026-10-10', isMilestone: false, assignedTo: 'Ann' }));
-    expect(scheduleService.createTask).toHaveBeenNthCalledWith(2, expect.objectContaining({ name: 'BRD approved', parentTaskId: 'brd', afterTaskId: 'part-1', startDate: '2026-10-10', endDate: '2026-10-10', isMilestone: true, estimatedDays: 0 }));
+    // Sat 10 Oct is not worked: the parts fill the working days Thu 1 - Fri 9 Oct
+    expect(scheduleService.createTask).toHaveBeenNthCalledWith(1, expect.objectContaining({ name: 'Circulate BRD', parentTaskId: 'brd', afterTaskId: 'brd', startDate: '2026-10-01', endDate: '2026-10-09', isMilestone: false, assignedTo: 'Ann' }));
+    expect(scheduleService.createTask).toHaveBeenNthCalledWith(2, expect.objectContaining({ name: 'BRD approved', parentTaskId: 'brd', afterTaskId: 'part-1', startDate: '2026-10-09', endDate: '2026-10-09', isMilestone: true, estimatedDays: 0 }));
     expect(scheduleService.addDependency).toHaveBeenCalledWith('part-2', 'part-1', 'FF', 0);  // milestone lands the day the work finishes
     expect(scheduleService.addDependency).toHaveBeenCalledWith('part-1', 'pre', 'FS', 0);     // predecessor moved to the first part
     expect(scheduleService.removeDependency).toHaveBeenCalledWith('brd', 'pre');
@@ -235,6 +238,32 @@ describe('ScheduleFixProposerService', () => {
     expect(log.map(a => a.op)).toEqual(['restore_task', 'delete_task', 'delete_task', 'readd_dependency', 'remove_dependency']);
   });
 
+  it('working days: add_task skips a project holiday, a buffer gets working-day dates after its latest feeder', async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    // Mon 12 Oct is a holiday on this project
+    vi.mocked(scheduleService.workingDayTest).mockResolvedValueOnce((d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && d.toISOString().slice(0, 10) !== '2026-10-12');
+    const prop = { ...PROPOSAL, proposalData: { fixes: [
+      { id: 'ph1', type: 'add_task', confidence: 0.65, reason: 'x', defaultChecked: true, phaseLabel: 'Testing', newTaskName: 'System testing', newTaskDays: 2, afterTaskId: 'build' },
+      { id: 'buf1', type: 'insert_buffer', confidence: 0.5, reason: 'x', defaultChecked: false, gateTaskId: 'g', gateName: 'Gate 1', bufferDays: 3 },
+    ] } };
+    vi.mocked(repo.findById).mockResolvedValue({ ...prop } as any);
+    vi.mocked(scheduleService.createTask).mockResolvedValue({ id: 'new-1' } as any);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue([
+      { id: 'build', name: 'Build', startDate: '2026-10-01', endDate: '2026-10-09', dependencies: [] },
+      { id: 'early', name: 'Docs', startDate: '2026-10-01', endDate: '2026-10-02', dependencies: [] },
+      { id: 'g', name: 'Gate 1', isMilestone: true, dependencies: [{ dependencyId: 'early', dependencyType: 'FS', lagDays: 0 }, { dependencyId: 'build', dependencyType: 'FS', lagDays: 0 }] },
+    ] as any);
+
+    await (await svc()).apply('s1', 'prop-1', ['ph1', 'buf1'], 'u1');
+
+    expect(scheduleService.workingDayTest).toHaveBeenCalledWith('s1');
+    // Buffer: after Build (the later feeder, Fri 9 Oct), skipping the Monday holiday — Tue 13 to Thu 15
+    expect(scheduleService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'Buffer before Gate 1', startDate: '2026-10-13', endDate: '2026-10-15', estimatedDays: 3 }));
+    // Testing: after Build, skipping the holiday — Tue 13 to Wed 14
+    expect(scheduleService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'System testing', startDate: '2026-10-13', endDate: '2026-10-14' }));
+  });
+
   it('applies add_task: one task after its anchor, linked both ways, removed on undo', async () => {
     const { scheduleService } = await import('../../services/ScheduleService');
     const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
@@ -250,7 +279,8 @@ describe('ScheduleFixProposerService', () => {
 
     await (await svc()).apply('s1', 'prop-1', ['ph1'], 'u1');
 
-    expect(scheduleService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'System testing', afterTaskId: 'build', parentTaskId: 'phase-b', startDate: '2026-10-11', endDate: '2026-10-15', estimatedDays: 5 }));
+    // Build finishes Sat 10 Oct: testing starts the next working day (Mon 12) and runs 5 working days
+    expect(scheduleService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'System testing', afterTaskId: 'build', parentTaskId: 'phase-b', startDate: '2026-10-12', endDate: '2026-10-16', estimatedDays: 5 }));
     expect(scheduleService.addDependency).toHaveBeenCalledWith('test-1', 'build', 'FS', 0);
     expect(scheduleService.addDependency).toHaveBeenCalledWith('dep', 'test-1', 'FS', 0);
     const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];

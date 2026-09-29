@@ -54,7 +54,7 @@ import { GanttLeftPanelHeader } from './gantt/GanttLeftPanelHeader';
 import { GanttLeftPanelRow } from './gantt/GanttLeftPanelRow';
 import { GanttTimelineBar } from './gantt/GanttTimelineBar';
 import { isCalendarOverdue } from '../../utils/dateUtils';
-import { workingDaysBetween, finishAfterWorkingDays, type WorkCalendar } from '../../utils/workingDays';
+import { workingDaysBetween, finishAfterWorkingDays, addCalendarDays, previousWorkingDay, moveKeepingWorkingLength, snapSpanToWorkingDays, type WorkCalendar } from '../../utils/workingDays';
 
 // Re-export types for external consumers
 export type { TaskDependencyRef, GanttTask } from './gantt/types';
@@ -1921,8 +1921,14 @@ export function GanttChart({
       const leftPx = Math.min(createDrag.startX, createDrag.currentX);
       const rightPx = Math.max(createDrag.startX, createDrag.currentX);
       const fmt = (d: Date) => d.toISOString().split('T')[0];
-      const startDate = fmt(new Date(minDate.getTime() + (leftPx / dayPx) * DAY_MS));
-      const endDate = fmt(new Date(minDate.getTime() + (rightPx / dayPx) * DAY_MS));
+      // Snap to the project calendar: start forward, finish back, at least one day
+      const snapped = snapSpanToWorkingDays(
+        fmt(new Date(minDate.getTime() + (leftPx / dayPx) * DAY_MS)),
+        fmt(new Date(minDate.getTime() + (rightPx / dayPx) * DAY_MS)),
+        workCalendar,
+      );
+      if (!snapped) { setCreateDrag(null); return; }
+      const { start: startDate, end: endDate } = snapped;
       // Determine parentTaskId from the clicked row
       const row = rows[createDrag.rowIdx];
       let parentTaskId: string | undefined;
@@ -1949,7 +1955,7 @@ export function GanttChart({
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
     };
-  }, [createDrag, onCreateTaskWithDates, dayPx, minDate, rows, parentTaskIds]);
+  }, [createDrag, onCreateTaskWithDates, dayPx, minDate, rows, parentTaskIds, workCalendar]);
 
   // Auto-scroll state for bar drag
   const autoScrollRef = useRef<number | null>(null);
@@ -1964,6 +1970,8 @@ export function GanttChart({
   selectedIdsRef.current = selectedIds;
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
+  const workCalendarRef = useRef(workCalendar);
+  workCalendarRef.current = workCalendar;
 
   useEffect(() => {
     if (!drag) return;
@@ -2015,30 +2023,31 @@ export function GanttChart({
       const callback = onTaskDragEndRef.current;
       if (d && d.dayDelta !== 0 && callback) {
         dragDidCompleteRef.current = true;
-        const fmt = (dt: Date) => dt.toISOString().split('T')[0];
+        const cal = workCalendarRef.current;
+        const allTasks = tasksRef.current;
         if (d.mode === 'move') {
+          // New start = the dropped day (next working day if it's off); keep the length in working days
           const sIds = selectedIdsRef.current;
-          const allTasks = tasksRef.current;
           const idsToMove = sIds.has(d.taskId) && sIds.size > 1
             ? Array.from(sIds)
             : [d.taskId];
           for (const id of idsToMove) {
             const t = allTasks.find(tk => tk.id === id);
-            if (!t) continue;
-            const s = toDate(t.startDate);
-            const e = toDate(t.endDate);
-            if (!s || !e) continue;
-            const newStart = new Date(s);
-            newStart.setDate(newStart.getDate() + d.dayDelta);
-            const newEnd = new Date(e);
-            newEnd.setDate(newEnd.getDate() + d.dayDelta);
-            callback(id, fmt(newStart), fmt(newEnd));
+            if (!t || !t.startDate || !t.endDate) continue;
+            const moved = moveKeepingWorkingLength(
+              t.startDate, t.endDate, addCalendarDays(t.startDate, d.dayDelta), cal, !!t.isMilestone,
+            );
+            if (moved) callback(id, moved.start, moved.end);
           }
         } else {
-          const newEnd = new Date(d.origEndDate);
-          newEnd.setDate(newEnd.getDate() + d.dayDelta);
-          if (newEnd > d.origStartDate) {
-            callback(d.taskId, fmt(d.origStartDate), fmt(newEnd));
+          // Resize the finish: a day off goes back to the previous working day, never before the start
+          const t = allTasks.find(tk => tk.id === d.taskId);
+          const start = t?.startDate?.slice(0, 10);
+          const rawEnd = t ? addCalendarDays(t.endDate, d.dayDelta) : null;
+          if (start && rawEnd && rawEnd >= start) {
+            const snapped = previousWorkingDay(rawEnd, cal);
+            const newEnd = snapped && snapped >= start ? snapped : start;
+            if (newEnd !== t?.endDate?.slice(0, 10)) callback(d.taskId, start, newEnd);
           }
         }
       }
@@ -2903,6 +2912,7 @@ export function GanttChart({
                   onDepDrawMouseDown={onTaskUpdate ? handleDepDrawMouseDown : undefined}
                   hasOnTaskUpdate={!!onTaskUpdate}
                   riskLevel={taskRiskMap?.get(task.id)}
+                  workCalendar={workCalendar}
                 />
               );
             })}

@@ -34,6 +34,27 @@ const {
   mockAuditAppend: vi.fn().mockResolvedValue(undefined),
 }));
 
+const { mockWorkingDayTest, mockRecompute, mockCalendarSpec, mockNonWorking, mockHistoryRecord, mockFindTaskById } = vi.hoisted(() => ({
+  mockWorkingDayTest: vi.fn(),
+  mockRecompute: vi.fn(),
+  mockCalendarSpec: vi.fn(),
+  mockNonWorking: vi.fn(),
+  mockHistoryRecord: vi.fn(),
+  mockFindTaskById: vi.fn(),
+}));
+
+vi.mock('../../services/ScheduleRecomputeService', () => ({
+  scheduleRecomputeService: { recompute: mockRecompute },
+}));
+
+vi.mock('../../services/CalendarService', () => ({
+  calendarService: { calendarSpec: mockCalendarSpec, getNonWorkingDates: mockNonWorking },
+}));
+
+vi.mock('../../services/ChangeHistoryService', () => ({
+  changeHistoryService: { record: mockHistoryRecord },
+}));
+
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
@@ -44,6 +65,8 @@ vi.mock('../../services/ScheduleService', () => ({
     findById: mockFindScheduleById,
     updateTask: mockUpdateTask,
     logActivity: mockLogActivity,
+    workingDayTest: mockWorkingDayTest,
+    findTaskById: mockFindTaskById,
   })),
 }));
 
@@ -100,7 +123,8 @@ vi.mock('../../utils/promptSanitizer', () => ({
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { AutoRescheduleService } from '../../services/AutoRescheduleService';
+import { AutoRescheduleService, snapToWorking } from '../../services/AutoRescheduleService';
+import { weekdaysOnly, workingDaysAfter, onOrAfterWorking, utcDay } from '../../utils/workingDays';
 import { config } from '../../config';
 import type { Task } from '../../services/ScheduleService';
 
@@ -205,7 +229,17 @@ describe('AutoRescheduleService', () => {
     mockRepoInsert.mockResolvedValue(undefined);
     mockRepoUpdateStatus.mockResolvedValue(undefined);
     mockRepoUpdateProposalData.mockResolvedValue(undefined);
+    mockWorkingDayTest.mockResolvedValue(weekdaysOnly);
+    mockRecompute.mockResolvedValue({ deltas: [] });
+    mockCalendarSpec.mockResolvedValue({ workingDays: [1, 2, 3, 4, 5], holidays: new Set(), working: new Set(), company: new Set() });
+    mockNonWorking.mockResolvedValue([]);
+    mockHistoryRecord.mockResolvedValue(undefined);
+    mockFindTaskById.mockResolvedValue(null);
   });
+
+  /** Working days (Mon–Fri) from calendar day a to calendar day b, b snapped to a working day */
+  const wd = (a: string, b: string) => workingDaysAfter(utcDay(a), onOrAfterWorking(utcDay(b), weekdaysOnly), weekdaysOnly);
+  const isWeekend = (d: string) => !weekdaysOnly(utcDay(d));
 
   // =========================================================================
   // detectDelays
@@ -313,9 +347,12 @@ describe('AutoRescheduleService', () => {
       ]);
       const result = await service.detectDelays('sch-1');
       expect(result.length).toBe(1);
-      // today + whole 10-day duration, vs an end date 55 days ago → ~65 days
-      expect(result[0].delayDays).toBeGreaterThanOrEqual(64);
-      expect(result[0].delayDays).toBeLessThanOrEqual(66);
+      // today + whole 10-day duration, vs an end date 55 days ago → ~65 calendar days,
+      // counted in working days (Mon–Fri)
+      const expected = wd(daysAgo(55), daysFromNow(10));
+      expect(result[0].delayDays).toBeGreaterThanOrEqual(expected - 1);
+      expect(result[0].delayDays).toBeLessThanOrEqual(expected + 1);
+      expect(isWeekend(result[0].estimatedEndDate)).toBe(false);
     });
 
     it('flags an overdue task with partial progress', async () => {
@@ -330,7 +367,7 @@ describe('AutoRescheduleService', () => {
     it('projects completion based on current velocity for partial progress', async () => {
       // 10 of 20 days elapsed, 20% progress. Velocity = 10d / 20% = 0.5 d/%.
       // Remaining: 80% * 0.5 = 40 days from now.
-      // Delay = 40 - 10 = ~30 days.
+      // Delay = 40 - 10 = ~30 calendar days = ~20-22 working days.
       mockFindTasksByScheduleId.mockResolvedValue([
         makeTask('t1', 'Slow task', {
           startDate: daysAgo(10),
@@ -340,7 +377,8 @@ describe('AutoRescheduleService', () => {
       ]);
       const result = await service.detectDelays('sch-1');
       expect(result.length).toBe(1);
-      expect(result[0].delayDays).toBeGreaterThan(25);
+      expect(result[0].delayDays).toBeGreaterThanOrEqual(19);
+      expect(result[0].delayDays).toBeLessThanOrEqual(23);
     });
 
     it('treats undefined progressPercentage as 0', async () => {
@@ -535,6 +573,32 @@ describe('AutoRescheduleService', () => {
       const depChange = proposal.proposedChanges.find(c => c.taskId === 't2');
       expect(depChange).toBeDefined();
       expect(depChange!.reason).toContain('dependency');
+    });
+
+    it('moves dates in working days: never onto a weekend, dependents keep their working-day length and lag', async () => {
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', name: 'Test', endDate: daysFromNow(30) });
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('t1', 'Predecessor', { startDate: daysAgo(10), endDate: daysFromNow(5), progressPercentage: 0 }),
+        makeTask('t2', 'Dependent', {
+          startDate: daysFromNow(6), endDate: daysFromNow(16), progressPercentage: 0,
+          dependencies: [{ dependencyId: 't1', dependencyType: 'FS', lagDays: 2 }],
+        }),
+      ]);
+
+      const proposal = await service.generateProposal('sch-1');
+      const t1 = proposal.proposedChanges.find(c => c.taskId === 't1')!;
+      const t2 = proposal.proposedChanges.find(c => c.taskId === 't2')!;
+      for (const c of [t1, t2]) {
+        expect(isWeekend(c.proposedEndDate)).toBe(false);
+      }
+      expect(isWeekend(t2.proposedStartDate)).toBe(false);
+      // The finish moves by exactly the delay, in working days
+      expect(workingDaysAfter(utcDay(t1.currentEndDate), utcDay(t1.proposedEndDate), weekdaysOnly)).toBe(proposal.delayedTasks[0].delayDays);
+      // Dependent starts 2 working days of lag + 1 after the new finish, same working length
+      expect(workingDaysAfter(utcDay(t1.proposedEndDate), utcDay(t2.proposedStartDate), weekdaysOnly)).toBe(3);
+      const len = (s: string, e: string) => workingDaysAfter(utcDay(s), utcDay(e), weekdaysOnly);
+      expect(len(t2.proposedStartDate, t2.proposedEndDate)).toBe(len(onOrAfterWorking(utcDay(t2.currentStartDate), weekdaysOnly).toISOString(), t2.currentEndDate));
+      expect(proposal.estimatedImpact.daysChange).toBe(Math.max(0, wd(daysFromNow(30), t2.proposedEndDate)));
     });
 
     it('does not shift completed or cancelled dependents', async () => {
@@ -745,7 +809,55 @@ describe('AutoRescheduleService', () => {
       expect(mockComplete).toHaveBeenCalledOnce();
       expect(proposal.rationale).toBe('AI rationale');
       expect(proposal.proposedChanges[0].reason).toBe('AI reason');
-      expect(proposal.estimatedImpact.daysChange).toBe(10);
+      // Worked out from the proposed dates in working days, not taken from the model:
+      // the proposed finish (in 15 days) is before the schedule's end (in 30) → no change
+      expect(proposal.estimatedImpact.daysChange).toBe(0);
+      expect(proposal.estimatedImpact.proposedEndDate).toBe(daysFromNow(30));
+    });
+
+    it('tells the model the project calendar and snaps proposed dates off days off', async () => {
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', projectId: 'p-1', name: 'Test', endDate: '2026-10-09' });
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('t1', 'Delayed', { startDate: daysAgo(10), endDate: daysFromNow(5), progressPercentage: 0 }),
+      ]);
+      mockNonWorking.mockResolvedValue(['2026-10-03', '2026-10-04', '2026-10-12']);
+      mockCalendarSpec.mockResolvedValue({ workingDays: [1, 2, 3, 4, 5], holidays: new Set(['2026-10-12']), working: new Set(), company: new Set() });
+      mockWorkingDayTest.mockResolvedValue((d: Date) => weekdaysOnly(d) && d.toISOString().slice(0, 10) !== '2026-10-12');
+      mockComplete.mockResolvedValue({
+        data: {
+          proposedChanges: [
+            // Saturday → Tuesday: 2 working days (Mon, Tue) from a Saturday start
+            { taskId: 't1', taskName: 'Delayed', proposedStartDate: '2026-10-10', proposedEndDate: '2026-10-13', reason: 'R' },
+          ],
+          rationale: 'R',
+          estimatedImpact: { proposedEndDate: '2026-10-13', daysChange: 4, criticalPathImpact: 'X' },
+        },
+      });
+
+      const proposal = await service.generateProposal('sch-1');
+      const prompt = mockComplete.mock.calls[0][0];
+      expect(prompt.systemPrompt).toContain('MUST be a working day');
+      expect(prompt.userMessage).toContain('Weekdays that are always off: Sunday, Saturday');
+      expect(prompt.userMessage).toContain('2026-10-12'); // the holiday, not the weekend dates
+      // Mon 12 Oct is a holiday: the Saturday start moves to Tue 13, and the task keeps
+      // its one working day (Tue 13) → finishes Tue 13
+      expect(proposal.proposedChanges[0]).toMatchObject({ proposedStartDate: '2026-10-13', proposedEndDate: '2026-10-13' });
+      // Fri 9 Oct → Tue 13 Oct is 1 working day later on this calendar
+      expect(proposal.estimatedImpact).toMatchObject({ proposedEndDate: '2026-10-13', daysChange: 1 });
+    });
+
+    it('snapToWorking: a start on a day off moves to the next working day, working-day length kept', () => {
+      // Sat 10 Oct → Tue 13 Oct on Mon–Fri: 2 working days (Mon 12, Tue 13) → Mon 12 – Tue 13
+      expect(snapToWorking('2026-10-10', '2026-10-13', weekdaysOnly)).toEqual({ start: '2026-10-12', end: '2026-10-13' });
+      // A holiday on Mon 12: 1 working day (Tue 13) → Tue 13 – Tue 13
+      const noMon12 = (d: Date) => weekdaysOnly(d) && d.toISOString().slice(0, 10) !== '2026-10-12';
+      expect(snapToWorking('2026-10-10', '2026-10-13', noMon12)).toEqual({ start: '2026-10-13', end: '2026-10-13' });
+      // A Friday start, Sunday finish → Fri–Fri (the Sunday is off)
+      expect(snapToWorking('2026-10-09', '2026-10-11', weekdaysOnly)).toEqual({ start: '2026-10-09', end: '2026-10-09' });
+      // Working dates are kept as given
+      expect(snapToWorking('2026-10-05', '2026-10-09', weekdaysOnly)).toEqual({ start: '2026-10-05', end: '2026-10-09' });
+      // Unparseable dates are left alone
+      expect(snapToWorking('soon', '2026-10-09', weekdaysOnly)).toEqual({ start: 'soon', end: '2026-10-09' });
     });
 
     it('falls back to heuristic when AI is enabled but no delays detected', async () => {
@@ -842,6 +954,32 @@ describe('AutoRescheduleService', () => {
         startDate: '2026-01-01',
         endDate: '2026-01-15',
       });
+    });
+
+    it('re-flows successors of the moved tasks in working days, and Undo covers them', async () => {
+      mockRepoFindById.mockResolvedValue(makeProposalRow());
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', projectId: 'p-1' });
+      mockFindTaskById.mockResolvedValue({ id: 't1', startDate: '2026-01-01', endDate: '2026-01-10' });
+      mockRecompute.mockResolvedValue({ deltas: [
+        { taskId: 't1', oldStart: '2026-01-01', oldEnd: '2026-01-10', newStart: '2026-01-01', newEnd: '2026-01-15' },
+        { taskId: 't9', oldStart: '2026-01-12', oldEnd: '2026-01-13', newStart: '2026-01-16', newEnd: '2026-01-19' },
+      ] });
+
+      await service.acceptProposal('prop-1');
+
+      expect(mockRecompute).toHaveBeenCalledWith('sch-1', { onlyFrom: ['t1'], reason: 'ai_reschedule' });
+      const undo = mockHistoryRecord.mock.calls[0][0].undo.moved;
+      expect(undo).toEqual([
+        { taskId: 't1', startDate: '2026-01-01', endDate: '2026-01-10' },
+        { taskId: 't9', startDate: '2026-01-12', endDate: '2026-01-13' },
+      ]);
+    });
+
+    it('still accepts when the successor re-flow fails', async () => {
+      mockRepoFindById.mockResolvedValue(makeProposalRow());
+      mockRecompute.mockRejectedValue(new Error('db down'));
+      expect(await service.acceptProposal('prop-1')).toBe(true);
+      expect(mockRepoUpdateStatus).toHaveBeenCalledWith('prop-1', 'accepted');
     });
 
     it('logs activity for each proposed change', async () => {
