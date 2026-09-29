@@ -76,7 +76,8 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   const [showReview, setShowReview] = useState(false);
 
   // RAID Review — latest score for the health chip, and a flag per item from its findings
-  const { data: raidReview } = useRaidReview(projectId);
+  // RAID Review is the project Manager/Owner's tool: hidden (not fetched) for everyone else
+  const { data: raidReview } = useRaidReview(projectId, canEdit);
   const flags = useMemo(() => itemFlags(raidReview), [raidReview]);
 
   const filters: Record<string, string> = {};
@@ -107,6 +108,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   });
 
   const risks: any[] = risksData?.data || [];
+  const [showMoreTypes, setShowMoreTypes] = useState(false);
   const stats = statsData?.data || {};
   const members: any[] = membersData?.members || [];
 
@@ -422,9 +424,41 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
           <button onClick={() => openAdd('assumption')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-colors">
             <Plus className="w-3.5 h-3.5" /> Assumption
           </button>
-          <button onClick={() => openAdd('dependency')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Dependency
-          </button>
+          {/* Many projects never log dependencies (the "D" is often Decisions): until the project
+              has one, "+ Dependency" waits in a small More menu instead of the main row */}
+          {Number(stats.totalDependencies ?? 0) > 0 ? (
+            <button onClick={() => openAdd('dependency')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Dependency
+            </button>
+          ) : (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowMoreTypes(v => !v)}
+                onKeyDown={e => { if (e.key === 'Escape') setShowMoreTypes(false); }}
+                aria-expanded={showMoreTypes}
+                aria-haspopup="menu"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> More types
+              </button>
+              {showMoreTypes && (
+                <div role="menu" className="absolute left-0 top-full mt-1 z-20 w-64 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg p-1">
+                  <button
+                    role="menuitem"
+                    type="button"
+                    autoFocus
+                    onClick={() => { setShowMoreTypes(false); openAdd('dependency'); }}
+                    onKeyDown={e => { if (e.key === 'Escape') setShowMoreTypes(false); }}
+                    className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                  >
+                    <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">+ Dependency</span>
+                    <span className="block text-xs text-gray-600 dark:text-gray-400">Something the project relies on from outside the team, e.g. a vendor or another department delivering on time</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <button
             onClick={handleAiScan}
             disabled={scanning}
@@ -453,6 +487,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
             <FileText className="w-3.5 h-3.5" />
             RAID Report
           </button>
+          {canEdit && (
           <button
             onClick={() => setShowReview(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 dark:text-primary-300 bg-white dark:bg-gray-900 hover:bg-primary-50 dark:hover:bg-primary-900/30 border-2 border-primary-500 dark:border-primary-400 rounded-lg transition-colors"
@@ -460,7 +495,8 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
             <ClipboardCheck className="w-3.5 h-3.5" aria-hidden="true" />
             Review
           </button>
-          {raidReview && (
+          )}
+          {canEdit && raidReview && (
             <button
               onClick={() => setShowReview(true)}
               title="RAID health — open the review"
@@ -868,7 +904,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
       )}
 
       {/* RAID Review side panel */}
-      {showReview && (
+      {showReview && canEdit && (
         <RaidReviewPanel
           projectId={projectId}
           canEdit={canEdit}

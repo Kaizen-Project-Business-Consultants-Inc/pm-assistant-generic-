@@ -5,6 +5,8 @@
 - Mock approved ("ok"). Server: T061 (project_risks.response_strategy + closure_reason; raid_reviews, raid_review_settings, raid_fix_batches), `services/raidReview/rules.ts` (RR01–RR12, v1.0, pure, score), `fixProposer.ts` (change_type, set_owner, set_due_date, set_response_strategy), `RaidReviewService` (run/latest/settings/fixes/apply/undo; people = members + resources + names split from the log's owner column), `raidReview/autoRerun.ts` (20 s, after RAID create/update/cancel/reverse/import; WS `raid_review_updated`), routes `/api/v1/projects/:id/raid-review[...]`. Import maps response strategy / closure reason to the real fields.
 - Client: Review button + RAID health chip (RAIDTab), `components/raids/review/` (RaidReviewPanel, RaidFixPanel, helpers, useRaidReview), row flags (high/medium only), Response strategy + Closure reason in the form/detail.
 - Verified on staging with the DBJ LMS register: score 64, 2 moved-to-Actions fixes applied and undone. Later: score in Morning Briefing/overview; AI rewrite of risk statements.
+- **PM-only (user decision, same day):** GET review is `requireProjectAccess('manager')`; RAIDTab doesn't fetch or show Review/chip/flags/panel unless canEdit. Team members, viewers, executives: nothing. Team members may NOT re-run.
+- + Dependency moved into a "More" menu on projects with no dependencies (stats.totalDependencies).
 
 ## 2026-09-29 (RAID register import keeps everything)
 

@@ -3231,6 +3231,8 @@ AI Scan does not overwrite or modify existing records — it only proposes new o
 
 ### RAID Review (quality check of the log)
 
+**For the project's Manager and Owner only** (and admins/PMO): team members, viewers and executives don't see the Review button, the score or the flags — it's the PM's working tool, and the fixes are theirs to make. Sponsors get the RAID Report instead.
+
 Click **Review** in the Risks & Issues tab toolbar. RAID Review checks the whole log against PMI / PRINCE2 practice and gives it a **RAID health** score out of 100 (shown next to the button once a review exists). The same log always gets the same result; there is no AI in the checks. It re-runs by itself about 20 seconds after any RAID change or import.
 
 **What it checks** (grouped High / Medium / Low / Suggestion; each finding says what good practice expects and lists the items — click one to open it):
@@ -3240,7 +3242,7 @@ Click **Review** in the Risks & Issues tab toolbar. RAID Review checks the whole
 - Low: assumptions with no validation plan or target date; closed items with no closure date or reason; possible duplicates.
 - Suggestion (doesn't lower the score): a risk not written as cause → event → effect — "Because of …, there is a risk that …, which would …".
 
-Rows in the RAID list get a small flag for their most important high or medium finding (e.g. "Owner is a group"). A check that doesn't fit a project — say, a client who insists on joint owners — can be **switched off for this project** from its finding (Managers/Owners); the review re-runs straight away.
+Rows in the RAID list get a small flag for their most important high or medium finding (e.g. "Owner is a group"), visible to the Manager/Owner only. A check that doesn't fit a project — say, a client who insists on joint owners — can be **switched off for this project** from its finding (Managers/Owners); the review re-runs straight away.
 
 **Propose fixes** (Managers/Owners) lists changes you tick and apply: move an item to Actions, name one owner (from the project's people, the organisation's resources, or the people already named in the log), give an action a due date (suggested), set a risk's response strategy (Mitigate suggested when it has a mitigation plan). Clicking a line doesn't tick it; only the box does. **Apply selected** makes the changes; **Undo** puts every item back — if someone changed those items since, you're warned and can **Undo anyway**.
 

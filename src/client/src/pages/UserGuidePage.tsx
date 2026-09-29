@@ -130,7 +130,7 @@ const sections: Section[] = [
     description:
       'A quality check of the risks, issues, actions, assumptions and decisions log, with a RAID health score out of 100.',
     items: [
-      'Click Review in the Risks & Issues tab; it re-runs by itself after RAID changes',
+      'For the project Manager/Owner only: click Review in the Risks & Issues tab; it re-runs by itself after RAID changes',
       'Findings follow PMI / PRINCE2 practice: high risks with no response strategy, actions with no due date, owners that are a team or two people, items filed as the wrong type, and more',
       'Rows in the list are flagged with their most important problem',
       'Propose fixes: tick the changes you want (move to Actions, name one owner, set a due date or response strategy) and apply; Undo puts them back',

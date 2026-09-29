@@ -42,7 +42,9 @@ export async function raidReviewRoutes(fastify: FastifyInstance) {
 
   // GET /:projectId/raid-review — latest stored review
   fastify.get('/:projectId/raid-review', {
-    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    // PM-only (user decision 2026-09-29): the review is the project Manager/Owner's working
+    // tool; team members, viewers and executives don't see it (admin/PMO pass as everywhere)
+    preHandler: [requireScope('read'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
