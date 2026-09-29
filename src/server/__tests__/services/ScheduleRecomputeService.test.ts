@@ -223,6 +223,18 @@ describe('ScheduleRecomputeService', () => {
     expect(res.tasksMoved).toBe(1);
   });
 
+  it('re-span leaves a link that already overlapped alone (it only fits dates to the calendar)', async () => {
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-16' });
+    // B already starts before A finishes — not the clean-up's business
+    const B = task({ id: 'B', startDate: '2026-10-07', endDate: '2026-10-10', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    findTasksByScheduleId.mockResolvedValue([A, B]);
+    const { scheduleRecomputeService } = await import('../../services/ScheduleRecomputeService');
+    const res = await scheduleRecomputeService.recompute('s1', { respan: true, dryRun: true });
+    // Only B's Saturday finish moves back to Friday
+    expect(res.deltas).toHaveLength(1);
+    expect(res.deltas[0]).toMatchObject({ taskId: 'B', newStart: '2026-10-07', newEnd: '2026-10-09' });
+  });
+
   it('a task that is not pushed keeps its dates exactly, even over a weekend', async () => {
     const A = task({ id: 'A', startDate: '2026-10-01', endDate: '2026-10-02' });
     const B = task({ id: 'B', startDate: '2026-10-09', endDate: '2026-10-11', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });

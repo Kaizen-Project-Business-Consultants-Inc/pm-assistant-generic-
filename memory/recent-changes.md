@@ -1,5 +1,17 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-29 (working days everywhere dates move — steps 1, 2, 5 of the plan)
+
+- User rule: never count weekends unless the project calendar marks the day working. Decisions: 1 day = same day; company holidays + per-project; weekend date in the form = warning; tasks already on days off = moved automatically.
+- Client Duration column (Gantt + Table, display/sort/copy/edit) = working days incl. start (`utils/workingDays.ts`, non-working-dates API).
+- Server: `utils/workingDays.ts` (shiftWorking, finishFor, onOrAfterWorking, workingDaysAfter); `ScheduleService.workingDayTest`; createTask/updateTask finish in working days, defaulted start snaps to a working day, estimate from span when both dates given; cascadeReschedule and `ScheduleRecomputeService` in working days (lengths inclusive; options dryRun / respan / calendar override; re-span leaves already-overlapping links alone).
+- `CalendarService.calendarSpec` + static `isWorking` (project day off > project working day > company holiday > weekday); exception cache removed.
+- T060 `company_holidays`; `WorkingCalendarService` (preview/apply project + company changes, one History line per plan, kind `calendar`); routes `/api/v1/projects/:id/working-calendar[/preview|/apply]`, `/api/v1/company-holidays[/preview|/apply]`.
+- UI: Working calendar button (indigo) + panel, Settings → Company holidays, shared `CalendarChangePreview`, task-form day-off warning.
+- `scripts/moveTasksOffDaysOff.ts` — ran on staging: 182 tasks in 26 plans (michaela: NSWMA 8, DBJ-LMS 11, DBJ-Loans 12). Must run on prod at the first prod deploy (DEPLOYMENT_GUIDE checklist).
+- Ratchet guard `workingDaysGuard.test.ts`. Also: Propose-fixes suggestion click highlights rows (only the box selects), panels no longer steal focus on re-render.
+- Still to do (plan steps 3–4): AI reschedule, levelling, templates, recurrence, import, AI project creator, review-fix phase/buffer/split, meetings, bulk, Gantt drag/resize/drag-create, Calendar-view drag; then CPM/float, early/late dates, Monte Carlo, review rules, S-curve/EVM, baseline, burndown, tooltip.
+
 ## 2026-09-29 (user guide inside the app)
 
 - Help → **Open the full user guide** (`/help/guide`, `FullUserGuidePage`): renders `docs/USER_GUIDE.md` (imported `?raw`, lazy chunk ~100 KB gz) by chapter with search; `### … (Admin Only)` parts shown to admins only, `(Admin/Manager)` to admins/PMs/PMO (`utils/userGuide.ts`). One source — the repo guide IS the in-app guide.

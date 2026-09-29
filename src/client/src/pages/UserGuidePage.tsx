@@ -34,6 +34,7 @@ import {
   Moon,
   ClipboardCheck,
   History,
+  CalendarRange,
   Sun,
   Users,
 } from 'lucide-react';
@@ -102,7 +103,23 @@ const sections: Section[] = [
       'Findings point to the rows involved: missing links, long tasks, milestones with a duration, overloaded people, and more',
       'A milestone takes zero days — name it as the outcome ("Design Approved"); name tasks verb + object ("Review Design")',
       'Propose fixes suggests changes you can tick and apply, e.g. splitting a "gate" that spans days into Review → Approve → Approved',
+      'Click a suggestion to see its rows: they turn amber in the schedule. Only the tick box chooses the fix',
       'Every applied fix can be undone in one step',
+    ],
+  },
+  {
+    id: 'working-calendar',
+    title: 'Working Calendar & Holidays',
+    icon: CalendarRange,
+    description:
+      'Durations and every automatic date move count working days — weekends and holidays are skipped.',
+    items: [
+      'Click Working calendar in the schedule toolbar to see the working weekdays and days off',
+      'Add a day off, or an extra working day (e.g. a cutover Saturday), for this project only',
+      'Company holidays are set once in Settings → Company holidays and every project picks them up',
+      'Before anything is saved you see how many tasks move and how the finish changes — then Apply or Cancel',
+      'The Duration column counts working days: a Thursday-to-Friday task is 2d',
+      'A date on a weekend or holiday in the task form gets a warning, but you can still save it',
     ],
   },
   {
@@ -114,7 +131,7 @@ const sections: Section[] = [
     items: [
       'Open History in the schedule toolbar',
       'Each line says what changed, who did it and when (including changes made through Claude)',
-      'Undo reverses that change and puts moved dates back',
+      'Undo reverses that change and puts moved dates back — including tasks moved by a working-calendar change',
       'If someone edited the same tasks since, you are warned before undoing',
     ],
   },

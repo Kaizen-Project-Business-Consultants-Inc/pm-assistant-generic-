@@ -276,7 +276,15 @@ Each project can have one or more calendars (`project_calendars` table) defining
 - **Holiday exceptions** — specific dates marked as non-working (`calendar_exceptions` table)
 - **Working exceptions** — specific non-working days overridden as working
 
-API endpoints under `/api/projects/:projectId/calendars` provide CRUD for calendars and exceptions. The `/api/projects/:projectId/non-working-dates` endpoint returns non-working dates for a date range (used by the Gantt for shading).
+API endpoints under `/api/projects/:projectId/calendars` provide CRUD for calendars and exceptions. The `/api/v1/projects/:projectId/non-working-dates` endpoint returns non-working dates for a date range (Gantt shading and the Duration column).
+
+**Working calendar screen and company holidays (Sep 2026).** Every date calculation counts **working days** from the project calendar, with the start day included (1 day = same day): the Duration column (Gantt + Table, display, sort, typing), a new task's finish, the re-flow after linking or applying review fixes, and the push-along when a finish date changes. Lag is in working days.
+- **Working calendar** button (schedule toolbar) → panel: working weekdays, company holidays, the project's own days off / extra working days. Every change is previewed (`POST /api/v1/projects/:id/working-calendar/preview` → tasks that move, latest finish before/after) and saved with `/apply`. Manager/Owner edit; others read-only.
+- **Settings → Company holidays** (`company_holidays`, tenant migration T060): `GET/POST /api/v1/company-holidays[/preview|/apply]`; the company owner, admin or PMO edits. Precedence: project day off > project working day > company holiday > weekday.
+- Applying re-fits every plan (`ScheduleRecomputeService` re-span mode): tasks keep their working-day length, a task on a day off moves to the next working day, successors follow, finished tasks and tasks with actuals are pinned, and links that already overlapped are left alone. One Schedule History line per plan (kind `calendar`); Undo restores dates.
+- The task form warns (amber) when a start or finish is on a day off; saving is still allowed.
+- One-time clean-up when this shipped: `node dist/server/scripts/moveTasksOffDaysOff.js [--dry-run]` moved tasks already on weekends/holidays onto working days (idempotent; one History line per plan).
+- Guard test `workingDaysGuard.test.ts`: no server file may add calendar-day date arithmetic (ratchet).
 
 ### Multi-Resource Assignment
 

@@ -1308,3 +1308,18 @@ REST: `POST /schedules/:id/review/propose` → `{ id, source, proposalData:{fixe
 - Keyboard: Tab cycles inside the panel, Escape closes it; the score chip has `role="status"`.
 - Viewers see the latest run but no **Re-run review** button.
 
+
+## 30. Working Calendar, Company Holidays and Working Days (Sep 2026)
+
+Use a throwaway project (archive it afterwards) — applying a calendar change moves real tasks.
+
+1. **Duration column:** a task Thu 8 Oct → Fri 9 Oct shows **2d**; Fri 9 → Mon 12 shows **2d**. Type `3` into Duration on a Thursday task → finish is the next Monday.
+2. **New task:** add a task with a start on Friday and Estimated Days 2 → finish Monday. A plan starting on a Saturday: a task with no dates starts Monday.
+3. **Working calendar:** schedule toolbar → **Working calendar**. Add Wed 7 Oct as a day off for a Mon–Fri task 5–9 Oct linked to a task starting 12 Oct → preview says 2 tasks move and the finish moves later; **Cancel** changes nothing; **Apply** moves them (5–12 Oct, 13 Oct onwards). Schedule History shows one "Day off added" line; Undo puts the dates back.
+4. **Extra working day:** add a Saturday as a working day → it's no longer shaded, and a 2-day task starting that Friday finishes on Saturday.
+5. **Company holidays:** Settings → Company holidays → add a date → preview lists tasks across projects; **Cancel** (don't apply on shared test data). A non-admin sees the list without add/remove.
+6. **Viewer:** as a team member, the Working calendar panel is read-only (no toggles, no add/remove).
+7. **Task form:** set a Saturday start → amber "isn't a working day" note; saving still works.
+8. **Automatic moves:** link two tasks so the second must move past a weekend → it starts Monday, keeps its working-day length. Change a task's finish so the next one is pushed → it never lands on a weekend.
+9. **Clean-up script:** `moveTasksOffDaysOff.js --dry-run` twice after a real run → "would move 0 task(s)".
+10. Automated: `workingDays.test.ts` (client + server), `CalendarService.test.ts`, `ScheduleRecomputeService.test.ts`, guard `workingDaysGuard.test.ts`.

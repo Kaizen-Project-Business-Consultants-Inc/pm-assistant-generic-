@@ -138,6 +138,13 @@ All endpoints require project membership enforced by `requireProjectAccess`.
 - **Archive** removes the project from active views but preserves all data.
 - **Delete** permanently removes the project (requires admin role + project owner; audit entry created).
 
+### Company Holidays and Working Calendars
+- **Settings → Company holidays** holds one holiday list for the company; every project's working calendar treats those dates as days off. The company owner, an admin or PMO can add or remove dates; others see the list read-only.
+- Each change shows a preview first — how many tasks would move in how many active projects — and nothing is saved until **Apply**. Applying moves tasks in every affected plan and records a line in each plan's Schedule History (Undo puts the dates back; the holiday stays).
+- A project's Manager/Owner can add its own days off, or mark a company holiday (or a Saturday) as a working day for that project only, from **Working calendar** in the schedule toolbar.
+- Holidays differ by province and company, so the list starts empty.
+- One-time clean-up after the first deploy with working calendars: `dist/server/scripts/moveTasksOffDaysOff.js` (see DEPLOYMENT_GUIDE.md checklist).
+
 ---
 
 ## 4. System Configuration

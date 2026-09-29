@@ -344,8 +344,10 @@ When a project has more than one schedule, a **pill/tab strip** appears at the t
 The schedule toolbar is a compact single row of controls:
 
 ```
-[Search] [Filters] | [Columns] [Critical Path] | [⋯]
+[Search] [Filters] | [Columns] [Critical Path] | [Review] [Working calendar] | [⋯]
 ```
+
+The indigo **Working calendar** button opens the project's working days and days off — see [Working Calendar and Company Holidays](#working-calendar-and-company-holidays).
 
 The **⋯ overflow menu** (the "More actions" button at the right of the toolbar, in the Gantt, Table, Kanban and Calendar views; on narrower screens the toolbar wraps onto a second line so it is always visible) groups less-frequent actions. **AI Reschedule** also has its own purple button right next to it, so it's always one click away:
 
@@ -365,8 +367,8 @@ The **⋯ overflow menu** (the "More actions" button at the right of the toolbar
    - **Name** (required) -- Task description.
    - **Status** -- Pending, In Progress, Completed, or Cancelled.
    - **Priority** -- Low, Medium, High, or Urgent.
-   - **Start Date / End Date** -- Task timeline.
-   - **Estimated Days** -- Duration estimate.
+   - **Start Date / End Date** -- Task timeline. If a date falls on a day off in the project's working calendar (a weekend or holiday), an amber note says so, e.g. "Saturday 10 Oct isn't a working day in this project's calendar". You can still save it — sometimes weekend work is real.
+   - **Estimated Days** -- Duration estimate. A new task with a start but no end finishes after this many **working days**, counting the start day: 1 day finishes the day it starts, 2 days from a Friday finishes on Monday. A task added without a start date starts on the plan's first working day.
    - **Work Effort (hours)** -- Total labor hours needed to complete the task.
    - **Progress Percentage** -- Current completion (0-100%).
    - **Assigned To** -- Team member responsible.
@@ -415,13 +417,25 @@ Tasks can have multiple resources assigned:
 - The primary assignee (first resource or the "Assigned To" field) is shown in the Gantt and Table views.
 - **Over-100% warning (Sep 2026):** as you pick a person (Assigned To or a Resource row), change their %, or change the task's dates, an amber note appears under that line if this task would take them over 100% in any week — e.g. "Michael would be at 150% in the week of Oct 12 (also on: Kick-off workshops, Weekly status report) +2 more weeks over 100%." It uses the Workload Heatmap's numbers (all live projects, holidays counted) and doesn't count the task you're editing twice. It never blocks saving. Tasks on projects you can't see show as "Work on another project". Assigned To counts as 100% unless the same person has a % in Resource Assignments. Changing **Assigned To** directly in the Table or Gantt cell shows the same warning as a pop-up after it saves. Headings and milestones are never checked.
 
-### Custom Calendars
+### Working Calendar and Company Holidays
 
-Each project has a working calendar that defines which days are working days:
+Durations and every automatic date move count **working days**. A day is worked or not according to the project's working calendar (September 2026):
 
-- **Default calendar**: Monday through Friday, 8 hours/day.
-- Add **holidays** (non-working exceptions) or mark weekend days as working.
-- Calendars are managed via the API (`/api/projects/:projectId/calendars`).
+- **Working weekdays** -- Monday to Friday unless you change them.
+- **Company holidays** -- one list for the whole company, set in **Settings → Company holidays**. Every project picks them up.
+- **This project only** -- extra days off for this project (e.g. "Client office closed"), or extra **working days**: a Saturday for a cutover weekend, or a company holiday this project works through.
+
+A project's own day off always wins; its extra working day beats a company holiday; then company holidays; then the working weekdays.
+
+**To change it:** click **Working calendar** in the schedule toolbar. Click a weekday to switch it on or off, or pick a date, give it a name and click **+ Day off** or **+ Working day**. Before anything is saved you see **Before you apply**: how many tasks move, the latest finish before and after (e.g. "moves 9 tasks; the latest finish moves from Fri 20 Mar 2027 to Mon 23 Mar 2027") and the first few moves. Click **Apply** to save it, or **Cancel**. Only the project's Manager or Owner can change it; everyone else sees it read-only.
+
+**What moves when you apply:** every plan in the project is fitted to the new calendar. A task keeps its length in working days, so a new day off inside a task makes it finish a day later; a task starting on a day off moves to the next working day; tasks that wait on a moved task move after it. Finished tasks and tasks with an actual start or finish never move. Links that already overlapped (a task that starts before its predecessor allows) are left as they are. Each plan gets a line in **Schedule History**, whose **Undo** puts the dates back (the calendar change itself stays).
+
+**Company holidays** (Settings → Company holidays) work the same way across **all** active projects: the preview says how many tasks move in how many projects. Only the company owner or an admin can change the list; everyone can see it.
+
+**When working calendars were switched on**, every task that started or finished on a weekend or holiday was moved once onto working days, keeping its working-day length (e.g. a task running Saturday to Tuesday now runs Monday to Tuesday; one ending on a Sunday now ends on the Friday before). Each plan that changed has a "Moved tasks off days off" line in Schedule History with Undo. If a task really does happen at a weekend (a go-live or a disaster-recovery test), add those days as **working days** in the project's calendar and set its dates again.
+
+The Gantt shades days off (day and week zoom), and the **Duration** column counts working days.
 
 ### Dependencies
 
@@ -459,7 +473,7 @@ Select multiple tasks to perform bulk operations:
   - **All wait on it** -- type a row in the **Row #** box (e.g. `3`, or `3SS`, `3FS+2d` for a type and lag) and every selected task waits for that row, e.g. "all of Task 2 waits on Gate 1".
   - **It waits on all** -- the row you typed waits for every selected task, e.g. "Gate 2 can't happen until these six tasks finish".
   - Links are **added**: existing links are kept, and a link that already exists isn't duplicated. If the new links would create a loop (e.g. row 6 already leads to row 9), **nothing is linked** and you're told which rows form the loop. A task can have at most 20 predecessors. **Undo** removes the whole batch in one step and puts any moved dates back.
-  - **Dates move like MS Project.** When a task gets a new predecessor (from these buttons or by typing in its Predecessor cell), and it now starts earlier than that link allows, it is pushed later, and so is everything after it. Tasks keep their length, only ever move later, and completed tasks or tasks with an actual start/finish never move. Only the tasks you linked and the tasks after them can move. Days are calendar days (weekends are not skipped). The message tells you how many moved, e.g. "Linked rows 4 → 5 → 6 · 3 tasks moved later". Removing a link never pulls dates earlier. Every moved task is recorded in the project's audit trail (old dates, new dates, who, and why), including moves made by Schedule Review fixes and by undo.
+  - **Dates move like MS Project.** When a task gets a new predecessor (from these buttons or by typing in its Predecessor cell), and it now starts earlier than that link allows, it is pushed later, and so is everything after it. Tasks keep their length in working days, only ever move later, and completed tasks or tasks with an actual start/finish never move. Only the tasks you linked and the tasks after them can move. Days are **working days** from the project's working calendar: a task never starts or finishes on a weekend or holiday, and lag counts working days. The same applies when you change a task's finish date and the tasks after it are pushed along. The message tells you how many moved, e.g. "Linked rows 4 → 5 → 6 · 3 tasks moved later". Removing a link never pulls dates earlier. Every moved task is recorded in the project's audit trail (old dates, new dates, who, and why), including moves made by Schedule Review fixes and by undo.
 
 ---
 
@@ -481,7 +495,7 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - **Column show/hide**: Click the **Columns** button in the toolbar to open a dropdown. Toggle any column on/off (except Row # and Task Name which are always visible). Click **Reset to default** to restore the default 6-column set. Visibility persists per schedule in localStorage.
 - **Row expand/collapse**: Parent tasks show a chevron (▶) to the left of their name. Click it to collapse or expand their children. Collapsed parents hide all descendants. Collapsed state persists per schedule in localStorage. Use the **Collapse All** (▶) and **Expand All** (▼) buttons in the toolbar to collapse or expand all parent tasks at once.
 - **Click-to-select, click-to-edit**: The first click on a task row **selects** it (highlighted with a ring). Clicking a cell on the already-selected row enters **inline edit mode**. This two-step behavior matches MS Project and lets you perform selection-dependent actions (like Tab to indent) before editing.
-- **Inline grid editing**: On a selected row, click any cell in the left panel to edit it directly — no modal required. Editable fields: Task Name, Predecessor, Start Date, End Date, Duration, Est Days, %, Priority, Assigned To, and Status. Press **Enter** to save, **Escape** to cancel, or just click away (blur saves automatically). A green flash confirms the save. Use **Tab** to advance to the next field and **Shift+Tab** to go back; tabbing past the last field jumps to the first field of the next row. Editing the **Duration** column (e.g. typing `10`) automatically sets End Date = Start Date + 10 days. The row number (#) column is not editable. Double-click a row or click the pencil icon to open the full edit modal instead.
+- **Inline grid editing**: On a selected row, click any cell in the left panel to edit it directly — no modal required. Editable fields: Task Name, Predecessor, Start Date, End Date, Duration, Est Days, %, Priority, Assigned To, and Status. Press **Enter** to save, **Escape** to cancel, or just click away (blur saves automatically). A green flash confirms the save. Use **Tab** to advance to the next field and **Shift+Tab** to go back; tabbing past the last field jumps to the first field of the next row. The **Duration** column shows working days, counting both the start and finish day (a Thursday-to-Friday task is **2d**; weekends and the project's days off are not counted). Typing a duration (e.g. `10`) sets the End Date to the 10th working day, counting the start day. The row number (#) column is not editable. Double-click a row or click the pencil icon to open the full edit modal instead.
 - **Row drag reorder (cross-parent)**: Hover over the # column to reveal a drag grip icon (⠿). Drag rows up or down to reorder tasks — you can move tasks across parent levels, just like MS Project. Dropping a task on a summary task makes it the first child; dropping between tasks makes it a sibling of the drop target. Summary tasks move with all their children. Cycle prevention stops you from dropping a parent onto its own descendant. A blue border highlights the drop target. Sort order and parent assignment are persisted automatically and can be undone with Ctrl+Z.
 - **Multi-select bulk edit**: **Ctrl+click** (Cmd+click on Mac) any task row to add or remove it from the selection — no need to use checkboxes first. **Shift+click** for range selection. You can also click the checkbox in the # header to select all rows, or click individual checkboxes. When tasks are selected, a sticky toolbar appears with dropdowns to bulk-update Status, Priority, or Assignee, plus a Delete button. Press the **Delete** key to bulk-delete selected tasks — a confirmation modal shows the exact count ("Delete N tasks?") before anything is removed. Right-clicking a task when multiple tasks are selected shows "Delete N Tasks" in the context menu and the confirmation modal covers all selected tasks plus the right-clicked one. Both the Delete key and right-click context menu use the same confirmation modal (not the browser's native dialog). Click **Clear** to deselect all.
 - **Undo/Redo**: Press **Ctrl+Z** to undo and **Ctrl+Y** (or **Ctrl+Shift+Z**) to redo inline edits, bar drag operations, row reorders, bulk updates, and delete operations (single or bulk). Task data is captured before deletion so undo can fully recreate the tasks via the API. Undo/redo buttons also appear in the Gantt toolbar with tooltips showing the action description. The undo stack holds up to 50 actions per session and resets on navigation or page refresh. Creating new tasks is not undoable.
@@ -2401,6 +2415,7 @@ Navigate to **Settings** to configure:
   The digest email uses color-coded sections (red for overdue, amber for deadlines, purple for meeting action items, blue for upcoming meetings, green for sprint status, cyan for recent activity). System alerts are always delivered to admin users.
 - **Language** -- Select your preferred display language (English, French, or Spanish). The change applies instantly without a page reload.
 - **Time Zone** -- Set your IANA timezone (e.g., `America/Toronto`). All dates in the application are displayed in this timezone.
+- **Company holidays** -- The company's holiday list, grouped by year. Every project treats these as days off. The company owner or an admin adds one (date + name, **+ Add holiday**) or removes one; the preview shows how many tasks move in how many projects before anything is saved. See [Working Calendar and Company Holidays](#working-calendar-and-company-holidays).
 
 ### AI Context Settings
 
@@ -2663,7 +2678,7 @@ A plan with no summary tasks at all ("Flat hierarchy") is now **High**, so it sh
 
 Tick what you want and **Apply**; **Undo** reverses everything, including dates. If nothing comes back, either nothing needs splitting or adding, or your plan doesn't include AI.
 
-**Propose fixes:** The review does not just tell you what is wrong — it offers to fix it. In the review panel click **Propose fixes** and Kovarti lists concrete changes: link tasks in sequence, flag gates as milestones, and group loose tasks under a phase. Each suggestion has a plain-English reason and a confidence, and the confident ones are pre-ticked. Tick the ones you want and click **Apply selected**; the score updates so you can see the improvement, and a single **Undo** puts everything back if you change your mind. Nothing is ever changed without you approving it.
+**Propose fixes:** The review does not just tell you what is wrong — it offers to fix it. In the review panel click **Propose fixes** and Kovarti lists concrete changes: link tasks in sequence, flag gates as milestones, and group loose tasks under a phase. Each suggestion has a plain-English reason and a confidence, and the confident ones are pre-ticked. **Click a suggestion** to see where it is: its rows turn amber in the schedule and the first one scrolls into view, and the suggestion shows the row numbers (e.g. "rows 12 → 14"). Clicking only shows the rows; it doesn't choose the fix. The **tick box** is what chooses it. With the keyboard, Tab from box to box moves the highlight and Space ticks. Closing the panel clears the highlight. Tick the ones you want and click **Apply selected**; the score updates so you can see the improvement, and a single **Undo** puts everything back if you change your mind. Nothing is ever changed without you approving it.
 
 **Tasks under a heading (rules v1.5, Sep 2026).** No standard sets a number, but a heading over a **single task** adds nothing (flagged, low — move the task up and remove the heading), and a heading with **more than 15 tasks directly under it** is hard to read (flagged, low — split it into sub-phases of about 3–10 tasks; select them and use **Group**).
 
@@ -2899,7 +2914,7 @@ Following PMI practice (the PM is accountable for the RAID log; each item's owne
 
 ### Schedule History and Undo
 
-The **History** button on the schedule toolbar (next to AI Reschedule) opens every change made to **many tasks at once** in the last 30 days, newest first: linking several tasks (and any dates that pushed), editing or changing the status of several tasks, creating several tasks, applying Schedule Review fixes, and accepting an AI Reschedule. Each line says what changed, when, and who — **You**, a colleague, or **Claude (for you)** when Claude made the change through the connector.
+The **History** button on the schedule toolbar (next to AI Reschedule) opens every change made to **many tasks at once** in the last 30 days, newest first: linking several tasks (and any dates that pushed), editing or changing the status of several tasks, creating several tasks, applying Schedule Review fixes, accepting an AI Reschedule, and working-calendar changes that moved tasks (a new day off, a company holiday, the one-time move of tasks off days off). Each line says what changed, when, and who — **You**, a colleague, or **Claude (for you)** when Claude made the change through the connector.
 
 **Undo** puts that change back — links removed and dates restored, previous values written back, created tasks removed, review fixes rolled back. If any of those tasks were changed afterwards, Undo first warns you ("2 of these tasks were changed after this") and only overwrites those later changes if you choose **Undo anyway**. Undone changes stay in the list, crossed out, with who undid them. Viewers can see the history but not undo. Not covered yet: deleting several tasks, and imports.
 

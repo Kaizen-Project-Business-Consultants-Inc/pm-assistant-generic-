@@ -321,6 +321,8 @@ sudo iptables -L INPUT -n --line-numbers
 - [ ] Service is active: `sudo systemctl is-active pm-app`
 - [ ] Site loads at https://pm.kpbc.ca
 - [ ] Health check passes: `curl https://pm.kpbc.ca/health`
+- [ ] **First deploy with working calendars only (T060):** move tasks already on weekends/holidays — dry run first, then for real:
+  `cd /opt/pm-app && sudo -u $(stat -c %U /opt/pm-app) env $(sudo cat .env | grep -v '^#' | xargs) node dist/server/scripts/moveTasksOffDaysOff.js --dry-run` (then without `--dry-run`). Re-running finds nothing to move.
 
 ## Open tabs and new deploys
 

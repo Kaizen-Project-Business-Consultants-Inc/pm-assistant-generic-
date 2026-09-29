@@ -195,17 +195,24 @@ export class ScheduleRecomputeService {
       for (const d of n.deps) {
         const p = nodes.get(d.dependencyId);
         if (!p) continue;
-        const pStart = newStart.get(p.id) ?? p.start;
-        const pEnd = newEnd.get(p.id) ?? p.end;
         const lag = d.lagDays ?? 0;
         const type = (d.dependencyType || 'FS').toUpperCase();
-        let cand: Date | null = null;
         const back = -Math.max(0, dur - 1); // finish → start of a task this long
-        if (type === 'FS' && pEnd) cand = shiftWorking(pEnd, lag + 1, isWorking);
-        else if (type === 'SS' && pStart) cand = shiftWorking(pStart, lag, isWorking);
-        else if (type === 'FF' && pEnd) cand = shiftWorking(shiftWorking(pEnd, lag, isWorking), back, isWorking);
-        else if (type === 'SF' && pStart) cand = shiftWorking(shiftWorking(pStart, lag, isWorking), back, isWorking);
-        if (cand) cand = onOrAfterWorking(cand, isWorking);
+        const earliest = (pStart: Date | null, pEnd: Date | null, cal: IsWorking): Date | null => {
+          let c: Date | null = null;
+          if (type === 'FS' && pEnd) c = shiftWorking(pEnd, lag + 1, cal);
+          else if (type === 'SS' && pStart) c = shiftWorking(pStart, lag, cal);
+          else if (type === 'FF' && pEnd) c = shiftWorking(shiftWorking(pEnd, lag, cal), back, cal);
+          else if (type === 'SF' && pStart) c = shiftWorking(shiftWorking(pStart, lag, cal), back, cal);
+          return c ? onOrAfterWorking(c, cal) : null;
+        };
+        // Re-spanning fits the plan to a calendar; it doesn't fix links that already
+        // overlapped (a task started before its predecessor allowed) — leave those as they are.
+        if (respan && n.start) {
+          const before = earliest(p.start, p.end, lengthCalendar);
+          if (before && before > n.start) continue;
+        }
+        const cand = earliest(newStart.get(p.id) ?? p.start, newEnd.get(p.id) ?? p.end, isWorking);
         if (cand && (!required || cand > required)) required = cand;
       }
 
