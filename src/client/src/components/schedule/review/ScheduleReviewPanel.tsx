@@ -162,12 +162,15 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
     }
   }, [latestQuery.isSuccess, latestQuery.data, canEdit]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Focus trap + Escape
+  // Focus trap + Escape. Focus is taken once, on open — the caller re-renders (e.g. highlighting
+  // rows) with a new onClose each time, and re-running this would pull focus off the fix list.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     const el = panelRef.current;
     el?.focus();
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key === 'Escape') { onCloseRef.current(); return; }
       if (e.key !== 'Tab' || !el) return;
       const focusables = el.querySelectorAll<HTMLElement>('button, [href], input, [tabindex]:not([tabindex="-1"])');
       if (focusables.length === 0) return;
@@ -177,7 +180,7 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
 
   const review = latestQuery.data ?? null;
   const grouped = useMemo(() => {

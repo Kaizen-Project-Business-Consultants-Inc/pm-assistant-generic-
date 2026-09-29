@@ -175,13 +175,15 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged, onHig
     if (!generated.current) { generated.current = true; proposeMutation.mutate(false); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Focus + Escape
+  // Focus + Escape — focus taken once, on open (onClose is a new function on every parent render)
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     panelRef.current?.focus();
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onCloseRef.current(); }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
 
   const fixes = proposal?.proposalData.fixes ?? [];
   const grouped = useMemo(() => {
@@ -321,14 +323,16 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged, onHig
                   <meta.Icon className="w-3.5 h-3.5" /> {meta.label}
                 </h3>
                 <ul className="space-y-1.5">
+                  {/* Clicking a suggestion only shows its rows; the box alone chooses it for Apply */}
                   {group.items.map(f => (
                     <li key={f.id} onClick={() => pointAt(f)}>
-                      <label className={`flex items-start gap-2 p-2 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${pointedAt === f.id ? 'border-amber-400 ring-2 ring-amber-300 dark:border-amber-500 dark:ring-amber-600 bg-amber-50/60 dark:bg-amber-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                      <div className={`flex items-start gap-2 p-2 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${pointedAt === f.id ? 'border-amber-400 ring-2 ring-amber-300 dark:border-amber-500 dark:ring-amber-600 bg-amber-50/60 dark:bg-amber-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
                         <input
                           type="checkbox"
                           checked={selected.has(f.id)}
                           onChange={() => toggle(f.id)}
                           onFocus={() => pointAt(f)}
+                          aria-label={`Select: ${fixText(f)}`}
                           className="mt-0.5"
                         />
                         <span className="min-w-0 flex-1">
@@ -339,7 +343,7 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged, onHig
                           </span>
                         </span>
                         <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400" title="Confidence">{Math.round(f.confidence * 100)}%</span>
-                      </label>
+                      </div>
                     </li>
                   ))}
                 </ul>

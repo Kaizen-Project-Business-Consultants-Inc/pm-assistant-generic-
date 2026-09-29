@@ -1131,7 +1131,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   const handleHighlightTasks = useCallback((ids: string[] | null) => {
     const list = (ids ?? []).filter(id => tasks.some(t => t.id === id));
     setHighlightTaskIds(new Set(list));
-    if (list.length === 0) return;
+    if (list.length === 0) { setFocusTaskId(null); return; }
     if (list.some(id => !filteredTasks.some(t => t.id === id))) {
       setSearchQuery(''); setFilterStatus(''); setFilterPriority(''); setFilterAssignee('');
       setReviewRowFilter(null); setQuickFilter('all');
@@ -1553,7 +1553,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         <ScheduleReviewPanel
           scheduleId={schedule.id}
           canEdit={canEdit}
-          onClose={() => { setShowReviewPanel(false); setHighlightTaskIds(new Set()); }}
+          onClose={() => { setShowReviewPanel(false); handleHighlightTasks(null); }}
           onShowRows={handleShowReviewRows}
           activeRowFilterLabel={reviewRowFilter?.label ?? null}
           onHighlightTasks={handleHighlightTasks}
