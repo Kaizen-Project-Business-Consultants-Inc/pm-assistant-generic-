@@ -39,6 +39,9 @@ export interface ResourceAssignment {
   hoursPerWeek: number;
   startDate: string;
   endDate: string;
+  /** Where it came from (effective reads only): an hours-per-week booking on the Resources
+   *  page, a person + % on the task, or the task's "Assigned to" person (100%) */
+  source?: 'manual' | 'task' | 'owner';
 }
 
 export interface WeeklyUtilization {
@@ -171,6 +174,11 @@ export class ResourceService {
     return resourceRepository.findAllAssignments();
   }
 
+  /** Every booking of people's time (hours bookings, people + % on tasks, "Assigned to") — see the repository */
+  async findEffectiveAssignments(filter: { scheduleIds?: string[]; resourceId?: string; from?: string; to?: string } = {}): Promise<ResourceAssignment[]> {
+    return resourceRepository.findEffectiveAssignments(filter);
+  }
+
   async checkAssignmentConflicts(data: {
     resourceId: string;
     hoursPerWeek: number;
@@ -182,9 +190,9 @@ export class ResourceService {
     const resource = await resourceRepository.findById(data.resourceId);
     if (!resource) return { warnings };
 
-    const overlapping = await resourceRepository.findOverlappingAssignments(
-      data.resourceId, data.startDate, data.endDate, data.excludeAssignmentId,
-    );
+    const overlapping = (await resourceRepository.findEffectiveAssignments({
+      resourceId: data.resourceId, from: data.startDate, to: data.endDate,
+    })).filter(a => a.id !== data.excludeAssignmentId);
 
     const existingHours = overlapping.reduce((sum, a) => sum + a.hoursPerWeek, 0);
     const totalHours = existingHours + data.hoursPerWeek;
@@ -230,7 +238,7 @@ export class ResourceService {
 
     if (scheduleIds.length === 0) return [];
 
-    const projectAssignments = await resourceRepository.findAssignmentsByScheduleIds(scheduleIds);
+    const projectAssignments = await resourceRepository.findEffectiveAssignments({ scheduleIds });
 
     const DAY_MS = 86_400_000;
     const WEEK_MS = 7 * DAY_MS;
@@ -362,7 +370,7 @@ export class ResourceService {
   // --- Cross-project workload (#2) ---
 
   async computeGlobalWorkload(): Promise<ResourceWorkload[]> {
-    const allAssignments = await resourceRepository.findAllAssignments();
+    const allAssignments = await resourceRepository.findEffectiveAssignments();
     if (allAssignments.length === 0) return [];
 
     const DAY_MS = 86_400_000;
@@ -493,7 +501,7 @@ export class ResourceService {
     const lastWeekEnd = new Date(weekStarts[weekStarts.length - 1].getTime() + WEEK_MS).toISOString().slice(0, 10);
 
     // Get all assignments overlapping the date range
-    const assignments = await resourceRepository.findOverlappingAssignments(resourceId, firstWeek, lastWeekEnd);
+    const assignments = await resourceRepository.findEffectiveAssignments({ resourceId, from: firstWeek, to: lastWeekEnd });
 
     // Get actual hours if user linked
     let actualByWeek: Map<string, number> | null = null;

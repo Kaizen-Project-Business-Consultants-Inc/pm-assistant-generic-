@@ -435,6 +435,15 @@ export const GanttToolbar = React.memo(function GanttToolbar({
             <span className="ml-0.5 px-1.5 py-0.5 text-xs font-bold bg-amber-200 text-amber-800 rounded-full">{overallocatedCount}</span>
           )}
         </button>
+        {showOverallocation && (
+          <a
+            href="/resources?tab=workload"
+            className="text-xs font-medium text-amber-700 dark:text-amber-400 underline hover:text-amber-800 dark:hover:text-amber-300 print:hidden whitespace-nowrap"
+            title="Everyone's weekly load, across all projects"
+          >
+            {overallocatedCount > 0 ? 'See Workload Heatmap' : 'No one over 100% · Workload Heatmap'}
+          </a>
+        )}
         {/* Minimap toggle */}
         <button
           onClick={() => setShowMinimap(v => !v)}

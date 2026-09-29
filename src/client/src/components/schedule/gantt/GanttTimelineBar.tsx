@@ -29,6 +29,8 @@ export interface GanttTimelineBarProps {
   isCritical: boolean;
   isSelected: boolean;
   isOverallocated: boolean;
+  /** Who is over 100% and when, e.g. "Anna Lee 140% (week of 12 Oct)" */
+  overallocationNote?: string;
   isParent: boolean;
   isDragging: boolean;
   canDrag: boolean;
@@ -66,6 +68,7 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
   isCritical,
   isSelected,
   isOverallocated,
+  overallocationNote,
   isParent,
   isDragging,
   canDrag,
@@ -305,9 +308,11 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
       {/* Overallocation warning dot */}
       {isOverallocated && (
         <div
-          className="absolute -top-1 -left-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-white flex items-center justify-center z-10 pointer-events-none"
+          className="absolute -top-1 -left-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-white flex items-center justify-center z-10 cursor-help"
           style={{ fontSize: 9, fontWeight: 700, lineHeight: 1 }}
-          title="Resource overallocated"
+          title={`Over 100% that week:\n${overallocationNote ?? 'Resource overallocated'}`}
+          aria-label={`Over 100% that week: ${overallocationNote ?? 'resource overallocated'}`}
+          role="img"
         >
           !
         </div>

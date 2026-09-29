@@ -476,7 +476,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     const resource = await resourceService.findResourceById(id);
     if (!resource) return reply.status(404).send({ error: 'Resource not found' });
 
-    const assignments = await resourceService.findAssignmentsByResource(id);
+    const assignments = await resourceService.findEffectiveAssignments({ resourceId: id });
 
     // Gather task names for each assignment — but only for projects the viewer is on; elsewhere
     // the hours count, the task and project stay private ("Work on another project")
@@ -493,7 +493,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       const show = await visible(a.scheduleId);
       const task = show ? await scheduleService.findTaskById(a.taskId) : null;
       taskDetails.push({
-        assignmentId: show ? a.id : '',
+        assignmentId: show && a.source === 'manual' ? a.id : '', // only hours bookings can be removed here
         taskId: show ? a.taskId : '',
         taskName: show ? (task?.name || 'Unknown Task') : 'Work on another project',
         scheduleId: show ? a.scheduleId : '',
@@ -524,7 +524,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   // GET /resources/capacity-by-role — Capacity planning by role (#5)
   fastify.get('/capacity-by-role', { preHandler: [requireScope('read')] }, async (_request: FastifyRequest, _reply: FastifyReply) => {
     const resources = await resourceService.findAllResources();
-    const allAssignments = await resourceService.findAllAssignments();
+    const allAssignments = await resourceService.findEffectiveAssignments();
 
     const DAY_MS = 86_400_000;
     const WEEK_MS = 7 * DAY_MS;

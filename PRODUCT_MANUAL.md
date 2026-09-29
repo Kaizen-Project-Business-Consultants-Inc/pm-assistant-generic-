@@ -2951,9 +2951,10 @@ A minimum drag width of half a day (`0.5 × dayPx`) prevents accidental task cre
 
 ## 34. Gantt Resource Overallocation Warnings
 
-A toggle button labelled **"Overalloc"** (with a warning triangle icon) in the Gantt toolbar enables client-side detection of resource overallocation. When enabled:
+A toggle button labelled **"Conflicts"** (with a warning triangle icon) in the Gantt toolbar highlights tasks that book someone over 100% in a week. When enabled (rewired September 2026):
 
-- The system groups all tasks by their `assignedTo` field and identifies date overlaps — i.e., where the same person is assigned to two or more tasks whose date ranges overlap.
+- It fetches the cross-project workload (`GET /resources/workload`, the Workload Heatmap's data) and flags each task — not headings or milestones — whose assigned people (task resources + Assigned to) are over 100% in a week the task touches (`utils/resourceConflicts.ts`). Hovering the "!" dot names the person, their worst week and how many more over-100% weeks the task touches. A **See Workload Heatmap** link opens `/resources?tab=workload` on All Projects.
+- Workload now counts every booking (`ResourceRepository.findEffectiveAssignments`): `resource_assignments` hours, `task_assignments` % × weekly capacity, and `tasks.assigned_to` when it is a resource id (100%) — one per task+person, archived/sample projects excluded. Used by the Heatmap, utilisation history, resource profile, capacity by role, the optimizer's forecast/skill match and new-booking conflict warnings. The Resource Histogram and resource levelling still use their own older count (Assigned to only, 8 h/day) — follow-up.
 - Overallocated task bars receive an **amber highlight** — a 2px amber border with a glow effect — plus a small amber **"!" warning dot** on the bar.
 - A **badge with count** appears on the toolbar button showing how many bars are currently flagged.
 - The Gantt **legend** includes an entry showing an amber-bordered box labelled "Overallocated".

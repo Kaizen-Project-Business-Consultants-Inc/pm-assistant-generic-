@@ -179,7 +179,7 @@ export class ResourceOptimizerService {
     const taskKeywords = this.extractKeywords(taskText);
 
     // Get assignments for this schedule to compute available capacity
-    const assignments = await resourceService.findAssignmentsBySchedule(scheduleId);
+    const assignments = await resourceService.findEffectiveAssignments({ scheduleIds: [scheduleId] });
 
     const matches: SkillMatch[] = [];
 
@@ -279,7 +279,7 @@ export class ResourceOptimizerService {
     const weekEnd = weekDate + 7 * 24 * 60 * 60 * 1000;
 
     for (const schedule of schedules) {
-      const assignments = await resourceService.findAssignmentsBySchedule(schedule.id);
+      const assignments = await resourceService.findEffectiveAssignments({ scheduleIds: [schedule.id] });
       const resourceAssignments = assignments.filter((a) => a.resourceId === resourceId);
 
       for (const assignment of resourceAssignments) {

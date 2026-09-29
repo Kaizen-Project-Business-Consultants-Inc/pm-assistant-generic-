@@ -29,6 +29,7 @@ vi.mock('../../database/ResourceRepository', () => {
     findAssignmentsByScheduleIds: vi.fn().mockResolvedValue([]),
     findAllAssignments: vi.fn().mockResolvedValue([]),
     findOverlappingAssignments: vi.fn().mockResolvedValue([]),
+    findEffectiveAssignments: vi.fn().mockResolvedValue([]),
     createAssignment: vi.fn(),
     deleteAssignment: vi.fn().mockResolvedValue(false),
   };
@@ -363,7 +364,7 @@ describe('ResourceService', () => {
 
     it('returns no warnings when under capacity', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource); // 40h capacity
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, hoursPerWeek: 10 },
       ]);
 
@@ -378,7 +379,7 @@ describe('ResourceService', () => {
 
     it('returns warning when over capacity', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource); // 40h capacity
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, hoursPerWeek: 25 },
       ]);
 
@@ -396,7 +397,7 @@ describe('ResourceService', () => {
 
     it('returns warning when exactly at capacity boundary exceeded', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource); // 40h capacity
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, hoursPerWeek: 30 },
       ]);
 
@@ -411,7 +412,7 @@ describe('ResourceService', () => {
 
     it('returns no warnings when exactly at capacity', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource); // 40h
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, hoursPerWeek: 20 },
       ]);
 
@@ -426,7 +427,7 @@ describe('ResourceService', () => {
 
     it('passes excludeAssignmentId to repository', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
 
       await service.checkAssignmentConflicts({
         resourceId: 'r1',
@@ -435,14 +436,14 @@ describe('ResourceService', () => {
         endDate: '2026-02-06',
         excludeAssignmentId: 'a-exclude',
       });
-      expect(mockRepo.findOverlappingAssignments).toHaveBeenCalledWith(
-        'r1', '2026-01-06', '2026-02-06', 'a-exclude',
+      expect(mockRepo.findEffectiveAssignments).toHaveBeenCalledWith(
+        { resourceId: 'r1', from: '2026-01-06', to: '2026-02-06' },
       );
     });
 
     it('sums hours from multiple overlapping assignments', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource); // 40h
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, id: 'a1', hoursPerWeek: 15 },
         { ...sampleAssignment, id: 'a2', hoursPerWeek: 10 },
       ]);
@@ -461,7 +462,7 @@ describe('ResourceService', () => {
   describe('createAssignment', () => {
     it('creates assignment and returns it with warnings', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
       mockRepo.createAssignment.mockResolvedValueOnce(sampleAssignment);
 
       const { id, ...data } = sampleAssignment;
@@ -474,7 +475,7 @@ describe('ResourceService', () => {
 
     it('creates assignment even with over-allocation warnings', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, hoursPerWeek: 30 },
       ]);
       mockRepo.createAssignment.mockResolvedValueOnce(sampleAssignment);
@@ -488,7 +489,7 @@ describe('ResourceService', () => {
 
     it('appends audit log on creation', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
       mockRepo.createAssignment.mockResolvedValueOnce(sampleAssignment);
 
       const { id, ...data } = sampleAssignment;
@@ -529,7 +530,7 @@ describe('ResourceService', () => {
 
     it('returns empty workloads when schedules have no assignments', async () => {
       mockScheduleService.findByProjectId.mockResolvedValueOnce([{ id: 's1' }]);
-      mockRepo.findAssignmentsByScheduleIds.mockResolvedValueOnce([]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
 
       const result = await service.computeWorkload('p1');
       expect(result).toEqual([]);
@@ -537,7 +538,7 @@ describe('ResourceService', () => {
 
     it('computes workload for a single resource with assignments', async () => {
       mockScheduleService.findByProjectId.mockResolvedValueOnce([{ id: 's1' }]);
-      mockRepo.findAssignmentsByScheduleIds.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         {
           ...sampleAssignment,
           startDate: '2026-01-06',
@@ -565,7 +566,7 @@ describe('ResourceService', () => {
 
       // Resource with 40h capacity, assigned 50h
       const overAssignment = { ...sampleAssignment, hoursPerWeek: 50, startDate: '2026-01-06', endDate: '2026-01-20' };
-      mockRepo.findAssignmentsByScheduleIds.mockResolvedValueOnce([overAssignment]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([overAssignment]);
       mockRepo.findByIds.mockResolvedValueOnce([sampleResource]);
 
       const capacityMap = new Map();
@@ -579,7 +580,7 @@ describe('ResourceService', () => {
     it('fetches actual hours when resource has userId', async () => {
       const linkedResource = { ...sampleResource, userId: 'u1' };
       mockScheduleService.findByProjectId.mockResolvedValueOnce([{ id: 's1' }]);
-      mockRepo.findAssignmentsByScheduleIds.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, startDate: '2026-01-06', endDate: '2026-01-20' },
       ]);
       mockRepo.findByIds.mockResolvedValueOnce([linkedResource]);
@@ -610,7 +611,7 @@ describe('ResourceService', () => {
     it('computes cost using rate-type breakdown when available', async () => {
       const linkedResource = { ...sampleResource, userId: 'u1', costRateHourly: 100, overtimeRateHourly: 150 };
       mockScheduleService.findByProjectId.mockResolvedValueOnce([{ id: 's1' }]);
-      mockRepo.findAssignmentsByScheduleIds.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, startDate: '2026-01-06', endDate: '2026-01-13', hoursPerWeek: 40 },
       ]);
       mockRepo.findByIds.mockResolvedValueOnce([linkedResource]);
@@ -636,7 +637,7 @@ describe('ResourceService', () => {
 
     it('falls back to allocated * rate when no rate-type breakdown', async () => {
       mockScheduleService.findByProjectId.mockResolvedValueOnce([{ id: 's1' }]);
-      mockRepo.findAssignmentsByScheduleIds.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, startDate: '2026-01-06', endDate: '2026-01-13', hoursPerWeek: 20 },
       ]);
       mockRepo.findByIds.mockResolvedValueOnce([sampleResource]); // costRate = 75, no userId
@@ -656,7 +657,7 @@ describe('ResourceService', () => {
     it('handles zero capacity without division by zero', async () => {
       const zeroCap = { ...sampleResource, capacityHoursPerWeek: 0 };
       mockScheduleService.findByProjectId.mockResolvedValueOnce([{ id: 's1' }]);
-      mockRepo.findAssignmentsByScheduleIds.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, startDate: '2026-01-06', endDate: '2026-01-13' },
       ]);
       mockRepo.findByIds.mockResolvedValueOnce([zeroCap]);
@@ -673,7 +674,7 @@ describe('ResourceService', () => {
 
     it('skips resources not found in batch lookup', async () => {
       mockScheduleService.findByProjectId.mockResolvedValueOnce([{ id: 's1' }]);
-      mockRepo.findAssignmentsByScheduleIds.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, resourceId: 'r-deleted' },
       ]);
       mockRepo.findByIds.mockResolvedValueOnce([]); // resource not found
@@ -689,13 +690,13 @@ describe('ResourceService', () => {
 
   describe('computeGlobalWorkload', () => {
     it('returns empty array when no assignments exist', async () => {
-      mockRepo.findAllAssignments.mockResolvedValueOnce([]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
       const result = await service.computeGlobalWorkload();
       expect(result).toEqual([]);
     });
 
     it('computes workload across all assignments', async () => {
-      mockRepo.findAllAssignments.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, resourceId: 'r1', startDate: '2026-01-06', endDate: '2026-01-20' },
         { ...sampleAssignment, id: 'a2', resourceId: 'r2', startDate: '2026-01-06', endDate: '2026-01-20' },
       ]);
@@ -715,7 +716,7 @@ describe('ResourceService', () => {
     });
 
     it('calculates cost using allocated * rate (no rate-type breakdown in global)', async () => {
-      mockRepo.findAllAssignments.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, hoursPerWeek: 30, startDate: '2026-01-06', endDate: '2026-01-13' },
       ]);
       mockRepo.findByIds.mockResolvedValueOnce([sampleResource]); // rate=75
@@ -734,7 +735,7 @@ describe('ResourceService', () => {
 
     it('ensures at least 8 weeks of data', async () => {
       // Very short date range assignment
-      mockRepo.findAllAssignments.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         { ...sampleAssignment, startDate: '2026-01-06', endDate: '2026-01-07' },
       ]);
       mockRepo.findByIds.mockResolvedValueOnce([sampleResource]);
@@ -759,7 +760,7 @@ describe('ResourceService', () => {
 
     it('returns 12 weeks by default', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
       mockAvailabilityService.getEffectiveCapacity.mockResolvedValue(40);
 
       const result = await service.computeUtilizationHistory('r1');
@@ -768,7 +769,7 @@ describe('ResourceService', () => {
 
     it('respects custom numWeeks', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
       mockAvailabilityService.getEffectiveCapacity.mockResolvedValue(40);
 
       const result = await service.computeUtilizationHistory('r1', 4);
@@ -779,7 +780,7 @@ describe('ResourceService', () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
 
       // Create an assignment that spans a very wide range to ensure overlap
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
         {
           ...sampleAssignment,
           hoursPerWeek: 30,
@@ -800,7 +801,7 @@ describe('ResourceService', () => {
     it('fetches actual hours when resource has userId', async () => {
       const linkedResource = { ...sampleResource, userId: 'u1' };
       mockRepo.findById.mockResolvedValueOnce(linkedResource);
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
       mockAvailabilityService.getEffectiveCapacity.mockResolvedValue(40);
 
       mockTimeEntryRepo.sumHoursByUserAndWeekRange.mockResolvedValueOnce([]);
@@ -813,7 +814,7 @@ describe('ResourceService', () => {
 
     it('does not fetch actual hours when resource has no userId', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource); // userId = null
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
       mockAvailabilityService.getEffectiveCapacity.mockResolvedValue(40);
 
       await service.computeUtilizationHistory('r1', 4);
@@ -823,7 +824,7 @@ describe('ResourceService', () => {
     it('handles zero capacity in utilization history', async () => {
       const zeroCap = { ...sampleResource, capacityHoursPerWeek: 0 };
       mockRepo.findById.mockResolvedValueOnce(zeroCap);
-      mockRepo.findOverlappingAssignments.mockResolvedValueOnce([]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
       mockAvailabilityService.getEffectiveCapacity.mockResolvedValue(0);
 
       const result = await service.computeUtilizationHistory('r1', 2);

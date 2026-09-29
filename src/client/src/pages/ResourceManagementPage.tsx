@@ -115,9 +115,13 @@ type TabKey = 'team' | 'workload' | 'histogram' | 'forecast' | 'trends' | 'templ
 
 export function ResourceManagementPage() {
   const queryClient = useQueryClient();
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  // ?tab=workload (from the Gantt's Conflicts link) opens the Heatmap on all projects
+  const tabFromUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tab') : null;
+  const [selectedProjectId, setSelectedProjectId] = useState(tabFromUrl === 'workload' ? '__all__' : '');
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
-  const [activeTab, setActiveTab] = useState<TabKey>('team');
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    tabFromUrl && ['team', 'workload', 'histogram', 'forecast', 'trends', 'templates', 'requests'].includes(tabFromUrl) ? tabFromUrl as TabKey : 'team',
+  );
   const [showResourceForm, setShowResourceForm] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [formName, setFormName] = useState('');

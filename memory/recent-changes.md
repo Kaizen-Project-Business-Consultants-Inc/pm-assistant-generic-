@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-28 (Workload counts real assignments; Gantt Conflicts uses it)
+
+- Found: the Workload Heatmap read only `resource_assignments` (hours bookings) — empty on staging — while people are assigned via `task_assignments` (% on the task, 16 rows) and `tasks.assigned_to` (holds a resource id; 29 tasks). Heatmap showed nothing.
+- `ResourceRepository.findEffectiveAssignments` merges all three (hours > % > Assigned to per task+person; excludes headings, milestones, undated, archived, demo). Switched: computeWorkload, computeGlobalWorkload, utilization history, checkAssignmentConflicts, resource profile (derived rows not deletable), capacity-by-role, ResourceOptimizerService.
+- Gantt Conflicts: was "same Assigned-to text, overlapping dates"; now `utils/resourceConflicts.ts` over `/resources/workload` (>100% in a week the task touches), hover note, See Workload Heatmap link (`/resources?tab=workload` opens All Projects).
+- **Not done:** Resource Histogram + levelling (`ResourceLevelingService`) still count Assigned-to only at 8 h/day and use it as a *name* (it's a resource id) — follow-up.
+
 ## 2026-09-28 (Group selected tasks; AI grouping for partly organised plans)
 
 - Selection bar (Gantt + Table): **Group** box → `POST /schedules/:id/tasks/group` → `scheduleService.groupTasks` (same level only, ≥2, summary placed before the first) ; History kind `group` (undo = `ungroupTasks`). Shared `BulkGroupControls.tsx`, near-black so it stands apart from the indigo Link group.

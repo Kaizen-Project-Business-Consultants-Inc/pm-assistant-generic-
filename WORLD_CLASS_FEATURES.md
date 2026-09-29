@@ -114,7 +114,7 @@ An agentic AI project management platform that combines the scheduling power of 
 ### 1.6 Resource Pool & Workload View
 - Resource pool: list all team members with roles and capacity
 - Assign resources to tasks with effort hours
-- Workload heatmap: visual capacity per person per week
+- Workload heatmap: visual capacity per person per week — counts every booking (task % of capacity, Assigned to, hours bookings) across projects; the Gantt's Conflicts button flags bars from the same numbers (Sep 2026)
 - Over-allocation detection and warnings
 - **Assignment conflict detection**: Pre-flight capacity check on `POST /resources/assignments` — sums overlapping assignment hours and warns when exceeding resource capacity (advisory, non-blocking)
 - Resource utilization percentage

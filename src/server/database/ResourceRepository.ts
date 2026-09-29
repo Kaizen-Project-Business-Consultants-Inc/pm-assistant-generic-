@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { BaseRepository } from './BaseRepository';
+import { toDateString } from '../utils/calendarDate';
 import type { Resource, ResourceAssignment, SkillWithProficiency } from '../services/ResourceService';
 
 function parseSkills(raw: any): SkillWithProficiency[] {
@@ -212,6 +213,84 @@ export class ResourceRepository extends BaseRepository<Resource> {
     }
     const rows = await this.queryRaw(sql, params);
     return rows.map(rowToAssignment);
+  }
+
+  /**
+   * Everything that books a person's time, for workload, histogram, forecast and the Gantt's
+   * Conflicts: hours-per-week bookings (resource_assignments), people + % on a task
+   * (task_assignments: % of their weekly capacity) and a task's "Assigned to" when it names a
+   * resource (100%). Headings, milestones, undated tasks and archived or sample projects don't
+   * count. One booking per task and person: an hours booking beats a %, a % beats "Assigned to".
+   * Derived rows have ids "task:<id>" / "owner:<taskId>" — they are not deletable bookings.
+   */
+  async findEffectiveAssignments(filter: { scheduleIds?: string[]; resourceId?: string; from?: string; to?: string } = {}): Promise<ResourceAssignment[]> {
+    if (filter.scheduleIds && filter.scheduleIds.length === 0) return [];
+    const where: string[] = [];
+    const params: any[] = [];
+    if (filter.scheduleIds) { where.push(`t.schedule_id IN (${filter.scheduleIds.map(() => '?').join(',')})`); params.push(...filter.scheduleIds); }
+    if (filter.to) { where.push('t.start_date <= ?'); params.push(filter.to); }
+    if (filter.from) { where.push('t.end_date >= ?'); params.push(filter.from); }
+    const liveTask = `t.start_date IS NOT NULL AND t.end_date IS NOT NULL
+      AND COALESCE(t.is_milestone, 0) = 0 AND COALESCE(t.is_summary, 0) = 0
+      AND NOT EXISTS (SELECT 1 FROM tasks c WHERE c.parent_task_id = t.id)
+      AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0`;
+    const extra = where.length ? ` AND ${where.join(' AND ')}` : '';
+    const byResource = filter.resourceId ? ' AND r.id = ?' : '';
+    const rp = filter.resourceId ? [filter.resourceId] : [];
+
+    const manual = await this.queryRaw(
+      `SELECT ra.id, ra.resource_id, ra.task_id, ra.schedule_id, ra.hours_per_week, ra.start_date, ra.end_date
+         FROM resource_assignments ra
+         JOIN schedules s ON s.id = ra.schedule_id
+         JOIN projects p ON p.id = s.project_id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
+        WHERE 1 = 1${filter.resourceId ? ' AND ra.resource_id = ?' : ''}${filter.scheduleIds ? ` AND ra.schedule_id IN (${filter.scheduleIds.map(() => '?').join(',')})` : ''}${filter.to ? ' AND ra.start_date <= ?' : ''}${filter.from ? ' AND ra.end_date >= ?' : ''}`,
+      [...rp, ...(filter.scheduleIds ?? []), ...(filter.to ? [filter.to] : []), ...(filter.from ? [filter.from] : [])],
+    );
+    const onTask = await this.queryRaw(
+      `SELECT ta.id, ta.resource_id, ta.task_id, t.schedule_id, ta.allocation_pct, r.capacity_hours_per_week, t.start_date, t.end_date
+         FROM task_assignments ta
+         JOIN tasks t ON t.id = ta.task_id
+         JOIN resources r ON r.id = ta.resource_id
+         JOIN schedules s ON s.id = t.schedule_id
+         JOIN projects p ON p.id = s.project_id
+        WHERE ${liveTask}${byResource}${extra}`,
+      [...rp, ...params],
+    );
+    const owner = await this.queryRaw(
+      `SELECT t.id AS task_id, t.schedule_id, r.id AS resource_id, r.capacity_hours_per_week, t.start_date, t.end_date
+         FROM tasks t
+         JOIN resources r ON r.id = t.assigned_to
+         JOIN schedules s ON s.id = t.schedule_id
+         JOIN projects p ON p.id = s.project_id
+        WHERE ${liveTask}${byResource}${extra}`,
+      [...rp, ...params],
+    );
+
+    const day = (v: unknown) => toDateString(v as any) ?? String(v).slice(0, 10);
+    const out: ResourceAssignment[] = [];
+    const seen = new Set<string>();
+    const add = (a: ResourceAssignment) => {
+      const key = `${a.taskId}|${a.resourceId}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(a);
+    };
+    for (const r of manual) add({ ...rowToAssignment(r), startDate: day(r.start_date), endDate: day(r.end_date), source: 'manual' });
+    for (const r of onTask) {
+      add({
+        id: `task:${r.id}`, resourceId: r.resource_id, taskId: r.task_id, scheduleId: r.schedule_id,
+        hoursPerWeek: Math.round((Number(r.capacity_hours_per_week) || 40) * (Number(r.allocation_pct) || 100)) / 100,
+        startDate: day(r.start_date), endDate: day(r.end_date), source: 'task',
+      });
+    }
+    for (const r of owner) {
+      add({
+        id: `owner:${r.task_id}`, resourceId: r.resource_id, taskId: r.task_id, scheduleId: r.schedule_id,
+        hoursPerWeek: Number(r.capacity_hours_per_week) || 40,
+        startDate: day(r.start_date), endDate: day(r.end_date), source: 'owner',
+      });
+    }
+    return out;
   }
 
   async createAssignment(data: Omit<ResourceAssignment, 'id'>): Promise<ResourceAssignment> {

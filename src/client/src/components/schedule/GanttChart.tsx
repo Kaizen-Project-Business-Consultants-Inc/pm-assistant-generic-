@@ -1,4 +1,7 @@
 import { useMemo, useRef, useEffect, useState, useCallback, Fragment } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { apiService } from '../../services/api';
+import { findResourceConflicts, type WorkloadRow } from '../../utils/resourceConflicts';
 import type { ColumnState } from '../../hooks/useColumnState';
 import { useColumnDragReorder } from '../../hooks/useColumnDragReorder';
 import type { SavedView } from './SavedViewsDropdown';
@@ -525,34 +528,21 @@ export function GanttChart({
     return set;
   }, [tasks]);
 
-  /** Set of task IDs that overlap with another task assigned to the same resource */
-  const overallocatedTaskIds = useMemo(() => {
-    if (!showOverallocation) return new Set<string>();
-    const byResource = new Map<string, GanttTask[]>();
-    for (const t of tasks) {
-      if (!t.assignedTo?.trim() || !t.startDate || !t.endDate) continue;
-      const key = t.assignedTo.trim().toLowerCase();
-      if (!byResource.has(key)) byResource.set(key, []);
-      byResource.get(key)!.push(t);
-    }
-    const ids = new Set<string>();
-    for (const group of byResource.values()) {
-      if (group.length < 2) continue;
-      for (let i = 0; i < group.length; i++) {
-        for (let j = i + 1; j < group.length; j++) {
-          const aStart = new Date(group[i].startDate!).getTime();
-          const aEnd = new Date(group[i].endDate!).getTime();
-          const bStart = new Date(group[j].startDate!).getTime();
-          const bEnd = new Date(group[j].endDate!).getTime();
-          if (aStart <= bEnd && bStart <= aEnd) {
-            ids.add(group[i].id);
-            ids.add(group[j].id);
-          }
-        }
-      }
-    }
-    return ids;
-  }, [showOverallocation, tasks]);
+  /** Tasks that book someone who is over 100% that week — the Workload Heatmap's own numbers
+   *  (every project, every way of assigning someone), fetched only while Conflicts is on */
+  const { data: workloadData } = useQuery({
+    queryKey: ['workload', '__all__'],
+    queryFn: () => apiService.getGlobalResourceWorkload(),
+    enabled: showOverallocation,
+    staleTime: 60_000,
+  });
+  const conflictNotes = useMemo(
+    () => (showOverallocation
+      ? findResourceConflicts(tasks, (workloadData?.workload ?? []) as WorkloadRow[], parentTaskIds)
+      : new Map<string, string[]>()),
+    [showOverallocation, tasks, workloadData, parentTaskIds],
+  );
+  const overallocatedTaskIds = useMemo(() => new Set(conflictNotes.keys()), [conflictNotes]);
 
   const collapseAll = useCallback(() => {
     setCollapsedIds(new Set(parentTaskIds));
@@ -2884,6 +2874,7 @@ export function GanttChart({
                   isCritical={isCritical}
                   isSelected={isSelected}
                   isOverallocated={isOverallocated}
+                  overallocationNote={conflictNotes.get(task.id)?.join('\n')}
                   isParent={isParent}
                   isDragging={drag?.taskId === task.id}
                   canDrag={!!onTaskDragEnd}
