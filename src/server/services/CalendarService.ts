@@ -223,6 +223,13 @@ export class CalendarService {
     return count;
   }
 
+  /** A quick yes/no working-day test for a project's calendar: weekends, holidays, days marked working */
+  async workingDayChecker(projectId: string): Promise<(date: string) => boolean> {
+    const calendar = await this.getOrCreateDefault(projectId);
+    const { holidays, workingDays } = await this.loadExceptions(calendar.id);
+    return (date: string) => this.isWorkingDay(date, calendar, holidays, workingDays);
+  }
+
   /** Get non-working dates in a date range (for Gantt shading) */
   async getNonWorkingDates(projectId: string, startDate: string, endDate: string): Promise<string[]> {
     const calendar = await this.getOrCreateDefault(projectId);

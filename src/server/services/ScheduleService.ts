@@ -16,6 +16,8 @@ import { findDependencyCycle } from '../utils/dependencyCycle';
 import { queueReviewRerun } from './scheduleReview/autoRerun';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { inclusiveDaySpan } from '../utils/calendarDate';
+import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter } from '../utils/workingDays';
+import { calendarService } from './CalendarService';
 
 export interface Schedule {
   id: string;
@@ -1198,6 +1200,21 @@ export class ScheduleService {
     const triggerTask = await this.findTaskById(taskId);
     if (!triggerTask) return { triggeredByTaskId: taskId, deltaDays: 0, affectedTasks: [] };
 
+    // Moves count WORKING days from the project calendar (weekends/holidays skipped,
+    // days marked working counted); Mon–Fri if the calendar can't be read.
+    const day = (v: unknown): Date => new Date(String(v instanceof Date ? v.toISOString() : v).slice(0, 10) + 'T00:00:00Z');
+    let isWorking: IsWorking = weekdaysOnly;
+    try {
+      const schedule = await this.findById(triggerTask.scheduleId);
+      if (schedule?.projectId) {
+        const check = await calendarService.workingDayChecker(schedule.projectId);
+        isWorking = d => check(d.toISOString().slice(0, 10));
+      }
+    } catch (err: any) {
+      logger.warn('[cascadeReschedule] project calendar unavailable, using Mon–Fri', { taskId, error: err?.message });
+    }
+    const workingDelta = workingDaysAfter(day(oldEndDate), day(newEndDate), isWorking);
+
     const allTasks = await this.findTasksByScheduleId(triggerTask.scheduleId);
     const taskMap = new Map(allTasks.map(t => [t.id, t]));
     const downstream = await this.findAllDownstreamTasks(taskId);
@@ -1210,28 +1227,28 @@ export class ScheduleService {
         if (dep.dependencyType !== 'FS') { allFS = false; continue; }
         const predTask = taskMap.get(dep.dependencyId);
         if (!predTask?.endDate) continue;
-        const predEnd = new Date(predTask.endDate);
-        const start = new Date(predEnd.getTime() + (dep.lagDays || 0) * 86_400_000 + 86_400_000);
+        const start = onOrAfterWorking(shiftWorking(day(predTask.endDate), (dep.lagDays || 0) + 1, isWorking), isWorking);
         if (!computedStart || start > computedStart) computedStart = start;
       }
 
       if (!allFS && !computedStart) continue;
 
-      const oldStart = task.startDate ? new Date(task.startDate) : null;
-      const oldEnd = task.endDate ? new Date(task.endDate) : null;
+      const oldStart = task.startDate ? day(task.startDate) : null;
+      const oldEnd = task.endDate ? day(task.endDate) : null;
       if (!oldStart && !oldEnd) continue;
 
       let newStart: Date | null = null;
       let newEnd: Date | null = null;
 
       if (computedStart && oldStart && oldEnd) {
-        const duration = oldEnd.getTime() - oldStart.getTime();
+        // Keep the task's length in working days
+        const duration = Math.max(0, workingDaysAfter(oldStart, oldEnd, isWorking));
         newStart = computedStart;
-        newEnd = new Date(computedStart.getTime() + duration);
+        newEnd = shiftWorking(computedStart, duration, isWorking);
       } else if (oldStart && oldEnd) {
-        const deltaMs = deltaDays * 86_400_000;
-        newStart = new Date(oldStart.getTime() + deltaMs);
-        newEnd = new Date(oldEnd.getTime() + deltaMs);
+        const duration = Math.max(0, workingDaysAfter(oldStart, oldEnd, isWorking));
+        newStart = onOrAfterWorking(shiftWorking(oldStart, workingDelta, isWorking), isWorking);
+        newEnd = shiftWorking(newStart, duration, isWorking);
       }
 
       if (!newStart && !newEnd) continue;

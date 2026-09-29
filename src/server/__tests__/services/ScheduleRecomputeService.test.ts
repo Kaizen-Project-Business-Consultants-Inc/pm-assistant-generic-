@@ -15,6 +15,19 @@ vi.mock('../../services/ScheduleService', () => ({
 const append = vi.fn().mockResolvedValue({});
 vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { append } }));
 vi.mock('../../services/DeadLetterService', () => ({ deadLetterService: { capture: vi.fn() } }));
+// Project calendar: Mon–Fri, plus per-test holidays / Saturdays marked working
+const holidays = new Set<string>();
+const workingExtra = new Set<string>();
+vi.mock('../../services/CalendarService', () => ({
+  calendarService: {
+    workingDayChecker: vi.fn(async () => (date: string) => {
+      if (holidays.has(date)) return false;
+      if (workingExtra.has(date)) return true;
+      const dow = new Date(date + 'T00:00:00Z').getUTCDay();
+      return dow !== 0 && dow !== 6;
+    }),
+  },
+}));
 vi.mock('../../middleware/requestContext', () => ({
   getRequestContext: () => ({ userId: 'u-1' }),
   getActorSource: () => 'web',
@@ -35,17 +48,18 @@ async function run(tasks: any[]) {
 }
 
 describe('ScheduleRecomputeService', () => {
-  beforeEach(() => vi.clearAllMocks());
+  // Oct 2026: Mon 5 … Fri 9, Sat 10, Sun 11, Mon 12 … Fri 16
+  beforeEach(() => { vi.clearAllMocks(); holidays.clear(); workingExtra.clear(); });
 
   it('pushes an FS successor that starts too early to after its predecessor', async () => {
     const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' });
     const B = task({ id: 'B', startDate: '2026-10-05', endDate: '2026-10-09', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
     const res = await run([A, B]);
-    // A end 10-09 → FS start = +1 = 10-10; B duration 4 → end 10-14
-    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-10', '2026-10-14');
+    // A ends Fri 10-09 → B starts the next working day, Mon 10-12; keeps its 5 working days → Fri 10-16
+    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-12', '2026-10-16');
     expect(updateDates).not.toHaveBeenCalledWith('A', expect.anything(), expect.anything());
     expect(res.tasksMoved).toBe(1);
-    expect(res.deltas[0]).toMatchObject({ taskId: 'B', movedDays: 5 });
+    expect(res.deltas[0]).toMatchObject({ taskId: 'B', movedDays: 7 });
   });
 
   it('with onlyFrom, moves the linked task and its successors but not unrelated violations', async () => {
@@ -60,8 +74,8 @@ describe('ScheduleRecomputeService', () => {
     const { scheduleRecomputeService } = await import('../../services/ScheduleRecomputeService');
     const res = await scheduleRecomputeService.recompute('s1', { onlyFrom: ['B'] });
     expect(res.deltas.map(d => d.taskId).sort()).toEqual(['B', 'C']);
-    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-10', '2026-10-12'); // keeps its 2-day length
-    expect(updateDates).toHaveBeenCalledWith('C', '2026-10-13', '2026-10-14');
+    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-12', '2026-10-14'); // keeps its 3 working days
+    expect(updateDates).toHaveBeenCalledWith('C', '2026-10-15', '2026-10-16');
     expect(updateDates).not.toHaveBeenCalledWith('X', expect.anything(), expect.anything());
   });
 
@@ -79,7 +93,7 @@ describe('ScheduleRecomputeService', () => {
       payload: expect.objectContaining({
         reason: 'link_added',
         before: { startDate: '2026-10-05', endDate: '2026-10-07' },
-        after: { startDate: '2026-10-10', endDate: '2026-10-12' },
+        after: { startDate: '2026-10-12', endDate: '2026-10-14' },
       }),
     }));
     expect(append.mock.calls.map(c => c[0].entityId)).toEqual(['B', 'C']);
@@ -121,9 +135,9 @@ describe('ScheduleRecomputeService', () => {
     const B = task({ id: 'B', status: 'completed', startDate: '2026-10-01', endDate: '2026-10-03', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
     const C = task({ id: 'C', startDate: '2026-10-01', endDate: '2026-10-02', dependencies: [{ dependencyId: 'B', dependencyType: 'FS', lagDays: 0 }] });
     await run([A, B, C]);
-    // B is pinned → never written; C reflows off B's fixed end 10-03 → start 10-04
+    // B is pinned → never written; C reflows off B's fixed end Sat 10-03 → next working day Mon 10-05
     expect(updateDates).not.toHaveBeenCalledWith('B', expect.anything(), expect.anything());
-    expect(updateDates).toHaveBeenCalledWith('C', '2026-10-04', expect.any(String));
+    expect(updateDates).toHaveBeenCalledWith('C', '2026-10-05', expect.any(String));
   });
 
   it('respects lag and dependency type SS', async () => {
@@ -131,7 +145,7 @@ describe('ScheduleRecomputeService', () => {
     const B = task({ id: 'B', startDate: '2026-10-01', endDate: '2026-10-02', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 2 }] });
     const C = task({ id: 'C', startDate: '2026-10-01', endDate: '2026-10-02', dependencies: [{ dependencyId: 'A', dependencyType: 'SS', lagDays: 0 }] });
     await run([A, B, C]);
-    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-12', expect.any(String)); // 10-09 + 2 + 1
+    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-14', expect.any(String)); // Fri 10-09 + 2 working days lag → Wed 10-14
     expect(updateDates).toHaveBeenCalledWith('C', '2026-10-05', expect.any(String)); // SS = A start
   });
 
@@ -140,15 +154,46 @@ describe('ScheduleRecomputeService', () => {
     const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09', estimatedDays: 1 });
     const B = task({ id: 'B', startDate: '2026-10-05', endDate: '2026-10-09', estimatedDays: 1, dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
     await run([A, B]);
-    // A keeps its 4-day span (unchanged); B pushed to 10-10 and keeps 4-day span → 10-14
+    // A keeps its 5-day span (unchanged); B pushed to Mon 10-12 and keeps 5 working days → Fri 10-16
     expect(updateDates).not.toHaveBeenCalledWith('A', expect.anything(), expect.anything());
-    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-10', '2026-10-14');
+    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-12', '2026-10-16');
   });
 
   it('keeps a milestone zero-duration when it re-flows', async () => {
     const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' });
     const M = task({ id: 'M', isMilestone: true, estimatedDays: 0, startDate: '2026-10-01', endDate: '2026-10-01', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
     await run([A, M]);
-    expect(updateDates).toHaveBeenCalledWith('M', '2026-10-10', '2026-10-10');
+    expect(updateDates).toHaveBeenCalledWith('M', '2026-10-12', '2026-10-12');
+  });
+
+  it('a moved task never lands on a weekend and keeps its working-day length across one', async () => {
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-07' });
+    // Thu–Mon = 3 working days
+    const B = task({ id: 'B', startDate: '2026-10-01', endDate: '2026-10-05', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    await run([A, B]);
+    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-08', '2026-10-12'); // Thu → Mon, skipping Sat/Sun
+  });
+
+  it('skips a project holiday', async () => {
+    holidays.add('2026-10-12');
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' });
+    const B = task({ id: 'B', startDate: '2026-10-05', endDate: '2026-10-06', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    await run([A, B]);
+    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-13', '2026-10-14');
+  });
+
+  it('uses a Saturday the project calendar marks as working', async () => {
+    workingExtra.add('2026-10-10');
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' });
+    const B = task({ id: 'B', startDate: '2026-10-05', endDate: '2026-10-06', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    await run([A, B]);
+    expect(updateDates).toHaveBeenCalledWith('B', '2026-10-10', '2026-10-12'); // Sat (working) + Mon
+  });
+
+  it('a task that is not pushed keeps its dates exactly, even over a weekend', async () => {
+    const A = task({ id: 'A', startDate: '2026-10-01', endDate: '2026-10-02' });
+    const B = task({ id: 'B', startDate: '2026-10-09', endDate: '2026-10-11', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    const res = await run([A, B]);
+    expect(res.tasksMoved).toBe(0);
   });
 });

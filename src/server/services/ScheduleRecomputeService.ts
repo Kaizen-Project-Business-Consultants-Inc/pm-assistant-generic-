@@ -4,6 +4,8 @@ import logger from '../utils/logger';
 import { auditLedgerService } from './AuditLedgerService';
 import { deadLetterService } from './DeadLetterService';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
+import { calendarService } from './CalendarService';
+import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter } from '../utils/workingDays';
 
 /** Why dates moved — recorded on every task.reschedule audit entry */
 export type RescheduleReason = 'link_added' | 'schedule_review_fix' | 'undo';
@@ -45,11 +47,13 @@ function auditMoves(
 
 /**
  * Recomputes task dates from dependencies + durations after structural fixes are
- * applied, so the schedule respects its new logic. Matches the rest of the app's
- * date math exactly: NAIVE CALENDAR DAYS (no weekend/holiday skipping), because
- * every scheduling path in this codebase does the same. Tasks that are completed
- * or carry actual dates are pinned and never moved; other tasks move only later,
- * to satisfy a predecessor they violate (never pulled earlier).
+ * applied, so the schedule respects its new logic. Counts WORKING DAYS from the
+ * project calendar (weekends and holidays skipped, days marked working counted) —
+ * a moved task never starts or finishes on a day off, and keeps its working-day
+ * length; lag is in working days. Tasks that are completed or carry actual dates
+ * are pinned and never moved; other tasks move only later, to satisfy a
+ * predecessor they violate (never pulled earlier). A task that doesn't move keeps
+ * its dates exactly.
  */
 
 const DAY_MS = 86_400_000;
@@ -96,17 +100,17 @@ function addDays(d: Date, n: number): Date { return new Date(d.getTime() + n * D
 function diffDays(a: Date, b: Date): number { return Math.round((a.getTime() - b.getTime()) / DAY_MS); }
 
 /**
- * Duration in calendar days; milestones are zero. Prefer the task's own date span
- * when it has both dates — imported schedules carry real start/finish dates but a
- * defaulted estimatedDays of 1, so trusting the span keeps each task's real length
- * and the re-flow only shifts its start.
+ * Working days after the start day up to the finish (a Thu–Fri task is 1; one-day
+ * and milestones are 0), so finish = shiftWorking(start, duration). Prefer the task's
+ * own date span when it has both dates — imported schedules carry real start/finish
+ * dates but a defaulted estimatedDays of 1, so trusting the span keeps each task's
+ * real length and the re-flow only shifts its start.
  */
-function durationOf(n: Node): number {
+function durationOf(n: Node, isWorking: IsWorking): number {
   if (n.isMilestone) return 0;
-  if (n.start && n.end) return Math.max(0, diffDays(n.end, n.start));
-  if (n.estimatedDays && n.estimatedDays > 0) return n.estimatedDays;
-  if (n.estimatedDays === 0) return 0;
-  return 1;
+  if (n.start && n.end) return Math.max(0, workingDaysAfter(n.start, n.end, isWorking));
+  if (n.estimatedDays && n.estimatedDays > 0) return n.estimatedDays - 1;
+  return 0;
 }
 
 export class ScheduleRecomputeService {
@@ -118,6 +122,17 @@ export class ScheduleRecomputeService {
    */
   async recompute(scheduleId: string, opts: { onlyFrom?: string[]; reason?: RescheduleReason } = {}): Promise<RecomputeResult> {
     const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
+    // The project's working days; if the calendar can't be read, Monday–Friday
+    let isWorking: IsWorking = weekdaysOnly;
+    try {
+      const schedule = await scheduleService.findById(scheduleId);
+      if (schedule?.projectId) {
+        const check = await calendarService.workingDayChecker(schedule.projectId);
+        isWorking = d => check(ymd(d));
+      }
+    } catch (err: any) {
+      logger.warn('[ScheduleRecompute] project calendar unavailable, using Mon–Fri', { scheduleId, error: err?.message });
+    }
     const nodes = new Map<string, Node>();
     for (const t of tasks) {
       nodes.set(t.id, {
@@ -150,7 +165,7 @@ export class ScheduleRecomputeService {
       if (n.pinned) continue; // anchor: keep its dates
       if (scope && !scope.has(id)) continue; // outside the change: keep its dates
 
-      const dur = durationOf(n);
+      const dur = durationOf(n, isWorking);
       let required: Date | null = null;
       for (const d of n.deps) {
         const p = nodes.get(d.dependencyId);
@@ -160,10 +175,11 @@ export class ScheduleRecomputeService {
         const lag = d.lagDays ?? 0;
         const type = (d.dependencyType || 'FS').toUpperCase();
         let cand: Date | null = null;
-        if (type === 'FS' && pEnd) cand = addDays(pEnd, lag + 1);
-        else if (type === 'SS' && pStart) cand = addDays(pStart, lag);
-        else if (type === 'FF' && pEnd) cand = addDays(pEnd, lag - dur);
-        else if (type === 'SF' && pStart) cand = addDays(pStart, lag - dur);
+        if (type === 'FS' && pEnd) cand = shiftWorking(pEnd, lag + 1, isWorking);
+        else if (type === 'SS' && pStart) cand = shiftWorking(pStart, lag, isWorking);
+        else if (type === 'FF' && pEnd) cand = shiftWorking(shiftWorking(pEnd, lag, isWorking), -dur, isWorking);
+        else if (type === 'SF' && pStart) cand = shiftWorking(shiftWorking(pStart, lag, isWorking), -dur, isWorking);
+        if (cand) cand = onOrAfterWorking(cand, isWorking);
         if (cand && (!required || cand > required)) required = cand;
       }
 
@@ -173,9 +189,11 @@ export class ScheduleRecomputeService {
       else if (required) ns = required;
       else ns = cur;
       if (!ns) continue; // nothing to anchor from
+      // Not pushed: keep its dates exactly as they are
+      if (cur && n.end && ns.getTime() === cur.getTime()) continue;
 
       newStart.set(id, ns);
-      newEnd.set(id, addDays(ns, dur));
+      newEnd.set(id, shiftWorking(ns, dur, isWorking));
     }
 
     // Collect deltas + write changed leaf dates via the fast raw update.
