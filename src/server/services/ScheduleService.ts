@@ -16,7 +16,7 @@ import { findDependencyCycle } from '../utils/dependencyCycle';
 import { queueReviewRerun } from './scheduleReview/autoRerun';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { inclusiveDaySpan } from '../utils/calendarDate';
-import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter } from '../utils/workingDays';
+import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, utcDay, ymdOf, finishFor } from '../utils/workingDays';
 import { calendarService } from './CalendarService';
 
 export interface Schedule {
@@ -651,12 +651,16 @@ export class ScheduleService {
     const legacyDepType = firstDep?.dependencyType || null;
     const legacyLag = firstDep?.lagDays ?? 0;
 
-    // Default startDate to schedule start date (or today) if missing — like MS Project
+    // Default startDate to schedule start date (or today) if missing — like MS Project —
+    // moved on to the first working day of the project calendar. A start the user typed
+    // is kept even on a day off (they're warned in the form).
+    const isWorking = await this.workingDayTest(data.scheduleId);
     if (!data.startDate) {
       const schedule = await this.findById(data.scheduleId);
-      data.startDate = schedule?.startDate
+      const raw = schedule?.startDate
         ? new Date(schedule.startDate).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
+      data.startDate = ymdOf(onOrAfterWorking(utcDay(raw), isWorking));
     }
 
     // Default estimatedDays to 1 if missing — like MS Project's "1 day?" default.
@@ -668,15 +672,19 @@ export class ScheduleService {
     if (data.isMilestone) {
       data.estimatedDays = 0;
     } else if (data.estimatedDays == null) {
-      data.estimatedDays = 1;
+      // Both dates given (import, drag-to-create): the estimate is their working-day span
+      const s0 = utcDay(data.startDate), e0 = data.endDate ? utcDay(data.endDate) : null;
+      data.estimatedDays = e0 && !isNaN(s0.getTime()) && !isNaN(e0.getTime()) && e0 >= s0
+        ? Math.max(1, workingDaysAfter(s0, e0, isWorking) + (isWorking(s0) ? 1 : 0))
+        : 1;
     }
 
-    // Auto-compute endDate from startDate + estimatedDays when endDate is missing
+    // Auto-compute endDate when missing, in working days with the start day counted:
+    // a 1-day task finishes the day it starts, a 2-day task starting Friday finishes Monday.
     if (!data.endDate) {
-      const start = new Date(data.startDate);
+      const start = utcDay(data.startDate);
       if (!isNaN(start.getTime())) {
-        start.setDate(start.getDate() + data.estimatedDays);
-        data.endDate = start.toISOString().split('T')[0];
+        data.endDate = ymdOf(finishFor(start, data.estimatedDays, isWorking));
       }
     }
 
@@ -899,10 +907,10 @@ export class ScheduleService {
     const effectiveEstDays = data.estimatedDays ?? oldTask.estimatedDays;
     const effectiveEnd = data.endDate ?? oldTask.endDate;
     if (effectiveStart && effectiveEstDays && !effectiveEnd) {
-      const start = new Date(effectiveStart);
+      const start = utcDay(effectiveStart);
       if (!isNaN(start.getTime())) {
-        start.setDate(start.getDate() + effectiveEstDays);
-        data.endDate = start.toISOString().split('T')[0];
+        // Working days from the project calendar, start day counted
+        data.endDate = ymdOf(finishFor(start, effectiveEstDays, await this.workingDayTest(oldTask.scheduleId)));
       }
     }
 
@@ -1190,6 +1198,20 @@ export class ScheduleService {
   // Auto-Scheduling: Cascade Reschedule (business logic — stays in service)
   // -------------------------------------------------------------------------
 
+  /** The project calendar's working-day test for a schedule; Mon–Fri if it can't be read */
+  async workingDayTest(scheduleId: string): Promise<IsWorking> {
+    try {
+      const schedule = await this.findById(scheduleId);
+      if (schedule?.projectId) {
+        const check = await calendarService.workingDayChecker(schedule.projectId);
+        return d => check(ymdOf(d));
+      }
+    } catch (err: any) {
+      logger.warn('[ScheduleService] project calendar unavailable, using Mon–Fri', { scheduleId, error: err?.message });
+    }
+    return weekdaysOnly;
+  }
+
   async cascadeReschedule(taskId: string, oldEndDate: Date, newEndDate: Date): Promise<CascadeResult> {
     const deltaDays = Math.round((newEndDate.getTime() - oldEndDate.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -1201,18 +1223,9 @@ export class ScheduleService {
     if (!triggerTask) return { triggeredByTaskId: taskId, deltaDays: 0, affectedTasks: [] };
 
     // Moves count WORKING days from the project calendar (weekends/holidays skipped,
-    // days marked working counted); Mon–Fri if the calendar can't be read.
-    const day = (v: unknown): Date => new Date(String(v instanceof Date ? v.toISOString() : v).slice(0, 10) + 'T00:00:00Z');
-    let isWorking: IsWorking = weekdaysOnly;
-    try {
-      const schedule = await this.findById(triggerTask.scheduleId);
-      if (schedule?.projectId) {
-        const check = await calendarService.workingDayChecker(schedule.projectId);
-        isWorking = d => check(d.toISOString().slice(0, 10));
-      }
-    } catch (err: any) {
-      logger.warn('[cascadeReschedule] project calendar unavailable, using Mon–Fri', { taskId, error: err?.message });
-    }
+    // days marked working counted).
+    const day = utcDay;
+    const isWorking = await this.workingDayTest(triggerTask.scheduleId);
     const workingDelta = workingDaysAfter(day(oldEndDate), day(newEndDate), isWorking);
 
     const allTasks = await this.findTasksByScheduleId(triggerTask.scheduleId);

@@ -37,3 +37,21 @@ export function workingDaysAfter(from: Date, to: Date, isWorking: IsWorking): nu
   for (let c = plusDays(a, 1), i = 0; c <= b && i < 36600; c = plusDays(c, 1), i++) if (isWorking(c)) count++;
   return sign * count;
 }
+
+/** A calendar day ('YYYY-MM-DD', or a Date/ISO string) as a UTC-midnight Date */
+export function utcDay(v: unknown): Date {
+  return new Date(String(v instanceof Date ? v.toISOString() : v).slice(0, 10) + 'T00:00:00Z');
+}
+
+export function ymdOf(d: Date): string { return d.toISOString().slice(0, 10); }
+
+/**
+ * Finish date for a task of `days` working days starting on `start`, the start day
+ * counted (1 → the same day; 0 → the same day, a milestone). A start on a day off
+ * counts from the next working day. Fractional days round up.
+ */
+export function finishFor(start: Date, days: number, isWorking: IsWorking): Date {
+  const n = Math.ceil(Number(days) || 0);
+  if (n <= 0) return start;
+  return shiftWorking(onOrAfterWorking(start, isWorking), n - 1, isWorking);
+}
