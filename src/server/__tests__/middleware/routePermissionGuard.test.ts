@@ -264,6 +264,7 @@ const NON_PROJECT: Record<string, string[]> = {
     "POST /",
     "POST /bulk-delete",
     "POST /import",
+    "POST /load-check",
     "PUT /:id"
   ]
 };
