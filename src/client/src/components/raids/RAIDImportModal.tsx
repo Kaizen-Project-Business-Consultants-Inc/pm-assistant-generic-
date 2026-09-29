@@ -34,6 +34,24 @@ const RAID_TARGET_COLUMNS = [
   { value: 'dependentEntity', label: 'Dependent Entity' },
   { value: 'forum', label: 'Forum' },
   { value: 'sourceMeeting', label: 'Source Meeting' },
+  { value: 'decidedBy', label: 'Decided By' },
+  { value: 'decisionDate', label: 'Date Decided' },
+  { value: 'alternativesConsidered', label: 'Options Considered' },
+  { value: 'impactAssessment', label: 'Impact Assessment' },
+  // Kept in the item's description ("From the register: …") — the app has no box for these
+  { value: 'externalId', label: 'Register ID (kept in notes)' },
+  { value: 'dateRaised', label: 'Date Raised (kept in notes)' },
+  { value: 'raisedBy', label: 'Raised By (kept in notes)' },
+  { value: 'dateClosed', label: 'Date Closed (kept in notes)' },
+  { value: 'closureReason', label: 'Closure Reason (kept in notes)' },
+  { value: 'updates', label: 'Updates / Resolution (kept in notes)' },
+  { value: 'score', label: 'Score (kept in notes)' },
+  { value: 'targetScore', label: 'Target Score (kept in notes)' },
+  { value: 'responseStrategy', label: 'Response Strategy (kept in notes)' },
+  { value: 'linkedIds', label: 'Linked IDs (kept in notes)' },
+  { value: 'supersededBy', label: 'Superseded By (kept in notes)' },
+  { value: 'validationEvidence', label: 'Validation Evidence (kept in notes)' },
+  { value: 'notes', label: 'Keep in notes (as "column: value")' },
 ] as const;
 
 const RAID_ALIASES: Record<string, string> = {
@@ -64,12 +82,29 @@ const RAID_ALIASES: Record<string, string> = {
   duedate: 'dueDate', deadline: 'dueDate', targetdate: 'dueDate', due: 'dueDate',
   targetcompletiondate: 'dueDate', requiredbydate: 'dueDate', requiredby: 'dueDate',
   datedue: 'dueDate', completiondate: 'dueDate',
-  targetclosedate: 'dueDate', datedecided: 'dueDate',
+  targetclosedate: 'dueDate', targetresolutiondate: 'dueDate', resolutiondate: 'dueDate',
+  datedecided: 'decisionDate', decisiondate: 'decisionDate',
   actiontype: 'actionType',
   rationale: 'rationale', reason: 'rationale', justification: 'rationale',
   decisionrationale: 'rationale', rationalebasis: 'rationale',
-  optionsconsidered: 'description', impactsaffecteddesignarea: 'description',
-  decidedby: 'owner',
+  optionsconsidered: 'alternativesConsidered', alternativesconsidered: 'alternativesConsidered', alternatives: 'alternativesConsidered', options: 'alternativesConsidered',
+  impactsaffecteddesignarea: 'impactAssessment', impacts: 'impactAssessment', impactassessment: 'impactAssessment', affectedarea: 'impactAssessment',
+  decidedby: 'decidedBy', approvedby: 'decidedBy',
+  impactifinvalid: 'impact',
+  id: 'externalId', ref: 'externalId', refno: 'externalId', reference: 'externalId', raidid: 'externalId', riskid: 'externalId',
+  issueid: 'externalId', actionid: 'externalId', decisionid: 'externalId', assumptionid: 'externalId', no: 'externalId', number: 'externalId',
+  dateraised: 'dateRaised', raised: 'dateRaised', dateidentified: 'dateRaised', dateopened: 'dateRaised', datelogged: 'dateRaised', loggedon: 'dateRaised',
+  raisedby: 'raisedBy', raisedbysource: 'raisedBy', source: 'raisedBy', requestedby: 'raisedBy',
+  dateclosed: 'dateClosed', closeddate: 'dateClosed', dateresolved: 'dateClosed', closedon: 'dateClosed',
+  closurereason: 'closureReason', closurenotes: 'closureReason', reasonforclosure: 'closureReason',
+  updates: 'updates', updatesresolution: 'updates', resolution: 'updates', progress: 'updates', progressnotes: 'updates',
+  latestupdate: 'updates', statusupdate: 'updates', update: 'updates', resolutionnotes: 'updates',
+  riskscore: 'score', score: 'score', exposure: 'score', riskexposure: 'score',
+  targetscore: 'targetScore', residualscore: 'targetScore', residualrisk: 'targetScore',
+  responsestrategy: 'responseStrategy', strategy: 'responseStrategy', responsetype: 'responseStrategy',
+  linkedid: 'linkedIds', linkedids: 'linkedIds', linkedissueid: 'linkedIds', linkedriskid: 'linkedIds', linkedactionid: 'linkedIds', related: 'linkedIds', relatedids: 'linkedIds',
+  supersededby: 'supersededBy',
+  validationevidence: 'validationEvidence', evidence: 'validationEvidence',
   rootcause: 'rootCause', cause: 'rootCause',
   workaround: 'workaround', alternative: 'workaround',
   validationplan: 'validationPlan', validation: 'validationPlan',
@@ -94,7 +129,22 @@ const RAID_TARGET_LABELS: Record<string, string[]> = {
   mitigationPlan: ['mitigation', 'mitigation plan', 'treatment', 'response'],
   responsePlan: ['response plan', 'contingency'],
   triggerCondition: ['trigger', 'trigger condition'],
-  dueDate: ['due date', 'deadline', 'target date', 'target close date', 'date decided'],
+  dueDate: ['due date', 'deadline', 'target date', 'target close date', 'target resolution date'],
+  decisionDate: ['date decided', 'decision date'],
+  decidedBy: ['decided by', 'approved by'],
+  alternativesConsidered: ['options considered', 'alternatives'],
+  impactAssessment: ['impact assessment', 'affected area'],
+  externalId: ['id', 'ref', 'reference'],
+  dateRaised: ['date raised', 'date identified', 'date logged'],
+  dateClosed: ['date closed', 'closed date', 'date resolved'],
+  closureReason: ['closure reason'],
+  updates: ['updates', 'resolution', 'progress notes', 'latest update'],
+  score: ['risk score', 'score', 'exposure'],
+  targetScore: ['target score', 'residual score'],
+  responseStrategy: ['response strategy', 'strategy'],
+  linkedIds: ['linked id', 'linked issue id', 'linked risk id', 'related'],
+  supersededBy: ['superseded by'],
+  validationEvidence: ['validation evidence', 'evidence'],
   actionType: ['action type'],
   rationale: ['rationale', 'reason', 'justification'],
   rootCause: ['root cause', 'cause'],
@@ -188,7 +238,8 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
   const [dragOver, setDragOver] = useState(false);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [selectedSheet, setSelectedSheet] = useState('');
-  const [multiTabResults, setMultiTabResults] = useState<{ sheet: string; type: string; succeeded: number; failed: number }[] | null>(null);
+  const [loadSeq, setLoadSeq] = useState(0);
+  const [multiTabResults, setMultiTabResults] = useState<{ sheet: string; type: string; succeeded: number; failed: number; problems?: string[] }[] | null>(null);
   const [importingAll, setImportingAll] = useState(false);
   const workbookRef = useRef<XLSX.WorkBook | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -215,6 +266,9 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
     if (p.headers.length === 0) { setError('CSV appears empty.'); setParsed(null); return; }
     setParsed(p);
     setColumnMap({});
+    // Remount the column matcher so it matches again even when the new sheet has the
+    // same headers as the last one (it only re-ran on a header change, leaving all "skip")
+    setLoadSeq(n => n + 1);
   }, []);
 
   const isExcelFile = (file: File) => {
@@ -307,7 +361,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
     if (!workbookRef.current) return;
     setImportingAll(true);
     setError('');
-    const results: { sheet: string; type: string; succeeded: number; failed: number }[] = [];
+    const results: { sheet: string; type: string; succeeded: number; failed: number; problems?: string[] }[] = [];
     let anySuccess = false;
 
     for (const name of workbookRef.current.SheetNames) {
@@ -329,7 +383,8 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
         const headerMap: Record<string, string> = {};
         for (const header of p.headers) {
           const key = header.toLowerCase().replace(/[^a-z0-9]/g, '');
-          headerMap[header] = RAID_ALIASES[key] || '_skip';
+          // A column the app has no box for is kept in the notes, never dropped
+          headerMap[header] = RAID_ALIASES[key] || 'notes';
         }
 
         // If a "type" column exists but we're setting type from the sheet name,
@@ -350,7 +405,11 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
 
         const res = await apiService.importRaidItems(projectId, outCsv, headerMap, raidType);
         const data = res?.data ?? res;
-        results.push({ sheet: name, type: raidType, succeeded: data.succeeded ?? 0, failed: (data.failed ?? []).length });
+        const problems = [
+          ...(data.failed ?? []).map((f: { row: number; error: string }) => `Row ${f.row}: ${f.error}`),
+          ...(data.warnings ?? []).map((w: { row: number; message: string }) => `Row ${w.row}: ${w.message}`),
+        ];
+        results.push({ sheet: name, type: raidType, succeeded: data.succeeded ?? 0, failed: (data.failed ?? []).length, problems });
         if ((data.succeeded ?? 0) > 0) anySuccess = true;
       } catch {
         results.push({ sheet: name, type: raidType, succeeded: 0, failed: -1 });
@@ -393,14 +452,21 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
               </div>
               <div className="space-y-1">
                 {multiTabResults.map((r, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm">
+                  <div key={i} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                     <span className="font-medium text-gray-700 dark:text-gray-300 w-28 truncate capitalize">{r.sheet}</span>
                     <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 capitalize">{r.type}</span>
                     <span className="text-green-600 dark:text-green-400">{r.succeeded} imported</span>
                     {r.failed > 0 && <span className="text-red-600 dark:text-red-400">{r.failed} failed</span>}
                     {r.failed === -1 && <span className="text-red-600 dark:text-red-400">error</span>}
+                    {r.problems && r.problems.length > 0 && (
+                      <ul className="basis-full text-xs text-gray-700 dark:text-gray-300 list-disc list-inside pl-1">
+                        {r.problems.slice(0, 6).map((pr, k) => <li key={k}>{pr}</li>)}
+                        {r.problems.length > 6 && <li>+ {r.problems.length - 6} more</li>}
+                      </ul>
+                    )}
                   </div>
                 ))}
+                <p className="text-xs text-gray-600 dark:text-gray-400 pt-1">Columns the app has no box for (register ID, date raised, updates, closure details, linked IDs…) are kept in each item's description under "From the register".</p>
               </div>
               <button onClick={reset} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Import more</button>
             </div>
@@ -507,12 +573,14 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
               {parsed && (
                 <>
                   <ColumnMapper
+                    key={loadSeq}
                     headers={parsed.headers}
                     mappings={columnMap}
                     onMappingsChange={setColumnMap}
                     targetColumns={RAID_TARGET_COLUMNS}
                     aliases={RAID_ALIASES}
                     targetLabels={RAID_TARGET_LABELS}
+                    fillUnmapped="notes"
                   />
 
                   {/* Preview table */}

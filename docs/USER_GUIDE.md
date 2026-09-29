@@ -3229,6 +3229,17 @@ The **AI Scan** button in the RAID toolbar triggers a project-scoped analysis:
 
 AI Scan does not overwrite or modify existing records — it only proposes new ones.
 
+### Importing a RAID Register (Excel or CSV)
+
+In the **Risks & Issues** tab click **Import** and choose your register. For a workbook with Risks, Issues, Actions, Assumptions and Decisions tabs, **Import All Sheets** brings them all in; each tab's items get that type. Or pick one sheet and check the column matching first.
+
+- **Nothing is thrown away.** Columns the app has a box for go there (title, category, likelihood, impact, status, owner, mitigation, due date, decision date, options considered, impacts…). Columns it has no box for — your register ID (R-01), date raised, raised by, updates / resolution, date closed, closure reason, risk score, target score, response strategy, linked IDs, superseded by, validation evidence, and anything else — are kept in the item's description under **From the register**, one "Column: value" per line. In the column matching they show as "(kept in notes)" or **Keep in notes**; choose **skip** to leave a column out on purpose.
+- **Statuses** in your wording are understood per type: Pending action → Open, Complete → Completed, Approved decision → Decided, Superseded → Reversed, In Mitigation risk → Mitigating, Realised → Closed, Invalidated assumption → Closed. A status it can't place keeps the default status, is noted in the item, and is listed after the import — the row is never dropped for it.
+- **Likelihood and impact** can be numbers (1–5) or words (Very low, Low, Medium, High, Very high). With no Severity column, severity comes from likelihood × impact.
+- **Dates** like 21-Jul-2026, 3-Sep-26, 2026-08-15 and Excel dates are read; a cell that isn't a date ("TBD", "Post Action A-39") is kept as a note rather than guessed.
+- **Decided by** links to a project member when the name matches one; otherwise the name is kept (as the owner when there's no Owner column, and in the notes).
+- After the import each tab shows how many came in, and any row that failed or was adjusted, with the reason.
+
 ### RAID Report
 
 Click the **RAID Report** button in the RAID tab toolbar to generate a comprehensive, data-driven report of all open RAID items. This report does not use AI — it is built directly from your project's RAID data.

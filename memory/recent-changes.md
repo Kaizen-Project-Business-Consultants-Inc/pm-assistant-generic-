@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-29 (RAID register import keeps everything)
+
+- User's DBJ LMS RAID log (Sep 14) through the real UI on staging lost: 5 Pending actions (row failed, invalid status), Approved decisions → pending_decision, text impact → 3, issue target dates (unmapped), "Post Action A-39" → 2039-01-01 (new Date), and every unmapped column. Fixed: `utils/raidImport.ts` (per-type status words, parseLevel, severityFromScore, strict parseRegisterDate incl. Excel serial, "From the register" notes block), route `risks.ts` import uses it + decision fields (decisionDate, alternativesConsidered, impactAssessment; decidedBy only when it matches a member — column is char(36)), warnings returned. Client: new targets "(kept in notes)", unmatched → Keep in notes (ColumnMapper `fillUnmapped`), per-tab problems listed, ColumnMapper remounts on sheet change (re-selecting a sheet with the same headers left everything "skip").
+- Re-import result: 12 risks (4 high), 9 issues with dates + updates, 42/42 actions, 6 assumptions, 10 decisions (decided, dates). STAGING only.
+
 ## 2026-09-29 (working days everywhere dates move — steps 1, 2, 5 of the plan)
 
 - User rule: never count weekends unless the project calendar marks the day working. Decisions: 1 day = same day; company holidays + per-project; weekend date in the form = warning; tasks already on days off = moved automatically.

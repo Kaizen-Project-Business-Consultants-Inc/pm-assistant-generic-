@@ -83,6 +83,8 @@ export interface ColumnMapperProps {
   targetLabels?: Record<string, string[]>;
   /** First few data rows, so the AI can see what each column holds */
   sampleRows?: string[][];
+  /** Target for columns nothing matched (default: skip). RAID import keeps them in notes. */
+  fillUnmapped?: string;
 }
 
 const NOTES_HEADER = /note|desc|comment|remark|detail/i;
@@ -172,7 +174,7 @@ function fuzzyMap(
 // Component
 // ---------------------------------------------------------------------------
 
-export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = true, targetColumns: customTargetColumns, aliases: customAliases, targetLabels: customTargetLabels, sampleRows }: ColumnMapperProps) {
+export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = true, targetColumns: customTargetColumns, aliases: customAliases, targetLabels: customTargetLabels, sampleRows, fillUnmapped }: ColumnMapperProps) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSource, setAiSource] = useState<Set<number>>(new Set()); // indices that came from AI
 
@@ -192,7 +194,10 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
       fuzzyMap(headers, step1, effectiveTargetValues, effectiveTargetLabels),
       effectiveTargetValues,
     );
-    onMappingsChange(step2);
+    const fill = (m: Record<number, string>) => (fillUnmapped
+      ? Object.fromEntries(headers.map((_, i) => [i, m[i] || fillUnmapped])) as Record<number, string>
+      : m);
+    onMappingsChange(fill(step2));
 
     // Layer 3: AI suggestions for remaining unmapped headers (async)
     if (enableAI) {
@@ -215,7 +220,7 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
               }
             });
             setAiSource(newAiSource);
-            onMappingsChange(newMap);
+            onMappingsChange(fill(newMap));
           })
           .catch(() => {
             // AI unavailable — no problem, manual mapping still works

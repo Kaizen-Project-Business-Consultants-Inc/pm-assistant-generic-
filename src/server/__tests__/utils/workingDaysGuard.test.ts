@@ -17,6 +17,7 @@ import path from 'path';
  * one-line reason in the commit.
  */
 const BASELINE: Record<string, number> = {
+  "utils/raidImport.ts": 1, // Excel serial number -> calendar date (a cell value, not a task date)
   "routes/admin/admin.ts": 1,
   "routes/admin/revenue.ts": 1,
   "routes/collaboration/portal.ts": 3,

@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { parse as csvParse } from 'csv-parse/sync';
+import { type RaidType, normalizeRaidStatus, parseLevel, severityFromScore, parseRegisterDate, NOTE_FIELD_LABELS, describeWithRegisterDetails } from '../../utils/raidImport';
 import { riskService } from '../../services/RiskService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -540,18 +541,6 @@ export async function riskRoutes(fastify: FastifyInstance) {
     medium: 'medium', med: 'medium', m: 'medium', moderate: 'medium', '2': 'medium',
     low: 'low', l: 'low', '1': 'low',
   };
-  const STATUS_NORM: Record<string, string> = {
-    open: 'open', active: 'open',
-    closed: 'closed', done: 'closed',
-    'in progress': 'in_progress', inprogress: 'in_progress', wip: 'in_progress', in_progress: 'in_progress',
-    monitoring: 'monitoring', mitigating: 'mitigating', mitigated: 'mitigated',
-    resolved: 'resolved', completed: 'completed',
-    pending: 'pending', pending_decision: 'pending_decision', pendingdecision: 'pending_decision',
-    decided: 'decided', deferred: 'deferred',
-    validated: 'validated', unverified: 'unverified',
-    at_risk: 'at_risk', 'at risk': 'at_risk', atrisk: 'at_risk',
-    complete: 'completed',
-  };
   const CATEGORY_NORM: Record<string, string> = {
     schedule: 'schedule', time: 'schedule',
     budget: 'budget', cost: 'budget',
@@ -616,6 +605,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
       const succeeded: number[] = [];
       const failed: { row: number; error: string }[] = [];
+      const warnings: { row: number; message: string }[] = [];
       const seenTitles = new Set<string>();
 
       for (let i = 0; i < records.length; i++) {
@@ -623,31 +613,31 @@ export async function riskRoutes(fastify: FastifyInstance) {
         const rowNum = i + 2; // 1-indexed + header row
 
         try {
-          // Map columns
+          // Map columns. "notes" (and any register column the app has no box for) is kept
+          // in the description as "Header: value" so nothing in the sheet is lost.
           const mapped: Record<string, string> = {};
+          const noteLines: Array<[string, string]> = [];
           for (const [header, value] of Object.entries(row)) {
             const field = reverseMap[header];
-            if (field && value) {
-              mapped[field] = value;
-            }
+            const v = (value ?? '').toString().trim();
+            if (!field || !v) continue;
+            if (field === 'notes') { noteLines.push([header.trim(), v]); continue; }
+            mapped[field] = mapped[field] ? `${mapped[field]} / ${v}` : v;
           }
 
           // Title is required — fall back to description if no title column
           if (!mapped.title?.trim() && mapped.description?.trim()) {
             mapped.title = mapped.description;
-            mapped.description = mapped.title; // keep full text as description too
           }
-          // If title came from description, derive a concise title and keep full text in description
-          if (mapped.title?.trim() && !mapped.description?.trim()) {
-            // Only title, no description — copy full text to description, shorten title
+          // A long title keeps its full text in the description and gets a concise title
+          if (mapped.title?.trim()) {
             const full = mapped.title.trim();
-            if (full.length > 120) {
+            if (full.length > 120 && !mapped.description?.trim()) {
               mapped.description = full;
               mapped.title = deriveTitle(full);
+            } else if (mapped.title === mapped.description) {
+              mapped.title = deriveTitle(full);
             }
-          } else if (mapped.title?.trim() && mapped.description?.trim() && mapped.title === mapped.description) {
-            // Both set to the same value (from fallback above) — derive a concise title
-            mapped.title = deriveTitle(mapped.description.trim());
           }
           if (!mapped.title?.trim()) {
             failed.push({ row: rowNum, error: 'Missing title' });
@@ -664,42 +654,36 @@ export async function riskRoutes(fastify: FastifyInstance) {
           }
           seenTitles.add(titleKey);
 
-          // Normalize type
           const rawType = (mapped.type || '').toLowerCase().trim();
-          const type = TYPE_NORM[rawType] || defaultType || 'risk';
+          const type = (TYPE_NORM[rawType] || defaultType || 'risk') as RaidType;
 
-          // Normalize severity
-          const rawSeverity = (mapped.severity || '').toLowerCase().trim();
-          const severity = SEVERITY_NORM[rawSeverity] || undefined;
+          // Status: the register's wording mapped to this type's statuses. One that can't be
+          // matched keeps the type's default and is noted — the row is never lost for it.
+          let status: string | undefined;
+          if (mapped.status) {
+            status = normalizeRaidStatus(type, mapped.status) ?? undefined;
+            if (!status) {
+              noteLines.push(['Status in the register', mapped.status]);
+              warnings.push({ row: rowNum, message: `Status "${mapped.status}" isn't one the app uses for a ${type}; imported with the default status` });
+            }
+          }
 
-          // Normalize status
-          const rawStatus = (mapped.status || '').toLowerCase().trim();
-          const status = STATUS_NORM[rawStatus] || undefined;
-
-          // Normalize category
           const rawCategory = (mapped.category || '').toLowerCase().trim();
           const category = CATEGORY_NORM[rawCategory] || undefined;
+          if (mapped.category && !category) noteLines.push(['Category in the register', mapped.category]);
 
-          // Parse probability/impact as integers (1-5)
-          let probability: number | undefined;
-          if (mapped.probability) {
-            const p = parseInt(mapped.probability, 10);
-            if (p >= 1 && p <= 5) probability = p;
-          }
-          let impact: number | undefined;
-          if (mapped.impact) {
-            const imp = parseInt(mapped.impact, 10);
-            if (imp >= 1 && imp <= 5) impact = imp;
-          }
+          // Likelihood / impact from numbers or words ("High", "Very low")
+          const probability = parseLevel(mapped.probability);
+          const impact = parseLevel(mapped.impact);
+          const rawSeverity = (mapped.severity || '').toLowerCase().trim();
+          const severity = SEVERITY_NORM[rawSeverity] || severityFromScore(probability, impact);
 
           // Match owner
           let ownerId: string | undefined;
           if (mapped.owner) {
-            const ownerKey = mapped.owner.toLowerCase().trim();
-            ownerId = memberLookup.get(ownerKey);
+            ownerId = memberLookup.get(mapped.owner.toLowerCase().trim());
           }
 
-          // Normalize actionType
           let actionType: 'preventive' | 'corrective' | 'improvement' | 'financial' | 'functional' | 'technical' | 'operational' | 'legal' | undefined;
           if (mapped.actionType) {
             const at = mapped.actionType.toLowerCase().trim();
@@ -708,46 +692,47 @@ export async function riskRoutes(fastify: FastifyInstance) {
             }
           }
 
-          // Map probability text to numeric (Low=1, Medium=3, High=5)
-          if (!probability && mapped.probability) {
-            const pt = mapped.probability.toLowerCase().trim();
-            const probTextMap: Record<string, number> = { low: 1, medium: 3, med: 3, moderate: 3, high: 5 };
-            if (probTextMap[pt]) probability = probTextMap[pt];
-          }
+          // Dates: strict. A cell that isn't a date ("TBD", "Post Action A-39") is kept as a note.
+          const dateOrNote = (field: string, label: string): string | undefined => {
+            if (!mapped[field]) return undefined;
+            const d = parseRegisterDate(mapped[field]);
+            if (!d) noteLines.push([label, mapped[field]]);
+            return d ?? undefined;
+          };
+          const dueDate = dateOrNote('dueDate', 'Due date in the register');
+          const decisionDate = dateOrNote('decisionDate', 'Date decided');
+          const dateRaised = mapped.dateRaised ? (parseRegisterDate(mapped.dateRaised) ?? mapped.dateRaised) : undefined;
+          const dateClosed = mapped.dateClosed ? (parseRegisterDate(mapped.dateClosed) ?? mapped.dateClosed) : undefined;
 
-          // Parse due date — handle various formats (DD-Mon-YYYY, MM/DD/YYYY, etc.)
-          if (mapped.dueDate) {
-            const raw = mapped.dueDate.trim();
-            const d = new Date(raw);
-            if (!isNaN(d.getTime())) {
-              mapped.dueDate = d.toISOString().slice(0, 10);
-            } else {
-              // Try DD-Mon-YYYY (e.g. "15-Aug-2026")
-              const m = raw.match(/^(\d{1,2})[\/\-](\w{3,})[\/\-](\d{4})$/);
-              if (m) {
-                const d2 = new Date(`${m[2]} ${m[1]}, ${m[3]}`);
-                if (!isNaN(d2.getTime())) {
-                  mapped.dueDate = d2.toISOString().slice(0, 10);
-                } else {
-                  delete mapped.dueDate;
-                }
-              } else {
-                delete mapped.dueDate;
-              }
-            }
+          // "Decided by" is a link to a project member in the app; a name that isn't one is
+          // kept as a note (and, when the sheet has no owner, becomes the owner's name).
+          let decidedBy: string | undefined;
+          if (mapped.decidedBy) {
+            decidedBy = memberLookup.get(mapped.decidedBy.toLowerCase().trim());
+            if (!decidedBy) noteLines.push(['Decided by', mapped.decidedBy]);
+            if (!mapped.owner) mapped.owner = mapped.decidedBy;
           }
 
           // Owner fallback: if owner text doesn't match a member, store as ownerName
           let ownerName: string | undefined;
           if (mapped.owner && !ownerId) {
-            ownerName = mapped.owner.trim().slice(0, 255) || undefined;
+            ownerId = memberLookup.get(mapped.owner.toLowerCase().trim());
+            if (!ownerId) ownerName = mapped.owner.trim().slice(0, 255) || undefined;
           }
+
+          const details: Array<[string, string]> = [];
+          for (const [field, label] of Object.entries(NOTE_FIELD_LABELS)) {
+            const v = field === 'dateRaised' ? dateRaised : field === 'dateClosed' ? dateClosed : mapped[field];
+            if (v) details.push([label, v]);
+          }
+          details.push(...noteLines);
+          const description = describeWithRegisterDetails(mapped.description, details);
 
           await riskService.create({
             projectId,
-            type: type as 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency',
+            type,
             title,
-            description: mapped.description?.slice(0, 5000) || undefined,
+            description: description?.slice(0, 5000) || undefined,
             category,
             severity,
             probability,
@@ -758,7 +743,11 @@ export async function riskRoutes(fastify: FastifyInstance) {
             responsePlan: mapped.responsePlan?.slice(0, 5000) || undefined,
             ownerId,
             ownerName,
-            dueDate: mapped.dueDate || undefined,
+            dueDate,
+            decisionDate,
+            decidedBy,
+            alternativesConsidered: mapped.alternativesConsidered?.slice(0, 5000) || undefined,
+            impactAssessment: mapped.impactAssessment?.slice(0, 5000) || undefined,
             actionType,
             rationale: mapped.rationale?.slice(0, 5000) || undefined,
             rootCause: mapped.rootCause?.slice(0, 5000) || undefined,
@@ -778,7 +767,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
       }
 
       return reply.status(201).send({
-        data: { succeeded: succeeded.length, failed },
+        data: { succeeded: succeeded.length, failed, warnings },
       });
     } catch (err) {
       if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
