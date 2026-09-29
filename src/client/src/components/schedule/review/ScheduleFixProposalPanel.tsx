@@ -17,8 +17,13 @@ interface ProposedFix {
   confidence: number;
   reason: string;
   defaultChecked: boolean;
+  taskId?: string;
   taskName?: string;
+  dependsOnTaskId?: string;
   dependsOnTaskName?: string;
+  gateTaskId?: string;
+  afterTaskId?: string;
+  beforeTaskId?: string;
   newParentName?: string;
   newDuration?: number;
   gateName?: string;
@@ -64,6 +69,18 @@ interface Props {
   onClose: () => void;
   /** Called after apply or undo so the caller can refresh the review + grid. */
   onChanged?: () => void;
+  /** Highlight (and scroll to) the rows a suggestion changes; null clears */
+  onHighlightTasks?: (taskIds: string[] | null) => void;
+  rowNumberOf?: (taskId: string) => number | undefined;
+}
+
+/** The existing tasks a suggestion touches, in reading order (the task that waits comes last) */
+export function fixTaskIds(f: ProposedFix): string[] {
+  const ids = f.type === 'add_dependency' ? [f.dependsOnTaskId, f.taskId]
+    : f.type === 'insert_buffer' ? [f.gateTaskId ?? f.taskId]
+    : f.type === 'add_task' ? [f.afterTaskId, f.beforeTaskId]
+    : [f.taskId];
+  return [...new Set(ids.filter((x): x is string => !!x))];
 }
 
 const TYPE_META: Record<FixType, { label: string; Icon: typeof Link2 }> = {
@@ -97,7 +114,17 @@ function fixText(f: ProposedFix): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Props) {
+export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged, onHighlightTasks, rowNumberOf }: Props) {
+  const [pointedAt, setPointedAt] = useState<string | null>(null);
+  const pointAt = (f: ProposedFix) => {
+    setPointedAt(f.id);
+    onHighlightTasks?.(fixTaskIds(f));
+  };
+  const rowsText = (f: ProposedFix) => {
+    const nums = fixTaskIds(f).map(id => rowNumberOf?.(id)).filter((n): n is number => n != null);
+    if (nums.length === 0) return null;
+    return nums.length === 1 ? `row ${nums[0]}` : `rows ${nums.join(' → ')}`;
+  };
   const panelRef = useRef<HTMLDivElement>(null);
   const [proposal, setProposal] = useState<FixProposal | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -295,17 +322,21 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged }: Pro
                 </h3>
                 <ul className="space-y-1.5">
                   {group.items.map(f => (
-                    <li key={f.id}>
-                      <label className="flex items-start gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                    <li key={f.id} onClick={() => pointAt(f)}>
+                      <label className={`flex items-start gap-2 p-2 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${pointedAt === f.id ? 'border-amber-400 ring-2 ring-amber-300 dark:border-amber-500 dark:ring-amber-600 bg-amber-50/60 dark:bg-amber-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
                         <input
                           type="checkbox"
                           checked={selected.has(f.id)}
                           onChange={() => toggle(f.id)}
+                          onFocus={() => pointAt(f)}
                           className="mt-0.5"
                         />
                         <span className="min-w-0 flex-1">
                           <span className="block text-sm text-gray-900 dark:text-gray-100">{fixText(f)}</span>
-                          <span className="block text-xs text-gray-500 dark:text-gray-400">{f.reason}</span>
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">
+                            {rowsText(f) && <span className="font-medium text-amber-700 dark:text-amber-300">{rowsText(f)} · </span>}
+                            {f.reason}
+                          </span>
                         </span>
                         <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400" title="Confidence">{Math.round(f.confidence * 100)}%</span>
                       </label>

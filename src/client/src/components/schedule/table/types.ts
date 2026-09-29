@@ -65,6 +65,8 @@ export interface TableViewProps {
   reviewFlagMap?: Map<string, string>;
   /** Task to bring into view and highlight (e.g. opened from the Morning Briefing) */
   focusTaskId?: string | null;
+  /** Rows to keep highlighted (amber) — e.g. the tasks a Propose-fixes suggestion changes */
+  highlightTaskIds?: Set<string>;
 }
 
 export const barColors: Record<string, { bg: string; text: string }> = {

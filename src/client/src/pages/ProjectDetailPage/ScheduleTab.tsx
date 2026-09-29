@@ -1125,6 +1125,23 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     clearParams();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedTask, linkedSchedule, tasksLoading, schedule.id]);
+  // Rows a Propose-fixes suggestion changes: highlighted while it's the chosen suggestion, and the
+  // first one scrolled into view (filters that hide them are cleared, with a note).
+  const [highlightTaskIds, setHighlightTaskIds] = useState<Set<string>>(new Set());
+  const handleHighlightTasks = useCallback((ids: string[] | null) => {
+    const list = (ids ?? []).filter(id => tasks.some(t => t.id === id));
+    setHighlightTaskIds(new Set(list));
+    if (list.length === 0) return;
+    if (list.some(id => !filteredTasks.some(t => t.id === id))) {
+      setSearchQuery(''); setFilterStatus(''); setFilterPriority(''); setFilterAssignee('');
+      setReviewRowFilter(null); setQuickFilter('all');
+      setFocusNotice('Filters were cleared so you can see these rows.');
+    }
+    setFocusTaskId(null);
+    setTimeout(() => setFocusTaskId(list[0]), 0); // re-scroll even if it's the same row as before
+  }, [tasks, filteredTasks]);
+  const rowNumberOf = useCallback((id: string) => rowNumbers.get(id), [rowNumbers]);
+
   // The highlight and the note fade after a few seconds; the row stays where it is.
   useEffect(() => {
     if (!focusTaskId) return;
@@ -1324,6 +1341,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           scheduleName={schedule.name}
           scheduleId={schedule.id}
           focusTaskId={focusTaskId}
+          highlightTaskIds={highlightTaskIds}
           onTaskSelect={(task) => setActiveTaskId(task.id)}
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}
@@ -1402,6 +1420,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           scheduleId={schedule.id}
           reviewFlagMap={reviewFlagMap}
           focusTaskId={focusTaskId}
+          highlightTaskIds={highlightTaskIds}
           onTaskSelect={(task) => setActiveTaskId(task.id)}
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}
@@ -1534,9 +1553,11 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         <ScheduleReviewPanel
           scheduleId={schedule.id}
           canEdit={canEdit}
-          onClose={() => setShowReviewPanel(false)}
+          onClose={() => { setShowReviewPanel(false); setHighlightTaskIds(new Set()); }}
           onShowRows={handleShowReviewRows}
           activeRowFilterLabel={reviewRowFilter?.label ?? null}
+          onHighlightTasks={handleHighlightTasks}
+          rowNumberOf={rowNumberOf}
         />
       )}
 

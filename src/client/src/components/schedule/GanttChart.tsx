@@ -102,6 +102,7 @@ export function GanttChart({
   reviewActive,
   reviewFlagMap,
   focusTaskId,
+  highlightTaskIds,
   allTasks,
   onBulkLink,
   onGroupTasks,
@@ -182,6 +183,8 @@ export function GanttChart({
   reviewFlagMap?: Map<string, string>;
   /** Task to bring into view and highlight (e.g. opened from the Morning Briefing) */
   focusTaskId?: string | null;
+  /** Rows to keep highlighted (amber) — e.g. the tasks a Propose-fixes suggestion changes */
+  highlightTaskIds?: Set<string>;
 }) {
   const criticalSet = useMemo(() => new Set(criticalPathTaskIds || []), [criticalPathTaskIds]);
   const baselineMap = useMemo(() => {
@@ -2487,7 +2490,7 @@ export function GanttChart({
                 level={level}
                 rowIdx={rowIdx}
                 isActive={activeTaskId === task.id}
-                isFocused={focusTaskId === task.id}
+                isFocused={focusTaskId === task.id || !!highlightTaskIds?.has(task.id)}
                 isSelected={selectedIds.has(task.id)}
                 isParent={parentTaskIds.has(task.id)}
                 isCollapsed={collapsedIds.has(task.id)}

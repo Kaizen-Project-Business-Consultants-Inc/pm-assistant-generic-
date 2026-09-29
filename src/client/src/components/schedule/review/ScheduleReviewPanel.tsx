@@ -53,6 +53,10 @@ interface ScheduleReviewPanelProps {
   /** Filter the grid to these tasks; null clears the filter. */
   onShowRows: (taskIds: string[] | null, label: string | null) => void;
   activeRowFilterLabel?: string | null;
+  /** Highlight (and scroll to) the rows a fix suggestion changes; null clears */
+  onHighlightTasks?: (taskIds: string[] | null) => void;
+  /** Row number shown in the grid, for "rows 12 → 14" */
+  rowNumberOf?: (taskId: string) => number | undefined;
 }
 
 const SEVERITY_ORDER: ReviewSeverity[] = ['critical', 'high', 'medium', 'low', 'info'];
@@ -85,7 +89,7 @@ function formatWhen(iso: string): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, activeRowFilterLabel }: ScheduleReviewPanelProps) {
+export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, activeRowFilterLabel, onHighlightTasks, rowNumberOf }: ScheduleReviewPanelProps) {
   const queryClient = useQueryClient();
   const panelRef = useRef<HTMLDivElement>(null);
   const [openGroups, setOpenGroups] = useState<Set<ReviewSeverity>>(new Set(OPEN_BY_DEFAULT));
@@ -383,7 +387,9 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
       {showFixes && (
         <ScheduleFixProposalPanel
           scheduleId={scheduleId}
-          onClose={() => setShowFixes(false)}
+          onClose={() => { setShowFixes(false); onHighlightTasks?.(null); }}
+          onHighlightTasks={onHighlightTasks}
+          rowNumberOf={rowNumberOf}
           onChanged={() => {
             queryClient.invalidateQueries({ queryKey: ['schedule-review', scheduleId, 'latest'] });
             queryClient.invalidateQueries({ queryKey: ['schedule-review', scheduleId, 'history'] });
