@@ -143,6 +143,17 @@ describe('buildGroupingFixes (AI phase grouping → set_parent)', () => {
     expect(fixes.map(f => f.taskId)).toEqual(['a', 'b']);
     expect(fixes.every(f => f.newParentName === 'Real')).toBe(true);
   });
+
+  it('a partly organised plan: a group named like an existing phase joins it (even with one task)', () => {
+    const phase = task({ id: 'ph', name: 'Build', isSummary: true });
+    const fixes = buildGroupingFixes([
+      { phaseName: 'build', taskIds: ['c'] },
+      { phaseName: 'Initiation', taskIds: ['a', 'b'] },
+    ], tasks, [phase]);
+    expect(fixes.map(f => [f.taskId, f.parentTaskId ?? null, f.newParentName ?? null])).toEqual([
+      ['c', 'ph', null], ['a', null, 'Initiation'], ['b', null, 'Initiation'],
+    ]);
+  });
 });
 
 

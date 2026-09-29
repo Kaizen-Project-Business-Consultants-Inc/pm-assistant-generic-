@@ -38,6 +38,7 @@ import {
 } from './gantt/types';
 import { GanttLegend } from './gantt/GanttLegend';
 import { BulkLinkControls, type OnBulkLink } from './BulkLinkControls';
+import { BulkGroupControls, type OnGroupTasks } from './BulkGroupControls';
 import { GanttContextMenu } from './gantt/GanttContextMenu';
 import { GanttNotesPopup } from './gantt/GanttNotesPopup';
 import { GanttMinimap } from './gantt/GanttMinimap';
@@ -100,6 +101,7 @@ export function GanttChart({
   focusTaskId,
   allTasks,
   onBulkLink,
+  onGroupTasks,
 }: {
   tasks: GanttTask[];
   /** The schedule's complete task list, when `tasks` is filtered — row numbers come from this */
@@ -139,6 +141,8 @@ export function GanttChart({
   onBulkDelete?: (taskIds: string[]) => Promise<void>;
   /** Link the selected tasks (chain / all wait on a row / a row waits on all) */
   onBulkLink?: OnBulkLink;
+  /** Put the selected tasks under a new summary task */
+  onGroupTasks?: OnGroupTasks;
   /** Undo/redo state */
   canUndo?: boolean;
   canRedo?: boolean;
@@ -2389,8 +2393,11 @@ export function GanttChart({
           clearBulkState={clearBulkState}
           hasOnBulkUpdate={!!onBulkUpdate}
           hasOnBulkDelete={!!onBulkDelete}
-          linkControls={onBulkLink ? (
-            <BulkLinkControls selectedIds={Array.from(selectedIds)} onBulkLink={onBulkLink} onLinked={clearBulkState} disabled={bulkLoading} />
+          linkControls={onBulkLink || onGroupTasks ? (
+            <>
+              {onBulkLink && <BulkLinkControls selectedIds={Array.from(selectedIds)} onBulkLink={onBulkLink} onLinked={clearBulkState} disabled={bulkLoading} />}
+              {onGroupTasks && <BulkGroupControls selectedIds={Array.from(selectedIds)} onGroupTasks={onGroupTasks} onGrouped={clearBulkState} disabled={bulkLoading} />}
+            </>
           ) : undefined}
         />
       )}

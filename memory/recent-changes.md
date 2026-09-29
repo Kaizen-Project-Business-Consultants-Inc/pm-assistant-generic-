@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-28 (Group selected tasks; AI grouping for partly organised plans)
+
+- Selection bar (Gantt + Table): **Group** box → `POST /schedules/:id/tasks/group` → `scheduleService.groupTasks` (same level only, ≥2, summary placed before the first) ; History kind `group` (undo = `ungroupTasks`). Shared `BulkGroupControls.tsx`, near-black so it stands apart from the indigo Link group.
+- Propose fixes: AI grouping no longer needs a plan with zero summaries — 6+ loose top-level tasks is enough; existing phases are listed to the AI and a same-name group joins the phase (`buildGroupingFixes(..., existingPhases)`).
+- No standard for tasks per summary (discussed with user: never 1; ~3–10 typical). Two low-severity checks (1 child / >15 children) offered, not built.
+
 ## 2026-09-28 (gate "proceed to" names the real next step)
 
 - `nextStepName` in `scheduleReview/fixProposer.ts`: next phase → else the task waiting on the gate (not FF) → else the next line. Dropped the "GO-LIVE in the name → proceed to Go-Live" guess: DBJ-Loans Gate 4 is the sign-off after cutover and leads into Post-Go-Live Support.

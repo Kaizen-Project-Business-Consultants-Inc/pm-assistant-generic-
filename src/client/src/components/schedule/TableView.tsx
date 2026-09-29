@@ -14,6 +14,7 @@ import { ResourcePickerDropdown } from './ResourcePickerDropdown';
 import { TableToolbar } from './table/TableToolbar';
 import { TableBulkActionBar } from './table/TableBulkActionBar';
 import { BulkLinkControls } from './BulkLinkControls';
+import { BulkGroupControls } from './BulkGroupControls';
 import { TableHeaderRow } from './table/TableHeaderRow';
 import { TableContextMenu } from './table/TableContextMenu';
 import { TableNotesPopup } from './table/TableNotesPopup';
@@ -25,7 +26,7 @@ import {
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
 
-export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId }: TableViewProps) {
+export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
@@ -1766,8 +1767,11 @@ export function TableView({ tasks, allTasks, onBulkLink, scheduleId, onTaskClick
           onApplyBulkUpdate={applyBulkUpdate}
           onBulkDelete={handleBulkDelete}
           onClear={clearBulkState}
-          linkControls={onBulkLink ? (
-            <BulkLinkControls selectedIds={Array.from(selectedIds)} onBulkLink={onBulkLink} onLinked={clearBulkState} disabled={bulkLoading} />
+          linkControls={onBulkLink || onGroupTasks ? (
+            <>
+              {onBulkLink && <BulkLinkControls selectedIds={Array.from(selectedIds)} onBulkLink={onBulkLink} onLinked={clearBulkState} disabled={bulkLoading} />}
+              {onGroupTasks && <BulkGroupControls selectedIds={Array.from(selectedIds)} onGroupTasks={onGroupTasks} onGrouped={clearBulkState} disabled={bulkLoading} />}
+            </>
           ) : undefined}
         />
       )}

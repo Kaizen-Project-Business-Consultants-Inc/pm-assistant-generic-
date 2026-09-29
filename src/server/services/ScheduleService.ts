@@ -199,6 +199,14 @@ export interface TaskActivityEntry {
 // Dependency validation
 // ---------------------------------------------------------------------------
 
+/** Grouping was refused — the message is shown to the user as-is */
+export class GroupValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'GroupValidationError';
+  }
+}
+
 export class DependencyValidationError extends Error {
   constructor(message: string) {
     super(message);
@@ -377,6 +385,55 @@ export class ScheduleService {
    *
    * Returns the links actually added, so the caller can undo exactly those.
    */
+  /**
+   * Put several tasks under a new summary task ("Group selected tasks"). The tasks must sit
+   * at the same level; the summary takes the first one's place and their dates roll up into
+   * it. Returns what undo needs: the summary's id and each task's previous parent.
+   */
+  async groupTasks(scheduleId: string, taskIds: string[], name: string, createdBy: string): Promise<{
+    summaryId: string; previous: Array<{ id: string; parentTaskId: string | null }>;
+  }> {
+    const ids = [...new Set(taskIds)];
+    const trimmed = name.trim();
+    if (!trimmed) throw new GroupValidationError('Give the group a name, e.g. "Design"');
+    if (ids.length < 2) throw new GroupValidationError('Select at least two tasks to group — a summary over one task adds nothing');
+    const all = await this.findTasksByScheduleId(scheduleId);
+    const byId = new Map(all.map(t => [t.id, t]));
+    const picked = ids.map(id => byId.get(id));
+    if (picked.some(t => !t)) throw new GroupValidationError('Some of those tasks are not in this schedule — refresh and try again');
+    const tasks = picked as Task[];
+    const parents = new Set(tasks.map(t => t.parentTaskId ?? null));
+    if (parents.size > 1) {
+      throw new GroupValidationError('Those tasks sit at different levels. Pick tasks that are all under the same heading (or all at the top level).');
+    }
+    const parentTaskId = [...parents][0];
+    const first = [...tasks].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
+    const summary = await this.createTask({
+      scheduleId,
+      name: trimmed,
+      parentTaskId: parentTaskId ?? undefined,
+      beforeTaskId: first.id,
+      createdBy,
+    } as any);
+    const previous: Array<{ id: string; parentTaskId: string | null }> = [];
+    for (const t of tasks) {
+      await this.updateTask(t.id, { parentTaskId: summary.id });
+      previous.push({ id: t.id, parentTaskId: t.parentTaskId ?? null });
+    }
+    return { summaryId: summary.id, previous };
+  }
+
+  /** Reverse groupTasks: tasks back to their old parent, then remove the summary */
+  async ungroupTasks(summaryId: string, previous: Array<{ id: string; parentTaskId: string | null }>): Promise<number> {
+    let restored = 0;
+    for (const p of previous) {
+      await this.updateTask(p.id, { parentTaskId: p.parentTaskId } as any);
+      restored++;
+    }
+    await this.deleteTask(summaryId).catch(() => false);
+    return restored;
+  }
+
   async bulkAddDependencies(
     scheduleId: string,
     links: Array<{ taskId: string; dependencyId: string; dependencyType?: 'FS' | 'SS' | 'FF' | 'SF'; lagDays?: number }>,

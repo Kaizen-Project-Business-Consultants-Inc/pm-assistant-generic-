@@ -70,26 +70,31 @@ function build(partial: Omit<ProposedFix, 'defaultChecked'>): ProposedFix {
 export function buildGroupingFixes(
   groups: Array<{ phaseName: string; taskIds: string[] }>,
   candidates: ReviewTask[],
+  /** Phases the plan already has — a group with the same name joins it instead of making a twin */
+  existingPhases: ReviewTask[] = [],
 ): ProposedFix[] {
   const byId = new Map(candidates.map(t => [t.id, t]));
+  const phaseByName = new Map(existingPhases.map(p => [p.name.trim().toLowerCase(), p]));
   const used = new Set<string>();
   const out: ProposedFix[] = [];
   for (const g of groups) {
     const name = (g.phaseName || '').trim();
     if (!name) continue;
+    const existing = phaseByName.get(name.toLowerCase());
     const members = [...new Set(g.taskIds.filter(id => byId.has(id) && !used.has(id)))];
-    if (members.length < 2) continue; // a phase needs at least two distinct tasks
+    // a new phase needs at least two distinct tasks; an existing one can take a single task
+    if (members.length < (existing ? 1 : 2)) continue;
     for (const id of members) {
       used.add(id);
       out.push({
         id: `set_parent:${id}:${name}`,
         type: 'set_parent',
         confidence: 0.7,
-        reason: `Part of the '${name}' phase.`,
+        reason: existing ? `Belongs in the existing '${existing.name}' phase.` : `Part of the '${name}' phase.`,
         defaultChecked: true,
         taskId: id,
         taskName: byId.get(id)!.name,
-        newParentName: name,
+        ...(existing ? { parentTaskId: existing.id } : { newParentName: name }),
       });
     }
   }

@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { scheduleService, DependencyValidationError } from '../../services/ScheduleService';
+import { scheduleService, DependencyValidationError, GroupValidationError } from '../../services/ScheduleService';
 import { flowMetricsService } from '../../services/FlowMetricsService';
 import { criticalPathService } from '../../services/CriticalPathService';
 import { baselineService } from '../../services/BaselineService';
@@ -404,6 +404,45 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional(),
       lagDays: z.number().int().min(-3650).max(3650).optional(),
     })).min(1).max(500),
+  });
+
+  // Group selected tasks under a new summary task (same level only). Undo lives in History.
+  const groupSchema = z.object({
+    taskIds: z.array(z.string().min(1)).min(1).max(500),
+    name: z.string().max(255),
+  });
+
+  fastify.post('/:scheduleId/tasks/group', {
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    schema: { description: 'Group tasks under a new summary task', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const parsed = groupSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'Validation error', message: 'Send the tasks to group and a name for the group' });
+      }
+      const schedule = await scheduleService.findById(scheduleId);
+      if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
+      const result = await scheduleService.groupTasks(scheduleId, parsed.data.taskIds, parsed.data.name, request.user!.userId);
+      WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId } }, schedule.projectId);
+      const n = result.previous.length;
+      const changeId = await changeHistoryService.record({
+        projectId: schedule.projectId,
+        scheduleId,
+        kind: 'group',
+        summary: `Grouped ${n} tasks under '${parsed.data.name.trim()}'`,
+        taskIds: [result.summaryId, ...result.previous.map(p => p.id)],
+        undo: result,
+      });
+      return { summaryId: result.summaryId, grouped: n, changeId };
+    } catch (error) {
+      if (error instanceof GroupValidationError) {
+        return reply.status(400).send({ error: 'Validation error', message: error.message });
+      }
+      logger.error('Group tasks error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to group tasks' });
+    }
   });
 
   fastify.post('/:scheduleId/dependencies/bulk', {

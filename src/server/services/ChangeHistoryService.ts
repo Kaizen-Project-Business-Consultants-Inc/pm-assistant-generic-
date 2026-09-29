@@ -19,10 +19,11 @@ import logger from '../utils/logger';
  *  - bulk_create   delete the tasks that were created
  *  - review_fix    the Schedule Review proposal's own undo (ref = proposal id)
  *  - ai_reschedule put the dates back
+ *  - group         tasks back to their old parent, the new summary removed
  * Bulk delete and import are not covered yet.
  */
 
-export type ChangeKind = 'link' | 'bulk_update' | 'bulk_status' | 'bulk_create' | 'review_fix' | 'ai_reschedule';
+export type ChangeKind = 'link' | 'bulk_update' | 'bulk_status' | 'bulk_create' | 'review_fix' | 'ai_reschedule' | 'group';
 
 /** Columns bulk update may change — the only ones we read before and write back on undo */
 export const BULK_UPDATE_COLUMNS: Record<string, string> = {
@@ -211,6 +212,10 @@ class ChangeHistoryService {
       case 'ai_reschedule': {
         const dates = (payload.moved ?? []) as Array<{ taskId: string; startDate: string | null; endDate: string | null }>;
         restored = await restoreTaskDates(scheduleId, dates);
+        break;
+      }
+      case 'group': {
+        restored = await scheduleService.ungroupTasks(payload.summaryId, payload.previous ?? []);
         break;
       }
       default:

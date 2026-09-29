@@ -452,6 +452,7 @@ Select multiple tasks to perform bulk operations:
 
 - **Bulk Status Update** -- Change the status of many tasks at once.
 - **Bulk Update** -- Modify priority, assignee, or dates in batch.
+- **Group selected tasks** -- With two or more tasks selected, the selection bar also has a **Group** box (Gantt and Table views). Type a heading name (e.g. "Design") and click **Group under heading**: a new summary task is added where the first selected task was, and the selected tasks go under it. Its dates, progress and status roll up from them. The tasks must all be at the same level (all at the top, or all under the same heading) -- otherwise nothing changes and you're told why. There's no minimum rule in the standards, but a heading over a single task adds nothing, so you need at least two. **Undo** (or Schedule History) puts the tasks back and removes the heading.
 - **Link selected tasks** -- With two or more tasks selected, the selection bar has a **Link** group (Gantt and Table views):
   - **Link in order** -- chains the selected tasks by row number: each one waits for the one above it (Finish-to-Start). Selecting rows 4, 5 and 6 makes 5 wait on 4 and 6 wait on 5. The order you clicked them in doesn't matter.
   - **All wait on it** -- type a row in the **Row #** box (e.g. `3`, or `3SS`, `3FS+2d` for a type and lag) and every selected task waits for that row, e.g. "all of Task 2 waits on Gate 1".
@@ -2655,7 +2656,7 @@ A plan with no summary tasks at all ("Flat hierarchy") is now **High**, so it sh
 
 - **Split into separate steps** — for tasks that bundle independent actions. "Circulate and obtain approval for BRD" becomes *Circulate BRD* then *BRD approved* (a one-day milestone). Tasks whose verbs describe one activity are left alone: "Update and final review BRD", "Develop and unit test login module", "Go-Live Execution / Production Cutover". When applied, the original task becomes a summary with the steps under it, linked in order and sharing its dates; its links move onto the first and last step.
 - **Add missing phase** — for each standard phase the review found missing (see *Checks for your kind of project*), one task with a suggested length, placed after the task it follows and linked to the task that should wait for it. Dates after it are pushed later if needed.
-- **Group under phase** — for a plan with no phases at all, as before.
+- **Group under phase** — for 6 or more loose top-level tasks, even when the plan already has some phases. A suggested group with the same name as an existing phase goes into that phase instead of creating a twin.
 
 Tick what you want and **Apply**; **Undo** reverses everything, including dates. If nothing comes back, either nothing needs splitting or adding, or your plan doesn't include AI.
 

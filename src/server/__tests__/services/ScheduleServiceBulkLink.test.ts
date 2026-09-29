@@ -124,3 +124,37 @@ describe('bulkRemoveDependencies', () => {
     expect(updateSpy).not.toHaveBeenCalled();
   });
 });
+
+describe('groupTasks (Group selected tasks)', () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it('puts the tasks under a new summary placed where the first one was, and returns what undo needs', async () => {
+    schedule([{ ...t('a', 5), parentTaskId: 'ph' }, { ...t('b', 3), parentTaskId: 'ph' }, t('c', 9)]);
+    const createSpy = vi.spyOn(svc, 'createTask').mockResolvedValue({ id: 'sum' } as any);
+    const res = await svc.groupTasks('s1', ['a', 'b'], '  Design ', 'u1');
+    expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ scheduleId: 's1', name: 'Design', parentTaskId: 'ph', beforeTaskId: 'b' }));
+    expect(updateSpy).toHaveBeenCalledWith('a', { parentTaskId: 'sum' });
+    expect(updateSpy).toHaveBeenCalledWith('b', { parentTaskId: 'sum' });
+    expect(res).toEqual({ summaryId: 'sum', previous: [{ id: 'a', parentTaskId: 'ph' }, { id: 'b', parentTaskId: 'ph' }] });
+  });
+
+  it('refuses with a plain message: one task, no name, mixed levels, a task from elsewhere', async () => {
+    schedule([t('a', 1), t('b', 2), { ...t('c', 3), parentTaskId: 'x' }]);
+    const createSpy = vi.spyOn(svc, 'createTask');
+    await expect(svc.groupTasks('s1', ['a'], 'Design', 'u1')).rejects.toThrow(/at least two/);
+    await expect(svc.groupTasks('s1', ['a', 'b'], '  ', 'u1')).rejects.toThrow(/name/);
+    await expect(svc.groupTasks('s1', ['a', 'c'], 'Design', 'u1')).rejects.toThrow(/different levels/);
+    await expect(svc.groupTasks('s1', ['a', 'zzz'], 'Design', 'u1')).rejects.toThrow(/not in this schedule/);
+    expect(createSpy).not.toHaveBeenCalled();
+  });
+
+  it('ungroup puts each task back under its old parent, then removes the summary', async () => {
+    schedule([]);
+    const delSpy = vi.spyOn(svc, 'deleteTask').mockResolvedValue(true as any);
+    const n = await svc.ungroupTasks('sum', [{ id: 'a', parentTaskId: null }, { id: 'b', parentTaskId: 'ph' }]);
+    expect(updateSpy).toHaveBeenNthCalledWith(1, 'a', { parentTaskId: null });
+    expect(updateSpy).toHaveBeenNthCalledWith(2, 'b', { parentTaskId: 'ph' });
+    expect(delSpy).toHaveBeenCalledWith('sum');
+    expect(n).toBe(2);
+  });
+});

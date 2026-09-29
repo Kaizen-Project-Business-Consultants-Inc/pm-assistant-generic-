@@ -845,6 +845,27 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     return description;
   }, [rowNumbers, schedule.id, queryClient, pushAction]);
 
+  // Group the selected tasks under a new summary task; undo goes through Schedule History
+  const handleGroupTasks = useCallback(async (taskIds: string[], name: string): Promise<string> => {
+    let result;
+    try {
+      result = await apiService.groupTasks(schedule.id, taskIds, name);
+    } catch (e: any) {
+      throw new Error(e?.response?.data?.message || 'Grouping failed. Nothing was changed.');
+    }
+    const refresh = () => queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+    refresh();
+    let changeId = result.changeId;
+    const description = `Grouped ${result.grouped} tasks under '${name}'`;
+    pushAction({
+      description,
+      undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId, true); refresh(); },
+      redo: async () => { changeId = (await apiService.groupTasks(schedule.id, taskIds, name)).changeId; refresh(); },
+    });
+    announce(description);
+    return description;
+  }, [schedule.id, queryClient, pushAction]);
+
   // Bulk delete with undo
   const handleBulkDelete = useCallback(async (taskIds: string[]) => {
     // Capture full task data before deleting so undo can recreate them
@@ -1275,6 +1296,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           tasks={filteredTasks}
           allTasks={tasks}
           onBulkLink={canEdit ? handleBulkLink : undefined}
+          onGroupTasks={canEdit ? handleGroupTasks : undefined}
           scheduleName={schedule.name}
           scheduleId={schedule.id}
           focusTaskId={focusTaskId}
@@ -1352,6 +1374,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           tasks={filteredTasks}
           allTasks={tasks}
           onBulkLink={canEdit ? handleBulkLink : undefined}
+          onGroupTasks={canEdit ? handleGroupTasks : undefined}
           scheduleId={schedule.id}
           reviewFlagMap={reviewFlagMap}
           focusTaskId={focusTaskId}

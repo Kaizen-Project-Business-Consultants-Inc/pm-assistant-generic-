@@ -2956,6 +2956,12 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     };
   }
 
+  /** Put the selected tasks under a new summary task; undo via Schedule History (changeId) */
+  async groupTasks(scheduleId: string, taskIds: string[], name: string) {
+    const response = await this.api.post(`/schedules/${scheduleId}/tasks/group`, { taskIds, name });
+    return response.data as { summaryId: string; grouped: number; changeId: string | null };
+  }
+
   /** Undo of a link re-flow: put tasks back on their previous dates */
   async restoreTaskDates(scheduleId: string, dates: Array<{ taskId: string; startDate: string | null; endDate: string | null }>) {
     const response = await this.api.post(`/schedules/${scheduleId}/tasks/restore-dates`, { dates });

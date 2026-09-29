@@ -169,8 +169,12 @@ export class ScheduleFixProposerService {
    * phase the review found missing. Nothing to ask → no call, no tokens.
    */
   private async aiSuggestions(projectId: string, tasks: ReviewTask[], userId: string | null): Promise<{ groupings: ProposedFix[]; splits: ProposedFix[]; phases: ProposedFix[] }> {
-    const groupCandidates = tasks.filter(t => !t.isSummary && !t.parentTaskId);
-    const wantGroups = groupCandidates.length >= 6 && !tasks.some(t => t.isSummary);
+    // Loose top-level tasks get grouped even when the plan already has some phases (a partly
+    // organised plan, e.g. a contract import with a few headings); existing phases are offered.
+    const hasKids = new Set(tasks.map(t => t.parentTaskId).filter(Boolean) as string[]);
+    const groupCandidates = tasks.filter(t => !t.isSummary && !t.parentTaskId && !hasKids.has(t.id));
+    const existingPhases = tasks.filter(t => !t.parentTaskId && (t.isSummary || hasKids.has(t.id)));
+    const wantGroups = groupCandidates.length >= 6;
     const splitCands = splitCandidates(tasks);
 
     const [project, sprints] = await Promise.all([
@@ -188,6 +192,9 @@ export class ScheduleFixProposerService {
     if (wantGroups) {
       asks.push(`"groups": group the loose tasks into 3-8 sequential PHASES (e.g. Initiation, Analysis & Design, Build, Testing, Migration, Go-Live). Only group tasks that clearly belong together; omit any you are unsure about.`);
       sections.push(`Loose tasks (for groups):\n${groupCandidates.map(line).join('\n')}`);
+      if (existingPhases.length > 0) {
+        sections.push(`Phases the plan already has (reuse a name exactly to put tasks in it):\n${existingPhases.map(p => `- "${p.name}"`).join('\n')}`);
+      }
     }
     if (splitCands.length > 0) {
       asks.push(`"splits": apply the SPLITTING RULE to these tasks.`);
@@ -214,7 +221,7 @@ export class ScheduleFixProposerService {
     });
 
     return {
-      groupings: wantGroups ? buildGroupingFixes(data.groups, groupCandidates) : [],
+      groupings: wantGroups ? buildGroupingFixes(data.groups, groupCandidates, existingPhases) : [],
       splits: splitCands.length > 0 ? buildSplitFixes(data.splits, splitCands) : [],
       phases: missing.length > 0 ? buildPhaseFixes(data.phases, tasks, missing) : [],
     };
