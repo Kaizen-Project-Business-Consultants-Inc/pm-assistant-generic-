@@ -15,7 +15,10 @@
 > alert that works (5xx counted in Redis; cron jobs now connect to Redis — the signup-flood alert
 > never could fire before), empty briefing for no-org accounts, and new-signup "still being set up"
 > fix. **After every prod deploy run `scripts/prod-smoke.cjs`** (credentials in auto-memory).
-> Next: nothing queued — ask the user.
+> **2026-09-29: prod = build 3f7555927eae** — Workload Heatmap counts real assignments (task %,
+> Assigned to, hours bookings) and the Gantt's Conflicts uses it; T059 overtime-rate columns on all
+> tenants; milestone splits replace the line; Group selected tasks. **Staging only:** Schedule
+> Review rules v1.4 (R34). Next: see auto-memory `todo.md` top section.
 >
 > **Machine gotcha:** `node_modules` in root, `src/client` and `mcp-server` keep going
 > corrupt (`MODULE_NOT_FOUND` / esbuild platform errors) — `rm -rf node_modules && npm
