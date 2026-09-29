@@ -19,10 +19,13 @@ vi.mock('../../services/SCurveService', () => ({
 
 const mockFindByProjectId = vi.fn();
 const mockFindTasksByScheduleIds = vi.fn();
+// Project calendar: Mon–Fri unless a test says otherwise
+const mockWorkingDayTest = vi.fn(async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6);
 vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
     findByProjectId: (...args: any[]) => mockFindByProjectId(...args),
     findTasksByScheduleIds: (...args: any[]) => mockFindTasksByScheduleIds(...args),
+    workingDayTest: (...args: any[]) => mockWorkingDayTest(...args),
   },
 }));
 
@@ -823,6 +826,36 @@ describe('EVMForecastService', () => {
       expect(result[0].ev).toBe(5000);
       expect(result[0].cv).toBe(-2000);
       expect(result[0].progressPct).toBe(50);
+    });
+
+    it('plans value only on working days of the project calendar', async () => {
+      // Thu 1 Jan – Wed 7 Jan 2026 with Mon 5 Jan a holiday: Thu, Fri, Tue, Wed = 4 working days
+      const holidayCalendar = (d: Date) =>
+        d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && d.toISOString().slice(0, 10) !== '2026-01-05';
+      mockWorkingDayTest.mockResolvedValue(holidayCalendar);
+      mockFindById.mockResolvedValue(makeProject());
+      mockFindByProjectId.mockResolvedValue([{ id: 'sch-1' }]);
+      mockFindTasksByScheduleIds.mockResolvedValue([
+        makeTask('t1', 'Task 1', { budgetAllocated: 4000, actualCost: 0, progressPercentage: 0, startDate: '2026-01-01', endDate: '2026-01-07' }),
+      ]);
+      vi.useFakeTimers();
+      try {
+        // Sunday: Thu + Fri planned, nothing over the weekend
+        vi.setSystemTime(new Date('2026-01-04T15:00:00Z'));
+        expect((await service.getTaskVariances('proj-1'))[0].pv).toBe(2000);
+        // Holiday Monday: still flat
+        vi.setSystemTime(new Date('2026-01-05T15:00:00Z'));
+        expect((await service.getTaskVariances('proj-1'))[0].pv).toBe(2000);
+        // Tuesday: 3 of 4
+        vi.setSystemTime(new Date('2026-01-06T15:00:00Z'));
+        expect((await service.getTaskVariances('proj-1'))[0].pv).toBe(3000);
+        // After the finish: the whole budget
+        vi.setSystemTime(new Date('2026-01-20T15:00:00Z'));
+        expect((await service.getTaskVariances('proj-1'))[0].pv).toBe(4000);
+      } finally {
+        vi.useRealTimers();
+        mockWorkingDayTest.mockResolvedValue((d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6);
+      }
     });
 
     it('should exclude tasks with no budget and no actual cost', async () => {

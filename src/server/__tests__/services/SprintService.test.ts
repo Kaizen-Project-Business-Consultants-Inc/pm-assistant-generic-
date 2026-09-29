@@ -21,6 +21,16 @@ vi.mock('../../database/SprintRepository', () => {
   return { sprintRepository: mockRepo };
 });
 
+// Project calendar: Mon–Fri unless a test says otherwise
+const mockWorkingDayTest = vi.fn(async (_id?: string): Promise<(d: Date) => boolean> => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6);
+vi.mock('../../services/ScheduleService', () => ({
+  scheduleService: { workingDayTest: (...args: any[]) => mockWorkingDayTest(...(args as [string])) },
+}));
+
+vi.mock('../../services/StatusDateService', () => ({
+  statusDateFor: vi.fn(async () => '2026-01-07'),
+}));
+
 vi.mock('../../services/AuditLedgerService', () => ({
   auditLedgerService: { append: vi.fn().mockResolvedValue({}) },
 }));
@@ -141,6 +151,31 @@ describe('SprintService', () => {
       expect(result.dates).toHaveLength(6); // day 0 through day 5
       expect(result.ideal[0]).toBe(10); // start at totalPoints
       expect(result.ideal[result.ideal.length - 1]).toBe(0); // end at 0
+    });
+
+    it('ideal line burns only on working days — flat over the weekend', async () => {
+      // Thu 1 – Wed 7 Jan: working days after the start are Fri 2, Mon 5, Tue 6, Wed 7 = 4
+      mockRepo.findById.mockResolvedValueOnce({ ...sampleSprint, startDate: '2026-01-01', endDate: '2026-01-07' });
+      mockRepo.getTotalPoints.mockResolvedValueOnce(8);
+
+      const result = await service.getSprintBurndown('s1');
+      expect(mockWorkingDayTest).toHaveBeenCalledWith('sch1');
+      expect(result.dates).toEqual(['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05', '2026-01-06', '2026-01-07']);
+      expect(result.ideal).toEqual([8, 6, 6, 6, 4, 2, 0]);
+      // Status date Wed 7 Jan → no working days left after it
+      expect(result.daysRemaining).toBe(0);
+    });
+
+    it('a project holiday is flat too, and days remaining count working days', async () => {
+      // Mon 5 Jan is a holiday: burn days are Fri 2, Tue 6, Wed 7, Thu 8 = 4
+      mockWorkingDayTest.mockResolvedValueOnce((d: Date) =>
+        d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && d.toISOString().slice(0, 10) !== '2026-01-05');
+      mockRepo.findById.mockResolvedValueOnce({ ...sampleSprint, startDate: '2026-01-01', endDate: '2026-01-08' });
+      mockRepo.getTotalPoints.mockResolvedValueOnce(8);
+
+      const result = await service.getSprintBurndown('s1');
+      expect(result.ideal).toEqual([8, 6, 6, 6, 6, 4, 2, 0]);
+      expect(result.daysRemaining).toBe(1); // Thu 8 Jan, after the Wed 7 Jan status date
     });
   });
 

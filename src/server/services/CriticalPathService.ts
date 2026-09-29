@@ -1,13 +1,20 @@
 import { scheduleService, Task } from './ScheduleService';
+import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, taskWorkingDuration } from '../utils/workingDays';
 
+/**
+ * All numbers are WORKING days on the project calendar (weekends and holidays off unless
+ * the calendar marks them worked). Offsets count from the schedule's working-day origin:
+ * the first working day on or after the earliest task start. A task with ES = n starts
+ * n working days after the origin; EF = ES + duration (the day after its last day).
+ */
 export interface CPMTaskResult {
   taskId: string;
   name: string;
-  duration: number; // in days
-  ES: number; // Early Start (day offset)
-  EF: number; // Early Finish (day offset)
-  LS: number; // Late Start (day offset)
-  LF: number; // Late Finish (day offset)
+  duration: number; // working days, start day counted; milestone 0
+  ES: number; // Early Start (working-day offset)
+  EF: number; // Early Finish (working-day offset)
+  LS: number; // Late Start (working-day offset)
+  LF: number; // Late Finish (working-day offset)
   totalFloat: number;
   freeFloat: number;
   isCritical: boolean;
@@ -27,6 +34,7 @@ export class CriticalPathService {
     if (tasks.length === 0) {
       return { criticalPathTaskIds: [], tasks: [], projectDuration: 0 };
     }
+    const isWorking = await projectCalendar(scheduleId);
 
     // Build adjacency: task -> list of successor task IDs
     const taskMap = new Map<string, Task>();
@@ -52,18 +60,11 @@ export class CriticalPathService {
       }
     }
 
-    // Compute durations in days
-    const DAY_MS = 86_400_000;
-    function getDuration(t: Task): number {
-      if (t.estimatedDays && t.estimatedDays > 0) return t.estimatedDays;
-      if (t.startDate && t.endDate) {
-        const d = Math.round(
-          (new Date(t.endDate).getTime() - new Date(t.startDate).getTime()) / DAY_MS,
-        );
-        return Math.max(1, d);
-      }
-      return 1;
-    }
+    // Durations in working days, as the Duration column shows them (dates first,
+    // then the estimate; a milestone is 0). Lags are working days too.
+    const durations = new Map<string, number>();
+    for (const t of tasks) durations.set(t.id, taskWorkingDuration(t, isWorking));
+    const getDuration = (t: Task): number => durations.get(t.id) ?? 1;
 
     // Topological sort (Kahn's algorithm)
     const inDegree = new Map<string, number>();
@@ -98,12 +99,20 @@ export class CriticalPathService {
     const esMap = new Map<string, number>();
     const efMap = new Map<string, number>();
 
-    // Pre-compute project start date for constraint offset calculations
+    // Working-day origin for constraint offsets: first working day on or after the
+    // earliest task start.
     const projStartStr = tasks.reduce((min, tt) => {
       if (!tt.startDate) return min;
-      return !min || tt.startDate < min ? tt.startDate : min;
+      const d = ymdOf(utcDay(tt.startDate));
+      return !min || d < min ? d : min;
     }, '' as string);
-    const projStartMs = projStartStr ? new Date(projStartStr).getTime() : 0;
+    const origin = projStartStr ? onOrAfterWorking(utcDay(projStartStr), isWorking) : null;
+    /** Offset of the first working day on or after `date` (a start limit) */
+    const startOffset = (date: unknown): number =>
+      origin ? workingDaysAfter(origin, onOrAfterWorking(utcDay(date), isWorking), isWorking) : 0;
+    /** EF limit for a task that must finish by the end of `date` (last working day on or before it) */
+    const finishOffset = (date: unknown, dur: number): number =>
+      origin ? workingDaysAfter(origin, utcDay(date), isWorking) + (dur > 0 ? 1 : 0) : 0;
 
     for (const id of topoOrder) {
       const t = taskMap.get(id)!;
@@ -131,24 +140,22 @@ export class CriticalPathService {
       // Apply task constraints
       const ct = t.constraintType || 'ASAP';
       if (ct !== 'ASAP' && t.constraintDate) {
-        const cdOffset = projStartMs ? Math.round((new Date(t.constraintDate).getTime() - projStartMs) / DAY_MS) : 0;
-
         switch (ct) {
-          case 'SNET': es = Math.max(es, cdOffset); break;
-          case 'SNLT': es = Math.min(es, cdOffset); break;
-          case 'MSO':  es = cdOffset; break;
+          case 'SNET': es = Math.max(es, startOffset(t.constraintDate)); break;
+          case 'SNLT': es = Math.min(es, startOffset(t.constraintDate)); break;
+          case 'MSO':  es = startOffset(t.constraintDate); break;
           case 'FNET': {
-            const minEF = cdOffset;
+            const minEF = finishOffset(t.constraintDate, dur);
             if (es + dur < minEF) es = minEF - dur;
             break;
           }
           case 'FNLT': {
-            const maxEF = cdOffset;
+            const maxEF = finishOffset(t.constraintDate, dur);
             if (es + dur > maxEF) es = maxEF - dur;
             break;
           }
           case 'MFO': {
-            es = cdOffset - dur;
+            es = finishOffset(t.constraintDate, dur) - dur;
             break;
           }
           // ALAP handled in backward pass
@@ -251,6 +258,15 @@ export class CriticalPathService {
       tasks: results,
       projectDuration,
     };
+  }
+}
+
+/** The schedule's project calendar; Mon–Fri when it cannot be read */
+async function projectCalendar(scheduleId: string): Promise<IsWorking> {
+  try {
+    return (await scheduleService.workingDayTest(scheduleId)) || weekdaysOnly;
+  } catch {
+    return weekdaysOnly;
   }
 }
 

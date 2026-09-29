@@ -9,14 +9,16 @@ interface BurndownPoint {
   remaining: number;
 }
 
+/** GET /sprints/:id/burndown — one entry per calendar day of the sprint */
 interface SprintBurndownData {
+  dates: string[];
+  /** Ideal remaining points per day — burns only on working days (flat on weekends/holidays) */
+  ideal: number[];
+  /** Actual remaining points per day; -1 for days after the status date */
+  actual: number[];
   totalPoints: number;
-  pointsCompleted: number;
-  pointsRemaining: number;
-  daysRemaining: number;
-  startDate: string;
-  endDate: string;
-  dataPoints: BurndownPoint[];
+  /** Working days left in the sprint */
+  daysRemaining?: number;
 }
 
 interface SprintBurndownChartProps {
@@ -45,52 +47,41 @@ export function SprintBurndownChart({ sprintId }: SprintBurndownChartProps) {
   const svgHeight = 320;
 
   const chart = useMemo(() => {
-    if (!burndown || !burndown.dataPoints || burndown.dataPoints.length === 0) return null;
+    if (!burndown || !Array.isArray(burndown.dates) || burndown.dates.length === 0) return null;
 
     const padding = { top: 24, right: 24, bottom: 44, left: 50 };
     const plotWidth = svgWidth - padding.left - padding.right;
     const plotHeight = svgHeight - padding.top - padding.bottom;
 
-    const { totalPoints, dataPoints, startDate, endDate } = burndown;
-    const maxVal = totalPoints || Math.max(...dataPoints.map((p) => p.remaining), 1);
-
-    const start = new Date(startDate + 'T00:00:00');
-    const end = new Date(endDate + 'T00:00:00');
-    const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000));
+    const { totalPoints, dates, ideal, actual } = burndown;
+    const maxVal = totalPoints || Math.max(...actual, 1);
+    const totalDays = Math.max(1, dates.length - 1);
 
     const scaleX = (dayIndex: number) => padding.left + (dayIndex / totalDays) * plotWidth;
     const scaleY = (v: number) => padding.top + (1 - v / maxVal) * plotHeight;
 
-    const idealStart = `${scaleX(0)},${scaleY(totalPoints)}`;
-    const idealEnd = `${scaleX(totalDays)},${scaleY(0)}`;
-    const idealLine = `${idealStart} ${idealEnd}`;
+    // The server's ideal line drops only on working days, so it steps flat across weekends
+    const idealLine = ideal.map((v, i) => `${scaleX(i)},${scaleY(v)}`).join(' ');
 
     const actualPoints: { x: number; y: number; point: BurndownPoint; dayIndex: number }[] = [];
-    for (const dp of dataPoints) {
-      const dpDate = new Date(dp.date + 'T00:00:00');
-      const dayIndex = Math.round((dpDate.getTime() - start.getTime()) / 86400000);
-      const x = scaleX(dayIndex);
-      const y = scaleY(dp.remaining);
-      actualPoints.push({ x, y, point: dp, dayIndex });
-    }
+    dates.forEach((date, dayIndex) => {
+      if (actual[dayIndex] == null || actual[dayIndex] < 0) return; // after the status date
+      const point = { date, remaining: actual[dayIndex] };
+      actualPoints.push({ x: scaleX(dayIndex), y: scaleY(point.remaining), point, dayIndex });
+    });
     const actualLine = actualPoints.map((p) => `${p.x},${p.y}`).join(' ');
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayDayIndex = Math.round((today.getTime() - start.getTime()) / 86400000);
-    const todayX = todayDayIndex >= 0 && todayDayIndex <= totalDays ? scaleX(todayDayIndex) : -1;
+    const lastActual = actualPoints.length > 0 ? actualPoints[actualPoints.length - 1].point.remaining : totalPoints;
+    const todayIndex = actualPoints.length > 0 ? actualPoints[actualPoints.length - 1].dayIndex : -1;
+    const todayX = todayIndex >= 0 && todayIndex < dates.length - 1 ? scaleX(todayIndex) : -1;
 
     const labelStep = Math.max(1, Math.floor(totalDays / 7));
     const xLabels: { label: string; x: number }[] = [];
-    for (let d = 0; d <= totalDays; d += labelStep) {
-      const labelDate = new Date(start.getTime() + d * 86400000);
-      xLabels.push({
-        label: formatDateShort(labelDate.toISOString().slice(0, 10)),
-        x: scaleX(d),
-      });
+    for (let d = 0; d < dates.length; d += labelStep) {
+      xLabels.push({ label: formatDateShort(dates[d]), x: scaleX(d) });
     }
     if (xLabels.length > 0 && xLabels[xLabels.length - 1].x < scaleX(totalDays) - 30) {
-      xLabels.push({ label: formatDateShort(endDate), x: scaleX(totalDays) });
+      xLabels.push({ label: formatDateShort(dates[dates.length - 1]), x: scaleX(totalDays) });
     }
 
     const ySteps = 5;
@@ -99,7 +90,11 @@ export function SprintBurndownChart({ sprintId }: SprintBurndownChartProps) {
       return { val, y: scaleY(val) };
     });
 
-    return { idealLine, actualLine, actualPoints, todayX, xLabels, yLabels, padding, plotWidth, plotHeight, totalPoints, totalDays };
+    return {
+      idealLine, actualLine, actualPoints, todayX, xLabels, yLabels, padding, plotWidth, plotHeight, ideal,
+      pointsCompleted: Math.max(0, totalPoints - lastActual),
+      pointsRemaining: lastActual,
+    };
   }, [burndown]);
 
   if (isLoading) {
@@ -147,18 +142,18 @@ export function SprintBurndownChart({ sprintId }: SprintBurndownChartProps) {
         </div>
         <div className="text-center">
           <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium">Completed</div>
-          <div className="text-lg font-bold text-green-600 dark:text-green-400">{burndown.pointsCompleted}</div>
+          <div className="text-lg font-bold text-green-600 dark:text-green-400">{chart.pointsCompleted}</div>
           <div className="text-xs text-gray-500 dark:text-gray-400">points</div>
         </div>
         <div className="text-center">
           <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium">Remaining</div>
-          <div className="text-lg font-bold text-primary-600 dark:text-primary-400">{burndown.pointsRemaining}</div>
+          <div className="text-lg font-bold text-primary-600 dark:text-primary-400">{chart.pointsRemaining}</div>
           <div className="text-xs text-gray-500 dark:text-gray-400">points</div>
         </div>
         <div className="text-center">
           <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium">Days Left</div>
-          <div className="text-lg font-bold text-amber-600 dark:text-amber-400">{Math.max(0, burndown.daysRemaining)}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">days</div>
+          <div className="text-lg font-bold text-amber-600 dark:text-amber-400">{Math.max(0, burndown.daysRemaining ?? 0)}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">working days</div>
         </div>
       </div>
 
@@ -221,8 +216,7 @@ export function SprintBurndownChart({ sprintId }: SprintBurndownChartProps) {
               className="stroke-white dark:stroke-gray-800"
               strokeWidth="1.5"
               onMouseEnter={(e) => {
-                const idealRemaining =
-                  chart.totalPoints - (ap.dayIndex / chart.totalDays) * chart.totalPoints;
+                const idealRemaining = chart.ideal[ap.dayIndex] ?? 0;
                 setTooltip({
                   x: e.clientX,
                   y: e.clientY,

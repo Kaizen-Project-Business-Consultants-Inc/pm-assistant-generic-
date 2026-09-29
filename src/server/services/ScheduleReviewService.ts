@@ -9,6 +9,7 @@ import { sprintService } from './SprintService';
 import { scheduleReviewRepository, type ReviewTrigger, type ScheduleReviewRecord, type ScheduleReviewSummary } from '../database/ScheduleReviewRepository';
 import { reviewSchedule, type ReviewInput, type ReviewTask } from './scheduleReview/rules';
 import logger from '../utils/logger';
+import { type IsWorking, weekdaysOnly } from '../utils/workingDays';
 
 /**
  * Runs the deterministic Schedule Review over a schedule, stores the result and
@@ -30,9 +31,10 @@ export class ScheduleReviewService {
     ]);
 
     const hasLogic = tasks.some(t => (t.dependencies || []).length > 0);
-    const [floatByTask, overAllocations] = await Promise.all([
+    const [floatByTask, overAllocations, isWorking] = await Promise.all([
       hasLogic ? this.safeFloat(scheduleId) : Promise.resolve(null),
       this.safeOverAllocations(scheduleId),
+      this.safeCalendar(scheduleId),
     ]);
 
     const latest = baselines[0];
@@ -49,6 +51,7 @@ export class ScheduleReviewService {
       floatByTask,
       overAllocations,
       today: new Date(),
+      isWorking,
     };
 
     const result = reviewSchedule(input);
@@ -91,6 +94,16 @@ export class ScheduleReviewService {
     } catch (err: any) {
       logger.warn('[ScheduleReview] critical path unavailable', { scheduleId, error: err?.message });
       return null;
+    }
+  }
+
+  /** The project calendar, read once per review so the rules stay pure; Mon–Fri on failure */
+  private async safeCalendar(scheduleId: string): Promise<IsWorking> {
+    try {
+      return (await scheduleService.workingDayTest(scheduleId)) || weekdaysOnly;
+    } catch (err: any) {
+      logger.warn('[ScheduleReview] project calendar unavailable, using Mon–Fri', { scheduleId, error: err?.message });
+      return weekdaysOnly;
     }
   }
 

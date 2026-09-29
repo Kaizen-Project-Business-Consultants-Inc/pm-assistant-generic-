@@ -9,8 +9,13 @@
  */
 
 import { profileFor, matchesAny, type DomainProfile } from './domainProfiles';
+import { type IsWorking, weekdaysOnly, workingDaysAfter } from '../../utils/workingDays';
 
-export const RULES_VERSION = '1.5';
+export const RULES_VERSION = '1.6';
+
+// 1.6 (2026-09-29): every duration, span, float, lag and drift is counted in WORKING days on
+// the project calendar (weekends and holidays off), matching the Duration column. R04/R12/R19/
+// R34 used calendar days before; R34's "a month" is now 20 working days (was 28 calendar days).
 
 // 1.2 (2026-09-25): project-type profiles (IT / Web Design / Web Application / App
 // Development) for task-length limits, expected phases (R31) and key milestones (R32);
@@ -82,6 +87,8 @@ export interface ReviewInput {
   floatByTask?: Map<string, number> | null;
   overAllocations?: Array<{ resourceName: string; date: string; demand: number; capacity: number }> | null;
   today: Date;
+  /** Which days are worked (the project calendar). Mon–Fri when not given. */
+  isWorking?: IsWorking;
 }
 
 export interface Finding {
@@ -213,19 +220,12 @@ export function calendarDaySpan(start: string, end: string): number {
   return Math.max(1, Math.round((b - a) / DAY_MS) + 1);
 }
 
-/** Working days (Mon–Fri) between two YYYY-MM-DD strings, inclusive. */
-export function workingDaySpan(start: string, end: string): number {
+/** Working days between two YYYY-MM-DD strings, both counted (Mon–Fri unless a calendar is given). */
+export function workingDaySpan(start: string, end: string, isWorking: IsWorking = weekdaysOnly): number {
   const a = toDate(start)!;
   const b = toDate(end)!;
   if (b < a) return 0;
-  let count = 0;
-  const cur = new Date(a);
-  while (cur <= b) {
-    const dow = cur.getUTCDay();
-    if (dow !== 0 && dow !== 6) count++;
-    cur.setUTCDate(cur.getUTCDate() + 1);
-  }
-  return count;
+  return workingDaysAfter(a, b, isWorking) + (isWorking(a) ? 1 : 0);
 }
 
 function norm(s?: string | null): string {
@@ -318,6 +318,9 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   const noLogic = g.dependencyCount === 0 && n >= 2;
   const profile = profileFor(input.project?.projectType, input.project?.methodology);
   const hasFloat = !!input.floatByTask && input.floatByTask.size > 0 && !noLogic;
+  const isWorking = input.isWorking ?? weekdaysOnly;
+  /** Working days a task's dates cover, start day counted — what the Duration column shows */
+  const span = (s: string, e: string) => workingDaySpan(s, e, isWorking);
 
   // R03 — No logic at all
   if (noLogic) {
@@ -342,8 +345,8 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   // R04 — Milestone with duration
   const msWithDuration = g.all.filter(t => isMilestoneLike(t) && ymd(t.startDate) && ymd(t.endDate) && ymd(t.startDate) !== ymd(t.endDate) && !t.isSummary);
   for (const t of msWithDuration) {
-    const span = calendarDaySpan(ymd(t.startDate)!, ymd(t.endDate)!);
-    findings.push(make('R04', [t.id], `'${t.name}' spans ${plural(span, 'day')}. A milestone takes zero days: it marks the point when something becomes true. Split it into the work (e.g. 'Review …', 'Approve …') and the milestone ('… Approved').`));
+    const days = Math.max(1, span(ymd(t.startDate)!, ymd(t.endDate)!));
+    findings.push(make('R04', [t.id], `'${t.name}' spans ${plural(days, 'working day')}. A milestone takes zero days: it marks the point when something becomes true. Split it into the work (e.g. 'Review …', 'Approve …') and the milestone ('… Approved').`));
   }
 
   // R05 — Milestone not flagged
@@ -430,13 +433,16 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   for (const t of leaves) {
     const s = ymd(t.startDate); const e = ymd(t.endDate);
     if (!s || !e) continue;
-    const span = calendarDaySpan(s, e);
-    if (span < 2) continue;
+    const work = span(s, e);
+    if (work < 2) continue;
     const days = Number(t.estimatedDays ?? 0);
     const hours = Number(t.estimatedDurationHours ?? 0);
+    // Imports put days in the hours field as either working or calendar days
+    const cal = calendarDaySpan(s, e);
+    const near = (n: number) => Math.abs(hours - n) <= Math.max(1, 0.1 * n);
     let bad = false;
-    if (days > 0 && Math.abs(days - span) / span > 0.5) bad = true;
-    if (hours > 0 && Math.abs(hours - span) <= Math.max(1, 0.1 * span)) { bad = true; hoursLookLikeDays++; }
+    if (days > 0 && Math.abs(days - work) / work > 0.5) bad = true;
+    if (hours > 0 && (near(work) || near(cal))) { bad = true; hoursLookLikeDays++; }
     if (bad) disagree.push(t);
   }
   if (disagree.length > 0) {
@@ -446,7 +452,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
 
   // R13 — Very long task (limit depends on the kind of project; DCMA's 44 otherwise)
   const longLimit = profile?.longTaskWorkingDays ?? LONG_TASK_WORKING_DAYS;
-  const longTasks = leaves.filter(t => { const s = ymd(t.startDate); const e = ymd(t.endDate); return s && e && !isMilestoneLike(t) && !LEVEL_OF_EFFORT.test(t.name || '') && !t.recurrenceParentId && workingDaySpan(s, e) > longLimit; });
+  const longTasks = leaves.filter(t => { const s = ymd(t.startDate); const e = ymd(t.endDate); return s && e && !isMilestoneLike(t) && !LEVEL_OF_EFFORT.test(t.name || '') && !t.recurrenceParentId && span(s, e) > longLimit; });
   if (longTasks.length > 0 && longTasks.length / Math.max(1, n) > 0.05) {
     const why = profile ? ` For ${profile.description}, work longer than ${longLimit} working days is usually broken down.` : '';
     findings.push(make('R13', longTasks.map(t => t.id), `${plural(longTasks.length, 'task')} run longer than ${longLimit} working days as one task: ${listNames(longTasks)}.${why} Split them so progress can be measured.`));
@@ -462,11 +468,11 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   if (hasFloat) {
     const negative = leaves.filter(t => (input.floatByTask!.get(t.id) ?? 0) < 0);
     for (const t of negative) {
-      findings.push(make('R15', [t.id], `'${t.name}' has ${input.floatByTask!.get(t.id)} days of float. The finish date is already unachievable.`));
+      findings.push(make('R15', [t.id], `'${t.name}' has ${input.floatByTask!.get(t.id)} working days of float. The finish date is already unachievable.`));
     }
     const excessive = leaves.filter(t => (input.floatByTask!.get(t.id) ?? 0) > EXCESSIVE_FLOAT_DAYS && !isMilestoneLike(t));
     if (excessive.length > 0 && excessive.length / Math.max(1, n) > 0.05) {
-      findings.push(make('R16', excessive.map(t => t.id), `${plural(excessive.length, 'task')} have more than ${EXCESSIVE_FLOAT_DAYS} days of float: ${listNames(excessive)}. Either they are unlinked or the dates are loose.`));
+      findings.push(make('R16', excessive.map(t => t.id), `${plural(excessive.length, 'task')} have more than ${EXCESSIVE_FLOAT_DAYS} working days of float: ${listNames(excessive)}. Either they are unlinked or the dates are loose.`));
     }
   } else {
     skipped.push({ ruleId: 'R15', rule: RULES.R15.name, reason: 'needs_logic' });
@@ -476,7 +482,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   // R17 — Leads and long lags
   const laggy = g.all.filter(t => (t.dependencies || []).some(d => (d.lagDays ?? 0) < 0 || (d.lagDays ?? 0) > LONG_LAG_DAYS));
   if (laggy.length > 0) {
-    findings.push(make('R17', laggy.map(t => t.id), `${plural(laggy.length, 'task')} use a lead or a lag over ${LONG_LAG_DAYS} days: ${listNames(laggy)}. Make the wait a task so it can be tracked.`));
+    findings.push(make('R17', laggy.map(t => t.id), `${plural(laggy.length, 'task')} use a lead or a lag over ${LONG_LAG_DAYS} working days: ${listNames(laggy)}. Make the wait a task so it can be tracked.`));
   }
 
   // R18 — No baseline
@@ -491,12 +497,12 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
       const b = base.get(t.id); const s = ymd(t.startDate); const e = ymd(t.endDate);
       const bs = ymd(b?.startDate); const be = ymd(b?.endDate);
       if (!b || !s || !e || !bs || !be) return false;
-      const ds = Math.abs((toDate(s)!.getTime() - toDate(bs)!.getTime()) / DAY_MS);
-      const de = Math.abs((toDate(e)!.getTime() - toDate(be)!.getTime()) / DAY_MS);
+      const ds = Math.abs(workingDaysAfter(toDate(bs)!, toDate(s)!, isWorking));
+      const de = Math.abs(workingDaysAfter(toDate(be)!, toDate(e)!, isWorking));
       return ds > DRIFT_DAYS || de > DRIFT_DAYS;
     });
     if (moved.length > 0 && moved.length / Math.max(1, n) > 0.2) {
-      findings.push(make('R19', moved.map(t => t.id), `${moved.length} tasks have moved more than ${DRIFT_DAYS} days from the baseline.`));
+      findings.push(make('R19', moved.map(t => t.id), `${moved.length} tasks have moved more than ${DRIFT_DAYS} working days from the baseline.`));
     }
   }
 
@@ -592,7 +598,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   }
 
   // R28 — Sub-day duration over multiple days
-  const subDay = leaves.filter(t => { const s = ymd(t.startDate); const e = ymd(t.endDate); const d = Number(t.estimatedDays ?? 0); return s && e && d > 0 && d < 1 && workingDaySpan(s, e) >= 2; });
+  const subDay = leaves.filter(t => { const s = ymd(t.startDate); const e = ymd(t.endDate); const d = Number(t.estimatedDays ?? 0); return s && e && d > 0 && d < 1 && span(s, e) >= 2; });
   for (const t of subDay) {
     findings.push(make('R28', [t.id], `'${t.name}' is estimated at ${t.estimatedDays} days but runs ${ymd(t.startDate)} to ${ymd(t.endDate)}. Hours and days were probably swapped on import.`));
   }
@@ -645,7 +651,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     if (t.isMilestone) return false;
     const s = ymd(t.startDate);
     const e = ymd(t.endDate);
-    if (!s || !e || calendarDaySpan(s, e) < ONGOING_MIN_DAYS || !ONGOING_WORK.test(t.name || '')) return false;
+    if (!s || !e || span(s, e) < ONGOING_MIN_DAYS || !ONGOING_WORK.test(t.name || '')) return false;
     const people = t.assignments || [];
     if (people.length > 0) return people.some(a => (a.allocationPct ?? 100) >= 100);
     return !!(t.assignedTo || '').trim();
@@ -673,7 +679,8 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
 const MAX_DIRECT_CHILDREN = 15;
 
 /** R34: a task this long that sounds like reporting, meetings or oversight */
-const ONGOING_MIN_DAYS = 28;
+/** "A month or more", in working days */
+const ONGOING_MIN_DAYS = 20;
 const ONGOING_WORK = /\b(status (reports?|updates?|meetings?)|raid|stand-?ups?|check-?ins?|governance|steering|project management|pmo|recurring|weekly|fortnightly|bi-?weekly|monthly|progress (reports?|meetings?)|reporting|coordination|oversight)\b/i;
 
 /**

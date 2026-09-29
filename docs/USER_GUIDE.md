@@ -437,6 +437,8 @@ A project's own day off always wins; its extra working day beats a company holid
 
 The Gantt shades days off (day and week zoom), and the **Duration** column counts working days.
 
+**Numbers and charts use working days too:** critical path and float (and the Early/Late Start/Finish columns), Monte Carlo finish dates (never on a weekend or holiday), Schedule Review checks (rules v1.6 — e.g. a duration that matches the working-day span is no longer flagged just because the task crosses a weekend; "month-long" reporting tasks means 20 working days), baseline variance ("+3d" means 3 working days late; a finish that only moved over a weekend is not a slip), earned value and the S-curve (planned value grows only on working days), the sprint burndown's ideal line (flat on weekends; "Days left" counts working days), and the what-if model.
+
 ### Dependencies
 
 Each task supports up to **20 predecessors**. Set dependencies to define execution order:

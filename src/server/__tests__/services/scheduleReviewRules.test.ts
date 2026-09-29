@@ -140,7 +140,8 @@ describe('R04 / R05 — milestones', () => {
     const gate = task({ name: 'Gate 1 – Inception Report Review & Acceptance (MILESTONE - 1)', startDate: '2026-07-22', endDate: '2026-07-31' });
     const { findings } = evaluateRules(input([gate, task({ name: 'Other', startDate: '2026-08-01', endDate: '2026-08-02', dependencies: [{ dependencyId: gate.id }] })]));
     expect(rule(findings, 'R04')).toHaveLength(1);
-    expect(rule(findings, 'R04')[0].message).toContain('10 days');
+    // Wed 22 – Fri 31 Jul = 8 working days (was '10 days' in calendar days before 1.6)
+    expect(rule(findings, 'R04')[0].message).toContain('8 working days');
     expect(rule(findings, 'R05')[0].taskIds).toEqual([gate.id]);
   });
 
@@ -205,6 +206,21 @@ describe('R12 / R13 / R28 — durations', () => {
     const f = rule(findings, 'R12')[0];
     expect(f.taskIds).toEqual([t.id]);
     expect(f.message).toContain('hours probably hold days');
+  });
+
+  it('R12 compares the estimate with the working days of the dates, on the project calendar', () => {
+    seq = 0;
+    // Thu 1 Oct .. Mon 5 Oct 2026 with Fri 2 Oct a holiday: Thu + Mon = 2 working days (5 calendar)
+    const holiday = (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && d.toISOString().slice(0, 10) !== '2026-10-02';
+    const fixed = task({ name: 'Accepted duration fix', startDate: '2026-10-01', endDate: '2026-10-05', estimatedDays: 2 });
+    expect(rule(evaluateRules(input([fixed], { isWorking: holiday })).findings, 'R12')).toHaveLength(0);
+    const off = task({ name: 'Stale estimate', startDate: '2026-10-01', endDate: '2026-10-05', estimatedDays: 5 });
+    expect(rule(evaluateRules(input([off], { isWorking: holiday })).findings, 'R12')[0].taskIds).toEqual([off.id]);
+  });
+
+  it('workingDaySpan honours a calendar', () => {
+    const holiday = (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && d.toISOString().slice(0, 10) !== '2026-09-16';
+    expect(workingDaySpan('2026-09-14', '2026-09-18', holiday)).toBe(4);
   });
 
   it('R13 flags a task over 44 working days', () => {
@@ -409,8 +425,8 @@ describe('golden: DBJ-style import', () => {
       expect(found, `expected ${must}`).toContain(must);
     }
     expect(r.skippedRules.map(s => s.ruleId).sort()).toEqual(['R01', 'R02', 'R15', 'R16', 'R20']);
-    // Gate 1 spans 10 days
-    expect(rule(r.findings, 'R04').some(f => f.message.includes('10 days'))).toBe(true);
+    // Gate 1 spans 8 working days (10 calendar days)
+    expect(rule(r.findings, 'R04').some(f => f.message.includes('8 working days'))).toBe(true);
     // Kick-off before project start
     expect(rule(r.findings, 'R06').some(f => f.message.includes('2026-06-12'))).toBe(true);
     expect(rule(r.findings, 'R07')).toHaveLength(0);
@@ -449,7 +465,7 @@ describe('1.2 project-type profiles and summary checks', () => {
   }
 
   it('bumps the rules version', () => {
-    expect(reviewSchedule(input([])).rulesVersion).toBe('1.5') // 1.3: R33 milestone names state an outcome; R04 suggests a split;
+    expect(reviewSchedule(input([])).rulesVersion).toBe('1.6') // 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
   });
 
   it('a complete IT/SDLC plan raises no phase or milestone findings', () => {

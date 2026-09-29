@@ -1,6 +1,10 @@
 import { scheduleService, Task, Schedule } from './ScheduleService';
 import { projectService, Project } from './ProjectService';
 import { sprintRepository } from '../database/SprintRepository';
+import { utcDay, workingSpread } from '../utils/workingDays';
+
+/** One week, the S-curve's sampling step (a chart interval, not a task date) */
+const WEEK_MS = 604_800_000;
 
 export interface SCurveDataPoint {
   date: string;
@@ -33,28 +37,31 @@ export class SCurveService {
     if (allTasks.length === 0) return [];
 
     // Determine overall date range
-    const DAY_MS = 86_400_000;
     let projectStart = Infinity;
     let projectEnd = -Infinity;
 
     for (const t of allTasks) {
-      if (t.startDate) projectStart = Math.min(projectStart, new Date(t.startDate).getTime());
-      if (t.endDate) projectEnd = Math.max(projectEnd, new Date(t.endDate).getTime());
+      if (t.startDate) projectStart = Math.min(projectStart, utcDay(t.startDate).getTime());
+      if (t.endDate) projectEnd = Math.max(projectEnd, utcDay(t.endDate).getTime());
     }
 
     if (projectStart === Infinity || projectEnd === -Infinity) return [];
 
-    // Compute per-task allocated budget proportional to duration
+    // Each task's budget share is proportional to its duration in WORKING days (as the
+    // Duration column counts them), and its value is earned only on working days of the
+    // project calendar — weekends and holidays stay flat.
+    const isWorking = await scheduleService.workingDayTest(schedules[0].id);
     let totalDuration = 0;
-    const taskDurations: { task: Task; duration: number; start: number; end: number }[] = [];
+    const taskDurations: { task: Task; duration: number; start: number; end: number; shareBy: (at: number) => number }[] = [];
 
     for (const t of allTasks) {
       if (!t.startDate || !t.endDate) continue;
-      const start = new Date(t.startDate).getTime();
-      const end = new Date(t.endDate).getTime();
-      const dur = Math.max(1, Math.round((end - start) / DAY_MS));
+      const startDay = utcDay(t.startDate);
+      const endDay = utcDay(t.endDate);
+      const spread = workingSpread(startDay, endDay, isWorking);
+      const dur = Math.max(1, spread.workingDays);
       totalDuration += dur;
-      taskDurations.push({ task: t, duration: dur, start, end });
+      taskDurations.push({ task: t, duration: dur, start: startDay.getTime(), end: endDay.getTime(), shareBy: spread.shareBy });
     }
 
     if (totalDuration === 0) return [];
@@ -64,7 +71,7 @@ export class SCurveService {
     const hasPerTaskCosts = totalTaskActualCost > 0;
 
     // Generate weekly data points
-    const weekMs = 7 * DAY_MS;
+    const weekMs = WEEK_MS;
     const dataPoints: SCurveDataPoint[] = [];
     const now = Date.now();
 
@@ -75,16 +82,11 @@ export class SCurveService {
       let ev = 0; // Earned Value: cumulative progress-weighted planned spend
       let ac = 0; // Actual Cost: sum of per-task actual costs
 
-      for (const { task, duration, start, end } of taskDurations) {
+      for (const { task, duration, start, end, shareBy } of taskDurations) {
         const taskBudget = (duration / totalDuration) * budgetAllocated;
 
-        // PV: proportion of task that should be complete by this date
-        if (weekEnd >= end) {
-          pv += taskBudget;
-        } else if (weekEnd > start) {
-          const elapsed = (weekEnd - start) / (end - start);
-          pv += taskBudget * elapsed;
-        }
+        // PV: share of the task's working days planned by the end of this date
+        pv += taskBudget * shareBy(weekEnd);
 
         // EV: task's progress percentage * its budget share
         const progress = (task.progressPercentage ?? 0) / 100;
@@ -96,13 +98,8 @@ export class SCurveService {
         if (hasPerTaskCosts) {
           const taskActualCost = (task as any).actualCost ?? 0;
           if (taskActualCost > 0 && weekEnd >= start) {
-            // Distribute the task's actual cost proportionally to elapsed time
-            if (weekEnd >= end) {
-              ac += taskActualCost;
-            } else {
-              const elapsed = (weekEnd - start) / (end - start);
-              ac += taskActualCost * elapsed;
-            }
+            // Distribute the task's actual cost over its working days, like PV
+            ac += weekEnd >= end ? taskActualCost : taskActualCost * shareBy(weekEnd);
           }
         }
       }

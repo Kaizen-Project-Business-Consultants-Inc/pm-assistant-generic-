@@ -2,8 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mocks ────────────────────────────────────────────────────────────
 const mockFindTasks = vi.fn();
+// Project calendar: Mon–Fri unless a test says otherwise
+const mockWorkingDayTest = vi.fn(async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6);
 vi.mock('../../services/ScheduleService', () => ({
-  scheduleService: { findTasksByScheduleId: (...args: any[]) => mockFindTasks(...args) },
+  scheduleService: {
+    findTasksByScheduleId: (...args: any[]) => mockFindTasks(...args),
+    workingDayTest: (...args: any[]) => mockWorkingDayTest(...args),
+  },
 }));
 
 const mockRepoCreate = vi.fn();
@@ -291,14 +296,14 @@ describe('BaselineService', () => {
     it('detects slipped tasks (end variance > 1 day)', async () => {
       const baseline = makeBaseline({
         tasks: [
-          makeBaselineTask('t1', { startDate: '2026-01-01T00:00:00.000Z', endDate: '2026-01-10T00:00:00.000Z', status: 'not_started' }),
+          makeBaselineTask('t1', { startDate: '2026-01-01T00:00:00.000Z', endDate: '2026-01-09T00:00:00.000Z', status: 'not_started' }),
         ],
       });
       mockRepoFindById.mockResolvedValue(baseline);
 
-      // Task ended 5 days late
+      // Task ends 5 working days late (Fri 9 Jan → Fri 16 Jan)
       mockFindTasks.mockResolvedValue([
-        makeTask('t1', 'Task t1', { startDate: '2026-01-01', endDate: '2026-01-15', status: 'not_started' }),
+        makeTask('t1', 'Task t1', { startDate: '2026-01-01', endDate: '2026-01-16', status: 'not_started' }),
       ]);
 
       const result = await service.compareBaseline('bl-1');
@@ -311,12 +316,12 @@ describe('BaselineService', () => {
     it('detects ahead tasks (end variance < -1 day)', async () => {
       const baseline = makeBaseline({
         tasks: [
-          makeBaselineTask('t1', { startDate: '2026-01-01T00:00:00.000Z', endDate: '2026-01-10T00:00:00.000Z', status: 'in_progress' }),
+          makeBaselineTask('t1', { startDate: '2026-01-01T00:00:00.000Z', endDate: '2026-01-12T00:00:00.000Z', status: 'in_progress' }),
         ],
       });
       mockRepoFindById.mockResolvedValue(baseline);
 
-      // Task ending 3 days early
+      // Task ending 3 working days early (Mon 12 Jan → Wed 7 Jan; the weekend doesn't count)
       mockFindTasks.mockResolvedValue([
         makeTask('t1', 'Task t1', { startDate: '2026-01-01', endDate: '2026-01-07', status: 'in_progress' }),
       ]);
@@ -331,14 +336,14 @@ describe('BaselineService', () => {
     it('on-track threshold: variance of exactly 1 day is on-track, not slipped', async () => {
       const baseline = makeBaseline({
         tasks: [
-          makeBaselineTask('t1', { endDate: '2026-01-10T00:00:00.000Z' }),
+          makeBaselineTask('t1', { endDate: '2026-01-09T00:00:00.000Z' }),
         ],
       });
       mockRepoFindById.mockResolvedValue(baseline);
 
-      // 1 day late — still on-track (> 1 required for slipped)
+      // Fri 9 Jan → Mon 12 Jan: 3 calendar days but 1 working day — still on-track (> 1 required for slipped)
       mockFindTasks.mockResolvedValue([
-        makeTask('t1', 'Task t1', { startDate: '2026-01-01', endDate: '2026-01-11' }),
+        makeTask('t1', 'Task t1', { startDate: '2026-01-01', endDate: '2026-01-12' }),
       ]);
 
       const result = await service.compareBaseline('bl-1');
@@ -346,6 +351,40 @@ describe('BaselineService', () => {
       expect(result!.taskVariances[0].endVarianceDays).toBe(1);
       expect(result!.summary.tasksOnTrack).toBe(1);
       expect(result!.summary.tasksSlipped).toBe(0);
+    });
+
+    it('counts working days: a move across the weekend alone is no slip', async () => {
+      const baseline = makeBaseline({
+        tasks: [makeBaselineTask('t1', { startDate: '2026-01-09T00:00:00.000Z', endDate: '2026-01-09T00:00:00.000Z' })],
+      });
+      mockRepoFindById.mockResolvedValue(baseline);
+      // Fri 9 Jan → Sat 10 Jan: the finish moved onto the weekend, no working day lost
+      mockFindTasks.mockResolvedValue([makeTask('t1', 'Task t1', { startDate: '2026-01-09', endDate: '2026-01-10' })]);
+
+      const tv = (await service.compareBaseline('bl-1'))!.taskVariances[0];
+      expect(tv.endVarianceDays).toBe(0);
+      expect(tv.startVarianceDays).toBe(0);
+    });
+
+    it('skips project holidays and uses the schedule calendar', async () => {
+      // Mon 12 Jan is a company holiday
+      mockWorkingDayTest.mockResolvedValueOnce((d: Date) =>
+        d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && d.toISOString().slice(0, 10) !== '2026-01-12');
+      const baseline = makeBaseline({
+        scheduleId: 'sch-hol',
+        tasks: [makeBaselineTask('t1', { startDate: '2026-01-08T00:00:00.000Z', endDate: '2026-01-09T00:00:00.000Z' })],
+      });
+      mockRepoFindById.mockResolvedValue(baseline);
+      // Start Thu 8 → Fri 9 (1), finish Fri 9 → Tue 13 (Mon is a holiday: 1); duration Fri–Tue = 2
+      mockFindTasks.mockResolvedValue([makeTask('t1', 'Task t1', { startDate: '2026-01-09', endDate: '2026-01-13' })]);
+
+      const tv = (await service.compareBaseline('bl-1'))!.taskVariances[0];
+      expect(mockWorkingDayTest).toHaveBeenCalledWith('sch-hol');
+      expect(tv.startVarianceDays).toBe(1);
+      expect(tv.endVarianceDays).toBe(1);
+      expect(tv.baselineDurationDays).toBe(2); // Thu–Fri = 2
+      expect(tv.actualDurationDays).toBe(2);
+      expect(tv.durationVarianceDays).toBe(0);
     });
 
     it('detects new tasks not in baseline', async () => {
@@ -388,13 +427,13 @@ describe('BaselineService', () => {
     it('computes duration variance correctly', async () => {
       const baseline = makeBaseline({
         tasks: [
-          // 9 day duration baseline
+          // Thu 1 Jan – Sat 10 Jan: 7 working days (start day counted)
           makeBaselineTask('t1', { startDate: '2026-01-01T00:00:00.000Z', endDate: '2026-01-10T00:00:00.000Z' }),
         ],
       });
       mockRepoFindById.mockResolvedValue(baseline);
 
-      // 19 day duration actual
+      // Thu 1 Jan – Tue 20 Jan: 14 working days
       mockFindTasks.mockResolvedValue([
         makeTask('t1', 'Task t1', { startDate: '2026-01-01', endDate: '2026-01-20' }),
       ]);
@@ -402,9 +441,9 @@ describe('BaselineService', () => {
       const result = await service.compareBaseline('bl-1');
       const tv = result!.taskVariances[0];
 
-      expect(tv.baselineDurationDays).toBe(9);
-      expect(tv.actualDurationDays).toBe(19);
-      expect(tv.durationVarianceDays).toBe(10);
+      expect(tv.baselineDurationDays).toBe(7);
+      expect(tv.actualDurationDays).toBe(14);
+      expect(tv.durationVarianceDays).toBe(7);
     });
 
     it('detects status changes', async () => {
@@ -526,15 +565,16 @@ describe('BaselineService', () => {
       mockRepoFindById.mockResolvedValue(baseline);
 
       mockFindTasks.mockResolvedValue([
-        makeTask('t1', 'T1', { endDate: '2026-01-12', progressPercentage: 10 }), // +2
-        makeTask('t2', 'T2', { endDate: '2026-01-13', progressPercentage: 20 }), // +3
-        makeTask('t3', 'T3', { endDate: '2026-01-14', progressPercentage: 30 }), // +4
+        // Baseline end Sat 10 Jan; working days after it:
+        makeTask('t1', 'T1', { endDate: '2026-01-12', progressPercentage: 10 }), // Mon +1
+        makeTask('t2', 'T2', { endDate: '2026-01-13', progressPercentage: 20 }), // Tue +2
+        makeTask('t3', 'T3', { endDate: '2026-01-14', progressPercentage: 30 }), // Wed +3
       ]);
 
       const result = await service.compareBaseline('bl-1');
 
-      // Average end variance: (2+3+4)/3 = 3.0
-      expect(result!.summary.avgEndVarianceDays).toBe(3);
+      // Average end variance: (1+2+3)/3 = 2.0
+      expect(result!.summary.avgEndVarianceDays).toBe(2);
       // Average progress: (10+20+30)/3 = 20.0
       expect(result!.summary.avgProgressVariancePct).toBe(20);
     });

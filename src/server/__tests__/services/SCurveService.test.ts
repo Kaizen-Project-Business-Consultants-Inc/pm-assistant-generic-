@@ -7,11 +7,15 @@ vi.mock('../../services/ProjectService', () => ({
 }));
 
 const mockFindByProjectId = vi.fn();
+// Project calendar: Mon–Fri unless a test says otherwise
+const weekdays = (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6;
+const mockWorkingDayTest = vi.fn(async (_id?: string): Promise<(d: Date) => boolean> => weekdays);
 const mockFindTasksByScheduleIds = vi.fn();
 vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
     findByProjectId: (...args: any[]) => mockFindByProjectId(...args),
     findTasksByScheduleIds: (...args: any[]) => mockFindTasksByScheduleIds(...args),
+    workingDayTest: (...args: any[]) => mockWorkingDayTest(...args),
   },
 }));
 
@@ -732,6 +736,56 @@ describe('SCurveService', () => {
 
       // Should still generate data even for zero-duration tasks
       expect(result.length).toBeGreaterThan(0);
+    });
+  });
+
+  // ── computeSCurveData — working days (project calendar) ─────────────
+  describe('computeSCurveData — value is planned only on working days', () => {
+    beforeEach(() => {
+      mockFindById.mockResolvedValue(makeProject({ budgetAllocated: 100000, budgetSpent: 0 }));
+      mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1')]);
+    });
+
+    it('spreads a task over its working days, flat across the weekend', async () => {
+      // Thu 1 Jan – Wed 7 Jan: Thu, Fri, Mon, Tue, Wed = 5 working days
+      // plus a later task so the weekly points land inside the first one
+      mockFindTasksByScheduleIds.mockResolvedValue([
+        makeTask('t1', { startDate: '2026-01-01', endDate: '2026-01-07', progressPercentage: 0 }),
+        makeTask('t2', { startDate: '2026-01-08', endDate: '2026-01-14', progressPercentage: 0 }),
+      ]);
+      const pvOn = async (date: string) => {
+        // Points are weekly from the project start; move the start to sample one day
+        const result = await service.computeSCurveData('proj-1');
+        return result.find(p => p.date === date)?.pv;
+      };
+      // Week 1 point is Thu 1 Jan: 1 of t1's 5 working days; t1 weight 5 of 10 working days
+      expect(await pvOn('2026-01-01')).toBe(Math.round(50000 * (1 / 5)));
+      // Week 2 point is Thu 8 Jan: t1 done, t2 1 of 5
+      expect(await pvOn('2026-01-08')).toBe(50000 + Math.round(50000 * (1 / 5)));
+      expect(mockWorkingDayTest).toHaveBeenCalledWith('sch-1');
+    });
+
+    it('earns nothing on a weekend or holiday', async () => {
+      // Sat 3 Jan start: first weekly point is on the Saturday, before any working day
+      mockFindTasksByScheduleIds.mockResolvedValue([
+        makeTask('t1', { startDate: '2026-01-03', endDate: '2026-01-09', progressPercentage: 0 }),
+      ]);
+      const result = await service.computeSCurveData('proj-1');
+      expect(result[0]).toMatchObject({ date: '2026-01-03', pv: 0 });
+      expect(result[result.length - 1].pv).toBe(100000);
+    });
+
+    it('a holiday on the project calendar stays flat and the total is unchanged', async () => {
+      // Mon 5 Jan is a holiday: Thu 1 – Tue 6 Jan has 3 working days (Thu, Fri, Tue)
+      mockWorkingDayTest.mockResolvedValueOnce(d => weekdays(d) && d.toISOString().slice(0, 10) !== '2026-01-05');
+      mockFindTasksByScheduleIds.mockResolvedValue([
+        makeTask('t1', { startDate: '2026-01-01', endDate: '2026-01-06', progressPercentage: 0 }),
+        makeTask('t2', { startDate: '2026-01-08', endDate: '2026-01-08', progressPercentage: 0 }),
+      ]);
+      const result = await service.computeSCurveData('proj-1');
+      // t1 = 3 working days (Thu, Fri, Tue), t2 = 1 → t1 weight 3/4; first point: 1 of 3
+      expect(result[0].pv).toBe(Math.round(75000 / 3));
+      expect(result[result.length - 1].pv).toBe(100000);
     });
   });
 });

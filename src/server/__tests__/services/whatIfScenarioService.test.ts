@@ -46,6 +46,12 @@ vi.mock('../../services/CriticalPathService', () => ({
   },
 }));
 
+// Project calendar: Mon–Fri unless a test says otherwise
+const mockWorkingDayTest = vi.fn(async (_id?: string): Promise<(d: Date) => boolean> => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6);
+vi.mock('../../services/ScheduleService', () => ({
+  scheduleService: { workingDayTest: (...args: any[]) => mockWorkingDayTest(...(args as [string])) },
+}));
+
 const mockQuery = vi.fn();
 vi.mock('../../database/connection', () => ({
   databaseService: { query: (...args: any[]) => mockQuery(...args) },
@@ -56,7 +62,7 @@ vi.mock('uuid', () => ({
   v4: vi.fn(() => 'test-uuid-1234'),
 }));
 
-import { WhatIfScenarioService } from '../../services/whatIfScenarioService';
+import { WhatIfScenarioService, computeMetricsFromContext } from '../../services/whatIfScenarioService';
 import type { ProjectContext } from '../../services/aiContextBuilder';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -910,3 +916,40 @@ describe('WhatIfScenarioService', () => {
     });
   });
 });
+
+// ── Working days (project calendar) ──────────────────────────────────
+describe('computeMetricsFromContext — working days', () => {
+  const weekdays = (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6;
+
+  it('counts elapsed and remaining in working days, skipping weekends', () => {
+    // Project Thu 1 Jan – Fri 16 Jan 2026; today Mon 12 Jan
+    const ctx = makeProjectContext({ startDate: '2026-01-01', endDate: '2026-01-16' });
+    const m = computeMetricsFromContext(ctx, weekdays, new Date('2026-01-12T10:00:00Z'));
+    // After Thu 1 up to Mon 12: Fri 2, Mon 5–Fri 9, Mon 12 = 7 (calendar would say 11)
+    expect(m.daysElapsed).toBe(7);
+    // After Mon 12 up to Fri 16: Tue–Fri = 4
+    expect(m.daysRemaining).toBe(4);
+  });
+
+  it('a project holiday is not counted, and expected progress uses working days', () => {
+    const noHoliday = (d: Date) => weekdays(d) && d.toISOString().slice(0, 10) !== '2026-01-05';
+    const ctx = makeProjectContext({
+      startDate: '2026-01-01',
+      endDate: '2026-01-09',
+      tasks: [{ id: 't1', name: 'T', status: 'in_progress', priority: 'high' }],
+    });
+    // Today Tue 6 Jan: after Thu 1 → Fri 2, Tue 6 (Mon 5 holiday) = 2; remaining Wed–Fri = 3
+    const m = computeMetricsFromContext(ctx, noHoliday, new Date('2026-01-06T10:00:00Z'));
+    expect(m.daysElapsed).toBe(2);
+    expect(m.daysRemaining).toBe(3);
+    // 0% complete vs 2/5 of the working time gone → -40
+    expect(m.scheduleVariance).toBeCloseTo(-40);
+  });
+
+  it('a weekend-only span has elapsed 0', () => {
+    const ctx = makeProjectContext({ startDate: '2026-01-02', endDate: '2026-01-09' });
+    const m = computeMetricsFromContext(ctx, weekdays, new Date('2026-01-04T10:00:00Z'));
+    expect(m.daysElapsed).toBe(0);
+  });
+});
+

@@ -80,6 +80,40 @@ export function nextWorkingDay(date: string | null | undefined, cal?: WorkCalend
   return null;
 }
 
+/**
+ * Move `n` working days from `date` (n < 0 goes back); n = 0 returns `date` unchanged.
+ * Same as the server's shiftWorking. Null for a bad date.
+ */
+export function shiftWorkingDays(date: string | null | undefined, n: number, cal?: WorkCalendar | null): string | null {
+  let cursor = ymd(date);
+  if (!cursor || !Number.isFinite(n)) return null;
+  const step = n >= 0 ? 1 : -1;
+  for (let left = Math.abs(Math.round(n)), guard = 0; left > 0 && guard < 40000; guard++) {
+    cursor = addCalendarDays(cursor, step)!;
+    if (isWorkingDay(cursor, cal)) left--;
+  }
+  return cursor;
+}
+
+/**
+ * The date a critical-path offset stands for. The server counts offsets in working days
+ * from `origin` (the first working day on or after the earliest task start). A start
+ * offset is that day; a finish offset (EF/LF) is exclusive, so a task's last day is one
+ * working day earlier — except a zero-length milestone, which finishes where it starts.
+ */
+export function cpmOffsetToDate(
+  origin: string | null | undefined,
+  offset: number,
+  kind: 'start' | 'finish',
+  duration: number,
+  cal?: WorkCalendar | null,
+): string | null {
+  const first = nextWorkingDay(origin, cal);
+  if (!first) return null;
+  const n = kind === 'finish' && duration > 0 ? offset - 1 : offset;
+  return shiftWorkingDays(first, n, cal);
+}
+
 /** `date` itself when it is a working day, else the last working day before it. */
 export function previousWorkingDay(date: string | null | undefined, cal?: WorkCalendar | null): string | null {
   let cursor = ymd(date);

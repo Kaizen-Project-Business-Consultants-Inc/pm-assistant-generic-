@@ -7,6 +7,8 @@ import { sanitizeForPrompt } from '../utils/promptSanitizer';
 import { computeEVMMetrics, computeDeterministicRiskScore } from './predictiveIntelligence';
 import { criticalPathService, type CPMTaskResult } from './CriticalPathService';
 import { databaseService } from '../database/connection';
+import { scheduleService } from './ScheduleService';
+import { type IsWorking, weekdaysOnly, shiftWorking, utcDay, workingDaysAfter } from '../utils/workingDays';
 import type { AIScenarioRequest, AIScenarioResult } from '../schemas/phase5Schemas';
 import { AIScenarioResultSchema } from '../schemas/phase5Schemas';
 // NOTE: compares calendar days against today in UTC. These are sync helpers with no
@@ -83,7 +85,7 @@ function getCoefficients(projectType: string): RiskCoefficients {
 // Helper: compute metrics from ProjectContext
 // ---------------------------------------------------------------------------
 
-function computeMetricsFromContext(ctx: ProjectContext): {
+export function computeMetricsFromContext(ctx: ProjectContext, isWorking: IsWorking = weekdaysOnly, now: Date = new Date()): {
   completionRate: number;
   scheduleVariance: number;
   budgetUtilization: number;
@@ -98,20 +100,20 @@ function computeMetricsFromContext(ctx: ProjectContext): {
   const completedTasks = allTasks.filter(t => t.status === 'completed').length;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const now = new Date();
   const overdueTasks = allTasks.filter(
     t => t.status !== 'completed' && t.dueDate && isOverdue(t.dueDate),
   ).length;
 
-  const startDate = ctx.project.startDate ? new Date(ctx.project.startDate) : now;
-  const endDate = ctx.project.endDate
-    ? new Date(ctx.project.endDate)
-    : new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
-  const totalDuration = endDate.getTime() - startDate.getTime();
-  const elapsed = Math.max(0, now.getTime() - startDate.getTime());
-  const daysElapsed = Math.round(elapsed / (24 * 60 * 60 * 1000));
-  const daysRemaining = Math.max(0, Math.round((endDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)));
-  const expectedPercent = totalDuration > 0 ? Math.min(100, (elapsed / totalDuration) * 100) : 0;
+  // Elapsed and remaining count WORKING days of the project calendar (weekends and
+  // holidays off), the same days the Duration column and the scheduler count.
+  // With no end date, assume a year from today (a calendar year, counted in working days).
+  const today = utcDay(now);
+  const startDate = ctx.project.startDate ? utcDay(ctx.project.startDate) : today;
+  const endDate = ctx.project.endDate ? utcDay(ctx.project.endDate) : shiftWorking(today, 365, () => true);
+  const totalWorking = Math.max(0, workingDaysAfter(startDate, endDate, isWorking));
+  const daysElapsed = Math.max(0, workingDaysAfter(startDate, today, isWorking));
+  const daysRemaining = Math.max(0, workingDaysAfter(today, endDate, isWorking));
+  const expectedPercent = totalWorking > 0 ? Math.min(100, (daysElapsed / totalWorking) * 100) : 0;
   const scheduleVariance = completionRate - expectedPercent;
 
   const budgetAllocated = ctx.project.budgetAllocated || 0;
@@ -144,6 +146,17 @@ export class WhatIfScenarioService {
   constructor(fastify: FastifyInstance) {
     this.fastify = fastify;
     this.contextBuilder = new AIContextBuilder(fastify);
+  }
+
+  /** The project calendar's working-day test (via its first schedule); Mon–Fri without one */
+  private async workingDayTest(context: ProjectContext): Promise<IsWorking> {
+    const scheduleId = context.schedules[0]?.id;
+    if (!scheduleId) return weekdaysOnly;
+    try {
+      return (await scheduleService.workingDayTest(scheduleId)) ?? weekdaysOnly;
+    } catch {
+      return weekdaysOnly;
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -185,7 +198,9 @@ export class WhatIfScenarioService {
   private async getSmartAffectedTasks(
     context: ProjectContext,
     params: AIScenarioRequest['parameters'],
+    isWorking: IsWorking,
   ): Promise<AIScenarioResult['affectedTasks']> {
+    const today = utcDay(new Date());
     const scheduleIds = context.schedules.map(s => s.id);
     let criticalTaskIds = new Set<string>();
     let cpmResults: CPMTaskResult[] = [];
@@ -226,8 +241,8 @@ export class WhatIfScenarioService {
 
       // Timeline scenarios: prioritize tasks with latest due dates
       if (params?.daysExtension !== undefined && t.dueDate) {
-        const daysUntilDue = Math.max(0, (new Date(t.dueDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
-        if (daysUntilDue < 14) score += 15; // due soon
+        const daysUntilDue = Math.max(0, workingDaysAfter(today, utcDay(t.dueDate), isWorking));
+        if (daysUntilDue < 10) score += 15; // due soon: within two working weeks
       }
 
       // Scope scenarios: prioritize tasks with low progress
@@ -282,7 +297,8 @@ export class WhatIfScenarioService {
     userId?: string,
   ): Promise<{ result: AIScenarioResult; aiPowered: boolean; id: string }> {
     const context = await this.contextBuilder.buildProjectContext(request.projectId);
-    const metrics = computeMetricsFromContext(context);
+    const isWorking = await this.workingDayTest(context);
+    const metrics = computeMetricsFromContext(context, isWorking);
     const { project } = context;
     const projectType = project.projectType || 'other';
     const coeff = getCoefficients(projectType);
@@ -361,7 +377,7 @@ export class WhatIfScenarioService {
       : 0;
 
     // #4/#5: Smart affected tasks with critical path analysis
-    const affectedTasks = await this.getSmartAffectedTasks(context, request.parameters);
+    const affectedTasks = await this.getSmartAffectedTasks(context, request.parameters, isWorking);
 
     // Get critical path info for AI prompt
     let criticalPathInfo = 'No critical path data available.';
@@ -383,7 +399,7 @@ export class WhatIfScenarioService {
         projectedDays,
         changePct: scheduleChangePct,
         explanation: scheduleChangePct !== 0
-          ? `Timeline changes by ${scheduleChangePct > 0 ? '+' : ''}${scheduleChangePct}% (${totalDays} \u2192 ${projectedDays} days).`
+          ? `Timeline changes by ${scheduleChangePct > 0 ? '+' : ''}${scheduleChangePct}% (${totalDays} \u2192 ${projectedDays} working days).`
           : 'No direct schedule impact from the proposed change.',
       },
       budgetImpact: {
@@ -518,7 +534,7 @@ export class WhatIfScenarioService {
 
   async getProjectBaseline(projectId: string) {
     const context = await this.contextBuilder.buildProjectContext(projectId);
-    const metrics = computeMetricsFromContext(context);
+    const metrics = computeMetricsFromContext(context, await this.workingDayTest(context));
     const { project } = context;
     const projectType = project.projectType || 'other';
     const coeff = getCoefficients(projectType);

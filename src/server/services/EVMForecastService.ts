@@ -8,6 +8,7 @@ import { config } from '../config';
 import logger from '../utils/logger';
 import { statusDateFor } from './StatusDateService';
 import { CalendarDate, isOverdue } from '../utils/calendarDate';
+import { type IsWorking, utcDay, workingDaysAfter, workingSpread } from '../utils/workingDays';
 import {
   EVMForecastAIResponseSchema,
   type EVMForecastResult,
@@ -18,6 +19,16 @@ import {
 } from '../schemas/evmForecastSchemas';
 
 const AI_CACHE_TTL_SECONDS = 30 * 60; // 30 minutes
+
+/**
+ * A task's planned value as at `now`: its budget spread evenly over its WORKING days
+ * (project calendar), so value is planned only on working days — never on weekends or
+ * holidays — and the whole budget is planned by the end of its finish day.
+ */
+function plannedValueNow(budget: number, start: unknown, end: unknown, now: number, isWorking: IsWorking): number {
+  if (!budget || !start || !end) return 0;
+  return budget * workingSpread(utcDay(start), utcDay(end), isWorking).shareBy(now);
+}
 
 // ---------------------------------------------------------------------------
 // Prompt Template
@@ -629,7 +640,7 @@ export class EVMForecastService {
       if (allTasks.length === 0) return 'Schedule analysis:\nNo tasks found.';
 
       const now = Date.now();
-      const DAY_MS = 86400000;
+      const isWorking = await scheduleService.workingDayTest(schedules[0].id);
 
       // --- Per-task variance (reuse getTaskVariances logic inline) ---
       const taskMetrics = allTasks
@@ -640,14 +651,7 @@ export class EVMForecastService {
           const progress = (t.progressPercentage ?? 0) / 100;
           const ev = budget * progress;
           const cv = ev - actual;
-          let pv = 0;
-          if (t.startDate && t.endDate) {
-            const start = new Date(t.startDate).getTime();
-            const end = new Date(t.endDate).getTime();
-            const duration = Math.max(1, (end - start) / DAY_MS);
-            const elapsed = Math.max(0, (now - start) / DAY_MS);
-            pv = budget * Math.min(1, elapsed / duration);
-          }
+          const pv = plannedValueNow(budget, t.startDate, t.endDate, now, isWorking);
           const sv = ev - pv;
           return { ...t, budget, actual, ev, pv, cv, sv, progress };
         });
@@ -701,8 +705,8 @@ export class EVMForecastService {
       if (behindSchedule.length > 0) {
         sections.push('\nTasks behind schedule (negative schedule variance):');
         for (const t of behindSchedule) {
-          const daysLate = t.endDate ? Math.max(0, Math.round((now - new Date(t.endDate).getTime()) / DAY_MS)) : 0;
-          sections.push(`  - "${t.name}" | SV: $${t.sv.toFixed(0)} | Progress: ${Math.round(t.progress * 100)}% | Status: ${t.status}${daysLate > 0 ? ` | ${daysLate} days overdue` : ''} | Priority: ${t.priority}`);
+          const daysLate = t.endDate ? Math.max(0, workingDaysAfter(utcDay(t.endDate), utcDay(new Date(now)), isWorking)) : 0;
+          sections.push(`  - "${t.name}" | SV: $${t.sv.toFixed(0)} | Progress: ${Math.round(t.progress * 100)}% | Status: ${t.status}${daysLate > 0 ? ` | ${daysLate} working days overdue` : ''} | Priority: ${t.priority}`);
         }
       }
 
@@ -726,8 +730,8 @@ export class EVMForecastService {
       if (overdue.length > 0) {
         sections.push(`\nOverdue tasks (${overdue.length} total):`);
         for (const t of overdue.slice(0, 5)) {
-          const daysLate = Math.round((now - new Date(t.endDate!).getTime()) / DAY_MS);
-          sections.push(`  - "${t.name}" | ${daysLate} days overdue | Progress: ${t.progressPercentage ?? 0}% | Status: ${t.status}`);
+          const daysLate = Math.max(0, workingDaysAfter(utcDay(t.endDate), utcDay(new Date(now)), isWorking));
+          sections.push(`  - "${t.name}" | ${daysLate} working days overdue | Progress: ${t.progressPercentage ?? 0}% | Status: ${t.status}`);
         }
       }
 
@@ -815,7 +819,7 @@ export class EVMForecastService {
 
     const allTasks = await scheduleService.findTasksByScheduleIds(schedules.map(s => s.id));
     const now = Date.now();
-    const DAY_MS = 86400000;
+    const isWorking = await scheduleService.workingDayTest(schedules[0].id);
 
     const variances: TaskVariance[] = allTasks
       .filter(t => (t.budgetAllocated && t.budgetAllocated > 0) || (t.actualCost && t.actualCost > 0))
@@ -829,15 +833,7 @@ export class EVMForecastService {
         const cv = ev - actual;
 
         // Schedule variance: EV - PV
-        let pv = 0;
-        if (t.startDate && t.endDate) {
-          const start = new Date(t.startDate).getTime();
-          const end = new Date(t.endDate).getTime();
-          const duration = Math.max(1, (end - start) / DAY_MS);
-          const elapsed = Math.max(0, (now - start) / DAY_MS);
-          const plannedPct = Math.min(1, elapsed / duration);
-          pv = budget * plannedPct;
-        }
+        const pv = plannedValueNow(budget, t.startDate, t.endDate, now, isWorking);
         const sv = ev - pv;
 
         return {

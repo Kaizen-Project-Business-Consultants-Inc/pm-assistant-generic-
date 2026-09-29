@@ -367,7 +367,8 @@ describe('AutoRescheduleService', () => {
     it('projects completion based on current velocity for partial progress', async () => {
       // 10 of 20 days elapsed, 20% progress. Velocity = 10d / 20% = 0.5 d/%.
       // Remaining: 80% * 0.5 = 40 days from now.
-      // Delay = 40 - 10 = ~30 calendar days = ~20-22 working days.
+      // Delay = 40 - 10 = ~30 calendar days = 20–24 working days, depending on which
+      // weekday today is (the dates are built from today) and where the weekends fall.
       mockFindTasksByScheduleId.mockResolvedValue([
         makeTask('t1', 'Slow task', {
           startDate: daysAgo(10),
@@ -378,7 +379,7 @@ describe('AutoRescheduleService', () => {
       const result = await service.detectDelays('sch-1');
       expect(result.length).toBe(1);
       expect(result[0].delayDays).toBeGreaterThanOrEqual(19);
-      expect(result[0].delayDays).toBeLessThanOrEqual(23);
+      expect(result[0].delayDays).toBeLessThanOrEqual(24);
     });
 
     it('treats undefined progressPercentage as 0', async () => {

@@ -242,6 +242,33 @@ describe('MonteCarloService', () => {
       );
     });
 
+    it('completion dates count working days and never land on a weekend', async () => {
+      // Mon 5 Jan .. Fri 9 Jan 2026 = 5 working days
+      const tasks = [makeTask('t1', 'Task A', { estimatedDays: 5, startDate: '2026-01-05', endDate: '2026-01-09' })];
+      mockFindById.mockResolvedValue(makeSchedule({ startDate: '2026-01-05' }));
+      mockFindTasksByScheduleId.mockResolvedValue(tasks);
+      mockCalculateCriticalPath.mockResolvedValue(makeCriticalPathResult({ projectDuration: 5 }));
+      mockProjectFindById.mockResolvedValue({ id: 'proj-1', budgetAllocated: 0 });
+
+      const result = await service.runSimulation('sch-1', { iterations: 200 });
+      for (const d of [result.completionDate.p50, result.completionDate.p80, result.completionDate.p90]) {
+        const dow = new Date(`${d}T00:00:00Z`).getUTCDay();
+        expect(dow).not.toBe(0);
+        expect(dow).not.toBe(6);
+      }
+    });
+
+    it('a milestone-only plan completes on the first working day of the schedule', async () => {
+      const ms = { ...makeTask('m1', 'Kick-off held', { estimatedDays: 0, startDate: '2026-01-03', endDate: '2026-01-03' }), isMilestone: true };
+      mockFindById.mockResolvedValue(makeSchedule({ startDate: '2026-01-03' })); // a Saturday
+      mockFindTasksByScheduleId.mockResolvedValue([ms]);
+      mockCalculateCriticalPath.mockResolvedValue(makeCriticalPathResult({ projectDuration: 0 }));
+      mockProjectFindById.mockResolvedValue({ id: 'proj-1', budgetAllocated: 0 });
+
+      const result = await service.runSimulation('sch-1', { iterations: 50 });
+      expect(result.completionDate.p50).toBe('2026-01-05');
+    });
+
     it('computes cost forecast proportional to budget', async () => {
       const tasks = [makeTask('t1', 'Task A', { estimatedDays: 10 })];
       mockFindById.mockResolvedValue(makeSchedule());

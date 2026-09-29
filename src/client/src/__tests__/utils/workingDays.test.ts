@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { workingDaysBetween, finishAfterWorkingDays, addCalendarDays, nextWorkingDay, previousWorkingDay, moveKeepingWorkingLength, snapSpanToWorkingDays, type WorkCalendar } from '../../utils/workingDays';
+import { workingDaysBetween, finishAfterWorkingDays, addCalendarDays, nextWorkingDay, previousWorkingDay, moveKeepingWorkingLength, snapSpanToWorkingDays, shiftWorkingDays, cpmOffsetToDate, type WorkCalendar } from '../../utils/workingDays';
 
 // Oct 2026: Thu 8, Fri 9, Sat 10, Sun 11, Mon 12, Tue 13
 describe('workingDaysBetween', () => {
@@ -95,5 +95,31 @@ describe('snapSpanToWorkingDays', () => {
   });
   it('a span wholly on a weekend becomes one day on the next working day', () => {
     expect(snapSpanToWorkingDays('2026-10-10', '2026-10-11')).toEqual({ start: '2026-10-12', end: '2026-10-12' });
+  });
+});
+
+describe('shiftWorkingDays', () => {
+  it('moves over weekends both ways; 0 stays put', () => {
+    expect(shiftWorkingDays('2026-10-09', 1)).toBe('2026-10-12');
+    expect(shiftWorkingDays('2026-10-12', -1)).toBe('2026-10-09');
+    expect(shiftWorkingDays('2026-10-10', 0)).toBe('2026-10-10');
+  });
+  it('skips calendar holidays', () => {
+    const cal: WorkCalendar = { nonWorking: new Set(['2026-10-10', '2026-10-11', '2026-10-12']), from: '2026-10-01', to: '2026-10-31' };
+    expect(shiftWorkingDays('2026-10-09', 1, cal)).toBe('2026-10-13');
+  });
+});
+
+describe('cpmOffsetToDate', () => {
+  // Origin Thu 8 Oct. A 2-day task at ES 1 runs Fri 9 → Mon 12: EF = 3.
+  it('start offsets are working days from the first working day', () => {
+    expect(cpmOffsetToDate('2026-10-08', 1, 'start', 2)).toBe('2026-10-09');
+    expect(cpmOffsetToDate('2026-10-10', 0, 'start', 2)).toBe('2026-10-12'); // origin on a Saturday
+  });
+  it('finish offsets are exclusive: the last day is one working day earlier', () => {
+    expect(cpmOffsetToDate('2026-10-08', 3, 'finish', 2)).toBe('2026-10-12');
+  });
+  it('a milestone finishes where it starts', () => {
+    expect(cpmOffsetToDate('2026-10-08', 2, 'finish', 0)).toBe('2026-10-12');
   });
 });

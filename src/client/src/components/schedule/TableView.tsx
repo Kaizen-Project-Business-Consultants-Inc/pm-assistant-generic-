@@ -20,12 +20,12 @@ import { TableContextMenu } from './table/TableContextMenu';
 import { TableNotesPopup } from './table/TableNotesPopup';
 import {
   barColors, priorityColors, statusOptions, priorityOptions,
-  SUMMARY_ROLLUP_FIELDS, addDaysToDate, formatDate,
+  SUMMARY_ROLLUP_FIELDS, formatDate,
   type TableViewProps, type SortDir, type GroupByField, type EditableField,
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
-import { workingDaysBetween, finishAfterWorkingDays } from '../../utils/workingDays';
+import { workingDaysBetween, finishAfterWorkingDays, cpmOffsetToDate } from '../../utils/workingDays';
 
 export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
@@ -164,6 +164,15 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     }
     return map;
   }, [cpmData]);
+  // Critical-path offsets are working days from the earliest task start (as the server counts them)
+  const cpmOrigin = useMemo(() => {
+    let min: string | null = null;
+    for (const t of allTasks ?? tasks) {
+      const s = t.startDate?.slice(0, 10);
+      if (s && (!min || s < min)) min = s;
+    }
+    return min ?? scheduleStartDate?.slice(0, 10) ?? null;
+  }, [allTasks, tasks, scheduleStartDate]);
 
   // Baseline lookup map
   const baselineMap = useMemo(() => {
@@ -1126,10 +1135,10 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     );
   };
 
-  const formatCpmDate = (offset: number | undefined): string => {
+  const formatCpmDate = (offset: number | undefined, kind: 'start' | 'finish', duration = 1): string => {
     if (offset === undefined) return '\u2014';
-    if (scheduleStartDate) return addDaysToDate(scheduleStartDate, offset);
-    return `Day ${offset}`;
+    const date = cpmOrigin ? cpmOffsetToDate(cpmOrigin, offset, kind, duration, workCalendar) : null;
+    return date ? formatDate(date) : `Day ${offset}`;
   };
 
   const renderVarianceBadge = (days: number | undefined): React.ReactNode => {
@@ -1404,13 +1413,13 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       }
 
       case 'earlyStart':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{formatCpmDate(cpm?.ES)}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{formatCpmDate(cpm?.ES, 'start')}</td>;
       case 'earlyFinish':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{formatCpmDate(cpm?.EF)}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{formatCpmDate(cpm?.EF, 'finish', cpm?.duration)}</td>;
       case 'lateStart':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{formatCpmDate(cpm?.LS)}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{formatCpmDate(cpm?.LS, 'start')}</td>;
       case 'lateFinish':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{formatCpmDate(cpm?.LF)}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{formatCpmDate(cpm?.LF, 'finish', cpm?.duration)}</td>;
 
       case 'totalFloat':
         return (

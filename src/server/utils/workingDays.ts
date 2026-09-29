@@ -38,12 +38,60 @@ export function workingDaysAfter(from: Date, to: Date, isWorking: IsWorking): nu
   return sign * count;
 }
 
+/**
+ * A task's duration in working days, the way the Duration column shows it: a milestone
+ * is 0; otherwise the working days its dates cover (start day counted), falling back to
+ * `estimatedDays` and then 1 when the dates are missing or cover no working day.
+ */
+export function taskWorkingDuration(
+  t: { startDate?: unknown; endDate?: unknown; estimatedDays?: number | null; isMilestone?: boolean | null },
+  isWorking: IsWorking,
+  preferEstimate = false,
+): number {
+  if (t.isMilestone) return 0;
+  const est = Number(t.estimatedDays) > 0 ? Number(t.estimatedDays) : 0;
+  if (preferEstimate && est) return est;
+  if (t.startDate && t.endDate) {
+    const s = utcDay(t.startDate);
+    const e = utcDay(t.endDate);
+    const n = e < s ? 0 : workingDaysAfter(s, e, isWorking) + (isWorking(s) ? 1 : 0);
+    if (n > 0) return n;
+  }
+  return est || 1;
+}
+
 /** A calendar day ('YYYY-MM-DD', or a Date/ISO string) as a UTC-midnight Date */
 export function utcDay(v: unknown): Date {
   return new Date(String(v instanceof Date ? v.toISOString() : v).slice(0, 10) + 'T00:00:00Z');
 }
 
 export function ymdOf(d: Date): string { return d.toISOString().slice(0, 10); }
+
+/**
+ * A task's work (or budget) spread evenly over its WORKING days, start..end inclusive.
+ * `shareBy(at)` is the share planned by the end of the day `at` falls on: 0 before the
+ * start, 1 from the finish day on, flat across weekends and holidays. A span with no
+ * working day at all jumps from 0 to 1 on its finish day.
+ */
+export function workingSpread(start: Date, end: Date, isWorking: IsWorking): {
+  workingDays: number;
+  shareBy: (at: Date | number) => number;
+} {
+  const days: number[] = [];
+  for (let c = start, i = 0; c <= end && i < 36600; c = plusDays(c, 1), i++) if (isWorking(c)) days.push(c.getTime());
+  const endMs = end.getTime();
+  return {
+    workingDays: days.length,
+    shareBy: at => {
+      const t = typeof at === 'number' ? at : at.getTime();
+      if (t >= endMs) return 1;
+      let lo = 0;
+      let hi = days.length;
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (days[mid] <= t) lo = mid + 1; else hi = mid; }
+      return days.length === 0 ? 0 : lo / days.length;
+    },
+  };
+}
 
 /**
  * Finish date for a task of `days` working days starting on `start`, the start day

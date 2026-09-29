@@ -4,6 +4,8 @@ import { auditLedgerService } from './AuditLedgerService';
 import { deadLetterService } from './DeadLetterService';
 import { statusDateFor } from './StatusDateService';
 import { toCalendarDate } from '../utils/calendarDate';
+import { scheduleService } from './ScheduleService';
+import { type IsWorking, weekdaysOnly, shiftWorking, utcDay, workingDaysAfter, ymdOf } from '../utils/workingDays';
 
 export interface Sprint {
   id: string;
@@ -174,11 +176,13 @@ export class SprintService {
     ideal: number[];
     actual: number[];
     totalPoints: number;
+    /** Working days left after the status date, up to and including the sprint's end */
+    daysRemaining?: number;
     burnup?: { scope: number[]; completed: number[] };
   }> {
     const sprint = await this.getById(id);
     if (!sprint) {
-      return { dates: [], ideal: [], actual: [], totalPoints: 0 };
+      return { dates: [], ideal: [], actual: [], totalPoints: 0, daysRemaining: 0 };
     }
 
     const totalPoints = await sprintRepository.getTotalPoints(id);
@@ -187,15 +191,20 @@ export class SprintService {
     // Get scope changes over time (tasks added to sprint with their added_at dates)
     const scopeRows = await sprintRepository.getSprintTasksWithAddedDates(id);
 
-    const startDate = new Date(sprint.startDate);
-    const endDate = new Date(sprint.endDate);
+    const startDate = utcDay(sprint.startDate);
+    const endDate = utcDay(sprint.endDate);
     // Measured as at the project's status date, not the clock, so a burndown chart shows
     // the same thing to everyone and does not shift while it is being read.
     const asOf = await statusDateFor(sprint.projectId);
     const today = toCalendarDate(asOf) ?? new Date();
 
-    const DAY_MS = 86_400_000;
-    const totalDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / DAY_MS));
+    // The ideal line burns only on WORKING days of the project calendar (flat across
+    // weekends and holidays): from the full total on the first day to 0 on the last.
+    const isWorking = await this.workingDayTest(sprint.scheduleId);
+    const everyDay = () => true;
+    const totalDays = Math.max(1, workingDaysAfter(startDate, endDate, everyDay));
+    const workingSpan = Math.max(1, workingDaysAfter(startDate, endDate, isWorking));
+    const daysRemaining = Math.max(0, workingDaysAfter(utcDay(today), endDate, isWorking));
 
     const dates: string[] = [];
     const ideal: number[] = [];
@@ -204,12 +213,13 @@ export class SprintService {
     const completed: number[] = [];
 
     for (let dayIndex = 0; dayIndex <= totalDays; dayIndex++) {
-      const currentDate = new Date(startDate.getTime() + dayIndex * DAY_MS);
-      const dateStr = currentDate.toISOString().slice(0, 10);
+      const currentDate = shiftWorking(startDate, dayIndex, everyDay);
+      const dateStr = ymdOf(currentDate);
 
       dates.push(dateStr);
 
-      const idealRemaining = totalPoints * (1 - dayIndex / totalDays);
+      const burned = dayIndex === totalDays ? workingSpan : workingDaysAfter(startDate, currentDate, isWorking);
+      const idealRemaining = totalPoints * (1 - burned / workingSpan);
       ideal.push(Math.max(0, Math.round(idealRemaining * 10) / 10));
 
       if (currentDate <= today) {
@@ -241,7 +251,17 @@ export class SprintService {
       }
     }
 
-    return { dates, ideal, actual, totalPoints, burnup: { scope, completed } };
+    return { dates, ideal, actual, totalPoints, daysRemaining, burnup: { scope, completed } };
+  }
+
+  /** The project calendar's working-day test for the sprint's schedule; Mon–Fri without one */
+  private async workingDayTest(scheduleId: string | null | undefined): Promise<IsWorking> {
+    if (!scheduleId) return weekdaysOnly;
+    try {
+      return (await scheduleService.workingDayTest(scheduleId)) ?? weekdaysOnly;
+    } catch {
+      return weekdaysOnly;
+    }
   }
 
   async getBacklogTasks(scheduleId: string): Promise<any[]> {

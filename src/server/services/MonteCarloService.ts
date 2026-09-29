@@ -1,6 +1,7 @@
 import { scheduleService, Task } from './ScheduleService';
 import { projectService } from './ProjectService';
 import { criticalPathService, CriticalPathResult } from './CriticalPathService';
+import { type IsWorking, weekdaysOnly, finishFor, onOrAfterWorking, taskWorkingDuration, utcDay, ymdOf } from '../utils/workingDays';
 import {
   MonteCarloConfig,
   MonteCarloResult,
@@ -59,8 +60,11 @@ export class MonteCarloService {
     const cpResult: CriticalPathResult =
       await criticalPathService.calculateCriticalPath(scheduleId);
 
+    // Durations and dates count working days on the project calendar
+    const isWorking = await projectCalendar(scheduleId);
+
     // 2. Build task distributions
-    const distributions = this.buildDistributions(tasks);
+    const distributions = this.buildDistributions(tasks, isWorking);
 
     // 3. Build predecessor map  (taskId -> predecessorId[])
     const predecessorMap = new Map<string, string[]>();
@@ -121,13 +125,11 @@ export class MonteCarloService {
     const p80 = this.computePercentile(sorted, 80);
     const p90 = this.computePercentile(sorted, 90);
 
-    // Completion dates based on schedule start date
-    const scheduleStart = new Date(schedule.startDate);
-    const toDateStr = (days: number): string => {
-      const d = new Date(scheduleStart);
-      d.setDate(d.getDate() + Math.round(days));
-      return d.toISOString().split('T')[0];
-    };
+    // Completion dates: the finish day of a run of `days` working days from the schedule
+    // start (start day counted), on the project calendar
+    const scheduleStart = onOrAfterWorking(utcDay(schedule.startDate), isWorking);
+    const toDateStr = (days: number): string =>
+      ymdOf(finishFor(scheduleStart, Math.round(days), isWorking));
 
     const completionDate = {
       p50: toDateStr(p50),
@@ -205,16 +207,10 @@ export class MonteCarloService {
   // Distribution builders
   // -----------------------------------------------------------------------
 
-  private buildDistributions(tasks: Task[]): TaskDistribution[] {
+  private buildDistributions(tasks: Task[], isWorking: IsWorking = weekdaysOnly): TaskDistribution[] {
     return tasks.map((t) => {
-      const DAY_MS = 86_400_000;
-      let mostLikely = t.estimatedDays && t.estimatedDays > 0 ? t.estimatedDays : 1;
-      if (mostLikely <= 0 && t.startDate && t.endDate) {
-        const d = Math.round(
-          (new Date(t.endDate).getTime() - new Date(t.startDate).getTime()) / DAY_MS,
-        );
-        mostLikely = Math.max(1, d);
-      }
+      // Working days, as the Duration column and the critical path count them
+      const mostLikely = taskWorkingDuration(t, isWorking);
 
       const optimistic = mostLikely * 0.75;
 
@@ -611,3 +607,12 @@ export class MonteCarloService {
 }
 
 export const monteCarloService = new MonteCarloService();
+
+/** The schedule's project calendar; Mon–Fri when it cannot be read */
+async function projectCalendar(scheduleId: string): Promise<IsWorking> {
+  try {
+    return (await scheduleService.workingDayTest(scheduleId)) || weekdaysOnly;
+  } catch {
+    return weekdaysOnly;
+  }
+}

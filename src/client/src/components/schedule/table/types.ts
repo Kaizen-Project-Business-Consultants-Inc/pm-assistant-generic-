@@ -16,6 +16,8 @@ export interface CpmTaskData {
   EF: number;
   LS: number;
   LF: number;
+  /** Working days, start day counted; 0 for a milestone */
+  duration?: number;
   totalFloat: number;
   freeFloat: number;
   isCritical: boolean;
@@ -90,12 +92,6 @@ export const statusOptions = ['pending', 'in_progress', 'completed'];
 export const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 
 export const SUMMARY_ROLLUP_FIELDS: Set<EditableField> = new Set(['startDate', 'endDate', 'progressPercentage', 'status', 'budgetAllocated', 'actualCost', 'duration']);
-
-export function addDaysToDate(baseDate: string, days: number): string {
-  const d = new Date(baseDate);
-  d.setDate(d.getDate() + days);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
 
 export function formatDate(d?: string): string {
   if (!d) return '-';

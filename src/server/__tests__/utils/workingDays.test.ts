@@ -32,3 +32,27 @@ describe('server working days', () => {
     expect(ymdOf(utcDay('2026-10-08T15:30:00.000Z'))).toBe('2026-10-08');
   });
 });
+
+describe('workingSpread — work spread over working days', () => {
+  it('Thu–Tue spans 4 working days; the share is flat over the weekend', async () => {
+    const { workingSpread } = await import('../../utils/workingDays');
+    const s = workingSpread(d('2026-10-08'), d('2026-10-13'), weekdaysOnly);
+    expect(s.workingDays).toBe(4);
+    expect(s.shareBy(d('2026-10-07'))).toBe(0);
+    expect(s.shareBy(d('2026-10-08'))).toBe(0.25);
+    expect(s.shareBy(d('2026-10-09'))).toBe(0.5);
+    expect(s.shareBy(d('2026-10-10'))).toBe(0.5);
+    expect(s.shareBy(d('2026-10-11'))).toBe(0.5);
+    expect(s.shareBy(d('2026-10-12').getTime())).toBe(0.75);
+    expect(s.shareBy(d('2026-10-13'))).toBe(1);
+  });
+  it('a holiday is skipped; a span with no working day jumps to 1 on its finish', async () => {
+    const { workingSpread } = await import('../../utils/workingDays');
+    const noMonday: IsWorking = x => weekdaysOnly(x) && ymdOf(x) !== '2026-10-12';
+    expect(workingSpread(d('2026-10-08'), d('2026-10-13'), noMonday).workingDays).toBe(3);
+    const weekend = workingSpread(d('2026-10-10'), d('2026-10-11'), weekdaysOnly);
+    expect(weekend.workingDays).toBe(0);
+    expect(weekend.shareBy(d('2026-10-10'))).toBe(0);
+    expect(weekend.shareBy(d('2026-10-11'))).toBe(1);
+  });
+});

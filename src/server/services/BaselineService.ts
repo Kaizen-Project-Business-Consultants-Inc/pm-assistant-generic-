@@ -1,6 +1,7 @@
 import { scheduleService } from './ScheduleService';
 import { baselineRepository } from '../database/BaselineRepository';
 import { databaseService } from '../database/connection';
+import { type IsWorking, utcDay, workingDaysAfter, workingSpread } from '../utils/workingDays';
 
 export interface BaselineTask {
   taskId: string;
@@ -30,15 +31,15 @@ export interface TaskVariance {
   actualEnd: string;
   baselineProgress: number;
   actualProgress: number;
-  /** Days the start slipped (positive = late) */
+  /** Working days the start slipped (positive = late) */
   startVarianceDays: number;
-  /** Days the end slipped (positive = late) */
+  /** Working days the end slipped (positive = late) */
   endVarianceDays: number;
-  /** Baseline duration in days */
+  /** Baseline duration in working days (start day counted) */
   baselineDurationDays: number;
-  /** Actual/current duration in days */
+  /** Actual/current duration in working days (start day counted) */
   actualDurationDays: number;
-  /** Duration variance in days (positive = longer than planned) */
+  /** Duration variance in working days (positive = longer than planned) */
   durationVarianceDays: number;
   /** Progress variance in percentage points (positive = ahead) */
   progressVariancePct: number;
@@ -68,16 +69,19 @@ export interface BaselineComparison {
   };
 }
 
-const DAY_MS = 86_400_000;
-
-function dayDiff(a: string, b: string): number {
+/**
+ * Slip from date a (baseline) to date b (current) in WORKING days of the project
+ * calendar: positive = later, negative = earlier. A move across a weekend alone is 0.
+ */
+function dayDiff(a: string, b: string, isWorking: IsWorking): number {
   if (!a || !b) return 0;
-  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / DAY_MS);
+  return workingDaysAfter(utcDay(a), utcDay(b), isWorking);
 }
 
-function daysDuration(start: string, end: string): number {
+/** Duration in working days, start day counted (Thu–Fri = 2), as the Duration column shows it */
+function daysDuration(start: string, end: string, isWorking: IsWorking): number {
   if (!start || !end) return 0;
-  return Math.max(1, Math.round((new Date(end).getTime() - new Date(start).getTime()) / DAY_MS));
+  return Math.max(1, workingSpread(utcDay(start), utcDay(end), isWorking).workingDays);
 }
 
 export class BaselineService {
@@ -135,6 +139,8 @@ export class BaselineService {
     if (!baseline) return null;
 
     const currentTasks = await scheduleService.findTasksByScheduleId(baseline.scheduleId);
+    // Variances count working days on the project calendar, like the Duration column
+    const isWorking = await scheduleService.workingDayTest(baseline.scheduleId);
 
     const currentMap = new Map(currentTasks.map((t) => [t.id, t]));
     const baselineMap = new Map(baseline.tasks.map((t) => [t.taskId, t]));
@@ -155,10 +161,10 @@ export class BaselineService {
       const actualStart = ct.startDate ? new Date(ct.startDate).toISOString() : '';
       const actualEnd = ct.endDate ? new Date(ct.endDate).toISOString() : '';
 
-      const startVar = bt.startDate && actualStart ? dayDiff(bt.startDate, actualStart) : 0;
-      const endVar = bt.endDate && actualEnd ? dayDiff(bt.endDate, actualEnd) : 0;
-      const blDuration = daysDuration(bt.startDate, bt.endDate);
-      const actDuration = daysDuration(actualStart, actualEnd);
+      const startVar = bt.startDate && actualStart ? dayDiff(bt.startDate, actualStart, isWorking) : 0;
+      const endVar = bt.endDate && actualEnd ? dayDiff(bt.endDate, actualEnd, isWorking) : 0;
+      const blDuration = daysDuration(bt.startDate, bt.endDate, isWorking);
+      const actDuration = daysDuration(actualStart, actualEnd, isWorking);
       const durationVar = actDuration - blDuration;
       const progressVar = (ct.progressPercentage ?? 0) - bt.progressPercentage;
 
