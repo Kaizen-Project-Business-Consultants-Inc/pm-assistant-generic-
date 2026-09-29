@@ -315,6 +315,31 @@ class ApiService {
     return response.data;
   }
 
+  // Working calendar (project) + company holidays
+  async getWorkingCalendar(projectId: string): Promise<WorkingCalendarData> {
+    return (await this.api.get(`/projects/${projectId}/working-calendar`)).data;
+  }
+
+  async previewWorkingCalendar(projectId: string, change: WorkingCalendarChange): Promise<CalendarChangePreview> {
+    return (await this.api.post(`/projects/${projectId}/working-calendar/preview`, change)).data;
+  }
+
+  async applyWorkingCalendar(projectId: string, change: WorkingCalendarChange): Promise<CalendarChangePreview> {
+    return (await this.api.post(`/projects/${projectId}/working-calendar/apply`, change)).data;
+  }
+
+  async getCompanyHolidays(): Promise<{ holidays: CompanyHoliday[]; canEdit: boolean }> {
+    return (await this.api.get('/company-holidays')).data;
+  }
+
+  async previewCompanyHoliday(change: CompanyHolidayChange): Promise<CalendarChangePreview> {
+    return (await this.api.post('/company-holidays/preview', change)).data;
+  }
+
+  async applyCompanyHoliday(change: CompanyHolidayChange): Promise<CalendarChangePreview> {
+    return (await this.api.post('/company-holidays/apply', change)).data;
+  }
+
   async getNonWorkingDates(projectId: string, start: string, end: string): Promise<{ dates: string[] }> {
     const response = await this.api.get(`/projects/${projectId}/non-working-dates`, { params: { start, end } });
     return response.data;
@@ -4077,3 +4102,22 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
 }
 
 export const apiService = new ApiService();
+
+export interface CompanyHoliday { id: string; date: string; name: string }
+export interface WorkingCalendarData {
+  workingDays: number[];
+  exceptions: Array<{ id: string; date: string; type: 'holiday' | 'working'; name: string }>;
+  companyHolidays: CompanyHoliday[];
+}
+export type WorkingCalendarChange =
+  | { workingDays: number[] }
+  | { add: { date: string; type: 'holiday' | 'working'; name?: string } }
+  | { removeId: string };
+export type CompanyHolidayChange = { add: { date: string; name?: string } } | { removeId: string };
+export interface CalendarChangePreview {
+  moves: Array<{ taskId: string; name: string; scheduleName: string; oldStart: string | null; oldEnd: string | null; newStart: string; newEnd: string }>;
+  tasksMoved: number;
+  projectsAffected: number;
+  finishBefore: string | null;
+  finishAfter: string | null;
+}

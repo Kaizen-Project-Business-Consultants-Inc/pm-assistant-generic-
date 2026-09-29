@@ -13,6 +13,8 @@ import { ConfirmModal } from '../ui/ConfirmModal';
 import { apiService } from '../../services/api';
 import { findResourceForAssignee } from '../../utils/resourceLookup';
 import { useModal } from '../../hooks/useModal';
+import { isWorkingDay, type WorkCalendar } from '../../utils/workingDays';
+import { formatCalendarDate } from '../../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -72,6 +74,8 @@ interface TaskFormModalProps {
   projectId?: string;
   /** ID of the currently active/selected task (used to pre-fill parent in create mode) */
   activeTaskId?: string | null;
+  /** Project calendar, to warn when a date falls on a day off */
+  workCalendar?: WorkCalendar | null;
   /** Pre-fill start date in create mode (from drag-to-create) */
   initialStartDate?: string;
   /** Pre-fill end date in create mode (from drag-to-create) */
@@ -216,6 +220,7 @@ export function TaskFormModal({
   activeTaskId,
   initialStartDate,
   initialEndDate,
+  workCalendar,
 }: TaskFormModalProps) {
   const { dialogRef, handleKeyDown: handleModalKeyDown } = useModal(true, onClose);
   const isEdit = !!task;
@@ -556,6 +561,17 @@ export function TaskFormModal({
               />
             </div>
           </div>
+          {!isSummary && (['startDate', 'endDate'] as const).map(k => {
+            const v = form[k];
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || isWorkingDay(v, workCalendar)) return null;
+            const day = formatCalendarDate(v, { weekday: 'long', day: 'numeric', month: 'short' }, 'en-GB');
+            return (
+              <p key={k} role="status" className="-mt-2 flex items-start gap-2 rounded-md border border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-gray-800 dark:text-gray-100">
+                <span className="font-bold text-amber-700 dark:text-amber-300" aria-hidden="true">!</span>
+                <span>{day} isn't a working day in this project's calendar. The task will still {k === 'startDate' ? 'start' : 'finish'} then.</span>
+              </p>
+            );
+          })}
 
           {/* Progress + Estimated Days */}
           <div className="grid grid-cols-2 gap-4">

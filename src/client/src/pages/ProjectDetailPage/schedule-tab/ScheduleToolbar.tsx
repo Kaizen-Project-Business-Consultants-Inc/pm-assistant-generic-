@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, Filter, X, Download, ClipboardCheck } from 'lucide-react';
+import { WorkingCalendarButton } from '../../../components/schedule/calendar/WorkingCalendarButton';
 import { ColumnPickerDropdown } from '../../../components/schedule/ColumnPickerDropdown';
 import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS } from '../../../components/schedule/tableColumns';
 import type { ColumnState } from '../../../hooks/useColumnState';
@@ -15,6 +16,9 @@ interface ScheduleToolbarProps {
   columnState: ColumnState;
   onOpenReview?: () => void;
   reviewActive?: boolean;
+  /** Opens the project's working calendar */
+  onOpenCalendar?: () => void;
+  calendarActive?: boolean;
   showCriticalPath: boolean;
   onCriticalPathChange: (value: boolean) => void;
   overflowMenu: React.ReactNode;
@@ -34,6 +38,8 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
   columnState,
   onOpenReview,
   reviewActive,
+  onOpenCalendar,
+  calendarActive,
   showCriticalPath,
   onCriticalPathChange,
   overflowMenu,
@@ -111,6 +117,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
           Review
         </button>
       )}
+      {onOpenCalendar && <WorkingCalendarButton onClick={onOpenCalendar} active={calendarActive} />}
 
       {viewMode === 'gantt' && (
         <button

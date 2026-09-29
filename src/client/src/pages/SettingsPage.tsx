@@ -10,6 +10,7 @@ import {
   Accessibility,
   Users,
   Brain,
+  CalendarDays,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { ProfileTab } from './settings/ProfileTab';
@@ -21,12 +22,14 @@ import { ApiKeysTab } from './settings/ApiKeysTab';
 import { WebhooksTab } from './settings/WebhooksTab';
 import { DangerZoneTab } from './settings/DangerZoneTab';
 import { AIContextTab } from './settings/AIContextTab';
+import { HolidaysTab } from './settings/HolidaysTab';
 
-type Tab = 'profile' | 'team' | 'notifications' | 'display' | 'accessibility' | 'ai-context' | 'api-keys' | 'webhooks' | 'danger';
+type Tab = 'profile' | 'team' | 'holidays' | 'notifications' | 'display' | 'accessibility' | 'ai-context' | 'api-keys' | 'webhooks' | 'danger';
 
 const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
   { id: 'team', label: 'Team', icon: <Users className="w-4 h-4" /> },
+  { id: 'holidays', label: 'Company holidays', icon: <CalendarDays className="w-4 h-4" /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
   { id: 'display', label: 'Display', icon: <Palette className="w-4 h-4" /> },
   { id: 'accessibility', label: 'Accessibility', icon: <Accessibility className="w-4 h-4" /> },
@@ -87,6 +90,7 @@ export const SettingsPage: React.FC = () => {
       <div id={`settings-panel-${activeTab}`} role="tabpanel" aria-labelledby={`settings-tab-${activeTab}`}>
         {activeTab === 'profile' && <ProfileTab />}
         {activeTab === 'team' && canManageTeam && <TeamTab />}
+        {activeTab === 'holidays' && <HolidaysTab />}
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'display' && <DisplayTab />}
         {activeTab === 'accessibility' && <AccessibilityTab />}

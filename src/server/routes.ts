@@ -31,7 +31,7 @@ import { importRoutes } from './routes/scheduling/import';
 import { scheduleReviewRoutes } from './routes/scheduling/scheduleReview';
 import { scheduleFixRoutes } from './routes/scheduling/scheduleFix';
 import { changeHistoryRoutes } from './routes/scheduling/changeHistory';
-import { calendarRoutes } from './routes/scheduling/calendars';
+import { calendarRoutes, companyHolidayRoutes } from './routes/scheduling/calendars';
 
 // AI
 import { aiChatRoutes } from './routes/ai/aiChat';
@@ -178,6 +178,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(scheduleFixRoutes, { prefix: '/api/v1/schedules' });
   await fastify.register(changeHistoryRoutes, { prefix: '/api/v1/schedules' });
   await fastify.register(calendarRoutes);
+  await fastify.register(companyHolidayRoutes);
 
   // AI
   await fastify.register(aiChatRoutes, { prefix: '/api/v1/ai-chat' });

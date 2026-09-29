@@ -1,9 +1,11 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { calendarService } from '../../services/CalendarService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { workingCalendarService, CalendarChangeError } from '../../services/WorkingCalendarService';
+import { organizationService } from '../../services/OrganizationService';
 
 const createCalendarSchema = z.object({
   name: z.string().min(1).max(255),
@@ -22,6 +24,23 @@ const addExceptionSchema = z.object({
   type: z.enum(['holiday', 'working']).default('holiday'),
   name: z.string().max(255).optional(),
 });
+
+const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-12-25');
+const projectChangeSchema = z.union([
+  z.object({ workingDays: z.array(z.number().int().min(0).max(6)).min(1, 'Keep at least one working day in the week').max(7) }),
+  z.object({ add: z.object({ date: ymd, type: z.enum(['holiday', 'working']), name: z.string().max(255).optional() }) }),
+  z.object({ removeId: z.string().min(1).max(64) }),
+]);
+const companyChangeSchema = z.union([
+  z.object({ add: z.object({ date: ymd, name: z.string().max(255).optional() }) }),
+  z.object({ removeId: z.string().min(1).max(64) }),
+]);
+
+function badChange(reply: any, err: any) {
+  if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', message: err.issues[0]?.message ?? 'Check the date and try again' });
+  if (err instanceof CalendarChangeError) return reply.status(400).send({ error: 'Validation error', message: err.message });
+  throw err;
+}
 
 export async function calendarRoutes(fastify: FastifyInstance) {
   // These routes had no login check at all (Sep 2026 audit). Without a login the server
@@ -110,6 +129,28 @@ export async function calendarRoutes(fastify: FastifyInstance) {
     return { success: deleted };
   });
 
+  // Working calendar screen: the project's weekdays, its own days off / working days, the company holidays
+  fastify.get('/api/v1/projects/:projectId/working-calendar', async (req) => {
+    const { projectId } = req.params as { projectId: string };
+    return workingCalendarService.get(projectId);
+  });
+
+  // Which tasks a calendar change would move (nothing is saved)
+  fastify.post('/api/v1/projects/:projectId/working-calendar/preview', async (req, reply) => {
+    const { projectId } = req.params as { projectId: string };
+    try {
+      return await workingCalendarService.previewProjectChange(projectId, projectChangeSchema.parse(req.body));
+    } catch (err) { return badChange(reply, err); }
+  });
+
+  // Save the change and move the tasks (one Schedule History line per plan, with Undo)
+  fastify.post('/api/v1/projects/:projectId/working-calendar/apply', async (req, reply) => {
+    const { projectId } = req.params as { projectId: string };
+    try {
+      return await workingCalendarService.applyProjectChange(projectId, projectChangeSchema.parse(req.body));
+    } catch (err) { return badChange(reply, err); }
+  });
+
   // Get non-working dates for Gantt shading
   fastify.get('/api/v1/projects/:projectId/non-working-dates', async (req) => {
     const { projectId } = req.params as { projectId: string };
@@ -117,5 +158,43 @@ export async function calendarRoutes(fastify: FastifyInstance) {
     if (!start || !end) return { dates: [] };
     const dates = await calendarService.getNonWorkingDates(projectId, start, end);
     return { dates };
+  });
+}
+
+/** Company owner, admin or PMO — the people who may change the company holidays */
+async function orgAdminOnly(request: FastifyRequest, reply: FastifyReply) {
+  const user = request.user!;
+  if (['admin', 'pmo'].includes(user.role)) return;
+  const org = await organizationService.findByUserId(user.userId).catch(() => null);
+  if (org && org.ownerUserId === user.userId) return;
+  return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner or an admin can change the company holidays.' });
+}
+
+async function canEditCompanyHolidays(request: FastifyRequest): Promise<boolean> {
+  const user = request.user!;
+  if (['admin', 'pmo'].includes(user.role)) return true;
+  const org = await organizationService.findByUserId(user.userId).catch(() => null);
+  return !!org && org.ownerUserId === user.userId;
+}
+
+/** Company holidays: one list per company, used by every project's working calendar */
+export async function companyHolidayRoutes(fastify: FastifyInstance) {
+  fastify.addHook('preHandler', authMiddleware);
+
+  fastify.get('/api/v1/company-holidays', { preHandler: [requireScope('read')] }, async (req) => {
+    const { calendarService } = await import('../../services/CalendarService');
+    return { holidays: await calendarService.listCompanyHolidays(), canEdit: await canEditCompanyHolidays(req) };
+  });
+
+  fastify.post('/api/v1/company-holidays/preview', { preHandler: [requireScope('write'), orgAdminOnly] }, async (req, reply) => {
+    try {
+      return await workingCalendarService.previewCompanyChange(companyChangeSchema.parse(req.body));
+    } catch (err) { return badChange(reply, err); }
+  });
+
+  fastify.post('/api/v1/company-holidays/apply', { preHandler: [requireScope('write'), orgAdminOnly] }, async (req, reply) => {
+    try {
+      return await workingCalendarService.applyCompanyChange(companyChangeSchema.parse(req.body), req.user!.userId);
+    } catch (err) { return badChange(reply, err); }
   });
 }

@@ -100,6 +100,8 @@ export function GanttChart({
   onCriticalPathChange,
   scheduleOverflowMenu,
   onOpenReview,
+  onOpenCalendar,
+  calendarActive,
   reviewActive,
   reviewFlagMap,
   focusTaskId,
@@ -180,6 +182,9 @@ export function GanttChart({
   scheduleOverflowMenu?: React.ReactNode;
   /** Opens the Schedule Review panel (toolbar button) */
   onOpenReview?: () => void;
+  /** Opens the project's working calendar (toolbar button) */
+  onOpenCalendar?: () => void;
+  calendarActive?: boolean;
   reviewActive?: boolean;
   /** taskId → tooltip for rows flagged Critical/High by Schedule Review */
   reviewFlagMap?: Map<string, string>;
@@ -2356,6 +2361,8 @@ export function GanttChart({
         onCriticalPathChange={onCriticalPathChange}
         overflowMenu={scheduleOverflowMenu}
         onOpenReview={onOpenReview}
+        onOpenCalendar={onOpenCalendar}
+        calendarActive={calendarActive}
         reviewActive={reviewActive}
       />
 

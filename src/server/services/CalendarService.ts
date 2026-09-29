@@ -22,9 +22,15 @@ export interface CalendarException {
   createdAt: string;
 }
 
-// In-memory cache per calendar
-const exceptionCache = new Map<string, Set<string>>();
-const workingExceptionCache = new Map<string, Set<string>>();
+export interface CompanyHoliday { id: string; date: string; name: string }
+
+/** What decides whether a day is worked in a project (see CalendarService.isWorking) */
+export interface CalendarSpec {
+  workingDays: number[];   // 0=Sun … 6=Sat
+  holidays: Set<string>;   // this project's days off
+  working: Set<string>;    // this project's extra working days
+  company: Set<string>;    // company holidays
+}
 
 function rowToCalendar(row: any): ProjectCalendar {
   let workingDays: number[];
@@ -107,13 +113,11 @@ export class CalendarService {
     if (fields.length === 0) return this.findById(id);
     values.push(id);
     await databaseService.query(`UPDATE project_calendars SET ${fields.join(', ')} WHERE id = ?`, values);
-    this.invalidateCache(id);
     return this.findById(id);
   }
 
   async delete(id: string): Promise<boolean> {
     const result: any = await databaseService.query('DELETE FROM project_calendars WHERE id = ? AND is_default = 0', [id]);
-    this.invalidateCache(id);
     return (result.affectedRows ?? 0) > 0;
   }
 
@@ -135,7 +139,6 @@ export class CalendarService {
        ON DUPLICATE KEY UPDATE type = VALUES(type), name = VALUES(name)`,
       [id, calendarId, date, type, name || null],
     );
-    this.invalidateCache(calendarId);
     const rows = await databaseService.query(
       'SELECT * FROM calendar_exceptions WHERE calendar_id = ? AND exception_date = ?',
       [calendarId, date],
@@ -144,104 +147,113 @@ export class CalendarService {
   }
 
   async removeException(exceptionId: string): Promise<boolean> {
-    const rows = await databaseService.query('SELECT calendar_id FROM calendar_exceptions WHERE id = ?', [exceptionId]);
     const result: any = await databaseService.query('DELETE FROM calendar_exceptions WHERE id = ?', [exceptionId]);
-    if (rows.length > 0) this.invalidateCache(rows[0].calendar_id);
     return (result.affectedRows ?? 0) > 0;
+  }
+
+  // --- Company holidays (one list per company, every project picks them up) ---
+
+  async listCompanyHolidays(): Promise<CompanyHoliday[]> {
+    const rows = await databaseService.query('SELECT * FROM company_holidays ORDER BY holiday_date');
+    return rows.map((r: any) => ({ id: r.id, date: String(r.holiday_date).slice(0, 10), name: r.name ?? '' }));
+  }
+
+  async addCompanyHoliday(date: string, name: string | undefined, createdBy: string | null): Promise<CompanyHoliday> {
+    const id = uuidv4();
+    await databaseService.query(
+      `INSERT INTO company_holidays (id, holiday_date, name, created_by) VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE name = VALUES(name)`,
+      [id, date, name || null, createdBy],
+    );
+    const rows = await databaseService.query('SELECT * FROM company_holidays WHERE holiday_date = ?', [date]);
+    return { id: rows[0].id, date, name: rows[0].name ?? '' };
+  }
+
+  async removeCompanyHoliday(id: string): Promise<CompanyHoliday | null> {
+    const rows = await databaseService.query('SELECT * FROM company_holidays WHERE id = ?', [id]);
+    if (!rows.length) return null;
+    await databaseService.query('DELETE FROM company_holidays WHERE id = ?', [id]);
+    return { id, date: String(rows[0].holiday_date).slice(0, 10), name: rows[0].name ?? '' };
   }
 
   // --- Working day logic ---
 
-  private async loadExceptions(calendarId: string): Promise<{ holidays: Set<string>; workingDays: Set<string> }> {
-    if (exceptionCache.has(calendarId) && workingExceptionCache.has(calendarId)) {
-      return { holidays: exceptionCache.get(calendarId)!, workingDays: workingExceptionCache.get(calendarId)! };
-    }
-    const exceptions = await this.getExceptions(calendarId);
-    const holidays = new Set<string>();
-    const working = new Set<string>();
-    for (const ex of exceptions) {
-      if (ex.type === 'holiday') holidays.add(ex.exceptionDate);
-      else working.add(ex.exceptionDate);
-    }
-    exceptionCache.set(calendarId, holidays);
-    workingExceptionCache.set(calendarId, working);
-    return { holidays, workingDays: working };
-  }
-
-  private invalidateCache(calendarId: string) {
-    exceptionCache.delete(calendarId);
-    workingExceptionCache.delete(calendarId);
+  /**
+   * Everything that decides whether a day is worked in a project: its working weekdays,
+   * its own days off and extra working days, and the company holidays. Read fresh each
+   * time (a few small queries) — a cache here once hid calendar edits.
+   */
+  async calendarSpec(projectId: string): Promise<CalendarSpec> {
+    const calendar = await this.getOrCreateDefault(projectId);
+    const exceptions = await this.getExceptions(calendar.id);
+    const company = await this.listCompanyHolidays().catch(() => [] as CompanyHoliday[]);
+    return {
+      workingDays: calendar.workingDays,
+      holidays: new Set(exceptions.filter(e => e.type === 'holiday').map(e => e.exceptionDate)),
+      working: new Set(exceptions.filter(e => e.type === 'working').map(e => e.exceptionDate)),
+      company: new Set(company.map(c => c.date)),
+    };
   }
 
   /**
-   * Is this calendar day a working day?
+   * Is this calendar day ('YYYY-MM-DD') worked? The project's own day off wins, then
+   * the project's extra working day (which can override a company holiday), then the
+   * company holiday, then the working weekdays.
    *
-   * Takes a calendar date ('YYYY-MM-DD'), not a Date. It used to take a Date built at
-   * LOCAL midnight, read its day-of-week with a local getter, but look holidays up by
-   * `toISOString()` — which converts to UTC. West of UTC that key was the previous day,
-   * so holidays were missed, and `addWorkingDays` could return the date it was given.
-   * That wrote wrong dates into schedules. A calendar day has no time zone, so the
-   * ambiguity is removed by not having a Date at all.
+   * Takes a calendar date, not a Date: a Date built at local midnight but looked up by
+   * `toISOString()` (UTC) once missed holidays west of UTC and wrote wrong dates.
    */
-  isWorkingDay(date: CalendarDate, calendar: ProjectCalendar, holidays: Set<string>, workingExceptions: Set<string>): boolean {
-    const dateStr = toDateString(date);
-    if (!dateStr) return false;
-    // Exception overrides
-    if (holidays.has(dateStr)) return false;
-    if (workingExceptions.has(dateStr)) return true;
-    // Regular working day check
-    const day = dayOfWeekFor(dateStr);
-    return day !== null && calendar.workingDays.includes(day);
+  static isWorking(date: CalendarDate, spec: CalendarSpec): boolean {
+    const d = toDateString(date);
+    if (!d) return false;
+    if (spec.holidays.has(d)) return false;
+    if (spec.working.has(d)) return true;
+    if (spec.company.has(d)) return false;
+    const day = dayOfWeekFor(d);
+    return day !== null && spec.workingDays.includes(day);
   }
 
-  async addWorkingDays(startDate: string, days: number, calendar: ProjectCalendar): Promise<string> {
-    const { holidays, workingDays } = await this.loadExceptions(calendar.id);
+  /** A quick yes/no working-day test for a project (or for a proposed calendar) */
+  async workingDayChecker(projectId: string, spec?: CalendarSpec): Promise<(date: string) => boolean> {
+    const s = spec ?? await this.calendarSpec(projectId);
+    return (date: string) => CalendarService.isWorking(date, s);
+  }
+
+  async addWorkingDays(startDate: string, days: number, projectId: string): Promise<string> {
+    const spec = await this.calendarSpec(projectId);
     let cursor = toDateString(startDate);
     if (!cursor) return startDate;
     let remaining = Math.abs(days);
     const direction = days >= 0 ? 1 : -1;
-
     while (remaining > 0) {
       cursor = addDays(cursor, direction)!;
-      if (this.isWorkingDay(cursor, calendar, holidays, workingDays)) {
-        remaining--;
-      }
+      if (CalendarService.isWorking(cursor, spec)) remaining--;
     }
     return cursor;
   }
 
-  async countWorkingDays(startDate: string, endDate: string, calendar: ProjectCalendar): Promise<number> {
-    const { holidays, workingDays } = await this.loadExceptions(calendar.id);
+  async countWorkingDays(startDate: string, endDate: string, projectId: string): Promise<number> {
+    const spec = await this.calendarSpec(projectId);
     let cursor = toDateString(startDate);
     const end = toDateString(endDate);
     if (!cursor || !end) return 0;
     let count = 0;
     while (cursor <= end) {
-      if (this.isWorkingDay(cursor, calendar, holidays, workingDays)) count++;
+      if (CalendarService.isWorking(cursor, spec)) count++;
       cursor = addDays(cursor, 1)!;
     }
     return count;
   }
 
-  /** A quick yes/no working-day test for a project's calendar: weekends, holidays, days marked working */
-  async workingDayChecker(projectId: string): Promise<(date: string) => boolean> {
-    const calendar = await this.getOrCreateDefault(projectId);
-    const { holidays, workingDays } = await this.loadExceptions(calendar.id);
-    return (date: string) => this.isWorkingDay(date, calendar, holidays, workingDays);
-  }
-
-  /** Get non-working dates in a date range (for Gantt shading) */
+  /** Get non-working dates in a date range (for Gantt shading and the Duration column) */
   async getNonWorkingDates(projectId: string, startDate: string, endDate: string): Promise<string[]> {
-    const calendar = await this.getOrCreateDefault(projectId);
-    const { holidays, workingDays } = await this.loadExceptions(calendar.id);
+    const spec = await this.calendarSpec(projectId);
     const result: string[] = [];
     let cursor = toDateString(startDate);
     const end = toDateString(endDate);
     if (!cursor || !end) return result;
-    while (cursor <= end) {
-      if (!this.isWorkingDay(cursor, calendar, holidays, workingDays)) {
-        result.push(cursor);
-      }
+    for (let i = 0; cursor <= end && i < 3700; i++) {
+      if (!CalendarService.isWorking(cursor, spec)) result.push(cursor);
       cursor = addDays(cursor, 1)!;
     }
     return result;

@@ -190,6 +190,39 @@ describe('ScheduleRecomputeService', () => {
     expect(updateDates).toHaveBeenCalledWith('B', '2026-10-10', '2026-10-12'); // Sat (working) + Mon
   });
 
+  it('dry run works out the moves but writes nothing', async () => {
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' });
+    const B = task({ id: 'B', startDate: '2026-10-05', endDate: '2026-10-06', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    findTasksByScheduleId.mockResolvedValue([A, B]);
+    const { scheduleRecomputeService } = await import('../../services/ScheduleRecomputeService');
+    const res = await scheduleRecomputeService.recompute('s1', { dryRun: true });
+    expect(res.deltas[0]).toMatchObject({ taskId: 'B', newStart: '2026-10-12', newEnd: '2026-10-13' });
+    expect(updateDates).not.toHaveBeenCalled();
+    await new Promise(r => setTimeout(r, 10));
+    expect(append).not.toHaveBeenCalled();
+  });
+
+  it('re-span: a new day off stretches the task over it and pushes what follows', async () => {
+    // Proposed calendar adds Wed 7 Oct as a day off
+    const next = (d: Date) => d.toISOString().slice(0, 10) !== '2026-10-07' && d.getUTCDay() !== 0 && d.getUTCDay() !== 6;
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' }); // 5 days
+    const B = task({ id: 'B', startDate: '2026-10-12', endDate: '2026-10-12', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    findTasksByScheduleId.mockResolvedValue([A, B]);
+    const { scheduleRecomputeService } = await import('../../services/ScheduleRecomputeService');
+    const res = await scheduleRecomputeService.recompute('s1', { respan: true, dryRun: true, calendar: { isWorking: next, wasWorking: (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 } });
+    expect(res.deltas.find(d => d.taskId === 'A')).toMatchObject({ newStart: '2026-10-05', newEnd: '2026-10-12' });
+    expect(res.deltas.find(d => d.taskId === 'B')).toMatchObject({ newStart: '2026-10-13', newEnd: '2026-10-13' });
+  });
+
+  it('re-span: a task starting on a Saturday moves to Monday and keeps its working length', async () => {
+    const A = task({ id: 'A', startDate: '2026-10-10', endDate: '2026-10-13' }); // Sat–Tue = 2 working days
+    findTasksByScheduleId.mockResolvedValue([A]);
+    const { scheduleRecomputeService } = await import('../../services/ScheduleRecomputeService');
+    const res = await scheduleRecomputeService.recompute('s1', { respan: true, reason: 'days_off_cleanup' });
+    expect(updateDates).toHaveBeenCalledWith('A', '2026-10-12', '2026-10-13');
+    expect(res.tasksMoved).toBe(1);
+  });
+
   it('a task that is not pushed keeps its dates exactly, even over a weekend', async () => {
     const A = task({ id: 'A', startDate: '2026-10-01', endDate: '2026-10-02' });
     const B = task({ id: 'B', startDate: '2026-10-09', endDate: '2026-10-11', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });

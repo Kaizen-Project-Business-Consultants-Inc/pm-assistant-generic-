@@ -32,6 +32,7 @@ import { BurndownPanel } from '../../components/burndown/BurndownPanel';
 import { AutoReschedulePanel } from '../../components/schedule/AutoReschedulePanel';
 import { ImportModal } from '../../components/schedule/ImportModal';
 import { ScheduleReviewPanel, type ScheduleReview } from '../../components/schedule/review/ScheduleReviewPanel';
+import { WorkingCalendarPanel } from '../../components/schedule/calendar/WorkingCalendarPanel';
 import { ScheduleHistoryPanel } from '../../components/schedule/ScheduleHistoryPanel';
 import { useProjectRole } from '../../hooks/useProjectRole';
 import { TaskListMobile } from '../../components/tasks/TaskListMobile';
@@ -400,6 +401,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   const [showReschedulePanel, setShowReschedulePanel] = useState(false);
   // Schedule Review panel + "Show rows" filter from a finding
   const [showReviewPanel, setShowReviewPanel] = useState(false);
+  const [showCalendarPanel, setShowCalendarPanel] = useState(false);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [reviewRowFilter, setReviewRowFilter] = useState<{ taskIds: Set<string>; label: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1272,6 +1274,8 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           columnState={columnState}
           onOpenReview={() => setShowReviewPanel(true)}
           reviewActive={showReviewPanel || !!reviewRowFilter}
+          onOpenCalendar={() => setShowCalendarPanel(true)}
+          calendarActive={showCalendarPanel}
           showCriticalPath={showCriticalPath}
           onCriticalPathChange={setShowCriticalPath}
           overflowMenu={scheduleOverflowMenu}
@@ -1401,6 +1405,8 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           onCriticalPathChange={setShowCriticalPath}
           onOpenReview={() => setShowReviewPanel(true)}
           reviewActive={showReviewPanel || !!reviewRowFilter}
+          onOpenCalendar={() => setShowCalendarPanel(true)}
+          calendarActive={showCalendarPanel}
           reviewFlagMap={reviewFlagMap}
           scheduleOverflowMenu={scheduleOverflowMenu}
         />
@@ -1500,6 +1506,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           allTasks={tasks}
           scheduleId={schedule.id}
           projectId={projectId}
+          workCalendar={workCalendar}
           onSave={canEdit ? (data) => updateMutation.mutate({ taskId: editingTask.id, data }) : undefined}
           onDelete={canEdit ? (taskId) => deleteMutation.mutate(taskId) : undefined}
           onClose={() => setEditingTask(null)}
@@ -1514,6 +1521,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           allTasks={tasks}
           scheduleId={schedule.id}
           projectId={projectId}
+          workCalendar={workCalendar}
           activeTaskId={createTaskDates?.parentTaskId || activeTaskId}
           initialStartDate={createTaskDates?.startDate}
           initialEndDate={createTaskDates?.endDate}
@@ -1555,6 +1563,19 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
           canEdit={canEdit}
           currentUserId={user?.id}
           onClose={() => setShowHistoryPanel(false)}
+        />
+      )}
+      {showCalendarPanel && (
+        <WorkingCalendarPanel
+          projectId={projectId}
+          canEdit={canEdit}
+          onClose={() => setShowCalendarPanel(false)}
+          onApplied={() => {
+            // Every plan in the project may have moved; only the open one refetches now
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['nonWorkingDates', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['schedule-changes', schedule.id] });
+          }}
         />
       )}
       {showReviewPanel && (

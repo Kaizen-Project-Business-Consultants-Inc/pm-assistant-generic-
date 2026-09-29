@@ -11,7 +11,7 @@ vi.mock('uuid', () => ({
   v4: vi.fn(() => 'test-uuid-1234'),
 }));
 
-import { CalendarService, type ProjectCalendar } from '../../services/CalendarService';
+import { CalendarService, type ProjectCalendar, type CalendarSpec } from '../../services/CalendarService';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 let calIdCounter = 0;
@@ -327,260 +327,103 @@ describe('CalendarService', () => {
   // ── removeException ─────────────────────────────────────────────
   describe('removeException', () => {
     it('returns true when exception is removed', async () => {
-      mockQuery
-        .mockResolvedValueOnce([{ calendar_id: 'cal-1' }]) // SELECT calendar_id
-        .mockResolvedValueOnce({ affectedRows: 1 }); // DELETE
-
-      const result = await service.removeException('exc-1');
-
-      expect(result).toBe(true);
+      mockQuery.mockResolvedValueOnce({ affectedRows: 1 });
+      expect(await service.removeException('exc-1')).toBe(true);
     });
 
     it('returns false when exception does not exist', async () => {
-      mockQuery
-        .mockResolvedValueOnce([]) // SELECT returns nothing
-        .mockResolvedValueOnce({ affectedRows: 0 }); // DELETE affects nothing
-
-      const result = await service.removeException('exc-missing');
-
-      expect(result).toBe(false);
+      mockQuery.mockResolvedValueOnce({ affectedRows: 0 });
+      expect(await service.removeException('exc-missing')).toBe(false);
     });
   });
 
-  // ── isWorkingDay ────────────────────────────────────────────────
-  describe('isWorkingDay', () => {
-    const calendar = makeCalendar();
-    const emptyHolidays = new Set<string>();
-    const emptyWorkingExc = new Set<string>();
-
-    it('returns true for a regular weekday (Mon-Fri)', () => {
-      // 2026-01-05 is a Monday
-      const monday = '2026-01-05';
-      expect(service.isWorkingDay(monday, calendar, emptyHolidays, emptyWorkingExc)).toBe(true);
+  // ── isWorking (static, pure) ─────────────────────────────────────
+  describe('isWorking', () => {
+    const spec = (over: Partial<CalendarSpec> = {}): CalendarSpec => ({
+      workingDays: [1, 2, 3, 4, 5], holidays: new Set(), working: new Set(), company: new Set(), ...over,
     });
 
-    it('returns false for a weekend day', () => {
-      // 2026-01-03 is a Saturday
-      const saturday = '2026-01-03';
-      expect(service.isWorkingDay(saturday, calendar, emptyHolidays, emptyWorkingExc)).toBe(false);
+    it('weekdays are worked, weekends are not', () => {
+      expect(CalendarService.isWorking('2026-01-05', spec())).toBe(true);  // Mon
+      expect(CalendarService.isWorking('2026-01-10', spec())).toBe(false); // Sat
     });
-
-    it('returns false when date is a holiday exception', () => {
-      const monday = '2026-01-05';
-      const hols = new Set(['2026-01-05']);
-      expect(service.isWorkingDay(monday, calendar, hols, emptyWorkingExc)).toBe(false);
+    it("a project's day off is not worked", () => {
+      expect(CalendarService.isWorking('2026-01-07', spec({ holidays: new Set(['2026-01-07']) }))).toBe(false);
     });
-
-    it('returns true when weekend date is a working exception', () => {
-      // 2026-01-03 is a Saturday
-      const saturday = '2026-01-03';
-      const workExc = new Set(['2026-01-03']);
-      expect(service.isWorkingDay(saturday, calendar, emptyHolidays, workExc)).toBe(true);
+    it('a Saturday marked working is worked', () => {
+      expect(CalendarService.isWorking('2026-01-10', spec({ working: new Set(['2026-01-10']) }))).toBe(true);
     });
-
-    it('holiday exception takes priority over working exception', () => {
-      const monday = '2026-01-05';
-      const hols = new Set(['2026-01-05']);
-      const workExc = new Set(['2026-01-05']);
-      // holidays are checked first
-      expect(service.isWorkingDay(monday, calendar, hols, workExc)).toBe(false);
+    it('a company holiday is not worked, unless the project marks it working', () => {
+      const company = new Set(['2026-12-25']);
+      expect(CalendarService.isWorking('2026-12-25', spec({ company }))).toBe(false);
+      expect(CalendarService.isWorking('2026-12-25', spec({ company, working: new Set(['2026-12-25']) }))).toBe(true);
     });
-
-    it('respects custom working days (e.g., Sat-Wed)', () => {
-      const customCalendar = makeCalendar({ workingDays: [0, 1, 2, 3, 6] }); // Sun, Mon, Tue, Wed, Sat
-      // 2026-01-03 is Saturday (day 6) - should be working
-      const saturday = '2026-01-03';
-      expect(service.isWorkingDay(saturday, customCalendar, emptyHolidays, emptyWorkingExc)).toBe(true);
-      // 2026-01-08 is Thursday (day 4) - should NOT be working
-      const thursday = '2026-01-08';
-      expect(service.isWorkingDay(thursday, customCalendar, emptyHolidays, emptyWorkingExc)).toBe(false);
+    it('respects custom working days (Sat–Wed)', () => {
+      const s = spec({ workingDays: [6, 0, 1, 2, 3] });
+      expect(CalendarService.isWorking('2026-01-10', s)).toBe(true);  // Sat
+      expect(CalendarService.isWorking('2026-01-08', s)).toBe(false); // Thu
+    });
+    it('a bad date is not worked', () => {
+      expect(CalendarService.isWorking('not-a-date', spec())).toBe(false);
     });
   });
 
-  // ── addWorkingDays ──────────────────────────────────────────────
-  describe('addWorkingDays', () => {
-    it('adds working days forward skipping weekends', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([]); // loadExceptions → getExceptions
-      // 2026-01-05 is Monday, add 5 working days → Mon-Fri counted, lands on Fri 2026-01-12
-      // Actually: start Mon, step +1 each iteration: Tue(4), Wed(3), Thu(2), Fri(1), Sat skip, Sun skip, Mon(0) → 2026-01-12
-      const result = await service.addWorkingDays('2026-01-05', 5, cal);
-      expect(result).toBe('2026-01-12');
+  /** calendarSpec reads: default calendar, its exceptions, company holidays */
+  function mockSpec(opts: { exceptions?: any[]; company?: Array<{ id: string; holiday_date: string; name: string }>; workingDays?: number[] } = {}) {
+    const calId = uniqueCalId();
+    mockQuery
+      .mockResolvedValueOnce([makeCalendarRow({ id: calId, working_days: JSON.stringify(opts.workingDays ?? [1, 2, 3, 4, 5]) })])
+      .mockResolvedValueOnce((opts.exceptions ?? []).map(e => makeExceptionRow({ calendar_id: calId, ...e })))
+      .mockResolvedValueOnce(opts.company ?? []);
+  }
+
+  describe('addWorkingDays / countWorkingDays', () => {
+    it('adds working days across a weekend and a company holiday', async () => {
+      mockSpec({ company: [{ id: 'h1', holiday_date: '2026-01-12', name: 'Test' }] });
+      // Fri 9 Jan + 2 working days: Mon 12 is a company holiday → Tue 13, Wed 14
+      expect(await service.addWorkingDays('2026-01-09', 2, 'proj-1')).toBe('2026-01-14');
     });
-
-    it('adds working days forward across a weekend', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([]); // loadExceptions
-      // 2026-01-08 is Thursday, add 2 working days → Fri(1), Sat skip, Sun skip, Mon(0) → 2026-01-12
-      const result = await service.addWorkingDays('2026-01-08', 2, cal);
-      expect(result).toBe('2026-01-12');
+    it('goes backward for negative days', async () => {
+      mockSpec();
+      expect(await service.addWorkingDays('2026-01-12', -1, 'proj-1')).toBe('2026-01-09');
     });
-
-    it('handles negative days (goes backward)', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([]);
-      // 2026-01-12 is Monday, subtract 2 → Fri(1), Thu(0) → 2026-01-08
-      const result = await service.addWorkingDays('2026-01-12', -2, cal);
-      expect(result).toBe('2026-01-08');
-    });
-
-    it('returns next working day when adding 1 day from Friday', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([]);
-      // 2026-01-09 is Friday, add 1 → Sat skip, Sun skip, Mon(0) → 2026-01-12
-      const result = await service.addWorkingDays('2026-01-09', 1, cal);
-      expect(result).toBe('2026-01-12');
-    });
-
-    it('skips holiday exceptions', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      // Monday 2026-01-05 is a holiday
-      mockQuery.mockResolvedValueOnce([
-        makeExceptionRow({ calendar_id: cal.id, exception_date: '2026-01-05', type: 'holiday' }),
-      ]);
-
-      // Start Fri 2026-01-02, add 1 → Sat skip, Sun skip, Mon holiday skip, Tue(0) → 2026-01-06
-      const result = await service.addWorkingDays('2026-01-02', 1, cal);
-      expect(result).toBe('2026-01-06');
-    });
-
-    it('handles zero days by returning start date', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([]);
-      const result = await service.addWorkingDays('2026-01-05', 0, cal);
-      expect(result).toBe('2026-01-05');
+    it('counts working days, skipping a project day off', async () => {
+      mockSpec({ exceptions: [{ exception_date: '2026-01-07', type: 'holiday' }] });
+      expect(await service.countWorkingDays('2026-01-05', '2026-01-11', 'proj-1')).toBe(4);
     });
   });
 
-  // ── countWorkingDays ────────────────────────────────────────────
-  describe('countWorkingDays', () => {
-    it('counts working days in a single work week', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([]);
-      // Mon 2026-01-05 to Fri 2026-01-09 = 5 working days
-      const result = await service.countWorkingDays('2026-01-05', '2026-01-09', cal);
-      expect(result).toBe(5);
-    });
-
-    it('counts working days across a weekend', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([]);
-      // Fri 2026-01-09 to Mon 2026-01-12 = 2 working days (Fri + Mon)
-      const result = await service.countWorkingDays('2026-01-09', '2026-01-12', cal);
-      expect(result).toBe(2);
-    });
-
-    it('returns 0 for a weekend-only range', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([]);
-      // Sat 2026-01-03 to Sun 2026-01-04 = 0
-      const result = await service.countWorkingDays('2026-01-03', '2026-01-04', cal);
-      expect(result).toBe(0);
-    });
-
-    it('returns 1 for a single working day', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([]);
-      const result = await service.countWorkingDays('2026-01-05', '2026-01-05', cal);
-      expect(result).toBe(1);
-    });
-
-    it('returns 0 for a single non-working day', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([]);
-      const result = await service.countWorkingDays('2026-01-03', '2026-01-03', cal);
-      expect(result).toBe(0);
-    });
-
-    it('excludes holiday exceptions from count', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([
-        makeExceptionRow({ calendar_id: cal.id, exception_date: '2026-01-07', type: 'holiday' }),
-      ]);
-
-      // Mon-Fri but Wed is holiday = 4 working days
-      const result = await service.countWorkingDays('2026-01-05', '2026-01-09', cal);
-      expect(result).toBe(4);
-    });
-
-    it('includes working exceptions in count', async () => {
-      const cal = makeCalendar({ id: uniqueCalId() });
-      mockQuery.mockResolvedValueOnce([
-        makeExceptionRow({ calendar_id: cal.id, exception_date: '2026-01-03', type: 'working' }),
-      ]);
-
-      // Sat 2026-01-03 is now a working day
-      const result = await service.countWorkingDays('2026-01-03', '2026-01-03', cal);
-      expect(result).toBe(1);
-    });
-  });
-
-  // ── getNonWorkingDates ──────────────────────────────────────────
   describe('getNonWorkingDates', () => {
-    it('returns weekend dates in range', async () => {
-      const projId = 'proj-nwd-1';
-      const calId = uniqueCalId();
-      const calRow = makeCalendarRow({ id: calId, project_id: projId });
-      mockQuery
-        .mockResolvedValueOnce([calRow]) // getOrCreateDefault SELECT
-        .mockResolvedValueOnce([]); // getExceptions (no exceptions)
-
-      // Mon 2026-01-05 to Sun 2026-01-11
-      const result = await service.getNonWorkingDates(projId, '2026-01-05', '2026-01-11');
-
-      expect(result).toEqual(['2026-01-10', '2026-01-11']); // Sat + Sun
+    it('lists weekends, project days off and company holidays; not a Saturday marked working', async () => {
+      mockSpec({
+        exceptions: [
+          { exception_date: '2026-01-07', type: 'holiday' },
+          { exception_date: '2026-01-10', type: 'working' },
+        ],
+        company: [{ id: 'h1', holiday_date: '2026-01-06', name: 'Company day' }],
+      });
+      const result = await service.getNonWorkingDates('proj-1', '2026-01-05', '2026-01-11');
+      expect(result).toEqual(['2026-01-06', '2026-01-07', '2026-01-11']);
     });
-
-    it('includes holiday exceptions as non-working', async () => {
-      const projId = 'proj-nwd-2';
-      const calId = uniqueCalId();
-      const calRow = makeCalendarRow({ id: calId, project_id: projId });
-      mockQuery
-        .mockResolvedValueOnce([calRow]) // getOrCreateDefault
-        .mockResolvedValueOnce([
-          makeExceptionRow({ calendar_id: calId, exception_date: '2026-01-07', type: 'holiday' }),
-        ]); // getExceptions
-
-      // Mon-Fri, Wed is holiday
-      const result = await service.getNonWorkingDates(projId, '2026-01-05', '2026-01-09');
-
-      expect(result).toContain('2026-01-07');
-      expect(result).toHaveLength(1); // Only Wed holiday; no weekends in Mon-Fri
-    });
-
-    it('excludes working exceptions from non-working list', async () => {
-      const projId = 'proj-nwd-3';
-      const calId = uniqueCalId();
-      const calRow = makeCalendarRow({ id: calId, project_id: projId });
-      mockQuery
-        .mockResolvedValueOnce([calRow]) // getOrCreateDefault
-        .mockResolvedValueOnce([
-          makeExceptionRow({ calendar_id: calId, exception_date: '2026-01-10', type: 'working' }),
-        ]); // getExceptions - Sat is working
-
-      // Mon 2026-01-05 to Sun 2026-01-11
-      const result = await service.getNonWorkingDates(projId, '2026-01-05', '2026-01-11');
-
-      // Sat 2026-01-10 is a working exception, so only Sun 2026-01-11 is non-working
-      expect(result).toEqual(['2026-01-11']);
-    });
-
-    it('returns empty array when all days are working', async () => {
-      const projId = 'proj-nwd-4';
-      const calId = uniqueCalId();
-      const calRow = makeCalendarRow({ id: calId, project_id: projId });
-      mockQuery
-        .mockResolvedValueOnce([calRow])
-        .mockResolvedValueOnce([]);
-
-      // Mon-Fri only, no exceptions
-      const result = await service.getNonWorkingDates(projId, '2026-01-05', '2026-01-09');
-
-      expect(result).toEqual([]);
+    it('returns nothing for a bad range', async () => {
+      mockSpec();
+      expect(await service.getNonWorkingDates('proj-1', 'bad', '2026-01-11')).toEqual([]);
     });
   });
 
-  // ── rowToCalendar edge cases ────────────────────────────────────
+  describe('company holidays', () => {
+    it('lists them as plain dates', async () => {
+      mockQuery.mockResolvedValueOnce([{ id: 'h1', holiday_date: '2026-12-25', name: 'Christmas Day' }]);
+      expect(await service.listCompanyHolidays()).toEqual([{ id: 'h1', date: '2026-12-25', name: 'Christmas Day' }]);
+    });
+    it('remove returns what was removed, or null', async () => {
+      mockQuery.mockResolvedValueOnce([{ id: 'h1', holiday_date: '2026-12-25', name: 'Christmas Day' }]).mockResolvedValueOnce({ affectedRows: 1 });
+      expect(await service.removeCompanyHoliday('h1')).toEqual({ id: 'h1', date: '2026-12-25', name: 'Christmas Day' });
+      mockQuery.mockResolvedValueOnce([]);
+      expect(await service.removeCompanyHoliday('nope')).toBeNull();
+    });
+  });
+
   describe('rowToCalendar edge cases', () => {
     it('handles working_days as already-parsed array', async () => {
       const row = { ...makeCalendarRow(), working_days: [1, 2, 3] };

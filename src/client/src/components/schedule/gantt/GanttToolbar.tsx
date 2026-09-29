@@ -5,6 +5,7 @@ import type { SavedView } from '../SavedViewsDropdown';
 import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS, type ColumnKey } from '../tableColumns';
 import { ColumnPickerDropdown } from '../ColumnPickerDropdown';
 import { GanttExportDropdown } from './GanttExportDropdown';
+import { WorkingCalendarButton } from '../calendar/WorkingCalendarButton';
 import {
   type GanttTask,
   type GanttColDef,
@@ -68,6 +69,9 @@ interface GanttToolbarProps {
   overflowMenu?: React.ReactNode;
   onOpenReview?: () => void;
   reviewActive?: boolean;
+  /** Opens the project's working calendar */
+  onOpenCalendar?: () => void;
+  calendarActive?: boolean;
 }
 
 export const GanttToolbar = React.memo(function GanttToolbar({
@@ -121,6 +125,8 @@ export const GanttToolbar = React.memo(function GanttToolbar({
   overflowMenu,
   onOpenReview,
   reviewActive,
+  onOpenCalendar,
+  calendarActive,
 }: GanttToolbarProps) {
   const [showColPicker, setShowColPicker] = useState(false);
   const colPickerRef = useRef<HTMLDivElement>(null);
@@ -387,6 +393,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
             Review
           </button>
         )}
+        {onOpenCalendar && <WorkingCalendarButton onClick={onOpenCalendar} active={calendarActive} />}
         {onAddTask && (
           <button
             onClick={onAddTask}
