@@ -479,7 +479,7 @@ Select multiple tasks to perform bulk operations:
 
 ## 4. Views
 
-The schedule page offers multiple visualization modes:
+The schedule page offers multiple visualization modes: Gantt, Kanban, Table, Calendar, Network, and a progress chart that depends on the project's methodology — **Burndown** for Agile and Hybrid projects, **S-curve** for Waterfall projects. Burndown tracks a fixed sprint scope towards zero, which doesn't fit a months-long waterfall plan; the S-curve shows planned value, earned value and actual cost added up over time (it needs task budgets). A view you last used on another kind of project switches to the right one automatically.
 
 ### Gantt Chart
 

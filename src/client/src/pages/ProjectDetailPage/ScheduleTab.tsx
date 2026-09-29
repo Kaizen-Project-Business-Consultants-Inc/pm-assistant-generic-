@@ -29,6 +29,8 @@ import { TableView } from '../../components/schedule/TableView';
 import { CalendarView } from '../../components/schedule/CalendarView';
 import { NetworkDiagramView } from '../../components/network/NetworkDiagramView';
 import { BurndownPanel } from '../../components/burndown/BurndownPanel';
+import { SCurveView } from '../../components/evm/SCurveView';
+import type { Methodology } from '../../utils/methodology';
 import { AutoReschedulePanel } from '../../components/schedule/AutoReschedulePanel';
 import { ImportModal } from '../../components/schedule/ImportModal';
 import { ScheduleReviewPanel, type ScheduleReview } from '../../components/schedule/review/ScheduleReviewPanel';
@@ -61,22 +63,29 @@ import type { WorkCalendar } from '../../utils/workingDays';
 /** " · 3 tasks moved later" — appended to link messages when the re-flow moved dates */
 const movedSuffix = (n: number) => (n > 0 ? ` · ${n} task${n > 1 ? 's' : ''} moved later` : '');
 
-export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt' }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string }) {
+export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt', methodology = 'waterfall' }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string; methodology?: Methodology }) {
   const queryClient = useQueryClient();
   const breakpoint = useBreakpoint();
   const isMobile = breakpoint === 'mobile';
   const viewModeKey = `schedule-view-mode-${projectId}`;
-  const [viewMode, setViewModeRaw] = useState<'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown'>(() => {
+  const [viewModeRaw, setViewModeRaw] = useState<'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown' | 'scurve'>(() => {
     try {
       const saved = localStorage.getItem(viewModeKey);
-      if (saved && ['gantt', 'kanban', 'table', 'calendar', 'network', 'burndown'].includes(saved)) return saved as any;
+      if (saved && ['gantt', 'kanban', 'table', 'calendar', 'network', 'burndown', 'scurve'].includes(saved)) return saved as any;
     } catch { /* noop */ }
     return defaultViewMode as any;
   });
-  const setViewMode = useCallback((mode: typeof viewMode) => {
+  const setViewMode = useCallback((mode: typeof viewModeRaw) => {
     setViewModeRaw(mode);
     try { localStorage.setItem(viewModeKey, mode); } catch { /* noop */ }
   }, [viewModeKey]);
+  // Burndown is an Agile chart (fixed sprint scope); a waterfall project gets the S-curve in
+  // its place. A remembered view that doesn't fit this project's methodology is swapped.
+  const isWaterfall = methodology === 'waterfall';
+  const viewMode: typeof viewModeRaw =
+    isWaterfall && viewModeRaw === 'burndown' ? 'scurve'
+    : !isWaterfall && viewModeRaw === 'scurve' ? 'burndown'
+    : viewModeRaw;
   const [uploadingSchedule, setUploadingSchedule] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -215,7 +224,9 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
             { mode: 'table' as const, icon: Table2, label: 'Table' },
             { mode: 'calendar' as const, icon: CalendarDays, label: 'Calendar' },
             { mode: 'network' as const, icon: MapPin, label: 'Network' },
-            { mode: 'burndown' as const, icon: TrendingUp, label: 'Burndown' },
+            isWaterfall
+              ? { mode: 'scurve' as const, icon: TrendingUp, label: 'S-curve' }
+              : { mode: 'burndown' as const, icon: TrendingUp, label: 'Burndown' },
           ] as const).map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
@@ -346,7 +357,7 @@ function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule, desktopV
   );
 }
 
-function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImportOpened }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown'; projectId: string; openImportOnLoad?: boolean; onImportOpened?: () => void }) {
+function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImportOpened }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown' | 'scurve'; projectId: string; openImportOnLoad?: boolean; onImportOpened?: () => void }) {
   const queryClient = useQueryClient();
   const [editingTask, setEditingTask] = useState<GanttTask | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -1481,6 +1492,9 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       )}
       {viewMode === 'burndown' && (
         <BurndownPanel scheduleId={schedule.id} />
+      )}
+      {viewMode === 'scurve' && (
+        <SCurveView projectId={projectId} />
       )}
 
       {/* Baseline Variance Report */}

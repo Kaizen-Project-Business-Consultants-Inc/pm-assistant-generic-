@@ -89,6 +89,7 @@ const sections: Section[] = [
       'Drag-and-drop tasks in Kanban and Gantt views',
       'Tick several tasks to link them in one go (Link in order / All wait on it / It waits on all)',
       'Tick several tasks and use Group to put them under a new heading (summary task)',
+      'Progress chart: Burndown for Agile and Hybrid projects, S-curve (planned vs earned vs actual cost) for Waterfall',
       'Private by default: you only see projects you are a member of',
     ],
   },
