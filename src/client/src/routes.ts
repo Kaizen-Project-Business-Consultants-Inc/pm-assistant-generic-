@@ -41,6 +41,7 @@ export const ROUTES = {
   reportBuilder: '/report-builder',
   intake: '/intake',
   help: '/help',
+  helpFull: '/help/guide',
   settings: '/settings',
   changeRequests: '/change-requests',
   goals: '/goals',

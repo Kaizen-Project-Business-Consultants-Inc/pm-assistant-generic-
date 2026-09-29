@@ -127,7 +127,8 @@ Documentation ships in the **same commit** as the code. It is not an afterthough
 | `PRODUCT_MANUAL.md` | Detailed feature documentation |
 | `WORLD_CLASS_FEATURES.md` | Feature specs and benchmarks |
 | `TESTING_GUIDE.md` | How to test the new feature |
-| `docs/USER_GUIDE.md` | End-user documentation |
+| `docs/USER_GUIDE.md` | End-user documentation — shown in the app as Help → Full user guide (`/help/guide`), so it ships with the build |
+| `src/client/src/pages/UserGuidePage.tsx` | The in-app quick guide (Help) — update its sections when a feature a user sees changes |
 | `docs/ADMIN_MANUAL.md` | Admin configuration and operations |
 | `docs/AI_DESIGN_FEATURES.md` | AI/agent-related features |
 | `SECURITY_GUIDE.md` | Auth, security, or access control changes |

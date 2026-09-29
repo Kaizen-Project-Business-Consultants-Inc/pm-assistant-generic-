@@ -42,6 +42,7 @@ const LessonsLearnedPage = lazy(() => import('./pages/LessonsLearnedPage').then(
 const QueryPage = lazy(() => import('./pages/QueryPage').then(m => ({ default: m.QueryPage })));
 const AccountBillingPage = lazy(() => import('./pages/AccountBillingPage').then(m => ({ default: m.AccountBillingPage })));
 const UserGuidePage = lazy(() => import('./pages/UserGuidePage').then(m => ({ default: m.UserGuidePage })));
+const FullUserGuidePage = lazy(() => import('./pages/FullUserGuidePage').then(m => ({ default: m.FullUserGuidePage })));
 const TimesheetPage = lazy(() => import('./pages/TimesheetPage').then(m => ({ default: m.TimesheetPage })));
 const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage').then(m => ({ default: m.IntegrationsPage })));
 const ReportBuilderPage = lazy(() => import('./pages/ReportBuilderPage').then(m => ({ default: m.ReportBuilderPage })));
@@ -193,6 +194,7 @@ function App() {
         <Route path={ROUTES.reportBuilder} element={<PrivateRoute><ReportBuilderPage /></PrivateRoute>} />
         <Route path={ROUTES.intake} element={<PrivateRoute><IntakeFormsPage /></PrivateRoute>} />
         <Route path={ROUTES.help} element={<PrivateRoute><UserGuidePage /></PrivateRoute>} />
+        <Route path={ROUTES.helpFull} element={<PrivateRoute><FullUserGuidePage /></PrivateRoute>} />
         <Route path={ROUTES.settings} element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
         <Route path={ROUTES.changeRequests} element={<PrivateRoute><ChangeRequestsPage /></PrivateRoute>} />
         <Route path={ROUTES.goals} element={<PrivateRoute><GoalsPage /></PrivateRoute>} />

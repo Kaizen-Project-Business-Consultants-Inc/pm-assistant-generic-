@@ -3883,11 +3883,11 @@ Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox s
 
 ## Need Help?
 
-- **In-app help** -- Navigate to the **Help** page from the sidebar, or open the **TopBar user dropdown** (your avatar/name in the top-right corner) and click **Help & Support**. Both links open the same support resources.
+- **In-app help** -- Navigate to the **Help** page from the sidebar, or open the **TopBar user dropdown** (your avatar/name in the top-right corner) and click **Help & Support**. Both open the quick guide; click **Open the full user guide** at the top for this whole guide inside the app, by chapter, with search (it is the same guide, updated with each release).
 - **Email support** -- Contact the support team directly at [support@kpbc.ca](mailto:support@kpbc.ca).
 - **Contextual support links** -- "Need help? Contact support" links appear on the **login page**, **404 page**, and **error pages**. These mailto links pre-fill the subject and body with your current page URL and timestamp so the support team can diagnose faster.
 - **Error reporting** -- If you encounter a crash (error boundary), a "Report this issue" link lets you email the error details directly to support.
-- **Administrators** -- See the [Admin Manual](./ADMIN_MANUAL.md) for system configuration and deployment.
+- **Administrators** -- System configuration and deployment are covered in the Admin Manual (ask your administrator or support for a copy).
 - **API access** -- Generate an API key in Settings to integrate with external tools.
 
 ### Getting new versions

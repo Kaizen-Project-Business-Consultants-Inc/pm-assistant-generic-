@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-29 (user guide inside the app)
+
+- Help → **Open the full user guide** (`/help/guide`, `FullUserGuidePage`): renders `docs/USER_GUIDE.md` (imported `?raw`, lazy chunk ~100 KB gz) by chapter with search; `### … (Admin Only)` parts shown to admins only, `(Admin/Manager)` to admins/PMs/PMO (`utils/userGuide.ts`). One source — the repo guide IS the in-app guide.
+- Quick guide (`UserGuidePage`) refreshed: Morning Briefing, Schedule Review, History & Undo, Resources/Workload/Leveling, Team & Access, bulk ops in the UI; removed the wrong "14-day free trial on paid tiers".
+
 ## 2026-09-29 (Histogram + levelling on real bookings; review v1.5)
 
 - `ResourceLevelingService` rewritten on `findEffectiveAssignments`: per working day (hoursPerWeek/5), other projects as background load, capacity per person/day (availability), names not ids. Levelling: smallest delay within float with fewest over-capacity days (old code took the first "improvement" and never removed the task's own load); reassignment only to people with room. Charts (Resources page, project Resources tab, ResourceHistogram) draw each person's day, not a fixed 8 h.

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Rocket,
   FolderKanban,
@@ -31,6 +32,10 @@ import {
   Bot,
   Layers3,
   Moon,
+  ClipboardCheck,
+  History,
+  Sun,
+  Users,
 } from 'lucide-react';
 
 interface Section {
@@ -56,6 +61,20 @@ const sections: Section[] = [
     ],
   },
   {
+    id: 'morning-briefing',
+    title: 'Morning Briefing & Notifications',
+    icon: Sun,
+    description:
+      'Start the day with what needs you, project by project.',
+    items: [
+      'The Morning Briefing on the dashboard groups everything by project',
+      '"Team follow-up": late and stalled work on projects you manage, with who owns it',
+      '"Yours to do": your own tasks and RAID items for the next two weeks',
+      'Click any line to jump straight to that task, highlighted in the schedule',
+      'The bell shows events (assignments, changes, approvals) — live warnings stay in the briefing',
+    ],
+  },
+  {
     id: 'managing-projects',
     title: 'Managing Projects',
     icon: FolderKanban,
@@ -67,6 +86,36 @@ const sections: Section[] = [
       'Add, edit, and delete tasks with dependencies',
       'Assign resources and track progress percentages',
       'Drag-and-drop tasks in Kanban and Gantt views',
+      'Tick several tasks to link them in one go (Link in order / All wait on it / It waits on all)',
+      'Tick several tasks and use Group to put them under a new heading (summary task)',
+      'Private by default: you only see projects you are a member of',
+    ],
+  },
+  {
+    id: 'schedule-review',
+    title: 'Schedule Review',
+    icon: ClipboardCheck,
+    description:
+      'A quality check of your plan with a 0–100 score — the same plan always gets the same result.',
+    items: [
+      'Click Review in the schedule toolbar (it also re-runs by itself shortly after you edit)',
+      'Findings point to the rows involved: missing links, long tasks, milestones with a duration, overloaded people, and more',
+      'A milestone takes zero days — name it as the outcome ("Design Approved"); name tasks verb + object ("Review Design")',
+      'Propose fixes suggests changes you can tick and apply, e.g. splitting a "gate" that spans days into Review → Approve → Approved',
+      'Every applied fix can be undone in one step',
+    ],
+  },
+  {
+    id: 'schedule-history',
+    title: 'Schedule History & Undo',
+    icon: History,
+    description:
+      'See every group change to a schedule and undo it later — even after reloading the page.',
+    items: [
+      'Open History in the schedule toolbar',
+      'Each line says what changed, who did it and when (including changes made through Claude)',
+      'Undo reverses that change and puts moved dates back',
+      'If someone edited the same tasks since, you are warned before undoing',
     ],
   },
   {
@@ -302,17 +351,17 @@ const sections: Section[] = [
   },
   {
     id: 'resource-leveling',
-    title: 'Resource Leveling',
+    title: 'Resources, Workload & Leveling',
     icon: BarChart2,
     description:
-      'Identify over-allocated resources and automatically level workload by adjusting non-critical tasks.',
+      'See who is overloaded, across all projects, and fix it before it happens.',
     items: [
-      'Open the "Resource Leveling" tab on any project',
-      'View the resource histogram showing daily demand per resource',
-      'Red bars indicate over-allocated periods (demand > 8 hours/day)',
-      'Click "Level Resources" to compute proposed schedule adjustments',
-      'Review the before/after comparison and adjustment details',
-      'Click "Apply" to update task dates and resolve over-allocations',
+      'A person counts at their % on a task (50% of 40 h = 20 h a week); "Assigned To" alone counts as 100%',
+      'Resources → Workload Heatmap: everyone\'s weekly load across all live projects',
+      'While you assign someone in the task form, a warning appears if it takes them over 100% that week',
+      'Gantt → Conflicts: highlights bars whose person is over 100% that week; hover the "!" for who and when',
+      'Resources → Resource Histogram: hours per working day against each person\'s own day',
+      'Level Resources (schedule ⋮ menu, or project → Resources → Leveling) proposes moving non-critical tasks within their spare time; nothing changes until you Apply',
     ],
   },
   {
@@ -429,8 +478,10 @@ const sections: Section[] = [
     title: 'Bulk Operations',
     icon: Layers3,
     description:
-      'Perform batch operations on tasks via the API for efficient large-scale updates.',
+      'Change many tasks at once — in the schedule, or through the API.',
     items: [
+      'In the Table or Gantt, tick tasks to open the selection bar: status, priority, assign, link, group, delete',
+      'Group changes appear in History and can be undone',
       'POST /api/v1/bulk/tasks — create up to 100 tasks in a single request',
       'PUT /api/v1/bulk/tasks — update multiple tasks with individual field changes',
       'PUT /api/v1/bulk/tasks/status — batch update the status of multiple tasks at once',
@@ -469,6 +520,18 @@ const sections: Section[] = [
     ],
   },
   {
+    id: 'team-access',
+    title: 'Team & Access',
+    icon: Users,
+    description:
+      'Who can see and change a project.',
+    items: [
+      'Add people on the project\'s Team tab as Owner, Manager or Viewer',
+      'Only a project\'s Owner or Manager can change its plan; Viewers see it read-only (buttons they can\'t use are hidden)',
+      'Workload shows hours on other projects, but not their names or costs, unless you are on those projects',
+    ],
+  },
+  {
     id: 'account-billing',
     title: 'Account & Billing',
     icon: CreditCard,
@@ -477,19 +540,32 @@ const sections: Section[] = [
     items: [
       'View current plan and usage',
       'Upgrade, downgrade, or cancel your subscription',
-      '14-day free trial on paid tiers',
+      'Start on the free Trial plan; a paid plan becomes active once payment is confirmed',
       'Manage payment methods via Stripe portal',
     ],
   },
 ];
 
-export const UserGuideContent: React.FC = () => {
+export const UserGuideContent: React.FC<{ showFullGuideLink?: boolean }> = ({ showFullGuideLink = false }) => {
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">User Guide</h1>
-      <p className="text-gray-500 dark:text-gray-400 mb-8">
+      <p className="text-gray-500 dark:text-gray-400 mb-6">
         Everything you need to know to get the most out of Kovarti PM.
       </p>
+
+      {showFullGuideLink && (
+        <RouterLink
+          to="/help/guide"
+          className="flex items-center gap-3 mb-8 rounded-xl border-2 border-primary-500 bg-primary-50 dark:bg-primary-900/30 dark:border-primary-400 px-5 py-4 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
+        >
+          <BookOpen className="w-6 h-6 text-primary-600 dark:text-primary-300 shrink-0" aria-hidden="true" />
+          <span>
+            <span className="block font-semibold text-primary-800 dark:text-primary-200">Open the full user guide</span>
+            <span className="block text-sm text-primary-700 dark:text-primary-300">Every feature in detail, with search — updated with each release. This page is the quick overview.</span>
+          </span>
+        </RouterLink>
+      )}
 
       {/* Table of Contents */}
       <nav className="bg-gray-50 dark:bg-gray-900 rounded-xl p-6 mb-10 border border-gray-200 dark:border-gray-700">
@@ -541,7 +617,7 @@ export const UserGuideContent: React.FC = () => {
 export const UserGuidePage: React.FC = () => {
   return (
     <div className="p-6 md:p-10">
-      <UserGuideContent />
+      <UserGuideContent showFullGuideLink />
     </div>
   );
 };
