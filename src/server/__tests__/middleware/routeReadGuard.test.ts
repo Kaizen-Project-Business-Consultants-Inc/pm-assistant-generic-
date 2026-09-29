@@ -82,6 +82,7 @@ const READ_OK: Record<string, string[]> = {
 
 /** Reads sent as POSTs: each must check the project it reads */
 const READ_POSTS: Array<[string, string, string]> = [
+  ['resources/resources.ts', '/load-check', 'readableProjectIds'],
   ['ai/nlQuery.ts', '/', 'checkProjectRole'],
   ['ai/rag.ts', '/search', 'readableFor'],
   ['ai/aiChat.ts', '/message', 'chatContextMember'],

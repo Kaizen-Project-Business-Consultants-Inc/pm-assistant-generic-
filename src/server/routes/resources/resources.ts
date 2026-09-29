@@ -375,6 +375,40 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 
   // POST /resources/quick-assign (#7) - Quick assign resource to task
+  // POST /resources/load-check — would this booking push the person over 100%? (a read, sent as a
+  // POST for the body). Other tasks are named only on projects the caller can read.
+  fastify.post('/load-check', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const day = z.string().regex(/^\d{4}-\d{2}-\d{2}/);
+    const parsed = z.object({
+      resourceId: z.string().min(1),
+      startDate: day,
+      endDate: day,
+      allocationPct: z.number().min(0).max(100).default(100),
+      excludeTaskId: z.string().optional(),
+    }).safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Validation error', message: 'Send resourceId, startDate, endDate (YYYY-MM-DD) and allocationPct' });
+    const result = await resourceService.checkLoad(parsed.data);
+    if (!result) return reply.status(404).send({ error: 'Resource not found' });
+
+    const ids = [...new Set(result.overWeeks.flatMap(w => w.otherTaskIds))];
+    const names = new Map<string, string>();
+    if (ids.length) {
+      const readable = await readableProjectIds(request.user!);
+      const rows = await databaseService.query<{ id: string; name: string; project_id: string }>(
+        `SELECT t.id, t.name, s.project_id FROM tasks t JOIN schedules s ON s.id = t.schedule_id WHERE t.id IN (${ids.map(() => '?').join(',')})`, ids,
+      );
+      for (const r of rows) names.set(r.id, readable === 'all' || readable.has(r.project_id) ? r.name : 'Work on another project');
+    }
+    return {
+      resourceId: result.resourceId,
+      resourceName: result.resourceName,
+      overWeeks: result.overWeeks.map(w => ({
+        weekStart: w.weekStart, utilization: w.utilization, hours: w.hours, capacity: w.capacity,
+        alsoOn: [...new Set(w.otherTaskIds.map(id => names.get(id) ?? 'Work on another project'))],
+      })),
+    };
+  });
+
   fastify.post('/quick-assign', { preHandler: [requireScope('write'), requireFeature('resources'), bodyTaskPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = z.object({

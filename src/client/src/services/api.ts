@@ -1190,6 +1190,12 @@ class ApiService {
     return response.data;
   }
 
+  /** Would this booking take the person over 100% in some week? (warning only) */
+  async checkResourceLoad(body: { resourceId: string; startDate: string; endDate: string; allocationPct: number; excludeTaskId?: string }) {
+    const response = await this.api.post('/resources/load-check', body);
+    return response.data as import('../utils/resourceLoad').LoadCheckResult;
+  }
+
   async getGlobalResourceWorkload() {
     const response = await this.api.get('/resources/workload');
     return response.data;

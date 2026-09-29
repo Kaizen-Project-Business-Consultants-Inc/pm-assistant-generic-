@@ -18,8 +18,10 @@ import {
   MoreVertical,
   Sparkles,
   History,
+  AlertTriangle,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { describeOverload } from '../../utils/resourceLoad';
 import { GanttChart, type GanttTask } from '../../components/schedule/GanttChart';
 import { TaskFormModal, type TaskFormData } from '../../components/schedule/TaskFormModal';
 import { KanbanBoard } from '../../components/schedule/KanbanBoard';
@@ -669,6 +671,25 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
 
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
+  // Over-100% warning after Assigned To is changed in the table/Gantt cell (warning only)
+  const [loadWarning, setLoadWarning] = useState<string | null>(null);
+  const loadTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(loadTimerRef.current), []);
+  const warnIfOverloaded = useCallback((task: GanttTask, resourceId: string) => {
+    if (!resourceId || !task.startDate || !task.endDate || task.isMilestone || task.isSummary) return;
+    const pct = task.assignments?.find(a => a.resourceId === resourceId)?.allocationPct ?? 100;
+    apiService.checkResourceLoad({
+      resourceId, startDate: String(task.startDate).slice(0, 10), endDate: String(task.endDate).slice(0, 10), allocationPct: pct, excludeTaskId: task.id,
+    }).then(res => {
+      const text = describeOverload(res);
+      if (!text) return;
+      setLoadWarning(text);
+      announce(text);
+      clearTimeout(loadTimerRef.current);
+      loadTimerRef.current = setTimeout(() => setLoadWarning(null), 10_000);
+    }).catch(() => {}); // not a resource (free text) or offline — nothing to warn about
+  }, []);
+
   // Optimistically patch a single task in the query cache
   const patchTaskInCache = useCallback((taskId: string, data: Record<string, unknown>) => {
     queryClient.setQueryData(['tasks', schedule.id], (old: any) => {
@@ -731,7 +752,10 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       redo: () => updateMutation.mutate({ taskId, data }),
     });
     updateMutation.mutate({ taskId, data });
-  }, [tasks, updateMutation, pushAction, patchTaskInCache, schedule.id, queryClient]);
+    if (typeof data.assignedTo === 'string' && data.assignedTo && data.assignedTo !== task.assignedTo) {
+      warnIfOverloaded({ ...task, ...(data as Partial<GanttTask>) }, data.assignedTo);
+    }
+  }, [tasks, updateMutation, pushAction, patchTaskInCache, schedule.id, queryClient, warnIfOverloaded]);
 
   // Drag-end with undo (bar drag for dates)
   const handleTaskDragEndWithUndo = useCallback((taskId: string, newStart: string, newEnd: string) => {
@@ -1557,6 +1581,23 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
             onClick={() => { setUndoToast(null); clearTimeout(toastTimerRef.current); }}
             className="text-gray-500 hover:text-gray-200 ml-1"
             aria-label="Dismiss notification"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {loadWarning && (
+        <div role="status" aria-live="polite" className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-start gap-2 max-w-xl bg-amber-50 dark:bg-amber-900/80 border border-amber-300 dark:border-amber-600 text-amber-900 dark:text-amber-100 text-sm px-4 py-2.5 rounded-lg shadow-lg">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+          <span>
+            {loadWarning}{' '}
+            <a href="/resources?tab=workload" className="underline font-medium">See Workload Heatmap</a>
+          </span>
+          <button
+            onClick={() => { setLoadWarning(null); clearTimeout(loadTimerRef.current); }}
+            className="text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-white ml-1"
+            aria-label="Dismiss warning"
           >
             ✕
           </button>

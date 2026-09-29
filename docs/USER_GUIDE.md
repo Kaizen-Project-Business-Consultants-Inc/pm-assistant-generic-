@@ -411,8 +411,9 @@ Set constraints in the Task Form modal or inline via the **Constraint** and **Co
 Tasks can have multiple resources assigned:
 
 - In the Task Form modal, use the **Resource Assignments** section to add up to 10 resources.
-- Each assignment has: Resource name/ID, Allocation % (1-100), and optional Role.
+- Each assignment has: a Resource (picked from your Resources list), Allocation % (1-100), and optional Role.
 - The primary assignee (first resource or the "Assigned To" field) is shown in the Gantt and Table views.
+- **Over-100% warning (Sep 2026):** as you pick a person (Assigned To or a Resource row), change their %, or change the task's dates, an amber note appears under that line if this task would take them over 100% in any week — e.g. "Michael would be at 150% in the week of Oct 12 (also on: Kick-off workshops, Weekly status report) +2 more weeks over 100%." It uses the Workload Heatmap's numbers (all live projects, holidays counted) and doesn't count the task you're editing twice. It never blocks saving. Tasks on projects you can't see show as "Work on another project". Assigned To counts as 100% unless the same person has a % in Resource Assignments. Changing **Assigned To** directly in the Table or Gantt cell shows the same warning as a pop-up after it saves. Headings and milestones are never checked.
 
 ### Custom Calendars
 

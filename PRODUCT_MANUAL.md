@@ -2953,6 +2953,8 @@ A minimum drag width of half a day (`0.5 × dayPx`) prevents accidental task cre
 
 ## 34. Gantt Resource Overallocation Warnings
 
+**Warning while allocating (Sep 2026).** `POST /resources/load-check { resourceId, startDate, endDate, allocationPct, excludeTaskId? }` → the Monday weeks where the person's effective bookings (minus `excludeTaskId`) plus this one (`allocationPct` × weekly capacity) exceed that week's capacity, with the other tasks that week (named only on readable projects). `ResourceLoadWarning` shows it under Assigned To and each Resource Assignments row in the task form (debounced, re-checks on person/%/dates); the schedule shows it as a pop-up after an inline Assigned To change. Warning only — saving is never blocked. The Resource Assignments rows now pick from the Resources list instead of free text.
+
 A toggle button labelled **"Conflicts"** (with a warning triangle icon) in the Gantt toolbar highlights tasks that book someone over 100% in a week. When enabled (rewired September 2026):
 
 - It fetches the cross-project workload (`GET /resources/workload`, the Workload Heatmap's data) and flags each task — not headings or milestones — whose assigned people (task resources + Assigned to) are over 100% in a week the task touches (`utils/resourceConflicts.ts`). Hovering the "!" dot names the person, their worst week and how many more over-100% weeks the task touches. A **See Workload Heatmap** link opens `/resources?tab=workload` on All Projects.

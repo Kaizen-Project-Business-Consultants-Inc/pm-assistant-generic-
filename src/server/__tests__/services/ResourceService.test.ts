@@ -688,6 +688,43 @@ describe('ResourceService', () => {
 
   // ===== Global workload =====
 
+  describe('checkLoad (warning while allocating)', () => {
+    const booking = (taskId: string, hoursPerWeek: number, startDate: string, endDate: string) =>
+      ({ id: `task:${taskId}`, resourceId: 'r1', taskId, scheduleId: 's', hoursPerWeek, startDate, endDate, source: 'task' });
+
+    it('adds this booking to what the person already has and returns only the weeks over 100%', async () => {
+      mockRepo.findById.mockResolvedValueOnce(sampleResource);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
+        booking('kickoff', 40, '2026-10-12', '2026-10-23'),   // weeks of 12 + 19 Oct
+        booking('report', 40, '2026-10-12', '2027-02-26'),    // every week
+      ]);
+      const res = await service.checkLoad({ resourceId: 'r1', startDate: '2026-10-14', endDate: '2026-10-27', allocationPct: 50 });
+      expect(res!.resourceName).toBe('Alice Smith');
+      expect(res!.overWeeks.map(w => [w.weekStart, w.utilization, w.otherTaskIds])).toEqual([
+        ['2026-10-12', 250, ['kickoff', 'report']],
+        ['2026-10-19', 250, ['kickoff', 'report']],
+        ['2026-10-26', 150, ['report']],
+      ]);
+    });
+
+    it("doesn't count the task being edited twice, and says nothing at exactly 100%", async () => {
+      mockRepo.findById.mockResolvedValueOnce(sampleResource);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([booking('this', 40, '2026-10-12', '2026-10-16'), booking('other', 20, '2026-10-12', '2026-10-16')]);
+      const res = await service.checkLoad({ resourceId: 'r1', startDate: '2026-10-12', endDate: '2026-10-16', allocationPct: 50, excludeTaskId: 'this' });
+      expect(res!.overWeeks).toEqual([]);
+    });
+
+    it('uses the week capacity (holidays lower it) and returns null for an unknown person', async () => {
+      mockRepo.findById.mockResolvedValueOnce(sampleResource);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
+      mockAvailabilityService.getEffectiveCapacityBatch.mockResolvedValueOnce(new Map([['r1', new Map([['2026-12-21', 16]])]]));
+      const res = await service.checkLoad({ resourceId: 'r1', startDate: '2026-12-21', endDate: '2026-12-24', allocationPct: 50 });
+      expect(res!.overWeeks).toEqual([{ weekStart: '2026-12-21', utilization: 125, hours: 20, capacity: 16, otherTaskIds: [] }]);
+      mockRepo.findById.mockResolvedValueOnce(null);
+      expect(await service.checkLoad({ resourceId: 'x', startDate: '2026-12-21', endDate: '2026-12-24', allocationPct: 50 })).toBeNull();
+    });
+  });
+
   describe('computeGlobalWorkload', () => {
     it('returns empty array when no assignments exist', async () => {
       mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);

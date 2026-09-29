@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { ResourceLoadWarning } from '../resources/ResourceLoadWarning';
 import { X, Save, Trash2, Sparkles, ChevronDown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { GanttTask } from './GanttChart';
@@ -360,6 +361,13 @@ export function TaskFormModal({
   // Filter tasks for dependency/parent dropdowns (exclude self)
   const otherTasks = allTasks.filter((t) => t.id !== task?.id);
 
+  // People for the Resource Assignments rows, and the over-100% warnings (not for headings or
+  // milestones — they book no time)
+  const { data: resourceData } = useQuery({ queryKey: ['resources'], queryFn: () => apiService.getResources(), staleTime: 60_000 });
+  const resourceList: { id: string; name: string; role: string; userId?: string | null }[] = resourceData?.resources || [];
+  const assignedResourceId = findResourceForAssignee(resourceList, form.assignedTo)?.id ?? '';
+  const checkLoad = !isSummary && !form.isMilestone;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
@@ -615,6 +623,10 @@ export function TaskFormModal({
             value={form.assignedTo}
             onChange={(resourceId) => setForm(f => ({ ...f, assignedTo: resourceId }))}
           />
+          {/* Over-100% warning for Assigned To (100%) — unless the same person has a % below */}
+          {checkLoad && assignedResourceId && !form.assignments.some(a => a.resourceId === assignedResourceId) && (
+            <ResourceLoadWarning resourceId={assignedResourceId} startDate={form.startDate} endDate={form.endDate} allocationPct={100} excludeTaskId={task?.id} />
+          )}
 
           {/* Multi-Resource Assignments */}
           <div>
@@ -622,18 +634,22 @@ export function TaskFormModal({
               Resource Assignments ({form.assignments.length}/10)
             </label>
             {form.assignments.map((a, idx) => (
-              <div key={idx} className="flex items-center gap-2 mb-2">
-                <input
-                  type="text"
+              <div key={idx} className="mb-2">
+              <div className="flex items-center gap-2">
+                <select
                   value={a.resourceId}
                   onChange={(e) => {
                     const updated = [...form.assignments];
                     updated[idx] = { ...updated[idx], resourceId: e.target.value };
                     setForm(f => ({ ...f, assignments: updated }));
                   }}
-                  placeholder="Resource name/ID"
+                  aria-label="Resource"
                   className="input flex-1 text-xs"
-                />
+                >
+                  <option value="">Select resource...</option>
+                  {a.resourceId && !resourceList.some(r => r.id === a.resourceId) && <option value={a.resourceId}>{a.resourceId}</option>}
+                  {resourceList.map(r => <option key={r.id} value={r.id}>{r.name}{r.role ? ` — ${r.role}` : ''}</option>)}
+                </select>
                 <input
                   type="number"
                   value={a.allocationPct}
@@ -670,6 +686,10 @@ export function TaskFormModal({
                 >
                   &times;
                 </button>
+              </div>
+              {checkLoad && a.resourceId && form.assignments.findIndex(x => x.resourceId === a.resourceId) === idx && (
+                <ResourceLoadWarning resourceId={a.resourceId} startDate={form.startDate} endDate={form.endDate} allocationPct={a.allocationPct} excludeTaskId={task?.id} />
+              )}
               </div>
             ))}
             {form.assignments.length < 10 && (

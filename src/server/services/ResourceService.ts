@@ -179,6 +179,49 @@ export class ResourceService {
     return resourceRepository.findEffectiveAssignments(filter);
   }
 
+  /**
+   * "Would this booking push the person over 100%?" — for the task form and the Assigned To
+   * cell, before/after saving. Same numbers as the Workload Heatmap: every live booking of the
+   * person (minus this task's own, so an edit isn't counted twice) plus this one at `allocationPct`
+   * of their weekly capacity, per Monday week, against that week's capacity (holidays lower it).
+   * Returns only the weeks over 100%.
+   */
+  async checkLoad(input: { resourceId: string; startDate: string; endDate: string; allocationPct: number; excludeTaskId?: string }): Promise<{
+    resourceId: string; resourceName: string;
+    overWeeks: Array<{ weekStart: string; utilization: number; hours: number; capacity: number; otherTaskIds: string[] }>;
+  } | null> {
+    const resource = await resourceRepository.findById(input.resourceId);
+    if (!resource) return null;
+    const start = input.startDate.slice(0, 10);
+    const end = input.endDate.slice(0, 10) < start ? start : input.endDate.slice(0, 10);
+    const DAY = 86_400_000;
+    const at = (d: string) => Date.parse(`${d}T00:00:00Z`);
+    const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+    const first = at(start) - ((new Date(at(start)).getUTCDay() + 6) % 7) * DAY; // Monday
+    const weekStarts: string[] = [];
+    for (let t = first; t <= at(end) && weekStarts.length < 104; t += 7 * DAY) weekStarts.push(iso(t));
+    const lastDay = iso(at(weekStarts[weekStarts.length - 1]) + 6 * DAY);
+
+    const others = (await resourceRepository.findEffectiveAssignments({ resourceId: resource.id, from: weekStarts[0], to: lastDay }))
+      .filter(a => a.taskId !== input.excludeTaskId);
+    const capacityMap = await resourceAvailabilityService.getEffectiveCapacityBatch(
+      [{ id: resource.id, capacityHoursPerWeek: resource.capacityHoursPerWeek, calendarTemplateId: resource.calendarTemplateId }],
+      weekStarts.map(w => new Date(at(w))),
+    );
+    const mine = (resource.capacityHoursPerWeek || 40) * Math.max(0, Math.min(100, input.allocationPct)) / 100;
+
+    const overWeeks: Array<{ weekStart: string; utilization: number; hours: number; capacity: number; otherTaskIds: string[] }> = [];
+    for (const w of weekStarts) {
+      const wEnd = iso(at(w) + 6 * DAY);
+      const hits = others.filter(a => a.startDate.slice(0, 10) <= wEnd && a.endDate.slice(0, 10) >= w);
+      const hours = Math.round((hits.reduce((s, a) => s + a.hoursPerWeek, 0) + mine) * 10) / 10;
+      const capacity = capacityMap.get(resource.id)?.get(w) ?? resource.capacityHoursPerWeek;
+      const utilization = capacity > 0 ? Math.round((hours / capacity) * 100) : (hours > 0 ? 999 : 0);
+      if (utilization > 100) overWeeks.push({ weekStart: w, utilization, hours, capacity, otherTaskIds: [...new Set(hits.map(a => a.taskId))] });
+    }
+    return { resourceId: resource.id, resourceName: resource.name, overWeeks };
+  }
+
   async checkAssignmentConflicts(data: {
     resourceId: string;
     hoursPerWeek: number;

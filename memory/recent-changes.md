@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-29 (warning while allocating a resource)
+
+- `ResourceService.checkLoad` + `POST /resources/load-check` (READ_POSTS entry); client `ResourceLoadWarning` (task form: Assigned To + each Resource row) and a pop-up after inline Assigned To edits (`ScheduleTab.warnIfOverloaded`); text from `utils/resourceLoad.describeOverload`. Resource rows are now a picker (were free text, so typed names never matched a resource).
+
 ## 2026-09-29 (Schedule Review R34, rules v1.4)
 
 - Flags month-plus reporting/meeting/oversight tasks booked full-time (no % or 100%) — they inflate workload and Conflicts. See `memory/schedule-review.md`.
