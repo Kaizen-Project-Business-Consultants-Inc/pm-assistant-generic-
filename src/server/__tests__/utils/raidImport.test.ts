@@ -69,3 +69,23 @@ describe('describeWithRegisterDetails', () => {
     expect(describeWithRegisterDetails('Only text', [])).toBe('Only text');
   });
 });
+
+describe('normalizeResponseStrategy', () => {
+  it('maps register wording to the app\'s strategies', async () => {
+    const { normalizeResponseStrategy } = await import('../../utils/raidImport');
+    expect(normalizeResponseStrategy('Avoid')).toBe('avoid');
+    expect(normalizeResponseStrategy('Mitigate')).toBe('mitigate');
+    expect(normalizeResponseStrategy('Reduce')).toBe('mitigate');
+    expect(normalizeResponseStrategy('Transfer')).toBe('transfer');
+    expect(normalizeResponseStrategy('Share')).toBe('transfer');
+    expect(normalizeResponseStrategy('Accept')).toBe('accept');
+    expect(normalizeResponseStrategy('Escalate to SteerCo')).toBe('escalate');
+    expect(normalizeResponseStrategy('Mitigate - reduce likelihood')).toBe('mitigate');
+  });
+  it('returns null for wording it does not know (kept as a note)', async () => {
+    const { normalizeResponseStrategy } = await import('../../utils/raidImport');
+    expect(normalizeResponseStrategy('Exploit')).toBeNull();
+    expect(normalizeResponseStrategy('')).toBeNull();
+    expect(normalizeResponseStrategy(undefined)).toBeNull();
+  });
+});

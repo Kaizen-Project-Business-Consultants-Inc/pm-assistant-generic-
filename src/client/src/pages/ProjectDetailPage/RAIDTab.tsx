@@ -3,7 +3,7 @@ import { useProjectRole } from '../../hooks/useProjectRole';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Bot, Activity, ShieldAlert, Search, Filter, X, ChevronUp, ChevronDown,
-  ArrowUpDown, AlertTriangle, FileText, Upload,
+  ArrowUpDown, AlertTriangle, FileText, Upload, ClipboardCheck, Flag,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { announce } from '../../utils/announce';
@@ -14,6 +14,9 @@ import { RAIDDetailPanel } from '../../components/risks/RAIDDetailPanel';
 import { RAIDReportModal } from '../../components/risks/RAIDReportModal';
 import { RAIDImportModal } from '../../components/raids/RAIDImportModal';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { RaidReviewPanel } from '../../components/raids/review/RaidReviewPanel';
+import { useRaidReview } from '../../components/raids/review/useRaidReview';
+import { itemFlags, scoreBandClass, type RaidFindingSeverity } from '../../components/raids/review/raidReviewHelpers';
 
 type RaidType = 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency';
 type ViewMode = 'table' | 'board' | 'matrix';
@@ -70,6 +73,11 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   const [inlineStatusId, setInlineStatusId] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+
+  // RAID Review — latest score for the health chip, and a flag per item from its findings
+  const { data: raidReview } = useRaidReview(projectId);
+  const flags = useMemo(() => itemFlags(raidReview), [raidReview]);
 
   const filters: Record<string, string> = {};
   if (filterType) filters.type = filterType;
@@ -445,6 +453,23 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
             <FileText className="w-3.5 h-3.5" />
             RAID Report
           </button>
+          <button
+            onClick={() => setShowReview(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 dark:text-primary-300 bg-white dark:bg-gray-900 hover:bg-primary-50 dark:hover:bg-primary-900/30 border-2 border-primary-500 dark:border-primary-400 rounded-lg transition-colors"
+          >
+            <ClipboardCheck className="w-3.5 h-3.5" aria-hidden="true" />
+            Review
+          </button>
+          {raidReview && (
+            <button
+              onClick={() => setShowReview(true)}
+              title="RAID health — open the review"
+              aria-label={`RAID health ${raidReview.score} out of 100. Open the review`}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border ${scoreBandClass(raidReview.score)} hover:opacity-90`}
+            >
+              RAID health <span className="tabular-nums">{raidReview.score}</span>
+            </button>
+          )}
 
           <div className="flex-1" />
 
@@ -649,6 +674,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                         {due.label}
                       </span>
                     )}
+                    <ReviewFlag flag={flags.get(risk.id)} />
                   </div>
 
                   {/* Type badge */}
@@ -724,6 +750,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                           <span className="text-xs font-mono text-gray-500">{risk.recordId}</span>
                           <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full capitalize ${severityColor(risk.severity)}`}>{risk.severity}</span>
                           {due && <span className={`text-xs font-medium ${due.color}`}>{due.label}</span>}
+                          <ReviewFlag flag={flags.get(risk.id)} />
                         </div>
                       </div>
                     </div>
@@ -775,6 +802,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                         <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full capitalize ml-auto ${severityColor(risk.severity)}`}>{risk.severity}</span>
                       </div>
                       <p className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">{risk.title}</p>
+                      {flags.get(risk.id) && <div className="mt-1"><ReviewFlag flag={flags.get(risk.id)} /></div>}
                       <div className="flex items-center gap-2 mt-1.5">
                         {memberName(risk.ownerId) && (
                           <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{memberName(risk.ownerId)}</span>
@@ -839,6 +867,16 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
         </div>
       )}
 
+      {/* RAID Review side panel */}
+      {showReview && (
+        <RaidReviewPanel
+          projectId={projectId}
+          canEdit={canEdit}
+          onClose={() => setShowReview(false)}
+          onOpenItem={(itemId) => { setShowReview(false); setSelectedRaidId(itemId); }}
+        />
+      )}
+
       {/* Slide-out detail panel */}
       {selectedRaidId && (
         <RAIDDetailPanel
@@ -887,5 +925,22 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
         />
       )}
     </div>
+  );
+}
+
+/** Small chip on a RAID row naming the review's main concern with that item */
+function ReviewFlag({ flag }: { flag?: { label: string; severity: RaidFindingSeverity } }) {
+  if (!flag) return null;
+  const tone = flag.severity === 'high'
+    ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-700'
+    : 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700';
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-xs font-medium whitespace-nowrap flex-shrink-0 ${tone}`}
+      title={`RAID Review: ${flag.label}`}
+    >
+      <Flag className="w-3 h-3" aria-hidden="true" />
+      <span className="sr-only">RAID Review: </span>{flag.label}
+    </span>
   );
 }

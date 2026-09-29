@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import type { RaidReview, RaidFixesResponse, RaidFixApplyEntry } from '../components/raids/review/raidReviewHelpers';
 
 /** A task moved by the date re-flow after links were added */
 export interface RescheduledTask {
@@ -1091,6 +1092,38 @@ class ApiService {
 
   async undoScheduleFixProposal(scheduleId: string, proposalId: string) {
     const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/undo`);
+    return response.data;
+  }
+
+  // RAID Review — quality check of the RAID log
+  async getRaidReview(projectId: string): Promise<{ review: RaidReview | null }> {
+    const response = await this.api.get(`/projects/${projectId}/raid-review`);
+    return response.data;
+  }
+
+  async runRaidReview(projectId: string): Promise<{ review: RaidReview }> {
+    const response = await this.api.post(`/projects/${projectId}/raid-review/run`);
+    return response.data;
+  }
+
+  async getRaidReviewFixes(projectId: string): Promise<RaidFixesResponse> {
+    const response = await this.api.get(`/projects/${projectId}/raid-review/fixes`);
+    return response.data;
+  }
+
+  async applyRaidReviewFixes(projectId: string, fixes: RaidFixApplyEntry[]): Promise<{ batchId: string; applied: number; summary: string }> {
+    const response = await this.api.post(`/projects/${projectId}/raid-review/fixes/apply`, { fixes });
+    return response.data;
+  }
+
+  /** 409 { error: 'edited_since', message } unless force */
+  async undoRaidReviewFixes(projectId: string, batchId: string, force = false): Promise<{ restored: number }> {
+    const response = await this.api.post(`/projects/${projectId}/raid-review/fixes/${batchId}/undo`, force ? { force: true } : {});
+    return response.data;
+  }
+
+  async setRaidReviewSettings(projectId: string, disabledRules: string[]): Promise<{ disabledRules: string[] }> {
+    const response = await this.api.put(`/projects/${projectId}/raid-review/settings`, { disabledRules });
     return response.data;
   }
 

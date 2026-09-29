@@ -1,4 +1,5 @@
-import { riskRepository, ProjectRisk, RiskFilters, RiskStats, RaidUpdate } from '../database/RiskRepository';
+import { riskRepository, ProjectRisk, RiskFilters, RiskStats, RaidUpdate, RAID_RESPONSE_STRATEGIES, type RaidResponseStrategy } from '../database/RiskRepository';
+import { queueRaidReviewRerun } from './raidReview/autoRerun';
 import { notificationService } from './NotificationService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import { projectService } from './ProjectService';
@@ -19,6 +20,14 @@ const VALID_STATUSES: Record<string, string[]> = {
 const TRIAGE_BYPASS_ROLES = new Set([
   'admin', 'project_manager', 'scrum_master', 'risk_manager', 'pmo',
 ]);
+
+/** Throws when a response strategy isn't one of avoid/mitigate/transfer/accept/escalate */
+function assertResponseStrategy(value: unknown): void {
+  if (value == null || value === '') return;
+  if (!(RAID_RESPONSE_STRATEGIES as readonly string[]).includes(String(value))) {
+    throw new Error(`Invalid response strategy '${value}' — use one of: ${RAID_RESPONSE_STRATEGIES.join(', ')}`);
+  }
+}
 
 const TERMINAL_STATUSES = ['closed', 'resolved', 'mitigated', 'cancelled', 'reversed', 'completed'];
 
@@ -106,7 +115,11 @@ class RiskService {
     forum?: string;
     sourceMeeting?: string;
     ownerName?: string;
+    responseStrategy?: RaidResponseStrategy | null;
+    closureReason?: string | null;
+    resolvedAt?: string | null;
   }, userRole?: string): Promise<ProjectRisk> {
+    assertResponseStrategy(data.responseStrategy);
     // Auto-set triage status for non-PM roles (unless caller explicitly set status)
     if (!data.status && userRole && !TRIAGE_BYPASS_ROLES.has(userRole)) {
       data.status = 'proposed';
@@ -120,6 +133,7 @@ class RiskService {
     }
 
     const risk = await riskRepository.create(data);
+    queueRaidReviewRerun(data.projectId);
     logger.info('RAID item created: %s record=%s project=%s type=%s status=%s source=%s', risk.id, risk.recordId, data.projectId, data.type, risk.status, data.source || 'manual');
 
     // Fire-and-forget activity log
@@ -337,11 +351,14 @@ class RiskService {
     const existing = await riskRepository.findById(id);
     if (!existing) return null;
 
-    // Validate status per type
+    assertResponseStrategy(data.responseStrategy);
+    if (data.responseStrategy === '') data.responseStrategy = null;
+
+    // Validate status per type (against the new type when the type is changing)
     if (data.status) {
-      const valid = VALID_STATUSES[existing.type] || [];
+      const valid = VALID_STATUSES[data.type || existing.type] || [];
       if (valid.length && !valid.includes(data.status)) {
-        throw new Error(`Invalid status '${data.status}' for type '${existing.type}'`);
+        throw new Error(`Invalid status '${data.status}' for type '${data.type || existing.type}'`);
       }
     }
 
@@ -355,6 +372,7 @@ class RiskService {
     }
 
     const updated = await riskRepository.update(id, data);
+    queueRaidReviewRerun(existing.projectId);
     logger.info('RAID item updated: %s fields=%s', id, Object.keys(data).join(','));
 
     // Fire-and-forget activity logging for each changed field
@@ -404,6 +422,7 @@ class RiskService {
       comment: reason,
     }).catch((error) => { logger.warn('Failed to log RAID cancellation', { raidItemId: id, error }); });
 
+    queueRaidReviewRerun(existing.projectId);
     logger.info('RAID item cancelled: %s reason=%s', id, reason);
     return updated;
   }
@@ -431,6 +450,7 @@ class RiskService {
       comment: reason,
     }).catch((error) => { logger.warn('Failed to log RAID reversal', { raidItemId: id, error }); });
 
+    queueRaidReviewRerun(existing.projectId);
     logger.info('Decision reversed: %s reason=%s', id, reason);
     return updated;
   }

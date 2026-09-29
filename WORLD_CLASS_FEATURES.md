@@ -1087,3 +1087,10 @@ Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully 
 - **Project-type aware Schedule Review** (Sep 2026, rules v1.2): IT (SDLC and Agile), Web Design, Web Application and App Development profiles set task-length limits and check for the standard phases and key milestones of that kind of project, plus summary-task link and span checks. Fully deterministic — the score stays reproducible and costs no AI tokens.
 
 - **AI split-task and missing-phase suggestions** (Sep 2026): Propose fixes asks the AI once to split tasks that bundle independent actions (approvals become milestones; single activities are left alone) and to place a task for each missing standard phase — all tick-to-apply with one-step undo; the review score itself stays rule-based.
+
+### RAID Review (Sep 2026)
+- Deterministic RAID log quality score (12 PMI/PRINCE2-based checks), findings by severity with the standard each one applies
+- Row flags in the RAID list; per-project switch-off of a check
+- Propose fixes with approval and one-step undo (move to Actions, one named owner, due date, response strategy)
+- Response strategy and closure reason fields; the register import fills them
+- **Benchmark:** PMI Risk Management practice, PRINCE2 RAID logs; not offered by MS Project / Smartsheet out of the box

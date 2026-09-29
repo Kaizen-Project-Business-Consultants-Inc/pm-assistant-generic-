@@ -3229,11 +3229,28 @@ The **AI Scan** button in the RAID toolbar triggers a project-scoped analysis:
 
 AI Scan does not overwrite or modify existing records — it only proposes new ones.
 
+### RAID Review (quality check of the log)
+
+Click **Review** in the Risks & Issues tab toolbar. RAID Review checks the whole log against PMI / PRINCE2 practice and gives it a **RAID health** score out of 100 (shown next to the button once a review exists). The same log always gets the same result; there is no AI in the checks. It re-runs by itself about 20 seconds after any RAID change or import.
+
+**What it checks** (grouped High / Medium / Low / Suggestion; each finding says what good practice expects and lists the items — click one to open it):
+
+- High: open high or critical risks with no **response strategy** (avoid, mitigate, transfer, accept, escalate); open actions with no due date; items with no owner.
+- Medium: overdue items not updated for 14 days; an owner that is a team, a company or several people ("DBJ", "Marsha Turner / Rashida Wynter") instead of one accountable person; items that look like the wrong type (a risk worded as a task, an issue titled "Action A-05: …"); open issues with no response plan, workaround or root cause; decisions missing who decided, when or why.
+- Low: assumptions with no validation plan or target date; closed items with no closure date or reason; possible duplicates.
+- Suggestion (doesn't lower the score): a risk not written as cause → event → effect — "Because of …, there is a risk that …, which would …".
+
+Rows in the RAID list get a small flag for their most important high or medium finding (e.g. "Owner is a group"). A check that doesn't fit a project — say, a client who insists on joint owners — can be **switched off for this project** from its finding (Managers/Owners); the review re-runs straight away.
+
+**Propose fixes** (Managers/Owners) lists changes you tick and apply: move an item to Actions, name one owner (from the project's people, the organisation's resources, or the people already named in the log), give an action a due date (suggested), set a risk's response strategy (Mitigate suggested when it has a mitigation plan). Clicking a line doesn't tick it; only the box does. **Apply selected** makes the changes; **Undo** puts every item back — if someone changed those items since, you're warned and can **Undo anyway**.
+
+Risks now have a **Response strategy** field, and closed items a **Closure reason**, in the item form; the register import fills both from matching columns.
+
 ### Importing a RAID Register (Excel or CSV)
 
 In the **Risks & Issues** tab click **Import** and choose your register. For a workbook with Risks, Issues, Actions, Assumptions and Decisions tabs, **Import All Sheets** brings them all in; each tab's items get that type. Or pick one sheet and check the column matching first.
 
-- **Nothing is thrown away.** Columns the app has a box for go there (title, category, likelihood, impact, status, owner, mitigation, due date, decision date, options considered, impacts…). Columns it has no box for — your register ID (R-01), date raised, raised by, updates / resolution, date closed, closure reason, risk score, target score, response strategy, linked IDs, superseded by, validation evidence, and anything else — are kept in the item's description under **From the register**, one "Column: value" per line. In the column matching they show as "(kept in notes)" or **Keep in notes**; choose **skip** to leave a column out on purpose.
+- **Nothing is thrown away.** Columns the app has a box for go there (title, category, likelihood, impact, status, owner, mitigation, response strategy, closure reason, due date, decision date, options considered, impacts…; a date closed also sets the item's closed date). Columns it has no box for — your register ID (R-01), date raised, raised by, updates / resolution, risk score, target score, linked IDs, superseded by, validation evidence, and anything else — are kept in the item's description under **From the register**, one "Column: value" per line. In the column matching they show as "(kept in notes)" or **Keep in notes**; choose **skip** to leave a column out on purpose.
 - **Statuses** in your wording are understood per type: Pending action → Open, Complete → Completed, Approved decision → Decided, Superseded → Reversed, In Mitigation risk → Mitigating, Realised → Closed, Invalidated assumption → Closed. A status it can't place keeps the default status, is noted in the item, and is listed after the import — the row is never dropped for it.
 - **Likelihood and impact** can be numbers (1–5) or words (Very low, Low, Medium, High, Very high). With no Severity column, severity comes from likelihood × impact.
 - **Dates** like 21-Jul-2026, 3-Sep-26, 2026-08-15 and Excel dates are read; a cell that isn't a date ("TBD", "Post Action A-39") is kept as a note rather than guessed.

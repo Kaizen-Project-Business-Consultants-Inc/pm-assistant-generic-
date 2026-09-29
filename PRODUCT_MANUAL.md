@@ -1481,6 +1481,10 @@ AI-powered reports (Risk Assessment, Budget Forecast, Resource Utilization) stil
 
 The Reports page includes "See Also" links to the **EVM Dashboard** and **Monte Carlo Simulation** pages for users who need deeper analytical views.
 
+### RAID Review (Sep 2026)
+
+Deterministic quality check of a project's RAID log (rules v1.0, RR01–RR12, PMI/PRINCE2): response strategy on high risks, due dates on actions, one named owner, wrong type, overdue and stale, issue response, decision record, assumption validation, closure details, duplicates, and a cause–event–effect wording suggestion (not scored). Score 0–100 stored per run (`raid_reviews`); re-runs ~20 s after RAID changes and imports; per-project switch-off of checks (`raid_review_settings`). Propose fixes (change type, set owner, set due date, set response strategy) applied through RiskService with one-step undo (`raid_fix_batches`). New fields on RAID items: `response_strategy` (avoid / mitigate / transfer / accept / escalate) and `closure_reason` (tenant migration T061). API under `/api/v1/projects/:projectId/raid-review`.
+
 ### RAID Report (Data-Driven)
 
 The RAID Report is a canned (non-AI) stakeholder report generated from live RAID item data. Available from both the Reports page and the RAID tab toolbar.

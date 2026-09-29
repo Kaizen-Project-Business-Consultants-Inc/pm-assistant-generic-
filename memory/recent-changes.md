@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-29 (RAID Review v1 — staging)
+
+- Mock approved ("ok"). Server: T061 (project_risks.response_strategy + closure_reason; raid_reviews, raid_review_settings, raid_fix_batches), `services/raidReview/rules.ts` (RR01–RR12, v1.0, pure, score), `fixProposer.ts` (change_type, set_owner, set_due_date, set_response_strategy), `RaidReviewService` (run/latest/settings/fixes/apply/undo; people = members + resources + names split from the log's owner column), `raidReview/autoRerun.ts` (20 s, after RAID create/update/cancel/reverse/import; WS `raid_review_updated`), routes `/api/v1/projects/:id/raid-review[...]`. Import maps response strategy / closure reason to the real fields.
+- Client: Review button + RAID health chip (RAIDTab), `components/raids/review/` (RaidReviewPanel, RaidFixPanel, helpers, useRaidReview), row flags (high/medium only), Response strategy + Closure reason in the form/detail.
+- Verified on staging with the DBJ LMS register: score 64, 2 moved-to-Actions fixes applied and undone. Later: score in Morning Briefing/overview; AI rewrite of risk statements.
+
 ## 2026-09-29 (RAID register import keeps everything)
 
 - User's DBJ LMS RAID log (Sep 14) through the real UI on staging lost: 5 Pending actions (row failed, invalid status), Approved decisions → pending_decision, text impact → 3, issue target dates (unmapped), "Post Action A-39" → 2039-01-01 (new Date), and every unmapped column. Fixed: `utils/raidImport.ts` (per-type status words, parseLevel, severityFromScore, strict parseRegisterDate incl. Excel serial, "From the register" notes block), route `risks.ts` import uses it + decision fields (decisionDate, alternativesConsidered, impactAssessment; decidedBy only when it matches a member — column is char(36)), warnings returned. Client: new targets "(kept in notes)", unmatched → Keep in notes (ColumnMapper `fillUnmapped`), per-tab problems listed, ColumnMapper remounts on sheet change (re-selecting a sheet with the same headers left everything "skip").

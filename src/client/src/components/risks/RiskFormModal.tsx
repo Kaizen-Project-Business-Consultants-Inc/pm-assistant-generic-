@@ -4,6 +4,7 @@ import { X, Sparkles, Loader2, MessageSquare, Send, Trash2, Pencil, BookOpen, Ch
 import { apiService } from '../../services/api';
 import { useModal } from '../../hooks/useModal';
 import { MitigationSuggestions } from '../lessons/MitigationSuggestions';
+import { RESPONSE_STRATEGIES, isClosedStatus } from '../raids/review/raidReviewHelpers';
 
 interface RiskFormModalProps {
   isOpen: boolean;
@@ -107,6 +108,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
     forum: '',
     sourceMeeting: '',
     ownerName: '',
+    responseStrategy: '',
+    closureReason: '',
   });
 
   useEffect(() => {
@@ -141,6 +144,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
         forum: editRisk.forum || '',
         sourceMeeting: editRisk.sourceMeeting || '',
         ownerName: editRisk.ownerName || '',
+        responseStrategy: editRisk.responseStrategy || '',
+        closureReason: editRisk.closureReason || '',
       });
     } else {
       setForm({
@@ -173,6 +178,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
         forum: '',
         sourceMeeting: '',
         ownerName: '',
+        responseStrategy: '',
+        closureReason: '',
       });
     }
     setError(null);
@@ -245,6 +252,16 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
       if (!payload.forum) delete payload.forum;
       if (!payload.sourceMeeting) delete payload.sourceMeeting;
       if (!payload.ownerName) delete payload.ownerName;
+      // Response strategy is for risks; closure reason for finished items. When editing, an
+      // empty value is sent as null so clearing the field sticks.
+      if (payload.type !== 'risk' || !payload.responseStrategy) {
+        if (editRisk && payload.type === 'risk') payload.responseStrategy = null; else delete payload.responseStrategy;
+      }
+      if (!isClosedStatus(payload.status) || !payload.closureReason.trim()) {
+        if (editRisk && isClosedStatus(payload.status)) payload.closureReason = null; else delete payload.closureReason;
+      } else {
+        payload.closureReason = payload.closureReason.trim();
+      }
 
       if (editRisk) {
         await apiService.updateRiskItem(projectId, editRisk.id, payload);
@@ -709,6 +726,36 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 />
               </div>
             </>
+          )}
+
+          {/* Response strategy — risks */}
+          {isRisk && (
+            <div>
+              <label htmlFor="raid-response-strategy" className={labelClass}>Response Strategy</label>
+              <select
+                id="raid-response-strategy"
+                value={form.responseStrategy}
+                onChange={e => setForm(prev => ({ ...prev, responseStrategy: e.target.value }))}
+                className={inputClass}
+              >
+                <option value="">None chosen</option>
+                {RESPONSE_STRATEGIES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Closure reason — finished items */}
+          {isClosedStatus(form.status) && (
+            <div>
+              <label htmlFor="raid-closure-reason" className={labelClass}>Closure Reason</label>
+              <textarea
+                id="raid-closure-reason"
+                value={form.closureReason}
+                onChange={e => setForm(prev => ({ ...prev, closureReason: e.target.value }))}
+                className={`${inputClass} h-16 resize-none`}
+                placeholder="Why was this closed? e.g. risk passed, issue fixed in release 2.1"
+              />
+            </div>
           )}
 
           {/* Trigger Condition — risk/issue */}

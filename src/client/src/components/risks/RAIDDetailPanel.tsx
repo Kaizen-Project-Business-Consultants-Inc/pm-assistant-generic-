@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Send, Ban, RotateCcw, Clock, MessageSquare, ArrowRightLeft, Pencil, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { responseStrategyLabel, isClosedStatus } from '../raids/review/raidReviewHelpers';
 
 interface RAIDDetailPanelProps {
   projectId: string;
@@ -353,6 +354,18 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
               <div>
                 <p className={labelClass}>Response Plan</p>
                 <p className={`${valueClass} whitespace-pre-wrap mt-1`}>{item.responsePlan}</p>
+              </div>
+            )}
+            {item.type === 'risk' && item.responseStrategy && (
+              <div>
+                <p className={labelClass}>Response Strategy</p>
+                <p className={valueClass}>{responseStrategyLabel(item.responseStrategy)}</p>
+              </div>
+            )}
+            {isClosedStatus(item.status) && item.closureReason && (
+              <div>
+                <p className={labelClass}>Closure Reason</p>
+                <p className={`${valueClass} whitespace-pre-wrap mt-1`}>{item.closureReason}</p>
               </div>
             )}
 

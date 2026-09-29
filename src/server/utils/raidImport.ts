@@ -159,6 +159,25 @@ export function parseRegisterDate(raw: string | undefined): string | null {
   return null;
 }
 
+/**
+ * A register's response strategy as the app's value (PMI: avoid / mitigate / transfer /
+ * accept / escalate), or null when the wording isn't recognised (the caller keeps it as a
+ * note). "Reduce" is mitigate and "share" is transfer; "Mitigate – reduce likelihood"
+ * style values use their first recognised word.
+ */
+export function normalizeResponseStrategy(raw: string | undefined): 'avoid' | 'mitigate' | 'transfer' | 'accept' | 'escalate' | null {
+  const words: Record<string, 'avoid' | 'mitigate' | 'transfer' | 'accept' | 'escalate'> = {
+    avoid: 'avoid', avoidance: 'avoid', eliminate: 'avoid',
+    mitigate: 'mitigate', mitigation: 'mitigate', reduce: 'mitigate', reduction: 'mitigate', control: 'mitigate', treat: 'mitigate',
+    transfer: 'transfer', transference: 'transfer', share: 'transfer', insure: 'transfer',
+    accept: 'accept', acceptance: 'accept', tolerate: 'accept', retain: 'accept',
+    escalate: 'escalate', escalation: 'escalate', escalated: 'escalate',
+  };
+  const parts = (raw || '').toLowerCase().split(/[^a-z]+/).filter(Boolean);
+  for (const p of parts) if (words[p]) return words[p];
+  return null;
+}
+
 /** Register columns the app has no box for: kept as a "From the register" block in the description */
 export const NOTE_FIELD_LABELS: Record<string, string> = {
   externalId: 'Register ID',

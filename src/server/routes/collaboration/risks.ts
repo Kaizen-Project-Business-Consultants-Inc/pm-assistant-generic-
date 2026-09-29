@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { parse as csvParse } from 'csv-parse/sync';
-import { type RaidType, normalizeRaidStatus, parseLevel, severityFromScore, parseRegisterDate, NOTE_FIELD_LABELS, describeWithRegisterDetails } from '../../utils/raidImport';
+import { type RaidType, normalizeRaidStatus, normalizeResponseStrategy, parseLevel, severityFromScore, parseRegisterDate, NOTE_FIELD_LABELS, describeWithRegisterDetails } from '../../utils/raidImport';
 import { riskService } from '../../services/RiskService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -15,6 +15,8 @@ import { PredictiveIntelligenceService } from '../../services/predictiveIntellig
 import { lessonsLearnedService } from '../../services/LessonsLearnedService';
 import { projectService } from '../../services/ProjectService';
 import { projectMemberService } from '../../services/ProjectMemberService';
+import { queueRaidReviewRerun } from '../../services/raidReview/autoRerun';
+import { RAID_RESPONSE_STRATEGIES } from '../../database/RiskRepository';
 
 const RAID_TYPES = ['risk', 'issue', 'action', 'decision', 'assumption', 'dependency'] as const;
 const ALL_STATUSES = ['proposed', 'open', 'monitoring', 'mitigating', 'mitigated', 'closed', 'resolved',
@@ -61,6 +63,9 @@ const createRiskSchema = z.object({
   forum: z.string().max(255).optional(),
   sourceMeeting: z.string().max(255).optional(),
   ownerName: z.string().max(255).optional(),
+  // PMI risk response and why an item was closed (T061)
+  responseStrategy: z.enum(RAID_RESPONSE_STRATEGIES).nullable().optional(),
+  closureReason: z.string().max(5000).nullable().optional(),
 });
 
 const updateRiskSchema = createRiskSchema.partial();
@@ -703,6 +708,12 @@ export async function riskRoutes(fastify: FastifyInstance) {
           const decisionDate = dateOrNote('decisionDate', 'Date decided');
           const dateRaised = mapped.dateRaised ? (parseRegisterDate(mapped.dateRaised) ?? mapped.dateRaised) : undefined;
           const dateClosed = mapped.dateClosed ? (parseRegisterDate(mapped.dateClosed) ?? mapped.dateClosed) : undefined;
+          // A closed date that parses becomes the item's resolved date (it stays in the notes too)
+          const resolvedAt = mapped.dateClosed ? parseRegisterDate(mapped.dateClosed) ?? undefined : undefined;
+          // Response strategy and closure reason are real fields now; a strategy word the
+          // app doesn't use is kept in the notes block as before.
+          const responseStrategy = normalizeResponseStrategy(mapped.responseStrategy) ?? undefined;
+          const closureReason = mapped.closureReason?.trim().slice(0, 5000) || undefined;
 
           // "Decided by" is a link to a project member in the app; a name that isn't one is
           // kept as a note (and, when the sheet has no owner, becomes the owner's name).
@@ -722,6 +733,8 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
           const details: Array<[string, string]> = [];
           for (const [field, label] of Object.entries(NOTE_FIELD_LABELS)) {
+            if (field === 'closureReason' && closureReason) continue;
+            if (field === 'responseStrategy' && responseStrategy) continue;
             const v = field === 'dateRaised' ? dateRaised : field === 'dateClosed' ? dateClosed : mapped[field];
             if (v) details.push([label, v]);
           }
@@ -756,6 +769,9 @@ export async function riskRoutes(fastify: FastifyInstance) {
             dependentEntity: mapped.dependentEntity?.slice(0, 500) || undefined,
             forum: mapped.forum?.slice(0, 255) || undefined,
             sourceMeeting: mapped.sourceMeeting?.slice(0, 255) || undefined,
+            responseStrategy,
+            closureReason,
+            resolvedAt,
             source: 'imported',
             createdBy: userId,
           });
@@ -766,6 +782,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
         }
       }
 
+      if (succeeded.length > 0) queueRaidReviewRerun(projectId);
       return reply.status(201).send({
         data: { succeeded: succeeded.length, failed, warnings },
       });

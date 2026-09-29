@@ -38,16 +38,16 @@ const RAID_TARGET_COLUMNS = [
   { value: 'decisionDate', label: 'Date Decided' },
   { value: 'alternativesConsidered', label: 'Options Considered' },
   { value: 'impactAssessment', label: 'Impact Assessment' },
+  { value: 'responseStrategy', label: 'Response Strategy' },
+  { value: 'closureReason', label: 'Closure Reason' },
   // Kept in the item's description ("From the register: …") — the app has no box for these
   { value: 'externalId', label: 'Register ID (kept in notes)' },
   { value: 'dateRaised', label: 'Date Raised (kept in notes)' },
   { value: 'raisedBy', label: 'Raised By (kept in notes)' },
   { value: 'dateClosed', label: 'Date Closed (kept in notes)' },
-  { value: 'closureReason', label: 'Closure Reason (kept in notes)' },
   { value: 'updates', label: 'Updates / Resolution (kept in notes)' },
   { value: 'score', label: 'Score (kept in notes)' },
   { value: 'targetScore', label: 'Target Score (kept in notes)' },
-  { value: 'responseStrategy', label: 'Response Strategy (kept in notes)' },
   { value: 'linkedIds', label: 'Linked IDs (kept in notes)' },
   { value: 'supersededBy', label: 'Superseded By (kept in notes)' },
   { value: 'validationEvidence', label: 'Validation Evidence (kept in notes)' },
@@ -466,7 +466,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
                     )}
                   </div>
                 ))}
-                <p className="text-xs text-gray-600 dark:text-gray-400 pt-1">Columns the app has no box for (register ID, date raised, updates, closure details, linked IDs…) are kept in each item's description under "From the register".</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 pt-1">Columns the app has no box for (register ID, date raised, date closed, updates, linked IDs…) are kept in each item's description under "From the register".</p>
               </div>
               <button onClick={reset} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Import more</button>
             </div>

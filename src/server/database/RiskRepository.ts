@@ -55,7 +55,14 @@ export interface ProjectRisk {
   forum: string | null;
   sourceMeeting: string | null;
   ownerName: string | null;
+  /** PMI risk response: avoid | mitigate | transfer | accept | escalate (T061) */
+  responseStrategy: RaidResponseStrategy | null;
+  /** Why the item was closed (T061) */
+  closureReason: string | null;
 }
+
+export const RAID_RESPONSE_STRATEGIES = ['avoid', 'mitigate', 'transfer', 'accept', 'escalate'] as const;
+export type RaidResponseStrategy = typeof RAID_RESPONSE_STRATEGIES[number];
 
 export interface RaidActivityLog {
   id: string;
@@ -140,6 +147,8 @@ function mapRow(row: any): ProjectRisk {
     forum: row.forum ?? null,
     sourceMeeting: row.source_meeting ?? null,
     ownerName: row.owner_name ?? null,
+    responseStrategy: row.response_strategy ?? null,
+    closureReason: row.closure_reason ?? null,
   };
 }
 
@@ -226,6 +235,11 @@ const COLUMN_MAP: Record<string, string> = {
   forum: 'forum',
   sourceMeeting: 'source_meeting',
   ownerName: 'owner_name',
+  responseStrategy: 'response_strategy',
+  closureReason: 'closure_reason',
+  // Only RAID Review's "move to another type" (and its undo) renumbers an item
+  recordId: 'record_id',
+  sequenceNumber: 'sequence_number',
 };
 
 class RiskRepository extends BaseRepository<ProjectRisk> {
@@ -252,6 +266,15 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
       const seqNum = (rows[0]?.sequence_number ?? 0) + 1;
       return { sequenceNumber: seqNum, recordId: `${p}-${String(seqNum).padStart(3, '0')}` };
     });
+  }
+
+  /** Is this record id (e.g. R-010) already used by another item in the project? */
+  async recordIdTaken(projectId: string, recordId: string, exceptId: string): Promise<boolean> {
+    const rows = await databaseService.query<{ id: string }>(
+      'SELECT id FROM project_risks WHERE project_id = ? AND record_id = ? AND id <> ? LIMIT 1',
+      [projectId, recordId, exceptId],
+    );
+    return rows.length > 0;
   }
 
   async findByProject(projectId: string, filters: RiskFilters = {}): Promise<ProjectRisk[]> {
@@ -338,6 +361,9 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
     forum?: string;
     sourceMeeting?: string;
     ownerName?: string;
+    responseStrategy?: RaidResponseStrategy | null;
+    closureReason?: string | null;
+    resolvedAt?: string | null;
   }): Promise<ProjectRisk> {
     const id = uuidv4();
     const { sequenceNumber, recordId } = await this.nextSequenceId(data.type, data.projectId);
@@ -368,8 +394,9 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
         sequence_number, record_id, due_date, action_type, rationale, decided_by, decision_date,
         alternatives_considered, stakeholders_consulted, linked_raid_ids,
         root_cause, impact_assessment, workaround,
-        validation_plan, dependent_entity, forum, source_meeting, owner_name)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        validation_plan, dependent_entity, forum, source_meeting, owner_name,
+        response_strategy, closure_reason, resolved_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.projectId,
@@ -410,17 +437,21 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
         data.forum || null,
         data.sourceMeeting || null,
         data.ownerName || null,
+        data.responseStrategy || null,
+        data.closureReason || null,
+        data.resolvedAt || null,
       ],
     );
     return (await this.findById(id))!;
   }
 
-  async update(id: string, data: Record<string, any>): Promise<ProjectRisk | null> {
+  /** `resolveOwner: false` writes owner fields exactly as given (RAID Review undo restores them) */
+  async update(id: string, data: Record<string, any>, opts: { resolveOwner?: boolean } = {}): Promise<ProjectRisk | null> {
     // Auto-link owner_id from owner_name if ownerName is being set but neither
     // owner field is explicit. Same resolution order as create(): a resource
     // with a linked account wins as a real user-owner; otherwise fall back to
     // owning it directly as a resource (no account, no notification).
-    if (data.ownerName && !data.ownerId && !data.ownerResourceId) {
+    if (opts.resolveOwner !== false && data.ownerName && !data.ownerId && !data.ownerResourceId) {
       const resolvedId = await this.resolveOwnerId(data.ownerName);
       if (resolvedId) {
         data.ownerId = resolvedId;

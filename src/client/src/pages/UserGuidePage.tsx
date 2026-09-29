@@ -124,6 +124,20 @@ const sections: Section[] = [
     ],
   },
   {
+    id: 'raid-review',
+    title: 'RAID Review',
+    icon: ClipboardCheck,
+    description:
+      'A quality check of the risks, issues, actions, assumptions and decisions log, with a RAID health score out of 100.',
+    items: [
+      'Click Review in the Risks & Issues tab; it re-runs by itself after RAID changes',
+      'Findings follow PMI / PRINCE2 practice: high risks with no response strategy, actions with no due date, owners that are a team or two people, items filed as the wrong type, and more',
+      'Rows in the list are flagged with their most important problem',
+      'Propose fixes: tick the changes you want (move to Actions, name one owner, set a due date or response strategy) and apply; Undo puts them back',
+      'Switch a check off for one project if it doesn\'t fit (e.g. agreed joint owners)',
+    ],
+  },
+  {
     id: 'schedule-history',
     title: 'Schedule History & Undo',
     icon: History,
