@@ -233,12 +233,37 @@ describe('milestone lines that span days are split, not flagged (user rule, 2026
     ]);
   });
 
-  it("names the deliverable when the source only says 'Final', and points a go-live gate at Go-Live", async () => {
+  it("names the deliverable when the source only says 'Final', and never guesses the next step from 'GO-LIVE'", async () => {
     const { milestoneSplitParts } = await import('../../services/scheduleReview/fixProposer');
     expect(milestoneSplitParts('Gate 2 – Task 2 Final Acceptance (MILESTONE- 2)', 6, null).map(p => p.name))
       .toEqual(['Approve Task 2 Deliverables', 'Task 2 Deliverables Approved', 'Gate 2 Approved']);
     expect(milestoneSplitParts('Gate 4 – Task 4 Final Acceptance (MILESTONE - 3) GO-LIVE', 7, null).map(p => p.name))
-      .toEqual(['Approve Task 4 Deliverables', 'Task 4 Deliverables Approved', 'Gate 4 Approved: proceed to Go-Live']);
+      .toEqual(['Approve Task 4 Deliverables', 'Task 4 Deliverables Approved', 'Gate 4 Approved']);
+  });
+
+  it('next step: the next phase, else the work waiting on the gate, else the next line', async () => {
+    const { nextStepName } = await import('../../services/scheduleReview/fixProposer');
+    const t = (id: string, name: string, extra: Record<string, unknown> = {}) =>
+      ({ id, name, status: 'pending', dependencies: [], ...extra }) as any;
+    // Phased plan → next phase
+    const phased = [
+      t('p1', 'Initiation', { isSummary: true, sortOrder: 1 }),
+      t('g1', 'Gate 1 sign-off', { parentTaskId: 'p1', sortOrder: 2 }),
+      t('p2', 'Detailed Design', { isSummary: true, sortOrder: 3 }),
+    ];
+    expect(nextStepName(phased[1], phased)).toBe('Detailed Design');
+    // Flat plan (DBJ-Loans Gate 4): the work that waits on it, not "Go-Live"
+    const flat = [
+      t('cut', 'Go-Live Execution / Production Cutover', { sortOrder: 1, startDate: '2027-02-19' }),
+      t('g4', 'Gate 4 – Task 4 Final Acceptance GO-LIVE', { sortOrder: 2, startDate: '2027-02-19' }),
+      t('pgl', 'Post-Go-Live Support', { sortOrder: 3, startDate: '2027-02-26', dependencies: [{ dependencyId: 'g4', dependencyType: 'FS' }] }),
+    ];
+    expect(nextStepName(flat[1], flat)).toBe('Post-Go-Live Support');
+    // Nothing waits on it → the next line in plan order
+    const loose = [t('g', 'Gate 1', { sortOrder: 1 }), t('n', 'Detailed System Study', { sortOrder: 2 })];
+    expect(nextStepName(loose[0], loose)).toBe('Detailed System Study');
+    // Nothing after it at all
+    expect(nextStepName(loose[1], loose)).toBeNull();
   });
 
   it('a sign-off line with no review becomes approve + approved', async () => {

@@ -178,7 +178,7 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
       if (!s || !e) continue;
       const span = calendarDaySpan(s, e);
       if (span < 2) continue;
-      const parts = milestoneSplitParts(t.name, span, nextPhaseName(t, tasks));
+      const parts = milestoneSplitParts(t.name, span, nextStepName(t, tasks));
       splitDone.add(t.id);
       fixes.push(build({
         id: `split:${t.id}`,
@@ -397,7 +397,6 @@ const addDays = (ymd: string, n: number) => new Date(Date.parse(`${ymd}T00:00:00
 export function milestoneSplitParts(name: string, span: number, nextPhase?: string | null): SplitPart[] {
   const gate = /\bgate\s*(\d+)/i.exec(name)?.[1] ?? null;
   const taskNo = /\btask\s*(\d+)/i.exec(name)?.[1] ?? null;
-  const goLive = /\bgo[\s-]?live\b/i.test(name);
   const hasReview = /\breview/i.test(name);
   let deliverable = name
     .replace(/\(\s*milestone[^)]*\)/gi, ' ')
@@ -420,23 +419,39 @@ export function milestoneSplitParts(name: string, span: number, nextPhase?: stri
   if (hasReview) parts.push({ name: `Review ${deliverable}`, isMilestone: false, days: Math.max(1, span - approveDays) });
   parts.push({ name: `Approve ${deliverable}`, isMilestone: false, days: hasReview ? approveDays : span });
   parts.push({ name: `${deliverable} Approved`, isMilestone: true, days: 0 });
-  const onward = nextPhase ?? (goLive ? 'Go-Live' : null);
-  if (gate) parts.push({ name: `Gate ${gate} Approved${onward ? `: proceed to ${onward}` : ''}`, isMilestone: true, days: 0 });
+  if (gate) parts.push({ name: `Gate ${gate} Approved${nextPhase ? `: proceed to ${nextPhase}` : ''}`, isMilestone: true, days: 0 });
   return parts;
 }
 
-/** The phase after the one this task sits in (for "Gate N Approved: proceed to <next phase>") */
-function nextPhaseName(t: ReviewTask, all: ReviewTask[]): string | null {
-  if (!t.parentTaskId) return null;
-  const parent = all.find(x => x.id === t.parentTaskId);
-  if (!parent) return null;
-  const peers = all
-    .filter(x => (x.parentTaskId ?? null) === (parent.parentTaskId ?? null) && (x.isSummary || all.some(c => c.parentTaskId === x.id)))
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-  const next = peers[peers.findIndex(x => x.id === parent.id) + 1];
-  const nm = next?.name?.trim();
-  // A bare code like "T2" isn't a phase name worth quoting
-  return nm && nm.length > 3 ? nm : null;
+/**
+ * What comes after a gate (for "Gate N Approved: proceed to <next step>"): the next phase when
+ * the plan has phases; otherwise the work that waits on the gate; otherwise the next line.
+ * Never guessed from the gate's own name — "GO-LIVE" on a gate usually means go-live has
+ * already happened (DBJ-Loans Gate 4 led into Post-Go-Live Support, Sep 2026).
+ */
+export function nextStepName(t: ReviewTask, all: ReviewTask[]): string | null {
+  // A bare code like "T2" isn't a name worth quoting
+  const usable = (x?: ReviewTask) => { const nm = x?.name?.trim(); return nm && nm.length > 3 ? nm : null; };
+  const hasKids = (x: ReviewTask) => !!x.isSummary || all.some(c => c.parentTaskId === x.id);
+  const byOrder = (a: ReviewTask, b: ReviewTask) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+
+  const parent = t.parentTaskId ? all.find(x => x.id === t.parentTaskId) : undefined;
+  if (parent) {
+    const peers = all.filter(x => (x.parentTaskId ?? null) === (parent.parentTaskId ?? null) && hasKids(x)).sort(byOrder);
+    const phase = usable(peers[peers.findIndex(x => x.id === parent.id) + 1]);
+    if (phase) return phase;
+  }
+
+  const waiting = all
+    .filter(x => x.id !== t.id && x.dependencies.some(d => d.dependencyId === t.id && (d.dependencyType ?? 'FS').toUpperCase() !== 'FF'))
+    .sort((a, b) => String(a.startDate ?? '').localeCompare(String(b.startDate ?? '')) || byOrder(a, b));
+  const successor = usable(waiting[0]);
+  if (successor) return successor;
+
+  const later = all
+    .filter(x => (x.parentTaskId ?? null) === (t.parentTaskId ?? null) && (x.sortOrder ?? 0) > (t.sortOrder ?? 0))
+    .sort(byOrder);
+  return usable(later[0]);
 }
 
 export function planSplitDates(start: string, end: string, parts: SplitPart[]): Array<SplitPart & { startDate: string; endDate: string }> {

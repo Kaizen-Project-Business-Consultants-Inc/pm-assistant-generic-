@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-28 (gate "proceed to" names the real next step)
+
+- `nextStepName` in `scheduleReview/fixProposer.ts`: next phase → else the task waiting on the gate (not FF) → else the next line. Dropped the "GO-LIVE in the name → proceed to Go-Live" guess: DBJ-Loans Gate 4 is the sign-off after cutover and leads into Post-Go-Live Support.
+- DBJ-Loans (staging, michaela) repaired by hand: Gates 1, 2, 4 restored and split; gate names; link Desk Review → Review Inception Report; Gate 3 → "UAT Signed Off (Gate 3)"; FF link Go-Live Execution → Approve Task 4 Deliverables. Finish unchanged 20 Mar 2027.
+
 ## 2026-09-28 (AI cost control — user approved, $100/month cap)
 
 - Console export (30 Aug–28 Sep): one key "summarizer-app", Sonnet 4.5, ~$54; app's own log caught ~30%. Biggest steady cost: dashboard predictions re-asked every 5 min on Dashboard/Projects.
