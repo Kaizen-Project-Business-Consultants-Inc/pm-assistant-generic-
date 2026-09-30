@@ -4,6 +4,7 @@ import { auditLedgerService } from './AuditLedgerService';
 import { resourceAvailabilityService } from './ResourceAvailabilityService';
 import { deadLetterService } from './DeadLetterService';
 import { timeEntryRepository } from '../database/TimeEntryRepository';
+import { rateCardService, ratesOn } from './RateCardService';
 import { databaseService } from '../database/connection';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
 
@@ -26,6 +27,8 @@ export interface Resource {
   isActive: boolean;
   costRateHourly: number | null;
   overtimeRateHourly: number | null;
+  /** Costed from the company rate card for this resource's role (dated rates), not its own rate */
+  useRateCard?: boolean;
   resourceGroup: string | null;
   userId: string | null;
   calendarTemplateId: string | null;
@@ -316,6 +319,9 @@ export class ResourceService {
     // Batch-load all resources in one query
     const resources = await resourceRepository.findByIds(involvedResourceIds);
     const resourceMap = new Map(resources.map(r => [r.id, r]));
+    // Rates can change over time (rate card): each week is costed at that week's rate
+    const rateCard = await rateCardService.listSafe();
+    const todayKey = new Date().toISOString().slice(0, 10);
 
     // Batch-load all availability data in one query
     const capacityMap = await resourceAvailabilityService.getEffectiveCapacityBatch(
@@ -331,7 +337,7 @@ export class ResourceService {
 
       const resAssignments = projectAssignments.filter((a) => a.resourceId === resId);
       const baseCapacity = resource.capacityHoursPerWeek;
-      const rate = resource.costRateHourly;
+      const rate = ratesOn(resource, todayKey, rateCard).standard;
       let totalUtilization = 0;
       let totalCost = 0;
       let isOverAllocated = false;
@@ -349,7 +355,6 @@ export class ResourceService {
         rateByWeek = new Map(rateBreakdown.map(r => [r.weekStart, { standard: r.standardHours, overtime: r.overtimeHours }]));
       }
 
-      const overtimeRate = resource.overtimeRateHourly ?? (rate ? rate * 1.5 : null);
       const resCapacityMap = capacityMap.get(resId);
 
       const weeklyData: WeeklyUtilization[] = [];
@@ -376,10 +381,11 @@ export class ResourceService {
         // Cost: use rate-type breakdown if available, otherwise fall back to allocated * rate
         let weeklyCost = 0;
         const rb = rateByWeek?.get(weekKey);
-        if (rate && rb && (rb.standard > 0 || rb.overtime > 0)) {
-          weeklyCost = Math.round((rb.standard * rate + rb.overtime * (overtimeRate ?? rate)) * 100) / 100;
-        } else if (rate) {
-          weeklyCost = Math.round(allocated * rate * 100) / 100;
+        const { standard: weekRate, overtime: weekOvertime } = ratesOn(resource, weekKey, rateCard);
+        if (weekRate && rb && (rb.standard > 0 || rb.overtime > 0)) {
+          weeklyCost = Math.round((rb.standard * weekRate + rb.overtime * (weekOvertime ?? weekRate)) * 100) / 100;
+        } else if (weekRate) {
+          weeklyCost = Math.round(allocated * weekRate * 100) / 100;
         }
         totalCost += weeklyCost;
 
@@ -449,6 +455,9 @@ export class ResourceService {
     // Batch-load all resources and availability
     const resources = await resourceRepository.findByIds(involvedResourceIds);
     const resourceMap = new Map(resources.map(r => [r.id, r]));
+    // Rates can change over time (rate card): each week is costed at that week's rate
+    const rateCard = await rateCardService.listSafe();
+    const todayKey = new Date().toISOString().slice(0, 10);
     const capacityMap = await resourceAvailabilityService.getEffectiveCapacityBatch(
       resources.map(r => ({ id: r.id, capacityHoursPerWeek: r.capacityHoursPerWeek, calendarTemplateId: r.calendarTemplateId })),
       weeks,
@@ -462,7 +471,7 @@ export class ResourceService {
 
       const resAssignments = allAssignments.filter((a) => a.resourceId === resId);
       const baseCapacity = resource.capacityHoursPerWeek;
-      const rate = resource.costRateHourly;
+      const rate = ratesOn(resource, todayKey, rateCard).standard;
       let totalUtilization = 0;
       let totalCost = 0;
       let isOverAllocated = false;
@@ -497,7 +506,8 @@ export class ResourceService {
         if (utilization > 100) isOverAllocated = true;
         totalUtilization += utilization;
 
-        const weeklyCost = rate ? Math.round(allocated * rate * 100) / 100 : 0;
+        const weekRate = ratesOn(resource, weekKey, rateCard).standard;
+        const weeklyCost = weekRate ? Math.round(allocated * weekRate * 100) / 100 : 0;
         totalCost += weeklyCost;
 
         weeklyData.push({ weekStart: weekKey, allocated, actual, capacity, utilization, cost: weeklyCost });

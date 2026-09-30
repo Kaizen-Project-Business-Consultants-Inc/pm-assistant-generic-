@@ -6,6 +6,7 @@
 import { scheduleService, Task } from './ScheduleService';
 import { criticalPathService } from './CriticalPathService';
 import { resourceService } from './ResourceService';
+import { rateCardService, ratesOn } from './RateCardService';
 import { taskAssignmentService } from './TaskAssignmentService';
 import { projectService } from './ProjectService';
 import { evmForecastService } from './EVMForecastService';
@@ -206,7 +207,8 @@ export class InstantReportService {
   }
 
   private async resourceOverviewReport(projectName: string): Promise<string> {
-    const resources = await resourceService.findAllResources();
+    const [resources, rateCard] = await Promise.all([resourceService.findAllResources(), rateCardService.listSafe()]);
+    const today = new Date().toISOString().slice(0, 10);
     return renderResourceOverviewReport({
       projectName,
       resources: resources.slice(0, 200).map(r => ({
@@ -217,7 +219,7 @@ export class InstantReportService {
         skills: r.skills,
         isActive: r.isActive,
         resourceGroup: r.resourceGroup,
-        costRateHourly: r.costRateHourly,
+        costRateHourly: ratesOn(r, today, rateCard).standard,
       })),
     });
   }
@@ -610,7 +612,7 @@ export class InstantReportService {
     const overbudget = Array.from(resourceHours.entries())
       .map(([resourceId, hours]) => {
         const resource = resourceMap.get(resourceId);
-        const rate = resource?.costRateHourly ?? 0;
+        const rate = workloadMap.get(resourceId)?.costRateHourly ?? resource?.costRateHourly ?? 0; // today's rate, rate card included
         const plannedCost = Math.round(hours.planned * rate * 100) / 100;
         const actualCost = Math.round(hours.actual * rate * 100) / 100;
         const variance = Math.round((actualCost - plannedCost) * 100) / 100;

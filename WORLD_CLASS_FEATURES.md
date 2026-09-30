@@ -52,6 +52,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Working exceptions (override non-working days as working)
 - CRUD API for calendars and exceptions
 - Non-working dates API for Gantt shading
+- **Rate card (Sep 2026):** hourly cost rates by role with start dates; resources opt in per person; costs use the rate for the week worked, so rate changes never rewrite past cost
 - **Working calendar screen (Sep 2026):** weekday toggles, project days off and extra working days, company-wide holiday list (Settings), preview of every task that would move and the finish before/after, then Apply; one-step Undo in Schedule History
 - **Working-day arithmetic everywhere it moves dates:** Duration column, new tasks, link re-flow, finish-date push-along; start day counted (MS Project convention); lag in working days
 - Day-off warning in the task form (allowed, not blocked)

@@ -138,6 +138,11 @@ All endpoints require project membership enforced by `requireProjectAccess`.
 - **Archive** removes the project from active views but preserves all data.
 - **Delete** permanently removes the project (requires admin role + project owner; audit entry created).
 
+### Rate Card
+- **Settings → Rate card** holds hourly cost rates by role, each with a start date (`rate_card`, tenant migration T063 — one card per company database). Admins, PMO, project managers and the company owner see and change it; the tab is hidden from everyone else and the API answers 403.
+- A resource is costed from the card only when its form says **Use rate card** (`resources.use_rate_card`); every existing resource started on its own rate, so no cost changed when this shipped. A role with no card rate yet falls back to the resource's own rate.
+- Costs use the rate in force for the week the work happened. Two lines for the same role and start date are refused.
+
 ### Company Holidays and Working Calendars
 - **Settings → Company holidays** holds one holiday list for the company; every project's working calendar treats those dates as days off. The company owner, an admin or PMO can add or remove dates; others see the list read-only.
 - Each change shows a preview first — how many tasks would move in how many active projects — and nothing is saved until **Apply**. Applying moves tasks in every affected plan and records a line in each plan's Schedule History (Undo puts the dates back; the holiday stays).

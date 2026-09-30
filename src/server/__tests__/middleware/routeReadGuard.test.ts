@@ -63,6 +63,7 @@ const READ_OK: Record<string, string[]> = {
   'reporting/reportBuilder.ts': ['/templates', '/templates/:id'], // report layouts; data is filtered when generated
   // The resource pool: hours and capacity only (other projects' names/costs are hidden in the handlers)
   'resources/resources.ts': ['/', '/skills', '/by-skill', '/:id/delete-impact', '/:id/utilization-history', '/capacity-by-role'],
+  'resources/rateCard.ts': ['/'], // company rate card, not project data; rate-card managers only
   'resources/availability.ts': ['/:resourceId/availability'],
   'resources/calendarTemplates.ts': ['/', '/:id'],
   // Your own account, sign-in, pricing, OAuth callbacks, public portal (token)

@@ -132,7 +132,7 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
               resourceId: w.resourceId,
               resourceName: w.resourceName,
               role: w.role,
-              costRateHourly: resource?.costRateHourly ?? null,
+              costRateHourly: w.costRateHourly ?? resource?.costRateHourly ?? null, // today's rate, rate card included
               projects: [],
               combinedUtilization: 0,
               isOverAllocated: false,

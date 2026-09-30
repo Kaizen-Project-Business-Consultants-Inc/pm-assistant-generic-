@@ -53,6 +53,7 @@ import { skillRoutes } from './routes/ai/skills';
 
 // Resources
 import { resourceRoutes } from './routes/resources/resources';
+import { rateCardRoutes } from './routes/resources/rateCard';
 import { resourceOptimizerRoutes } from './routes/resources/resourceOptimizer';
 import { timeEntryRoutes } from './routes/resources/timeEntries';
 import { expenseRoutes } from './routes/resources/expenses';
@@ -201,6 +202,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
 
   // Resources
   await fastify.register(resourceRoutes, { prefix: '/api/v1/resources' });
+  await fastify.register(rateCardRoutes, { prefix: '/api/v1/rate-card' });
   await fastify.register(availabilityRoutes, { prefix: '/api/v1/resources' });
   await fastify.register(resourceOptimizerRoutes, { prefix: '/api/v1/resource-optimizer' });
   await fastify.register(timeEntryRoutes, { prefix: '/api/v1/time-entries' });

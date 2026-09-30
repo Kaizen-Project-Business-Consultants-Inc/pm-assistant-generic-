@@ -882,6 +882,16 @@ Resources can have an **overtime rate** separate from the standard cost rate:
 - Time entries with `rate_type = 'overtime'` are costed at the overtime rate.
 - If no overtime rate is set, the system defaults to 1.5× the standard rate.
 
+### Rate Card
+
+**Settings → Rate card** holds hourly cost rates by role (e.g. Developer $95/h), each with the date it starts. When a rate changes, add a new line with its start date — work before that date keeps the old rate, so a raise from 1 October doesn't change September's cost.
+
+- Each line has a role, an hourly rate, an optional overtime rate (empty = 1.5 × the hourly rate) and a **From** date. The rate in force today is marked **Current**; later ones **Upcoming**.
+- On a resource's form, under **Cost rate**, choose **Use rate card** (the role's rate, shown with its start date and any upcoming change) or **Own rate** (that person's own hourly and overtime rates). Everyone starts on **Own rate**, so nothing changes until you switch someone.
+- A resource on the rate card whose role has no rate yet is costed at its own rate until one is added.
+- Costs are worked out week by week at that week's rate (Workload Heatmap, cost reports, portfolio).
+- Rates are pay information: only admins, PMO and project managers (and the company owner — including a consultant, who is the PM and owner of their own company) see or change the rate card. Team members and viewers don't see it. Each company's rate card is its own; no other company can see it.
+
 ### Role Capacity Planning
 
 The **Role Capacity** sub-tab shows a 12-week capacity vs demand view grouped by role:
@@ -2418,6 +2428,7 @@ Navigate to **Settings** to configure:
 - **Language** -- Select your preferred display language (English, French, or Spanish). The change applies instantly without a page reload.
 - **Time Zone** -- Set your IANA timezone (e.g., `America/Toronto`). All dates in the application are displayed in this timezone.
 - **Company holidays** -- The company's holiday list, grouped by year. Every project treats these as days off. The company owner or an admin adds one (date + name, **+ Add holiday**) or removes one; the preview shows how many tasks move in how many projects before anything is saved. See [Working Calendar and Company Holidays](#working-calendar-and-company-holidays).
+- **Rate card** -- Hourly cost rates by role, each with its start date (admins, PMO and project managers only). See [Rate Card](#rate-card).
 
 ### AI Context Settings
 
@@ -2771,7 +2782,7 @@ Resources with an hourly cost rate (`$/hour`) automatically have costs calculate
 - Weekly cell tooltips include the cost for that specific week (allocated hours × hourly rate).
 - The **Estimated Cost** summary card at the top of the page shows the aggregate cost across all resources.
 
-Set a resource's cost rate in the resource edit form under **Cost Rate ($/hr)**.
+Set a resource's cost rate in the resource edit form under **Cost Rate ($/hr)**, or choose **Use rate card** to cost them at their role's dated rate (see [Rate Card](#rate-card)).
 
 ### Assignment Conflict Detection
 

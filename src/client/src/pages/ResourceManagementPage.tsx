@@ -66,6 +66,7 @@ interface Resource {
   capacityHoursPerWeek?: number;
   skills?: SkillWithProficiency[];
   costRateHourly?: number | null;
+  useRateCard?: boolean;
   resourceGroup?: string | null;
   userId?: string | null;
   calendarTemplateId?: string | null;
@@ -75,11 +76,6 @@ interface Resource {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const RESOURCE_ROLES = [
-  'Project Manager', 'Developer', 'Designer', 'QA Tester', 'Business Analyst',
-  'Scrum Master', 'DevOps Engineer', 'Architect', 'Technical Lead', 'Data Analyst',
-  'UX Researcher', 'Product Owner', 'System Administrator', 'Security Analyst',
-];
 
 const RESOURCE_GROUPS = [
   'Engineering', 'Design', 'QA', 'Management', 'Operations', 'Marketing', 'Sales', 'Support',
@@ -87,6 +83,8 @@ const RESOURCE_GROUPS = [
 
 import { PROFICIENCY_LABELS } from '../constants/proficiency';
 import { formatCalendarDate } from '../utils/dateUtils';
+import { RESOURCE_ROLES } from '../constants/resourceRoles';
+import { RateSourceField } from '../components/resources/RateSourceField';
 
 const UTIL_COLORS = {
   low: '#22c55e',      // green — under 80%
@@ -130,6 +128,7 @@ export function ResourceManagementPage() {
   const [formEmail, setFormEmail] = useState('');
   const [formCapacity, setFormCapacity] = useState('40');
   const [formCostRate, setFormCostRate] = useState('');
+  const [formUseRateCard, setFormUseRateCard] = useState(false);
   const [formGroup, setFormGroup] = useState('');
   const [formSkills, setFormSkills] = useState<SkillWithProficiency[]>([]);
   const [newSkillName, setNewSkillName] = useState('');
@@ -278,6 +277,7 @@ export function ResourceManagementPage() {
     setFormEmail('');
     setFormCapacity('40');
     setFormCostRate('');
+    setFormUseRateCard(false);
     setFormGroup('');
     setFormSkills([]);
     setNewSkillName('');
@@ -292,6 +292,7 @@ export function ResourceManagementPage() {
     setFormEmail(r.email);
     setFormCapacity(String(r.capacityHoursPerWeek || 40));
     setFormCostRate(r.costRateHourly != null ? String(r.costRateHourly) : '');
+    setFormUseRateCard(!!r.useRateCard);
     setFormGroup(r.resourceGroup || '');
     setFormSkills(r.skills || []);
     setShowResourceForm(true);
@@ -305,6 +306,7 @@ export function ResourceManagementPage() {
       email: formEmail,
       capacityHoursPerWeek: parseInt(formCapacity) || 40,
       costRateHourly: costRate,
+      useRateCard: formUseRateCard,
       resourceGroup: formGroup || null,
       skills: formSkills,
     };
@@ -516,10 +518,12 @@ export function ResourceManagementPage() {
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hours/Week</label>
                   <input type="number" value={formCapacity} onChange={(e) => setFormCapacity(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="1" max="80" />
                 </div>
+                <RateSourceField role={formRole} useRateCard={formUseRateCard} onChange={setFormUseRateCard}>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Cost Rate ($/hr)</label>
                   <input type="number" value={formCostRate} onChange={(e) => setFormCostRate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0" step="0.01" placeholder="Optional" />
                 </div>
+                </RateSourceField>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Department</label>
                   <select value={formGroup} onChange={(e) => setFormGroup(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100">
@@ -711,7 +715,7 @@ export function ResourceManagementPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.capacityHoursPerWeek || 40}</td>
-                      <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.costRateHourly != null ? `$${r.costRateHourly.toFixed(2)}` : '--'}</td>
+                      <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.useRateCard ? 'Rate card' : r.costRateHourly != null ? `$${r.costRateHourly.toFixed(2)}` : '--'}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => openEdit(r)} className="p-1.5 rounded text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit resource"><Edit2 className="w-3.5 h-3.5" /></button>

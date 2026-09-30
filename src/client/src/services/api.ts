@@ -341,6 +341,23 @@ class ApiService {
     return (await this.api.post('/company-holidays/apply', change)).data;
   }
 
+  // Rate card: hourly rates by role, each from a date (admin / PMO / PM / company owner only)
+  async getRateCard(): Promise<{ rates: RateCardEntry[] }> {
+    return (await this.api.get('/rate-card')).data;
+  }
+
+  async addRate(rate: RateInput): Promise<{ rate: RateCardEntry }> {
+    return (await this.api.post('/rate-card', rate)).data;
+  }
+
+  async updateRate(id: string, rate: RateInput): Promise<{ rate: RateCardEntry }> {
+    return (await this.api.put(`/rate-card/${id}`, rate)).data;
+  }
+
+  async deleteRate(id: string): Promise<void> {
+    await this.api.delete(`/rate-card/${id}`);
+  }
+
   async getNonWorkingDates(projectId: string, start: string, end: string): Promise<{ dates: string[] }> {
     const response = await this.api.get(`/projects/${projectId}/non-working-dates`, { params: { start, end } });
     return response.data;
@@ -4142,6 +4159,14 @@ export interface WorkingCalendarData {
   exceptions: Array<{ id: string; date: string; type: 'holiday' | 'working'; name: string }>;
   companyHolidays: CompanyHoliday[];
 }
+export interface RateCardEntry {
+  id: string;
+  role: string;
+  hourlyRate: number;
+  overtimeRate: number | null;
+  effectiveFrom: string;
+}
+export interface RateInput { role: string; hourlyRate: number; overtimeRate?: number | null; effectiveFrom: string }
 export type WorkingCalendarChange =
   | { workingDays: number[] }
   | { add: { date: string; type: 'holiday' | 'working'; name?: string } }

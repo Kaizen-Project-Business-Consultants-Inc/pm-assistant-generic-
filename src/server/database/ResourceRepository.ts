@@ -25,6 +25,7 @@ function rowToResource(row: any): Resource {
     isActive: Boolean(row.is_active),
     costRateHourly: row.cost_rate_hourly != null ? Number(row.cost_rate_hourly) : null,
     overtimeRateHourly: row.overtime_rate_hourly != null ? Number(row.overtime_rate_hourly) : null,
+    useRateCard: Boolean(row.use_rate_card),
     resourceGroup: row.resource_group || null,
     userId: row.user_id || null,
     calendarTemplateId: row.calendar_template_id || null,
@@ -78,12 +79,12 @@ export class ResourceRepository extends BaseRepository<Resource> {
   async create(data: Omit<Resource, 'id'>): Promise<Resource> {
     const id = uuidv4();
     await this.queryRaw(
-      `INSERT INTO resources (id, name, role, email, capacity_hours_per_week, skills, is_active, cost_rate_hourly, resource_group, user_id, calendar_template_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO resources (id, name, role, email, capacity_hours_per_week, skills, is_active, cost_rate_hourly, overtime_rate_hourly, use_rate_card, resource_group, user_id, calendar_template_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       // role/email are optional at the schema level (matching the column's own
       // NOT NULL DEFAULT '') — mysql2 rejects an undefined bind param outright,
       // so an omitted value must become '' here, not null.
-      [id, data.name, data.role || '', data.email || '', data.capacityHoursPerWeek, JSON.stringify(data.skills || []), data.isActive ? 1 : 0, data.costRateHourly ?? null, data.resourceGroup ?? null, data.userId ?? null, data.calendarTemplateId ?? null],
+      [id, data.name, data.role || '', data.email || '', data.capacityHoursPerWeek, JSON.stringify(data.skills || []), data.isActive ? 1 : 0, data.costRateHourly ?? null, data.overtimeRateHourly ?? null, data.useRateCard ? 1 : 0, data.resourceGroup ?? null, data.userId ?? null, data.calendarTemplateId ?? null],
     );
     return (await this.findById(id))!;
   }
@@ -97,6 +98,9 @@ export class ResourceRepository extends BaseRepository<Resource> {
       skills: 'skills',
       isActive: 'is_active',
       costRateHourly: 'cost_rate_hourly',
+      // The overtime rate was missing here, so edits to it were silently dropped (found 2026-09-30)
+      overtimeRateHourly: 'overtime_rate_hourly',
+      useRateCard: 'use_rate_card',
       resourceGroup: 'resource_group',
       userId: 'user_id',
       calendarTemplateId: 'calendar_template_id',
@@ -109,7 +113,7 @@ export class ResourceRepository extends BaseRepository<Resource> {
       if (key in data) {
         let val = (data as any)[key];
         if (key === 'skills') val = JSON.stringify(val || []);
-        if (key === 'isActive') val = val ? 1 : 0;
+        if (key === 'isActive' || key === 'useRateCard') val = val ? 1 : 0;
         fields.push(`${column} = ?`);
         values.push(val);
       }

@@ -259,6 +259,12 @@ const NON_PROJECT: Record<string, string[]> = {
     "POST /export/docx",
     "POST /render"
   ],
+  // Company rate card: not project data; admin / PMO / PM / company owner only (rateCardManagerOnly)
+  "resources/rateCard.ts": [
+    "DELETE /:id",
+    "POST /",
+    "PUT /:id"
+  ],
   "resources/resources.ts": [
     "DELETE /:id",
     "POST /",
