@@ -7,11 +7,13 @@ import { ChangeRequestList } from '../components/approvals/ChangeRequestList';
 import { ChangeRequestForm } from '../components/approvals/ChangeRequestForm';
 import { ChangeRequestDetail } from '../components/approvals/ChangeRequestDetail';
 import { WorkflowEditor } from '../components/approvals/WorkflowEditor';
+import { useCanChangeData } from '../hooks/useCanChangeData';
 
 type Tab = 'requests' | 'workflows';
 type View = 'list' | 'detail' | 'form' | 'workflow-editor';
 
 export const ChangeRequestsPage: React.FC = () => {
+  const canChange = useCanChangeData();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>('requests');
   const [view, setView] = useState<View>('list');
@@ -165,7 +167,7 @@ export const ChangeRequestsPage: React.FC = () => {
                   <Settings2 className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Approval Workflows</h3>
                 </div>
-                <button
+                {canChange && <button
                   onClick={() => {
                     setSelectedWorkflowId(undefined);
                     setView('workflow-editor');
@@ -174,7 +176,7 @@ export const ChangeRequestsPage: React.FC = () => {
                 >
                   <Plus className="w-4 h-4" />
                   New Workflow
-                </button>
+                </button>}
               </div>
 
               {workflowsLoading ? (

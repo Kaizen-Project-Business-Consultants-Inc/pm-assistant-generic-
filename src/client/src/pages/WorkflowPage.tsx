@@ -4,6 +4,7 @@ import { Workflow, Plus, Trash2, ToggleLeft, ToggleRight, Zap, Clock, ChevronDow
 import { apiService } from '../services/api';
 import { WorkflowNodeEditor } from '../components/workflows/WorkflowNodeEditor';
 import { ExecutionDetail } from '../components/workflows/ExecutionDetail';
+import { useCanChangeData } from '../hooks/useCanChangeData';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ const nodeTypeLabel: Record<string, string> = {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function WorkflowPage() {
+  const canChange = useCanChangeData();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<'definitions' | 'executions'>('definitions');
   const [showForm, setShowForm] = useState(false);
@@ -241,7 +243,7 @@ export function WorkflowPage() {
             <p className="text-sm text-gray-500 dark:text-gray-400">DAG-based workflow engine with conditions, approvals, and execution history</p>
           </div>
         </div>
-        {!isSample && (
+        {!isSample && canChange && (
           <button
             onClick={() => { resetForm(); setShowForm(true); }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
@@ -267,7 +269,7 @@ export function WorkflowPage() {
       )}
 
       {/* AI Generate */}
-      {!isSample && (
+      {!isSample && canChange && (
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="w-4 h-4 text-purple-500" />
@@ -443,7 +445,7 @@ export function WorkflowPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    {canChange && <div className="flex items-center gap-1">
                       <button onClick={() => openEdit(def)}
                         className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded transition-colors">
                         Edit
@@ -452,7 +454,7 @@ export function WorkflowPage() {
                         className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    </div>
+                    </div>}
                   </div>
                 </div>
               ))}

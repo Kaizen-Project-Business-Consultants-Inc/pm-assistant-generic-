@@ -85,6 +85,7 @@ import { PROFICIENCY_LABELS } from '../constants/proficiency';
 import { formatCalendarDate } from '../utils/dateUtils';
 import { RESOURCE_ROLES } from '../constants/resourceRoles';
 import { RateSourceField } from '../components/resources/RateSourceField';
+import { useCanChangeData } from '../hooks/useCanChangeData';
 
 const UTIL_COLORS = {
   low: '#22c55e',      // green — under 80%
@@ -112,6 +113,7 @@ type TabKey = 'team' | 'workload' | 'histogram' | 'forecast' | 'trends' | 'templ
 // ---------------------------------------------------------------------------
 
 export function ResourceManagementPage() {
+  const canChange = useCanChangeData();
   const queryClient = useQueryClient();
   // ?tab=workload (from the Gantt's Conflicts link) opens the Heatmap on all projects
   const tabFromUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tab') : null;
@@ -470,7 +472,7 @@ export function ResourceManagementPage() {
                 </select>
               )}
             </div>
-            {!isResourcesSample && (
+            {!isResourcesSample && canChange && (
               <button
                 onClick={() => { resetForm(); setShowResourceForm(true); }}
                 className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
@@ -717,7 +719,7 @@ export function ResourceManagementPage() {
                       <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.capacityHoursPerWeek || 40}</td>
                       <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.useRateCard ? 'Rate card' : r.costRateHourly != null ? `$${r.costRateHourly.toFixed(2)}` : '--'}</td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        {canChange && <div className="flex items-center justify-end gap-1">
                           <button onClick={() => openEdit(r)} className="p-1.5 rounded text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit resource"><Edit2 className="w-3.5 h-3.5" /></button>
                           <button onClick={() => {
                             setDeleteConfirmId(r.id);
@@ -725,7 +727,7 @@ export function ResourceManagementPage() {
                             setDeleteImpactLoading(true);
                             apiService.getResourceDeleteImpact(r.id).then(setDeleteImpact).catch(() => setDeleteImpact(null)).finally(() => setDeleteImpactLoading(false));
                           }} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete resource"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
+                        </div>}
                       </td>
                     </tr>
                   ))}

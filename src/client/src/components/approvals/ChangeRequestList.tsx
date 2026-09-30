@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, GitPullRequest, Clock, ArrowUpDown } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { useCanChangeData } from '../../hooks/useCanChangeData';
 
 interface ChangeRequestListProps {
   projectId: string;
@@ -34,6 +35,7 @@ function statusLabel(status: string): string {
 }
 
 export function ChangeRequestList({ projectId, onSelect, onNew }: ChangeRequestListProps) {
+  const canChange = useCanChangeData();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [sortBy] = useState<string>('created_at');
@@ -60,13 +62,13 @@ export function ChangeRequestList({ projectId, onSelect, onNew }: ChangeRequestL
           <GitPullRequest className="w-5 h-5 text-primary-600" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Change Requests</h3>
         </div>
-        <button
+        {canChange && <button
           onClick={onNew}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
         >
           <Plus className="w-4 h-4" />
           New Change Request
-        </button>
+        </button>}
       </div>
 
       {/* Filters */}

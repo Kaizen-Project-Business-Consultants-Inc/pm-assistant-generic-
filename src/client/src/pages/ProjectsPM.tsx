@@ -11,6 +11,7 @@ import { ProjectGroupManager } from '../components/projects/ProjectGroupManager'
 import { getViewPref, setViewPref } from '../hooks/useViewPreferences';
 import type { ProjectSummaryPM } from '../types/pm';
 import { formatCalendarDate } from '../utils/dateUtils';
+import { useCanChangeData } from '../hooks/useCanChangeData';
 
 const VIEW_MODE_KEY = 'pm-projects-view-mode';
 
@@ -28,6 +29,7 @@ function normalizeStatus(status: string): string {
 }
 
 export function ProjectsPM() {
+  const canChange = useCanChangeData();
   const { user } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -305,14 +307,14 @@ export function ProjectsPM() {
             <Archive className="w-4 h-4" />
             {showArchived ? 'Hide Archived' : 'Show Archived'}
           </button>
-          <button
+          {canChange && <button
             type="button"
             onClick={() => setTemplatePickerOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
             New Project
-          </button>
+          </button>}
         </div>
       </div>
 
