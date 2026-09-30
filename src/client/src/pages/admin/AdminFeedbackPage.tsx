@@ -27,14 +27,14 @@ interface FeedbackItem {
 
 interface FeedbackStats {
   total: number;
-  avg_overall: number | null;
-  avg_schedule: number | null;
-  avg_raid: number | null;
-  avg_ai: number | null;
-  avg_reporting: number | null;
-  new_count: number;
-  reviewed_count: number;
-  resolved_count: number;
+  avgOverall: number | null;
+  avgSchedule: number | null;
+  avgRaid: number | null;
+  avgAi: number | null;
+  avgReporting: number | null;
+  newCount: number;
+  reviewedCount: number;
+  resolvedCount: number;
 }
 
 function fmt(date: string) {
@@ -106,7 +106,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   general: 'General',
-  feature_request: 'Feature Request',
+  featureRequest: 'Feature Request',
   bug: 'Bug Report',
 };
 
@@ -141,11 +141,11 @@ export function AdminFeedbackPage() {
       {/* Stats Bar */}
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 mb-6">
-          <AvgStat label="Overall Avg" value={stats.avg_overall} />
-          <AvgStat label="Schedule" value={stats.avg_schedule} />
-          <AvgStat label="RAID" value={stats.avg_raid} />
-          <AvgStat label="AI" value={stats.avg_ai} />
-          <AvgStat label="Reports" value={stats.avg_reporting} />
+          <AvgStat label="Overall Avg" value={stats.avgOverall} />
+          <AvgStat label="Schedule" value={stats.avgSchedule} />
+          <AvgStat label="RAID" value={stats.avgRaid} />
+          <AvgStat label="AI" value={stats.avgAi} />
+          <AvgStat label="Reports" value={stats.avgReporting} />
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Total</p>
@@ -165,7 +165,7 @@ export function AdminFeedbackPage() {
                 : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-primary-400'
             }`}
           >
-            {s || 'All'}{s && stats ? ` (${s === 'new' ? stats.new_count : s === 'reviewed' ? stats.reviewed_count : stats.resolved_count})` : ''}
+            {s || 'All'}{s && stats ? ` (${s === 'new' ? stats.newCount : s === 'reviewed' ? stats.reviewedCount : stats.resolvedCount})` : ''}
           </button>
         ))}
       </div>

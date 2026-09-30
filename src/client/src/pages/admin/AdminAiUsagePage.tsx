@@ -8,11 +8,11 @@ import { formatCalendarDate } from '../../utils/dateUtils';
 interface AiUsageRow {
   username: string;
   email: string;
-  full_name: string;
-  call_count: number;
-  total_tokens: number;
-  total_cost: number;
-  last_used: string | null;
+  fullName: string;
+  callCount: number;
+  totalTokens: number;
+  totalCost: number;
+  lastUsed: string | null;
 }
 
 interface DailyPoint {
@@ -23,35 +23,35 @@ interface DailyPoint {
 
 interface AiUsageData {
   usage: AiUsageRow[];
-  summary: { total_calls: number; total_tokens: number; total_cost: number };
+  summary: { totalCalls: number; totalTokens: number; totalCost: number };
   dailyTrend: DailyPoint[];
 }
 
 interface AgentUsageRow {
-  agent_id: string;
+  agentId: string;
   runs: number;
-  unique_projects: number;
-  first_run: string;
-  last_run: string;
+  uniqueProjects: number;
+  firstRun: string;
+  lastRun: string;
 }
 
 interface AgentPattern {
-  first_agent: string;
-  second_agent: string;
+  firstAgent: string;
+  secondAgent: string;
   frequency: number;
 }
 
 interface FeatureUsageRow {
   action: string;
-  call_count: number;
-  unique_users: number;
+  callCount: number;
+  uniqueUsers: number;
 }
 
 interface UsageAnalyticsData {
   agentUsage: AgentUsageRow[];
   agentPatterns: AgentPattern[];
   featureUsage: FeatureUsageRow[];
-  chatStats: { conversations: number; messages: number; active_chatters: number };
+  chatStats: { conversations: number; messages: number; activeChatters: number };
   dailyAgentRuns: { day: string; runs: number }[];
   period: { days: number; since: string };
 }
@@ -126,7 +126,7 @@ function AiCostTab() {
   });
 
   const summary = data?.summary;
-  const usageRows = (data?.usage ?? []).filter((r: AiUsageRow) => Number(r.call_count) > 0);
+  const usageRows = (data?.usage ?? []).filter((r: AiUsageRow) => Number(r.callCount) > 0);
 
   return (
     <>
@@ -148,9 +148,9 @@ function AiCostTab() {
       {data && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <StatCard icon={Zap} label="Total Calls" value={Number(summary?.total_calls || 0).toLocaleString()} color="bg-blue-500" />
-            <StatCard icon={Brain} label="Total Tokens" value={Number(summary?.total_tokens || 0).toLocaleString()} color="bg-purple-500" />
-            <StatCard icon={DollarSign} label="Total Cost" value={fmtCost(Number(summary?.total_cost || 0))} color="bg-emerald-500" />
+            <StatCard icon={Zap} label="Total Calls" value={Number(summary?.totalCalls || 0).toLocaleString()} color="bg-blue-500" />
+            <StatCard icon={Brain} label="Total Tokens" value={Number(summary?.totalTokens || 0).toLocaleString()} color="bg-purple-500" />
+            <StatCard icon={DollarSign} label="Total Cost" value={fmtCost(Number(summary?.totalCost || 0))} color="bg-emerald-500" />
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6 shadow-sm">
@@ -176,13 +176,13 @@ function AiCostTab() {
                 {usageRows.map((r: AiUsageRow) => (
                   <tr key={r.username} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="py-3 pr-4">
-                      <div className="font-medium text-gray-900 dark:text-white">{r.full_name}</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{r.fullName}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">{r.email}</div>
                     </td>
-                    <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{Number(r.call_count).toLocaleString()}</td>
-                    <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{Number(r.total_tokens).toLocaleString()}</td>
-                    <td className="py-3 pr-4 text-right font-medium text-gray-900 dark:text-white">{fmtCost(r.total_cost)}</td>
-                    <td className="py-3 text-gray-500 dark:text-gray-400">{fmt(r.last_used)}</td>
+                    <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{Number(r.callCount).toLocaleString()}</td>
+                    <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{Number(r.totalTokens).toLocaleString()}</td>
+                    <td className="py-3 pr-4 text-right font-medium text-gray-900 dark:text-white">{fmtCost(r.totalCost)}</td>
+                    <td className="py-3 text-gray-500 dark:text-gray-400">{fmt(r.lastUsed)}</td>
                   </tr>
                 ))}
                 {usageRows.length === 0 && (
@@ -260,11 +260,11 @@ function UsageAnalyticsTab() {
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {data.agentUsage.map(a => (
-                      <tr key={a.agent_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td className="py-2.5 pr-4 font-medium text-gray-900 dark:text-white">{agentLabel(a.agent_id)}</td>
+                      <tr key={a.agentId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="py-2.5 pr-4 font-medium text-gray-900 dark:text-white">{agentLabel(a.agentId)}</td>
                         <td className="py-2.5 pr-4 text-right text-gray-700 dark:text-gray-200">{Number(a.runs).toLocaleString()}</td>
-                        <td className="py-2.5 pr-4 text-right text-gray-700 dark:text-gray-200">{Number(a.unique_projects).toLocaleString()}</td>
-                        <td className="py-2.5 text-gray-500 dark:text-gray-400">{fmt(a.last_run)}</td>
+                        <td className="py-2.5 pr-4 text-right text-gray-700 dark:text-gray-200">{Number(a.uniqueProjects).toLocaleString()}</td>
+                        <td className="py-2.5 text-gray-500 dark:text-gray-400">{fmt(a.lastRun)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -281,9 +281,9 @@ function UsageAnalyticsTab() {
               <div className="space-y-2">
                 {data.agentPatterns.map((p, i) => (
                   <div key={i} className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-gray-900 dark:text-white">{agentLabel(p.first_agent)}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{agentLabel(p.firstAgent)}</span>
                     <ArrowRight className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-                    <span className="font-medium text-gray-900 dark:text-white">{agentLabel(p.second_agent)}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{agentLabel(p.secondAgent)}</span>
                     <span className="ml-auto text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{Number(p.frequency)}x</span>
                   </div>
                 ))}
@@ -310,8 +310,8 @@ function UsageAnalyticsTab() {
                     {data.featureUsage.map(f => (
                       <tr key={f.action} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                         <td className="py-2 pr-4 font-mono text-xs text-gray-900 dark:text-white">{f.action}</td>
-                        <td className="py-2 pr-4 text-right text-gray-700 dark:text-gray-200">{Number(f.call_count).toLocaleString()}</td>
-                        <td className="py-2 text-right text-gray-700 dark:text-gray-200">{Number(f.unique_users).toLocaleString()}</td>
+                        <td className="py-2 pr-4 text-right text-gray-700 dark:text-gray-200">{Number(f.callCount).toLocaleString()}</td>
+                        <td className="py-2 text-right text-gray-700 dark:text-gray-200">{Number(f.uniqueUsers).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -325,7 +325,7 @@ function UsageAnalyticsTab() {
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Mjuzi Chat</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{Number(data.chatStats.active_chatters)}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{Number(data.chatStats.activeChatters)}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Active Users</p>
               </div>
               <div>

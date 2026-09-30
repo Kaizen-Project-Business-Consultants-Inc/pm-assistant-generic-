@@ -195,6 +195,14 @@ describe('AlertService', () => {
       expect(calls[0][3]).toContain('enterprise: no setting for resources, reports');
     });
 
+    it('id columns in a different collation are reported (joins on them fail)', async () => {
+      mockQueryCP.mockImplementation(async (sql: string) => (/information_schema\.columns/.test(sql) ? [{ t: 'feedback', c: 'user_id', coll: 'utf8mb4_general_ci' }] : []));
+      await alertService.runChecks();
+      const calls = mockSendEmail.mock.calls.filter(c => String(c[1]).includes('different text collation'));
+      expect(calls).toHaveLength(1);
+      expect(calls[0][3]).toContain('feedback.user_id (utf8mb4_general_ci)');
+    });
+
     it('a failing check never breaks the other checks', async () => {
       planGaps.findPlanGaps.mockRejectedValue(new Error('db down'));
       await expect(alertService.runChecks()).resolves.toBeUndefined();

@@ -28,35 +28,35 @@ interface AdminUser {
   id: string;
   username: string;
   email: string;
-  full_name: string;
+  fullName: string;
   role: string;
-  is_active: number | boolean;
-  created_at: string;
-  last_login_at: string | null;
-  subscription_tier: string;
-  subscription_status: string | null;
-  subscription_period_end: string | null;
-  project_count: number;
-  email_verified: number | boolean;
-  has_pending_login: number | boolean;
-  login_verification_expires: string | null;
-  ai_monthly_token_budget: number | null;
-  ai_tokens_used: number;
-  ai_tier_budget: number;
-  organization_id: string | null;
-  organization_name: string | null;
+  isActive: number | boolean;
+  createdAt: string;
+  lastLoginAt: string | null;
+  subscriptionTier: string;
+  subscriptionStatus: string | null;
+  subscriptionPeriodEnd: string | null;
+  projectCount: number;
+  emailVerified: number | boolean;
+  hasPendingLogin: number | boolean;
+  loginVerificationExpires: string | null;
+  aiMonthlyTokenBudget: number | null;
+  aiTokensUsed: number;
+  aiTierBudget: number;
+  organizationId: string | null;
+  organizationName: string | null;
 }
 
 interface SubscriptionEvent {
   id: string;
-  event_type: string;
-  previous_tier: string | null;
-  new_tier: string | null;
-  amount_cents: number | null;
-  created_at: string;
+  eventType: string;
+  previousTier: string | null;
+  newTier: string | null;
+  amountCents: number | null;
+  createdAt: string;
 }
 
-type SortKey = 'full_name' | 'role' | 'subscription_tier' | 'subscription_status' | 'created_at' | 'login_status' | 'last_login_at' | 'project_count' | 'ai_usage' | 'organization_name' | 'is_active';
+type SortKey = 'fullName' | 'role' | 'subscriptionTier' | 'subscriptionStatus' | 'createdAt' | 'login_status' | 'lastLoginAt' | 'projectCount' | 'ai_usage' | 'organizationName' | 'isActive';
 type SortDir = 'asc' | 'desc';
 
 function fmt(date: string | null) {
@@ -75,17 +75,17 @@ function formatTokens(n: number) {
 }
 
 function getLoginStatusOrder(u: AdminUser): number {
-  const hasPending = Boolean(u.has_pending_login);
-  const expired = hasPending && u.login_verification_expires && new Date(u.login_verification_expires) < new Date();
+  const hasPending = Boolean(u.hasPendingLogin);
+  const expired = hasPending && u.loginVerificationExpires && new Date(u.loginVerificationExpires) < new Date();
   if (expired) return 0; // most urgent
   if (hasPending) return 1;
-  if (!Boolean(u.email_verified)) return 2;
+  if (!Boolean(u.emailVerified)) return 2;
   return 3; // verified = least urgent
 }
 
 const ROLE_COLORS: Record<string, string> = {
   admin: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300',
-  project_manager: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+  projectManager: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
   executive: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300',
   pmo: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300',
 };
@@ -93,20 +93,20 @@ const ROLE_COLORS: Record<string, string> = {
 const SUB_STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
   trialing: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-  past_due: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+  pastDue: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
   canceled: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
 };
 
 const EVENT_LABELS: Record<string, string> = {
-  subscription_created: 'Created',
-  tier_changed: 'Tier Change',
-  subscription_renewed: 'Renewed',
-  subscription_canceled: 'Canceled',
-  payment_failed: 'Payment Failed',
-  payment_succeeded: 'Payment OK',
-  trial_started: 'Trial Start',
-  trial_expired: 'Trial Expired',
-  topup_purchased: 'Top-up',
+  subscriptionCreated: 'Created',
+  tierChanged: 'Tier Change',
+  subscriptionRenewed: 'Renewed',
+  subscriptionCanceled: 'Canceled',
+  paymentFailed: 'Payment Failed',
+  paymentSucceeded: 'Payment OK',
+  trialStarted: 'Trial Start',
+  trialExpired: 'Trial Expired',
+  topupPurchased: 'Top-up',
 };
 
 export function AdminUsersPage() {
@@ -119,7 +119,7 @@ export function AdminUsersPage() {
   const [subStatusFilter, setSubStatusFilter] = useState('');
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [budgetInput, setBudgetInput] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('created_at');
+  const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [toggleConfirm, setToggleConfirm] = useState<{ user: any; active: boolean; message: string } | null>(null);
   const [historyUserId, setHistoryUserId] = useState<string | null>(null);
@@ -147,7 +147,7 @@ export function AdminUsersPage() {
   }, [allUsers]);
 
   const tiers = useMemo(() => {
-    const set = new Set(allUsers.map(u => u.subscription_tier || 'trial'));
+    const set = new Set(allUsers.map(u => u.subscriptionTier || 'trial'));
     return Array.from(set).sort();
   }, [allUsers]);
 
@@ -155,17 +155,17 @@ export function AdminUsersPage() {
   const filtered = useMemo(() => {
     let result = allUsers;
     if (roleFilter) result = result.filter(u => u.role === roleFilter);
-    if (tierFilter) result = result.filter(u => (u.subscription_tier || 'trial') === tierFilter);
-    if (statusFilter === 'active') result = result.filter(u => Boolean(u.is_active));
-    if (statusFilter === 'inactive') result = result.filter(u => !Boolean(u.is_active));
-    if (subStatusFilter) result = result.filter(u => (u.subscription_status || '') === subStatusFilter);
+    if (tierFilter) result = result.filter(u => (u.subscriptionTier || 'trial') === tierFilter);
+    if (statusFilter === 'active') result = result.filter(u => Boolean(u.isActive));
+    if (statusFilter === 'inactive') result = result.filter(u => !Boolean(u.isActive));
+    if (subStatusFilter) result = result.filter(u => (u.subscriptionStatus || '') === subStatusFilter);
     if (searchText) {
       const q = searchText.toLowerCase();
       result = result.filter(u =>
-        u.full_name.toLowerCase().includes(q) ||
+        u.fullName.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
         u.username.toLowerCase().includes(q) ||
-        (u.organization_name || '').toLowerCase().includes(q)
+        (u.organizationName || '').toLowerCase().includes(q)
       );
     }
     return result;
@@ -177,25 +177,25 @@ export function AdminUsersPage() {
     const dir = sortDir === 'asc' ? 1 : -1;
     list.sort((a, b) => {
       switch (sortKey) {
-        case 'full_name': return dir * a.full_name.localeCompare(b.full_name);
+        case 'fullName': return dir * a.fullName.localeCompare(b.fullName);
         case 'role': return dir * a.role.localeCompare(b.role);
-        case 'subscription_tier': return dir * (a.subscription_tier || 'trial').localeCompare(b.subscription_tier || 'trial');
-        case 'subscription_status': return dir * (a.subscription_status || '').localeCompare(b.subscription_status || '');
-        case 'created_at': return dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        case 'last_login_at': {
-          const aT = a.last_login_at ? new Date(a.last_login_at).getTime() : 0;
-          const bT = b.last_login_at ? new Date(b.last_login_at).getTime() : 0;
+        case 'subscriptionTier': return dir * (a.subscriptionTier || 'trial').localeCompare(b.subscriptionTier || 'trial');
+        case 'subscriptionStatus': return dir * (a.subscriptionStatus || '').localeCompare(b.subscriptionStatus || '');
+        case 'createdAt': return dir * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        case 'lastLoginAt': {
+          const aT = a.lastLoginAt ? new Date(a.lastLoginAt).getTime() : 0;
+          const bT = b.lastLoginAt ? new Date(b.lastLoginAt).getTime() : 0;
           return dir * (aT - bT);
         }
         case 'login_status': return dir * (getLoginStatusOrder(a) - getLoginStatusOrder(b));
-        case 'project_count': return dir * (a.project_count - b.project_count);
+        case 'projectCount': return dir * (a.projectCount - b.projectCount);
         case 'ai_usage': {
-          const aPct = a.ai_tier_budget > 0 ? a.ai_tokens_used / a.ai_tier_budget : 0;
-          const bPct = b.ai_tier_budget > 0 ? b.ai_tokens_used / b.ai_tier_budget : 0;
+          const aPct = a.aiTierBudget > 0 ? a.aiTokensUsed / a.aiTierBudget : 0;
+          const bPct = b.aiTierBudget > 0 ? b.aiTokensUsed / b.aiTierBudget : 0;
           return dir * (aPct - bPct);
         }
-        case 'organization_name': return dir * (a.organization_name || '').localeCompare(b.organization_name || '');
-        case 'is_active': return dir * (Number(Boolean(a.is_active)) - Number(Boolean(b.is_active)));
+        case 'organizationName': return dir * (a.organizationName || '').localeCompare(b.organizationName || '');
+        case 'isActive': return dir * (Number(Boolean(a.isActive)) - Number(Boolean(b.isActive)));
         default: return 0;
       }
     });
@@ -207,7 +207,7 @@ export function AdminUsersPage() {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     } else {
       setSortKey(key);
-      setSortDir(key === 'created_at' || key === 'last_login_at' ? 'desc' : 'asc');
+      setSortDir(key === 'createdAt' || key === 'lastLoginAt' ? 'desc' : 'asc');
     }
   }
 
@@ -218,7 +218,7 @@ export function AdminUsersPage() {
 
   // Summary stats
   const totalUsers = allUsers.length;
-  const activeUsers = allUsers.filter(u => Boolean(u.is_active)).length;
+  const activeUsers = allUsers.filter(u => Boolean(u.isActive)).length;
   const inactiveUsers = totalUsers - activeUsers;
 
   const toggleStatus = useMutation({
@@ -375,7 +375,7 @@ export function AdminUsersPage() {
               <option value="">All subscriptions</option>
               <option value="active">Sub: Active</option>
               <option value="trialing">Sub: Trialing</option>
-              <option value="past_due">Sub: Past Due</option>
+              <option value="pastDue">Sub: Past Due</option>
               <option value="canceled">Sub: Canceled</option>
             </select>
 
@@ -406,8 +406,8 @@ export function AdminUsersPage() {
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                   <th className="pb-3 pr-3">
-                    <button onClick={() => handleSort('full_name')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
-                      User <SortIcon col="full_name" />
+                    <button onClick={() => handleSort('fullName')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
+                      User <SortIcon col="fullName" />
                     </button>
                   </th>
                   <th className="pb-3 pr-3">
@@ -416,24 +416,24 @@ export function AdminUsersPage() {
                     </button>
                   </th>
                   <th className="pb-3 pr-3">
-                    <button onClick={() => handleSort('subscription_tier')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
-                      Tier <SortIcon col="subscription_tier" />
+                    <button onClick={() => handleSort('subscriptionTier')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
+                      Tier <SortIcon col="subscriptionTier" />
                     </button>
                   </th>
                   <th className="pb-3 pr-3">
-                    <button onClick={() => handleSort('subscription_status')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
-                      Sub Status <SortIcon col="subscription_status" />
+                    <button onClick={() => handleSort('subscriptionStatus')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
+                      Sub Status <SortIcon col="subscriptionStatus" />
                     </button>
                   </th>
                   <th className="pb-3 pr-3">Period End</th>
                   <th className="pb-3 pr-3">
-                    <button onClick={() => handleSort('organization_name')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
-                      Organization <SortIcon col="organization_name" />
+                    <button onClick={() => handleSort('organizationName')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
+                      Organization <SortIcon col="organizationName" />
                     </button>
                   </th>
                   <th className="pb-3 pr-3">
-                    <button onClick={() => handleSort('created_at')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
-                      Signed up <SortIcon col="created_at" />
+                    <button onClick={() => handleSort('createdAt')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
+                      Signed up <SortIcon col="createdAt" />
                     </button>
                   </th>
                   <th className="pb-3 pr-3">
@@ -442,13 +442,13 @@ export function AdminUsersPage() {
                     </button>
                   </th>
                   <th className="pb-3 pr-3">
-                    <button onClick={() => handleSort('last_login_at')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
-                      Last login <SortIcon col="last_login_at" />
+                    <button onClick={() => handleSort('lastLoginAt')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
+                      Last login <SortIcon col="lastLoginAt" />
                     </button>
                   </th>
                   <th className="pb-3 pr-3 text-right">
-                    <button onClick={() => handleSort('project_count')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 ml-auto">
-                      Projects <SortIcon col="project_count" />
+                    <button onClick={() => handleSort('projectCount')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 ml-auto">
+                      Projects <SortIcon col="projectCount" />
                     </button>
                   </th>
                   <th className="pb-3 pr-3">
@@ -458,8 +458,8 @@ export function AdminUsersPage() {
                   </th>
                   <th className="pb-3 pr-3">AI Budget</th>
                   <th className="pb-3 pr-3 text-center">
-                    <button onClick={() => handleSort('is_active')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
-                      Status <SortIcon col="is_active" />
+                    <button onClick={() => handleSort('isActive')} className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">
+                      Status <SortIcon col="isActive" />
                     </button>
                   </th>
                   <th className="pb-3 pl-3">Actions</th>
@@ -467,20 +467,20 @@ export function AdminUsersPage() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {sorted.map((u: AdminUser) => {
-                  const active = Boolean(u.is_active);
-                  const hasPendingLogin = Boolean(u.has_pending_login);
-                  const loginExpired = hasPendingLogin && u.login_verification_expires && new Date(u.login_verification_expires) < new Date();
-                  const emailVerified = Boolean(u.email_verified);
+                  const active = Boolean(u.isActive);
+                  const hasPendingLogin = Boolean(u.hasPendingLogin);
+                  const loginExpired = hasPendingLogin && u.loginVerificationExpires && new Date(u.loginVerificationExpires) < new Date();
+                  const emailVerified = Boolean(u.emailVerified);
                   const roleColor = ROLE_COLORS[u.role] || 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200';
-                  const tierColor = tierBadgeClass(u.subscription_tier || 'trial');
-                  const effectiveBudget = u.ai_monthly_token_budget ?? u.ai_tier_budget;
-                  const usagePct = effectiveBudget > 0 ? Math.round((Number(u.ai_tokens_used) / effectiveBudget) * 100) : 0;
+                  const tierColor = tierBadgeClass(u.subscriptionTier || 'trial');
+                  const effectiveBudget = u.aiMonthlyTokenBudget ?? u.aiTierBudget;
+                  const usagePct = effectiveBudget > 0 ? Math.round((Number(u.aiTokensUsed) / effectiveBudget) * 100) : 0;
                   const usageBarColor = usagePct >= 90 ? 'bg-red-500' : usagePct >= 70 ? 'bg-amber-500' : 'bg-emerald-500';
 
                   return (
                     <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                       <td className="py-3 pr-3">
-                        <div className="font-medium text-gray-900 dark:text-white">{u.full_name}</div>
+                        <div className="font-medium text-gray-900 dark:text-white">{u.fullName}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{u.email}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">@{u.username}</div>
                       </td>
@@ -492,7 +492,7 @@ export function AdminUsersPage() {
                       <td className="py-3 pr-3">
                         {editingTierId === u.id ? (
                           <select
-                            value={u.subscription_tier || 'trial'}
+                            value={u.subscriptionTier || 'trial'}
                             onChange={e => { changeTier.mutate({ id: u.id, tier: e.target.value }); }}
                             onBlur={() => setEditingTierId(null)}
                             className="px-1.5 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
@@ -512,28 +512,28 @@ export function AdminUsersPage() {
                             title="Click to change tier"
                           >
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${tierColor}`}>
-                              {u.subscription_tier || 'trial'}
+                              {u.subscriptionTier || 'trial'}
                             </span>
                             <Pencil className="w-3 h-3 text-gray-500 opacity-0 group-hover:opacity-100" />
                           </button>
                         )}
                       </td>
                       <td className="py-3 pr-3">
-                        {u.subscription_status ? (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${SUB_STATUS_COLORS[u.subscription_status] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
-                            {u.subscription_status.replace('_', ' ')}
+                        {u.subscriptionStatus ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${SUB_STATUS_COLORS[u.subscriptionStatus] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
+                            {u.subscriptionStatus.replace('_', ' ')}
                           </span>
                         ) : (
                           <span className="text-gray-500 dark:text-gray-400 text-xs italic">none</span>
                         )}
                       </td>
                       <td className="py-3 pr-3 text-gray-600 dark:text-gray-300 whitespace-nowrap text-xs">
-                        {fmt(u.subscription_period_end)}
+                        {fmt(u.subscriptionPeriodEnd)}
                       </td>
                       <td className="py-3 pr-3 text-gray-600 dark:text-gray-300 text-xs">
-                        {u.organization_name || <span className="text-gray-500 dark:text-gray-400 italic">none</span>}
+                        {u.organizationName || <span className="text-gray-500 dark:text-gray-400 italic">none</span>}
                       </td>
-                      <td className="py-3 pr-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">{fmt(u.created_at)}</td>
+                      <td className="py-3 pr-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">{fmt(u.createdAt)}</td>
                       <td className="py-3 pr-3">
                         {loginExpired ? (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">Expired token</span>
@@ -545,12 +545,12 @@ export function AdminUsersPage() {
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">Verified</span>
                         )}
                       </td>
-                      <td className="py-3 pr-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">{fmt(u.last_login_at)}</td>
-                      <td className="py-3 pr-3 text-right font-medium text-gray-700 dark:text-gray-200">{u.project_count}</td>
+                      <td className="py-3 pr-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">{fmt(u.lastLoginAt)}</td>
+                      <td className="py-3 pr-3 text-right font-medium text-gray-700 dark:text-gray-200">{u.projectCount}</td>
                       <td className="py-3 pr-3">
                         <div className="w-28">
                           <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                            <span>{formatTokens(Number(u.ai_tokens_used))}</span>
+                            <span>{formatTokens(Number(u.aiTokensUsed))}</span>
                             <span>{usagePct}%</span>
                           </div>
                           <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -582,12 +582,12 @@ export function AdminUsersPage() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => { setEditingBudgetId(u.id); setBudgetInput(u.ai_monthly_token_budget != null ? String(u.ai_monthly_token_budget) : ''); }}
+                            onClick={() => { setEditingBudgetId(u.id); setBudgetInput(u.aiMonthlyTokenBudget != null ? String(u.aiMonthlyTokenBudget) : ''); }}
                             className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
                             title="Click to edit AI budget"
                           >
-                            {u.ai_monthly_token_budget != null ? (
-                              <span className="font-mono">{u.ai_monthly_token_budget.toLocaleString()}</span>
+                            {u.aiMonthlyTokenBudget != null ? (
+                              <span className="font-mono">{u.aiMonthlyTokenBudget.toLocaleString()}</span>
                             ) : (
                               <span className="text-gray-500 dark:text-gray-400 italic">tier default</span>
                             )}
@@ -599,10 +599,10 @@ export function AdminUsersPage() {
                         <button
                           onClick={() => {
                             if (active) {
-                              const hasSub = u.subscription_status && ['active', 'trialing', 'past_due'].includes(u.subscription_status);
+                              const hasSub = u.subscriptionStatus && ['active', 'trialing', 'pastDue'].includes(u.subscriptionStatus);
                               const msg = hasSub
-                                ? `${u.full_name || u.email} has an active subscription (${u.subscription_status}). Cancel their Stripe subscription first before deactivating. Proceed anyway?`
-                                : `Deactivate ${u.full_name || u.email}? They will be unable to log in.`;
+                                ? `${u.fullName || u.email} has an active subscription (${u.subscriptionStatus}). Cancel their Stripe subscription first before deactivating. Proceed anyway?`
+                                : `Deactivate ${u.fullName || u.email}? They will be unable to log in.`;
                               setToggleConfirm({ user: u, active: !active, message: msg });
                             } else {
                               toggleStatus.mutate({ id: u.id, active: !active });
@@ -634,7 +634,7 @@ export function AdminUsersPage() {
                             Reset PW
                           </button>
                           <button
-                            onClick={() => { setHistoryUserId(u.id); setHistoryUserName(u.full_name); }}
+                            onClick={() => { setHistoryUserId(u.id); setHistoryUserName(u.fullName); }}
                             title="View subscription history"
                             className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-colors"
                           >
@@ -686,16 +686,16 @@ export function AdminUsersPage() {
                   <div className="flex-shrink-0 mt-0.5 w-2 h-2 rounded-full bg-primary-500" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">
-                      {EVENT_LABELS[ev.event_type] || ev.event_type}
+                      {EVENT_LABELS[ev.eventType] || ev.eventType}
                     </p>
-                    {ev.previous_tier && ev.new_tier && ev.previous_tier !== ev.new_tier && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{ev.previous_tier} → {ev.new_tier}</p>
+                    {ev.previousTier && ev.newTier && ev.previousTier !== ev.newTier && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{ev.previousTier} → {ev.newTier}</p>
                     )}
-                    {ev.amount_cents != null && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">${(ev.amount_cents / 100).toFixed(2)}</p>
+                    {ev.amountCents != null && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">${(ev.amountCents / 100).toFixed(2)}</p>
                     )}
                   </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{fmt(ev.created_at)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{fmt(ev.createdAt)}</span>
                 </div>
               ))}
             </div>

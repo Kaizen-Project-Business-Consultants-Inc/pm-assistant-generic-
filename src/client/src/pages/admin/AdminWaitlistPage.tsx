@@ -6,9 +6,9 @@ import { AdminPageWrapper } from './AdminPageWrapper';
 
 interface WaitlistEntry {
   email: string;
-  created_at: string;
-  launch_email_sent?: boolean;
-  launch_email_sent_at?: string;
+  createdAt: string;
+  launchEmailSent?: boolean;
+  launchEmailSentAt?: string;
 }
 
 export function AdminWaitlistPage() {
@@ -135,10 +135,10 @@ export function AdminWaitlistPage() {
                   <td className="px-4 py-3 text-gray-500">{i + 1}</td>
                   <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{entry.email}</td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                    {new Date(entry.created_at).toLocaleDateString('en-US')}
+                    {new Date(entry.createdAt).toLocaleDateString('en-US')}
                   </td>
                   <td className="px-4 py-3">
-                    {entry.launch_email_sent ? (
+                    {entry.launchEmailSent ? (
                       <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                         <CheckCircle2 className="w-3 h-3" /> Sent
                       </span>

@@ -15,20 +15,22 @@ import {
 } from 'lucide-react';
 import { formatCalendarDate } from '../../utils/dateUtils';
 
-interface AdminTenant {
+/** As GET /api/v1/admin/tenants sends it (camelCase). The page used to read snake_case names
+ *  that never existed, so every company showed as Inactive / not provisioned (found 2026-09-30). */
+export interface AdminTenant {
   id: string;
   name: string;
   slug: string;
-  db_name: string;
-  owner_name: string | null;
-  owner_email: string | null;
-  user_count: number;
-  max_users: number;
-  subscription_tier: string;
-  subscription_status: string;
-  is_active: number | boolean;
-  is_provisioned: number | boolean;
-  created_at: string;
+  dbName: string;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  userCount: number;
+  maxUsers: number;
+  subscriptionTier: string;
+  subscriptionStatus: string;
+  isActive: number | boolean;
+  isProvisioned: number | boolean;
+  createdAt: string;
 }
 
 function fmt(date: string | null) {
@@ -98,8 +100,8 @@ export function AdminTenantsPage() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {tenants.map((t: AdminTenant) => {
-                  const active = Boolean(t.is_active);
-                  const provisioned = Boolean(t.is_provisioned);
+                  const active = Boolean(t.isActive);
+                  const provisioned = Boolean(t.isProvisioned);
                   return (
                     <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="py-3 pr-4">
@@ -107,21 +109,21 @@ export function AdminTenantsPage() {
                         <div className="text-xs text-gray-500 dark:text-gray-400">{t.slug}</div>
                       </td>
                       <td className="py-3 pr-4">
-                        {t.owner_name ? (
+                        {t.ownerName ? (
                           <>
-                            <div className="text-gray-900 dark:text-white">{t.owner_name}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">{t.owner_email}</div>
+                            <div className="text-gray-900 dark:text-white">{t.ownerName}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{t.ownerEmail}</div>
                           </>
                         ) : (
                           <span className="text-gray-500">{'\u2014'}</span>
                         )}
                       </td>
                       <td className="py-3 pr-4 text-right font-medium text-gray-700 dark:text-gray-200">
-                        {Number(t.user_count)} / {t.max_users}
+                        {Number(t.userCount)} / {t.maxUsers}
                       </td>
                       <td className="py-3 pr-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tierBadgeClass(t.subscription_tier)}`}>
-                          {t.subscription_tier}
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tierBadgeClass(t.subscriptionTier)}`}>
+                          {t.subscriptionTier}
                         </span>
                       </td>
                       <td className="py-3 text-center">
@@ -156,7 +158,7 @@ export function AdminTenantsPage() {
                           </button>
                         )}
                       </td>
-                      <td className="py-3 pr-4 text-gray-600 dark:text-gray-300">{fmt(t.created_at)}</td>
+                      <td className="py-3 pr-4 text-gray-600 dark:text-gray-300">{fmt(t.createdAt)}</td>
                       <td className="py-3 pl-4 whitespace-nowrap space-x-2">
                         {provisioned && active && (
                           <button

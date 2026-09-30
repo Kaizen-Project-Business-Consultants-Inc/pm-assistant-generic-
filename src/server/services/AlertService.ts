@@ -22,7 +22,8 @@ type AlertType =
   | 'cron_job_stalled'
   | 'migration_failed'
   | 'registration_flood'
-  | 'plan_features_missing';
+  | 'plan_features_missing'
+  | 'collation_mismatch';
 
 /**
  * Scheduled jobs that must have run recently, and how long is too long (hours).
@@ -83,6 +84,7 @@ class AlertService {
         this.checkRegistrationFlood(),
         this.checkAccountAISpend(),
         this.checkPlanFeatures(),
+        this.checkIdCollation(),
       ]);
     } catch (err) {
       logger.error('[AlertService] Check cycle failed', {
@@ -108,6 +110,27 @@ class AlertService {
       severity: 'critical',
       title: 'Plan settings incomplete — customers may be refused features they pay for',
       message: `The plan tables are missing: ${gaps.join('; ')}. A missing setting counts as "feature off". Add the rows (a migration like 122_all_tiers_have_features.sql).`,
+    });
+  }
+
+  /**
+   * Id columns in the shared database must share users/organizations' collation, or JOINs on
+   * them fail ("Illegal mix of collations") — the admin Feedback page failed this way until
+   * migration 127. Cheap: one information_schema read of the shared database.
+   */
+  private async checkIdCollation(): Promise<void> {
+    const rows = await databaseService.queryControlPlane<{ t: string; c: string; coll: string }>(
+      `SELECT table_name AS t, column_name AS c, collation_name AS coll FROM information_schema.columns
+       WHERE table_schema = DATABASE() AND collation_name IS NOT NULL AND collation_name <> 'utf8mb4_unicode_ci'
+         AND (column_name = 'id' OR column_name LIKE '%\\_id') AND table_name NOT LIKE '\\_retired\\_%'`,
+    );
+    const mismatched = rows.filter(r => r && r.t && r.c);
+    if (mismatched.length === 0) return;
+    await this.fire({
+      type: 'collation_mismatch',
+      severity: 'warning',
+      title: 'Id columns with a different text collation — joins on them will fail',
+      message: `${mismatched.map(r => `${r.t}.${r.c} (${r.coll})`).join(', ')}. Convert the table to utf8mb4_unicode_ci (see migration 127).`,
     });
   }
 
