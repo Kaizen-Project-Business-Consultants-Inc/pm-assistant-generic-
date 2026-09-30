@@ -41,10 +41,7 @@ async function run() {
   try {
     // Verify database connection
     const connected = await databaseService.testConnection();
-    if (!connected) {
-      console.error('[cron-runner] Database connection failed');
-      process.exit(1);
-    }
+    if (!connected) throw new Error('Database connection failed'); // recorded as a failed run below
 
     // Redis: the alert checks (server errors, signup floods) and cooldowns live there. Jobs never
     // connected before, so those alerts could not fire from the timer. Optional, like the app.
@@ -194,27 +191,29 @@ async function run() {
       }
 
       default:
-        console.error(`[cron-runner] Unknown job: ${JOB_NAME}`);
-        process.exit(1);
+        throw new Error(`Unknown job: ${JOB_NAME}`);
     }
 
     const elapsed = Date.now() - start;
     console.log(`[cron-runner] Job "${JOB_NAME}" finished in ${elapsed}ms`);
 
-    // Track in Redis for ops dashboard
+    // Record the run for the ops dashboard and the "jobs stopped" alert. AWAITED: the finally
+    // block disconnects Redis, and a fast job (e.g. agent-scan with agents off, ~0.2 s) used to
+    // disconnect before this write landed — the record was lost and the alert said the job had
+    // stopped running (prod, 2026-09-30).
     if (redisService.isConnected()) {
       const info = JSON.stringify({ status: 'ok', durationMs: elapsed, finishedAt: new Date().toISOString() });
-      redisService.set(`cron:last:${JOB_NAME}`, info, 86400 * 7).catch(() => {});
+      await redisService.set(`cron:last:${JOB_NAME}`, info, 86400 * 7).catch(() => {});
     }
   } catch (error) {
     console.error(`[cron-runner] Job "${JOB_NAME}" FAILED:`, error);
 
-    // Track failure in Redis
+    // Track failure in Redis (awaited, and exit only after cleanup — exiting here used to drop it)
     if (redisService.isConnected()) {
       const info = JSON.stringify({ status: 'failed', error: String(error).slice(0, 200), finishedAt: new Date().toISOString() });
-      redisService.set(`cron:last:${JOB_NAME}`, info, 86400 * 7).catch(() => {});
+      await redisService.set(`cron:last:${JOB_NAME}`, info, 86400 * 7).catch(() => {});
     }
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     await redisService.disconnect();
     await databaseService.close();
