@@ -26,7 +26,7 @@ case "$ENV" in
     DOMAIN="kovarti.com"
     ;;
   *)
-    echo "Usage: bash deploy.sh <staging|prod> [--skip-tests] [--server-only] [--client-only] [--mcp]"
+    echo "Usage: bash deploy.sh <staging|prod> [--skip-tests] [--server-only] [--client-only] [--mcp] [--allow-dirty (staging only)]"
     exit 1
     ;;
 esac
@@ -39,6 +39,7 @@ SERVER_ONLY=false
 CLIENT_ONLY=false
 MCP_ONLY=false
 PRELAUNCH=false
+ALLOW_DIRTY=false
 
 for arg in "$@"; do
   case $arg in
@@ -47,9 +48,33 @@ for arg in "$@"; do
     --client-only) CLIENT_ONLY=true ;;
     --mcp)         MCP_ONLY=true ;;
     --prelaunch)   PRELAUNCH=true ;;
+    --allow-dirty) ALLOW_DIRTY=true ;;
     *) echo "Unknown option: $arg"; exit 1 ;;
   esac
 done
+
+# ── Deploy only what is saved (committed) ──
+# The build reads the working files, not a commit. On 2026-09-30 a prod deploy running in
+# the background picked up a half-written, unapproved migration (T063) that was being
+# written at the same moment. So: refuse unsaved changes to anything that ships, and check
+# again just before uploading that nothing changed while building.
+source_state() { git rev-parse HEAD; git status --porcelain -- src mcp-server/src package.json package-lock.json deploy; }
+SOURCE_STATE_AT_START="$(source_state)"
+if [ -n "$(git status --porcelain -- src mcp-server/src package.json package-lock.json deploy)" ]; then
+  if [ "$ENV" = "prod" ] || [ "$ALLOW_DIRTY" = false ]; then
+    echo "✗ Unsaved changes in files that ship — commit them first (nothing was deployed):"
+    git status --porcelain -- src mcp-server/src package.json package-lock.json deploy | head -20
+    [ "$ENV" = "staging" ] && echo "  (staging only: --allow-dirty deploys them anyway)"
+    exit 1
+  fi
+  echo "⚠ Deploying UNSAVED changes to staging (--allow-dirty)"
+fi
+assert_source_unchanged() {
+  if [ "$(source_state)" != "$SOURCE_STATE_AT_START" ]; then
+    echo "✗ Files changed while this deploy was building — aborting before upload (nothing was deployed)."
+    exit 1
+  fi
+}
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Deploying to $ENV ($DOMAIN)"
@@ -62,6 +87,7 @@ if [ "$MCP_ONLY" = true ]; then
   cd mcp-server && npm run build && cd ..
   echo "  OK"
 
+  assert_source_unchanged
   echo "[MCP] Uploading MCP server..."
   tar czf /tmp/mcp-server-dist.tar.gz -C mcp-server dist/ package.json package-lock.json
   do_scp /tmp/mcp-server-dist.tar.gz "$SSH_HOST":/tmp/
@@ -138,6 +164,8 @@ if [ "$LOCAL_MIG_COUNT" -eq 0 ] || [ "$LOCAL_TENANT_COUNT" -eq 0 ]; then
   exit 1
 fi
 echo "  ✓ OK ($LOCAL_MIG_COUNT control-plane, $LOCAL_TENANT_COUNT tenant)"
+
+assert_source_unchanged
 
 # --- Step 5: Upload server ---
 if [ "$CLIENT_ONLY" = false ]; then

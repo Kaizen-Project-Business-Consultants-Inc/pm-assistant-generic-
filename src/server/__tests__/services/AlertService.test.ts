@@ -96,6 +96,9 @@ vi.mock('../../utils/logger', () => ({
   },
 }));
 
+const planGaps = vi.hoisted(() => ({ findPlanGaps: vi.fn() }));
+vi.mock('../../services/PricingConfigService', () => ({ pricingConfigService: planGaps }));
+
 // Stub global fetch for webhook tests
 const mockFetch = vi.fn().mockResolvedValue({ ok: true });
 vi.stubGlobal('fetch', mockFetch);
@@ -172,6 +175,30 @@ describe('AlertService', () => {
     mockClientGet.mockResolvedValue(null);
     (config as any).ALERT_EMAIL = 'admin@test.com';
     (config as any).ALERT_WEBHOOK_URL = '';
+    planGaps.findPlanGaps.mockResolvedValue([]);
+  });
+
+  describe('checkPlanFeatures (via runChecks) — every plan has its feature settings', () => {
+    const planAlert = () => mockSendEmail.mock.calls.filter(c => String(c[1]).includes('Plan settings incomplete'));
+
+    it('complete plan tables → no alert', async () => {
+      await alertService.runChecks();
+      expect(planAlert()).toHaveLength(0);
+    });
+
+    it('a plan missing feature settings → critical email naming the gap', async () => {
+      planGaps.findPlanGaps.mockResolvedValue(['enterprise: no setting for resources, reports']);
+      await alertService.runChecks();
+      const calls = planAlert();
+      expect(calls).toHaveLength(1);
+      expect(calls[0][1]).toMatch(/^\[CRITICAL\]/);
+      expect(calls[0][3]).toContain('enterprise: no setting for resources, reports');
+    });
+
+    it('a failing check never breaks the other checks', async () => {
+      planGaps.findPlanGaps.mockRejectedValue(new Error('db down'));
+      await expect(alertService.runChecks()).resolves.toBeUndefined();
+    });
   });
 
   // ── runChecks ────────────────────────────────────────────────────────

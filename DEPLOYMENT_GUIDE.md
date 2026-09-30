@@ -178,7 +178,9 @@ ssh -i "~/.ssh/ssh-key-2026-07-08 (1).key" ubuntu@147.5.127.99 \
   "rm -rf /opt/pm-app/client-dist/assets && tar xzf /tmp/client-dist.tar.gz -C /opt/pm-app/client-dist && sudo systemctl restart pm-app"
 ```
 
-Or use the deploy script: `bash deploy.sh`
+Or use the deploy script: `bash deploy.sh <staging|prod>` (preferred).
+
+**The deploy script only ships saved work (Sep 2026).** It builds from the working files, so it refuses to start if anything that ships (`src/`, `mcp-server/src`, `package*.json`, `deploy/`) has uncommitted changes, and checks again just before uploading that nothing changed while it was building. Staging only: `--allow-dirty` deploys unsaved changes anyway. Why: a prod deploy running in the background once picked up a half-written migration that was being created at the same moment.
 
 ## Database
 

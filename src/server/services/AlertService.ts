@@ -9,6 +9,7 @@ import { getDegraded } from '../utils/degradedState';
 import logger from '../utils/logger';
 import { registrationActivity } from '../utils/registrationWatch';
 import { serverErrorActivity } from '../utils/serverErrorWatch';
+import { pricingConfigService } from './PricingConfigService';
 
 type AlertType =
   | 'error_rate_high'
@@ -20,7 +21,8 @@ type AlertType =
   | 'db_connection_lost'
   | 'cron_job_stalled'
   | 'migration_failed'
-  | 'registration_flood';
+  | 'registration_flood'
+  | 'plan_features_missing';
 
 /**
  * Scheduled jobs that must have run recently, and how long is too long (hours).
@@ -80,12 +82,30 @@ class AlertService {
         this.checkDegradedStart(),
         this.checkRegistrationFlood(),
         this.checkAccountAISpend(),
+        this.checkPlanFeatures(),
       ]);
     } catch (err) {
       logger.error('[AlertService] Check cycle failed', {
         error: err instanceof Error ? err.message : String(err),
       });
     }
+  }
+
+  /**
+   * Every plan we sell must have its price row and an on/off setting for every plan-gated
+   * feature; a missing one silently reads as "off". Production's SME, Enterprise and Trial
+   * plans had no feature settings at all until 2026-09-30 and nothing noticed — the first
+   * paying SME/Enterprise company would have found out by being refused.
+   */
+  private async checkPlanFeatures(): Promise<void> {
+    const gaps = await pricingConfigService.findPlanGaps();
+    if (gaps.length === 0) return;
+    await this.fire({
+      type: 'plan_features_missing',
+      severity: 'critical',
+      title: 'Plan settings incomplete — customers may be refused features they pay for',
+      message: `The plan tables are missing: ${gaps.join('; ')}. A missing setting counts as "feature off". Add the rows (a migration like 122_all_tiers_have_features.sql).`,
+    });
   }
 
   /**

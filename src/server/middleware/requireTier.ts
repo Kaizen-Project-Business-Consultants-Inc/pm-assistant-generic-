@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { userService } from '../services/UserService';
 import { pricingConfigService } from '../services/PricingConfigService';
 import { createError } from '@fastify/error';
+import type { FeatureKey } from '../constants/planFeatures';
 
 const UpgradeRequiredError = createError('UPGRADE_REQUIRED', 'This feature requires a paid subscription.', 403);
 const AuthRequiredError = createError('AUTH_REQUIRED', 'Authentication required', 401);
@@ -28,7 +29,7 @@ export function requireTier(...allowedTiers: string[]) {
   };
 }
 
-export function requireFeature(featureKey: string) {
+export function requireFeature(featureKey: FeatureKey) {
   return async (request: FastifyRequest, _reply: FastifyReply) => {
     if (request.user?.role === 'admin') return;
     if (request.user?.role === 'viewer') return;
