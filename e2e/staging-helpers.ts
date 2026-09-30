@@ -14,7 +14,7 @@ export const STAGING_TEAM_MEMBER = {
   password: 'Test1234!',
 };
 export const STAGING_OUTSIDER = {
-  username: 'qa.other@pm.kpbc.ca',
+  username: 'qa.outsider@pm.kpbc.ca',
   password: 'Test1234!',
 };
 
