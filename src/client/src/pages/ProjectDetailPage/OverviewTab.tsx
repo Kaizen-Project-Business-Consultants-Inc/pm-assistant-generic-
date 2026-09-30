@@ -991,8 +991,9 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
 
   return (
     <div className="space-y-6">
-      {/* Quick Actions */}
-      {onNavigateToTab && (
+      {/* Quick Actions — only for people who can change the project (hidden, not disabled,
+          for viewers, team members, executives and support visits) */}
+      {onNavigateToTab && canEdit && (
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => onNavigateToTab('schedule')}

@@ -32,6 +32,7 @@
     "adminOperations": "Operations",
     "adminSystem": "Configuration",
     "adminAudit": "Audit Trail",
+    "adminFeedback": "Feedback",
     "adminSchedules": "Schedules",
     "adminWaitlist": "Waitlist",
     "switchToAdmin": "Switch to Admin",
