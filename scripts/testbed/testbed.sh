@@ -54,6 +54,9 @@ RestartSec=5
 Environment=NODE_ENV=production
 EnvironmentFile=/opt/pm-testbed/.env
 MemoryMax=350M
+# Never left running: the staging server has ~1 GB of RAM, and a forgotten test bed pushed it
+# into hours of swapping on 2026-09-30. systemd stops it after an hour, whatever happens.
+RuntimeMaxSec=3600
 
 [Install]
 WantedBy=multi-user.target
@@ -122,7 +125,7 @@ for i in $(seq 1 60); do
   if curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/api/v1/health | grep -q 200; then echo "[testbed] up"; exit 0; fi
   sleep 2
 done
-echo "[testbed] did not come up"; sudo journalctl -u pm-testbed -n 30 --no-pager; exit 1
+echo "[testbed] did not come up — stopping it"; sudo journalctl -u pm-testbed -n 30 --no-pager; sudo systemctl stop pm-testbed; exit 1
 REMOTE
     ;;
   down)
