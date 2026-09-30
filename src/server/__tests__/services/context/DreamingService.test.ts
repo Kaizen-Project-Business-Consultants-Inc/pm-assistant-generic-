@@ -141,21 +141,10 @@ describe('DreamingService', () => {
   });
 
   describe('triggerRun', () => {
-    it('creates a pending run and returns it', async () => {
-      // triggerRun calls:
-      // 1. INSERT run
-      // 2. executeRun fires async (fire-and-forget), its first statement is UPDATE status to 'running'
-      // 3. SELECT run (triggerRun wants to return it)
-      // So mock order: INSERT, UPDATE (from executeRun), SELECT, then catch-all for rest of executeRun
-      mockQuery
-        .mockResolvedValueOnce([]) // 1. INSERT run
-        .mockResolvedValueOnce([]) // 2. executeRun's UPDATE status to 'running' (fires before SELECT)
-        .mockResolvedValueOnce([{ ...sampleRunRow, status: 'pending', triggered_by: 'user-1' }]) // 3. SELECT run
-        .mockResolvedValue([]); // catch-all for remaining executeRun calls
-
-      const run = await service.triggerRun('user-1');
-      expect(run.status).toBe('pending');
-      expect(run.triggeredBy).toBe('user-1');
+    it('is switched off: never starts a run or reads any conversation', async () => {
+      // Product owner, 2026-09-30: the platform doesn't read customers' AI conversations
+      await expect(service.triggerRun('user-1')).rejects.toThrow(/switched off/);
+      expect(mockQuery).not.toHaveBeenCalled();
     });
   });
 });

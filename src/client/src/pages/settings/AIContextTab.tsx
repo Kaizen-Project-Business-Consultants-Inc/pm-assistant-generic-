@@ -2,16 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { apiService } from '../../services/api';
 import { MemoryBrowser } from '../../components/ai/MemoryBrowser';
-import { DreamingPanel } from '../../components/ai/DreamingPanel';
 import { ContextPreview } from '../../components/ai/ContextPreview';
-import { Brain, BookOpen, Sparkles, Eye } from 'lucide-react';
+import { Brain, BookOpen, Eye } from 'lucide-react';
 
-type SubTab = 'preferences' | 'memory' | 'dreaming' | 'preview';
+// Dreaming was switched off 2026-09-30 (it read users' AI conversations across the platform)
+type SubTab = 'preferences' | 'memory' | 'preview';
 
 const SUB_TABS: { id: SubTab; label: string; icon: React.ReactNode }[] = [
   { id: 'preferences', label: 'AI Preferences', icon: <Brain className="w-4 h-4" /> },
   { id: 'memory', label: 'Memory Browser', icon: <BookOpen className="w-4 h-4" /> },
-  { id: 'dreaming', label: 'Dreaming', icon: <Sparkles className="w-4 h-4" /> },
   { id: 'preview', label: 'Context Preview', icon: <Eye className="w-4 h-4" /> },
 ];
 
@@ -107,13 +106,11 @@ export const AIContextTab: React.FC = () => {
     }
   };
 
-  const isAdmin = user && ['admin', 'project_manager', 'pmo'].includes(user.role);
-
   return (
     <div className="space-y-6">
       {/* Sub-tab navigation */}
       <div className="flex space-x-1 border-b border-gray-200 dark:border-gray-700">
-        {SUB_TABS.filter(t => t.id !== 'dreaming' || isAdmin).map(tab => (
+        {SUB_TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveSubTab(tab.id)}
@@ -273,7 +270,6 @@ export const AIContextTab: React.FC = () => {
       {activeSubTab === 'memory' && <MemoryBrowser />}
 
       {/* Dreaming */}
-      {activeSubTab === 'dreaming' && isAdmin && <DreamingPanel />}
 
       {/* Context Preview */}
       {activeSubTab === 'preview' && <ContextPreview />}

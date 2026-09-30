@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { dreamingService } from '../../services/context/DreamingService';
+import { dreamingService, DREAMING_SWITCHED_OFF, DREAMING_OFF_MESSAGE } from '../../services/context/DreamingService';
 
 /** Mjuzi's internal memory spans every project: admin/PMO only (the app only shows it to admins) */
 const adminOrPmo = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -12,6 +12,10 @@ const adminOrPmo = async (request: FastifyRequest, reply: FastifyReply) => {
 
 export async function dreamingRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // Switched off: nothing here runs, lists or applies anything (see DreamingService)
+  fastify.addHook('preHandler', async (_request, reply) => {
+    if (DREAMING_SWITCHED_OFF) return reply.status(410).send({ error: 'switched_off', message: DREAMING_OFF_MESSAGE });
+  });
 
   // GET /api/v1/dreaming/runs — list dreaming runs
   fastify.get('/runs', {

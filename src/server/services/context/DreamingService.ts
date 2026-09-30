@@ -4,6 +4,13 @@ import { claudeService } from '../claudeService';
 import { versionedMemoryService } from './VersionedMemoryService';
 import logger from '../../utils/logger';
 
+/** Dreaming is switched off — see triggerRun. */
+export const DREAMING_SWITCHED_OFF = true;
+export const DREAMING_OFF_MESSAGE = "Dreaming is switched off: the platform doesn't read customers' AI conversations.";
+export class DreamingSwitchedOffError extends Error {
+  constructor() { super(DREAMING_OFF_MESSAGE); this.name = 'DreamingSwitchedOffError'; }
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -88,6 +95,10 @@ export class DreamingService {
    * Trigger a dreaming run. Analyzes recent conversations and proposes memory updates.
    */
   async triggerRun(triggeredBy?: string): Promise<DreamingRun> {
+    // Switched off (2026-09-30, product owner): it reads users' AI chat conversations across
+    // the platform. The platform doesn't read customers' conversations; any future learning
+    // must be per company, with consent, inside the company's own database.
+    if (DREAMING_SWITCHED_OFF) throw new DreamingSwitchedOffError();
     const runId = uuidv4();
     await databaseService.queryControlPlane(
       `INSERT INTO dreaming_runs (id, status, triggered_by) VALUES (?, 'pending', ?)`,

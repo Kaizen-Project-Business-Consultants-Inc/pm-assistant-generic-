@@ -390,26 +390,7 @@ export function startCronTasks(
     });
   });
 
-  // Dreaming batch — nightly at 02:30 (AI memory refinement)
-  if (config.AGENT_ENABLED) {
-    logger.info('[cron] Starting dreaming batch job (daily at 02:30)');
-    tasks.dreamingTask = cron.schedule('30 2 * * *', async () => {
-      const start = Date.now();
-      try {
-        const { dreamingService } = await import('../context/DreamingService');
-        const run = await dreamingService.triggerRun('cron');
-        logger.info('[cron:dreaming] Triggered', {
-          cronJob: 'dreaming', durationMs: Date.now() - start,
-          result: { runId: run.id },
-        });
-      } catch (error) {
-        logger.error('[cron:dreaming] FAILED', {
-          cronJob: 'dreaming', durationMs: Date.now() - start,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    });
-  }
+  // Dreaming batch removed 2026-09-30: switched off (it read users' AI conversations) — see DreamingService
 
   // Google Calendar sync — every 15 minutes
   logger.info('[cron] Starting calendar sync (every 15 min)');
