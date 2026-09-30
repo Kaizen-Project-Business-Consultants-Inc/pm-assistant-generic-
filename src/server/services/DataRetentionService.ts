@@ -19,15 +19,18 @@ export class DataRetentionService {
   async purgeStaleData(): Promise<Record<string, number>> {
     const results: Record<string, number> = {};
 
-    // 1. Webhook deliveries older than N days
+    // 1–2. Company tables: each company's own database. (This used to run once with no
+    // company selected, so it only ever tidied the old copies in the shared database and no
+    // company's webhook history or failed-job queue was ever cleaned — found 2026-09-30.)
     const webhookDays = envInt('RETENTION_WEBHOOK_DAYS', DEFAULT_WEBHOOK_RETENTION_DAYS);
-    results.webhookDeliveries = await this.deleteOlderThan('webhook_deliveries', webhookDays);
-
-    // 2. Dead letter queue — resolved/failed entries older than N days
     const dlqDays = envInt('RETENTION_DEAD_LETTER_DAYS', DEFAULT_DEAD_LETTER_RETENTION_DAYS);
-    results.deadLetterQueue = await this.deleteOlderThanWithStatus(
-      'dead_letter_queue', dlqDays, ['resolved', 'failed'],
-    );
+    results.webhookDeliveries = 0;
+    results.deadLetterQueue = 0;
+    const { forEachTenant } = await import('./scheduling/cronManager');
+    await forEachTenant(async () => {
+      results.webhookDeliveries += await this.deleteOlderThan('webhook_deliveries', webhookDays);
+      results.deadLetterQueue += await this.deleteOlderThanWithStatus('dead_letter_queue', dlqDays, ['resolved', 'failed']);
+    });
 
     // 3. Agent memory expired entries
     try {

@@ -22,6 +22,12 @@ vi.mock('../../utils/logger', () => ({
   },
 }));
 
+// Two companies: company tables are cleaned in each one's own database
+const tenants = vi.hoisted(() => ({ count: 1 }));
+vi.mock('../../services/scheduling/cronManager', () => ({
+  forEachTenant: async (cb: (t: unknown) => Promise<void>) => { for (let i = 0; i < tenants.count; i++) await cb({ slug: `t${i}` }); },
+}));
+
 import { DataRetentionService } from '../../services/DataRetentionService';
 import logger from '../../utils/logger';
 
@@ -542,6 +548,26 @@ describe('DataRetentionService', () => {
       expect(mockQueryControlPlane.mock.calls[1][0]).toContain('api_key_usage_log');
       expect(mockQueryControlPlane.mock.calls[2][0]).toContain('mcp_tool_invocations');
       expect(mockQueryControlPlane.mock.calls[3][0]).toContain('ai_conversations');
+    });
+  });
+
+  describe('company tables are cleaned in every company', () => {
+    afterEach(() => { tenants.count = 1; });
+
+    it('runs the webhook and failed-job cleanup once per company and adds up the counts', async () => {
+      tenants.count = 2;
+      mockQuery.mockResolvedValue({ affectedRows: 3 });
+      mockQueryControlPlane.mockResolvedValue({ affectedRows: 0 });
+      mockCleanExpired.mockResolvedValue(0);
+      const res = await service.purgeStaleData();
+      const webhookCalls = mockQuery.mock.calls.filter(c => String(c[0]).includes('webhook_deliveries'));
+      const dlqCalls = mockQuery.mock.calls.filter(c => String(c[0]).includes('dead_letter_queue'));
+      expect(webhookCalls).toHaveLength(2);
+      expect(dlqCalls).toHaveLength(2);
+      expect(res.webhookDeliveries).toBe(6);
+      expect(res.deadLetterQueue).toBe(6);
+      // only finished failed jobs are removed, never ones still waiting to retry
+      expect(dlqCalls[0][1].slice(0, 2)).toEqual(['resolved', 'failed']);
     });
   });
 });
