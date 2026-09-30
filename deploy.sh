@@ -252,6 +252,19 @@ if [ "$CLIENT_ONLY" = false ]; then
   fi
   echo "  ✓ OK ($(echo $EXPECTED_TIMERS $STANDALONE_TIMERS | wc -w) jobs scheduled)"
 
+  # Log retention policy: 90 days / 2 GB (deploy/journald/pm-retention.conf)
+  do_scp deploy/journald/pm-retention.conf "$SSH_HOST":/tmp/pm-retention.conf
+  do_ssh "sudo mkdir -p /etc/systemd/journald.conf.d \
+    && if ! sudo cmp -s /tmp/pm-retention.conf /etc/systemd/journald.conf.d/pm-retention.conf; then \
+         sudo install -m 644 /tmp/pm-retention.conf /etc/systemd/journald.conf.d/pm-retention.conf \
+         && sudo systemctl restart systemd-journald; fi; rm -f /tmp/pm-retention.conf"
+  if do_ssh "sudo systemd-analyze cat-config systemd/journald.conf | grep -q '^MaxRetentionSec=90day'"; then
+    echo "  ✓ Log retention: 90 days / 2 GB"
+  else
+    echo "  ✗ Log retention policy not in effect — check /etc/systemd/journald.conf.d/pm-retention.conf"
+    exit 1
+  fi
+
   # A backup that only exists on the machine it protects is not a backup. Say so
   # on every deploy rather than discovering it the night it matters.
   if ! do_ssh "sudo test -s /etc/pm-backup.env"; then

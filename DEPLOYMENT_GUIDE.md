@@ -180,6 +180,8 @@ ssh -i "~/.ssh/ssh-key-2026-07-08 (1).key" ubuntu@147.5.127.99 \
 
 Or use the deploy script: `bash deploy.sh <staging|prod>` (preferred).
 
+**Log retention (Sep 2026):** every deploy installs `deploy/journald/pm-retention.conf` (90 days, 2 GB) into `/etc/systemd/journald.conf.d/` and fails if the policy isn't in effect.
+
 **The deploy script only ships saved work (Sep 2026).** It builds from the working files, so it refuses to start if anything that ships (`src/`, `mcp-server/src`, `package*.json`, `deploy/`) has uncommitted changes, and checks again just before uploading that nothing changed while it was building. Staging only: `--allow-dirty` deploys unsaved changes anyway. Why: a prod deploy running in the background once picked up a half-written migration that was being created at the same moment.
 
 ## Database
