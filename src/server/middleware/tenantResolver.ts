@@ -5,6 +5,7 @@ import { organizationService } from '../services/OrganizationService';
 import { getRequestContext } from './requestContext';
 import { repairTenantDatabase } from '../database/tenantProvisioner';
 import logger from '../utils/logger';
+import { supportSessionService, SUPPORT_COOKIE } from '../services/SupportSessionService';
 
 // Routes that operate on the control plane DB, not tenant DBs
 const TENANT_EXEMPT_PREFIXES = [
@@ -51,6 +52,28 @@ export async function tenantResolverHook(
 
   // No user = no tenant context (authMiddleware will handle 401)
   if (!request.user?.userId) return;
+
+  // Support view: the platform admin's read-only, recorded visit into one company
+  if (request.user.role === 'admin') {
+    const visitId = (request.cookies as Record<string, string | undefined> | undefined)?.[SUPPORT_COOKIE];
+    const visit = visitId ? await supportSessionService.findActive(visitId, request.user.userId) : null;
+    if (visit) {
+      request.supportSession = { id: visit.id, organizationId: visit.organizationId, organizationName: visit.organizationName, expiresAt: visit.expiresAt };
+      // The admin's own profile, notifications etc. stay the admin's own
+      if (PERSONAL_PREFIXES.some(p => request.url.startsWith(p))) return;
+      // The admin never changes customer data
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+        return reply.status(403).send({ error: 'support_read_only', message: 'Support view is read-only — nothing can be changed.' });
+      }
+      request.tenantOrg = { id: visit.organizationId, slug: visit.organizationSlug, dbName: visit.dbName };
+      const vctx = getRequestContext();
+      if (vctx) {
+        vctx.tenantDbName = visit.dbName;
+        vctx.organizationId = visit.organizationId;
+      }
+      return;
+    }
+  }
 
   let org = await organizationService.findByUserId(request.user.userId);
   // The cached copy can predate the organisation's database: it's cached at sign-up, and the

@@ -6,6 +6,7 @@ import BottomNav from './BottomNav';
 import KeyboardShortcuts from './KeyboardShortcuts';
 import { OfflineBanner } from './OfflineBanner';
 import { TrialBanner } from './TrialBanner';
+import { SupportBanner } from './SupportBanner';
 import { UpgradePrompt } from './UpgradePrompt';
 import { WelcomeModal } from '../onboarding/WelcomeModal';
 import { Bot, X } from 'lucide-react';
@@ -188,6 +189,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           marginRight: aiPanelWidth,
         }}
       >
+        <SupportBanner />
         {/* Top Bar */}
         <TopBar onMobileMenuToggle={isMobile ? handleMobileSidebarToggle : undefined} />
 

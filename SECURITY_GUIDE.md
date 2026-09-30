@@ -158,6 +158,22 @@ owner  >  manager  >  viewer   (editor = viewer)
 
 **Why the gaps existed (for the record):** the check was added on 4 Jul 2026 route by route (opt-in); later routes (bulk tools 15 Jul, bulk delete 5 Sep, many others) never got it; the middleware silently passed when it couldn't find a project; nothing tested for it.
 
+### Support view — platform admin access to customer data (Sep 2026)
+The platform admin never changes customer data. To troubleshoot, the admin opens a **Support view**
+visit into ONE company:
+- **Password again + a reason** (10–500 characters; the company sees it). Rate-limited (5 per 15 min).
+- **Read-only, enforced on the server:** during a visit `tenantResolver` refuses every non-GET request
+  (`support_read_only`), and `authMiddleware` makes the admin a read-only `executive` inside that company.
+- **30 minutes**, one visit at a time; the `support_session` cookie is httpOnly, secure, SameSite=Strict.
+  Signing out or Exit ends it.
+- **Recorded twice:** the shared `support_sessions` table and that company's own tamper-evident audit
+  ledger (`support.view.started` / `support.view.ended`). If the company's ledger can't record the start,
+  the visit is cancelled. The company owner/PMO sees every visit in **Settings → Support visits**.
+- Admin pages keep working during a visit; the admin's own profile and notifications stay the admin's.
+
+Accounts with no company (the platform admin) never read or write company data outside a visit: company
+routes answer `no_company` (see ADMIN_MANUAL).
+
 ### Global Role Bypasses
 
 | Global User Role | Bypass Behavior |

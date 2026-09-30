@@ -468,6 +468,7 @@ const sections: Section[] = [
       'Notifications tab: configure which email and in-app notifications you receive',
       'Display tab: toggle dark mode and adjust interface preferences',
       'Rate card tab (admins and PMs): hourly rates by role, each with a start date — when a rate changes, add a new line; on a resource form choose Use rate card',
+      'Support visits tab (company owner): every time Kovarti support looked at your workspace, read-only, with the reason they gave',
       'API Keys tab: create and manage API keys for external agent access',
       'Webhooks tab: register webhook URLs to receive real-time event notifications',
       'Danger Zone: delete your account (irreversible)',

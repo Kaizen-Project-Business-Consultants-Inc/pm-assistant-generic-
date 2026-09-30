@@ -236,6 +236,20 @@ export async function orgRoutes(fastify: FastifyInstance) {
   });
 
   // List organization members
+  // GET /api/v1/org/support-visits — Kovarti support's read-only visits into this company
+  fastify.get('/support-visits', {
+    schema: { description: 'Support view visits into your company', tags: ['org'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const org = await organizationService.findByUserId(request.user!.userId);
+    if (!org) return reply.status(403).send({ error: 'No organization', message: 'You are not part of an organization.' });
+    const isOwner = org.ownerUserId === request.user!.userId;
+    if (!isOwner && request.user!.role !== 'pmo') {
+      return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner or PMO can see support visits.' });
+    }
+    const { supportSessionService } = await import('../../services/SupportSessionService');
+    return { visits: await supportSessionService.listForOrganization(org.id) };
+  });
+
   fastify.get('/members', {
     schema: { description: 'List organization members', tags: ['org'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {

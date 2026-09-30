@@ -2429,6 +2429,7 @@ Navigate to **Settings** to configure:
 - **Time Zone** -- Set your IANA timezone (e.g., `America/Toronto`). All dates in the application are displayed in this timezone.
 - **Company holidays** -- The company's holiday list, grouped by year. Every project treats these as days off. The company owner or an admin adds one (date + name, **+ Add holiday**) or removes one; the preview shows how many tasks move in how many projects before anything is saved. See [Working Calendar and Company Holidays](#working-calendar-and-company-holidays).
 - **Rate card** -- Hourly cost rates by role, each with its start date (admins, PMO and project managers only). See [Rate Card](#rate-card).
+- **Support visits** (company owner and PMO) -- Every time Kovarti support looked at your workspace to help with a problem: when, how long and the reason given. Support visits are **read-only** — support can see your projects but can never change anything — and last at most 30 minutes. A visit happening right now is marked **Happening now**.
 
 ### AI Context Settings
 

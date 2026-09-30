@@ -8,6 +8,8 @@ vi.mock('../../services/OrganizationService', () => ({
 const ctx: Record<string, string> = {};
 vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ctx }));
 vi.mock('../../database/tenantProvisioner', () => ({ repairTenantDatabase: vi.fn().mockResolvedValue(false) }));
+const support = vi.hoisted(() => ({ findActive: vi.fn() }));
+vi.mock('../../services/SupportSessionService', () => ({ supportSessionService: support, SUPPORT_COOKIE: 'support_session' }));
 vi.mock('../../utils/logger', () => ({ default: { warn: vi.fn(), info: vi.fn(), error: vi.fn() } }));
 
 import { tenantResolverHook } from '../../middleware/tenantResolver';
@@ -78,5 +80,59 @@ describe('tenantResolver — an account with no company (the platform admin)', (
     await tenantResolverHook(as('/api/v1/admin/tenants'), r);
     expect(r.status).not.toHaveBeenCalled();
     expect(organizationService.findByUserId).not.toHaveBeenCalled();
+  });
+});
+
+describe('tenantResolver — Support view (the admin\'s read-only visit into one company)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    for (const k of Object.keys(ctx)) delete ctx[k];
+    (organizationService.findByUserId as any).mockResolvedValue(null);
+    support.findActive.mockResolvedValue({
+      id: 'v1', organizationId: 'o9', organizationName: 'DBJ Consulting', organizationSlug: 'dbj',
+      dbName: 'pmassist_t_dbj', expiresAt: '2026-09-30T20:30:00.000Z',
+    });
+  });
+  const visiting = (url: string, method = 'GET') =>
+    ({ url, method, cookies: { support_session: 'v1' }, user: { userId: 'admin1', role: 'admin' } }) as any;
+
+  it('reads come from the visited company', async () => {
+    const r = reply();
+    const req = visiting('/api/v1/projects');
+    await tenantResolverHook(req, r);
+    expect(r.status).not.toHaveBeenCalled();
+    expect(ctx.tenantDbName).toBe('pmassist_t_dbj');
+    expect(req.supportSession).toMatchObject({ organizationName: 'DBJ Consulting' });
+  });
+
+  it.each(['POST', 'PUT', 'PATCH', 'DELETE'])('every change (%s) is refused — the admin never changes customer data', async (method) => {
+    const r = reply();
+    await tenantResolverHook(visiting('/api/v1/schedules/s1/tasks', method), r);
+    expect(r.status).toHaveBeenCalledWith(403);
+    expect(r.send.mock.calls[0][0].error).toBe('support_read_only');
+    expect(ctx.tenantDbName).toBeUndefined();
+  });
+
+  it("the admin's own notifications stay the admin's own", async () => {
+    const r = reply();
+    await tenantResolverHook(visiting('/api/v1/notifications'), r);
+    expect(r.status).not.toHaveBeenCalled();
+    expect(ctx.tenantDbName).toBeUndefined();
+  });
+
+  it('an ended or expired visit is ignored (back to the no-company answer)', async () => {
+    support.findActive.mockResolvedValue(null);
+    const r = reply();
+    await tenantResolverHook(visiting('/api/v1/projects'), r);
+    expect(r.status).toHaveBeenCalledWith(403);
+    expect(r.send.mock.calls[0][0].error).toBe('no_company');
+  });
+
+  it('a visit cookie means nothing to anyone but the admin', async () => {
+    (organizationService.findByUserId as any).mockResolvedValue({ id: 'o1', slug: 'acme', dbName: 'pmassist_t_acme', isActive: true, isProvisioned: true });
+    const r = reply();
+    await tenantResolverHook({ url: '/api/v1/projects', method: 'GET', cookies: { support_session: 'v1' }, user: { userId: 'u1', role: 'project_manager' } } as any, r);
+    expect(support.findActive).not.toHaveBeenCalled();
+    expect(ctx.tenantDbName).toBe('pmassist_t_acme');
   });
 });

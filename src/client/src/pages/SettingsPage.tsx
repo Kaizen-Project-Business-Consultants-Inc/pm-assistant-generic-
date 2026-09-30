@@ -12,6 +12,7 @@ import {
   Brain,
   CalendarDays,
   DollarSign,
+  Eye,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { ProfileTab } from './settings/ProfileTab';
@@ -25,14 +26,16 @@ import { DangerZoneTab } from './settings/DangerZoneTab';
 import { AIContextTab } from './settings/AIContextTab';
 import { HolidaysTab } from './settings/HolidaysTab';
 import { RateCardTab } from './settings/RateCardTab';
+import { SupportVisitsTab } from './settings/SupportVisitsTab';
 
-type Tab = 'profile' | 'team' | 'holidays' | 'rate-card' | 'notifications' | 'display' | 'accessibility' | 'ai-context' | 'api-keys' | 'webhooks' | 'danger';
+type Tab = 'profile' | 'team' | 'holidays' | 'rate-card' | 'support-visits' | 'notifications' | 'display' | 'accessibility' | 'ai-context' | 'api-keys' | 'webhooks' | 'danger';
 
 const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
   { id: 'team', label: 'Team', icon: <Users className="w-4 h-4" /> },
   { id: 'holidays', label: 'Company holidays', icon: <CalendarDays className="w-4 h-4" /> },
   { id: 'rate-card', label: 'Rate card', icon: <DollarSign className="w-4 h-4" /> },
+  { id: 'support-visits', label: 'Support visits', icon: <Eye className="w-4 h-4" /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
   { id: 'display', label: 'Display', icon: <Palette className="w-4 h-4" /> },
   { id: 'accessibility', label: 'Accessibility', icon: <Accessibility className="w-4 h-4" /> },
@@ -52,7 +55,11 @@ export const SettingsPage: React.FC = () => {
   const { user } = useAuthStore();
   const canManageTeam = user && ['admin', 'project_manager', 'pmo'].includes(user.role);
   // Rates are pay information: the same people who manage the team manage the rate card
-  const tabs = ALL_TABS.filter(t => (t.id !== 'team' && t.id !== 'rate-card') || canManageTeam);
+  // Support visits: the company owner (or PMO) sees every time Kovarti support looked in
+  const canSeeSupportVisits = !!user && (user.organization?.isOwner === true || user.role === 'pmo');
+  const tabs = ALL_TABS.filter(t =>
+    t.id === 'support-visits' ? canSeeSupportVisits
+      : (t.id !== 'team' && t.id !== 'rate-card') || canManageTeam);
 
   const setActiveTab = (tab: Tab) => {
     setSearchParams(tab === 'profile' ? {} : { tab }, { replace: true });
@@ -96,6 +103,7 @@ export const SettingsPage: React.FC = () => {
         {activeTab === 'team' && canManageTeam && <TeamTab />}
         {activeTab === 'holidays' && <HolidaysTab />}
         {activeTab === 'rate-card' && canManageTeam && <RateCardTab />}
+        {activeTab === 'support-visits' && canSeeSupportVisits && <SupportVisitsTab />}
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'display' && <DisplayTab />}
         {activeTab === 'accessibility' && <AccessibilityTab />}

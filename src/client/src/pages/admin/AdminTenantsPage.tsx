@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { SupportVisitDialog } from '../../components/admin/SupportVisitDialog';
 import { apiService } from '../../services/api';
 import { tierBadgeClass } from '../../constants/branding';
 import { AdminPageWrapper } from './AdminPageWrapper';
@@ -9,6 +11,7 @@ import {
   ToggleRight,
   CheckCircle,
   XCircle,
+  Eye,
 } from 'lucide-react';
 import { formatCalendarDate } from '../../utils/dateUtils';
 
@@ -39,6 +42,7 @@ function fmt(date: string | null) {
 
 export function AdminTenantsPage() {
   const queryClient = useQueryClient();
+  const [supportFor, setSupportFor] = useState<{ id: string; name: string } | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin-tenants'],
@@ -153,7 +157,17 @@ export function AdminTenantsPage() {
                         )}
                       </td>
                       <td className="py-3 pr-4 text-gray-600 dark:text-gray-300">{fmt(t.created_at)}</td>
-                      <td className="py-3 pl-4">
+                      <td className="py-3 pl-4 whitespace-nowrap space-x-2">
+                        {provisioned && active && (
+                          <button
+                            onClick={() => setSupportFor({ id: t.id, name: t.name })}
+                            title="Look at this company's workspace, read-only (recorded in their audit trail)"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-amber-400 text-amber-950 hover:bg-amber-300 border border-amber-600"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            View as support
+                          </button>
+                        )}
                         {provisioned && (
                           <button
                             onClick={() => runMigrations.mutate(t.id)}
@@ -174,6 +188,7 @@ export function AdminTenantsPage() {
           </div>
         );
       })()}
+      {supportFor && <SupportVisitDialog company={supportFor} onClose={() => setSupportFor(null)} />}
     </AdminPageWrapper>
   );
 }

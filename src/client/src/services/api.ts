@@ -341,6 +341,19 @@ class ApiService {
     return (await this.api.post('/company-holidays/apply', change)).data;
   }
 
+  // Support view: the platform admin's read-only, recorded 30-minute visit into one company
+  async startSupportVisit(body: { organizationId: string; reason: string; password: string }): Promise<void> {
+    await this.api.post('/admin/support-sessions', body);
+  }
+
+  async getSupportVisits(): Promise<{ visits: Array<{ id: string; reason: string; startedAt: string; endedAt: string | null; expiresAt: string; active: boolean }> }> {
+    return (await this.api.get('/org/support-visits')).data;
+  }
+
+  async endSupportVisit(): Promise<void> {
+    await this.api.delete('/admin/support-sessions/current');
+  }
+
   // Rate card: hourly rates by role, each from a date (admin / PMO / PM / company owner only)
   async getRateCard(): Promise<{ rates: RateCardEntry[] }> {
     return (await this.api.get('/rate-card')).data;

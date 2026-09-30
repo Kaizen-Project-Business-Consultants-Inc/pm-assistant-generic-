@@ -27,6 +27,13 @@ declare module 'fastify' {
     apiKeyRateLimit?: number | null;
     rawBody?: Buffer;
     projectMembership?: ProjectMember;
+    /** Set during the platform admin's read-only Support view visit into one company */
+    supportSession?: {
+      id: string;
+      organizationId: string;
+      organizationName: string;
+      expiresAt: string;
+    };
     tenantOrg?: {
       id: string;
       slug: string;

@@ -17,7 +17,7 @@ export const SHARED_TABLES = new Set([
   'dreaming_proposals', 'dreaming_runs', 'feedback', 'invite_tokens', 'knowledge_base_chunks',
   'memory_change_log', 'oauth_auth_codes', 'oauth_clients', 'oauth_tokens', 'organizations',
   'pricing_config', 'subscriptions', 'subscription_events', 'template_marketplace',
-  'tier_features', 'token_top_ups', 'users', 'waitlist',
+  'tier_features', 'token_top_ups', 'users', 'waitlist', 'support_sessions',
 ]);
 
 const TABLE_RE = /(?:\bFROM|\bINTO|\bUPDATE|\bJOIN|\bTABLE(?:\s+IF\s+(?:NOT\s+)?EXISTS)?)\s+`?(\w+)`?/gi;

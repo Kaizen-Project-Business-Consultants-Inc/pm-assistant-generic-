@@ -18,7 +18,9 @@ export interface User {
   isGuest?: boolean;
   guestExpiresAt?: string | null;
   /** The user's company; null = none (the platform admin). Undefined until /me has answered. */
-  organization?: { id: string; name: string; slug: string } | null;
+  organization?: { id: string; name: string; slug: string; isOwner?: boolean } | null;
+  /** Set during the platform admin's read-only Support view visit (the app shows that company) */
+  supportSession?: { organizationName: string; reason: string; expiresAt: string } | null;
 }
 
 /** Personal pages any signed-in account can use, company or not */

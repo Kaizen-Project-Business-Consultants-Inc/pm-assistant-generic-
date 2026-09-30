@@ -120,6 +120,7 @@ import { guestGuard } from './middleware/guestGuard';
 
 // Admin
 import { adminRoutes } from './routes/admin/admin';
+import { supportSessionRoutes } from './routes/admin/supportSessions';
 import { waitlistRoutes } from './routes/admin/waitlist';
 import { auditTrailRoutes } from './routes/admin/auditTrail';
 import { metricsRoutes } from './routes/admin/metrics';
@@ -268,6 +269,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
 
   // Admin
   await fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
+  await fastify.register(supportSessionRoutes, { prefix: '/api/v1/admin/support-sessions' });
   await fastify.register(waitlistRoutes, { prefix: '/api/v1/waitlist' });
   await fastify.register(auditTrailRoutes, { prefix: '/api/v1/audit' });
   await fastify.register(metricsRoutes, { prefix: '/api/v1/metrics' });

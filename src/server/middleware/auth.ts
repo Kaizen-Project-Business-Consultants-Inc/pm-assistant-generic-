@@ -89,7 +89,9 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     request.user = {
       userId: decoded.userId,
       username: decoded.username,
-      role: decoded.role,
+      // Support view (set by tenantResolver): inside the visited company the admin is a
+      // read-only executive — sees every project, changes nothing
+      role: request.supportSession && decoded.role === 'admin' ? 'executive' : decoded.role,
     };
 
     // Fetch extra user flags (must_change_password, is_guest)

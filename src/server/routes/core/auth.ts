@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { supportSessionService, SUPPORT_COOKIE } from '../../services/SupportSessionService';
 import jwt from 'jsonwebtoken';
 import { config } from '../../config';
 import { authMiddleware } from '../../middleware/auth';
@@ -627,11 +628,24 @@ export async function authRoutes(fastify: FastifyInstance) {
       const user = await userService.findById(userId);
       if (!user) return reply.status(401).send({ error: 'User not found' });
 
-      let organization: { id: string; name: string; slug: string } | null = null;
+      let organization: { id: string; name: string; slug: string; isOwner?: boolean } | null = null;
       if (config.MULTI_TENANT_ENABLED) {
         const org = await organizationService.findByUserId(user.id);
         if (org) {
-          organization = { id: org.id, name: org.name, slug: org.slug };
+          organization = { id: org.id, name: org.name, slug: org.slug, isOwner: org.ownerUserId === user.id };
+        }
+      }
+
+      // Support view: while the admin's read-only visit is active, the app shows the visited
+      // company as a read-only executive would see it, with the support banner
+      let supportSession: { organizationName: string; reason: string; expiresAt: string } | null = null;
+      let effectiveRole: string = user.role;
+      if (user.role === 'admin') {
+        const visit = await supportSessionService.findActive(request.cookies?.[SUPPORT_COOKIE], user.id);
+        if (visit) {
+          supportSession = { organizationName: visit.organizationName, reason: visit.reason, expiresAt: visit.expiresAt };
+          organization = { id: visit.organizationId, name: visit.organizationName, slug: visit.organizationSlug };
+          effectiveRole = 'executive';
         }
       }
 
@@ -641,7 +655,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           username: user.username,
           email: user.email,
           fullName: user.fullName,
-          role: user.role,
+          role: effectiveRole,
           subscriptionTier: user.role === 'admin' ? 'enterprise' : user.subscriptionTier,
           pendingTier: user.role === 'admin' ? null : (user.pendingTier ?? null),
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
@@ -652,6 +666,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           isGuest: user.isGuest || false,
           guestExpiresAt: user.guestExpiresAt ? String(user.guestExpiresAt) : null,
           organization,
+          supportSession,
         },
       };
     } catch (error) {
@@ -792,7 +807,12 @@ export async function authRoutes(fastify: FastifyInstance) {
 
   fastify.post('/logout', {
     schema: { description: 'User logout', tags: ['auth'] },
-  }, async (_request: FastifyRequest, reply: FastifyReply) => {
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    // Signing out ends any support visit too
+    if (request.user?.role === 'admin' && request.cookies?.[SUPPORT_COOKIE]) {
+      await supportSessionService.end(request.cookies[SUPPORT_COOKIE], request.user.userId).catch(() => {});
+    }
+    reply.clearCookie(SUPPORT_COOKIE, { path: '/' });
     reply.clearCookie('access_token');
     reply.clearCookie('refresh_token');
     return { message: 'Logout successful' };
