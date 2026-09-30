@@ -382,6 +382,27 @@ describe('AutoRescheduleService', () => {
       expect(result[0].delayDays).toBeLessThanOrEqual(24);
     });
 
+    it('gives the same answer whatever the time of day (dates are days, not moments)', async () => {
+      // Pinned to Wednesday 30 Sep 2026. The task: started 20 Sep, due 10 Oct, 20% done.
+      const run = async (moment: string) => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date(moment));
+        try {
+          mockFindTasksByScheduleId.mockResolvedValue([
+            makeTask('t1', 'Slow task', { startDate: '2026-09-20', endDate: '2026-10-10', progressPercentage: 20 }),
+          ]);
+          return (await service.detectDelays('sch-1'))[0].delayDays;
+        } finally {
+          vi.useRealTimers();
+        }
+      };
+      const morning = await run('2026-09-30T08:00:00Z');
+      const evening = await run('2026-09-30T22:00:00Z');
+      expect(evening).toBe(morning);
+      // 10 days for 20% → 40 more days from 30 Sep = Mon 9 Nov; due Sat 10 Oct → Mon 12 Oct … 9 Nov
+      expect(morning).toBe(21);
+    });
+
     it('treats undefined progressPercentage as 0', async () => {
       mockFindTasksByScheduleId.mockResolvedValue([
         makeTask('t1', 'No progress field', {

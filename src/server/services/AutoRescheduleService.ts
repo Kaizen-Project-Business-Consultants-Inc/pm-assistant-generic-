@@ -118,7 +118,10 @@ export class AutoRescheduleService {
     const criticalPathResult = await this.criticalPathService.calculateCriticalPath(scheduleId);
     const criticalIds = new Set(criticalPathResult.criticalPathTaskIds);
 
-    const now = new Date();
+    // Today as a DAY, not a moment: task dates are calendar days, so measuring from "now"
+    // made the same task's projected finish later in the evening than in the morning
+    // (found 2026-09-30 when a test started failing after 19:00 UTC).
+    const now = utcDay(new Date());
     const delayed: DelayedTask[] = [];
 
     for (const task of tasks) {
