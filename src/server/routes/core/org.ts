@@ -11,6 +11,20 @@ import { rateLimiter } from '../../middleware/rateLimiter';
 import { resourceService } from '../../services/ResourceService';
 import { isConsultantTier } from '../../utils/tierUtils';
 import logger from '../../utils/logger';
+import { config } from '../../config';
+import { runWithTenantContext } from '../../middleware/requestContext';
+
+/**
+ * Run company-database work from these routes. /api/v1/org is exempt from tenant resolution
+ * (it mostly edits the central users/organizations tables), so without this, resource records
+ * for invited members, guest project memberships and guest permissions all went to the
+ * central database and failed silently — found 2026-09-29: invited team members never got a
+ * resource record, and inviting / listing / changing guests never worked.
+ */
+function inOrgDb<T>(org: { id: string; dbName?: string | null }, fn: () => Promise<T>): Promise<T> {
+  if (!config.MULTI_TENANT_ENABLED || !org.dbName) return fn();
+  return runWithTenantContext(org.dbName, org.id, fn);
+}
 
 const inviteSchema = z.object({
   email: z.string().email(),
@@ -19,6 +33,30 @@ const inviteSchema = z.object({
     'finance_officer', 'risk_manager', 'pmo', 'ba', 'qa', 'tester', 'devops', 'claude_sme', 'viewer',
   ]).default('team_member'),
 });
+
+/**
+ * Changing or revoking a guest is for the company owner or an admin, and only for a guest of
+ * their own company. (Found 2026-09-29 by the permission matrix: both routes had no check,
+ * so any signed-in user of any company could extend, cut off or revoke any company's guests.)
+ * Sends the refusal itself and returns null when the caller may not; otherwise their company.
+ */
+async function guestAdminCheck(request: FastifyRequest, reply: FastifyReply, guestId: string) {
+  const requesterId = request.user!.userId;
+  const org = await organizationService.findByUserId(requesterId);
+  if (!org) { reply.status(403).send({ error: 'Forbidden', message: 'You are not part of an organization.' }); return null; }
+  const requester = await userService.findById(requesterId);
+  if (org.ownerUserId !== requesterId && requester?.role !== 'admin') {
+    reply.status(403).send({ error: 'Forbidden', message: 'Only the organization owner or an admin can change guest access.' });
+    return null;
+  }
+  const guest = await userService.findById(guestId);
+  const guestOrg = guest ? await organizationService.findByUserId(guestId).catch(() => null) : null;
+  if (!guest || !guest.isGuest || !guestOrg || guestOrg.id !== org.id) {
+    reply.status(404).send({ error: 'Guest not found', message: 'That guest is not in your organization.' });
+    return null;
+  }
+  return org;
+}
 
 export async function orgRoutes(fastify: FastifyInstance) {
   // All org routes require authentication
@@ -97,7 +135,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
 
         // Create a resource record so they appear in resource management
         try {
-          await resourceService.createResource({
+          await inOrgDb(org, () => resourceService.createResource({
             name: existingUser.fullName || existingUser.username || email.split('@')[0],
             role,
             email,
@@ -109,7 +147,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
             resourceGroup: null,
             userId: existingUser.id,
             calendarTemplateId: null,
-          });
+          }));
         } catch (resErr) {
           logger.warn('Failed to create resource for invited user', { email, error: resErr });
         }
@@ -149,7 +187,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
 
         // Create resource record
         try {
-          await resourceService.createResource({
+          await inOrgDb(org, () => resourceService.createResource({
             name: email.split('@')[0],
             role,
             email,
@@ -161,7 +199,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
             resourceGroup: null,
             userId: newUser.id,
             calendarTemplateId: null,
-          });
+          }));
         } catch (resErr) {
           logger.warn('Failed to create resource for auto-created user', { email, error: resErr });
         }
@@ -372,12 +410,12 @@ export async function orgRoutes(fastify: FastifyInstance) {
       // Add project membership as viewer
       const { projectMemberService } = await import('../../services/ProjectMemberService');
       try {
-        await projectMemberService.addMember(projectId, {
+        await inOrgDb(org, () => projectMemberService.addMember(projectId, {
           userId: guestUser.id,
           userName: guestUser.username || email.split('@')[0],
           email,
           role: 'viewer' as any,
-        });
+        }));
       } catch {
         // May already be a member
       }
@@ -386,7 +424,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
       const { v4: uuidv4 } = await import('uuid');
       const perms = permissions || { canComment: true, canUpdateAssigned: true, canViewBudget: false, canViewRisks: false, canUploadFiles: false };
       const { databaseService } = await import('../../database/connection');
-      await databaseService.query(
+      await inOrgDb(org, () => databaseService.query(
         `INSERT INTO guest_project_permissions (id, user_id, project_id, can_comment, can_update_assigned, can_view_budget, can_view_risks, can_upload_files, invited_by, expires_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE can_comment=VALUES(can_comment), can_update_assigned=VALUES(can_update_assigned), can_view_budget=VALUES(can_view_budget), can_view_risks=VALUES(can_view_risks), can_upload_files=VALUES(can_upload_files), expires_at=VALUES(expires_at)`,
@@ -400,7 +438,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
           inviterId,
           expiresAt || null,
         ],
-      );
+      ));
 
       return { message: `Guest invite sent to ${email}`, guestUserId: guestUser.id };
     } catch (error) {
@@ -432,10 +470,10 @@ export async function orgRoutes(fastify: FastifyInstance) {
       let permissions: any[] = [];
       if (guestIds.length > 0) {
         const placeholders = guestIds.map(() => '?').join(',');
-        permissions = await databaseService.query(
+        permissions = await inOrgDb(org, () => databaseService.query(
           `SELECT * FROM guest_project_permissions WHERE user_id IN (${placeholders})`,
           guestIds,
-        );
+        ));
       }
 
       const permByUser = new Map<string, any[]>();
@@ -464,6 +502,8 @@ export async function orgRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { guestId } = request.params as { guestId: string };
+      const org = await guestAdminCheck(request, reply, guestId);
+      if (!org) return reply;
       const body = z.object({
         projectId: z.string().optional(),
         canComment: z.boolean().optional(),
@@ -491,10 +531,10 @@ export async function orgRoutes(fastify: FastifyInstance) {
 
         if (sets.length > 0) {
           params.push(guestId, body.projectId);
-          await databaseService.query(
+          await inOrgDb(org, () => databaseService.query(
             `UPDATE guest_project_permissions SET ${sets.join(', ')} WHERE user_id = ? AND project_id = ?`,
             params,
-          );
+          ));
         }
       }
 
@@ -512,20 +552,14 @@ export async function orgRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { guestId } = request.params as { guestId: string };
-
-      const org = await organizationService.findByUserId(request.user!.userId);
-      if (!org) return reply.status(403).send({ error: 'No organization' });
-
-      const guest = await userService.findById(guestId);
-      if (!guest || !guest.isGuest) {
-        return reply.status(404).send({ error: 'Guest not found' });
-      }
+      const org = await guestAdminCheck(request, reply, guestId);
+      if (!org) return reply;
 
       await userService.update(guestId, { isActive: false } as any);
       organizationService.invalidateUserCache(guestId);
 
       const { databaseService } = await import('../../database/connection');
-      await databaseService.query('DELETE FROM guest_project_permissions WHERE user_id = ?', [guestId]);
+      await inOrgDb(org, () => databaseService.query('DELETE FROM guest_project_permissions WHERE user_id = ?', [guestId]));
 
       return { message: 'Guest access revoked' };
     } catch (error) {

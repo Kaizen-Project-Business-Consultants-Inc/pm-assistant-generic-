@@ -69,3 +69,4 @@ src/client/dist-server/
 scripts/ai-budget-simulation.ts
 scripts/consultant-tier-analysis.ts
 UAT_Project_Readiness_Bar.docx
+scripts/qa/routes.json
