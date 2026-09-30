@@ -20,7 +20,7 @@ import { join } from 'path';
  * server actually sends. Files fixed to zero must stay at zero.
  */
 const BASELINE: Record<string, number> = {
-  'pages/GoalsPage.tsx': 29, // form fields + request payload only (see report: request keys)
+  'pages/GoalsPage.tsx': 0, // form now uses the server's camelCase names (goal create/edit/filter fixed)
   'pages/AgentProposalsPage.tsx': 0,
   'pages/ProjectDetailPage/OverviewTab.tsx': 24,
   'components/sprints/SprintPlanningPanel.tsx': 10,

@@ -72,7 +72,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
 
   const toggleMutation = useMutation({
     mutationFn: ({ linkId, isActive }: { linkId: string; isActive: boolean }) =>
-      apiService.updatePortalLink(linkId, { is_active: isActive }),
+      apiService.updatePortalLink(linkId, { isActive }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portalLinks', projectId] });
     },

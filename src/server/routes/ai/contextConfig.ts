@@ -51,13 +51,13 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
     schema: { description: 'Get resolved AI context config for current user', tags: ['context'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const user = (request as any).user;
+      const userId = request.user!.userId; // was read as user.id, which is never set, so personal settings never applied
       const { projectId } = request.query as { projectId?: string };
 
       const resolved = await contextConfigService.resolveContext(
-        user.organizationId || null,
+        request.tenantOrg?.id ?? null, // the request's company (was user.organizationId — never set)
         projectId || null,
-        user.id,
+        userId,
       );
 
       return { config: resolved };
@@ -104,13 +104,13 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'configKey and configValue are required' });
       }
 
-      const user = (request as any).user;
+      const userId = request.user!.userId; // was read as user.id, which is never set, so personal settings never applied
       const result = await contextConfigService.upsertConfig(
         parsed.data,
         scopeId,
         body.configKey,
         body.configValue,
-        user.id,
+        userId,
         body.versionHash,
       );
 
@@ -142,13 +142,13 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
     try {
       const { scope, scopeId } = request.params as { scope: string; scopeId: string };
       const { configKey } = request.body as { configKey: string };
-      const user = (request as any).user;
+      const userId = request.user!.userId; // was read as user.id, which is never set, so personal settings never applied
 
       if (!configKey) {
         return reply.status(400).send({ error: 'configKey is required' });
       }
 
-      await contextConfigService.lockKey(scope as ConfigScope, scopeId, configKey, user.id);
+      await contextConfigService.lockKey(scope as ConfigScope, scopeId, configKey, userId);
       return { success: true };
     } catch (err) {
       fastify.log.error({ err }, 'Failed to lock config key');
@@ -177,13 +177,13 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
     schema: { description: 'Preview resolved AI context', tags: ['context'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const user = (request as any).user;
+      const userId = request.user!.userId; // was read as user.id, which is never set, so personal settings never applied
       const { projectId } = request.query as { projectId?: string };
 
       const resolved = await contextConfigService.resolveContext(
-        user.organizationId || null,
+        request.tenantOrg?.id ?? null, // the request's company (was user.organizationId — never set)
         projectId || null,
-        user.id,
+        userId,
       );
 
       const preview = contextConfigService.formatForPrompt(resolved);

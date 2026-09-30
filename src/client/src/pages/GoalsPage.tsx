@@ -29,15 +29,15 @@ interface Goal {
 interface GoalFormData {
   name: string;
   description: string;
-  goal_type: 'objective' | 'key_result';
-  parent_id: string;
+  goalType: 'objective' | 'key_result';
+  parentId: string;
   status: string;
-  target_value: string;
-  current_value: string;
+  targetValue: string;
+  currentValue: string;
   unit: string;
-  start_date: string;
-  due_date: string;
-  project_id: string;
+  startDate: string;
+  dueDate: string;
+  projectId: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -63,15 +63,15 @@ const STATUS_OPTIONS = ['on_track', 'at_risk', 'behind', 'completed'];
 const EMPTY_FORM: GoalFormData = {
   name: '',
   description: '',
-  goal_type: 'objective',
-  parent_id: '',
+  goalType: 'objective',
+  parentId: '',
   status: 'on_track',
-  target_value: '',
-  current_value: '',
+  targetValue: '',
+  currentValue: '',
   unit: '',
-  start_date: '',
-  due_date: '',
-  project_id: '',
+  startDate: '',
+  dueDate: '',
+  projectId: '',
 };
 
 // ---------------------------------------------------------------------------
@@ -162,7 +162,7 @@ const GoalModal: React.FC<{
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Type</label>
-              <select value={form.goal_type} onChange={(e) => update('goal_type', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+              <select value={form.goalType} onChange={(e) => update('goalType', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
                 <option value="objective">Objective</option>
                 <option value="key_result">Key Result</option>
               </select>
@@ -177,10 +177,10 @@ const GoalModal: React.FC<{
             </div>
           </div>
 
-          {form.goal_type === 'key_result' && (
+          {form.goalType === 'key_result' && (
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Parent Objective</label>
-              <select value={form.parent_id} onChange={(e) => update('parent_id', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+              <select value={form.parentId} onChange={(e) => update('parentId', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
                 <option value="">None</option>
                 {objectives.map((o) => (
                   <option key={o.id} value={o.id}>{o.name}</option>
@@ -192,11 +192,11 @@ const GoalModal: React.FC<{
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Target Value</label>
-              <input type="number" value={form.target_value} onChange={(e) => update('target_value', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+              <input type="number" value={form.targetValue} onChange={(e) => update('targetValue', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Current Value</label>
-              <input type="number" value={form.current_value} onChange={(e) => update('current_value', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+              <input type="number" value={form.currentValue} onChange={(e) => update('currentValue', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Unit</label>
@@ -207,17 +207,17 @@ const GoalModal: React.FC<{
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
-              <input type="date" value={form.start_date} onChange={(e) => update('start_date', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+              <input type="date" value={form.startDate} onChange={(e) => update('startDate', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Due Date</label>
-              <input type="date" value={form.due_date} onChange={(e) => update('due_date', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+              <input type="date" value={form.dueDate} onChange={(e) => update('dueDate', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Project</label>
-            <select value={form.project_id} onChange={(e) => update('project_id', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+            <select value={form.projectId} onChange={(e) => update('projectId', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
               <option value="">None (standalone goal)</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -329,7 +329,7 @@ export const GoalsPage: React.FC = () => {
 
   const filters: Record<string, string> = {};
   if (filterStatus) filters.status = filterStatus;
-  if (filterType) filters.goal_type = filterType;
+  if (filterType) filters.goalType = filterType;
 
   const { data, isLoading } = useQuery({
     queryKey: ['goals', filters],
@@ -343,10 +343,10 @@ export const GoalsPage: React.FC = () => {
   const createMutation = useMutation({
     mutationFn: (formData: GoalFormData) => {
       const payload: any = { ...formData };
-      if (payload.target_value) payload.target_value = Number(payload.target_value);
-      if (payload.current_value) payload.current_value = Number(payload.current_value);
-      if (!payload.parent_id) delete payload.parent_id;
-      if (!payload.project_id) delete payload.project_id;
+      if (payload.targetValue) payload.targetValue = Number(payload.targetValue);
+      if (payload.currentValue) payload.currentValue = Number(payload.currentValue);
+      if (!payload.parentId) delete payload.parentId;
+      if (!payload.projectId) delete payload.projectId;
       return apiService.createGoal(payload);
     },
     onSuccess: () => {
@@ -358,10 +358,10 @@ export const GoalsPage: React.FC = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, formData }: { id: string; formData: GoalFormData }) => {
       const payload: any = { ...formData };
-      if (payload.target_value) payload.target_value = Number(payload.target_value);
-      if (payload.current_value) payload.current_value = Number(payload.current_value);
-      if (!payload.parent_id) delete payload.parent_id;
-      if (!payload.project_id) delete payload.project_id;
+      if (payload.targetValue) payload.targetValue = Number(payload.targetValue);
+      if (payload.currentValue) payload.currentValue = Number(payload.currentValue);
+      if (!payload.parentId) delete payload.parentId;
+      if (!payload.projectId) delete payload.projectId;
       return apiService.updateGoal(id, payload);
     },
     onSuccess: () => {
@@ -382,15 +382,15 @@ export const GoalsPage: React.FC = () => {
     ? {
         name: editingGoal.name,
         description: editingGoal.description || '',
-        goal_type: editingGoal.goalType,
-        parent_id: editingGoal.parentId || '',
+        goalType: editingGoal.goalType,
+        parentId: editingGoal.parentId || '',
         status: editingGoal.status,
-        target_value: editingGoal.targetValue != null ? String(editingGoal.targetValue) : '',
-        current_value: editingGoal.currentValue != null ? String(editingGoal.currentValue) : '',
+        targetValue: editingGoal.targetValue != null ? String(editingGoal.targetValue) : '',
+        currentValue: editingGoal.currentValue != null ? String(editingGoal.currentValue) : '',
         unit: editingGoal.unit || '',
-        start_date: editingGoal.startDate?.slice(0, 10) || '',
-        due_date: editingGoal.dueDate?.slice(0, 10) || '',
-        project_id: editingGoal.projectId || '',
+        startDate: editingGoal.startDate?.slice(0, 10) || '',
+        dueDate: editingGoal.dueDate?.slice(0, 10) || '',
+        projectId: editingGoal.projectId || '',
       }
     : undefined;
 

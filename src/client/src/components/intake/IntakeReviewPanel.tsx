@@ -10,6 +10,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { serverKey, valueFor } from '../../utils/serverKeys';
 
 interface Props {
   submissionId: string;
@@ -45,8 +46,17 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
   });
 
   const submission = submissionData?.submission;
-  const formFields: any[] = submission?.fields || [];
-  const submittedValues: Record<string, any> = submission?.values || {};
+  // The questions belong to the form; the submission holds the answers (valuesJson), keyed by
+  // question id. Both used to be read from fields that don't exist, so no answers ever showed.
+  const { data: formData } = useQuery({
+    queryKey: ['intake-form', submission?.formId],
+    queryFn: () => apiService.getIntakeForm(submission.formId),
+    enabled: !!submission?.formId,
+  });
+  const formFields: any[] = formData?.form?.fields || [];
+  const submittedValues: Record<string, any> = submission?.valuesJson || {};
+  const answer = (fieldId: string) => valueFor(submittedValues, fieldId);
+  const matchedKeys = new Set(formFields.flatMap((f: any) => [f.id, serverKey(f.id)]));
 
   const canReview =
     submission?.status === 'submitted' || submission?.status === 'under_review';
@@ -166,20 +176,20 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
                 </span>
                 <span className="text-sm text-gray-900 dark:text-white">
                   {field.type === 'checkbox'
-                    ? submittedValues[field.id]
+                    ? answer(field.id)
                       ? 'Yes'
                       : 'No'
-                    : submittedValues[field.id] !== undefined &&
-                      submittedValues[field.id] !== null &&
-                      submittedValues[field.id] !== ''
-                    ? String(submittedValues[field.id])
+                    : answer(field.id) !== undefined &&
+                      answer(field.id) !== null &&
+                      answer(field.id) !== ''
+                    ? String(answer(field.id))
                     : '-'}
                 </span>
               </div>
             ))}
             {/* Also show any values not in formFields (in case fields definition is incomplete) */}
             {Object.entries(submittedValues)
-              .filter(([key]) => !formFields.some((f: any) => f.id === key))
+              .filter(([key]) => !matchedKeys.has(key))
               .map(([key, val]) => (
                 <div key={key} className="py-3 flex items-start gap-4">
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-400 w-1/3 shrink-0">
