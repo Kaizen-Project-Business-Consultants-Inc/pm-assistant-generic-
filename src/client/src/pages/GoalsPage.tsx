@@ -12,15 +12,15 @@ interface Goal {
   id: string;
   name: string;
   description?: string;
-  goal_type: 'objective' | 'key_result';
-  parent_id?: string | null;
+  goalType: 'objective' | 'key_result';
+  parentId?: string | null;
   status: 'on_track' | 'at_risk' | 'behind' | 'completed';
-  target_value?: number | null;
-  current_value?: number | null;
+  targetValue?: number | null;
+  currentValue?: number | null;
   unit?: string;
-  start_date?: string;
-  due_date?: string;
-  project_id?: string | null;
+  startDate?: string;
+  dueDate?: string;
+  projectId?: string | null;
   owner?: string;
   progress?: number;
   children?: Goal[];
@@ -90,8 +90,8 @@ function statusBadge(status: string) {
 
 function progressPercent(goal: Goal): number {
   if (goal.progress != null) return Math.min(100, Math.max(0, goal.progress));
-  if (goal.target_value && goal.target_value > 0 && goal.current_value != null) {
-    return Math.min(100, Math.max(0, Math.round((goal.current_value / goal.target_value) * 100)));
+  if (goal.targetValue && goal.targetValue > 0 && goal.currentValue != null) {
+    return Math.min(100, Math.max(0, Math.round((goal.currentValue / goal.targetValue) * 100)));
   }
   return goal.status === 'completed' ? 100 : 0;
 }
@@ -102,9 +102,9 @@ function buildTree(goals: Goal[]): Goal[] {
   goals.forEach((g) => map.set(g.id, { ...g, children: [] }));
   goals.forEach((g) => {
     const node = map.get(g.id)!;
-    if (g.parent_id && map.has(g.parent_id)) {
-      map.get(g.parent_id)!.children!.push(node);
-    } else if (g.goal_type === 'objective' || !g.parent_id) {
+    if (g.parentId && map.has(g.parentId)) {
+      map.get(g.parentId)!.children!.push(node);
+    } else if (g.goalType === 'objective' || !g.parentId) {
       roots.push(node);
     }
   });
@@ -248,7 +248,7 @@ const KeyResultRow: React.FC<{ kr: Goal; onEdit: (g: Goal) => void; onDelete: (i
       <div className="flex-1 min-w-0">
         <p className="text-sm text-gray-800 dark:text-gray-200 truncate">{kr.name}</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          {kr.current_value ?? 0} / {kr.target_value ?? '?'} {kr.unit || ''}
+          {kr.currentValue ?? 0} / {kr.targetValue ?? '?'} {kr.unit || ''}
         </p>
       </div>
       {statusBadge(kr.status)}
@@ -292,7 +292,7 @@ const ObjectiveRow: React.FC<{ obj: Goal; onEdit: (g: Goal) => void; onDelete: (
           </div>
           <span className="text-xs text-gray-500 dark:text-gray-400 w-8 text-right">{pct}%</span>
         </div>
-        {obj.due_date && <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{obj.due_date.slice(0, 10)}</span>}
+        {obj.dueDate && <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{obj.dueDate.slice(0, 10)}</span>}
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           <button onClick={() => onEdit(obj)} className="p-1 rounded text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit objective"><Edit2 className="w-3.5 h-3.5" /></button>
           <button onClick={() => onDelete(obj.id)} className="p-1 rounded text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Delete objective"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -337,7 +337,7 @@ export const GoalsPage: React.FC = () => {
   });
 
   const goals: Goal[] = data?.goals || data || [];
-  const objectives = useMemo(() => goals.filter((g) => g.goal_type === 'objective'), [goals]);
+  const objectives = useMemo(() => goals.filter((g) => g.goalType === 'objective'), [goals]);
   const tree = useMemo(() => buildTree(goals), [goals]);
 
   const createMutation = useMutation({
@@ -382,15 +382,15 @@ export const GoalsPage: React.FC = () => {
     ? {
         name: editingGoal.name,
         description: editingGoal.description || '',
-        goal_type: editingGoal.goal_type,
-        parent_id: editingGoal.parent_id || '',
+        goal_type: editingGoal.goalType,
+        parent_id: editingGoal.parentId || '',
         status: editingGoal.status,
-        target_value: editingGoal.target_value != null ? String(editingGoal.target_value) : '',
-        current_value: editingGoal.current_value != null ? String(editingGoal.current_value) : '',
+        target_value: editingGoal.targetValue != null ? String(editingGoal.targetValue) : '',
+        current_value: editingGoal.currentValue != null ? String(editingGoal.currentValue) : '',
         unit: editingGoal.unit || '',
-        start_date: editingGoal.start_date?.slice(0, 10) || '',
-        due_date: editingGoal.due_date?.slice(0, 10) || '',
-        project_id: editingGoal.project_id || '',
+        start_date: editingGoal.startDate?.slice(0, 10) || '',
+        due_date: editingGoal.dueDate?.slice(0, 10) || '',
+        project_id: editingGoal.projectId || '',
       }
     : undefined;
 

@@ -66,7 +66,7 @@ export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
     const order = ['Today', 'Yesterday', 'Earlier'];
     const map = new Map<string, any[]>();
     for (const n of filtered) {
-      const group = n.created_at ? getDateGroup(n.created_at) : 'Earlier';
+      const group = n.createdAt ? getDateGroup(n.createdAt) : 'Earlier';
       if (!map.has(group)) map.set(group, []);
       map.get(group)!.push(n);
     }
@@ -78,7 +78,7 @@ export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
   }, [filtered]);
 
   async function handleClick(notification: any) {
-    if (!notification.read_at) {
+    if (!notification.isRead) {
       try {
         await apiService.markNotificationRead(notification.id);
         queryClient.invalidateQueries({ queryKey: ['notifications-feed-pm'] });
@@ -169,7 +169,7 @@ export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
               </p>
               <ul className="space-y-1">
                 {group.items.map((n: any) => {
-                  const isUnread = !n.read_at;
+                  const isUnread = !n.isRead;
                   return (
                     <li
                       key={n.id}
@@ -182,8 +182,8 @@ export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
                         <p className={`text-xs truncate ${isUnread ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}>
                           {n.title || n.message || 'Notification'}
                         </p>
-                        {n.created_at && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{timeAgo(n.created_at)}</p>
+                        {n.createdAt && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{timeAgo(n.createdAt)}</p>
                         )}
                       </div>
                     </li>

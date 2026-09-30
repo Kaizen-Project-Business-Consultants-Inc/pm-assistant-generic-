@@ -203,12 +203,12 @@ export const IntakeFormsPage: React.FC = () => {
                     <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{form.name}</h3>
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        form.is_active
+                        form.isActive
                           ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                           : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                       }`}
                     >
-                      {form.is_active ? 'Active' : 'Inactive'}
+                      {form.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                   {form.description && (
@@ -308,7 +308,7 @@ export const IntakeFormsPage: React.FC = () => {
                         {sub.form_name || sub.formName || 'Unknown Form'}
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
-                        {sub.submitted_by_name || sub.submittedByName || 'Unknown'}
+                        {sub.submitterName || 'Unknown'}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -320,8 +320,8 @@ export const IntakeFormsPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
-                        {sub.created_at
-                          ? new Date(sub.created_at).toLocaleDateString('en-US')
+                        {sub.createdAt
+                          ? new Date(sub.createdAt).toLocaleDateString('en-US')
                           : ''}
                       </td>
                       <td className="px-4 py-3 text-right">

@@ -37,31 +37,31 @@ import { formatCalendarDate } from '../utils/dateUtils';
 
 interface Proposal {
   id: string;
-  project_id: string;
-  schedule_id?: string;
-  agent_id: string;
-  agent_version: string;
+  projectId: string;
+  scheduleId?: string;
+  agentId: string;
+  agentVersion: string;
   status: string;
   title: string;
   reasoning: string;
   summary: string;
-  confidence_score: number;
-  confidence_factors: Record<string, unknown> | null;
-  risk_level: string;
-  expires_at?: string;
-  created_at: string;
-  reviewed_at?: string;
-  executed_at?: string;
+  confidenceScore: number;
+  confidenceFactors: Record<string, unknown> | null;
+  riskLevel: string;
+  expiresAt?: string;
+  createdAt: string;
+  reviewedAt?: string;
+  executedAt?: string;
 }
 
 interface ProposalAction {
   id: string;
-  execution_order: number;
-  action_type: string;
-  target_entity_type: string;
-  target_entity_id: string;
-  old_value: Record<string, unknown> | null;
-  new_value: Record<string, unknown>;
+  executionOrder: number;
+  actionType: string;
+  targetEntityType: string;
+  targetEntityId: string;
+  oldValue: Record<string, unknown> | null;
+  newValue: Record<string, unknown>;
   reasoning?: string;
   status: string;
 }
@@ -271,9 +271,9 @@ function TriageSection({ proposals, onSelect }: { proposals: Proposal[]; onSelec
   // Sort: high risk first, then by confidence desc
   const riskOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
   const sorted = [...pending].sort((a, b) => {
-    const rd = (riskOrder[a.risk_level] ?? 9) - (riskOrder[b.risk_level] ?? 9);
+    const rd = (riskOrder[a.riskLevel] ?? 9) - (riskOrder[b.riskLevel] ?? 9);
     if (rd !== 0) return rd;
-    return b.confidence_score - a.confidence_score;
+    return b.confidenceScore - a.confidenceScore;
   });
 
   return (
@@ -290,14 +290,14 @@ function TriageSection({ proposals, onSelect }: { proposals: Proposal[]; onSelec
             onClick={() => onSelect(p.id)}
             className="w-full flex items-center gap-3 bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3 hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-sm transition-all text-left"
           >
-            <ConfidenceGauge score={p.confidence_score} size="sm" />
+            <ConfidenceGauge score={p.confidenceScore} size="sm" />
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.title}</div>
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {formatAgentName(p.agent_id)} &middot; {timeAgo(p.created_at)}
+                {formatAgentName(p.agentId)} &middot; {timeAgo(p.createdAt)}
               </div>
             </div>
-            <RiskBadge level={p.risk_level} size="sm" />
+            <RiskBadge level={p.riskLevel} size="sm" />
             <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
           </button>
         ))}
@@ -389,9 +389,9 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
               </div>
               {/* Decision bar: Risk + Confidence + Status — three distinct visual treatments */}
               <div className="flex items-center gap-3 mt-3">
-                <RiskBadge level={proposal.risk_level} />
+                <RiskBadge level={proposal.riskLevel} />
                 <div className="flex items-center gap-2">
-                  <ConfidenceGauge score={proposal.confidence_score} size="sm" />
+                  <ConfidenceGauge score={proposal.confidenceScore} size="sm" />
                   <span className="text-xs text-gray-500 dark:text-gray-400">confidence</span>
                 </div>
                 <div className="ml-auto">
@@ -413,16 +413,16 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
             <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
               <span className="flex items-center gap-1">
                 <Bot className="w-3.5 h-3.5 text-primary-500" />
-                <span className="font-medium text-gray-700 dark:text-gray-200">{formatAgentName(proposal.agent_id)}</span>
-                <span className="text-gray-500 dark:text-gray-400">v{proposal.agent_version}</span>
+                <span className="font-medium text-gray-700 dark:text-gray-200">{formatAgentName(proposal.agentId)}</span>
+                <span className="text-gray-500 dark:text-gray-400">v{proposal.agentVersion}</span>
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                {new Date(proposal.created_at).toLocaleString()}
+                {new Date(proposal.createdAt).toLocaleString()}
               </span>
-              {proposal.expires_at && (
+              {proposal.expiresAt && (
                 <span className="text-amber-600">
-                  Expires {new Date(proposal.expires_at).toLocaleDateString('en-US')}
+                  Expires {new Date(proposal.expiresAt).toLocaleDateString('en-US')}
                 </span>
               )}
             </div>
@@ -433,11 +433,11 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
             </div>
 
             {/* Confidence Breakdown — visual bars */}
-            {proposal.confidence_factors && Object.keys(proposal.confidence_factors).length > 0 && (
+            {proposal.confidenceFactors && Object.keys(proposal.confidenceFactors).length > 0 && (
               <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4">
                 <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-3">Confidence Breakdown</h3>
                 <div className="space-y-2.5">
-                  {Object.entries(proposal.confidence_factors).map(([key, val]) => {
+                  {Object.entries(proposal.confidenceFactors).map(([key, val]) => {
                     const score = Number(val) || 0;
                     const label = key === 'dataQuality' ? 'Data Quality' : key === 'historicalAccuracy' ? 'Historical Accuracy' : key === 'modelCertainty' ? 'Model Certainty' : key.replace(/_/g, ' ');
                     const Icon = key === 'dataQuality' ? Database : key === 'historicalAccuracy' ? History : Cpu;
@@ -498,24 +498,24 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className="flex items-center justify-center w-5 h-5 rounded bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 text-xs font-bold">
-                            {action.execution_order}
+                            {action.executionOrder}
                           </span>
                           <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {formatActionType(action.action_type)}
+                            {formatActionType(action.actionType)}
                           </span>
                         </div>
                         <StatusPill status={action.status} />
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                        {action.target_entity_type} &middot; {action.target_entity_id.slice(0, 8)}...
+                        {action.targetEntityType} &middot; {action.targetEntityId.slice(0, 8)}...
                       </div>
                       {action.reasoning && (
                         <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 italic">{action.reasoning}</p>
                       )}
                       {/* Before→After diff */}
-                      {(action.old_value || action.new_value) && (
+                      {(action.oldValue || action.newValue) && (
                         <div className="bg-gray-50 dark:bg-gray-900 rounded p-2.5">
-                          <DiffView oldVal={action.old_value} newVal={action.new_value} />
+                          <DiffView oldVal={action.oldValue} newVal={action.newValue} />
                         </div>
                       )}
                     </div>
@@ -1072,7 +1072,7 @@ export const AgentProposalsPage: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <Bot className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                             <span className="font-medium text-gray-900 dark:text-white truncate max-w-[140px]">
-                              {formatAgentName(p.agent_id)}
+                              {formatAgentName(p.agentId)}
                             </span>
                           </div>
                         </td>
@@ -1083,13 +1083,13 @@ export const AgentProposalsPage: React.FC = () => {
                           <StatusPill status={p.status} />
                         </td>
                         <td className="px-4 py-3">
-                          <RiskBadge level={p.risk_level} size="sm" />
+                          <RiskBadge level={p.riskLevel} size="sm" />
                         </td>
                         <td className="px-4 py-3">
-                          <ConfidenceBar score={p.confidence_score} />
+                          <ConfidenceBar score={p.confidenceScore} />
                         </td>
                         <td className="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">
-                          {timeAgo(p.created_at)}
+                          {timeAgo(p.createdAt)}
                         </td>
                         <td className="px-4 py-3">
                           <ChevronRight className="w-4 h-4 text-gray-500" />

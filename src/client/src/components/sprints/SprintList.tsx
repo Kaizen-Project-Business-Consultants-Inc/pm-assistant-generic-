@@ -16,10 +16,10 @@ interface Sprint {
   name: string;
   status: 'planning' | 'active' | 'completed' | 'cancelled';
   goal?: string;
-  start_date?: string;
-  end_date?: string;
-  velocity_commitment?: number;
-  velocity_actual?: number;
+  startDate?: string;
+  endDate?: string;
+  velocityCommitment?: number;
+  velocityActual?: number;
   taskStats?: SprintTaskStats;
 }
 
@@ -53,10 +53,10 @@ function formatDate(s?: string): string {
 }
 
 function VelocitySparkline({ sprints }: { sprints: Sprint[] }) {
-  const completed = sprints.filter((s) => s.status === 'completed' && s.velocity_actual != null);
+  const completed = sprints.filter((s) => s.status === 'completed' && s.velocityActual != null);
   if (completed.length < 2) return null;
   const last = completed.slice(-6);
-  const vals = last.map((s) => s.velocity_actual!);
+  const vals = last.map((s) => s.velocityActual!);
   const max = Math.max(...vals, 1);
   const min = Math.min(...vals, 0);
   const range = max - min || 1;
@@ -90,8 +90,8 @@ export function SprintList({ projectId, onSelect, onCreate, onRetro, canEdit = t
     const copy = [...sprints];
     if (sortMode === 'date') {
       copy.sort((a, b) => {
-        const da = a.start_date ? new Date(a.start_date).getTime() : 0;
-        const db = b.start_date ? new Date(b.start_date).getTime() : 0;
+        const da = a.startDate ? new Date(a.startDate).getTime() : 0;
+        const db = b.startDate ? new Date(b.startDate).getTime() : 0;
         return db - da;
       });
     } else if (sortMode === 'name') {
@@ -197,7 +197,7 @@ export function SprintList({ projectId, onSelect, onCreate, onRetro, canEdit = t
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-1">{sprint.goal}</p>
                     )}
                     <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                      <span>{formatDate(sprint.start_date)} - {formatDate(sprint.end_date)}</span>
+                      <span>{formatDate(sprint.startDate)} - {formatDate(sprint.endDate)}</span>
                     </div>
                     {sprint.taskStats && sprint.taskStats.totalTasks > 0 && (() => {
                       const { totalTasks, completedTasks, totalPoints, completedPoints } = sprint.taskStats;
@@ -227,12 +227,12 @@ export function SprintList({ projectId, onSelect, onCreate, onRetro, canEdit = t
 
                   {/* Velocity + Retro */}
                   <div className="text-right flex-shrink-0 flex items-center gap-2">
-                    {sprint.velocity_commitment != null && (
+                    {sprint.velocityCommitment != null && (
                       <div className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
                         <span className="font-medium text-gray-700 dark:text-gray-300">
-                          {sprint.velocity_actual ?? '?'}
+                          {sprint.velocityActual ?? '?'}
                         </span>
-                        <span className="text-gray-500 dark:text-gray-400"> / {sprint.velocity_commitment} pts</span>
+                        <span className="text-gray-500 dark:text-gray-400"> / {sprint.velocityCommitment} pts</span>
                       </div>
                     )}
                     {sprint.status === 'completed' && onRetro && (

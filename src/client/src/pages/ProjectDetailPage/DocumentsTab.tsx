@@ -674,8 +674,8 @@ function DetailPanel({
       {/* AI Insights */}
       {doc.aiInsights && (
         <>
-          {doc.aiInsights.key_points?.length > 0 && (
-            <InsightSection title="Key Points" items={doc.aiInsights.key_points} />
+          {doc.aiInsights.keyPoints?.length > 0 && (
+            <InsightSection title="Key Points" items={doc.aiInsights.keyPoints} />
           )}
           {doc.aiInsights.decisions?.length > 0 && (
             <InsightSection title="Decisions" items={doc.aiInsights.decisions.map((d: any) => d.text)} />
@@ -687,10 +687,10 @@ function DetailPanel({
             <InsightSection title="Issues" items={doc.aiInsights.issues.map((i: any) => i.text)} />
           )}
           {doc.aiInsights.actions?.length > 0 && (
-            <InsightSection title="Action Items" items={doc.aiInsights.actions.map((a: any) => `${a.text}${a.assignee ? ` → ${a.assignee}` : ''}${a.due_date ? ` (due ${a.due_date})` : ''}`)} />
+            <InsightSection title="Action Items" items={doc.aiInsights.actions.map((a: any) => `${a.text}${a.assignee ? ` → ${a.assignee}` : ''}${a.dueDate ? ` (due ${a.dueDate})` : ''}`)} />
           )}
-          {doc.aiInsights.dates_mentioned?.length > 0 && (
-            <InsightSection title="Dates Mentioned" items={doc.aiInsights.dates_mentioned} />
+          {doc.aiInsights.datesMentioned?.length > 0 && (
+            <InsightSection title="Dates Mentioned" items={doc.aiInsights.datesMentioned} />
           )}
         </>
       )}

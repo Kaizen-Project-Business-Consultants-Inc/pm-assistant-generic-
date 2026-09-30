@@ -21,9 +21,9 @@ interface Sprint {
   name: string;
   status: 'planning' | 'active' | 'completed' | 'cancelled';
   goal?: string;
-  start_date?: string;
-  end_date?: string;
-  velocity_commitment?: number;
+  startDate?: string;
+  endDate?: string;
+  velocityCommitment?: number;
   tasks?: Task[];
 }
 
@@ -308,17 +308,17 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId, canEdit =
             <h3 className="text-sm font-semibold text-gray-800 dark:text-white">{sprint.name}</h3>
             {sprint.goal && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{sprint.goal}</p>}
             <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
-              {sprint.start_date && (
+              {sprint.startDate && (
                 <span>
-                  {formatCalendarDate(sprint.start_date, { month: 'short', day: 'numeric' }, 'en-US')}
+                  {formatCalendarDate(sprint.startDate, { month: 'short', day: 'numeric' }, 'en-US')}
                   {' - '}
-                  {sprint.end_date
-                    ? formatCalendarDate(sprint.end_date, { month: 'short', day: 'numeric' }, 'en-US')
+                  {sprint.endDate
+                    ? formatCalendarDate(sprint.endDate, { month: 'short', day: 'numeric' }, 'en-US')
                     : '?'}
                 </span>
               )}
-              {sprint.velocity_commitment != null && (
-                <span>Commitment: {sprint.velocity_commitment} pts</span>
+              {sprint.velocityCommitment != null && (
+                <span>Commitment: {sprint.velocityCommitment} pts</span>
               )}
               <span className="font-medium text-primary-600 dark:text-primary-400">Sprint total: {totalPoints} pts</span>
             </div>

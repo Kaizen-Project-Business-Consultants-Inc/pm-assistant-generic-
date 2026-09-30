@@ -42,19 +42,19 @@ export const AIContextTab: React.FC = () => {
 
       // Populate form fields from resolved config
       const c = res.config || {};
-      if (c.system_instructions) setSystemInstructions(String(c.system_instructions.value || ''));
-      if (c.response_style) {
-        const style = c.response_style.value as any;
+      if (c.systemInstructions) setSystemInstructions(String(c.systemInstructions.value || ''));
+      if (c.responseStyle) {
+        const style = c.responseStyle.value as any;
         if (style?.tone) setResponseTone(style.tone);
         if (style?.length) setResponseLength(style.length);
         if (style?.format) setResponseFormat(style.format);
       }
-      if (c.forbidden_topics) {
-        const topics = c.forbidden_topics.value as string[];
+      if (c.forbiddenTopics) {
+        const topics = c.forbiddenTopics.value as string[];
         setForbiddenTopics(topics?.join(', ') || '');
       }
-      if (c.project_methodology) setMethodology(String(c.project_methodology.value || ''));
-      if (c.ai_temperature) setTemperature(Number(c.ai_temperature.value) || 0.5);
+      if (c.projectMethodology) setMethodology(String(c.projectMethodology.value || ''));
+      if (c.aiTemperature) setTemperature(Number(c.aiTemperature.value) || 0.5);
     } catch {
       // Config may not exist yet
     }
@@ -151,7 +151,7 @@ export const AIContextTab: React.FC = () => {
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400"
                 />
                 <p className="text-xs text-gray-500 mt-1">{systemInstructions.length}/5000 characters</p>
-                {config.system_instructions?.isLocked && (
+                {config.systemInstructions?.isLocked && (
                   <p className="text-xs text-amber-600 mt-1">This setting is locked by your organization admin.</p>
                 )}
               </div>

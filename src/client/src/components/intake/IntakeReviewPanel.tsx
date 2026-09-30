@@ -125,14 +125,14 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
           <div>
             <span className="text-xs text-gray-500 dark:text-gray-400 font-medium block mb-0.5">Submitted By</span>
             <span className="text-gray-900 dark:text-white font-medium">
-              {submission.submitted_by_name || submission.submittedByName || 'Unknown'}
+              {submission.submitterName || 'Unknown'}
             </span>
           </div>
           <div>
             <span className="text-xs text-gray-500 dark:text-gray-400 font-medium block mb-0.5">Submission Date</span>
             <span className="text-gray-900 dark:text-white">
-              {submission.created_at
-                ? new Date(submission.created_at).toLocaleDateString('en-US', {
+              {submission.createdAt
+                ? new Date(submission.createdAt).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
@@ -315,15 +315,15 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
       )}
 
       {/* Review notes display for already reviewed submissions */}
-      {!canReview && submission.review_notes && (
+      {!canReview && submission.reviewNotes && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-2">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Review Notes</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-300">{submission.review_notes}</p>
-          {submission.reviewed_by_name && (
+          <p className="text-sm text-gray-600 dark:text-gray-300">{submission.reviewNotes}</p>
+          {submission.reviewedByName && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Reviewed by {submission.reviewed_by_name}
-              {submission.reviewed_at &&
-                ` on ${new Date(submission.reviewed_at).toLocaleDateString('en-US')}`}
+              Reviewed by {submission.reviewedByName}
+              {submission.reviewedAt &&
+                ` on ${new Date(submission.reviewedAt).toLocaleDateString('en-US')}`}
             </p>
           )}
         </div>

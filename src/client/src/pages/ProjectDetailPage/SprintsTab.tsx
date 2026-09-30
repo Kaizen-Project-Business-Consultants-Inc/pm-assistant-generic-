@@ -22,15 +22,15 @@ interface SprintSummary {
   id: string;
   name: string;
   status: string;
-  start_date?: string;
-  end_date?: string;
+  startDate?: string;
+  endDate?: string;
   taskStats?: { totalTasks: number; completedTasks: number; totalPoints: number; completedPoints: number };
 }
 
 function DayProgress({ sprint }: { sprint: SprintSummary | null }) {
-  if (!sprint || sprint.status !== 'active' || !sprint.start_date || !sprint.end_date) return null;
-  const start = new Date(sprint.start_date + 'T00:00:00').getTime();
-  const end = new Date(sprint.end_date + 'T00:00:00').getTime();
+  if (!sprint || sprint.status !== 'active' || !sprint.startDate || !sprint.endDate) return null;
+  const start = new Date(sprint.startDate + 'T00:00:00').getTime();
+  const end = new Date(sprint.endDate + 'T00:00:00').getTime();
   const now = new Date().setHours(0, 0, 0, 0);
   const totalDays = Math.max(1, Math.round((end - start) / 86400000));
   const elapsed = Math.max(0, Math.min(totalDays, Math.round((now - start) / 86400000)));

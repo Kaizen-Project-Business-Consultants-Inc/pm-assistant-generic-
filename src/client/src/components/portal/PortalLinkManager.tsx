@@ -16,15 +16,15 @@ interface PortalLink {
   id: string;
   label: string;
   token: string;
-  is_active: boolean;
-  expires_at: string | null;
+  isActive: boolean;
+  expiresAt: string | null;
   permissions: {
     canViewGantt: boolean;
     canViewBudget: boolean;
     canComment: boolean;
     canViewReports: boolean;
   };
-  created_at: string;
+  createdAt: string;
 }
 
 interface CreateLinkForm {
@@ -275,7 +275,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
             <div
               key={link.id}
               className={`p-2.5 rounded-lg border text-xs ${
-                link.is_active
+                link.isActive
                   ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
                   : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 opacity-60'
               }`}
@@ -290,21 +290,21 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
                 </div>
                 <span
                   className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                    link.is_active
+                    link.isActive
                       ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                   }`}
                 >
-                  {link.is_active ? 'Active' : 'Inactive'}
+                  {link.isActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
 
               {/* Permissions + expiry */}
               <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-2">
                 <span>{permissionSummary(link.permissions)}</span>
-                {link.expires_at && (
+                {link.expiresAt && (
                   <span>
-                    Expires: {new Date(link.expires_at).toLocaleDateString('en-US')}
+                    Expires: {new Date(link.expiresAt).toLocaleDateString('en-US')}
                   </span>
                 )}
               </div>
@@ -333,13 +333,13 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
                   onClick={() =>
                     toggleMutation.mutate({
                       linkId: link.id,
-                      isActive: !link.is_active,
+                      isActive: !link.isActive,
                     })
                   }
                   className="flex items-center gap-1 px-2 py-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  title={link.is_active ? 'Deactivate' : 'Activate'}
+                  title={link.isActive ? 'Deactivate' : 'Activate'}
                 >
-                  {link.is_active ? (
+                  {link.isActive ? (
                     <>
                       <EyeOff className="w-3 h-3" />
                       <span>Disable</span>

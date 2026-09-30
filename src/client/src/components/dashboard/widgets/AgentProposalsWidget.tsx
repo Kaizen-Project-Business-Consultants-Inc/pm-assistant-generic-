@@ -8,11 +8,11 @@ import { ConfidenceBar } from '../../ui/ConfidenceGauge';
 
 interface Proposal {
   id: string;
-  agent_id: string;
+  agentId: string;
   title: string;
-  risk_level: string;
-  confidence_score: number;
-  created_at: string;
+  riskLevel: string;
+  confidenceScore: number;
+  createdAt: string;
   status: string;
 }
 
@@ -43,11 +43,11 @@ export function AgentProposalsWidget({ agentIds }: AgentProposalsWidgetProps) {
 
   const allProposals: Proposal[] = data?.data || data?.proposals || [];
   const filtered = allProposals
-    .filter(p => agentIds.includes(p.agent_id))
+    .filter(p => agentIds.includes(p.agentId))
     .sort((a, b) => {
-      const riskDiff = (RISK_ORDER[a.risk_level] ?? 4) - (RISK_ORDER[b.risk_level] ?? 4);
+      const riskDiff = (RISK_ORDER[a.riskLevel] ?? 4) - (RISK_ORDER[b.riskLevel] ?? 4);
       if (riskDiff !== 0) return riskDiff;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     })
     .slice(0, 5);
 
@@ -89,15 +89,15 @@ export function AgentProposalsWidget({ agentIds }: AgentProposalsWidgetProps) {
             >
               <div className="flex items-start justify-between gap-2 mb-1.5">
                 <span className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">{p.title}</span>
-                <RiskBadge level={p.risk_level as any} />
+                <RiskBadge level={p.riskLevel as any} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">{agentDisplayName(p.agent_id)}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{agentDisplayName(p.agentId)}</span>
                 <div className="flex items-center gap-3">
-                  <ConfidenceBar score={p.confidence_score} />
+                  <ConfidenceBar score={p.confidenceScore} />
                   <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
                     <Clock className="w-3 h-3" />
-                    {timeAgo(p.created_at)}
+                    {timeAgo(p.createdAt)}
                   </span>
                 </div>
               </div>

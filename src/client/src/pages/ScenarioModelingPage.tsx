@@ -679,12 +679,12 @@ interface Project { id: string; name: string; scheduleId?: string }
 
 interface SavedScenario {
   id: string;
-  scenario_text: string;
+  scenarioText: string;
   parameters: Record<string, number> | null;
   result: ScenarioResult;
-  ai_powered: boolean;
+  aiPowered: boolean;
   confidence: number;
-  created_at: string;
+  createdAt: string;
 }
 
 function impactColor(changePct: number): string {
@@ -1289,11 +1289,11 @@ const WhatIfScenario: React.FC = () => {
                 <div key={s.id} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{s.scenario_text}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{s.scenarioText}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-xs text-gray-500">{new Date(s.created_at).toLocaleDateString('en-US')} {new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-xs text-gray-500">{new Date(s.createdAt).toLocaleDateString('en-US')} {new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         <span className="text-xs text-gray-500">Confidence: {Math.round(s.confidence * 100)}%</span>
-                        {s.ai_powered && (
+                        {s.aiPowered && (
                           <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 text-xs font-medium">
                             <Zap className="w-2.5 h-2.5" /> AI
                           </span>
@@ -1318,7 +1318,7 @@ const WhatIfScenario: React.FC = () => {
                         onClick={() => {
                           if (pinnedResults.length >= 3) return;
                           setPinnedResults((prev) => [...prev, {
-                            label: s.scenario_text.length > 40 ? s.scenario_text.slice(0, 40) + '...' : s.scenario_text,
+                            label: s.scenarioText.length > 40 ? s.scenarioText.slice(0, 40) + '...' : s.scenarioText,
                             result: s.result,
                             confidence: s.confidence,
                           }]);
