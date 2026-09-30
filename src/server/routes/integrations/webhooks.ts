@@ -5,15 +5,16 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
+import { sendValidationError } from '../../utils/validationError';
 
 const createWebhookSchema = z.object({
-  url: z.string().url().max(2000),
-  events: z.array(z.string().min(1)).min(1),
+  url: z.string({ message: 'Enter the web address to send events to (url).' }).url('Enter a full web address, e.g. https://example.com/hook.').max(2000, 'Keep the web address under 2000 characters.'),
+  events: z.array(z.string().min(1, 'Event names cannot be blank.'), { message: 'Choose at least one event to send.' }).min(1, 'Choose at least one event to send.'),
 });
 
 const updateWebhookSchema = z.object({
-  url: z.string().url().max(2000).optional(),
-  events: z.array(z.string().min(1)).optional(),
+  url: z.string().url('Enter a full web address, e.g. https://example.com/hook.').max(2000, 'Keep the web address under 2000 characters.').optional(),
+  events: z.array(z.string().min(1, 'Event names cannot be blank.')).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -25,11 +26,12 @@ export async function webhookRoutes(fastify: FastifyInstance) {
       const user = request.user!;
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
 
-      const { url, events } = createWebhookSchema.parse(request.body);
+      const { url, events } = createWebhookSchema.parse(request.body ?? {});
 
       const webhook = await webhookService.register(user.userId, url, events);
       return reply.status(201).send({ webhook });
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Register webhook error', { error });
       return reply.status(500).send({ error: 'Failed to register webhook' });
     }
@@ -56,13 +58,14 @@ export async function webhookRoutes(fastify: FastifyInstance) {
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
 
       const { id } = request.params as { id: string };
-      const body = updateWebhookSchema.parse(request.body);
+      const body = updateWebhookSchema.parse(request.body ?? {});
 
       const webhook = await webhookService.update(user.userId, id, body);
       if (!webhook) return reply.status(404).send({ error: 'Webhook not found' });
 
       return { webhook };
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Update webhook error', { error });
       return reply.status(500).send({ error: 'Failed to update webhook' });
     }

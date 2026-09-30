@@ -4,15 +4,16 @@ import { authMiddleware } from '../middleware/auth';
 import { requireScope } from '../middleware/requireScope';
 import { goalService } from '../services/GoalService';
 import logger from '../utils/logger';
+import { sendValidationError } from '../utils/validationError';
 
 const createGoalSchema = z.object({
-  name: z.string().min(1).max(200),
+  name: z.string({ message: 'Enter a name for the goal.' }).trim().min(1, 'Enter a name for the goal.').max(200, 'Keep the goal name under 200 characters.'),
   description: z.string().max(5000).optional(),
   ownerId: z.string().optional(),
   parentId: z.string().optional(),
-  goalType: z.enum(['objective', 'key_result']),
-  status: z.enum(['on_track', 'at_risk', 'behind', 'completed']).optional(),
-  progress: z.number().min(0).max(100).optional(),
+  goalType: z.enum(['objective', 'key_result'], { message: 'Choose whether this is an objective or a key result (goalType).' }),
+  status: z.enum(['on_track', 'at_risk', 'behind', 'completed'], { message: 'Status must be on track, at risk, behind or completed.' }).optional(),
+  progress: z.number().min(0, 'Progress must be between 0 and 100.').max(100, 'Progress must be between 0 and 100.').optional(),
   targetValue: z.number().optional(),
   currentValue: z.number().optional(),
   unit: z.string().max(50).optional(),
@@ -70,7 +71,7 @@ export async function goalRoutes(fastify: FastifyInstance) {
     schema: { description: 'Create a goal', tags: ['goals'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const body = createGoalSchema.parse(request.body);
+      const body = createGoalSchema.parse(request.body ?? {});
       const userId = request.user?.userId as string;
       const goal = await goalService.create({
         ...body,
@@ -84,6 +85,7 @@ export async function goalRoutes(fastify: FastifyInstance) {
 
       return reply.status(201).send({ goal });
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Create goal error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to create goal' });
     }
@@ -96,7 +98,7 @@ export async function goalRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const body = updateGoalSchema.parse(request.body);
+      const body = updateGoalSchema.parse(request.body ?? {});
 
       const goal = await goalService.update(id, body);
       if (!goal) {
@@ -110,6 +112,7 @@ export async function goalRoutes(fastify: FastifyInstance) {
 
       return { goal };
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Update goal error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to update goal' });
     }

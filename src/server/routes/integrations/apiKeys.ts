@@ -6,10 +6,11 @@ import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
+import { sendValidationError } from '../../utils/validationError';
 
 const createApiKeySchema = z.object({
-  name: z.string().min(1).max(200),
-  scopes: z.array(z.enum(['read', 'write', 'admin'])).default(['read', 'write']),
+  name: z.string({ message: 'Enter a name for the API key.' }).trim().min(1, 'Enter a name for the API key.').max(200, 'Keep the key name under 200 characters.'),
+  scopes: z.array(z.enum(['read', 'write', 'admin'], { message: 'Scopes can only be read, write or admin.' })).default(['read', 'write']),
   rateLimit: z.number().int().positive().optional(),
   expiresAt: z.string().optional(),
 });
@@ -24,7 +25,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
       const user = request.user!;
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
 
-      const body = createApiKeySchema.parse(request.body);
+      const body = createApiKeySchema.parse(request.body ?? {});
 
       // Enforce: requested scopes cannot exceed user's own role scopes
       const ROLE_SCOPES: Record<string, string[]> = {
@@ -62,6 +63,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
 
       return reply.status(201).send({ apiKey });
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Create API key error', { error });
       return reply.status(500).send({ error: 'Failed to create API key' });
     }

@@ -102,8 +102,9 @@ describe('requireProjectAccess', () => {
 
       await handler(req, reply);
 
-      // schedule not found → projectId null → middleware skips (no project context)
-      expect(reply.status).not.toHaveBeenCalled();
+      // A named schedule that doesn't exist here (e.g. another company's) → "not found".
+      // It used to fall through as "no project context", answering an empty result.
+      expect(reply.status).toHaveBeenCalledWith(404);
     });
 
     it('extracts projectId from params.id on project routes', async () => {

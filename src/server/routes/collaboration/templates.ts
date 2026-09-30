@@ -8,19 +8,20 @@ import { requireScope } from '../../middleware/requireScope';
 import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
+import { sendValidationError } from '../../utils/validationError';
 import { PROJECT_TYPES } from '../../constants/projectTypes';
 
 const createTemplateSchema = z.object({
-  name: z.string().min(1),
-  description: z.string(),
-  projectType: z.enum(PROJECT_TYPES),
-  category: z.string(),
-  estimatedDurationDays: z.number().positive(),
+  name: z.string({ message: 'Enter a name for the template.' }).trim().min(1, 'Enter a name for the template.'),
+  description: z.string({ message: 'Enter a description for the template.' }),
+  projectType: z.enum(PROJECT_TYPES, { message: 'Choose a project type for the template.' }),
+  category: z.string({ message: 'Choose a category for the template.' }),
+  estimatedDurationDays: z.number({ message: 'Enter the estimated duration in days (more than 0).' }).positive('Enter the estimated duration in days (more than 0).'),
   tasks: z.array(z.object({
-    refId: z.string(),
-    name: z.string(),
+    refId: z.string({ message: 'Every template task needs a reference id (refId).' }),
+    name: z.string({ message: 'Give every template task a name.' }),
     description: z.string().default(''),
-    estimatedDays: z.number().min(1),
+    estimatedDays: z.number({ message: 'Every template task needs an estimate of at least 1 day.' }).min(1, 'Every template task needs an estimate of at least 1 day.'),
     priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
     parentRefId: z.string().nullable().default(null),
     dependencyRefId: z.string().nullable().default(null),
@@ -29,7 +30,7 @@ const createTemplateSchema = z.object({
     skills: z.array(z.string()).default([]),
     isSummary: z.boolean().default(false),
     mandatory: z.boolean().optional(),
-  })),
+  }), { message: 'Add the template tasks (tasks).' }),
   tags: z.array(z.string()).default([]),
 });
 
@@ -92,7 +93,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('write')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const data = createTemplateSchema.parse(request.body);
+      const data = createTemplateSchema.parse(request.body ?? {});
       const userId = request.user!.userId;
       const template = await templateService.create({
         ...data,
@@ -101,6 +102,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
       });
       return reply.status(201).send({ template });
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Create template error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to create template' });
     }
@@ -112,13 +114,14 @@ export async function templateRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const data = updateTemplateSchema.parse(request.body);
+      const data = updateTemplateSchema.parse(request.body ?? {});
       const template = await templateService.update(id, data);
       if (!template) {
         return reply.status(404).send({ error: 'Template not found or is built-in' });
       }
       return { template };
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Update template error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to update template' });
     }
@@ -146,7 +149,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('write')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const data = createFromTemplateSchema.parse(request.body);
+      const data = createFromTemplateSchema.parse(request.body ?? {});
       const userId = request.user!.userId;
       const result = await templateService.applyTemplate({
         ...data,
@@ -155,6 +158,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
       });
       return reply.status(201).send(result);
     } catch (error: any) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Apply template error', { error: error.message, stack: error.stack });
       if (error.message === 'Template not found') {
         return reply.status(404).send({ error: 'Template not found' });
@@ -168,7 +172,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('write')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const data = saveAsTemplateSchema.parse(request.body);
+      const data = saveAsTemplateSchema.parse(request.body ?? {});
       const userId = request.user!.userId;
       const template = await templateService.saveFromProject({
         ...data,
@@ -177,6 +181,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
       });
       return reply.status(201).send({ template });
     } catch (error: any) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Save as template error', { error });
       if (error.message === 'Project not found') {
         return reply.status(404).send({ error: 'Project not found' });

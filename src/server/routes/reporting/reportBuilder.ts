@@ -7,6 +7,7 @@ import { readableProjectIds } from '../../utils/readableProjects';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
+import { sendValidationError } from '../../utils/validationError';
 
 const reportSectionSchema = z.object({
   title: z.string().optional(),
@@ -38,7 +39,7 @@ const generateReportParamsSchema = z.object({
 }).optional();
 
 const exportReportSchema = z.object({
-  format: z.enum(['csv', 'pdf']),
+  format: z.enum(['csv', 'pdf'], { message: 'Choose an export format: csv or pdf.' }),
 });
 
 export async function reportBuilderRoutes(fastify: FastifyInstance) {
@@ -138,7 +139,10 @@ export async function reportBuilderRoutes(fastify: FastifyInstance) {
       const report = await reportBuilderService.generateReport(id, body ?? undefined, await readableProjectIds(request.user!));
       return { report };
     } catch (error) {
-      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
+      if (error instanceof Error && error.message === 'Report template not found') {
+        return reply.status(404).send({ error: 'Not found', message: 'That report template no longer exists.' });
+      }
       logger.error('Generate report error', { error });
       return reply.status(500).send({ error: 'Failed to generate report' });
     }
@@ -148,11 +152,14 @@ export async function reportBuilderRoutes(fastify: FastifyInstance) {
   fastify.post('/templates/:id/export', { preHandler: [requireScope('write'), requireFeature('reports')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const { format } = exportReportSchema.parse(request.body);
+      const { format } = exportReportSchema.parse(request.body ?? {});
       const result = await reportBuilderService.exportReport(id, format, undefined, await readableProjectIds(request.user!));
       return { result };
     } catch (error) {
-      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
+      if (error instanceof Error && error.message === 'Report template not found') {
+        return reply.status(404).send({ error: 'Not found', message: 'That report template no longer exists.' });
+      }
       logger.error('Export report error', { error });
       return reply.status(500).send({ error: 'Failed to export report' });
     }

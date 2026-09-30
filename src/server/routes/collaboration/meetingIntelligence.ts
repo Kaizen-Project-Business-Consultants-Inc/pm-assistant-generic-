@@ -127,8 +127,12 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
         }
       }
 
+      // A JSON (or empty) body makes request.file() throw "the request is not multipart"
+      if (!request.isMultipart()) {
+        return reply.status(400).send({ error: 'No file uploaded', message: 'Choose a transcript file to upload (.txt, .vtt or .srt).' });
+      }
       const file = await request.file();
-      if (!file) return reply.status(400).send({ error: 'No file uploaded' });
+      if (!file) return reply.status(400).send({ error: 'No file uploaded', message: 'Choose a transcript file to upload (.txt, .vtt or .srt).' });
 
       // Validate extension
       const ext = file.filename.toLowerCase().split('.').pop();

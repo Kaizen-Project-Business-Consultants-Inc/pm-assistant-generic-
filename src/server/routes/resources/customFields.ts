@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { z } from 'zod';
 import { customFieldService } from '../../services/CustomFieldService';
 import { customFieldRepository } from '../../database/CustomFieldRepository';
 import { authMiddleware } from '../../middleware/auth';
@@ -6,6 +7,19 @@ import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAccess';
 import logger from '../../utils/logger';
+import { sendValidationError } from '../../utils/validationError';
+
+const bulkValuesSchema = z.object({
+  projectId: z.string().optional(),
+  values: z.array(z.object({
+    fieldId: z.string({ message: 'Each value must say which custom field it is for (fieldId).' })
+      .min(1, 'Each value must say which custom field it is for (fieldId).'),
+    text: z.string().optional().nullable(),
+    number: z.number().optional().nullable(),
+    date: z.string().optional().nullable(),
+    boolean: z.boolean().optional().nullable(),
+  }).passthrough(), { message: 'Send the custom field values to save (values).' }),
+});
 
 export async function customFieldRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -99,7 +113,7 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
     try {
       const user = request.user!;
       const { entityId } = request.params as { entityType: string; entityId: string };
-      const body = request.body as {
+      const body = bulkValuesSchema.parse(request.body ?? {}) as {
         projectId?: string;
         values: Array<{ fieldId: string; text?: string; number?: number; date?: string; boolean?: boolean }>;
       };
@@ -118,6 +132,7 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
       await customFieldService.bulkSetValues(entityId, body.values);
       return { message: 'Values saved' };
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Bulk set values error', { error });
       return reply.status(500).send({ error: 'Failed to save values' });
     }

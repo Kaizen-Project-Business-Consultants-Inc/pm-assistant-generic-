@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { organizationRepository, Organization } from '../database/OrganizationRepository';
 import { redisService } from './RedisService';
 import logger from '../utils/logger';
+import { config } from '../config';
 
 const CACHE_PREFIX = 'org:user:';
 const CACHE_TTL = 300; // 5 minutes
@@ -55,12 +56,12 @@ export class OrganizationService {
   ): Promise<Organization> {
     const id = crypto.randomUUID();
     const slug = slugify(name) || `org-${id.slice(0, 8)}`;
-    const dbName = `pmassist_t_${slug.replace(/-/g, '_')}`;
+    const dbName = `${config.TENANT_DB_PREFIX}${slug.replace(/-/g, '_')}`;
 
     // Check slug uniqueness — append random suffix if taken
     const existing = await organizationRepository.findBySlug(slug);
     const finalSlug = existing ? `${slug}-${id.slice(0, 6)}` : slug;
-    const finalDbName = existing ? `pmassist_t_${finalSlug.replace(/-/g, '_')}` : dbName;
+    const finalDbName = existing ? `${config.TENANT_DB_PREFIX}${finalSlug.replace(/-/g, '_')}` : dbName;
 
     const org = await organizationRepository.create({
       id,

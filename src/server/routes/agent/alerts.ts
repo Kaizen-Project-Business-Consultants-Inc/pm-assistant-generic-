@@ -6,6 +6,7 @@ import { proactiveAlertService } from '../../services/proactiveAlertService';
 import { AIActionExecutor } from '../../services/aiActionExecutor';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import logger from '../../utils/logger';
 
 const executeActionSchema = z.object({
@@ -56,7 +57,8 @@ export async function alertRoutes(fastify: FastifyInstance) {
 
   // GET /project/:projectId — Get alerts for a specific project
   fastify.get('/project/:projectId', {
-    preHandler: [requireScope('read')],
+    // Only people on the project (it had no project check — found by the permission matrix 2026-09-30)
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
     schema: {
       description: 'Get alerts for a specific project',
       tags: ['alerts'],

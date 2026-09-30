@@ -243,8 +243,13 @@ export class SprintRepository extends BaseRepository<Sprint> {
   }
 
   async getProjectResourceCount(projectId: string): Promise<number> {
+    // resources are company-wide (no project_id column) — the project's team is the
+    // distinct resources assigned to tasks on the project's schedules.
     const rows = await this.queryRaw(
-      `SELECT COUNT(*) as cnt FROM resources WHERE project_id = ?`,
+      `SELECT COUNT(DISTINCT ra.resource_id) as cnt
+       FROM resource_assignments ra
+       JOIN schedules s ON s.id = ra.schedule_id
+       WHERE s.project_id = ?`,
       [projectId],
     );
     return Number(rows[0]?.cnt || 0);

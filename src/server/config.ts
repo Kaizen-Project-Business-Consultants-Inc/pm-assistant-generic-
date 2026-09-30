@@ -118,6 +118,9 @@ const configSchema = z.object({
   // Metrics
   METRICS_ENABLED: z.preprocess((val) => val === 'true' || val === '1' || val === true || val === undefined, z.boolean().default(true)),
   REDIS_URL: z.string().optional().default(''),
+  // Name prefix for each company's own database. The test bed runs on the staging server's
+  // MariaDB with its own prefix so its companies never collide with staging's.
+  TENANT_DB_PREFIX: z.string().regex(/^[a-z][a-z0-9_]*_$/, 'TENANT_DB_PREFIX must be lowercase letters/digits/underscores ending in _').default('pmassist_t_'),
 
   // Alerting Configuration
   ALERT_ENABLED: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(false)),
@@ -280,6 +283,7 @@ export function validateConfiguration() {
       AI_TOPUP_PRICE_CENTS: process.env['AI_TOPUP_PRICE_CENTS'],
       METRICS_ENABLED: process.env['METRICS_ENABLED'],
       REDIS_URL: process.env['REDIS_URL'],
+      TENANT_DB_PREFIX: process.env['TENANT_DB_PREFIX'],
       ALERT_ENABLED: process.env['ALERT_ENABLED'],
       ALERT_EMAIL: process.env['ALERT_EMAIL'],
       ALERT_WEBHOOK_URL: process.env['ALERT_WEBHOOK_URL'],

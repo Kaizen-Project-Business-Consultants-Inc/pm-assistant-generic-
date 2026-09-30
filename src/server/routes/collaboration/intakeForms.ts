@@ -4,19 +4,20 @@ import { intakeFormService } from '../../services/IntakeFormService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import logger from '../../utils/logger';
+import { sendValidationError } from '../../utils/validationError';
 
 const intakeFieldSchema = z.object({
-  id: z.string().min(1),
-  label: z.string().min(1),
-  type: z.string().min(1),
+  id: z.string({ message: 'Each form field needs an id.' }).min(1, 'Each form field needs an id.'),
+  label: z.string({ message: 'Give every form field a label.' }).min(1, 'Give every form field a label.'),
+  type: z.string({ message: 'Choose a type for every form field.' }).min(1, 'Choose a type for every form field.'),
   required: z.boolean().default(false),
   options: z.array(z.string()).optional(),
 });
 
 const createFormSchema = z.object({
-  name: z.string().min(1).max(200),
-  description: z.string().max(2000).optional(),
-  fields: z.array(intakeFieldSchema).min(1),
+  name: z.string({ message: 'Enter a name for the intake form.' }).trim().min(1, 'Enter a name for the intake form.').max(200, 'Keep the form name under 200 characters.'),
+  description: z.string().max(2000, 'Keep the description under 2000 characters.').optional(),
+  fields: z.array(intakeFieldSchema, { message: 'Add at least one field to the form.' }).min(1, 'Add at least one field to the form.'),
   projectDefaults: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -25,8 +26,12 @@ const updateFormSchema = createFormSchema.partial().extend({
 });
 
 const reviewSubmissionSchema = z.object({
-  status: z.string().min(1),
-  notes: z.string().max(5000).optional(),
+  status: z.string({ message: 'Choose a review decision (status).' }).min(1, 'Choose a review decision (status).'),
+  notes: z.string().max(5000, 'Keep the review notes under 5000 characters.').optional(),
+});
+
+const submitFormSchema = z.object({
+  values: z.record(z.string(), z.unknown(), { message: 'Fill in the form before submitting it (values).' }),
 });
 
 export async function intakeFormRoutes(fastify: FastifyInstance) {
@@ -36,10 +41,11 @@ export async function intakeFormRoutes(fastify: FastifyInstance) {
   fastify.post('/forms', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
-      const body = createFormSchema.parse(request.body);
+      const body = createFormSchema.parse(request.body ?? {});
       const form = await intakeFormService.createForm(body, user.userId);
       return { form };
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Create intake form error', { error });
       return reply.status(500).send({ error: 'Failed to create intake form' });
     }
@@ -72,10 +78,11 @@ export async function intakeFormRoutes(fastify: FastifyInstance) {
   fastify.put('/forms/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const body = updateFormSchema.parse(request.body);
+      const body = updateFormSchema.parse(request.body ?? {});
       const form = await intakeFormService.updateForm(id, body);
       return { form };
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Update intake form error', { error });
       return reply.status(500).send({ error: 'Failed to update intake form' });
     }
@@ -98,10 +105,13 @@ export async function intakeFormRoutes(fastify: FastifyInstance) {
     try {
       const user = request.user!;
       const { id } = request.params as { id: string };
-      const { values } = request.body as { values: any };
+      const { values } = submitFormSchema.parse(request.body ?? {});
+      const form = await intakeFormService.getFormById(id);
+      if (!form) return reply.status(404).send({ error: 'Not found', message: 'That intake form no longer exists.' });
       const submission = await intakeFormService.submitForm(id, values, user.userId);
       return { submission };
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Submit intake form error', { error });
       return reply.status(500).send({ error: 'Failed to submit intake form' });
     }
@@ -136,10 +146,13 @@ export async function intakeFormRoutes(fastify: FastifyInstance) {
     try {
       const user = request.user!;
       const { id } = request.params as { id: string };
-      const { status, notes } = reviewSubmissionSchema.parse(request.body);
+      const { status, notes } = reviewSubmissionSchema.parse(request.body ?? {});
+      const existing = await intakeFormService.getSubmissionById(id);
+      if (!existing) return reply.status(404).send({ error: 'Not found', message: 'That intake submission no longer exists.' });
       const result = await intakeFormService.reviewSubmission(id, status, notes || '', user.userId);
       return { result };
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Review submission error', { error });
       return reply.status(500).send({ error: 'Failed to review submission' });
     }
@@ -153,6 +166,9 @@ export async function intakeFormRoutes(fastify: FastifyInstance) {
       const project = await intakeFormService.convertToProject(id, user.userId);
       return { project };
     } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'Submission not found') return reply.status(404).send({ error: 'Not found', message: 'That intake submission no longer exists.' });
+      if (message === 'Form not found') return reply.status(404).send({ error: 'Not found', message: 'The intake form for this submission no longer exists.' });
       logger.error('Convert to project error', { error });
       return reply.status(500).send({ error: 'Failed to convert to project' });
     }

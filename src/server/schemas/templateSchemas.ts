@@ -73,9 +73,9 @@ export const projectTemplateSchema = z.object({
 export type ProjectTemplate = z.infer<typeof projectTemplateSchema>;
 
 export const createFromTemplateSchema = z.object({
-  templateId: z.string(),
-  projectName: z.string().min(1),
-  startDate: z.string(),
+  templateId: z.string({ message: 'Choose a template to use (templateId).' }).min(1, 'Choose a template to use (templateId).'),
+  projectName: z.string({ message: 'Enter a name for the new project.' }).trim().min(1, 'Enter a name for the new project.'),
+  startDate: z.string({ message: 'Enter a start date for the new project.' }).min(1, 'Enter a start date for the new project.'),
   budget: z.number().positive().optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   methodology: z.enum(['waterfall', 'agile', 'hybrid']).default('waterfall'),
@@ -86,8 +86,8 @@ export const createFromTemplateSchema = z.object({
 export type CreateFromTemplate = z.infer<typeof createFromTemplateSchema>;
 
 export const saveAsTemplateSchema = z.object({
-  projectId: z.string(),
-  templateName: z.string().min(1),
+  projectId: z.string({ message: 'Say which project to save as a template (projectId).' }).min(1, 'Say which project to save as a template (projectId).'),
+  templateName: z.string({ message: 'Enter a name for the template.' }).trim().min(1, 'Enter a name for the template.'),
   description: z.string().default(''),
   tags: z.array(z.string()).default([]),
 });

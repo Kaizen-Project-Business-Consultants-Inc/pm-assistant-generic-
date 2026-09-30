@@ -16,6 +16,8 @@ import rawBody from 'fastify-raw-body';
 import { config } from './config';
 import logger, { requestLogger, responseLogger } from './utils/logger';
 import { toCamelCaseKeys } from './utils/caseConverter';
+import { z } from 'zod';
+import { sendValidationError } from './utils/validationError';
 import { auditService } from './services/auditService';
 import { databaseService } from './database/connection';
 import jwt from 'jsonwebtoken';
@@ -305,6 +307,11 @@ export async function registerPlugins(fastify: FastifyInstance) {
   });
 
   fastify.setErrorHandler(async (err: unknown, request, reply) => {
+    // A request body that fails its schema is the caller's mistake, not a crash: 400 with
+    // a plain-English message (a route that throws its ZodError uncaught lands here).
+    if (err instanceof z.ZodError) {
+      return sendValidationError(reply, err);
+    }
     const error = err instanceof Error ? err : new Error(String(err));
     const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
     logger.error('Global error handler', { errorName: error.name, errorMessage: error.message });

@@ -7,6 +7,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { config } from '../../config';
 import logger from '../../utils/logger';
+import { sendValidationError } from '../../utils/validationError';
 
 export async function notificationRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -128,10 +129,14 @@ export async function notificationRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('write')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { endpoint } = z.object({ endpoint: z.string().min(1) }).parse(request.body);
+      const { endpoint } = z.object({
+        endpoint: z.string({ message: 'Say which device to stop notifying (the push subscription endpoint).' })
+          .min(1, 'Say which device to stop notifying (the push subscription endpoint).'),
+      }).parse(request.body ?? {});
       await webPushService.unsubscribe(request.user!.userId, endpoint);
       return { message: 'Unsubscribed from push notifications' };
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Push unsubscribe error', { error });
       return reply.status(500).send({ error: 'Failed to unsubscribe' });
     }

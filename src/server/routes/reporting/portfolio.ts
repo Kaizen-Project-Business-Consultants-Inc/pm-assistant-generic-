@@ -226,7 +226,7 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
       const healthRows = await databaseService.query<{
         project_id: string; overall_health: number; recorded_at: string;
       }>(
-        `SELECT project_id, overall_health, recorded_at
+        `SELECT project_id, health_score AS overall_health, recorded_at
          FROM project_health_history
          WHERE project_id IN (${projectIds.map(() => '?').join(',')})
            AND recorded_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)

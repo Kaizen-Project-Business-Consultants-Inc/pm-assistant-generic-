@@ -140,6 +140,14 @@ export function requireProjectAccess(minRole: ProjectRole = 'viewer', opts: { re
     const projectIds = resolved == null ? [] : Array.isArray(resolved) ? resolved : [resolved];
 
     if (projectIds.length === 0) {
+      // The route names a schedule that doesn't exist here (e.g. another company's — its data
+      // lives in a separate database): "not found", for reads too. It used to fall through to
+      // the list-route case below, so ~50 schedule pages answered an empty result instead of
+      // refusing (found by the permission matrix, 2026-09-30).
+      const params = request.params as Record<string, string> | undefined;
+      if (params?.scheduleId) {
+        return reply.status(404).send({ error: 'Not found', message: 'The requested resource was not found' });
+      }
       // Read-only list routes have no single project — fine. A change must name one.
       if (ROLE_HIERARCHY[minRole] <= ROLE_HIERARCHY.viewer && !opts.resolve) return;
       return reply.status(400).send({

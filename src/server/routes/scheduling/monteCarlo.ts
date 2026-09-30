@@ -5,6 +5,8 @@ import { MonteCarloConfigSchema } from '../../schemas/monteCarloSchemas';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { userService } from '../../services/UserService';
+import { ZodError } from 'zod';
+import { validationMessage } from '../../utils/validationError';
 
 export async function monteCarloRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -33,8 +35,15 @@ export async function monteCarloRoutes(fastify: FastifyInstance) {
       const result = await monteCarloService.runSimulation(scheduleId, config);
       return reply.send({ result });
     } catch (err: any) {
-      if (err.name === 'ZodError') {
-        return reply.status(400).send({ error: 'Invalid configuration', details: err.issues });
+      if (err instanceof ZodError) {
+        return reply.status(400).send({ error: 'Invalid configuration', message: validationMessage(err), details: err.issues });
+      }
+      const message = typeof err?.message === 'string' ? err.message : '';
+      if (message.startsWith('Schedule not found')) {
+        return reply.status(404).send({ error: 'Not found', message: 'That schedule no longer exists.' });
+      }
+      if (message.startsWith('No tasks found')) {
+        return reply.status(400).send({ error: 'No tasks', message: 'Add tasks to the schedule before running a Monte Carlo simulation.' });
       }
       fastify.log.error({ err }, 'Monte Carlo simulation failed');
       return reply.status(500).send({ error: err.message || 'Failed to run Monte Carlo simulation' });

@@ -22,7 +22,7 @@ const CONTROL_PLANE_ONLY_TABLES = new Set([
   'users', 'organizations', 'subscriptions', 'subscription_events',
   'api_keys', 'api_key_usage_log', 'invite_tokens',
   'pricing_config', 'tier_features', 'token_top_ups',
-  'ai_conversations', 'ai_feedback', 'ai_accuracy_tracking', 'feedback',
+  'ai_conversations', 'feedback',
   'oauth_auth_codes', 'oauth_clients', 'oauth_tokens',
 ]);
 

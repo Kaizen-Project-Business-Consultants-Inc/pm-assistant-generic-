@@ -7,28 +7,30 @@ import { timesheetSubmissionRepository } from '../../database/TimesheetSubmissio
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
-import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
+import { viewerWriteBypass, ownWorkScope } from '../../middleware/viewerWriteBypass';
 import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAccess';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { scheduleService } from '../../services/ScheduleService';
 import logger from '../../utils/logger';
+import { sendValidationError } from '../../utils/validationError';
 
 const submitTimesheetSchema = z.object({
-  projectId: z.string().min(1),
-  weekStart: z.string().min(1),
+  projectId: z.string({ message: 'Say which project the timesheet is for (projectId).' }).min(1, 'Say which project the timesheet is for (projectId).'),
+  weekStart: z.string({ message: 'Say which week to submit (weekStart, e.g. 2026-09-28).' }).min(1, 'Say which week to submit (weekStart, e.g. 2026-09-28).'),
 });
 
 const rejectTimesheetSchema = z.object({
-  reason: z.string().min(1).max(2000),
+  reason: z.string({ message: 'Give a reason for sending the timesheet back.' }).min(1, 'Give a reason for sending the timesheet back.').max(2000, 'Keep the reason under 2000 characters.'),
 });
 
+const HOURS_MESSAGE = 'Enter the hours worked — more than 0 and at most 24.';
 const createTimeEntrySchema = z.object({
-  taskId: z.string().min(1),
-  scheduleId: z.string().min(1),
-  projectId: z.string().min(1),
-  date: z.string().min(1),
-  hours: z.number().positive().max(24),
-  description: z.string().max(2000).optional(),
+  taskId: z.string({ message: 'Choose the task you worked on.' }).min(1, 'Choose the task you worked on.'),
+  scheduleId: z.string({ message: "Say which schedule the task is in (scheduleId)." }).min(1, "Say which schedule the task is in (scheduleId)."),
+  projectId: z.string({ message: 'Say which project the time is for (projectId).' }).min(1, 'Say which project the time is for (projectId).'),
+  date: z.string({ message: 'Enter the date you worked.' }).min(1, 'Enter the date you worked.'),
+  hours: z.number({ message: HOURS_MESSAGE }).positive(HOURS_MESSAGE).max(24, HOURS_MESSAGE),
+  description: z.string().max(2000, 'Keep the description under 2000 characters.').optional(),
   billable: z.boolean().optional(),
 });
 
@@ -47,7 +49,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   fastify.post('/', { preHandler: [viewerWriteBypass('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
-      const body = createTimeEntrySchema.parse(request.body);
+      const body = createTimeEntrySchema.parse(request.body ?? {});
       // The task and schedule must belong to the project the access check was made for
       const schedule = await scheduleService.findById(body.scheduleId);
       const task = await scheduleService.findTaskById(body.taskId);
@@ -58,6 +60,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       automationEventBus.emit({ type: 'time_entry.created', entityType: 'time_entry', entityId: entry.id, projectId: body.projectId, userId: user.userId, payload: entry, timestamp: new Date().toISOString() }).catch(() => {});
       return { entry };
     } catch (error) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Create time entry error', { error });
       return reply.status(500).send({ error: 'Failed to create time entry' });
     }
@@ -128,11 +131,12 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   fastify.post('/submit', { preHandler: [requireScope('write'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
-      const body = submitTimesheetSchema.parse(request.body);
+      const body = submitTimesheetSchema.parse(request.body ?? {});
       const submission = await timeEntryService.submitTimesheet(user.userId, body.projectId, body.weekStart);
       automationEventBus.emit({ type: 'timesheet.submitted', entityType: 'timesheet', entityId: submission.id, projectId: body.projectId, userId: user.userId, payload: submission, timestamp: new Date().toISOString() }).catch(() => {});
       return { submission };
     } catch (error: any) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       if (error.statusCode) return reply.status(error.statusCode).send({ error: error.message });
       logger.error('Submit timesheet error', { error });
       return reply.status(500).send({ error: 'Failed to submit timesheet' });
@@ -218,10 +222,11 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       const allowed = await checkEntityProjectAccess(sub.projectId, user.userId, user.role, 'manager', reply);
       if (!allowed) return;
 
-      const body = rejectTimesheetSchema.parse(request.body);
+      const body = rejectTimesheetSchema.parse(request.body ?? {});
       await timeEntryService.rejectTimesheet(submissionId, user.userId, body.reason);
       return { message: 'Timesheet rejected' };
     } catch (error: any) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       if (error.statusCode) return reply.status(error.statusCode).send({ error: error.message });
       logger.error('Reject timesheet error', { error });
       return reply.status(500).send({ error: 'Failed to reject timesheet' });
@@ -371,7 +376,8 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   });
 
   // PUT /:id — update (viewer can edit own entries, others need editor)
-  fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // Own time: any member (team members/viewers only have 'read' scope — the handler checks it's theirs)
+  fastify.put('/:id', { preHandler: [ownWorkScope()] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { id } = request.params as { id: string };
@@ -385,11 +391,12 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
       if (!allowed) return;
 
-      const body = updateTimeEntrySchema.parse(request.body);
+      const body = updateTimeEntrySchema.parse(request.body ?? {});
       const entry = await timeEntryService.update(id, body);
       automationEventBus.emit({ type: 'time_entry.updated', entityType: 'time_entry', entityId: id, projectId: entry?.projectId || '', userId: user.userId, payload: entry, timestamp: new Date().toISOString() }).catch(() => {});
       return { entry };
     } catch (error: any) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       if (error.statusCode === 409) return reply.status(409).send({ error: error.message });
       logger.error('Update time entry error', { error });
       return reply.status(500).send({ error: 'Failed to update time entry' });
@@ -397,7 +404,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:id (editor for own, manager for others — viewers cannot delete)
-  fastify.delete('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.delete('/:id', { preHandler: [ownWorkScope()] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       const { id } = request.params as { id: string };

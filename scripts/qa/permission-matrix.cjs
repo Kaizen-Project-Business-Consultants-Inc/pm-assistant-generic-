@@ -35,8 +35,11 @@ const ROUTES = process.argv[3] || path.join(__dirname, 'routes.json');
 if (/kovarti\.com/.test(BASE)) { console.error('Refusing to run against production.'); process.exit(1); }
 const PW = 'Test1234!';
 const USERS = { pm: 'qa.pm@pm.kpbc.ca', team: 'qa.team@pm.kpbc.ca', outsider: 'qa.outsider@pm.kpbc.ca' };
-const PROJECT = '94dbbc5a-a9d4-4113-b7d5-e0761b142bc4';         // "QA – team member checks" (team member is a Viewer)
-const PRIVATE_PROJECT = 'df4892df-66c1-4a8d-addc-a0dad060ae3f'; // "QA – private project…" (team member NOT on it)
+// On the test bed the projects are created fresh by scripts/testbed/seed.cjs, which writes their ids
+const SEEDED = /localhost|127\.0\.0\.1/.test(BASE) && fs.existsSync(path.join(process.cwd(), 'test-results', 'testbed-ids.json'))
+  ? JSON.parse(fs.readFileSync(path.join(process.cwd(), 'test-results', 'testbed-ids.json'), 'utf8')) : null;
+const PROJECT = SEEDED?.ids.projectId || '94dbbc5a-a9d4-4113-b7d5-e0761b142bc4';                // "QA – team member checks" (team member is a Viewer)
+const PRIVATE_PROJECT = SEEDED?.privateIds.projectId || 'df4892df-66c1-4a8d-addc-a0dad060ae3f'; // "QA – private project…" (team member NOT on it)
 
 // Never called: anything acting on the CALLER'S OWN account or session — every /auth/ route
 // ('delete my account' deleted two QA logins on 2026-09-29 and silently invalidated the run),
@@ -54,6 +57,8 @@ const TEAM_OWN_WORK = [
 ];
 // Reads the team member must NOT get (PM-only tools)
 const PM_ONLY_READS = [/\/raid-review/];
+// The caller's own preferences, whoever the project belongs to (removing your own favourite)
+const PERSONAL = [/\/favourite$/, /\/telemetry\//];
 const PROJECT_SCOPED = /:projectId|:scheduleId|:taskId|:riskId|:sprintId|:meetingId|:baselineId|:calendarId|\/projects\/:id|\/schedules\/:id|\/sprints\/:id|\/meetings\/:id/;
 const NAMES_PROJECT = /:projectId|:scheduleId|:taskId|\/projects\/:id|\/schedules\/:id/;
 
@@ -135,15 +140,17 @@ const carries = (text, needles) => needles.some(n => n && text.includes(n));
 function verdict(role, method, route, status, missing, text, needles) {
   const write = method !== 'GET';
   const scoped = PROJECT_SCOPED.test(route) && !missing;
-  const refused = status === 401 || status === 403 || status === 404;
+  // 400 'project_unknown' is the permission check refusing a change it can't place — a refusal
+  const refused = status === 401 || status === 403 || status === 404 || (status === 400 && text.includes('project_unknown'));
   const ok = status >= 200 && status < 300;
   if (status >= 500) return ['ERROR', 'server error (the route crashed on this request)'];
+  if (PERSONAL.some(r => r.test(route))) return ['ALLOWED', "the caller's own preference"];
   if (role === 'outsider' || role === 'teamPrivate') {
     const who = role === 'outsider' ? 'user from another company' : 'team member on a project they are not on';
     if (scoped && ok && carries(text, needles)) return ['FAIL', `${who} received that project's data`];
     if (scoped && ok && write) return ['FAIL', `${who}: write succeeded`];
     if (scoped && ok) return ['REVIEW', `${who} got an empty answer instead of a refusal`];
-    if (scoped && write && (status === 400 || status === 422)) return ['REVIEW', `${who}: write reached validation before a permission check`];
+    if (scoped && write && (status === 400 || status === 422) && !refused) return ['REVIEW', `${who}: write reached validation before a permission check`];
     return ['PASS', ''];
   }
   // team member, on the QA project as a Viewer
@@ -154,7 +161,7 @@ function verdict(role, method, route, status, missing, text, needles) {
   if (TEAM_OWN_WORK.some(r => r.test(route))) return ['ALLOWED', 'own-work route'];
   if (refused) return ['PASS', ''];
   if (ok) return [missing ? 'REVIEW' : 'FAIL', 'team member: write succeeded'];
-  if (status === 400 || status === 422 || status === 409) return ['REVIEW', 'team member: write reached validation before a permission check'];
+  if (!refused && status === 400 || status === 422 || status === 409) return ['REVIEW', 'team member: write reached validation before a permission check'];
   return ['PASS', ''];
 }
 
