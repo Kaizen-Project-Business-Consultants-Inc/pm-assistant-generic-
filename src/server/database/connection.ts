@@ -1,6 +1,7 @@
 import mysql from 'mysql2/promise';
 import { config } from '../config';
 import logger from '../utils/logger';
+import { noteSharedDbUse } from './sharedDbWatch';
 
 export interface DatabaseConfig {
   host: string;
@@ -31,6 +32,9 @@ function extractTableName(sql: string): string | null {
   const match = sql.match(/(?:FROM|INTO|UPDATE|JOIN)\s+`?(\w+)`?/i);
   return match ? match[1] : null;
 }
+
+/** Pooled connections handed out with no company selected (see getConnection) */
+const sharedConnections = new WeakSet<mysql.PoolConnection>();
 
 class DatabaseService {
   private pool: mysql.Pool | null = null;
@@ -86,6 +90,9 @@ class DatabaseService {
     const tenantDb = this.getTenantDbName();
     if (tenantDb) {
       await conn.query(`USE \`${tenantDb}\``);
+      sharedConnections.delete(conn);
+    } else if (config.MULTI_TENANT_ENABLED) {
+      sharedConnections.add(conn); // no company selected: statements on it run in the SHARED database
     }
     return conn;
   }
@@ -131,6 +138,8 @@ class DatabaseService {
         conn.release();
       }
     }
+    // No company selected: this runs in the SHARED database. Name any company table it uses.
+    if (config.MULTI_TENANT_ENABLED) noteSharedDbUse(sql, 'query');
     const [rows] = await this.pool.execute(sql, params);
     return rows as T[];
   }
@@ -143,6 +152,7 @@ class DatabaseService {
    * runOnConnection above.
    */
   public async queryOn<T = any>(connection: mysql.PoolConnection, sql: string, params: any[] = []): Promise<T[]> {
+    if (sharedConnections.has(connection)) noteSharedDbUse(sql, 'query');
     return this.runOnConnection<T>(connection, sql, params);
   }
 
@@ -155,6 +165,7 @@ class DatabaseService {
       throw new Error('Database pool not initialized');
     }
     if (config.MULTI_TENANT_ENABLED) {
+      noteSharedDbUse(sql, 'queryControlPlane');
       const conn = await this.pool.getConnection();
       try {
         await conn.query(`USE \`${config.DB_NAME}\``);
