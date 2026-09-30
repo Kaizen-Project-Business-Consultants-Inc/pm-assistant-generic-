@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Target, Plus, ChevronDown, ChevronRight, Edit2, Trash2, X } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,6 +116,20 @@ function buildTree(goals: Goal[]): Goal[] {
 // GoalModal
 // ---------------------------------------------------------------------------
 
+/**
+ * What the server accepts: numbers as numbers, and optional fields left OUT when empty (an empty
+ * number box or date sent as "" is refused). Used for both create and edit.
+ */
+export function goalPayload(form: GoalFormData): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(form)) {
+    if (v === '' || v === null || v === undefined) continue;
+    out[k] = (k === 'targetValue' || k === 'currentValue') ? Number(v) : v;
+  }
+  if (out.goalType !== 'key_result') delete out.parentId;
+  return out;
+}
+
 const GoalModal: React.FC<{
   initial?: GoalFormData;
   objectives: Goal[];
@@ -123,7 +138,9 @@ const GoalModal: React.FC<{
   onSubmit: (data: GoalFormData) => void;
   isSubmitting: boolean;
   title: string;
-}> = ({ initial, objectives, projects, onClose, onSubmit, isSubmitting, title }) => {
+  /** Why the server refused the save (shown in the form, so a failure is never silent) */
+  error?: string | null;
+}> = ({ initial, objectives, projects, onClose, onSubmit, isSubmitting, title, error }) => {
   const [form, setForm] = useState<GoalFormData>(initial || EMPTY_FORM);
   const update = (field: keyof GoalFormData, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -227,6 +244,7 @@ const GoalModal: React.FC<{
         </form>
 
         <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+          {error && <p role="alert" className="mr-auto text-sm text-red-700 dark:text-red-300">{error}</p>}
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Cancel</button>
           <button onClick={() => { if (form.name.trim()) onSubmit(form); }} disabled={isSubmitting || !form.name.trim()} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
             {isSubmitting ? 'Saving…' : 'Save'}
@@ -341,14 +359,7 @@ export const GoalsPage: React.FC = () => {
   const tree = useMemo(() => buildTree(goals), [goals]);
 
   const createMutation = useMutation({
-    mutationFn: (formData: GoalFormData) => {
-      const payload: any = { ...formData };
-      if (payload.targetValue) payload.targetValue = Number(payload.targetValue);
-      if (payload.currentValue) payload.currentValue = Number(payload.currentValue);
-      if (!payload.parentId) delete payload.parentId;
-      if (!payload.projectId) delete payload.projectId;
-      return apiService.createGoal(payload);
-    },
+    mutationFn: (formData: GoalFormData) => apiService.createGoal(goalPayload(formData)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] });
       setShowModal(false);
@@ -356,14 +367,7 @@ export const GoalsPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, formData }: { id: string; formData: GoalFormData }) => {
-      const payload: any = { ...formData };
-      if (payload.targetValue) payload.targetValue = Number(payload.targetValue);
-      if (payload.currentValue) payload.currentValue = Number(payload.currentValue);
-      if (!payload.parentId) delete payload.parentId;
-      if (!payload.projectId) delete payload.projectId;
-      return apiService.updateGoal(id, payload);
-    },
+    mutationFn: ({ id, formData }: { id: string; formData: GoalFormData }) => apiService.updateGoal(id, goalPayload(formData)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] });
       setEditingGoal(null);
@@ -446,6 +450,7 @@ export const GoalsPage: React.FC = () => {
           onClose={() => setShowModal(false)}
           onSubmit={(d) => createMutation.mutate(d)}
           isSubmitting={createMutation.isPending}
+          error={createMutation.isError ? getApiErrorMessage(createMutation.error, 'The goal could not be saved.') : null}
           title="New Goal"
         />
       )}
@@ -471,6 +476,7 @@ export const GoalsPage: React.FC = () => {
           onClose={() => setEditingGoal(null)}
           onSubmit={(d) => updateMutation.mutate({ id: editingGoal.id, formData: d })}
           isSubmitting={updateMutation.isPending}
+          error={updateMutation.isError ? getApiErrorMessage(updateMutation.error, 'The goal could not be saved.') : null}
           title="Edit Goal"
         />
       )}
