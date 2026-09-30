@@ -23,6 +23,7 @@ import logger from '../utils/logger';
 // `new Date(dateColumn) < now` was true from midnight UTC — the previous evening
 // for anyone west of UTC.
 import { isOverdue } from '../utils/calendarDate';
+import { utcDay } from '../utils/workingDays';
 
 const DASHBOARD_CACHE_KEY = 'predictions:dashboard';
 // Predictions don't change minute to minute, and every refresh is a paid AI call — the dashboard
@@ -63,7 +64,7 @@ function computeProjectMetrics(ctx: ProjectContext, budgetSpent?: number): Proje
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // overdue = not completed and has a dueDate in the past
-  const now = new Date();
+  const now = utcDay(new Date());
   const overdueTasks = allTasks.filter(
     (t) => t.status !== 'completed' && t.dueDate && isOverdue(t.dueDate),
   ).length;
@@ -1497,7 +1498,7 @@ export class PredictiveIntelligenceService {
     const schedules = await scheduleService.findByProjectId(projectId);
     if (schedules.length === 0) return { data: { tasks: [], summary: 'No schedules found.' }, aiPowered: false };
 
-    const now = new Date();
+    const now = utcDay(new Date());
     const nowMs = now.getTime();
     const DAY_MS = 86_400_000;
 

@@ -4,6 +4,7 @@ import { autoRescheduleService } from './AutoRescheduleService';
 import { claudeService } from './claudeService';
 import { config } from '../config';
 import logger from '../utils/logger';
+import { utcDay } from '../utils/workingDays';
 import {
   PrioritizedTask,
   PrioritizationResult,
@@ -73,7 +74,7 @@ export class TaskPrioritizationService {
     }
 
     // Calculate algorithmic scores
-    const now = new Date();
+    const now = utcDay(new Date());
     const scored: Array<{
       task: Task;
       score: number;

@@ -198,7 +198,6 @@ export async function runMeetingFollowUpAgent(
       problems.push(`${unappliedUpdates.length} unapplied task update(s)`);
     }
 
-    const now = new Date();
     const overdueItems = analysis.actionItems.filter((item: any) => {
       if (!item.dueDate) return false;
       return isOverdue(item.dueDate);

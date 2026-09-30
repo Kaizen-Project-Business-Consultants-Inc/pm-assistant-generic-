@@ -15,6 +15,7 @@ import { MS_PER_DAY } from '../../utils/constants';
 // `new Date(dateColumn) < now` was true from midnight UTC — the previous evening
 // for anyone west of UTC.
 import { isOverdue } from '../../utils/calendarDate';
+import { utcDay } from '../../utils/workingDays';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -264,7 +265,7 @@ export class CrossProjectIntelligenceAgent {
   }
 
   private async buildProjectSnapshot(project: Project): Promise<ProjectHealthSnapshot> {
-    const now = new Date();
+    const now = utcDay(new Date());
     const startDate = project.startDate ? new Date(project.startDate) : now;
     const endDate = project.endDate ? new Date(project.endDate) : new Date(now.getTime() + 365 * MS_PER_DAY);
 

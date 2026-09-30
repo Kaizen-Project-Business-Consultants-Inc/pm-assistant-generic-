@@ -351,6 +351,28 @@ describe('AnalyticsSummaryService', () => {
 
       expect(result.portfolio.atRiskProjects).toHaveLength(0);
     });
+
+    it('gives the same expected % whatever the time of day (dates are days, not moments)', async () => {
+      // Pinned to 30 Sep 2026. Project 1 Sep → 31 Oct (60 days); 29 days elapsed = 48%.
+      const run = async (moment: string) => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date(moment));
+        try {
+          mockFindProjects.mockResolvedValue([
+            makeProject({ id: 'p1', name: 'Behind', start_date: '2026-09-01', end_date: '2026-10-31', progress: 0 }),
+          ]);
+          mockEmptyTasks();
+          mockTrendIndicators();
+          return (await analyticsSummaryService.getSummary('user-1')).portfolio.atRiskProjects[0]?.reason;
+        } finally {
+          vi.useRealTimers();
+        }
+      };
+      const morning = await run('2026-09-30T08:00:00Z');
+      const evening = await run('2026-09-30T22:00:00Z');
+      expect(evening).toBe(morning);
+      expect(morning).toBe('Progress 0% vs expected 48%');
+    });
   });
 
   // ── Task stats ────────────────────────────────────────────────────

@@ -109,6 +109,28 @@ describe('PredictiveAlertingAgent', () => {
     expect(indicators.riskAccumulation).toBeGreaterThanOrEqual(0);
   });
 
+  it('gives the same time-elapsed % whatever the time of day (dates are days, not moments)', async () => {
+    // Pinned to 30 Sep 2026. Project 1 Sep → 1 Oct: 29 of 30 days gone = 97%.
+    const { projectService } = await import('../../../services/ProjectService');
+    const run = async (moment: string) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(moment));
+      try {
+        vi.mocked(projectService.findById).mockResolvedValueOnce({
+          id: 'proj-1', name: 'Test Project', status: 'active',
+          startDate: '2026-09-01', endDate: '2026-10-01',
+        } as any);
+        return (await agent.gatherIndicators('proj-1')).progressTrajectory.timeElapsedPercent;
+      } finally {
+        vi.useRealTimers();
+      }
+    };
+    const morning = await run('2026-09-30T08:00:00Z');
+    const evening = await run('2026-09-30T22:00:00Z');
+    expect(evening).toBe(morning);
+    expect(morning).toBe(97);
+  });
+
   it('skips when cost budget is exhausted', async () => {
     const { agentCostTracker } = await import('../../../services/agents/AgentCostTracker');
     vi.mocked(agentCostTracker.checkBudget).mockResolvedValueOnce({ allowed: false, reason: 'Budget limit' });

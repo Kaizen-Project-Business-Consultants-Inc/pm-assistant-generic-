@@ -10,6 +10,7 @@ import { projectService } from '../ProjectService';
 import { scheduleService, Task } from '../ScheduleService';
 import { databaseService } from '../../database/connection';
 import { MS_PER_DAY } from '../../utils/constants';
+import { utcDay } from '../../utils/workingDays';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -188,7 +189,7 @@ export class PredictiveAlertingAgent {
     const project = await projectService.findById(projectId);
     if (!project) throw new Error(`Project ${projectId} not found`);
 
-    const now = new Date();
+    const now = utcDay(new Date());
     const startDate = project.startDate ? new Date(project.startDate) : now;
     const endDate = project.endDate ? new Date(project.endDate) : new Date(now.getTime() + 365 * MS_PER_DAY);
     const totalDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / MS_PER_DAY));

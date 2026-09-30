@@ -5,6 +5,7 @@ import { logAIUsage } from './aiUsageLogger';
 import { computeEVMMetrics } from './predictiveIntelligence';
 import type { AICrossProjectInsight } from '../schemas/phase5Schemas';
 import { MS_PER_DAY } from '../utils/constants';
+import { utcDay } from '../utils/workingDays';
 
 // ---------------------------------------------------------------------------
 // Prompt Template
@@ -53,7 +54,7 @@ function computePortfolioProjectMetrics(p: {
   healthScore: number;
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
 } {
-  const now = new Date();
+  const now = utcDay(new Date());
   const startDate = p.startDate ? new Date(p.startDate) : now;
   const endDate = p.endDate
     ? new Date(p.endDate)

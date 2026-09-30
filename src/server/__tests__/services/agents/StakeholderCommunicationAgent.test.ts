@@ -239,6 +239,31 @@ describe('StakeholderCommunicationAgent', () => {
     expect(result.snapshot!.budgetUtilization).toBe(40); // 40000/100000 * 100
   });
 
+  it('gives the same snapshot whatever the time of day (dates are days, not moments)', async () => {
+    // Pinned to 30 Sep 2026. Project ends 10 Oct (10 days left); a task due today is still upcoming.
+    const run = async (moment: string) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(moment));
+      try {
+        vi.mocked(projectService.findById).mockResolvedValueOnce({
+          id: 'proj-1', name: 'Test Project', status: 'active', startDate: '2026-09-01', endDate: '2026-10-10',
+        } as any);
+        vi.mocked((scheduleService as any).findTasksByScheduleIds).mockResolvedValueOnce([
+          { id: 't1', name: 'Due today', status: 'in_progress', scheduleId: 'sched-1', startDate: '2026-09-01', endDate: '2026-09-30' },
+          { id: 't2', name: 'Due Monday', status: 'pending', scheduleId: 'sched-1', startDate: '2026-09-01', endDate: '2026-10-05' },
+        ] as any);
+        const s = await agent.gatherSnapshot('proj-1');
+        return { daysRemaining: s.daysRemaining, upcoming: s.upcomingMilestones.map(m => `${m.name}:${m.daysUntil}`) };
+      } finally {
+        vi.useRealTimers();
+      }
+    };
+    const morning = await run('2026-09-30T08:00:00Z');
+    const evening = await run('2026-09-30T22:00:00Z');
+    expect(evening).toEqual(morning);
+    expect(morning).toEqual({ daysRemaining: 10, upcoming: ['Due today:0', 'Due Monday:5'] });
+  });
+
   it('should include risk indicators for overdue tasks', async () => {
     const pastDate = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
     vi.mocked((scheduleService as any).findTasksByScheduleIds).mockResolvedValue([

@@ -244,4 +244,27 @@ describe('CrossProjectIntelligenceAgent', () => {
     expect(result.skipReason).toContain('Failed to gather portfolio indicators');
     expect(degradationHandler.recordFailure).toHaveBeenCalledWith('cross-project-intelligence-v1');
   });
+
+  it('gives the same days elapsed/remaining whatever the time of day (dates are days, not moments)', async () => {
+    // Pinned to 30 Sep 2026. Project 1 Sep → 10 Oct: 29 days gone, 10 to go.
+    const { computeEVMMetrics } = await import('../../../services/predictiveIntelligence');
+    const run = async (moment: string) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(moment));
+      try {
+        vi.mocked(computeEVMMetrics).mockClear();
+        const snap = await (agent as any).buildProjectSnapshot(
+          makeProject('p1', 'Alpha', 'active', { startDate: '2026-09-01', endDate: '2026-10-10' }),
+        );
+        const [, , , daysElapsed, totalDays] = vi.mocked(computeEVMMetrics).mock.calls[0];
+        return { daysRemaining: snap.daysRemaining, daysElapsed, totalDays };
+      } finally {
+        vi.useRealTimers();
+      }
+    };
+    const morning = await run('2026-09-30T08:00:00Z');
+    const evening = await run('2026-09-30T22:00:00Z');
+    expect(evening).toEqual(morning);
+    expect(morning).toEqual({ daysRemaining: 10, daysElapsed: 29, totalDays: 39 });
+  });
 });
