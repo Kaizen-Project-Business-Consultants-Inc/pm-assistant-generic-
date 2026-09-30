@@ -38,7 +38,7 @@ export async function aiSchedulingRoutes(fastify: FastifyInstance) {
       // Only when it's about an existing project (describing a new one needs no project)
       const projectId = (req.body as { projectId?: string } | undefined)?.projectId;
       if (!projectId) return;
-      const d = await checkProjectRole(req, projectId, 'viewer');
+      const d = await checkProjectRole(req, projectId, 'manager'); // AI suggestions on project data are for the project's PM only (user rule, 2026-09-30)
       if (!d.ok) return reply.status(d.status).send(d.body);
     }],
     schema: {
@@ -97,7 +97,8 @@ export async function aiSchedulingRoutes(fastify: FastifyInstance) {
 
   // Optimize schedule
   fastify.post('/optimize-schedule', {
-    preHandler: [requireScope('write'), requireProjectAccess('viewer', { resolve: async (req) => projectsOfSchedules([(req.body as { scheduleId?: string } | undefined)?.scheduleId]) })],
+    // AI suggestions on project data are for the project's PM only (user rule, 2026-09-30)
+    preHandler: [requireScope('write'), requireProjectAccess('manager', { resolve: async (req) => projectsOfSchedules([(req.body as { scheduleId?: string } | undefined)?.scheduleId]) })],
     schema: {
       description: 'Optimize existing schedule using AI',
       tags: ['ai-scheduling'],

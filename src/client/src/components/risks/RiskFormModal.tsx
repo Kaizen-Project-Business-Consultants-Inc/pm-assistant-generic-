@@ -14,6 +14,8 @@ interface RiskFormModalProps {
   editRisk?: any;
   defaultType?: 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency';
   members?: any[];
+  /** AI suggestions are for the project's PM only (user rule, 2026-09-30) */
+  canUseAi?: boolean;
 }
 
 const CATEGORIES = [
@@ -61,7 +63,7 @@ const DEFAULT_STATUS: Record<string, string> = {
   dependency: 'open',
 };
 
-export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, defaultType = 'risk', members = [] }: RiskFormModalProps) {
+export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, defaultType = 'risk', members = [], canUseAi = false }: RiskFormModalProps) {
   const [saving, setSaving] = useState(false);
   const [suggestingMitigation, setSuggestingMitigation] = useState(false);
   const [suggestingTrigger, setSuggestingTrigger] = useState(false);
@@ -763,7 +765,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className={labelClass + ' mb-0'}>Trigger Condition</label>
-                {editRisk?.id && (
+                {editRisk?.id && canUseAi && (
                   <button
                     type="button"
                     onClick={() => handleSuggestAI('trigger')}
@@ -789,7 +791,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className={labelClass + ' mb-0'}>Mitigation Plan</label>
-                {editRisk?.id && (
+                {editRisk?.id && canUseAi && (
                   <button
                     type="button"
                     onClick={() => handleSuggestAI('mitigation')}
@@ -815,7 +817,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className={labelClass + ' mb-0'}>Response Plan</label>
-                {editRisk?.id && (
+                {editRisk?.id && canUseAi && (
                   <button
                     type="button"
                     onClick={() => handleSuggestAI('response')}

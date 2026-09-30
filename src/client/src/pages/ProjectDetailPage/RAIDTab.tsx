@@ -933,6 +933,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
         editRisk={editRisk}
         defaultType={defaultType}
         members={members}
+        canUseAi={canEdit}
       />
 
       {/* AI Scan Review modal */}

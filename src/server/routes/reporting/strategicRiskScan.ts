@@ -21,7 +21,8 @@ export async function strategicRiskScanRoutes(fastify: FastifyInstance) {
 
   // Run a strategic risk scan (background mode via WebSocket)
   fastify.post('/scan', {
-    preHandler: [requireScope('write'), requireProjectAccess('viewer', { resolve: async (req) => (req.body as { projectId?: string } | undefined)?.projectId ?? null })],
+    // AI suggestions on project data are for the project's PM only (user rule, 2026-09-30)
+    preHandler: [requireScope('write'), requireProjectAccess('manager', { resolve: async (req) => (req.body as { projectId?: string } | undefined)?.projectId ?? null })],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;

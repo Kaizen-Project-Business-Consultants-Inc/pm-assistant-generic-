@@ -611,7 +611,8 @@ export function TaskFormModal({
                   placeholder="—"
                   className="input flex-1"
                 />
-                {projectId && (
+                {/* AI estimate is for the project's PM only (user rule, 2026-09-30) — a read-only form has no onSave */}
+                {projectId && onSave && (
                   <button
                     type="button"
                     onClick={handleAiEstimate}

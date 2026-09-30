@@ -17,7 +17,8 @@ export async function aiTaskEstimationRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST / — estimate task duration using AI + historical data
-  fastify.post('/', { preHandler: [requireScope('read'), requireProjectAccess('viewer', { resolve: async (req) => (req.body as { projectId?: string } | undefined)?.projectId ?? null })] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // AI suggestions on project data are for the project's PM only (user rule, 2026-09-30)
+  fastify.post('/', { preHandler: [requireScope('write'), requireProjectAccess('manager', { resolve: async (req) => (req.body as { projectId?: string } | undefined)?.projectId ?? null })] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = estimateBodySchema.parse(request.body);
       const result = await aiTaskEstimationService.estimate(body);

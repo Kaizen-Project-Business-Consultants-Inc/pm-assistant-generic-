@@ -795,8 +795,9 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/projects/:projectId/risks/:riskId/suggest-mitigation — AI suggestions for risk fields
   // Query param ?field=mitigation|trigger|response (defaults to 'mitigation')
+  // AI suggestions on project data are for the project's PM only (user rule, 2026-09-30)
   fastify.post('/:projectId/risks/:riskId/suggest-mitigation', {
-    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, riskId } = request.params as { projectId: string; riskId: string };
