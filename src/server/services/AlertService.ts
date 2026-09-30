@@ -99,6 +99,9 @@ class AlertService {
    */
   private async checkPlanFeatures(): Promise<void> {
     const gaps = await pricingConfigService.findPlanGaps();
+    // The agents list lives in the same shared tables and went missing on production the same way
+    const agents = await databaseService.queryControlPlane<{ n: number }>('SELECT COUNT(*) AS n FROM agents').catch(() => [{ n: -1 }]);
+    if (Number(agents[0]?.n) === 0) gaps.push('agents: the built-in agents list is empty (agents cannot be switched off)');
     if (gaps.length === 0) return;
     await this.fire({
       type: 'plan_features_missing',

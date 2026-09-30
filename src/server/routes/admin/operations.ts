@@ -3,6 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import { authMiddleware } from '../../middleware/auth';
 import { databaseService } from '../../database/connection';
+import { selectAcrossCompanies, sumRows, mergeGroups } from '../../utils/acrossCompanies';
 import { metricsService } from '../../services/MetricsService';
 import { redisService } from '../../services/RedisService';
 import { config } from '../../config';
@@ -380,17 +381,17 @@ async function getWebhookStats(): Promise<{
   dlqPending: number; dlqFailed: number; dlqResolved: number;
 }> {
   try {
-    const [deliveries, dlq] = await Promise.all([
-      databaseService.queryControlPlane<{ total: number; success: number; failed: number }>(
-        `SELECT COUNT(*) as total,
-                SUM(CASE WHEN status_code >= 200 AND status_code < 300 THEN 1 ELSE 0 END) as success,
-                SUM(CASE WHEN status_code IS NULL OR status_code >= 400 THEN 1 ELSE 0 END) as failed
-         FROM webhook_deliveries WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`
-      ),
-      databaseService.queryControlPlane<{ status: string; cnt: number }>(
-        `SELECT status, COUNT(*) as cnt FROM dead_letter_queue GROUP BY status`
-      ),
-    ]);
+    // Every company's own webhook history and failed-job queue (these used to read the old
+    // shared copies, frozen since July)
+    const deliveries = [sumRows(await selectAcrossCompanies(
+      `SELECT COUNT(*) as total,
+              SUM(CASE WHEN status_code >= 200 AND status_code < 300 THEN 1 ELSE 0 END) as success,
+              SUM(CASE WHEN status_code IS NULL OR status_code >= 400 THEN 1 ELSE 0 END) as failed
+       FROM webhook_deliveries WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`,
+    ), ['total', 'success', 'failed'])];
+    const dlq = mergeGroups(await selectAcrossCompanies(
+      `SELECT status, COUNT(*) as cnt FROM dead_letter_queue GROUP BY status`,
+    ), 'status', ['cnt']) as Array<{ status: string; cnt: number }>;
     const dlqMap: Record<string, number> = {};
     dlq.forEach(r => { dlqMap[r.status] = Number(r.cnt); });
     return {

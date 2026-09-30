@@ -13,6 +13,7 @@ import { pricingConfigRepository } from '../../database/PricingConfigRepository'
 import { organizationRepository } from '../../database/OrganizationRepository';
 import { config, getTierBudget } from '../../config';
 import logger from '../../utils/logger';
+import { selectAcrossCompanies, sumRows, mergeGroups } from '../../utils/acrossCompanies';
 
 const statusSchema = z.object({
   active: z.boolean(),
@@ -598,24 +599,29 @@ export async function adminRoutes(fastify: FastifyInstance) {
         [sinceDate]
       );
 
-      // 3. Feature usage (top API endpoints by call count from audit ledger)
-      const featureUsage = await databaseService.queryControlPlane(
-        `SELECT action, COUNT(*) AS call_count, COUNT(DISTINCT actor_id) AS unique_users
-         FROM audit_ledger WHERE created_at >= ?
-         GROUP BY action ORDER BY call_count DESC
-         LIMIT 25`,
-        [sinceDate]
-      );
+      // 3. Feature usage (top actions from every company's audit trail — counts only)
+      const featureUsage = mergeGroups(
+        await selectAcrossCompanies(
+          `SELECT action, COUNT(*) AS call_count, COUNT(DISTINCT actor_id) AS unique_users
+           FROM audit_ledger WHERE created_at >= ? GROUP BY action`,
+          [sinceDate],
+        ),
+        'action', ['call_count', 'unique_users'],
+      ).sort((a, b) => Number(b.call_count) - Number(a.call_count)).slice(0, 25);
 
-      // 4. Mjuzi chat stats
-      const chatStats = await databaseService.queryControlPlane(
-        `SELECT COUNT(DISTINCT c.id) AS conversations, COUNT(m.id) AS messages,
-                COUNT(DISTINCT c.user_id) AS active_chatters
-         FROM chat_conversations c
-         LEFT JOIN chat_messages m ON m.conversation_id = c.id AND m.created_at >= ?
-         WHERE c.created_at >= ?`,
-        [sinceDate, sinceDate]
+      // 4. Mjuzi chat stats (counts across every company; never the conversations themselves)
+      const chatTotals = sumRows(
+        await selectAcrossCompanies(
+          `SELECT COUNT(DISTINCT c.id) AS conversations, COUNT(m.id) AS messages,
+                  COUNT(DISTINCT c.user_id) AS active_chatters
+           FROM chat_conversations c
+           LEFT JOIN chat_messages m ON m.conversation_id = c.id AND m.created_at >= ?
+           WHERE c.created_at >= ?`,
+          [sinceDate, sinceDate],
+        ),
+        ['conversations', 'messages', 'active_chatters'],
       );
+      const chatStats = [chatTotals];
 
       // 5. Daily agent runs (for chart)
       const dailyAgentRuns = await databaseService.queryControlPlane(
