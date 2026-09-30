@@ -104,8 +104,14 @@ for db in $(sudo mariadb -N -e "SHOW DATABASES" | grep -E '^pmtb(_t_.*)?$' || tr
   sudo mariadb -e "DROP DATABASE \`$db\`"
 done
 sudo mariadb -e "CREATE DATABASE pmtb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+# The numbered migrations can't build an empty database (the base tables predate them), so
+# copy staging's control-plane STRUCTURE — no customer data — plus the reference tables the
+# migrations seeded (plans, features, agents, policies, templates, help articles).
+sudo mariadb-dump --no-data --skip-triggers pmassist | sudo mariadb pmtb
+sudo mariadb-dump --no-create-info --skip-triggers pmassist _migrations agents agent_autonomy_config \
+  automation_marketplace knowledge_base_chunks policies pricing_config tier_features | sudo mariadb pmtb
 redis-cli -n 5 FLUSHDB >/dev/null
-echo "[testbed] databases wiped"
+echo "[testbed] databases wiped; structure + reference data copied from staging (no customer data)"
 REMOTE
     ;;
   up)
