@@ -10,23 +10,13 @@ import { join, relative } from 'path';
  * review list (todo.md); a count may go down, never up, and no new file may join.
  */
 const BASELINE: Record<string, number> = {
-  'routes/resources/resources.ts': 2,
+  // Reviewed 2026-09-30 — what is left is fine: these lines subtract one DAY from another
+  // (assignment overlaps, durations), and the file's `now` is used safely elsewhere:
+  // AnalyticsSummary — a "last 7 days" window on updated_at timestamps; ResourceService —
+  // already cut to the day; ResourceOptimizer — whole weeks ahead, Math.ceil absorbs the hour.
   'services/AnalyticsSummaryService.ts': 2,
-  'services/InstantReportService.ts': 2,
   'services/ResourceOptimizerService.ts': 6,
   'services/ResourceService.ts': 10,
-  'services/StrategicRiskAnalysisService.ts': 2,
-  'services/TaskPrioritizationService.ts': 3,
-  'services/agents/CrossProjectIntelligenceAgent.ts': 3,
-  'services/agents/LessonsLearnedAgent.ts': 1,
-  'services/agents/PredictiveAlertingAgent.ts': 3,
-  'services/agents/StakeholderCommunicationAgent.ts': 5,
-  'services/anomalyDetectionService.ts': 2,
-  'services/crossProjectIntelligenceService.ts': 3,
-  'services/lessonsLearned/seeder.ts': 2,
-  'services/predictiveIntelligence.ts': 5,
-  'services/proactiveAlertService.ts': 3,
-  'services/scheduling/registryAgentRunners.ts': 1,
 };
 
 const SERVER = join(__dirname, '..', '..');

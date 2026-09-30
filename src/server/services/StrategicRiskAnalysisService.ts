@@ -7,6 +7,7 @@ import { evmForecastService } from './EVMForecastService';
 import { claudeService } from './claudeService';
 import logger from '../utils/logger';
 import { isOverdue } from '../utils/calendarDate';
+import { utcDay } from '../utils/workingDays';
 
 // ---------------------------------------------------------------------------
 // Interfaces
@@ -42,7 +43,7 @@ export interface StrategicRiskAnalysisResult {
 
 function detectScheduleRisks(tasks: Task[], cpm: CriticalPathResult | null): StructuralRisk[] {
   const risks: StructuralRisk[] = [];
-  const now = new Date();
+  const now = utcDay(new Date());
 
   if (!cpm || cpm.tasks.length === 0) return risks;
 
@@ -57,7 +58,7 @@ function detectScheduleRisks(tasks: Task[], cpm: CriticalPathResult | null): Str
   for (const t of criticalTasks) {
     const pastDue = t.endDate && isOverdue(t.endDate) && t.status !== 'completed';
     const stalled = t.status === 'in_progress' && t.progressPercentage != null && t.progressPercentage < 20
-      && t.startDate && (now.getTime() - new Date(t.startDate).getTime()) > 7 * 86_400_000;
+      && t.startDate && (now.getTime() - new Date(t.startDate).getTime()) >= 7 * 86_400_000;
     if (pastDue || stalled) atRiskCritical.push(t);
   }
 

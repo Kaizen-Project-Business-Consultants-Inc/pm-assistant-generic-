@@ -7,6 +7,7 @@ import { type LessonLearned } from '../../schemas/lessonsLearnedSchemas';
 // (services/StatusDateService.ts). Still correct in the way that mattered: something due
 // today is no longer 'late' from the previous evening.
 import { isOverdue } from '../../utils/calendarDate';
+import { utcDay } from '../../utils/workingDays';
 
 /** Creates a seed lesson with common fields pre-filled */
 function seedLesson(base: Omit<LessonLearned, 'status' | 'sourceType' | 'createdBy' | 'tags' | 'appliedCount' | 'effectivenessRating' | 'rootCause' | 'severity' | 'recurrenceScore' | 'isElevated' | 'sourceArtifacts' | 'helpfulCount' | 'dismissedCount'>): LessonLearned {
@@ -60,7 +61,7 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
 
     // Schedule variance analysis
     if (project.startDate && project.endDate) {
-      const now = new Date();
+      const now = utcDay(new Date());
       const totalDuration = new Date(project.endDate).getTime() - new Date(project.startDate).getTime();
       const elapsed = Math.max(0, now.getTime() - new Date(project.startDate).getTime());
       const expectedPercent = totalDuration > 0 ? Math.min(100, (elapsed / totalDuration) * 100) : 0;

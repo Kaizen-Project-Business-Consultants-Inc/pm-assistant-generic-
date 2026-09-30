@@ -120,4 +120,29 @@ describe('LessonsLearnedAgent', () => {
     // Will skip because reasoning engine returns null (mocked)
     expect(result.skipReason).not.toContain('not near completion');
   });
+
+  it('gives the same project duration whatever the time of day (dates are days, not moments)', async () => {
+    // Pinned to 30 Sep 2026. Project started 1 Sep: 29 days.
+    const { projectService } = await import('../../../services/ProjectService');
+    const { reasoningEngine } = await import('../../../services/agents/ReasoningEngine');
+    const run = async (moment: string) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(moment));
+      try {
+        vi.mocked(reasoningEngine.generateLessonsExtraction).mockClear();
+        vi.mocked(projectService.findById).mockResolvedValueOnce({
+          id: 'proj-1', name: 'Done Project', status: 'completed', startDate: '2026-09-01', endDate: '2026-09-30',
+          projectManagerId: 'user-1', createdBy: 'user-1',
+        } as any);
+        await agent.run({ projectId: 'proj-1', userId: 'user-1' });
+        return (vi.mocked(reasoningEngine.generateLessonsExtraction).mock.calls[0][0] as any).projectData.durationDays;
+      } finally {
+        vi.useRealTimers();
+      }
+    };
+    const morning = await run('2026-09-30T08:00:00Z');
+    const evening = await run('2026-09-30T22:00:00Z');
+    expect(evening).toBe(morning);
+    expect(morning).toBe(29);
+  });
 });

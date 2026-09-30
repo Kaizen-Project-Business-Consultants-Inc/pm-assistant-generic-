@@ -297,6 +297,30 @@ describe('TaskPrioritizationService', () => {
       expect(dueSoon.priorityScore).toBeGreaterThan(dueLater.priorityScore);
     });
 
+    it('gives the same score whatever the time of day (dates are days, not moments)', async () => {
+      // Pinned to 30 Sep 2026. Task 1 Sep → 10 Oct, not started: due in 10 days, 29 of 39 days gone.
+      const run = async (moment: string) => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date(moment));
+        try {
+          mockFindTasksByScheduleId.mockResolvedValue([
+            makeTask('t1', 'Task', { status: 'pending', startDate: '2026-09-01', endDate: '2026-10-10', progressPercentage: 0 }),
+          ]);
+          mockCalculateCriticalPath.mockResolvedValue(makeCriticalPathResult());
+          mockDetectDelays.mockResolvedValue([]);
+          const t = (await service.prioritizeTasks('proj-1', 'sch-1')).tasks[0];
+          return { score: t.priorityScore, factors: t.factors.map((f) => f.description) };
+        } finally {
+          vi.useRealTimers();
+        }
+      };
+      const morning = await run('2026-09-30T08:00:00Z');
+      const evening = await run('2026-09-30T22:00:00Z');
+      expect(evening).toEqual(morning);
+      expect(morning.factors).toContain('Due in 10 day(s).');
+      expect(morning.factors).toContain('74% behind expected progress (0% actual vs 74% expected).');
+    });
+
     it('detects progress gap and adds factor', async () => {
       // Task that is halfway through its duration but 0% complete
       const now = new Date();

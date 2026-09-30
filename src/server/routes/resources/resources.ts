@@ -16,6 +16,7 @@ import { inviteService } from '../../services/InviteService';
 import { taskAssignmentService } from '../../services/TaskAssignmentService';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
+import { utcDay } from '../../utils/workingDays';
 
 const skillSchema = z.union([
   z.string(),
@@ -564,9 +565,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
 
     const DAY_MS = 86_400_000;
     const WEEK_MS = 7 * DAY_MS;
-    const now = new Date();
+    const now = utcDay(new Date());
     const startWeek = new Date(now);
-    startWeek.setDate(startWeek.getDate() - ((startWeek.getDay() + 6) % 7));
+    startWeek.setUTCDate(startWeek.getUTCDate() - ((startWeek.getUTCDay() + 6) % 7));
 
     const weeks: Date[] = [];
     for (let i = 0; i < 12; i++) {

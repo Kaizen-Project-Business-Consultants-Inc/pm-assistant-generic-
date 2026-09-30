@@ -2,6 +2,7 @@
 
 import { projectService, type Project } from './ProjectService';
 import { scheduleService, type Task } from './ScheduleService';
+import { utcDay } from '../utils/workingDays';
 
 export interface ProactiveAlert {
   id: string;
@@ -37,7 +38,8 @@ export class ProactiveAlertService {
 
   private async generateAlertsForProjects(projects: Project[]): Promise<ProactiveAlert[]> {
     const alerts: ProactiveAlert[] = [];
-    const now = new Date();
+    const now = utcDay(new Date()); // today: task and project dates are days
+    const createdAt = new Date().toISOString();
 
     // Batch-load all schedules and tasks for all projects at once
     const allScheduleIds: string[] = [];
@@ -78,7 +80,7 @@ export class ProactiveAlertService {
               params: { projectId: project.id, status: 'on_hold' },
               label: 'Put project on hold',
             },
-            createdAt: now.toISOString(),
+            createdAt,
           });
         }
       }
@@ -100,7 +102,7 @@ export class ProactiveAlertService {
               params: { projectId: project.id },
               label: 'Review project status',
             },
-            createdAt: now.toISOString(),
+            createdAt,
           });
         }
       }
@@ -145,14 +147,14 @@ export class ProactiveAlertService {
                   },
                   label: `Reschedule by 1 week`,
                 },
-                createdAt: now.toISOString(),
+                createdAt,
               });
             }
           }
 
           // Stalled tasks (in_progress but 0% for tasks with start dates in the past)
           if (task.status === 'in_progress' && (task.progressPercentage === 0 || task.progressPercentage === undefined)) {
-            if (task.startDate && new Date(task.startDate).getTime() < now.getTime() - 7 * 24 * 60 * 60 * 1000) {
+            if (task.startDate && new Date(task.startDate).getTime() <= now.getTime() - 7 * 24 * 60 * 60 * 1000) {
               alerts.push({
                 id: `alert-stalled-${task.id}`,
                 type: 'stalled_task',
@@ -168,7 +170,7 @@ export class ProactiveAlertService {
                   params: { taskId: task.id, status: 'pending' },
                   label: 'Reset to pending',
                 },
-                createdAt: now.toISOString(),
+                createdAt,
               });
             }
           }
@@ -190,7 +192,7 @@ export class ProactiveAlertService {
                 params: { scheduleId: schedule.id },
                 label: 'View tasks to redistribute',
               },
-              createdAt: now.toISOString(),
+              createdAt,
             });
           }
         }

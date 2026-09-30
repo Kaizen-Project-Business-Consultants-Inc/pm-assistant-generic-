@@ -487,6 +487,39 @@ describe('InstantReportService', () => {
       expect(callArg.slippingTasks[0].name).toBe('Slipping');
     });
 
+    it('gives the same answer whatever the time of day (dates are days, not moments)', async () => {
+      // Pinned to 30 Sep 2026. A task due today is not late yet; one due yesterday is 1 day late.
+      // One started 6 days ago is not slipping yet; one started 7 days ago is.
+      const run = async (moment: string) => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date(moment));
+        try {
+          mockRenderLateSlippingReport.mockClear();
+          mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1')]);
+          mockFindTasksByScheduleIds.mockResolvedValue([
+            makeTask('t1', { status: 'in_progress', startDate: '2026-09-01', endDate: '2026-09-30', progressPercentage: 90, name: 'Due today' }),
+            makeTask('t2', { status: 'in_progress', startDate: '2026-09-01', endDate: '2026-09-29', progressPercentage: 90, name: 'Due yesterday' }),
+            makeTask('t3', { status: 'in_progress', startDate: '2026-09-24', endDate: '2026-12-01', progressPercentage: 0, name: 'Six days in' }),
+            makeTask('t4', { status: 'in_progress', startDate: '2026-09-23', endDate: '2026-12-01', progressPercentage: 0, name: 'Seven days in' }),
+          ]);
+          await service.generate('late-slipping-tasks', 'proj-1');
+          const arg = mockRenderLateSlippingReport.mock.calls[0][0];
+          return {
+            late: arg.lateTasks.map((t: any) => `${t.name}:${t.daysLate}`),
+            slipping: arg.slippingTasks.map((t: any) => `${t.name}:${t.daysSinceStart}`),
+          };
+        } finally {
+          vi.useRealTimers();
+        }
+      };
+      const midnight = await run('2026-09-30T00:00:00Z');
+      const morning = await run('2026-09-30T08:00:00Z');
+      const evening = await run('2026-09-30T22:00:00Z');
+      expect(morning).toEqual(midnight);
+      expect(evening).toEqual(morning);
+      expect(morning).toEqual({ late: ['Due yesterday:1'], slipping: ['Seven days in:7'] });
+    });
+
     it('excludes tasks with no startDate from slipping', async () => {
       mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1')]);
       mockFindTasksByScheduleIds.mockResolvedValue([

@@ -26,6 +26,7 @@ import {
   renderOverbudgetResourcesReport,
 } from '../utils/instantReportRenderer';
 import logger from '../utils/logger';
+import { utcDay } from '../utils/workingDays';
 
 const REPORT_TITLES: Record<string, string> = {
   'milestone-report': 'Milestone Report',
@@ -153,7 +154,7 @@ export class InstantReportService {
 
     const tasks = await scheduleService.findTasksByScheduleIds(schedules.map(s => s.id));
     const scheduleMap = new Map(schedules.map(s => [s.id, s.name]));
-    const now = new Date();
+    const now = utcDay(new Date());
     const nowTime = now.getTime();
 
     const lateTasks = tasks

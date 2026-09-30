@@ -1,4 +1,5 @@
 import { analyticsSummaryRepository } from '../database/AnalyticsSummaryRepository';
+import { utcDay } from '../utils/workingDays';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -110,7 +111,7 @@ class AnalyticsSummaryService {
       if (p.start_date && p.end_date) {
         const start = new Date(p.start_date).getTime();
         const end = new Date(p.end_date).getTime();
-        const now = Date.now();
+        const now = utcDay(new Date()).getTime(); // today, not this moment
         if (end > start && now > start) {
           const elapsed = Math.min(1, (now - start) / (end - start));
           const actualProgress = Number(p.progress) || 0;

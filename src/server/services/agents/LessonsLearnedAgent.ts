@@ -16,6 +16,7 @@ import { MS_PER_DAY } from '../../utils/constants';
 // (services/StatusDateService.ts). Still correct in the way that mattered: something due
 // today is no longer 'late' from the previous evening.
 import { isOverdue } from '../../utils/calendarDate';
+import { utcDay } from '../../utils/workingDays';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,7 +102,7 @@ export class LessonsLearnedAgentClass {
       t.endDate && isOverdue(t.endDate) && t.status !== 'completed' && t.status !== 'cancelled'
     ).length;
 
-    const now = new Date();
+    const now = utcDay(new Date());
     const startDate = project.startDate ? new Date(project.startDate) : now;
     const durationDays = Math.max(1, Math.round((now.getTime() - startDate.getTime()) / MS_PER_DAY));
 

@@ -99,6 +99,31 @@ describe('detectScheduleRisks', () => {
     expect(longRisk).toBeDefined();
   });
 
+  it('calls a task stalled the same way whatever the time of day (dates are days, not moments)', () => {
+    // Pinned to 30 Sep 2026: <20% done after 7+ days is stalled; after 6 days it is not yet.
+    const run = (moment: string) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(moment));
+      try {
+        const tasks = [
+          makeTask({ id: 't1', name: 'Seven days in', status: 'in_progress', progressPercentage: 10, startDate: '2026-09-23', endDate: '2026-12-01' }),
+          makeTask({ id: 't2', name: 'Six days in', status: 'in_progress', progressPercentage: 10, startDate: '2026-09-24', endDate: '2026-12-01' }),
+        ];
+        const risk = detectScheduleRisks(tasks, makeCPM([makeCPMTask('t1'), makeCPMTask('t2')]))
+          .find(r => r.riskStatement.includes('stalled'));
+        return risk?.impactedElement ?? null;
+      } finally {
+        vi.useRealTimers();
+      }
+    };
+    const midnight = run('2026-09-30T00:00:00Z');
+    const morning = run('2026-09-30T08:00:00Z');
+    const evening = run('2026-09-30T22:00:00Z');
+    expect(morning).toBe(midnight);
+    expect(evening).toBe(morning);
+    expect(morning).toBe('Seven days in');
+  });
+
   it('returns empty when CPM is null', () => {
     const tasks = [makeTask({ id: 't1', name: 'Task', status: 'pending' })];
     expect(detectScheduleRisks(tasks, null)).toHaveLength(0);
