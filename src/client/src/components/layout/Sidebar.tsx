@@ -43,7 +43,7 @@ import {
   Brain,
   Lock,
 } from 'lucide-react';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore, withoutCompany } from '../../stores/authStore';
 import { useTranslation } from '../../hooks/useTranslation';
 import { apiService } from '../../services/api';
 import { FeedbackModal } from '../feedback/FeedbackModal';
@@ -222,7 +222,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
   const { t } = useTranslation();
   const isAdmin = user?.role === 'admin';
 
-  const [adminView, setAdminView] = React.useState(() => isAdmin && getStoredAdminView());
+  // No company (the platform admin): there is no project side to switch to
+  const noCompany = withoutCompany(user);
+  const [storedAdminView, setAdminView] = React.useState(() => isAdmin && getStoredAdminView());
+  const adminView = storedAdminView || (isAdmin && noCompany);
   const [feedbackOpen, setFeedbackOpen] = React.useState(false);
 
   const toggleView = () => {
@@ -243,6 +246,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
     queryKey: ['favourite-projects'],
     queryFn: () => apiService.getFavouriteProjects(),
     staleTime: 60_000,
+    enabled: !noCompany,
   });
   const pinnedProjects: { id: string; name: string }[] = (favData?.projects || []).slice(0, 5);
 
@@ -486,7 +490,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
       {/* View Toggle + User Section */}
       <div className="flex-shrink-0 border-t border-white/10">
         {/* Admin/PM view toggle — only for admin users */}
-        {isAdmin && (
+        {isAdmin && !noCompany && (
           <button
             onClick={toggleView}
             title={adminView ? t('nav.switchToPm') : t('nav.switchToAdmin')}

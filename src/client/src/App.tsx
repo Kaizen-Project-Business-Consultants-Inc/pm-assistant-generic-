@@ -1,7 +1,8 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { ROUTES, ROUTE_PATTERNS, routeTo } from './routes';
-import { useAuthStore } from './stores/authStore';
+import { useAuthStore, withoutCompany, isPersonalPath } from './stores/authStore';
+import { NoCompanyPage } from './pages/NoCompanyPage';
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
 import { AppUpdateBanner } from './components/AppUpdateBanner';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
@@ -92,6 +93,7 @@ function PageLoader() {
 
 function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { children: React.ReactNode; skipOnboardingCheck?: boolean; requiredRole?: string }) {
   const { isAuthenticated, user } = useAuthStore();
+  const location = useLocation();
 
   // Prevent search engines from indexing authenticated pages
   useEffect(() => {
@@ -112,6 +114,11 @@ function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { childre
   if (user?.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!skipOnboardingCheck && !user?.fullName) return <Navigate to="/onboarding" replace />;
   if (requiredRole && user?.role !== requiredRole) return <Navigate to="/dashboard" replace />;
+  // No company: the platform admin goes to the admin pages; anyone else is told why there's nothing here
+  if (withoutCompany(user) && !isPersonalPath(location.pathname)) {
+    if (user?.role === 'admin') return <Navigate to={ROUTES.adminUsers} replace />;
+    return <AppLayout><NoCompanyPage /></AppLayout>;
+  }
   return <AppLayout><RouteErrorBoundary>{children}</RouteErrorBoundary></AppLayout>;
 }
 

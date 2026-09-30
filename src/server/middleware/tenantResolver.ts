@@ -18,6 +18,25 @@ const TENANT_EXEMPT_PREFIXES = [
   '/mcp',
 ];
 
+/**
+ * Things that belong to a PERSON, not a company, stored in the shared database: profile and
+ * preferences, notifications, feedback, plan prices, the live-update socket. An account with
+ * no company (the platform admin) may use these; everything else is company data.
+ */
+export const PERSONAL_PREFIXES = [
+  '/api/v1/users',
+  '/api/v1/notifications',
+  '/api/v1/feedback',
+  '/api/v1/pricing',
+  '/api/v1/ws',
+  '/api/v1/ai/budget',
+];
+
+export const NO_COMPANY_MESSAGE = {
+  admin: 'This is the platform admin account, which has no company of its own. Use the admin pages, or sign in to a company account for project work.',
+  other: "Your account isn't part of a company yet, so there's nothing to show here. Ask your company's admin to invite you, or contact support.",
+};
+
 export async function tenantResolverHook(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -45,8 +64,14 @@ export async function tenantResolverHook(
     }
   }
   if (!org) {
-    // User has no organization — fall through to main DB (supports legacy/unassigned users)
-    return;
+    // No company. Company data must never be read from or written to the shared database
+    // (it used to fall through to it: the platform admin's chats and audit entries landed
+    // there, invisible to everyone — found 2026-09-30). Personal features still work.
+    if (PERSONAL_PREFIXES.some(p => request.url.startsWith(p))) return;
+    return reply.status(403).send({
+      error: 'no_company',
+      message: request.user.role === 'admin' ? NO_COMPANY_MESSAGE.admin : NO_COMPANY_MESSAGE.other,
+    });
   }
 
   if (!org.isActive) {

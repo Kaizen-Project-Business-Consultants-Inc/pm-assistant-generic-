@@ -42,3 +42,41 @@ describe('tenantResolver — a brand-new customer right after confirming their e
     expect(r.status).toHaveBeenCalledWith(503);
   });
 });
+
+describe('tenantResolver — an account with no company (the platform admin)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    for (const k of Object.keys(ctx)) delete ctx[k];
+    (organizationService.findByUserId as any).mockResolvedValue(null);
+  });
+  const as = (url: string, role = 'admin') => ({ url, user: { userId: 'admin1', role } }) as any;
+
+  it('company features are refused with a clear message — never the shared database', async () => {
+    const r = reply();
+    await tenantResolverHook(as('/api/v1/projects'), r);
+    expect(r.status).toHaveBeenCalledWith(403);
+    expect(r.send.mock.calls[0][0]).toMatchObject({ error: 'no_company', message: expect.stringMatching(/platform admin account/) });
+    expect(ctx.tenantDbName).toBeUndefined();
+  });
+
+  it('someone else without a company is told to ask for an invite', async () => {
+    const r = reply();
+    await tenantResolverHook(as('/api/v1/schedules/s1/tasks', 'project_manager'), r);
+    expect(r.status).toHaveBeenCalledWith(403);
+    expect(r.send.mock.calls[0][0].message).toMatch(/isn't part of a company yet/);
+  });
+
+  it.each(['/api/v1/users/me/preferences', '/api/v1/notifications', '/api/v1/feedback', '/api/v1/pricing'])(
+    'personal feature %s still works', async (url) => {
+      const r = reply();
+      await tenantResolverHook(as(url), r);
+      expect(r.status).not.toHaveBeenCalled();
+    });
+
+  it('admin pages are not affected (exempt before the company lookup)', async () => {
+    const r = reply();
+    await tenantResolverHook(as('/api/v1/admin/tenants'), r);
+    expect(r.status).not.toHaveBeenCalled();
+    expect(organizationService.findByUserId).not.toHaveBeenCalled();
+  });
+});

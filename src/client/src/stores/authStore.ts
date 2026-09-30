@@ -17,6 +17,23 @@ export interface User {
   mustChangePassword?: boolean;
   isGuest?: boolean;
   guestExpiresAt?: string | null;
+  /** The user's company; null = none (the platform admin). Undefined until /me has answered. */
+  organization?: { id: string; name: string; slug: string } | null;
+}
+
+/** Personal pages any signed-in account can use, company or not */
+const PERSONAL_PATHS = ['/settings', '/help', '/notifications', '/admin'];
+
+/**
+ * An account with no company (the platform admin) has no project data: company pages would
+ * only show "not part of a company" errors. Only true once /me has said so.
+ */
+export function withoutCompany(user: User | null | undefined): boolean {
+  return !!user && user.organization === null;
+}
+
+export function isPersonalPath(pathname: string): boolean {
+  return PERSONAL_PATHS.some(p => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 interface AuthState {
