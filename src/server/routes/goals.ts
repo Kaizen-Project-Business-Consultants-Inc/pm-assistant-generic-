@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth';
 import { requireScope } from '../middleware/requireScope';
 import { goalService } from '../services/GoalService';
+import { userService } from '../services/UserService';
 import logger from '../utils/logger';
 import { sendValidationError } from '../utils/validationError';
 
@@ -40,7 +41,9 @@ export async function goalRoutes(fastify: FastifyInstance) {
         status?: string;
       };
       const goals = await goalService.list({ ownerId, projectId, goalType, status });
-      return { goals };
+      // Goals store the owner's id; show their name (the page never had one to show)
+      const names = await userService.displayNames(goals.map(g => g.ownerId)).catch(() => new Map<string, string>());
+      return { goals: goals.map(g => ({ ...g, ownerName: names.get(g.ownerId) ?? null })) };
     } catch (error) {
       logger.error('List goals error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to list goals' });

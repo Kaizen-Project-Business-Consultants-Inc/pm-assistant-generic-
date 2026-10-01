@@ -70,6 +70,16 @@ export interface CreateUserData {
 }
 
 export class UserService {
+  /** Display names for many users in one query (id → full name, else username). Unknown ids are left out. */
+  async displayNames(ids: string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(ids.filter((x): x is string => typeof x === 'string' && x.length > 0))];
+    if (unique.length === 0) return new Map();
+    const { databaseService } = await import('../database/connection');
+    const rows = await databaseService.queryControlPlane<{ id: string; full_name: string | null; username: string }>(
+      `SELECT id, full_name, username FROM users WHERE id IN (${unique.map(() => '?').join(',')})`, unique);
+    return new Map(rows.map(r => [r.id, (r.full_name && r.full_name.trim()) || r.username]));
+  }
+
   async findById(id: string): Promise<User | null> {
     return userRepository.findById(id);
   }

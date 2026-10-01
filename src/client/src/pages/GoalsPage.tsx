@@ -4,6 +4,7 @@ import { Target, Plus, ChevronDown, ChevronRight, Edit2, Trash2, X } from 'lucid
 import { apiService } from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
+import { useAuthStore } from '../stores/authStore';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,6 +13,9 @@ import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 interface Goal {
   id: string;
   name: string;
+  ownerId?: string;
+  /** The owner's name, added by the goals list */
+  ownerName?: string | null;
   description?: string;
   goalType: 'objective' | 'key_result';
   parentId?: string | null;
@@ -22,7 +26,6 @@ interface Goal {
   startDate?: string;
   dueDate?: string;
   projectId?: string | null;
-  owner?: string;
   progress?: number;
   children?: Goal[];
 }
@@ -259,14 +262,22 @@ const GoalModal: React.FC<{
 // KeyResultRow
 // ---------------------------------------------------------------------------
 
+/** "You" for your own goals, otherwise the owner's name */
+function useOwnerLabel(goal: Goal): string | null {
+  const myId = useAuthStore(s => s.user?.id);
+  if (goal.ownerId && goal.ownerId === myId) return 'You';
+  return goal.ownerName || null;
+}
+
 const KeyResultRow: React.FC<{ kr: Goal; onEdit: (g: Goal) => void; onDelete: (id: string) => void }> = ({ kr, onEdit, onDelete }) => {
+  const owner = useOwnerLabel(kr);
   const pct = progressPercent(kr);
   return (
     <div className="flex items-center gap-4 py-2 px-4 ml-8 border-l-2 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
       <div className="flex-1 min-w-0">
         <p className="text-sm text-gray-800 dark:text-gray-200 truncate">{kr.name}</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          {kr.currentValue ?? 0} / {kr.targetValue ?? '?'} {kr.unit || ''}
+          {kr.currentValue ?? 0} / {kr.targetValue ?? '?'} {kr.unit || ''}{owner ? ` · ${owner}` : ''}
         </p>
       </div>
       {statusBadge(kr.status)}
@@ -289,6 +300,7 @@ const KeyResultRow: React.FC<{ kr: Goal; onEdit: (g: Goal) => void; onDelete: (i
 // ---------------------------------------------------------------------------
 
 const ObjectiveRow: React.FC<{ obj: Goal; onEdit: (g: Goal) => void; onDelete: (id: string) => void }> = ({ obj, onEdit, onDelete }) => {
+  const owner = useOwnerLabel(obj);
   const [expanded, setExpanded] = useState(false);
   const pct = progressPercent(obj);
   const hasChildren = obj.children && obj.children.length > 0;
@@ -301,7 +313,7 @@ const ObjectiveRow: React.FC<{ obj: Goal; onEdit: (g: Goal) => void; onDelete: (
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{obj.name}</p>
-          {obj.owner && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{obj.owner}</p>}
+          {owner && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Owner: {owner}</p>}
         </div>
         {statusBadge(obj.status)}
         <div className="w-28 flex items-center gap-2">
