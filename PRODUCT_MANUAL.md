@@ -2989,7 +2989,7 @@ Detection is entirely client-side (no server API required). Toggle the button of
 
 ## 35. Gantt Minimap
 
-A **200×80px overview panel** in the bottom-right corner of the Gantt timeline provides a bird's-eye view of the entire schedule. Toggle it with the **"Minimap"** button (map icon) in the toolbar. The minimap is enabled by default.
+A **200×80px overview panel** in the bottom-right corner of the Gantt timeline provides a bird's-eye view of the entire schedule. Toggle it with the **"Minimap"** button (map icon) in the toolbar. The minimap is off by default (since Oct 2026); turn it on for very large plans.
 
 - Each task bar is represented as a small coloured rectangle matching its status colour (blue for in progress, green for completed, grey for pending).
 - A **semi-transparent blue viewport rectangle** shows the currently visible portion of the timeline and tracks scroll position in real time.

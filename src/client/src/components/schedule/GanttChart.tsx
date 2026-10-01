@@ -528,7 +528,8 @@ export function GanttChart({
   // -----------------------------------------------------------------------
   // Minimap
   // -----------------------------------------------------------------------
-  const [showMinimap, setShowMinimap] = useState(true);
+  // Off by default (2026-10-01, product owner): on typical plans zoom / fit-to-screen show more; the Minimap button turns it on
+  const [showMinimap, setShowMinimap] = useState(false);
   const [scrollPos, setScrollPos] = useState({ left: 0, top: 0 });
 
   /** Set of all task IDs that have children (parent tasks) */
