@@ -10,7 +10,8 @@ import { useOAuthResult } from '../../hooks/useOAuthResult';
  * picks one of their Teams meetings, checks who's who, and gets the usual analysis — with each
  * item showing who said it. Kovarti reads the transcript Teams made; it never joins a meeting.
  *
- * States: loading → not set up on this site | not connected | meeting list → who's who → analyzing
+ * Shown only where the site has Teams set up (the page hides the tab otherwise).
+ * States: loading → not connected | meeting list → who's who → analyzing
  * → (parent shows the results). Errors stay on the step they happened in.
  */
 
@@ -130,14 +131,6 @@ export const TeamsMeetingsTab: React.FC<Props> = ({ projectId, schedules, schedu
 
   if (status.isLoading) {
     return <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> Checking your Teams connection…</div>;
-  }
-
-  if (!status.data?.configured) {
-    return (
-      <p className="text-sm text-gray-600 dark:text-gray-300">
-        Teams is not set up on this site yet. Contact support and we will switch it on. Meanwhile you can download the transcript from Teams and use <strong>Upload</strong>.
-      </p>
-    );
   }
 
   // ---- Not connected: connect your Microsoft account; IT admin approves once ----

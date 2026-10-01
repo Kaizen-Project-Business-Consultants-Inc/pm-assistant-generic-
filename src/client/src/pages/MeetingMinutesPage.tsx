@@ -232,6 +232,14 @@ export const MeetingMinutesPage: React.FC = () => {
     enabled: !!selectedProjectId,
   });
 
+  // From Teams only where this site has Teams set up — hidden, not a dead tab, elsewhere
+  const { data: teamsStatus } = useQuery({
+    queryKey: ['teamsMeetingsStatus'],
+    queryFn: () => apiService.getTeamsMeetingsStatus(),
+    staleTime: 5 * 60_000,
+  });
+  const teamsAvailable = !!teamsStatus?.configured;
+
   const projects: Project[] = projectsData?.data || projectsData?.projects || [];
   const schedules: Schedule[] = schedulesData?.schedules || [];
   const history: HistoryEntry[] = historyData?.history || historyData?.analyses || [];
@@ -513,6 +521,7 @@ export const MeetingMinutesPage: React.FC = () => {
                 <Upload className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
                 Upload
               </button>
+              {teamsAvailable && (
               <button
                 onClick={() => setInputMode('teams')}
                 className={`px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${
@@ -525,6 +534,7 @@ export const MeetingMinutesPage: React.FC = () => {
                 From Teams
                 <span className="ml-1.5 rounded-full bg-primary-600 px-1.5 py-px text-xs font-bold text-white">NEW</span>
               </button>
+              )}
               <div className="ml-auto">
                 <button
                   onClick={() => { setSyncError(null); setSyncModalOpen(true); }}
@@ -556,7 +566,7 @@ export const MeetingMinutesPage: React.FC = () => {
             )}
 
             {/* From Teams */}
-            {inputMode === 'teams' && (
+            {inputMode === 'teams' && teamsAvailable && (
               <TeamsMeetingsTab
                 projectId={selectedProjectId}
                 schedules={schedules}
