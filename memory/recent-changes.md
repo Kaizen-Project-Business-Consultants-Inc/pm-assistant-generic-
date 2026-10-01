@@ -2,6 +2,8 @@
 
 ## 2026-10-01 (Meeting Coach — staging)
 
+- **Found + fixed (T068):** `meeting_analyses.issues/dependencies` (from shared migration 101) and 6 `agent_memory` columns (108) never reached the company databases — on prod every Meeting Intelligence analysis failed to save since 2026-08-20. Guard `tenantColumnsGuard.test.ts`. Also seen in prod logs (not fixed, asked): `Unknown column 'ri.priority'` (32×), `'ri.item_type'` (6×), `'u.name'` (2×).
+
 - Mock approved ("yes"; "ONLY PM can ADD to Raid"). Chair's card (printable); analysis items carry calledOut + quote; owners resolved to project members (`services/meetingCoach.ts`), due dates from the meeting date onto working days; scorecard stored in `meeting_analyses.coach` (T067); `MeetingCoachReview` (Called out ticked / AI spotted unticked, PM-only Add to RAID, duplicates skipped); send-to-raid carries owner (member-checked). Shared `toSendToRaidPayload`.
 
 ## 2026-10-01 (Meeting Intelligence → From Teams — staging)
