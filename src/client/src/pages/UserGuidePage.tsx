@@ -143,12 +143,12 @@ const sections: Section[] = [
     title: 'Schedule History & Undo',
     icon: History,
     description:
-      'See every group change to a schedule and undo it later — even after reloading the page.',
+      'A record of every group change to a schedule — what it did, who did it and when.',
     items: [
       'Open History in the schedule toolbar',
-      'Each line says what changed, who did it and when (including changes made through Claude)',
-      'Undo reverses that change and puts moved dates back — including tasks moved by a working-calendar change',
-      'If someone edited the same tasks since, you are warned before undoing',
+      'Each entry shows who, when, and what changed, before → after (e.g. "Build Sprint 1: start 12 Oct → 19 Oct")',
+      'Only the most recent change can be undone, and only until something else in the plan changes',
+      'To reverse an older change, make it again by hand — History shows exactly what it was',
     ],
   },
   {

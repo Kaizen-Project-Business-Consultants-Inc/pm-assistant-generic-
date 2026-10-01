@@ -27,17 +27,18 @@ vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { appe
 vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: vi.fn() }));
 vi.mock('../../utils/logger', () => ({ default: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
-import { changeHistoryService, ChangeConflictError, ChangeStateError } from '../../services/ChangeHistoryService';
+import { changeHistoryService, NotLatestChangeError, ChangeStateError } from '../../services/ChangeHistoryService';
 
 const row = (over: any) => ({
   id: 'c-1', project_id: 'p-1', schedule_id: 's-1', kind: 'link', summary: 'Added 2 links', status: 'applied',
   task_ids: JSON.stringify(['t1', 't2']), undo_payload: '{}', ref: null, created_at: '2026-09-27 20:00:00', ...over,
 });
 
-/** SELECT change row, then (unless forced) the "edited since" count, then the UPDATE */
-function withChange(r: any, editedSince = 0) {
+/** The change row; which change is newest on the plan; how many tasks in the plan were edited since */
+function withChange(r: any, editedSince = 0, newestId = r.id) {
   query.mockImplementation((sql: string) => {
     if (sql.includes('FROM change_batches WHERE id')) return Promise.resolve([r]);
+    if (sql.includes('FROM change_batches WHERE schedule_id = ? ORDER BY')) return Promise.resolve(newestId ? [{ id: newestId }] : []);
     if (sql.includes('COUNT(*) AS cnt FROM tasks')) return Promise.resolve([{ cnt: editedSince }]);
     return Promise.resolve([]);
   });
@@ -51,7 +52,7 @@ describe('ChangeHistoryService', () => {
       ctx.actorSource = 'mcp';
       const id = await changeHistoryService.record({ projectId: 'p-1', scheduleId: 's-1', kind: 'bulk_create', summary: 'Created 2 tasks', taskIds: ['a', 'b', 'a'], undo: { createdIds: ['a', 'b'] } });
       expect(id).toBeTruthy();
-      const [sql, params] = query.mock.calls[0];
+      const [sql, params] = query.mock.calls.find(([q]) => String(q).includes('INSERT INTO change_batches'))!;
       expect(sql).toContain('INSERT INTO change_batches');
       expect(params[5]).toBe('u-1');     // actor
       expect(params[6]).toBe('mcp');     // Claude, via the connector
@@ -59,8 +60,19 @@ describe('ChangeHistoryService', () => {
     });
 
     it('never breaks the change it records', async () => {
-      query.mockRejectedValueOnce(new Error('table missing'));
+      query.mockRejectedValue(new Error('table missing'));
       await expect(changeHistoryService.record({ projectId: 'p', scheduleId: 's', kind: 'link', summary: 'x', taskIds: ['t'], undo: {} })).resolves.toBeNull();
+    });
+
+    it('records what the change did, before → after, in plain words', async () => {
+      query.mockImplementation((sql: string) => Promise.resolve(String(sql).includes('FROM tasks WHERE id IN') ? [
+        { id: 't1', name: 'Design Review', start_date: '2026-10-05', end_date: '2026-10-09' },
+        { id: 't2', name: 'Build Sprint 1', start_date: '2026-10-19', end_date: '2026-10-30' },
+      ] : []));
+      await changeHistoryService.record({ projectId: 'p-1', scheduleId: 's-1', kind: 'link', summary: 'Added 1 link', taskIds: ['t1', 't2'],
+        undo: { links: [{ taskId: 't2', dependencyId: 't1' }], moved: [{ taskId: 't2', startDate: '2026-10-12', endDate: '2026-10-23' }] } });
+      const insert = query.mock.calls.find(([q]) => String(q).includes('INSERT INTO change_batches'))!;
+      expect(JSON.parse(insert[1][10])).toEqual(['Linked Design Review → Build Sprint 1', 'Build Sprint 1: start 12 Oct → 19 Oct, finish 23 Oct → 30 Oct']);
     });
 
     it('skips a change that touched nothing', async () => {
@@ -106,16 +118,16 @@ describe('ChangeHistoryService', () => {
       expect(restoreTaskDates).toHaveBeenCalledWith('s-1', [{ taskId: 't1', startDate: '2026-09-01', endDate: '2026-09-03' }]);
     });
 
-    it('warns instead of overwriting when a task was edited since', async () => {
-      withChange(row({}), 1);
-      await expect(changeHistoryService.undo('s-1', 'c-1')).rejects.toBeInstanceOf(ChangeConflictError);
+    it('refuses once anything in the plan has changed since — there is no "undo anyway"', async () => {
+      withChange(row({ undo_payload: JSON.stringify({ links: [{ taskId: 't2', dependencyId: 't1' }] }) }), 1);
+      await expect(changeHistoryService.undo('s-1', 'c-1')).rejects.toBeInstanceOf(NotLatestChangeError);
       expect(bulkRemoveDependencies).not.toHaveBeenCalled();
     });
 
-    it('goes ahead when told to overwrite', async () => {
-      withChange(row({ undo_payload: JSON.stringify({ links: [{ taskId: 't2', dependencyId: 't1' }] }) }), 1);
-      await changeHistoryService.undo('s-1', 'c-1', { force: true });
-      expect(bulkRemoveDependencies).toHaveBeenCalled();
+    it('refuses an older change even if its own tasks were not touched', async () => {
+      withChange(row({ undo_payload: JSON.stringify({ links: [{ taskId: 't2', dependencyId: 't1' }] }) }), 0, 'c-newer');
+      await expect(changeHistoryService.undo('s-1', 'c-1')).rejects.toBeInstanceOf(NotLatestChangeError);
+      expect(bulkRemoveDependencies).not.toHaveBeenCalled();
     });
 
     it('refuses a change that was already undone', async () => {
@@ -132,11 +144,22 @@ describe('ChangeHistoryService', () => {
   describe('list', () => {
     it('names the person, and Claude when the change came through the connector', async () => {
       query.mockResolvedValueOnce([
-        { id: 'c-1', kind: 'link', summary: 'Added 33 links', actor_id: 'u-1', source: 'mcp', status: 'applied', undone_at: null, undone_by: null, created_at: '2026-09-27T18:24:38Z' },
+        { id: 'c-1', kind: 'link', summary: 'Added 33 links', actor_id: 'u-1', source: 'mcp', status: 'applied', undone_at: null, undone_by: null, created_at: '2026-09-27T18:24:38Z', details: JSON.stringify(['Linked Design → Build']) },
       ]);
       queryControlPlane.mockResolvedValueOnce([{ id: 'u-1', full_name: 'Michael Annamunthodo' }]);
       const [c] = await changeHistoryService.list('s-1');
-      expect(c).toMatchObject({ actorName: 'Michael Annamunthodo', source: 'mcp', undoable: true });
+      expect(c).toMatchObject({ actorName: 'Michael Annamunthodo', source: 'mcp', undoable: true, details: ['Linked Design → Build'] });
+    });
+
+    it('only the newest change can be undone, and only while the plan is untouched since', async () => {
+      const entries = [
+        { id: 'c-2', kind: 'bulk_status', summary: 'Changed 3 tasks', actor_id: null, source: 'web', status: 'applied', created_at: '2026-09-28T10:00:00Z' },
+        { id: 'c-1', kind: 'link', summary: 'Added 2 links', actor_id: null, source: 'web', status: 'applied', created_at: '2026-09-27T10:00:00Z' },
+      ];
+      query.mockImplementation((sql: string) => Promise.resolve(sql.includes('COUNT(*) AS cnt') ? [{ cnt: 0 }] : entries));
+      expect((await changeHistoryService.list('s-1')).map(c => c.undoable)).toEqual([true, false]);
+      query.mockImplementation((sql: string) => Promise.resolve(sql.includes('COUNT(*) AS cnt') ? [{ cnt: 2 }] : entries));
+      expect((await changeHistoryService.list('s-1')).map(c => c.undoable)).toEqual([false, false]);
     });
   });
 });

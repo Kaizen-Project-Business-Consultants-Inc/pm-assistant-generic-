@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { changeHistoryService } from '../../services/ChangeHistoryService';
+import { changeHistoryService, NotLatestChangeError } from '../../services/ChangeHistoryService';
 import { z } from 'zod';
 import {
   scheduleFixProposerService,
@@ -91,10 +91,13 @@ export async function scheduleFixRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId, proposalId } = request.params as { scheduleId: string; proposalId: string };
+      // Same rule as Schedule History: only the newest change, while nothing has changed since
+      await changeHistoryService.assertLatestByRef(scheduleId, 'review_fix', proposalId);
       const result = await scheduleFixProposerService.undo(scheduleId, proposalId, request.user!.userId);
       await changeHistoryService.markUndoneByRef('review_fix', proposalId); // keep History in step
       return result;
     } catch (error: any) {
+      if (error instanceof NotLatestChangeError) return reply.status(409).send({ error: 'not_latest', message: error.message });
       if (error instanceof ScheduleFixNotFoundError) return reply.status(404).send({ error: 'Proposal not found' });
       if (error instanceof ScheduleFixStateError) return reply.status(409).send({ error: error.message });
       logger.error('Schedule fix undo error', { error });

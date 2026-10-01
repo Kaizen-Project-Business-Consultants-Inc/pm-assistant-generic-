@@ -10,7 +10,8 @@ import { ScheduleHistoryPanel, whoDidIt, type ScheduleChange } from '../../compo
 
 const now = new Date().toISOString();
 const changes: ScheduleChange[] = [
-  { id: 'c1', kind: 'link', summary: 'Added 33 links', actorId: 'u-me', actorName: 'Michael A', source: 'mcp', status: 'applied', undoable: true, createdAt: now, undoneAt: null, undoneByName: null },
+  { id: 'c1', kind: 'link', summary: 'Added 33 links', actorId: 'u-me', actorName: 'Michael A', source: 'mcp', status: 'applied', undoable: true, createdAt: now, undoneAt: null, undoneByName: null, details: ['Linked Design Review → Build Sprint 1', 'Build Sprint 1: start 12 Oct → 19 Oct'] },
+  { id: 'c3', kind: 'bulk_update', summary: 'Edited 2 tasks', actorId: 'u-me', actorName: 'Michael A', source: 'web', status: 'applied', undoable: false, createdAt: now, undoneAt: null, undoneByName: null, details: ['UAT: finish 2 Nov → 9 Nov'] },
   { id: 'c2', kind: 'bulk_status', summary: 'Set 6 tasks to Done', actorId: 'u-2', actorName: 'Dana P', source: 'web', status: 'undone', undoable: false, createdAt: now, undoneAt: now, undoneByName: 'Michael A' },
 ];
 
@@ -49,19 +50,25 @@ describe('ScheduleHistoryPanel', () => {
     api.undoScheduleChange.mockResolvedValueOnce({ restored: 33 });
     renderPanel();
     fireEvent.click(await screen.findByRole('button', { name: /^Undo$/ }));
-    await waitFor(() => expect(api.undoScheduleChange).toHaveBeenCalledWith('s1', 'c1', false));
+    await waitFor(() => expect(api.undoScheduleChange).toHaveBeenCalledWith('s1', 'c1'));
     expect(await screen.findByText('Undone: Added 33 links')).toBeInTheDocument();
   });
 
-  it('warns when the tasks were edited since, and only overwrites on "Undo anyway"', async () => {
-    api.undoScheduleChange
-      .mockRejectedValueOnce({ response: { status: 409, data: { error: 'edited_since', editedCount: 2, message: '2 of these tasks were changed after this. Undo anyway to overwrite those later changes.' } } })
-      .mockResolvedValueOnce({ restored: 33 });
+  it('shows what each change did, and Undo only on the newest one — no "Undo anyway"', async () => {
+    renderPanel();
+    expect(await screen.findByText('Build Sprint 1: start 12 Oct → 19 Oct')).toBeInTheDocument();
+    expect(screen.getByText('UAT: finish 2 Nov → 9 Nov')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^Undo$/ })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Undo anyway' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Only the most recent change can be undone/)).toBeInTheDocument();
+  });
+
+  it('if the plan changed meanwhile, says why and changes nothing', async () => {
+    api.undoScheduleChange.mockRejectedValueOnce({ response: { status: 409, data: { error: 'not_latest', message: 'Only the most recent change can be undone, and only until something else in the plan changes.' } } });
     renderPanel();
     fireEvent.click(await screen.findByRole('button', { name: /^Undo$/ }));
-    expect(await screen.findByText(/2 of these tasks were changed after this/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Undo anyway' }));
-    await waitFor(() => expect(api.undoScheduleChange).toHaveBeenLastCalledWith('s1', 'c1', true));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/only until something else in the plan changes/);
+    expect(api.undoScheduleChange).toHaveBeenCalledTimes(1);
   });
 
   it('viewers can read the history but not undo', async () => {

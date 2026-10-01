@@ -902,7 +902,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     const description = `Grouped ${result.grouped} tasks under '${name}'`;
     pushAction({
       description,
-      undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId, true); refresh(); },
+      undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); refresh(); },
       redo: async () => { changeId = (await apiService.groupTasks(schedule.id, taskIds, name)).changeId; refresh(); },
     });
     announce(description);

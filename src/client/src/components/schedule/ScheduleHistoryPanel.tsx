@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, History, Undo2, Loader2, CheckCircle2, AlertTriangle, Bot } from 'lucide-react';
+import { X, History, Undo2, Loader2, CheckCircle2, Bot } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { useModal } from '../../hooks/useModal';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
@@ -14,7 +14,10 @@ export interface ScheduleChange {
   actorName: string | null;
   source: 'web' | 'mcp' | 'system';
   status: 'applied' | 'undone';
+  /** True only for the newest change, while nothing in the plan has changed since */
   undoable: boolean;
+  /** What it did, before → after ("Build Sprint 1: start 12 Oct → 19 Oct"); empty for older entries */
+  details?: string[];
   createdAt: string;
   undoneAt: string | null;
   undoneByName: string | null;
@@ -53,7 +56,6 @@ export function ScheduleHistoryPanel({ scheduleId, canEdit, currentUserId, onClo
   const queryClient = useQueryClient();
   const { dialogRef, handleKeyDown } = useModal(true, onClose);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<{ id: string; message: string } | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,11 +65,10 @@ export function ScheduleHistoryPanel({ scheduleId, canEdit, currentUserId, onClo
     staleTime: 0,
   });
 
-  const undo = async (c: ScheduleChange, force = false) => {
+  const undo = async (c: ScheduleChange) => {
     setBusyId(c.id); setError(null); setDone(null);
     try {
-      await apiService.undoScheduleChange(scheduleId, c.id, force);
-      setConfirm(null);
+      await apiService.undoScheduleChange(scheduleId, c.id);
       const msg = `Undone: ${c.summary}`;
       setDone(msg);
       announce(msg);
@@ -76,13 +77,9 @@ export function ScheduleHistoryPanel({ scheduleId, canEdit, currentUserId, onClo
       queryClient.invalidateQueries({ queryKey: ['schedule-review', scheduleId] });
       queryClient.invalidateQueries({ queryKey: ['criticalPath', scheduleId] });
     } catch (err: any) {
-      const body = err?.response?.data;
-      if (err?.response?.status === 409 && body?.error === 'edited_since') {
-        setConfirm({ id: c.id, message: body.message });
-      } else {
-        setError(getApiErrorMessage(err, 'The undo did not complete. Please try again.'));
-        queryClient.invalidateQueries({ queryKey: ['schedule-changes', scheduleId] });
-      }
+      // e.g. something else changed in the plan meanwhile — the server says why
+      setError(getApiErrorMessage(err, 'The undo did not complete. Please try again.'));
+      queryClient.invalidateQueries({ queryKey: ['schedule-changes', scheduleId] });
     } finally {
       setBusyId(null);
     }
@@ -106,7 +103,7 @@ export function ScheduleHistoryPanel({ scheduleId, canEdit, currentUserId, onClo
               <History className="w-4 h-4" aria-hidden="true" /> Schedule History
             </h2>
             <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
-              Changes to many tasks at once, last 30 days — by you, your team or Claude.
+              A record of changes to many tasks at once, last 30 days — by you, your team or Claude.
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close history" className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -129,13 +126,12 @@ export function ScheduleHistoryPanel({ scheduleId, canEdit, currentUserId, onClo
           ) : changes.length === 0 ? (
             <p className="text-sm text-gray-600 dark:text-gray-300">
               No group changes in the last 30 days. Linking several tasks, editing or changing the status of several at once,
-              Schedule Review fixes and AI Reschedule will appear here, each with an Undo.
+              Schedule Review fixes and AI Reschedule will appear here, with what each one changed.
             </p>
           ) : (
             <ul className="space-y-2">
               {changes.map(c => {
                 const who = whoDidIt(c, currentUserId);
-                const isConfirm = confirm?.id === c.id;
                 return (
                   <li key={c.id} className={`rounded-lg border px-3 py-2.5 ${c.status === 'undone' ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40' : 'border-gray-200 dark:border-gray-700'}`}>
                     <div className="flex items-start justify-between gap-3">
@@ -155,7 +151,7 @@ export function ScheduleHistoryPanel({ scheduleId, canEdit, currentUserId, onClo
                           </p>
                         )}
                       </div>
-                      {canEdit && c.undoable && !isConfirm && (
+                      {canEdit && c.undoable && (
                         <button
                           type="button"
                           onClick={() => undo(c)}
@@ -167,22 +163,10 @@ export function ScheduleHistoryPanel({ scheduleId, canEdit, currentUserId, onClo
                         </button>
                       )}
                     </div>
-                    {isConfirm && (
-                      <div role="alert" className="mt-2 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 p-2.5">
-                        <p className="flex items-start gap-1.5 text-sm text-amber-900 dark:text-amber-100">
-                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" /> {confirm!.message}
-                        </p>
-                        <div className="mt-2 flex gap-2">
-                          <button type="button" onClick={() => undo(c, true)} disabled={busyId !== null}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50">
-                            {busyId === c.id ? 'Undoing…' : 'Undo anyway'}
-                          </button>
-                          <button type="button" onClick={() => setConfirm(null)}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800">
-                            Keep it
-                          </button>
-                        </div>
-                      </div>
+                    {(c.details?.length ?? 0) > 0 && (
+                      <ul className={`mt-1.5 space-y-0.5 text-xs ${c.status === 'undone' ? 'text-gray-500 dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                        {c.details!.map((line, i) => <li key={i} className="break-words">{line}</li>)}
+                      </ul>
                     )}
                   </li>
                 );
@@ -190,6 +174,10 @@ export function ScheduleHistoryPanel({ scheduleId, canEdit, currentUserId, onClo
             </ul>
           )}
         </div>
+        <p className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300">
+          Only the most recent change can be undone, and only until something else in the plan changes. Older changes are a
+          record — to reverse one, make the change again by hand.
+        </p>
       </div>
     </>
   );

@@ -1170,8 +1170,9 @@ class ApiService {
   }
 
   /** Undo one group change. 409 { error: 'edited_since', editedCount } unless force. */
-  async undoScheduleChange(scheduleId: string, changeId: string, force = false) {
-    const response = await this.api.post(`/schedules/${scheduleId}/changes/${changeId}/undo`, { force });
+  /** Only the newest change, while nothing in the plan has changed since (Schedule History rule) */
+  async undoScheduleChange(scheduleId: string, changeId: string) {
+    const response = await this.api.post(`/schedules/${scheduleId}/changes/${changeId}/undo`, {});
     return response.data;
   }
 
