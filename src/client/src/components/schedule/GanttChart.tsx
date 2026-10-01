@@ -44,7 +44,7 @@ import { BulkLinkControls, type OnBulkLink } from './BulkLinkControls';
 import { BulkGroupControls, type OnGroupTasks } from './BulkGroupControls';
 import { GanttContextMenu } from './gantt/GanttContextMenu';
 import { GanttNotesPopup } from './gantt/GanttNotesPopup';
-import { GanttMinimap } from './gantt/GanttMinimap';
+import { GanttTimelineStrip } from './gantt/GanttTimelineStrip';
 import { GanttFilterPanel } from './gantt/GanttFilterPanel';
 import { GanttBulkActionBar } from './gantt/GanttBulkActionBar';
 import { GanttToolbar } from './gantt/GanttToolbar';
@@ -528,8 +528,18 @@ export function GanttChart({
   // -----------------------------------------------------------------------
   // Minimap
   // -----------------------------------------------------------------------
-  // Off by default (2026-10-01, product owner): on typical plans zoom / fit-to-screen show more; the Minimap button turns it on
-  const [showMinimap, setShowMinimap] = useState(false);
+  // Timeline strip (replaced the minimap 2026-10-01): off by default, the Timeline button
+  // turns it on, and the choice is remembered in this browser
+  const [showTimeline, setShowTimelineState] = useState<boolean>(() => {
+    try { return localStorage.getItem('gantt-show-timeline') === '1'; } catch { return false; }
+  });
+  const setShowTimeline: React.Dispatch<React.SetStateAction<boolean>> = useCallback((v) => {
+    setShowTimelineState(prev => {
+      const next = typeof v === 'function' ? (v as (p: boolean) => boolean)(prev) : v;
+      try { localStorage.setItem('gantt-show-timeline', next ? '1' : '0'); } catch { /* private window */ }
+      return next;
+    });
+  }, []);
   const [scrollPos, setScrollPos] = useState({ left: 0, top: 0 });
 
   /** Set of all task IDs that have children (parent tasks) */
@@ -1658,7 +1668,7 @@ export function GanttChart({
     });
   }, [focusTaskId, rows, minDate, dayPx, rowTop]);
 
-  // Track scroll position for minimap viewport + virtualisation + sync left/right panels
+  // Track scroll position for the Timeline strip's box + virtualisation + sync left/right panels
   const [containerHeight, setContainerHeight] = useState(600);
   useEffect(() => {
     const tl = timelineRef.current;
@@ -1785,28 +1795,18 @@ export function GanttChart({
     return result;
   }, [rows, rowIdxMap, dayPx, minDate, shouldVirtualize, visStart, visEnd, getDepHealth, rowTop]);
 
-  // Pre-compute minimap bar rectangles (expensive toDate/daysBetween for every row)
-  const minimapBars = useMemo(() => {
-    if (rows.length === 0) return [];
-    const contentH = contentHeight;
-    const MINIMAP_W = 200;
-    const MINIMAP_H = 80;
-    const scaleX = MINIMAP_W / timelineWidth;
-    const scaleY = MINIMAP_H / contentH;
-    return rows.map(({ task }, idx) => {
-      const s = toDate(task.startDate);
-      const en = toDate(task.endDate);
-      if (!s || !en) return null;
-      return {
-        key: task.id,
-        x: daysBetween(minDate, s) * dayPx * scaleX,
-        w: Math.max(daysBetween(s, en) * dayPx * scaleX, 1),
-        y: (rowTop(idx) + 4) * scaleY,
-        h: Math.max((ROW_H - 8) * scaleY, 1),
-        fill: barColors[task.status]?.fill || '#9ca3af',
-      };
-    }).filter(Boolean) as Array<{ key: string; x: number; w: number; y: number; h: number; fill: string }>;
-  }, [rows, minDate, dayPx, timelineWidth, contentHeight, rowTop]);
+  // Timeline strip: the dates the Gantt is showing, and jumping the Gantt to a date
+  const timelineView = useMemo(() => {
+    const tl = timelineRef.current;
+    if (!tl || !showTimeline) return null;
+    const start = new Date(minDate.getTime() + (scrollPos.left / dayPx) * DAY_MS);
+    return { start, end: new Date(start.getTime() + (tl.clientWidth / dayPx) * DAY_MS) };
+  }, [showTimeline, scrollPos.left, minDate, dayPx]);
+  const jumpToDate = useCallback((d: Date) => {
+    const tl = timelineRef.current;
+    if (!tl) return;
+    tl.scrollLeft = Math.max(0, ((d.getTime() - minDate.getTime()) / DAY_MS) * dayPx - tl.clientWidth / 2);
+  }, [minDate, dayPx]);
 
   const handleZoomToFit = useCallback(() => {
     const tl = timelineRef.current;
@@ -2360,8 +2360,8 @@ export function GanttChart({
         showOverallocation={showOverallocation}
         setShowOverallocation={setShowOverallocation}
         overallocatedCount={overallocatedTaskIds.size}
-        showMinimap={showMinimap}
-        setShowMinimap={setShowMinimap}
+        showTimeline={showTimeline}
+        setShowTimeline={setShowTimeline}
         handleLoadView={handleLoadView}
         panelMode={panelMode}
         setPanelMode={setPanelMode}
@@ -2418,6 +2418,15 @@ export function GanttChart({
           No tasks match the current {searchQuery ? 'search' : 'filters'}.
           <button className="ml-2 text-primary-600 hover:text-primary-700 underline" onClick={() => { setSearchQuery(''); clearFilters(); }}>Clear all</button>
         </div>
+      )}
+
+      {showTimeline && panelMode !== 'table' && (
+        <GanttTimelineStrip
+          tasks={tasks}
+          projectName={scheduleName}
+          view={timelineView}
+          onJump={jumpToDate}
+        />
       )}
 
       <div id="gantt-print-container" className="flex overflow-hidden" style={{ maxHeight: '70vh' }}>
@@ -2684,8 +2693,6 @@ export function GanttChart({
         {/* RIGHT: Gantt timeline                                          */}
         {/* ============================================================= */}
         {panelMode !== 'table' && (
-        // The minimap sits OUTSIDE the scrolling timeline, pinned to its bottom-right corner.
-        // Inside it, "sticky" never held and the minimap landed over the month labels.
         <div className="relative flex-1 min-w-0 flex">
         <div
           ref={timelineRef}
@@ -2979,16 +2986,6 @@ export function GanttChart({
           </div>
         </div>
 
-          {/* Minimap */}
-          {showMinimap && rows.length > 0 && (
-            <GanttMinimap
-              minimapBars={minimapBars}
-              timelineWidth={timelineWidth}
-              rowCount={rows.length}
-              scrollPos={scrollPos}
-              timelineRef={timelineRef}
-            />
-          )}
         </div>
         )}
       </div>

@@ -85,6 +85,7 @@ const sections: Section[] = [
     items: [
       'Create new projects with name, dates, and budget',
       'Switch between Gantt, Kanban, Table, and Calendar views',
+      'Timeline: the whole project on one line (phases, milestones, today) — click to jump, export as an image for reports',
       'Add, edit, and delete tasks with dependencies',
       'Assign resources and track progress percentages',
       'Drag-and-drop tasks in Kanban and Gantt views',

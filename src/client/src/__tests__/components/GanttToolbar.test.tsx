@@ -57,8 +57,8 @@ function renderToolbar(columnState?: ColumnState) {
       showOverallocation={false}
       setShowOverallocation={() => {}}
       overallocatedCount={0}
-      showMinimap={false}
-      setShowMinimap={() => {}}
+      showTimeline={false}
+      setShowTimeline={() => {}}
       handleLoadView={() => {}}
       panelMode="split"
       setPanelMode={() => {}}

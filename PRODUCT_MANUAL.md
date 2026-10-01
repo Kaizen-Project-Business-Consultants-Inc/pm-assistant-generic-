@@ -33,7 +33,7 @@ When a project has more than one schedule, a **pill/tab strip** renders at the t
 In **Gantt mode**, the GanttToolbar is the sole toolbar — the outer ScheduleToolbar is hidden to avoid duplication. The GanttToolbar is a compact single row:
 
 ```
-[Schedule Name] [Task Count] [Critical Path] [Expand/Collapse] | [Zoom D|W|M|Q|Y] [Fit] [Undo|Redo] | [Search] [Filters] [Columns] [Add] [Delete] [Export] [Overalloc] [Minimap] [Views] [⋯] [Table|Split|Gantt]
+[Schedule Name] [Task Count] [Critical Path] [Expand/Collapse] | [Zoom D|W|M|Q|Y] [Fit] [Undo|Redo] | [Search] [Filters] [Columns] [Add] [Delete] [Export] [Overalloc] [Timeline] [Views] [⋯] [Table|Split|Gantt]
 ```
 
 The **[Columns]** control in Gantt mode is the same shared column picker used by Table view (`ColumnPickerDropdown`), bound to the same per-schedule column state — hiding, reordering, or resetting columns in one view applies to the other.
@@ -2987,17 +2987,16 @@ Detection is entirely client-side (no server API required). Toggle the button of
 
 ---
 
-## 35. Gantt Minimap
+## 35. Gantt Timeline strip
 
-A **200×80px overview panel** in the bottom-right corner of the Gantt timeline provides a bird's-eye view of the entire schedule. Toggle it with the **"Minimap"** button (map icon) in the toolbar. The minimap is off by default (since Oct 2026); turn it on for very large plans.
+The **Timeline** button in the schedule toolbar shows the whole project on one line above the Gantt (`gantt/GanttTimelineStrip.tsx`, layout in `gantt/timelineStrip.ts`), in the style of Microsoft Project's Timeline. It replaced the Gantt minimap on 2026-10-01.
 
-- Each task bar is represented as a small coloured rectangle matching its status colour (blue for in progress, green for completed, grey for pending).
-- A **semi-transparent blue viewport rectangle** shows the currently visible portion of the timeline and tracks scroll position in real time.
-- **Click** anywhere on the minimap to jump the timeline to that position.
-- **Drag** the viewport rectangle to scroll the timeline proportionally.
-
-Toggle the button off to hide the minimap panel.
-
+- **Phases:** the top-level summary tasks as coloured bars; overlapping phases stack on up to 3 lanes. A plan with no summary tasks shows one bar for the whole project.
+- **Milestones:** tasks flagged as milestones (or type milestone) as diamonds with name and date; close milestones alternate label rows.
+- **Today** line and month labels; a shaded box marks the dates the Gantt is showing.
+- **Click** a phase or milestone (or press Enter on it) to centre the Gantt on it; **drag** across the strip to scroll.
+- **Export → Timeline as image** (PNG) — shown only while the strip is on.
+- Off by default; the choice is remembered per browser (`localStorage gantt-show-timeline`).
 ---
 
 ## 36. MS Project XML Export (MSPDI)

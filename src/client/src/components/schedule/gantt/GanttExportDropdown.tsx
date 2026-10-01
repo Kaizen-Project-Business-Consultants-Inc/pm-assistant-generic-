@@ -1,14 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, ChevronDown } from 'lucide-react';
 import { exportTasksCSV } from '../../../utils/exportUtils';
+import { TIMELINE_STRIP_ID } from './GanttTimelineStrip';
 
 interface GanttExportDropdownProps {
   ganttContainerId: string;
   scheduleName: string;
   tasks: any[];
+  /** the Timeline strip is on — offer it as an image */
+  timelineShown?: boolean;
 }
 
-export const GanttExportDropdown = React.memo(function GanttExportDropdown({ ganttContainerId, scheduleName, tasks }: GanttExportDropdownProps) {
+export const GanttExportDropdown = React.memo(function GanttExportDropdown({ ganttContainerId, scheduleName, tasks, timelineShown }: GanttExportDropdownProps) {
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -97,6 +100,26 @@ export const GanttExportDropdown = React.memo(function GanttExportDropdown({ gan
     }
   };
 
+  const handleTimelinePng = async () => {
+    setExporting('timeline');
+    setOpen(false);
+    try {
+      const el = document.getElementById(TIMELINE_STRIP_ID);
+      if (!el) return;
+      const { toPng } = await import('html-to-image');
+      const dark = document.documentElement.classList.contains('dark');
+      const dataUrl = await toPng(el, { pixelRatio: 2, backgroundColor: dark ? '#1f2937' : '#ffffff' });
+      const link = document.createElement('a');
+      link.download = `${scheduleName}-timeline.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Timeline image export failed:', err);
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const handleCsvExport = () => {
     setOpen(false);
     exportTasksCSV(tasks, scheduleName);
@@ -124,6 +147,11 @@ export const GanttExportDropdown = React.memo(function GanttExportDropdown({ gan
           <button onClick={handlePngExport} className={btnClass} disabled={!!exporting}>
             PNG Image
           </button>
+          {timelineShown && (
+            <button onClick={handleTimelinePng} className={btnClass} disabled={!!exporting}>
+              Timeline as image
+            </button>
+          )}
           <button onClick={handlePrint} className={btnClass}>
             Print
           </button>

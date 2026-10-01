@@ -129,10 +129,10 @@ An agentic AI project management platform that combines the scheduling power of 
 - Dedicated Resource Management page (`/resources`) with project selector, summary cards (including Estimated Cost), and four tabs: Team (full resource table with create/edit/delete CRUD), Workload Heatmap (color-coded weekly utilization grid with cost column), Resource Histogram (SVG bar charts with 8h capacity line), Capacity Forecast (8-week bottleneck predictions + AI recommendations)
 - **Benchmark:** MS Project, Wrike, Asana
 
-### 1.6a Gantt Overallocation Warnings & Minimap
+### 1.6a Gantt Overallocation Warnings & Timeline strip
 - **Overallocation warnings**: Toggle "Overalloc" button in Gantt toolbar; client-side detection of overlapping assignments per resource; amber 2px border + glow + "!" dot on flagged bars; count badge on toolbar button; legend entry
-- **Minimap**: 200×80px overview panel (bottom-right); colored rectangles per task matching status colors; semi-transparent blue viewport rectangle tracks scroll position; click/drag to scroll timeline proportionally; off by default since Oct 2026, toggle in the toolbar, toggleable via "Minimap" button
-- **Benchmark:** MS Project (overallocation indicators), Primavera P6 (minimap navigation)
+- **Timeline strip** (Oct 2026, replaced the minimap): whole project on one line above the Gantt — top-level phases, milestones with names and dates, today, and a box for the visible dates; click to jump, drag to scroll; Export → Timeline as image; off by default, remembered per browser
+- **Benchmark:** MS Project (overallocation indicators), Microsoft Project (Timeline view)
 
 ### 1.6b Comments & Activity Feed
 - Comment thread on each task
@@ -914,7 +914,7 @@ Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully 
 | Gantt Resource Avatars (initials circles on bars) | Done | Enhancement |
 | Gantt Drag-to-Create (click-drag timeline to create task) | Done | Innovation |
 | Gantt Resource Overallocation Warnings (amber highlights on overlapping assignments) | Done | Innovation |
-| Gantt Minimap (200×80px overview panel with draggable viewport) | Done | Enhancement |
+| Gantt Timeline strip (phases, milestones, today; click to jump; export as image) — replaced the minimap Oct 2026 | Done | Enhancement |
 | MS Project XML Export (MSPDI format with tasks, resources, assignments) | Done | Enhancement |
 | Resource Management Page (workload heatmap, histogram, capacity forecast) | Done | Enhancement |
 | EVM Dashboard Page (KPI cards, trend chart, forecasts, AI predictions) | Done | Enhancement |

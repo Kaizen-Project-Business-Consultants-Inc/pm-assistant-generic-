@@ -57,8 +57,8 @@ interface GanttToolbarProps {
   showOverallocation: boolean;
   setShowOverallocation: React.Dispatch<React.SetStateAction<boolean>>;
   overallocatedCount: number;
-  showMinimap: boolean;
-  setShowMinimap: React.Dispatch<React.SetStateAction<boolean>>;
+  showTimeline: boolean;
+  setShowTimeline: React.Dispatch<React.SetStateAction<boolean>>;
   handleLoadView: (view: SavedView) => void;
   panelMode: PanelMode;
   setPanelMode: (mode: PanelMode) => void;
@@ -113,8 +113,8 @@ export const GanttToolbar = React.memo(function GanttToolbar({
   showOverallocation,
   setShowOverallocation,
   overallocatedCount,
-  showMinimap,
-  setShowMinimap,
+  showTimeline,
+  setShowTimeline,
   handleLoadView,
   panelMode,
   setPanelMode,
@@ -427,6 +427,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
           ganttContainerId="gantt-print-container"
           scheduleName={scheduleName || 'schedule'}
           tasks={tasks}
+          timelineShown={showTimeline}
         />
         {/* Resource overallocation toggle */}
         <button
@@ -451,16 +452,17 @@ export const GanttToolbar = React.memo(function GanttToolbar({
             {overallocatedCount > 0 ? 'See Workload Heatmap' : 'No one over 100% · Workload Heatmap'}
           </a>
         )}
-        {/* Minimap toggle */}
+        {/* Timeline strip toggle (replaced the minimap 2026-10-01) */}
         <button
-          onClick={() => setShowMinimap(v => !v)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors print:hidden ${showMinimap ? 'text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-900/30' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-          title="Toggle minimap"
+          onClick={() => setShowTimeline(v => !v)}
+          aria-pressed={showTimeline}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors print:hidden ${showTimeline ? 'text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-900/30' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          title="Show the whole project on one line: phases, milestones and today"
         >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h18M7 8v8M12 6v12M17 9v6" />
           </svg>
-          Minimap
+          Timeline
         </button>
         {/* Saved views */}
         {scheduleId && (
