@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { databaseService } from '../../database/connection';
+import { readableProjectJoin } from '../../utils/readableProjects';
 
 const globalRoles = ['admin', 'executive', 'pmo'];
 
@@ -23,9 +24,9 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const global = isGlobalScope(user.role, scope);
 
     const isViewer = user.role === 'viewer';
-    const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
+    const { join: memberJoin, params: memberParams } = await readableProjectJoin(user, global);
     const viewerJoin = isViewer ? 'JOIN resources r ON t.assigned_to = r.id AND r.user_id = ?' : '';
-    const params = global ? [] : [user.userId];
+    const params: (string | number)[] = [...memberParams];
     if (isViewer) params.push(user.userId);
 
     const rows = await databaseService.query<any>(
@@ -57,8 +58,8 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const global = isGlobalScope(user.role, scope);
     const numWeeks = Math.min(Math.max(parseInt(weeksParam || '8', 10) || 8, 1), 52);
 
-    const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
-    const params = global ? [] : [user.userId];
+    const { join: memberJoin, params: memberParams } = await readableProjectJoin(user, global);
+    const params: (string | number)[] = [...memberParams];
 
     // Use YEARWEEK as stable key for matching
     const createdRows = await databaseService.query<any>(
@@ -69,7 +70,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
        ${memberJoin}
        WHERE t.created_at >= DATE_SUB(CURDATE(), INTERVAL ? WEEK)
        GROUP BY yw`,
-      [numWeeks, ...params]
+      [...params, numWeeks]
     );
 
     const resolvedRows = await databaseService.query<any>(
@@ -81,7 +82,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
        WHERE t.status IN ('completed','done')
          AND t.updated_at >= DATE_SUB(CURDATE(), INTERVAL ? WEEK)
        GROUP BY yw`,
-      [numWeeks, ...params]
+      [...params, numWeeks]
     );
 
     const createdMap = new Map(createdRows.map((r: any) => [Number(r.yw), Number(r.cnt)]));
@@ -126,9 +127,9 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const limit = Math.min(Math.max(parseInt(limitParam || '10', 10) || 10, 1), 50);
 
     const isViewer = user.role === 'viewer';
-    const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
+    const { join: memberJoin, params: memberParams } = await readableProjectJoin(user, global);
     const viewerJoin = isViewer ? 'JOIN resources r ON t.assigned_to = r.id AND r.user_id = ?' : '';
-    const params: (string | number)[] = global ? [] : [user.userId];
+    const params: (string | number)[] = [...memberParams];
     if (isViewer) params.push(user.userId);
     params.push(limit);
 
@@ -160,8 +161,8 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
     const { scope } = request.query as { scope?: string };
     const global = isGlobalScope(user.role, scope);
 
-    const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
-    const params = global ? [] : [user.userId];
+    const { join: memberJoin, params: memberParams } = await readableProjectJoin(user, global);
+    const params: (string | number)[] = [...memberParams];
 
     const [byStatus, byCategory, recentPending] = await Promise.all([
       databaseService.query<any>(

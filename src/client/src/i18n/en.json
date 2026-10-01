@@ -56,7 +56,8 @@
     "ai": "Mjuzi AI",
     "adminManagement": "Management",
     "adminMonitoring": "Monitoring",
-    "adminSystem": "System"
+    "adminSystem": "System",
+    "personal": "Personal"
   },
   "common": {
     "save": "Save",

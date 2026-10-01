@@ -9,6 +9,12 @@ const mockQueryControlPlane = vi.fn().mockResolvedValue([]);
 vi.mock('../../middleware/requestContext', () => ({
   getTenantContext: vi.fn().mockReturnValue({ dbName: 'pmassist_t_test', orgId: 'org-1' }),
 }));
+// The projects this person can read (created, member of, or the sample project): one, p-1
+// (the real readableProjectJoin runs; only the project list under it is stubbed)
+const readableMock = vi.fn().mockResolvedValue(new Set(['p-1']));
+vi.mock('../../services/ProjectService', () => ({
+  projectService: { findByUserId: async () => [...(await readableMock())].map((id: string) => ({ id })) },
+}));
 vi.mock('../../database/connection', () => ({
   databaseService: {
     query: vi.fn(),
@@ -543,9 +549,9 @@ describe('DailyBriefingService', () => {
 
       await dailyBriefingService.getDailyBriefing('user-1', 'project_manager');
 
-      // For non-global roles, member params should include userId
+      // For non-global roles: the readable project ids, then the user (for their membership role)
       const firstCallArgs = queryMock.mock.calls[0];
-      expect(firstCallArgs[1]).toEqual(['user-1']);
+      expect(firstCallArgs[1]).toEqual(['p-1', 'user-1']);
     });
 
     it('includes member join for team_member role', async () => {
@@ -553,9 +559,9 @@ describe('DailyBriefingService', () => {
 
       await dailyBriefingService.getDailyBriefing('user-1', 'team_member');
 
-      // For team_member (non-global + restricted): member params include userId
+      // For team_member (non-global + restricted): readable ids, then the user
       const firstCallArgs = queryMock.mock.calls[0];
-      expect(firstCallArgs[1]).toEqual(['user-1']);
+      expect(firstCallArgs[1]).toEqual(['p-1', 'user-1']);
     });
 
     it("ignores '?scope=portfolio' for a non-global role — it used to show every project to anyone", async () => {
@@ -609,9 +615,9 @@ describe('DailyBriefingService', () => {
 
       // For the dueToday query (3rd query call, index 2):
       // restricted roles add userId as assignedParams before memberParams
-      // dueToday params: [...assignedParams, ...memberParams] = ['user-1', 'user-1']
+      // dueToday params: [...assignedParams, ...memberParams] = ['user-1', 'p-1', 'user-1']
       const dueTodayCallArgs = queryMock.mock.calls[2];
-      expect(dueTodayCallArgs[1]).toEqual(['user-1', 'user-1']);
+      expect(dueTodayCallArgs[1]).toEqual(['user-1', 'p-1', 'user-1']);
     });
 
     it('restricted roles include action assigned filter params', async () => {
@@ -620,9 +626,9 @@ describe('DailyBriefingService', () => {
       await dailyBriefingService.getDailyBriefing('user-1', 'team_member');
 
       // overdueActions query (index 7 in query calls):
-      // params: [...memberParams, ...actionAssignedParams] = ['user-1', 'user-1']
+      // params: [...memberParams, ...actionAssignedParams] = ['p-1', 'user-1', 'user-1']
       const overdueActionsCallArgs = queryMock.mock.calls[7];
-      expect(overdueActionsCallArgs[1]).toEqual(['user-1', 'user-1']);
+      expect(overdueActionsCallArgs[1]).toEqual(['p-1', 'user-1', 'user-1']);
     });
 
     it('restricted roles include owner filter for open issues', async () => {
@@ -631,9 +637,30 @@ describe('DailyBriefingService', () => {
       await dailyBriefingService.getDailyBriefing('user-1', 'viewer');
 
       // openIssues query (index 9 in query calls, last one):
-      // params: [...memberParams, ...(isRestricted ? [userId] : [])] = ['user-1', 'user-1']
+      // params: [...memberParams, ...(isRestricted ? [userId] : [])] = ['p-1', 'user-1', 'user-1']
       const openIssuesCallArgs = queryMock.mock.calls[9];
-      expect(openIssuesCallArgs[1]).toEqual(['user-1', 'user-1']);
+      expect(openIssuesCallArgs[1]).toEqual(['p-1', 'user-1', 'user-1']);
+    });
+  });
+
+  describe('which projects are in the briefing (2026-10-01)', () => {
+    it('the projects you can read — not only memberships — so the sample project is included', async () => {
+      setupDefaultResults();
+      readableMock.mockResolvedValueOnce(new Set(['p-1', 'sample-1']));
+      await dailyBriefingService.getDailyBriefing('user-1', 'project_manager');
+      const [sql, params] = queryMock.mock.calls[0];
+      expect(sql).toContain('rp0.id IN (?,?)');
+      expect(sql).toContain('LEFT JOIN project_members pm');
+      expect(params).toEqual(['p-1', 'sample-1', 'user-1']);
+    });
+
+    it('no readable projects: nothing, not everything', async () => {
+      setupDefaultResults();
+      readableMock.mockResolvedValueOnce(new Set());
+      await dailyBriefingService.getDailyBriefing('user-1', 'project_manager');
+      const [sql, params] = queryMock.mock.calls[0];
+      expect(sql).toContain('ON 1 = 0');
+      expect(params).toEqual(['user-1']);
     });
   });
 

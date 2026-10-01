@@ -169,6 +169,9 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
   const totalTasks = tasks.length;
   const selectedCount = selectedRefIds.size;
   const allSelected = selectedCount === totalTasks;
+  // What the person sees counts work items only, like "4 phases, 11 tasks" above it
+  const workTasks = tasks.filter(t => !t.isSummary);
+  const selectedWork = workTasks.filter(t => selectedRefIds.has(t.refId)).length;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -298,7 +301,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
               className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                Tasks: {selectedCount}/{totalTasks} selected
+                Tasks: {selectedWork}/{workTasks.length} selected
               </span>
               <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${taskSectionExpanded ? 'rotate-180' : ''}`} />
             </button>

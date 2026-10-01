@@ -60,7 +60,9 @@ export async function templateRoutes(fastify: FastifyInstance) {
         category: t.category,
         isBuiltIn: t.isBuiltIn,
         estimatedDurationDays: t.estimatedDurationDays,
-        taskCount: t.tasks.length,
+        // Phases are the summary rows; "tasks" are the work items (2026-10-01: the list said 15
+        // tasks while the next screen said 11 — it counted the 4 phases as tasks too)
+        taskCount: t.tasks.filter(task => !task.isSummary).length,
         phaseCount: t.tasks.filter(task => task.isSummary).length,
         tags: t.tags,
         usageCount: t.usageCount,
@@ -240,7 +242,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
         description: template.description,
         category: template.category,
         tags: template.tags || null,
-        taskCount: template.tasks.length,
+        taskCount: template.tasks.filter((task: any) => !task.isSummary).length,
         estimatedDays: template.estimatedDurationDays,
         templateData: template,
         publishedByOrgId: orgId,

@@ -47,6 +47,7 @@ import { useAuthStore, withoutCompany } from '../../stores/authStore';
 import { useTranslation } from '../../hooks/useTranslation';
 import { apiService } from '../../services/api';
 import { FeedbackModal } from '../feedback/FeedbackModal';
+import { roleLabel } from '../../constants/branding';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -585,7 +586,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
               {user?.fullName || 'Unknown User'}
             </p>
             <p className="text-xs text-sidebar-text/60 truncate capitalize">
-              {user?.role || 'No role'}
+              {user?.role ? roleLabel(user.role) : 'No role'}
             </p>
           </div>
         </div>

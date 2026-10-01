@@ -2,6 +2,7 @@ import { databaseService } from '../database/connection';
 import { getTenantContext } from '../middleware/requestContext';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { toDateString } from '../utils/calendarDate';
+import { readableProjectJoin } from '../utils/readableProjects';
 
 const globalRoles = ['admin', 'executive', 'pmo'];
 const managerRoles = ['admin', 'pmo', 'executive', 'project_manager', 'scrum_master'];
@@ -120,8 +121,9 @@ class DailyBriefingService {
     // to brief — say so instead of a server error.
     if (!getTenantContext()) return emptyBriefing(userRole);
     const global = isGlobalScope(userRole, scope);
-    const memberJoin = global ? '' : 'JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?';
-    const memberParams = global ? [] : [userId];
+    // The projects this person can read (created, member of, or the sample project) — the same rule
+    // as the dashboard's project list; pm = their membership, if any
+    const { join: memberJoin, params: memberParams } = await readableProjectJoin({ userId, role: userRole }, global);
     const showResource = managerRoles.includes(userRole);
     const isRestricted = restrictedRoles.includes(userRole);
 
