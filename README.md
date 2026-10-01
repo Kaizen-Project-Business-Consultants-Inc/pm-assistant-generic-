@@ -120,6 +120,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 
 ### Resource Management
 - Resource pool with roles, capacity, and cost rates
+- **Rate card** (Settings → Rate card): hourly and overtime rates by role, each with a start date; a resource uses the card or its own rate, and cost is worked out at the rate for the week the work happened
 - Workload heatmap visualization
 - Resource leveling algorithm
 - Resource optimization suggestions
@@ -231,6 +232,14 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - **Projects** (`/projects`) -- Filterable project card grid with health-based card borders, search/filter bar, AI portfolio insights panel, and inline New Project via template picker. Clicking a card navigates to `/project/:id` with full Gantt/Kanban/Calendar/EVM detail.
 - Shared PM components in `src/client/src/components/pm/`, types in `src/types/pm.ts`
 - Opt-in widgets available: Sprint Snapshot, Goals Progress, Team Workload (disabled by default)
+
+### Platform Admin & Support View
+- The platform admin account runs the business from the admin pages (companies, users, plans, revenue, AI usage, operations) and owns no project data
+- **Support view**: a read-only, recorded, 30-minute visit into one company for troubleshooting (reason + password; the server refuses every change); the company owner sees each visit in Settings → Support visits
+- Accounts without a company are refused company features (`no_company`); company data never lives in the shared database
+
+### Goals / OKRs
+- Objectives and key results; a key result's progress is current ÷ target and its objective averages them; each goal shows its owner
 
 ### Notifications
 - In-app notification center
@@ -596,6 +605,9 @@ All API endpoints are versioned under `/api/v1/`. Endpoint groups (50+ route mod
 | Attachments | `/api/v1/attachments` | File upload and management |
 | Notifications | `/api/v1/notifications` | In-app notification center |
 | Portal | `/api/v1/portal` | Stakeholder portal |
+| Rate card | `/api/v1/rate-card` | Hourly rates by role with start dates (admin / PMO / PM / company owner) |
+| Support visits | `/api/v1/admin/support-sessions`, `/api/v1/org/support-visits` | Start/end the admin's read-only visit; the company's list of visits |
+| Goals | `/api/v1/goals` | Objectives and key results (list includes `ownerName`) |
 | Intake | `/api/v1/intake` | Intake form builder and submissions |
 | Templates | `/api/v1/templates` | Project templates (paginated: `?limit=&offset=`) |
 | Integrations | `/api/v1/integrations` | Third-party integrations |

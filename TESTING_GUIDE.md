@@ -1323,3 +1323,32 @@ Use a throwaway project (archive it afterwards) — applying a calendar change m
 8. **Automatic moves:** link two tasks so the second must move past a weekend → it starts Monday, keeps its working-day length. Change a task's finish so the next one is pushed → it never lands on a weekend.
 9. **Clean-up script:** `moveTasksOffDaysOff.js --dry-run` twice after a real run → "would move 0 task(s)".
 10. Automated: `workingDays.test.ts` (client + server), `CalendarService.test.ts`, `ScheduleRecomputeService.test.ts`, guard `workingDaysGuard.test.ts`.
+
+## 31. Rate Card, Support View, Goals, Read-only Buttons (Sep 2026)
+
+**Test bed (private copy of the app on staging, for the permission checker):**
+`bash scripts/testbed/testbed.sh sync && … reset && … up`, open the tunnel
+(`ssh -L 8081:127.0.0.1:8081 ubuntu@147.5.127.99 -N`), `node scripts/testbed/seed.cjs`, then
+`node scripts/qa/permission-matrix.cjs http://localhost:8081`, then `testbed.sh down`.
+It switches itself off after an hour. Never point the checker or seed at prod.
+
+**Rate card** (staging, qa.pm@pm.kpbc.ca / Test1234!):
+1. Settings → Rate card → add QA Tester $60 from 1 Jan and $70 from 1 Oct → Current / Upcoming badges.
+2. Add the same role and date again → "already has a rate starting …".
+3. As qa.team → no Rate card tab; `GET /api/v1/rate-card` → 403. As qa.outsider → an empty card.
+4. Resource form → Use rate card shows the role's rate and the upcoming change; overtime rate saves.
+
+**Support view** (staging admin michaela@softtrust.com):
+1. Admin → Tenants → View as support on QA Staging Co → short reason refused, wrong password refused.
+2. Amber banner with the company, "read-only · recorded", countdown, Exit.
+3. Pages show the company's projects; no change buttons anywhere; any change via the API → 403 `support_read_only`.
+4. Exit → back to Admin → Tenants. As qa.pm: Settings → Support visits lists the visit and reason; qa.team has no such tab.
+
+**Goals** (mock project "QA – Goals mock (owner names)" on staging):
+1. New Goal → objective with only a name and due date saves (empty boxes are left out).
+2. Key result 3 / 10 → 30%; the objective shows the average of its key results; edit to 7 → 70% and the average moves.
+3. Each goal shows "Owner: You" or the owner's name.
+
+**Read-only buttons:** as qa.team (or during a support visit) there is no New Project, Start, Add Resource, New Change Request, New Workflow, Create Link, Add Block or Get Started card; as qa.pm they are all there.
+
+**Automated guards added this round:** `planFeatures.test`, `retiredSharedTables.test`, `collationGuard.test`, `momentVsDayGuard.test`, `adminFieldNames.test`, `snakeCaseReadsGuard.test`, `canChangeDataRoles.test`, `runCronJobRecord.test`, `goalKeyResultProgress.test`, `contextConfigIdentity.test`, `serverKeys.test`.
