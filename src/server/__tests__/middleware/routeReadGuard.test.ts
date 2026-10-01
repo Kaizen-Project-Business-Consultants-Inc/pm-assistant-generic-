@@ -17,6 +17,7 @@ const READ_GATES = [
   'findByUserId', 'requireWorkflowPM', 'requireCRPM', 'checklistTaskMember', 'bulkTasksMember', 'workflowReader',
   'executionReader', 'executionListReader', 'requestMember', 'adminOrPmo', 'contextScopeReadGate', 'queryProjectMember',
   'historyAdmin', 'canSeeSchedule', 'integrationOwner', 'apiKeyService.listKeys', 'teamsListPM',
+  'scheduleQueryPM',
 ];
 
 /** GETs that are fine without a gate token, grouped by why */

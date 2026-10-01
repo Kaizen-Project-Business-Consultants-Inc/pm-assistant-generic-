@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { apiService } from '../../services/api';
-import { Avatar, getInitials } from '../ui/Avatar';
+import { getInitials } from '../ui/Avatar';
+import { ResourcePickList } from '../resources/ResourcePickList';
 
 interface TaskAssignment {
   id: string;
@@ -16,6 +17,7 @@ interface Resource {
   id: string;
   name: string;
   role: string;
+  isGeneric?: boolean;
 }
 
 interface ResourceQuickAssignProps {
@@ -130,25 +132,12 @@ export function ResourceQuickAssign({ taskId, assignments, onUpdate }: ResourceQ
             />
           </div>
           <div className="max-h-40 overflow-y-auto">
-            {available.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-gray-500 text-center">
-                {resources.length === 0 ? 'No resources' : 'No matches'}
-              </div>
-            ) : (
-              available.slice(0, 20).map(r => (
-                <button
-                  key={r.id}
-                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-primary-50 dark:hover:bg-primary-900/30 flex items-center gap-2 transition-colors"
-                  onClick={(e) => { e.stopPropagation(); handleAdd(r.id); }}
-                >
-                  <Avatar name={r.name} size="xs" />
-                  <div className="min-w-0">
-                    <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
-                    <div className="text-gray-500 dark:text-gray-400 truncate">{r.role}</div>
-                  </div>
-                </button>
-              ))
-            )}
+            <ResourcePickList
+              resources={available}
+              limit={20}
+              onPick={(r) => handleAdd(r.id)}
+              emptyText={resources.length === 0 ? 'No resources' : 'No matches'}
+            />
           </div>
         </div>
       )}

@@ -435,6 +435,13 @@ Uses the existing `getEVMForecast()` API.
 
 ### Resource Pool
 
+**People and generic roles (Oct 2026, tenant migration T069).** A resource is a person (`is_generic = 0`) or a generic role (`is_generic = 1`, e.g. "Generic Developer"). `ResourceService.createResource/updateResource` enforce the rule for every caller (REST, CSV import, plan import, MCP): a person must have an email (`400` with "Add an email. If this is a stand-in…, use a generic role instead."); a generic role never has an email or a linked login, and a resource can't change between the two after it's created. A guard test (`placeholderEmail.test.ts`) keeps resources being written anywhere else. T069 seeds six default generic roles per company and gives people with a blank email a placeholder `firstname.lastname@example.com` (duplicates get part of the id). `example.com` is reserved; `EmailService` drops any `@example.com` recipient, whichever feature sends (`utils/placeholderEmail.ts`, mirrored on the client). Plan imports create unknown names with a placeholder email.
+
+- **Invite is separate from saving.** `POST /api/v1/resources` no longer emails anyone. `POST /api/v1/resources/:id/invite` sends the invite (refused, with the reason, for a generic role, a placeholder email, your own email, a duplicate email, someone at another company, or the hourly limit).
+- **Generic roles are unfilled demand, not people.** They are left out of people's workload (`computeWorkload`, `computeGlobalWorkload`), over-allocation checks (`checkLoad`, assignment warnings), levelling and reassignment suggestions, skill matching and capacity-by-role. `GET /resources/workload/:projectId` returns `demand`: per generic role, per week, `hours` and `people` (full-time people needed, `ceil(hours ÷ capacity)`).
+- **Team tab.** `GET /resources/on-project/:projectId` lists people (not generic roles) with work on the project and their task count, so the Team tab can show those without a login.
+- **Replace.** `GET /resources/:id/tasks?scheduleId=` lists a resource's tasks in a plan; `POST /resources/replace/check` returns the weeks the new person would be over 100% (the tasks' hours scaled to their week, overlaps counted together); `POST /resources/replace` moves the task people (+%), "Assigned to" and hours bookings on the chosen tasks in one transaction (`ResourceReplaceService`). Recorded in Schedule History as kind `reassign`; Undo puts everything back. Project Manager/Owner only.
+
 The `ResourceService` maintains a central resource registry. Each resource has:
 
 - Name, email, role
@@ -2795,6 +2802,8 @@ The column mapping component (`ColumnMapper`) is shared between the "From File" 
 **Notes column** — both Table view and Gantt chart support a **Notes** column (hidden by default, toggle via column picker). The column maps to the task's `description` field. Clicking any Notes cell opens a floating popup editor with a full textarea, Save and Cancel buttons, and auto-save on click-away. Press Escape to dismiss without saving.
 
 ### Schedule Review (automatic after import, on demand from the toolbar)
+
+*Rules v1.7 (Oct 2026) adds R37 "Work starting soon with no one named" (medium): an open leaf task starting within 14 days (or already started) whose Assigned To or a % person is a generic role. R11 now ignores generic roles and treats a placeholder email (`@example.com`) as no email.*
 
 *Rules v1.5 (Sep 2026) adds R35 "Heading over a single task" and R36 "Heading with too many tasks directly under it" (> 15), both low.*
 

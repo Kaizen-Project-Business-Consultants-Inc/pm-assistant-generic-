@@ -196,6 +196,46 @@ describe('R10 / R11 — ownership', () => {
     expect(rule(findings, 'R11')[0].taskIds).toEqual([t1.id]);
     expect(rule(findings, 'R11')[0].message).toContain('DBJ is not linked to a person');
   });
+
+  it('R11 treats a placeholder email as no email, and leaves generic roles to R37', () => {
+    seq = 0;
+    const parth = { id: 'p1', name: 'Parth Mandalia', email: 'parth.mandalia@example.com', userId: null };
+    const dev = { id: 'g1', name: 'Generic Developer', email: '', userId: null, isGeneric: true };
+    const t1 = task({ name: 'Inception report drafted', assignedTo: 'p1', startDate: '2027-03-01', endDate: '2027-03-02' });
+    const t2 = task({ name: 'Build API', assignedTo: 'g1', startDate: '2027-03-01', endDate: '2027-03-02' });
+    const { findings } = evaluateRules(input([t1, t2], { resources: [...people, parth, dev] }));
+    expect(rule(findings, 'R11')[0].taskIds).toEqual([t1.id]);
+    expect(rule(findings, 'R10')).toHaveLength(0); // a generic role is an owner — just not a named one
+  });
+});
+
+describe('R37 — work starting soon still on a generic role', () => {
+  const dev = { id: 'g1', name: 'Generic Developer', email: '', userId: null, isGeneric: true };
+  const ba = { id: 'g2', name: 'Generic Business Analyst', email: '', userId: null, isGeneric: true };
+
+  it('flags open tasks starting within 14 days (or already started) on a generic role, by name or by %', () => {
+    seq = 0;
+    // TODAY is 16 Sep 2026: the cut-off is 30 Sep
+    const soon = task({ name: 'Build loan intake API', assignedTo: 'g1', startDate: '2026-09-28', endDate: '2026-10-09' });
+    const started = task({ name: 'Requirements workshop', assignments: [{ resourceId: 'g2', allocationPct: 50 }], startDate: '2026-09-10', endDate: '2026-09-25' });
+    const later = task({ name: 'Admin reports', assignedTo: 'g1', startDate: '2026-10-05', endDate: '2026-10-16' });
+    const done = task({ name: 'Old work', assignedTo: 'g1', status: 'completed', startDate: '2026-09-01', endDate: '2026-09-05' });
+    const named = task({ name: 'Named work', assignedTo: 'r1', startDate: '2026-09-20', endDate: '2026-09-25' });
+    const { findings } = evaluateRules(input([soon, started, later, done, named], { resources: [...people, dev, ba] }));
+    const f = rule(findings, 'R37');
+    expect(f).toHaveLength(1);
+    expect(f[0].taskIds.sort()).toEqual([soon.id, started.id].sort());
+    expect(f[0].message).toContain('start within 2 weeks');
+    expect(f[0].message).toContain('Replace');
+    expect(RULES.R37.severity).toBe('medium');
+  });
+
+  it('stays quiet when there are no generic roles or nothing is on them soon', () => {
+    seq = 0;
+    const t = task({ name: 'Build', assignedTo: 'r1', startDate: '2026-09-20', endDate: '2026-09-25' });
+    expect(rule(evaluateRules(input([t], { resources: people })).findings, 'R37')).toHaveLength(0);
+    expect(rule(evaluateRules(input([t], { resources: [...people, dev] })).findings, 'R37')).toHaveLength(0);
+  });
 });
 
 describe('R12 / R13 / R28 — durations', () => {
@@ -465,7 +505,7 @@ describe('1.2 project-type profiles and summary checks', () => {
   }
 
   it('bumps the rules version', () => {
-    expect(reviewSchedule(input([])).rulesVersion).toBe('1.6') // 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
+    expect(reviewSchedule(input([])).rulesVersion).toBe('1.7') // 1.7: R37 generic role on work starting soon; 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
   });
 
   it('a complete IT/SDLC plan raises no phase or milestone findings', () => {

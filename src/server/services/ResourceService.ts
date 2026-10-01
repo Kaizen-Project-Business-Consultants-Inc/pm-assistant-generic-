@@ -32,7 +32,15 @@ export interface Resource {
   resourceGroup: string | null;
   userId: string | null;
   calendarTemplateId: string | null;
+  /** A stand-in role ("Generic Developer"): no email, no login, never on a Team list, not
+   *  counted as over-booked — the PM swaps in a real person later. Set when created only. */
+  isGeneric?: boolean;
 }
+
+/** A resource the rules refuse (a person without an email) — the caller's mistake, a 400 */
+export class ResourceValidationError extends Error {}
+
+export const EMAIL_REQUIRED_MESSAGE = 'Add an email. If this is a stand-in for someone not yet known, use a generic role instead.';
 
 export interface ResourceAssignment {
   id: string;
@@ -65,6 +73,19 @@ export interface ResourceWorkload {
   weeks: WeeklyUtilization[];
   averageUtilization: number;
   isOverAllocated: boolean;
+}
+
+export interface UnfilledDemand {
+  resourceId: string;
+  resourceName: string;
+  role: string;
+  weeks: Array<{ weekStart: string; hours: number; people: number }>;
+}
+
+/** How many full-time people a week's hours need (40 h of a 40 h week = 1, 41 h = 2) */
+export function peopleNeeded(hours: number, capacityPerPerson: number): number {
+  if (hours <= 0) return 0;
+  return Math.ceil(hours / (capacityPerPerson > 0 ? capacityPerPerson : 40) - 1e-9);
 }
 
 export class ResourceService {
@@ -108,11 +129,18 @@ export class ResourceService {
     return resourceRepository.findAllPaginated(limit, offset, group);
   }
 
+  async findResourcesByIds(ids: string[]): Promise<Resource[]> {
+    return resourceRepository.findByIds(ids);
+  }
+
   async findResourceById(id: string): Promise<Resource | null> {
     return resourceRepository.findById(id);
   }
 
   async createResource(data: Omit<Resource, 'id'>): Promise<Resource> {
+    // Every person has an email; a generic role never does (and never links to a login)
+    if (data.isGeneric) data = { ...data, email: '', userId: null };
+    else if (!data.email?.trim()) throw new ResourceValidationError(EMAIL_REQUIRED_MESSAGE);
     const resource = await resourceRepository.create(data);
     this.autoLinkUser(resource.id, resource.email).catch(() => {});
     return resource;
@@ -121,6 +149,12 @@ export class ResourceService {
   async updateResource(id: string, data: Partial<Omit<Resource, 'id'>>): Promise<Resource | null> {
     const existing = await resourceRepository.findById(id);
     if (!existing) return null;
+
+    // Whether a resource is a person or a generic role is fixed when it's created
+    const { isGeneric: _ignored, ...rest } = data;
+    data = rest;
+    if (existing.isGeneric) { delete data.email; delete data.userId; }
+    else if ('email' in data && !data.email?.trim()) throw new ResourceValidationError(EMAIL_REQUIRED_MESSAGE);
 
     const changed = await resourceRepository.updateResource(id, data);
     if (!changed) return existing;
@@ -195,8 +229,39 @@ export class ResourceService {
   } | null> {
     const resource = await resourceRepository.findById(input.resourceId);
     if (!resource) return null;
-    const start = input.startDate.slice(0, 10);
-    const end = input.endDate.slice(0, 10) < start ? start : input.endDate.slice(0, 10);
+    // A generic role stands for however many people the work needs — it's never over-booked
+    if (resource.isGeneric) return { resourceId: resource.id, resourceName: resource.name, overWeeks: [] };
+    const mine = (resource.capacityHoursPerWeek || 40) * Math.max(0, Math.min(100, input.allocationPct)) / 100;
+    const overWeeks = await this.overWeeks(resource, [{ taskId: input.excludeTaskId ?? '', startDate: input.startDate, endDate: input.endDate, hoursPerWeek: mine }]);
+    return { resourceId: resource.id, resourceName: resource.name, overWeeks };
+  }
+
+  /**
+   * The Replace dialog's warning: would taking over these tasks from `fromId` push `toId` over
+   * 100%? The tasks' hours move across scaled to the new person's week (50% of a 40 h week is
+   * 50% of a 30 h week), and the tasks overlapping each other count together.
+   */
+  async checkReplaceLoad(input: { fromId: string; toId: string; scheduleId: string; taskIds: string[] }): Promise<{
+    resourceId: string; resourceName: string;
+    overWeeks: Array<{ weekStart: string; utilization: number; hours: number; capacity: number; otherTaskIds: string[] }>;
+  } | null> {
+    const [from, to] = await Promise.all([resourceRepository.findById(input.fromId), resourceRepository.findById(input.toId)]);
+    if (!from || !to) return null;
+    if (to.isGeneric) return { resourceId: to.id, resourceName: to.name, overWeeks: [] };
+    const wanted = new Set(input.taskIds);
+    const scale = (to.capacityHoursPerWeek || 40) / (from.capacityHoursPerWeek || 40);
+    const moving = (await resourceRepository.findEffectiveAssignments({ resourceId: from.id, scheduleIds: [input.scheduleId] }))
+      .filter(a => wanted.has(a.taskId))
+      .map(a => ({ taskId: a.taskId, startDate: a.startDate, endDate: a.endDate, hoursPerWeek: a.hoursPerWeek * scale }));
+    return { resourceId: to.id, resourceName: to.name, overWeeks: await this.overWeeks(to, moving) };
+  }
+
+  /** Weeks over 100% for this person: their live bookings (minus the tasks in `extra`) plus `extra` */
+  private async overWeeks(resource: Resource, extra: Array<{ taskId: string; startDate: string; endDate: string; hoursPerWeek: number }>) {
+    const overWeeks: Array<{ weekStart: string; utilization: number; hours: number; capacity: number; otherTaskIds: string[] }> = [];
+    if (extra.length === 0) return overWeeks;
+    const start = extra.map(e => e.startDate.slice(0, 10)).sort()[0];
+    const end = extra.map(e => (e.endDate.slice(0, 10) < e.startDate.slice(0, 10) ? e.startDate : e.endDate).slice(0, 10)).sort().reverse()[0];
     const DAY = 86_400_000;
     const at = (d: string) => Date.parse(`${d}T00:00:00Z`);
     const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
@@ -205,24 +270,26 @@ export class ResourceService {
     for (let t = first; t <= at(end) && weekStarts.length < 104; t += 7 * DAY) weekStarts.push(iso(t));
     const lastDay = iso(at(weekStarts[weekStarts.length - 1]) + 6 * DAY);
 
+    // An edit isn't counted twice: the person's own booking on these tasks is replaced by `extra`
+    const own = new Set(extra.map(e => e.taskId).filter(Boolean));
     const others = (await resourceRepository.findEffectiveAssignments({ resourceId: resource.id, from: weekStarts[0], to: lastDay }))
-      .filter(a => a.taskId !== input.excludeTaskId);
+      .filter(a => !own.has(a.taskId));
     const capacityMap = await resourceAvailabilityService.getEffectiveCapacityBatch(
       [{ id: resource.id, capacityHoursPerWeek: resource.capacityHoursPerWeek, calendarTemplateId: resource.calendarTemplateId }],
       weekStarts.map(w => new Date(at(w))),
     );
-    const mine = (resource.capacityHoursPerWeek || 40) * Math.max(0, Math.min(100, input.allocationPct)) / 100;
-
-    const overWeeks: Array<{ weekStart: string; utilization: number; hours: number; capacity: number; otherTaskIds: string[] }> = [];
+    const inWeek = (w: string, wEnd: string) => (a: { startDate: string; endDate: string }) => a.startDate.slice(0, 10) <= wEnd && a.endDate.slice(0, 10) >= w;
     for (const w of weekStarts) {
       const wEnd = iso(at(w) + 6 * DAY);
-      const hits = others.filter(a => a.startDate.slice(0, 10) <= wEnd && a.endDate.slice(0, 10) >= w);
-      const hours = Math.round((hits.reduce((s, a) => s + a.hoursPerWeek, 0) + mine) * 10) / 10;
+      const hits = others.filter(inWeek(w, wEnd));
+      const added = extra.filter(inWeek(w, wEnd));
+      const hours = Math.round((hits.reduce((s, a) => s + a.hoursPerWeek, 0) + added.reduce((s, a) => s + a.hoursPerWeek, 0)) * 10) / 10;
       const capacity = capacityMap.get(resource.id)?.get(w) ?? resource.capacityHoursPerWeek;
       const utilization = capacity > 0 ? Math.round((hours / capacity) * 100) : (hours > 0 ? 999 : 0);
-      if (utilization > 100) overWeeks.push({ weekStart: w, utilization, hours, capacity, otherTaskIds: [...new Set(hits.map(a => a.taskId))] });
+      if (utilization > 100) overWeeks.push({ weekStart: w, utilization, hours, capacity, // what else is in that week: their other work, plus the other added tasks it overlaps
+        otherTaskIds: [...new Set([...hits, ...(added.length > 1 ? added : [])].map(a => a.taskId).filter(Boolean))] });
     }
-    return { resourceId: resource.id, resourceName: resource.name, overWeeks };
+    return overWeeks;
   }
 
   async checkAssignmentConflicts(data: {
@@ -235,6 +302,7 @@ export class ResourceService {
     const warnings: string[] = [];
     const resource = await resourceRepository.findById(data.resourceId);
     if (!resource) return { warnings };
+    if (resource.isGeneric) return { warnings };
 
     const overlapping = (await resourceRepository.findEffectiveAssignments({
       resourceId: data.resourceId, from: data.startDate, to: data.endDate,
@@ -278,7 +346,8 @@ export class ResourceService {
 
   // --- Workload computation ---
 
-  async computeWorkload(projectId: string): Promise<ResourceWorkload[]> {
+  /** People's weekly load on this project; `generic` = the generic roles' load instead (unfilled demand) */
+  async computeWorkload(projectId: string, generic = false): Promise<ResourceWorkload[]> {
     const schedules = await scheduleService.findByProjectId(projectId);
     const scheduleIds = schedules.map((s) => s.id);
 
@@ -334,6 +403,8 @@ export class ResourceService {
     for (const resId of involvedResourceIds) {
       const resource = resourceMap.get(resId);
       if (!resource) continue;
+      // Generic roles are unfilled demand, not people: they're never over- or under-booked
+      if (!!resource.isGeneric !== generic) continue;
 
       const resAssignments = projectAssignments.filter((a) => a.resourceId === resId);
       const baseCapacity = resource.capacityHoursPerWeek;
@@ -418,7 +489,21 @@ export class ResourceService {
 
   // --- Cross-project workload (#2) ---
 
-  async computeGlobalWorkload(): Promise<ResourceWorkload[]> {
+  /**
+   * Unfilled demand: work booked to generic roles, per week, as the number of people it needs
+   * ("in the week of 17 Aug you need 3 developers you haven't named yet").
+   */
+  async computeUnfilledDemand(projectId: string): Promise<UnfilledDemand[]> {
+    const rows = await this.computeWorkload(projectId, true);
+    return rows.map((w) => ({
+      resourceId: w.resourceId,
+      resourceName: w.resourceName,
+      role: w.role,
+      weeks: w.weeks.map((wk) => ({ weekStart: wk.weekStart, hours: wk.allocated, people: peopleNeeded(wk.allocated, wk.capacity) })),
+    }));
+  }
+
+  async computeGlobalWorkload(generic = false): Promise<ResourceWorkload[]> {
     const allAssignments = await resourceRepository.findEffectiveAssignments();
     if (allAssignments.length === 0) return [];
 
@@ -468,6 +553,8 @@ export class ResourceService {
     for (const resId of involvedResourceIds) {
       const resource = resourceMap.get(resId);
       if (!resource) continue;
+      // Generic roles are unfilled demand, not people: they're never over- or under-booked
+      if (!!resource.isGeneric !== generic) continue;
 
       const resAssignments = allAssignments.filter((a) => a.resourceId === resId);
       const baseCapacity = resource.capacityHoursPerWeek;

@@ -23,6 +23,8 @@ const restoreTaskDates = vi.fn().mockResolvedValue(3);
 vi.mock('../../services/ScheduleRecomputeService', () => ({ restoreTaskDates: (...a: any[]) => restoreTaskDates(...a) }));
 const fixUndo = vi.fn().mockResolvedValue({ score: 40 });
 vi.mock('../../services/ScheduleFixProposerService', () => ({ scheduleFixProposerService: { undo: (...a: any[]) => fixUndo(...a) } }));
+const replaceUndo = vi.fn().mockResolvedValue(2);
+vi.mock('../../services/ResourceReplaceService', () => ({ resourceReplaceService: { undo: (...a: any[]) => replaceUndo(...a) } }));
 vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { append: vi.fn().mockResolvedValue({}) } }));
 vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: vi.fn() }));
 vi.mock('../../utils/logger', () => ({ default: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
@@ -92,6 +94,14 @@ describe('ChangeHistoryService', () => {
   });
 
   describe('undo', () => {
+    it('reassign: hands the tasks back to the replaced resource ("Replace Generic Developer with …")', async () => {
+      const payload = { fromId: 'g1', toId: 'p1', movedPeople: ['ta1'], removedPeople: [], assignedTo: ['t1'], movedBookings: [] };
+      withChange(row({ kind: 'reassign', summary: 'Replaced Generic Developer with Kabir on 2 tasks', undo_payload: JSON.stringify(payload) }));
+      const r = await changeHistoryService.undo('s-1', 'c-1');
+      expect(replaceUndo).toHaveBeenCalledWith('s-1', payload);
+      expect(r.restored).toBe(2);
+    });
+
     it('link: removes the links and puts the pushed dates back', async () => {
       withChange(row({ undo_payload: JSON.stringify({ links: [{ taskId: 't2', dependencyId: 't1' }], moved: [{ taskId: 't2', startDate: '2026-10-01', endDate: '2026-10-05' }] }) }));
       await changeHistoryService.undo('s-1', 'c-1');

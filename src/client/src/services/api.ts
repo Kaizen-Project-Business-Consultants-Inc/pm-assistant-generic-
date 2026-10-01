@@ -1238,7 +1238,9 @@ class ApiService {
   async createResource(data: {
     name: string;
     role: string;
-    email: string;
+    /** Required for a person; left out for a generic role */
+    email?: string;
+    isGeneric?: boolean;
     capacityHoursPerWeek?: number;
     skills?: Array<string | { name: string; level: number }>;
     resourceGroup?: string | null;
@@ -1272,6 +1274,36 @@ class ApiService {
   async bulkDeleteResources(ids: string[]) {
     const response = await this.api.post('/resources/bulk-delete', { ids });
     return response.data;
+  }
+
+  /** The Invite button: invite this person to log in (saving a resource never sends anything) */
+  async inviteResource(id: string) {
+    const response = await this.api.post(`/resources/${id}/invite`);
+    return response.data as { sent: boolean; message: string };
+  }
+
+  /** People doing work on this project's tasks (generic roles left out), for the Team tab */
+  async getPeopleOnProject(projectId: string) {
+    const response = await this.api.get(`/resources/on-project/${projectId}`);
+    return response.data as { people: Array<{ resourceId: string; name: string; role: string; email: string; userId: string | null; placeholderEmail: boolean; taskCount: number }> };
+  }
+
+  /** The tasks in one plan a resource is on (Replace dialog) */
+  async getResourceTasks(resourceId: string, scheduleId: string) {
+    const response = await this.api.get(`/resources/${resourceId}/tasks`, { params: { scheduleId } });
+    return response.data as { tasks: Array<{ taskId: string; name: string; startDate: string | null; endDate: string | null; status: string }> };
+  }
+
+  /** Weeks the new person would be over 100% after taking these tasks over */
+  async checkReplaceLoad(body: { scheduleId: string; fromResourceId: string; toResourceId: string; taskIds: string[] }) {
+    const response = await this.api.post('/resources/replace/check', body);
+    return response.data as { resourceName: string; overWeeks: Array<{ weekStart: string; utilization: number }> };
+  }
+
+  /** "Replace Generic Developer with …" on these tasks — undoable from Schedule History */
+  async replaceResource(body: { scheduleId: string; fromResourceId: string; toResourceId: string; taskIds: string[] }) {
+    const response = await this.api.post('/resources/replace', body);
+    return response.data as { replaced: number; changeId: string | null };
   }
 
   async getResourceWorkload(projectId: string) {

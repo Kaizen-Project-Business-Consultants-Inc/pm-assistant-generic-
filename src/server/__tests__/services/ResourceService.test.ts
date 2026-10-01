@@ -70,7 +70,7 @@ vi.mock('../../database/TimeEntryRepository', () => ({
 
 // --- Imports ---
 
-import { ResourceService, normalizeSkills } from '../../services/ResourceService';
+import { ResourceService, normalizeSkills, ResourceValidationError, peopleNeeded } from '../../services/ResourceService';
 import type { Resource, ResourceAssignment } from '../../services/ResourceService';
 import { resourceRepository } from '../../database/ResourceRepository';
 import { scheduleService } from '../../services/ScheduleService';
@@ -205,6 +205,46 @@ describe('ResourceService', () => {
       mockRepo.findById.mockResolvedValueOnce(null);
       const result = await service.findResourceById('nonexistent');
       expect(result).toBeNull();
+    });
+  });
+
+  describe('every person has an email; a generic role never does (2026-10-01)', () => {
+    it('refuses a person without an email, with a message saying what to do', async () => {
+      const { id, ...data } = sampleResource;
+      await expect(service.createResource({ ...data, email: '' })).rejects.toThrow(ResourceValidationError);
+      await expect(service.createResource({ ...data, email: '   ' })).rejects.toThrow(/generic role/);
+      expect(mockRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('creates a generic role with no email and no login, whatever the caller sent', async () => {
+      mockRepo.create.mockResolvedValueOnce({ ...sampleResource, email: '', isGeneric: true });
+      const { id, ...data } = sampleResource;
+      await service.createResource({ ...data, email: 'someone@x.com', userId: 'u9', isGeneric: true });
+      expect(mockRepo.create).toHaveBeenCalledWith(expect.objectContaining({ email: '', userId: null, isGeneric: true }));
+    });
+
+    it("keeps a generic role generic: email, login and the flag itself can't be changed", async () => {
+      mockRepo.findById.mockResolvedValueOnce({ ...sampleResource, email: '', isGeneric: true }).mockResolvedValueOnce({ ...sampleResource, name: 'Generic Tester', email: '', isGeneric: true });
+      mockRepo.updateResource.mockResolvedValueOnce(true);
+      await service.updateResource('r1', { name: 'Generic Tester', email: 'a@b.com', userId: 'u1', isGeneric: false });
+      expect(mockRepo.updateResource).toHaveBeenCalledWith('r1', { name: 'Generic Tester' });
+    });
+
+    it("lets a person's other fields change without sending the email", async () => {
+      mockRepo.findById.mockResolvedValueOnce(sampleResource).mockResolvedValueOnce({ ...sampleResource, role: 'Lead' });
+      mockRepo.updateResource.mockResolvedValueOnce(true);
+      await expect(service.updateResource('r1', { role: 'Lead' })).resolves.toBeTruthy();
+    });
+  });
+
+  describe('peopleNeeded (unfilled demand)', () => {
+    it("counts full-time people for a week's hours", () => {
+      expect(peopleNeeded(0, 40)).toBe(0);
+      expect(peopleNeeded(20, 40)).toBe(1);
+      expect(peopleNeeded(40, 40)).toBe(1);
+      expect(peopleNeeded(41, 40)).toBe(2);
+      expect(peopleNeeded(120, 40)).toBe(3);
+      expect(peopleNeeded(30, 0)).toBe(1); // no capacity set: a 40 h week
     });
   });
 
@@ -930,20 +970,12 @@ describe('ResourceService', () => {
       expect(result).toEqual(sampleResource);
     });
 
-    it('does not call autoLinkUser when new email is empty string (falsy)', async () => {
-      const updated = { ...sampleResource, email: '' };
-      mockRepo.findById
-        .mockResolvedValueOnce({ ...sampleResource, email: 'old@example.com' })
-        .mockResolvedValueOnce(updated);
-      mockRepo.updateResource.mockResolvedValueOnce(true);
+    it("refuses to blank a person's email (2026-10-01: every person has one) and changes nothing", async () => {
+      mockRepo.findById.mockResolvedValueOnce({ ...sampleResource, email: 'old@example.com' });
 
-      await service.updateResource('r1', { email: '' });
-      await new Promise(r => setTimeout(r, 10));
-
-      // updateResource checks `data.email && data.email !== existing.email`
-      // '' is falsy, so autoLinkUser is never called
+      await expect(service.updateResource('r1', { email: '' })).rejects.toThrow(ResourceValidationError);
+      expect(mockRepo.updateResource).not.toHaveBeenCalled();
       expect(mockDb.queryControlPlane).not.toHaveBeenCalled();
-      expect(mockDb.query).not.toHaveBeenCalled();
     });
   });
 });

@@ -9,6 +9,9 @@ import { ResourceForecastPanel } from '../../components/resources/ResourceForeca
 import { RebalanceSuggestions } from '../../components/resources/RebalanceSuggestions';
 import { CapacityChart } from '../../components/resources/CapacityChart';
 import { ResourceUsageView } from '../../components/resources/ResourceUsageView';
+import { PeopleWithoutLogin } from '../../components/resources/PeopleWithoutLogin';
+import { UnfilledDemand, type DemandRow } from '../../components/resources/UnfilledDemand';
+import { ReplaceResourceDialog } from '../../components/resources/ReplaceResourceDialog';
 
 function SectionSpinner() {
   return (
@@ -103,6 +106,14 @@ export function TeamTab({ projectId }: { projectId: string }) {
     enabled: !!projectId,
   });
 
+  const { data: schedulesData } = useQuery({
+    queryKey: ['schedules', projectId],
+    queryFn: () => apiService.getSchedules(projectId),
+    enabled: !!projectId,
+  });
+  const schedules: Array<{ id: string; name: string }> = schedulesData?.schedules || [];
+  const [replacing, setReplacing] = useState<DemandRow | null>(null);
+
   const [showAddMember, setShowAddMember] = useState(false);
   // Only the project's Manager/Owner manages the team; only an Owner removes people or makes Owners
   const { canEdit, canManageOwners } = useProjectRole(projectId);
@@ -124,6 +135,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
   });
 
   const workload = workloadData?.workload || [];
+  const demand: DemandRow[] = workloadData?.demand || [];
   const resources = resourcesData?.resources || [];
   const members = membersData?.members || [];
   const auditActivities = auditData?.activities || [];
@@ -236,7 +248,29 @@ export function TeamTab({ projectId }: { projectId: string }) {
             ))}
           </div>
         )}
+        <PeopleWithoutLogin
+          projectId={projectId}
+          memberUserIds={new Set(members.map((m: any) => m.userId).filter(Boolean))}
+          canEdit={canEdit}
+        />
       </div>
+
+      {/* Work still on generic roles — staffing to do */}
+      <UnfilledDemand
+        rows={demand}
+        canEdit={canEdit && schedules.length > 0}
+        onReplace={setReplacing}
+      />
+      {replacing && (
+        <ReplaceResourceDialog
+          key={replacing.resourceId}
+          projectId={projectId}
+          schedules={schedules}
+          from={{ id: replacing.resourceId, name: replacing.resourceName }}
+          people={resources}
+          onClose={() => setReplacing(null)}
+        />
+      )}
 
       {/* Resource Usage (MPP-style) */}
       <ResourceUsageView projectId={projectId} />
@@ -290,7 +324,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
 
       {/* Resource Availability Calendar */}
       {resources.length > 0 && (
-        <ResourceAvailabilitySection resources={resources} canEdit={canEdit} />
+        <ResourceAvailabilitySection resources={resources.filter((r: any) => !r.isGeneric)} canEdit={canEdit} />
       )}
     </div>
   );

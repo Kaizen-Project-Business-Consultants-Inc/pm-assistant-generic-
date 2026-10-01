@@ -271,6 +271,7 @@ const NON_PROJECT: Record<string, string[]> = {
   "resources/resources.ts": [
     "DELETE /:id",
     "POST /",
+    "POST /:id/invite",
     "POST /bulk-delete",
     "POST /import",
     "POST /load-check",

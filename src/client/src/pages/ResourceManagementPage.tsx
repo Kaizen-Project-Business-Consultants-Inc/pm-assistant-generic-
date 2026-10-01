@@ -70,6 +70,8 @@ interface Resource {
   resourceGroup?: string | null;
   userId?: string | null;
   calendarTemplateId?: string | null;
+  /** A stand-in role ("Generic Developer"), not a person */
+  isGeneric?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +88,8 @@ import { formatCalendarDate } from '../utils/dateUtils';
 import { RESOURCE_ROLES } from '../constants/resourceRoles';
 import { RateSourceField } from '../components/resources/RateSourceField';
 import { useCanChangeData } from '../hooks/useCanChangeData';
+import { PlaceholderEmailBadge, GenericBadge } from '../components/resources/ResourceBadges';
+import { isPlaceholderEmail } from '../utils/placeholderEmail';
 
 const UTIL_COLORS = {
   low: '#22c55e',      // green — under 80%
@@ -123,6 +127,9 @@ export function ResourceManagementPage() {
     tabFromUrl && ['team', 'workload', 'histogram', 'forecast', 'trends', 'templates', 'requests'].includes(tabFromUrl) ? tabFromUrl as TabKey : 'team',
   );
   const [showResourceForm, setShowResourceForm] = useState(false);
+  // Generic roles ("Generic Developer") have their own small form: a name and a role, no email
+  const [genericForm, setGenericForm] = useState<{ id?: string; name: string; role: string } | null>(null);
+  const [invitingId, setInvitingId] = useState<string | null>(null);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [formName, setFormName] = useState('');
   const [formRole, setFormRole] = useState('');
@@ -232,12 +239,35 @@ export function ResourceManagementPage() {
         setResourceWarning(result.warning);
       }
     },
+    onError: (err: any) => setResourceWarning(err?.response?.data?.message || 'The resource could not be saved.'),
   });
 
   const updateResourceMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
       apiService.updateResource(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['resources'] }); resetForm(); },
+    onError: (err: any) => setResourceWarning(err?.response?.data?.message || 'The resource could not be saved.'),
+  });
+
+  const saveGenericMutation = useMutation({
+    mutationFn: (g: { id?: string; name: string; role: string }) => g.id
+      ? apiService.updateResource(g.id, { name: g.name, role: g.role })
+      : apiService.createResource({ name: g.name, role: g.role, isGeneric: true }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['resources'] }); setGenericForm(null); },
+    onError: (err: any) => setResourceWarning(err?.response?.data?.message || 'The generic role could not be saved.'),
+  });
+
+  // The Invite button — saving a person never sends anything by itself
+  const inviteMutation = useMutation({
+    mutationFn: (id: string) => apiService.inviteResource(id),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['invites'] });
+      setResourceWarning(null);
+      setResendSuccess(result.message);
+      setTimeout(() => setResendSuccess(null), 5000);
+    },
+    onError: (err: any) => setResourceWarning(err?.response?.data?.message || 'The invite could not be sent.'),
+    onSettled: () => setInvitingId(null),
   });
 
   const deleteResourceMutation = useMutation({
@@ -287,6 +317,7 @@ export function ResourceManagementPage() {
   }
 
   function openEdit(r: Resource) {
+    if (r.isGeneric) { setGenericForm({ id: r.id, name: r.name, role: r.role }); return; }
     setEditingResource(r);
     setFormName(r.name);
     setFormRole(r.role);
@@ -344,8 +375,10 @@ export function ResourceManagementPage() {
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [resources]);
 
+  const genericResources = useMemo(() => resources.filter(r => r.isGeneric), [resources]);
   const filteredResources = useMemo(() => {
-    let list = resources;
+    // People only — generic roles have their own section below the table
+    let list = resources.filter(r => !r.isGeneric);
     if (groupFilter) list = list.filter(r => r.resourceGroup === groupFilter);
     if (skillFilter) {
       const lower = skillFilter.toLowerCase();
@@ -450,7 +483,7 @@ export function ResourceManagementPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
-              <p className="text-sm text-gray-500">{filteredResources.length} resources</p>
+              <p className="text-sm text-gray-500">{filteredResources.length} {filteredResources.length === 1 ? 'person' : 'people'}</p>
               {allGroups.length > 0 && (
                 <select
                   value={groupFilter}
@@ -473,12 +506,21 @@ export function ResourceManagementPage() {
               )}
             </div>
             {!isResourcesSample && canChange && (
-              <button
-                onClick={() => { resetForm(); setShowResourceForm(true); }}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" /> Add Resource
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setGenericForm({ name: 'Generic ', role: '' })}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-primary-700 dark:text-primary-300 bg-white dark:bg-gray-800 border border-primary-600 dark:border-primary-400 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors"
+                  title="A stand-in for work you haven't staffed yet, e.g. Generic Developer"
+                >
+                  <Plus className="w-4 h-4" /> Add generic role
+                </button>
+                <button
+                  onClick={() => { resetForm(); setShowResourceForm(true); }}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" /> Add person
+                </button>
+              </div>
             )}
           </div>
 
@@ -486,7 +528,7 @@ export function ResourceManagementPage() {
           {showResourceForm && (
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-primary-200 dark:border-primary-700 p-5 space-y-4 shadow-sm">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white">{editingResource ? 'Edit Resource' : 'New Resource'}</h3>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">{editingResource ? 'Edit person' : 'Add person'}</h3>
                 <button onClick={resetForm} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close resource form"><X className="w-4 h-4" /></button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
@@ -513,8 +555,11 @@ export function ResourceManagementPage() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email</label>
-                  <input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="email@example.com" />
+                  <label htmlFor="resource-email" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email (required)</label>
+                  <input id="resource-email" type="email" required aria-describedby="resource-email-hint" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="name@company.com" />
+                  <p id="resource-email-hint" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {isPlaceholderEmail(formEmail) ? 'This is a placeholder — replace it with their real email.' : "Saving doesn't send an invite. Not sure who yet? Use a generic role."}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hours/Week</label>
@@ -666,7 +711,12 @@ export function ResourceManagementPage() {
                           {(r.skills || []).length > 4 && <span className="text-xs text-gray-500">+{(r.skills || []).length - 4}</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.email}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span>{r.email}</span>
+                          {isPlaceholderEmail(r.email) && <PlaceholderEmailBadge />}
+                        </div>
+                      </td>
                       <td className="px-4 py-3">
                         {(() => {
                           const allocs = allocationsMap[r.id];
@@ -712,8 +762,21 @@ export function ResourceManagementPage() {
                               </div>
                             );
                           })()
-                        ) : (
+                        ) : !canChange || isResourcesSample ? (
                           <span className="text-gray-300 dark:text-gray-600">--</span>
+                        ) : isPlaceholderEmail(r.email) ? (
+                          <button onClick={() => openEdit(r)} className="text-xs font-medium text-primary-700 hover:text-primary-800 dark:text-primary-300 dark:hover:text-primary-200 underline">
+                            Add real email
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => { setInvitingId(r.id); inviteMutation.mutate(r.id); }}
+                            disabled={invitingId === r.id}
+                            className="px-2.5 py-1 text-xs font-semibold text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 border border-primary-600 dark:border-primary-400 rounded-md hover:bg-primary-100 dark:hover:bg-primary-900/50 disabled:opacity-50"
+                            title={`Email ${r.email} an invite to log in`}
+                          >
+                            {invitingId === r.id ? 'Sending…' : 'Invite'}
+                          </button>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.capacityHoursPerWeek || 40}</td>
@@ -736,6 +799,68 @@ export function ResourceManagementPage() {
               </div>
             )}
           </div>
+
+          {/* Generic roles — stand-ins for work not yet staffed: no email, no login, never on a Team list */}
+          {!isResourcesSample && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Generic roles</h2>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Stand-ins for work you haven't staffed yet. No email, no login, never on a Team list — replace them with real people from a project's Team tab.</p>
+              </div>
+              {genericForm && (
+                <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-primary-50/40 dark:bg-primary-900/10 flex flex-wrap items-end gap-3">
+                  <div>
+                    <label htmlFor="generic-name" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name</label>
+                    <input id="generic-name" type="text" value={genericForm.name} onChange={(e) => setGenericForm({ ...genericForm, name: e.target.value })} className="input text-sm w-64 dark:bg-gray-700 dark:text-gray-100" placeholder="Generic Mobile Developer" autoFocus />
+                  </div>
+                  <div>
+                    <label htmlFor="generic-role" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Role</label>
+                    <input id="generic-role" type="text" list="generic-role-options" value={genericForm.role} onChange={(e) => setGenericForm({ ...genericForm, role: e.target.value })} className="input text-sm w-56 dark:bg-gray-700 dark:text-gray-100" placeholder="Mobile App Developer" />
+                    <datalist id="generic-role-options">{RESOURCE_ROLES.map(r => <option key={r} value={r} />)}</datalist>
+                  </div>
+                  <button
+                    onClick={() => saveGenericMutation.mutate({ ...genericForm, name: genericForm.name.trim(), role: genericForm.role.trim() })}
+                    disabled={!genericForm.name.trim() || genericForm.name.trim() === 'Generic' || saveGenericMutation.isPending}
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  >
+                    {saveGenericMutation.isPending ? 'Saving…' : genericForm.id ? 'Save' : 'Add'}
+                  </button>
+                  <button onClick={() => setGenericForm(null)} className="px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Cancel</button>
+                </div>
+              )}
+              {genericResources.length === 0 ? (
+                <p className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">No generic roles yet.</p>
+              ) : (
+                <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-5">
+                  {genericResources.map(g => {
+                    const taskCount = (allocationsMap[g.id] || []).reduce((n, a) => n + a.taskCount, 0);
+                    return (
+                      <li key={g.id} className="rounded-lg border border-dashed border-gray-400 dark:border-gray-500 px-3.5 py-3 flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{g.name}</span>
+                            <GenericBadge />
+                          </div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{g.role || 'No role'} · {taskCount ? `on ${taskCount} task${taskCount === 1 ? '' : 's'}` : 'not used'}</p>
+                        </div>
+                        {canChange && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button onClick={() => openEdit(g)} className="p-1.5 rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={`Edit ${g.name}`}><Edit2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => {
+                              setDeleteConfirmId(g.id);
+                              setDeleteImpact(null);
+                              setDeleteImpactLoading(true);
+                              apiService.getResourceDeleteImpact(g.id).then(setDeleteImpact).catch(() => setDeleteImpact(null)).finally(() => setDeleteImpactLoading(false));
+                            }} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label={`Delete ${g.name}`}><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       )}
 

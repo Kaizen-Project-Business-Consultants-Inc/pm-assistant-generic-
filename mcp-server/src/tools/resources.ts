@@ -15,9 +15,10 @@ export function registerResourceTools(server: McpServer) {
     return jsonResult(await getApiClientFromExtra(extra).get(`/resources${params}`));
   });
 
-  server.tool('create-resource', 'Create a new resource', {
+  server.tool('create-resource', 'Create a new resource: a real person (email required) or a generic role such as "Generic Developer" (isGeneric: true, no email) standing in for someone not yet known', {
     name: z.string().describe('Resource name'),
-    email: z.string().optional().describe('Email address'),
+    email: z.string().optional().describe('Email address — required for a person; leave out for a generic role'),
+    isGeneric: z.boolean().optional().describe('true for a generic role (stand-in for unstaffed work): no email, no login, not counted as over-booked'),
     role: z.string().optional().describe('Role/title'),
     skills: z.array(skillSchema).optional().describe('Skills with optional proficiency (1-5). Plain strings default to level 3'),
     capacityHoursPerWeek: z.number().optional().describe('Max hours per week (defaults to 40 if omitted)'),
@@ -32,7 +33,7 @@ export function registerResourceTools(server: McpServer) {
   server.tool('update-resource', 'Update a resource', {
     resourceId: z.string().describe('Resource ID'),
     name: z.string().optional().describe('Resource name'),
-    email: z.string().optional().describe('Email address'),
+    email: z.string().optional().describe('Email address (a person cannot be left without one; ignored for a generic role)'),
     role: z.string().optional().describe('Role/title'),
     skills: z.array(skillSchema).optional().describe('Skills with optional proficiency (1-5)'),
     capacityHoursPerWeek: z.number().optional().describe('Max hours per week'),

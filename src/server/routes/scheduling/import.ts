@@ -11,6 +11,7 @@ import { claudeService } from '../../services/claudeService';
 import { config } from '../../config';
 import logger from '../../utils/logger';
 import { resolveAssigneeResources, assigneeToResourceId } from '../../utils/assigneeResources';
+import { makePlaceholderEmail } from '../../utils/placeholderEmail';
 import { scheduleReviewService } from '../../services/ScheduleReviewService';
 import { baselineService } from '../../services/BaselineService';
 import {
@@ -286,13 +287,15 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
       if (importedAssignees.size > 0) {
         try {
           const existingResources = await resourceService.findAllResources();
+          // A plan names people only: they get a placeholder email until the PM adds the real one
+          const takenEmails = new Set(existingResources.map((r) => (r.email || '').toLowerCase()));
           const resolution = await resolveAssigneeResources(
             importedAssignees,
             existingResources,
             (name) => resourceService.createResource({
               name,
               role: '',
-              email: '',
+              email: (() => { const e = makePlaceholderEmail(name, takenEmails); takenEmails.add(e); return e; })(),
               capacityHoursPerWeek: 40,
               skills: [],
               isActive: true,

@@ -45,7 +45,7 @@ export class ScheduleReviewService {
         : null,
       sprintCount: sprints.length,
       tasks: tasks.map(toReviewTask),
-      resources: resources.map(r => ({ id: r.id, name: r.name, email: r.email, userId: r.userId })),
+      resources: resources.map(r => ({ id: r.id, name: r.name, email: r.email, userId: r.userId, isGeneric: !!r.isGeneric })),
       baselineCount: baselines.length,
       latestBaselineTasks: latest ? latest.tasks.map(t => ({ taskId: t.taskId, startDate: t.startDate, endDate: t.endDate })) : null,
       floatByTask,

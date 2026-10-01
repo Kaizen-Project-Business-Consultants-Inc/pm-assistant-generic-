@@ -23,7 +23,7 @@ function files(dir: string): string[] {
 describe('project scope guard', () => {
   it('no query limits projects to the ones the user created (use utils/readableProjects)', () => {
     const bad = files(SERVER)
-      .map(p => ({ f: relative(SERVER, p).replace(/\/g, '/'), s: readFileSync(p, 'utf8') }))
+      .map(p => ({ f: relative(SERVER, p).replace(/\\/g, '/'), s: readFileSync(p, 'utf8') }))
       .filter(({ f, s }) => !ALLOWED.has(f) && /\bp\.created_by\s*=\s*\?/.test(s))
       .map(({ f }) => f);
     expect(bad).toEqual([]);

@@ -2,6 +2,9 @@
 
 Source of truth: Claude Doc "Schedule Review Spec" (https://claude.ai/code/artifact/3ca60bdf-7674-4668-b205-020981c1edc7), also exported as PDF to the user on 2026-09-16. This file carries enough of it to keep building without the doc.
 
+## Rules v1.7 (2026-10-01) — R37 generic role on work starting soon
+- R37 (medium): open leaf task starting within 14 calendar days (or already started) whose Assigned To or a % person is a generic role. R11 ignores generic roles and treats a placeholder (@example.com) email as no email.
+
 ## Rules v1.6 (2026-09-29) — working days
 Spans measured in working days from the project calendar (ScheduleReviewService fetches it once and passes an IsWorking into the pure rules; default Mon–Fri): R04, R12 (estimate vs inclusive working span — an accepted Propose-fixes duration fix is no longer re-flagged), R13, R19, R28, R34 (month = 20 working days). Float from CriticalPathService is in working days. Scores mostly rise slightly on existing plans; no alert across the version change.
 

@@ -414,6 +414,10 @@ const sections: Section[] = [
       'Gantt → Conflicts: highlights bars whose person is over 100% that week; hover the "!" for who and when',
       'Resources → Resource Histogram: hours per working day against each person\'s own day',
       'Level Resources (schedule ⋮ menu, or project → Resources → Leveling) proposes moving non-critical tasks within their spare time; nothing changes until you Apply',
+      'Every person needs an email — "Placeholder email" (name@example.com) means the real one is still to add; nothing is ever sent there',
+      'Not sure who yet? Assign a generic role ("Generic Developer"). Resources → Add generic role makes your own',
+      'Saving a person never emails them: click Invite when you want them to log in',
+      'Project → Team → Unfilled demand shows how many people the generic roles need each week; Replace… hands their tasks to a real person (undo from History)',
     ],
   },
   {

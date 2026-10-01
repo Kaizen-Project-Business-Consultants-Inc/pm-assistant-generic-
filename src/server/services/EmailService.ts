@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import { config } from '../config';
 import logger, { maskPii } from '../utils/logger';
 import { redisService } from './RedisService';
+import { isPlaceholderEmail } from '../utils/placeholderEmail';
 
 /**
  * The mail provider refused the message — almost always a recipient it will not
@@ -41,6 +42,14 @@ export class EmailService {
   }
 
   private async sendEmail(params: { from: string; to: string | string[]; subject: string; html: string; attachments?: any[] }): Promise<void> {
+    // Placeholder addresses (name@example.com) belong to people whose real email isn't known
+    // yet — never send to them, whichever feature is sending
+    const recipients = (Array.isArray(params.to) ? params.to : [params.to]).filter((r) => !isPlaceholderEmail(r));
+    if (recipients.length === 0) {
+      logger.info('Email not sent: placeholder address only', { subject: params.subject });
+      return;
+    }
+    params = { ...params, to: Array.isArray(params.to) ? recipients : recipients[0] };
     try {
       const result = await this.getClient().emails.send(params as any);
       if (result.error) {

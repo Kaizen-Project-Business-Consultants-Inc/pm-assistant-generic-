@@ -10,8 +10,13 @@
 
 import { profileFor, matchesAny, type DomainProfile } from './domainProfiles';
 import { type IsWorking, weekdaysOnly, workingDaysAfter } from '../../utils/workingDays';
+import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 
-export const RULES_VERSION = '1.6';
+export const RULES_VERSION = '1.7';
+
+// 1.7 (2026-10-01): R37 — work starting within two weeks still on a generic role ("Generic
+// Developer") instead of a named person. R11 ignores generic roles (R37 covers them) and treats
+// a placeholder email (name@example.com) as no email.
 
 // 1.6 (2026-09-29): every duration, span, float, lag and drift is counted in WORKING days on
 // the project calendar (weekends and holidays off), matching the Duration column. R04/R12/R19/
@@ -58,6 +63,8 @@ export interface ReviewResource {
   name: string;
   email?: string | null;
   userId?: string | null;
+  /** A stand-in role ("Generic Developer"), not a person */
+  isGeneric?: boolean;
 }
 
 export interface ReviewBaselineTask {
@@ -165,6 +172,7 @@ export const RULES: Record<string, RuleMeta> = {
   R34: { id: 'R34', name: 'Ongoing task books someone full-time', severity: 'low', scope: 'task' },
   R35: { id: 'R35', name: 'Heading over a single task', severity: 'low', scope: 'task' },
   R36: { id: 'R36', name: 'Heading with too many tasks directly under it', severity: 'low', scope: 'task' },
+  R37: { id: 'R37', name: 'Work starting soon with no one named', severity: 'medium', scope: 'task' },
 };
 
 const MAX_DEDUCTION: Record<Severity, number> = { critical: 25, high: 12, medium: 6, low: 2, info: 0 };
@@ -420,7 +428,8 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     const lower = v.toLowerCase();
     return resources.find(r => r.id === v || (r.userId && r.userId === v)) || resources.find(r => r.name.trim().toLowerCase() === lower);
   };
-  const orgOwned = leaves.filter(t => { const r = resolveResource(t.assignedTo); return r && !r.email && !r.userId; });
+  // A generic role is a deliberate stand-in (R37 covers it); a placeholder email is no email
+  const orgOwned = leaves.filter(t => { const r = resolveResource(t.assignedTo); return r && !r.isGeneric && (!r.email || isPlaceholderEmail(r.email)) && !r.userId; });
   if (orgOwned.length > 0) {
     const orgNames = [...new Set(orgOwned.map(t => resolveResource(t.assignedTo)!.name))];
     const which = orgOwned.length === 1 ? 'this task' : `these ${orgOwned.length} tasks`;
@@ -672,8 +681,26 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     findings.push(make('R36', crowded.map(t => t.id), `${plural(crowded.length, 'heading')} ${crowded.length === 1 ? 'has' : 'have'} more than ${MAX_DIRECT_CHILDREN} tasks directly under ${crowded.length === 1 ? 'it' : 'them'}: ${crowded.slice(0, 3).map(s => `'${s.name}' (${(g.childrenOf.get(s.id) || []).length})`).join(', ')}${crowded.length > 3 ? ` and ${crowded.length - 3} more` : ''}. Split the work into sub-phases (about 3–10 tasks each) so the plan can be read at a glance — select the tasks and use Group.`));
   }
 
+  // R37 — Work about to start (or already started) that is still on a generic role: someone
+  // has to be named before it begins (user's rule, 2026-10-01: two weeks' notice).
+  const genericIds = new Set((input.resources || []).filter(r => r.isGeneric).map(r => r.id));
+  if (genericIds.size > 0) {
+    const soon = new Date(input.today.getTime() + GENERIC_NOTICE_DAYS * DAY_MS).toISOString().slice(0, 10);
+    const unstaffed = g.leaves.filter(t => {
+      const s = ymd(t.startDate);
+      if (!s || s > soon || DONE_STATUSES.has(norm(t.status))) return false;
+      return genericIds.has((t.assignedTo || '').trim()) || (t.assignments || []).some(a => genericIds.has(a.resourceId));
+    });
+    if (unstaffed.length > 0) {
+      findings.push(make('R37', unstaffed.map(t => t.id), `${plural(unstaffed.length, 'task')} ${unstaffed.length === 1 ? 'starts' : 'start'} within ${GENERIC_NOTICE_DAYS / 7} weeks and ${unstaffed.length === 1 ? 'is' : 'are'} still on a generic role: ${listNames(unstaffed)}. Name the person who will do the work — Team tab › Unfilled demand › Replace.`));
+    }
+  }
+
   return { findings, skipped, leafTaskCount: n };
 }
+
+/** R37: name a real person this many calendar days before a task starts */
+const GENERIC_NOTICE_DAYS = 14;
 
 /** R36: more than this many tasks directly under one heading */
 const MAX_DIRECT_CHILDREN = 15;

@@ -23,6 +23,7 @@ import { TASK_STATUS_LABEL } from '../constants/taskStatus';
  *  - group         tasks back to their old parent, the new summary removed
  *  - calendar      put the dates back (a working-calendar change, or the days-off clean-up;
  *                  the calendar itself stays as it is)
+ *  - reassign      the old resource back on the tasks ("Replace Generic Developer with …")
  * Bulk delete and import are not covered yet.
  *
  * Product owner, 2026-10-01: History is a RECORD. Each entry says what it did, before -> after.
@@ -31,7 +32,7 @@ import { TASK_STATUS_LABEL } from '../constants/taskStatus';
  * built on it stays. There is no "undo anyway".
  */
 
-export type ChangeKind = 'link' | 'bulk_update' | 'bulk_status' | 'bulk_create' | 'review_fix' | 'ai_reschedule' | 'group' | 'calendar';
+export type ChangeKind = 'link' | 'bulk_update' | 'bulk_status' | 'bulk_create' | 'review_fix' | 'ai_reschedule' | 'group' | 'calendar' | 'reassign';
 
 /** Columns bulk update may change — the only ones we read before and write back on undo */
 export const BULK_UPDATE_COLUMNS: Record<string, string> = {
@@ -260,6 +261,11 @@ class ChangeHistoryService {
         restored = await scheduleService.ungroupTasks(payload.summaryId, payload.previous ?? []);
         break;
       }
+      case 'reassign': {
+        const { resourceReplaceService } = await import('./ResourceReplaceService');
+        restored = await resourceReplaceService.undo(scheduleId, payload);
+        break;
+      }
       default:
         throw new ChangeStateError(`Cannot undo a "${row.kind}" change`);
     }
@@ -363,6 +369,13 @@ async function describeChange(input: RecordInput): Promise<string[]> {
     case 'review_fix':
       for (const id of ids) lines.push(`Changed by a Schedule Review fix: ${nameOf(id)}`);
       break;
+    case 'reassign': {
+      const people = await databaseService.query<any>(
+        'SELECT id, name FROM resources WHERE id IN (?, ?)', [undo.fromId ?? '', undo.toId ?? '']);
+      const who = (id: string) => people.find((p: any) => p.id === id)?.name ?? 'someone';
+      for (const id of ids) lines.push(`${nameOf(id)}: ${who(undo.fromId)} → ${who(undo.toId)}`);
+      break;
+    }
   }
   return lines.length > MAX_LINES ? [...lines.slice(0, MAX_LINES), `…and ${lines.length - MAX_LINES} more`] : lines;
 }

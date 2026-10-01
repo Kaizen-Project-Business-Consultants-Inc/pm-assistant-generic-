@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ResourceLoadWarning } from '../resources/ResourceLoadWarning';
+import { ResourcePickList, ResourceOptionGroups } from '../resources/ResourcePickList';
+import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 import { X, Save, Trash2, Sparkles, ChevronDown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { GanttTask } from './GanttChart';
 import { TaskActivityPanel } from './TaskActivityPanel';
-import { Avatar } from '../ui/Avatar';
 import { TimeLogForm } from '../timetracking/TimeLogForm';
 import { CustomFieldsSection } from '../customfields/CustomFieldsSection';
 import { AttachmentPanel } from '../attachments/AttachmentPanel';
@@ -97,7 +98,7 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
     queryFn: () => apiService.getResources(),
     staleTime: 60_000,
   });
-  const resources: { id: string; name: string; role: string; userId?: string | null }[] = data?.resources || [];
+  const resources: { id: string; name: string; role: string; userId?: string | null; email?: string; isGeneric?: boolean }[] = data?.resources || [];
 
   const current = findResourceForAssignee(resources, value);
 
@@ -155,30 +156,12 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
             </button>
           )}
           <div className="max-h-48 overflow-y-auto">
-            {filtered.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-gray-500 text-center">
-                {resources.length === 0 ? 'No resources — add them in Resources' : 'No matches'}
-              </div>
-            ) : (
-              filtered.slice(0, 30).map(r => {
-                const selected = current?.id === r.id;
-                return (
-                  <button
-                    type="button"
-                    key={r.id}
-                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${selected ? 'bg-primary-50 dark:bg-primary-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
-                    onClick={() => { onChange(r.id); setOpen(false); setSearch(''); }}
-                  >
-                    <Avatar name={r.name} size="xs" />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
-                      <div className="text-gray-500 dark:text-gray-400 truncate">{r.role}</div>
-                    </div>
-                    {selected && <span className="text-primary-600 text-xs font-medium">Current</span>}
-                  </button>
-                );
-              })
-            )}
+            <ResourcePickList
+              resources={filtered}
+              currentId={current?.id}
+              onPick={(r) => { onChange(r.id); setOpen(false); setSearch(''); }}
+              emptyText={resources.length === 0 ? 'No resources — add them in Resources' : 'No matches'}
+            />
           </div>
         </div>
       )}
@@ -369,8 +352,12 @@ export function TaskFormModal({
   // People for the Resource Assignments rows, and the over-100% warnings (not for headings or
   // milestones — they book no time)
   const { data: resourceData } = useQuery({ queryKey: ['resources'], queryFn: () => apiService.getResources(), staleTime: 60_000 });
-  const resourceList: { id: string; name: string; role: string; userId?: string | null }[] = resourceData?.resources || [];
-  const assignedResourceId = findResourceForAssignee(resourceList, form.assignedTo)?.id ?? '';
+  const resourceList: { id: string; name: string; role: string; userId?: string | null; email?: string; isGeneric?: boolean }[] = resourceData?.resources || [];
+  const assignedResource = findResourceForAssignee(resourceList, form.assignedTo);
+  const assignedResourceId = assignedResource?.id ?? '';
+  // Picked someone whose email is still a placeholder? They won't hear about this task
+  const unreachable = [assignedResource, ...form.assignments.map(a => resourceList.find(r => r.id === a.resourceId))]
+    .filter((r, i, all): r is NonNullable<typeof r> => !!r && !r.isGeneric && isPlaceholderEmail(r.email) && all.findIndex(x => x?.id === r.id) === i);
   const checkLoad = !isSummary && !form.isMilestone;
 
   return (
@@ -645,6 +632,12 @@ export function TaskFormModal({
             <ResourceLoadWarning resourceId={assignedResourceId} startDate={form.startDate} endDate={form.endDate} allocationPct={100} excludeTaskId={task?.id} />
           )}
 
+          {unreachable.length > 0 && (
+            <p role="status" className="rounded-lg border border-amber-500 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-500/70 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+              {unreachable.map(r => r.name).join(', ')} {unreachable.length === 1 ? 'has' : 'have'} a placeholder email, so {unreachable.length === 1 ? "they won't" : "they won't"} be notified or see this task. Add the real email on the Resources page or the project's Team tab.
+            </p>
+          )}
+
           {/* Multi-Resource Assignments */}
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
@@ -665,7 +658,7 @@ export function TaskFormModal({
                 >
                   <option value="">Select resource...</option>
                   {a.resourceId && !resourceList.some(r => r.id === a.resourceId) && <option value={a.resourceId}>{a.resourceId}</option>}
-                  {resourceList.map(r => <option key={r.id} value={r.id}>{r.name}{r.role ? ` — ${r.role}` : ''}</option>)}
+                  <ResourceOptionGroups resources={resourceList} />
                 </select>
                 <input
                   type="number"

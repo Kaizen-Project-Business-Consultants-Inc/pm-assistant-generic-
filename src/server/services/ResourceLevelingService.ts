@@ -194,9 +194,12 @@ export class ResourceLevelingService {
       const m = demand.get(a.resourceId)!;
       for (const d of cal.workdays(a.startDate, a.endDate, shift)) m.set(d, Math.max(0, (m.get(d) ?? 0) + sign * perDay(a)));
     };
-    for (const a of elsewhere) add(a);
+    // Generic roles are unfilled demand, not people — nothing to level, nobody to move work to
+    const person = (a: ResourceAssignment) => !resources.get(a.resourceId)?.isGeneric;
+    for (const a of elsewhere) if (person(a)) add(a);
     const bookings = new Map<string, ResourceAssignment[]>();
     for (const a of here) {
+      if (!person(a)) continue;
       add(a);
       if (!bookings.has(a.taskId)) bookings.set(a.taskId, []);
       bookings.get(a.taskId)!.push(a);
@@ -324,7 +327,7 @@ export class ResourceLevelingService {
     // person with the best skill match who has room on every working day of the task.
     const reassignmentSuggestions: ReassignmentSuggestion[] = [];
     const overSet = new Set(leveled.overAllocations.map(o => `${o.resourceName}|${o.date}`));
-    const active = [...m.resources.values()].filter(r => r.isActive);
+    const active = [...m.resources.values()].filter(r => r.isActive && !r.isGeneric);
     for (const [taskId, list] of m.bookings) {
       const t = m.tasks.get(taskId);
       if (!t || t.status === 'completed' || t.status === 'cancelled') continue;

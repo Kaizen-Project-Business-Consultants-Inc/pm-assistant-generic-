@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-01 (People and generic roles)
+
+- Found asking "who's on DBJ-LMS": Parth was on task 4 but not on the Team, and 10 of 11 resources had no email (the form required one, but plan import and the API didn't). User decided: every person has an email (placeholder firstname.lastname@example.com for the 10 — changed from first_name@dummy.com: two Parths, and dummy.com is a real domain), default generic roles + PM can add, generics = unfilled demand never over-booked, Replace, saving never invites, R37. Mock approved ("yes").
+- T069: `resources.is_generic`, 6 default generic roles, placeholder backfill. Rule enforced in `ResourceService` (all callers); guard test `placeholderEmail.test.ts`. `EmailService` never sends to @example.com. Invite moved to `POST /resources/:id/invite`. Generics left out of workload/levelling/load checks/skill match/capacity-by-role; `demand` on project workload. `ResourceReplaceService` + History kind `reassign`. Team tab: `PeopleWithoutLogin`, `UnfilledDemand`, `ReplaceResourceDialog`; pickers share `ResourcePickList`. Rules v1.7 (R37; R11 ignores generics, placeholder = no email). Also fixed a committed syntax error that stopped `projectScopeGuard.test.ts` running.
+- Not changed (seen while looking, raise with user): workload counts a task's full weekly hours in any week it touches (Parth: 40 h in the week of 22 Jun for one day of work), and finished tasks still count.
+
 ## 2026-10-01 (Meeting Coach — staging)
 
 - **Found + fixed (T068):** `meeting_analyses.issues/dependencies` (from shared migration 101) and 6 `agent_memory` columns (108) never reached the company databases — on prod every Meeting Intelligence analysis failed to save since 2026-08-20. Guard `tenantColumnsGuard.test.ts`. Also seen in prod logs (not fixed, asked): `Unknown column 'ri.priority'` (32×), `'ri.item_type'` (6×), `'u.name'` (2×).

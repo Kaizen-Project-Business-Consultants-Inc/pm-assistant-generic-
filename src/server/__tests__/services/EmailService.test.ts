@@ -106,6 +106,13 @@ describe('EmailService', () => {
   // =========================================================================
 
   describe('sendEmail (via sendVerificationEmail)', () => {
+    it('never sends to a placeholder address (name@example.com), whichever feature sends', async () => {
+      await service.sendVerificationEmail('parth.mandalia@example.com', 'token123');
+      await service.sendVerificationEmail('PARTH@Example.com ', 'token123');
+      expect(mockSend).not.toHaveBeenCalled();
+      expect(service.getStats().sent).toBe(0);
+    });
+
     it('sends email successfully and tracks success', async () => {
       await service.sendVerificationEmail('user@test.com', 'token123');
 

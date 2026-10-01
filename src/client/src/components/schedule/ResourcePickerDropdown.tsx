@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { findResourceForAssignee } from '../../utils/resourceLookup';
-import { Avatar } from '../ui/Avatar';
+import { ResourcePickList } from '../resources/ResourcePickList';
 import { PROFICIENCY_LABELS } from '../../constants/proficiency';
 
 interface SkillWithProficiency {
@@ -17,6 +17,7 @@ interface Resource {
   role: string;
   userId?: string | null;
   skills?: SkillWithProficiency[];
+  isGeneric?: boolean;
 }
 
 interface ResourcePickerDropdownProps {
@@ -126,38 +127,20 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
 
       {/* Resource list */}
       <div className="max-h-48 overflow-y-auto">
-        {filtered.length === 0 ? (
-          <div className="px-3 py-2 text-xs text-gray-500 text-center">
-            {resources.length === 0 ? 'No resources in project' : 'No matches'}
-          </div>
-        ) : (
-          filtered.slice(0, 30).map(r => {
-            const isSelected = currentResource?.id === r.id;
+        <ResourcePickList
+          resources={filtered}
+          currentId={currentResource?.id}
+          onPick={(r) => onSelect(r.id, r.name)}
+          emptyText={resources.length === 0 ? 'No resources in project' : 'No matches'}
+          extra={(r) => {
             const matchedSkill = skillFilter ? (r.skills || []).find(s => s.name.toLowerCase() === skillFilter.toLowerCase()) : null;
-            return (
-              <button
-                key={r.id}
-                className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${isSelected ? 'bg-primary-50 dark:bg-primary-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(r.id, r.name);
-                }}
-              >
-                <Avatar name={r.name} size="xs" />
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
-                  <div className="text-gray-500 dark:text-gray-400 truncate">{r.role}</div>
-                </div>
-                {matchedSkill && (
-                  <span className="shrink-0 px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
-                    {PROFICIENCY_LABELS[matchedSkill.level] || matchedSkill.level}
-                  </span>
-                )}
-                {isSelected && <span className="text-primary-600 text-xs font-medium">Current</span>}
-              </button>
-            );
-          })
-        )}
+            return matchedSkill ? (
+              <span className="shrink-0 px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
+                {PROFICIENCY_LABELS[matchedSkill.level] || matchedSkill.level}
+              </span>
+            ) : null;
+          }}
+        />
       </div>
     </div>
   );

@@ -4,16 +4,18 @@ import { readableProjectIds } from '../../utils/readableProjects';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { parse as csvParse } from 'csv-parse/sync';
-import { resourceService, normalizeSkills } from '../../services/ResourceService';
+import { resourceService, normalizeSkills, ResourceValidationError } from '../../services/ResourceService';
+import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import { scheduleService } from '../../services/ScheduleService';
-import { emailService } from '../../services/EmailService';
+import { emailService, EmailRejectedError } from '../../services/EmailService';
 import { databaseService } from '../../database/connection';
 import { inviteService } from '../../services/InviteService';
 import { taskAssignmentService } from '../../services/TaskAssignmentService';
+import { resourceReplaceService } from '../../services/ResourceReplaceService';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
 import { utcDay } from '../../utils/workingDays';
@@ -33,7 +35,10 @@ export const createResourceSchema = z.object({
   // known up front (e.g. entering a bid's Key Personnel list one name at a
   // time, filling in role/email later).
   role: z.string().optional(),
+  // Required for a person and absent for a generic role (2026-10-01) — ResourceService
+  // enforces it for every caller, so it's checked there, not only here
   email: z.string().email().optional(),
+  isGeneric: z.boolean().optional(),
   capacityHoursPerWeek: z.number().positive().default(40),
   skills: z.array(skillSchema).default([]),
   isActive: z.boolean().default(true),
@@ -90,6 +95,66 @@ const assignmentPM = requireProjectAccess('manager', {
   },
 });
 
+/**
+ * Invite a resource to log in (the Invite button). Saving a resource never sends anything
+ * (2026-10-01) — inviting is a separate, deliberate step. Says what happened either way.
+ */
+async function inviteResource(
+  request: FastifyRequest,
+  resource: { id: string; name: string; role: string; email: string; isGeneric?: boolean },
+): Promise<{ sent: boolean; message: string }> {
+  if (resource.isGeneric) return { sent: false, message: "A generic role can't be invited. Replace it with a real person on the tasks instead." };
+  const email = resource.email?.trim();
+  if (!email || isPlaceholderEmail(email)) {
+    return { sent: false, message: `${resource.name} has a placeholder email. Add their real email first, then invite them.` };
+  }
+  const inviterUserId = (request.user as any)?.userId;
+  const inviterEmail = (request.user as any)?.email;
+  const inviterName = (request.user as any)?.fullName || inviterEmail || 'A team member';
+  const inviterOrgId = (request.user as any)?.organizationId;
+
+  if (inviterEmail && email.toLowerCase() === inviterEmail.toLowerCase()) {
+    return { sent: false, message: 'This resource uses your own email. You already have access — no invite was sent.' };
+  }
+  const [duplicate] = await databaseService.query<{ id: string; name: string }>(
+    'SELECT id, name FROM resources WHERE LOWER(email) = LOWER(?) AND id != ? LIMIT 1',
+    [email, resource.id],
+  );
+  if (duplicate) return { sent: false, message: `Another resource already uses this email: "${duplicate.name}". No invite was sent.` };
+
+  const rl = await rateLimiter.checkAsync(`resource-invite:${inviterUserId}`, 20, 3_600_000);
+  if (!rl.allowed) {
+    logger.warn('Resource invite rate limit exceeded', { userId: inviterUserId });
+    return { sent: false, message: "You've sent a lot of invites in the last hour. Try again later." };
+  }
+
+  const [existingUser] = await databaseService.queryControlPlane<{ id: string; organization_id: string }>(
+    'SELECT id, organization_id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1',
+    [email],
+  );
+  if (existingUser && existingUser.organization_id !== inviterOrgId) {
+    // Different company — a misleading invite would only confuse them
+    logger.info('Resource invite skipped for a user of another company', { inviterOrgId });
+    return { sent: false, message: "This person has an account with another company, so they can't be invited to yours yet." };
+  }
+  if (existingUser) {
+    await emailService.sendResourceInviteEmail(email, { resourceName: resource.name, role: resource.role || 'Team Member', inviterName, isRegistered: true });
+    return { sent: true, message: `${resource.name} already has a login — we emailed them a link to your projects.` };
+  }
+  // No account yet — a company invite (seat/viewer limits and duplicates are checked there)
+  const invite = await inviteService.createInvite(inviterUserId, email, null, 'viewer', { skipEmail: true });
+  await emailService.sendResourceInviteEmail(email, { resourceName: resource.name, role: resource.role || 'Team Member', inviterName, isRegistered: false, inviteToken: invite.token });
+  return { sent: true, message: `Invite sent to ${email}.` };
+}
+
+/** The Replace dialog and action belong to the plan's Manager/Owner */
+const scheduleQueryPM = requireProjectAccess('manager', {
+  resolve: async (req) => projectsOfSchedules([(req.query as { scheduleId?: string } | undefined)?.scheduleId]),
+});
+const bodySchedulePM = requireProjectAccess('manager', {
+  resolve: async (req) => projectsOfSchedules([(req.body as { scheduleId?: string } | undefined)?.scheduleId]),
+});
+
 export async function resourceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -136,80 +201,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
         ...raw,
         skills: normalizeSkills(raw.skills),
       } as any);
-
-      // Determine invite scenario and send appropriate email
-      let warning: string | undefined;
-      if (raw.email) {
-        const inviterUserId = (request.user as any)?.userId;
-        const inviterEmail = (request.user as any)?.email;
-        const inviterName = (request.user as any)?.fullName || inviterEmail || 'A team member';
-        const inviterOrgId = (request.user as any)?.organizationId;
-
-        // Check if creating a resource with own email
-        if (inviterEmail && raw.email.toLowerCase() === inviterEmail.toLowerCase()) {
-          warning = 'This resource uses your own email. You already have access to this organization — no invite was sent.';
-        }
-
-        // Check if a resource with this email already exists
-        if (!warning) {
-          const [existing] = await databaseService.query<{ id: string; name: string }>(
-            'SELECT id, name FROM resources WHERE LOWER(email) = LOWER(?) AND id != ? LIMIT 1',
-            [raw.email, resource.id],
-          );
-          if (existing) {
-            warning = `A resource with this email already exists: "${existing.name}". No invite was sent.`;
-          }
-        }
-
-        if (warning) {
-          // Skip email sending
-        } else {
-        // Check rate limit synchronously before responding
-        const rl = await rateLimiter.checkAsync(`resource-invite:${inviterUserId}`, 20, 3_600_000);
-        if (!rl.allowed) {
-          logger.warn('Resource invite rate limit exceeded', { userId: inviterUserId, email: raw.email });
-          warning = 'Invite email rate limit reached. No email was sent.';
-        } else {
-          try {
-            const [existingUser] = await databaseService.queryControlPlane<{ id: string; organization_id: string }>(
-              'SELECT id, organization_id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1',
-              [raw.email],
-            );
-
-            if (existingUser) {
-              if (existingUser.organization_id === inviterOrgId) {
-                // Same org — send "Go to Dashboard" email
-                emailService.sendResourceInviteEmail(raw.email, {
-                  resourceName: raw.name,
-                  role: raw.role || 'Team Member',
-                  inviterName,
-                  isRegistered: true,
-                }).catch(err => logger.error('Resource invite email error', { error: err?.message || err }));
-              } else {
-                // Different org — do NOT send misleading email, warn the manager
-                warning = 'This person has an account in another organization. A resource record was created for planning purposes, but they won\'t have access to your projects until multi-org membership is available.';
-                logger.info('Resource created for cross-org user — no email sent', { email: raw.email, inviterOrgId, userOrgId: existingUser.organization_id });
-              }
-            } else {
-              // Unregistered user — create org-scoped invite (with seat/viewer limit checks, dedup)
-              const invite = await inviteService.createInvite(inviterUserId, raw.email, null, 'viewer', { skipEmail: true });
-              emailService.sendResourceInviteEmail(raw.email, {
-                resourceName: raw.name,
-                role: raw.role || 'Team Member',
-                inviterName,
-                isRegistered: false,
-                inviteToken: invite.token,
-              }).catch(err => logger.error('Resource invite email error', { error: err?.message || err }));
-            }
-          } catch (err: any) {
-            logger.error('Resource invite email error', { error: err?.message || err });
-          }
-        }
-        } // end else (not self-resource)
-      }
-
-      return reply.status(201).send({ resource, warning });
+      return reply.status(201).send({ resource });
     } catch (error) {
+      if (error instanceof ResourceValidationError) return reply.status(400).send({ error: 'Invalid resource data', message: error.message });
       // A rejected field is the caller's mistake, not a server fault — say what
       // was actually wrong instead of a bare "Invalid resource data" that gives
       // no clue which field it was (matches the pattern already used in
@@ -237,8 +231,74 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       if (!resource) return reply.status(404).send({ error: 'Resource not found' });
       return { resource };
     } catch (error) {
+      if (error instanceof ResourceValidationError) return reply.status(400).send({ error: 'Invalid resource data', message: error.message });
+      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Invalid resource data', message: error.issues[0] ? `${error.issues[0].path.join('.')}: ${error.issues[0].message}` : 'Invalid request body' });
       logger.error('Update resource error', { error });
       return reply.status(400).send({ error: 'Invalid resource data' });
+    }
+  });
+
+  // POST /resources/:id/invite — the Invite button: invite this person to log in
+  fastify.post('/:id/invite', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const resource = await resourceService.findResourceById(id);
+    if (!resource) return reply.status(404).send({ error: 'Resource not found' });
+    try {
+      const result = await inviteResource(request, resource);
+      return result.sent ? result : reply.status(400).send({ error: 'Invite not sent', message: result.message });
+    } catch (error: any) {
+      // Plan limits and a refused address are the caller's to fix — say so plainly
+      if (error instanceof EmailRejectedError) return reply.status(400).send({ error: 'Invite not sent', message: `The email provider refused ${resource.email}: ${error.message}` });
+      if (error?.message && /limit|plan|already/i.test(error.message)) return reply.status(400).send({ error: 'Invite not sent', message: error.message });
+      logger.error('Resource invite error', { error: error?.message || error });
+      return reply.status(500).send({ error: 'Invite not sent', message: 'Something went wrong sending the invite. Try again in a minute.' });
+    }
+  });
+
+  // GET /resources/:id/tasks?scheduleId= — the tasks in one plan a resource is on (Replace dialog)
+  fastify.get('/:id/tasks', { preHandler: [requireScope('read'), scheduleQueryPM] }, async (request: FastifyRequest, _reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const { scheduleId } = request.query as { scheduleId: string };
+    return { tasks: await resourceReplaceService.tasksOf(id, scheduleId) };
+  });
+
+  // POST /resources/replace/check — the Replace dialog's warning: weeks the new person would be over 100%
+  fastify.post('/replace/check', { preHandler: [requireScope('read'), bodySchedulePM] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const parsed = z.object({
+      scheduleId: z.string().min(1),
+      fromResourceId: z.string().min(1),
+      toResourceId: z.string().min(1),
+      taskIds: z.array(z.string().min(1)).max(500),
+    }).safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Validation error', message: 'Send scheduleId, fromResourceId, toResourceId and taskIds' });
+    const result = await resourceService.checkReplaceLoad({ fromId: parsed.data.fromResourceId, toId: parsed.data.toResourceId, scheduleId: parsed.data.scheduleId, taskIds: parsed.data.taskIds });
+    if (!result) return reply.status(404).send({ error: 'Resource not found' });
+    // Only weeks and percentages: the names of other projects' tasks stay private
+    return { resourceName: result.resourceName, overWeeks: result.overWeeks.map(w => ({ weekStart: w.weekStart, utilization: w.utilization })) };
+  });
+
+  // POST /resources/replace — "Replace Generic Developer with …" on chosen tasks (undoable from History)
+  fastify.post('/replace', { preHandler: [requireScope('write'), requireFeature('resources'), bodySchedulePM] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const parsed = z.object({
+      scheduleId: z.string().min(1),
+      fromResourceId: z.string().min(1),
+      toResourceId: z.string().min(1),
+      taskIds: z.array(z.string().min(1)).min(1).max(500).optional(),
+    }).safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Validation error', message: 'Send scheduleId, fromResourceId, toResourceId and optionally taskIds' });
+    const schedule = await scheduleService.findById(parsed.data.scheduleId);
+    if (!schedule) return reply.status(404).send({ error: 'Schedule not found' });
+    try {
+      return await resourceReplaceService.replace({
+        projectId: schedule.projectId,
+        scheduleId: schedule.id,
+        fromId: parsed.data.fromResourceId,
+        toId: parsed.data.toResourceId,
+        taskIds: parsed.data.taskIds,
+      });
+    } catch (error) {
+      if (error instanceof ResourceValidationError) return reply.status(400).send({ error: 'Not replaced', message: error.message });
+      throw error;
     }
   });
 
@@ -361,12 +421,39 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     return { workload, costSummary: { totalProjectCost } };
   });
 
+  // GET /resources/on-project/:projectId — the people doing work on this project (any of its
+  // tasks), with how many tasks each, so the Team tab can show those who have no login yet.
+  // Generic roles are left out: they are unfilled demand, not team members.
+  fastify.get('/on-project/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
+    const { projectId } = request.params as { projectId: string };
+    const schedules = await scheduleService.findByProjectId(projectId);
+    if (schedules.length === 0) return { people: [] };
+    const bookings = await resourceService.findEffectiveAssignments({ scheduleIds: schedules.map((s) => s.id) });
+    const tasksBy = new Map<string, Set<string>>();
+    for (const b of bookings) {
+      if (!tasksBy.has(b.resourceId)) tasksBy.set(b.resourceId, new Set());
+      tasksBy.get(b.resourceId)!.add(b.taskId);
+    }
+    const resources = (await resourceService.findResourcesByIds([...tasksBy.keys()])).filter((r) => !r.isGeneric);
+    return {
+      people: resources
+        .map((r) => ({
+          resourceId: r.id, name: r.name, role: r.role, email: r.email, userId: r.userId,
+          placeholderEmail: isPlaceholderEmail(r.email), taskCount: tasksBy.get(r.id)?.size ?? 0,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    };
+  });
+
   // GET /resources/workload/:projectId
   fastify.get('/workload/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
     const { projectId } = request.params as { projectId: string };
-    const workload = await resourceService.computeWorkload(projectId);
+    const [workload, demand] = await Promise.all([
+      resourceService.computeWorkload(projectId),
+      resourceService.computeUnfilledDemand(projectId),
+    ]);
     const totalProjectCost = Math.round(workload.reduce((sum, w) => sum + w.totalCost, 0) * 100) / 100;
-    return { workload, costSummary: { totalProjectCost } };
+    return { workload, demand, costSummary: { totalProjectCost } };
   });
 
   // GET /resources/:id/utilization-history (#6)
@@ -560,7 +647,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
 
   // GET /resources/capacity-by-role — Capacity planning by role (#5)
   fastify.get('/capacity-by-role', { preHandler: [requireScope('read')] }, async (_request: FastifyRequest, _reply: FastifyReply) => {
-    const resources = await resourceService.findAllResources();
+    // People only — a generic role adds no capacity (its work is unfilled demand)
+    const resources = (await resourceService.findAllResources()).filter((r) => !r.isGeneric);
     const allAssignments = await resourceService.findEffectiveAssignments();
 
     const DAY_MS = 86_400_000;
