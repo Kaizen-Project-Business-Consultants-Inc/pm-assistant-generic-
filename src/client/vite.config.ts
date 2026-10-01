@@ -27,7 +27,8 @@ export default defineConfig(({ mode }) => ({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      registerType: 'autoUpdate',
+      // 'prompt' = never reload pages by itself; utils/appUpdate.ts picks the safe moment
+      registerType: 'prompt',
       manifest: {
         name: 'Kovarti PM',
         short_name: 'Kovarti PM',

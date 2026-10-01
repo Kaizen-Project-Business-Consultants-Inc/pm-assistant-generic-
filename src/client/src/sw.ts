@@ -11,7 +11,11 @@ declare let self: ServiceWorkerGlobalScope;
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 clientsClaim();
-self.skipWaiting();
+// A new version waits until the page says it's a safe moment (utils/appUpdate.ts →
+// reloadForUpdate). Taking over straight away made open pages reload by themselves mid-typing.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') void self.skipWaiting();
+});
 
 // API caching — NetworkFirst
 registerRoute(

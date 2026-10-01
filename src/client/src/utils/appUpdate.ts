@@ -87,10 +87,30 @@ export async function reloadForUpdate(force = false): Promise<void> {
     if (!force && latestBuild && sessionStorage.getItem(RELOADED_KEY) === latestBuild) return;
     if (latestBuild) sessionStorage.setItem(RELOADED_KEY, latestBuild);
   } catch { /* storage blocked — still reload */ }
-  if (registration) {
-    await Promise.race([registration.update().catch(() => {}), new Promise(r => setTimeout(r, 3000))]);
-  }
+  if (registration) await activateWaitingWorker(registration);
   window.location.reload();
+}
+
+const within = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<void>(r => setTimeout(r, ms))]);
+
+/**
+ * The new service worker waits (it no longer takes over by itself). Fetch it, let it finish
+ * installing, then tell it to take over — so the reload is served the new files, not the old
+ * cache. Every step is time-boxed: worst case we reload anyway.
+ */
+async function activateWaitingWorker(reg: ServiceWorkerRegistration): Promise<void> {
+  await within(reg.update().catch(() => {}), 3000);
+  const installing = reg.installing;
+  if (installing) {
+    await within(new Promise<void>(res => installing.addEventListener('statechange', () => {
+      if (installing.state === 'installed' || installing.state === 'activated') res();
+    })), 5000);
+  }
+  if (reg.waiting && navigator.serviceWorker) {
+    const switched = new Promise<void>(res => navigator.serviceWorker.addEventListener('controllerchange', () => res(), { once: true }));
+    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    await within(switched, 3000);
+  }
 }
 
 export function startAppUpdateChecks(): void {

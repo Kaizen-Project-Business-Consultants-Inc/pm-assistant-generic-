@@ -11,8 +11,8 @@ import './index.css';
 
 registerSW({
   immediate: true,
-  // No prompt of its own: the purple banner (utils/appUpdate.ts) is the one "new version"
-  // message. This dark pop-up was a second one, so a deploy could prompt twice (removed 2026-10-01).
+  // No prompt and no reload of its own: utils/appUpdate.ts loads new versions quietly at a
+  // safe moment (next page change, or a background tab with nothing being edited).
   onOfflineReady() {
     // Silently ready for offline use
   },
