@@ -172,6 +172,11 @@ export const barColors: Record<string, { bg: string; fill: string; text: string 
   cancelled: { bg: '#f5f5f4', fill: '#a8a29e', text: '#44403c' },
 };
 
+/** The task statuses a person sees, once each, in order — the colour key and the status filter.
+ *  (statusLabels/barColors also hold older spellings — done, not_started — so lookups still work,
+ *  which made the key show "Complete" and "Not Started" twice.) */
+export const TASK_STATUSES = ['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled'] as const;
+
 export const statusLabels: Record<string, string> = {
   completed: 'Complete',
   done: 'Complete',

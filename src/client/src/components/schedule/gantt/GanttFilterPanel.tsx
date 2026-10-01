@@ -1,5 +1,5 @@
 import React from 'react';
-import { type GanttFilters, statusLabels, priorityDot } from './types';
+import { type GanttFilters, statusLabels, priorityDot, TASK_STATUSES } from './types';
 
 interface GanttFilterPanelProps {
   filters: GanttFilters;
@@ -19,7 +19,7 @@ export const GanttFilterPanel = React.memo(function GanttFilterPanel({
       {/* Status multi-select */}
       <div className="flex items-center gap-1.5">
         <span className="text-xs font-semibold text-gray-500 uppercase">Status</span>
-        {['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled'].map(s => (
+        {TASK_STATUSES.map(s => (
           <label key={s} className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
             <input
               type="checkbox"

@@ -1,5 +1,5 @@
 import React from 'react';
-import { statusLabels, barColors, priorityDot } from './types';
+import { statusLabels, barColors, priorityDot, TASK_STATUSES } from './types';
 
 interface GanttLegendProps {
   criticalPathTaskIds?: string[];
@@ -18,7 +18,7 @@ export const GanttLegend = React.memo(function GanttLegend({
 }: GanttLegendProps) {
   return (
     <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex items-center gap-4 flex-wrap print-legend">
-      {Object.entries(statusLabels).map(([key, label]) => (
+      {TASK_STATUSES.map(key => [key, statusLabels[key]] as const).map(([key, label]) => (
         <div key={key} className="flex items-center gap-1.5">
           <div
             className="w-3 h-2.5 rounded-sm"
