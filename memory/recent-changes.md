@@ -1,5 +1,18 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-09-30 (all on prod)
+
+- **Rate card** (T063): hourly rates by role with start dates; resources opt in ("Use rate card"); costs use the week's rate. Overtime rate now saves.
+- **Plan tables complete** (122/123): every plan has every feature setting; `constants/planFeatures.ts`, planFeatures.test, plan-settings alert; Enterprise price row now in a migration; `ai_assistant` added (document import was refused on every plan).
+- **Shared-DB clean-up**: 58 old company-table copies renamed `_retired_*` (124 — drop after 2026-10-14); agents seeded (125); company-less accounts refused company features (`no_company`); admin stats add up every company (`utils/acrossCompanies.ts`); retention cleans each company; tripwire `database/sharedDbWatch.ts`.
+- **Support view** (126): admin's read-only, recorded 30-min visit into one company; company owner sees visits in Settings → Support visits. **Dreaming switched off.**
+- **Admin pages** read the camelCase the server sends (were blank/wrong since Feb); collation fix (127) → Feedback page loads.
+- **Read-only people** no longer see change buttons (`hooks/useCanChangeData.ts`, project pages via canEdit).
+- **Field-name fixes** on ~14 screens (goals, proposals, sprints, intake, portal, activity feed, scenarios, documents); **date drift** fixed in 13 places (today's date, not this moment).
+- **Goals**: create/edit works (field names + empty boxes), owner names shown, key-result progress = current/target with objective roll-up (T064).
+- **Fixes**: portal on/off switch, AI-settings layers (user/company ids), intake answers shown, cron runner records its runs, deploy refuses unsaved changes, logs kept 90 days.
+- **Open**: sprint velocity (todo); drop `_retired_*` tables after 2026-10-14.
+
 ## 2026-09-29 (RAID Review v1 — staging)
 
 - Mock approved ("ok"). Server: T061 (project_risks.response_strategy + closure_reason; raid_reviews, raid_review_settings, raid_fix_batches), `services/raidReview/rules.ts` (RR01–RR12, v1.0, pure, score), `fixProposer.ts` (change_type, set_owner, set_due_date, set_response_strategy), `RaidReviewService` (run/latest/settings/fixes/apply/undo; people = members + resources + names split from the log's owner column), `raidReview/autoRerun.ts` (20 s, after RAID create/update/cancel/reverse/import; WS `raid_review_updated`), routes `/api/v1/projects/:id/raid-review[...]`. Import maps response strategy / closure reason to the real fields.

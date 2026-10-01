@@ -2,6 +2,7 @@ import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
   Rocket,
+  Target,
   FolderKanban,
   TrendingUp,
   FileText,
@@ -148,6 +149,19 @@ const sections: Section[] = [
       'Each line says what changed, who did it and when (including changes made through Claude)',
       'Undo reverses that change and puts moved dates back — including tasks moved by a working-calendar change',
       'If someone edited the same tasks since, you are warned before undoing',
+    ],
+  },
+  {
+    id: 'goals',
+    title: 'Goals & OKRs',
+    icon: Target,
+    description:
+      'Track objectives and the key results that measure them.',
+    items: [
+      'Click New Goal — choose Objective, or Key result with its parent objective',
+      'A key result\'s progress is current ÷ target (3 of 10 = 30%); the objective averages its key results',
+      'Each goal shows its owner — "You" for your own',
+      'Link a goal to a project with the Project dropdown',
     ],
   },
   {

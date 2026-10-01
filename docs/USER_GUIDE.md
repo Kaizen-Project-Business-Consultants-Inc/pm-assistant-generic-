@@ -2562,6 +2562,8 @@ Destructive actions throughout the application (deleting integrations, change re
 
 ### User Roles
 
+Buttons that change company-wide things — New Project, Start, Add Resource, New Change Request, New Workflow, portal links, availability blocks and the project's Get Started checklist — are shown only to roles that can make changes (Admin, PMO, Project Manager, Scrum Master, Risk Manager, BA, QA, DevOps) and, inside a project, to its Owner or Manager. Read-only people simply don't see them, rather than seeing buttons that fail.
+
 | Role | Permissions |
 |------|-------------|
 | **Admin** | Full access to all features, user management, settings, and admin panel. |
@@ -2627,24 +2629,36 @@ Open **Settings → Preferences** and enter your IANA timezone string (e.g., `Am
 
 ## 24. Goals / OKR Tracking
 
-The **Goals** page (sidebar link) lets teams track strategic Objectives and Key Results alongside project execution.
+The **Goals** page (sidebar link) lets teams track strategic Objectives and the Key Results that measure them, alongside project work.
 
-### Creating an Objective
+### Creating an objective
 
-1. Click **New Objective**.
-2. Enter a title, description, owner, and time period (e.g., Q3 2026).
-3. Save. The objective appears in the goals list.
+1. Click **New Goal**.
+2. Enter a name, and leave **Type** as **Objective**. Add a description, status, start and due dates, and a project if you like — anything you leave empty is simply left out.
+3. Click **Save**. The objective appears in the list with **Owner: You** under its name.
 
-### Adding Key Results
+### Adding key results
 
-1. Open an objective.
-2. Click **Add Key Result**.
-3. Enter a title, target value, current value, and unit (e.g., "Revenue", 1000000, 750000, "USD").
-4. Progress is calculated automatically as `current / target × 100%`.
+1. Click **New Goal** and set **Type** to **Key result**.
+2. Pick the **Parent objective** it measures.
+3. Enter the **target value**, **current value** and **unit** (e.g. target 10, current 3, unit "proposals").
+4. Save. The key result appears under its objective as "3 / 10 proposals · *owner*".
 
-### Linking to Projects
+### Progress
 
-In the goal modal, use the **Project** dropdown to associate the goal with a project. The dropdown lists all available projects by name, replacing the previous free-text Project ID field. This surfaces the goal on the project overview so teams can see how their work maps to strategic goals.
+- A key result's progress is worked out from its figures: **current ÷ target** (3 of 10 = **30%**), capped at 100%.
+- An objective's progress is the **average of its key results**. Edit a key result's current value and both update straight away.
+- Key results without a target keep whatever progress was set on them.
+
+### Owners
+
+Every goal shows who owns it — **You** for your own goals, otherwise the person's name.
+
+### Linking to projects
+
+In the goal form, use the **Project** dropdown to link the goal to a project, so teams can see how their work maps to strategic goals.
+
+If a save is refused (for example a required field is missing), the reason appears at the bottom of the goal form.
 
 ---
 

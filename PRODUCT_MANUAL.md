@@ -3025,7 +3025,8 @@ The Goals module provides Objectives and Key Results (OKR) tracking alongside tr
 
 - **Objectives** — High-level goals with a title, description, owner, and time period.
 - **Key Results** — Measurable outcomes nested under an objective, each with a numeric target, current value, and unit.
-- **Progress** — Automatically calculated from key result completion percentages.
+- **Progress** — A key result's progress is current / target (0–100%, `GoalService.measuredProgress`, set when it is created or its figures change); an objective's is the average of its key results. Until Sep 2026 key results stayed at 0% whatever their figures; T064 corrected existing goals.
+- **Owners** — The goals list adds each owner's name (`ownerName`, one lookup for all owners); the page shows "You" for your own goals.
 - **Project linking** — OKRs can be associated with a project using a searchable project dropdown in the goal modal (replaces the previous free-text Project ID field), preventing invalid IDs and improving discoverability.
 
 **API endpoints:** `GET/POST /api/v1/goals`, `GET/PUT/DELETE /api/v1/goals/:id`.
