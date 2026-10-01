@@ -45,7 +45,8 @@ const defaultForm: CreateLinkForm = {
   expiresAt: '',
 };
 
-export function PortalLinkManager({ projectId }: { projectId: string }) {
+/** canEdit: the project's Manager/Owner. Everyone else sees the links read-only (hide, don't disable). */
+export function PortalLinkManager({ projectId, canEdit = false }: { projectId: string; canEdit?: boolean }) {
   const queryClient = useQueryClient();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [form, setForm] = useState<CreateLinkForm>(defaultForm);
@@ -169,7 +170,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
           <Link className="w-4 h-4 text-primary-600" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Client Portal Links</h3>
         </div>
-        {!isSample && (
+        {!isSample && canEdit && (
           <button
             onClick={() => setShowCreateForm(!showCreateForm)}
             className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-800 font-medium"
@@ -329,7 +330,7 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
                   )}
                 </button>
 
-                <button
+                {canEdit && <button
                   onClick={() =>
                     toggleMutation.mutate({
                       linkId: link.id,
@@ -350,9 +351,9 @@ export function PortalLinkManager({ projectId }: { projectId: string }) {
                       <span>Enable</span>
                     </>
                   )}
-                </button>
+                </button>}
 
-                {deleteConfirmId === link.id ? (
+                {!canEdit ? null : deleteConfirmId === link.id ? (
                   <div className="flex items-center gap-1 ml-auto">
                     <span className="text-red-600">Delete?</span>
                     <button

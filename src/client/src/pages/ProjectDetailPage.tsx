@@ -652,7 +652,7 @@ export function ProjectDetailPage() {
       </div>
 
       {/* Setup Checklist */}
-      {activeTab === 'overview' && <SetupChecklist project={project} onNavigate={(tab) => setActiveTab(tab as Tab)} />}
+      {activeTab === 'overview' && canEditStatus && <SetupChecklist project={project} onNavigate={(tab) => setActiveTab(tab as Tab)} />}
 
       {/* Tab Content */}
       <h2 className="sr-only">{[...getPrimaryTabs(methodology), ...getOverflowTabs(methodology)].find(t => t.id === activeTab)?.label ?? activeTab}</h2>

@@ -18,7 +18,7 @@ function SectionSpinner() {
   );
 }
 
-function ResourceAvailabilitySection({ resources }: { resources: any[] }) {
+function ResourceAvailabilitySection({ resources, canEdit }: { resources: any[]; canEdit: boolean }) {
   const [selectedResourceId, setSelectedResourceId] = useState(resources[0]?.id || '');
   const selectedResource = resources.find((r: any) => r.id === selectedResourceId);
 
@@ -40,6 +40,7 @@ function ResourceAvailabilitySection({ resources }: { resources: any[] }) {
         <AvailabilityCalendar
           resourceId={selectedResource.id}
           resourceName={selectedResource.name}
+          canEdit={canEdit}
         />
       )}
     </div>
@@ -289,7 +290,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
 
       {/* Resource Availability Calendar */}
       {resources.length > 0 && (
-        <ResourceAvailabilitySection resources={resources} />
+        <ResourceAvailabilitySection resources={resources} canEdit={canEdit} />
       )}
     </div>
   );

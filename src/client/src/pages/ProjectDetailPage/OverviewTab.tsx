@@ -1226,7 +1226,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
         )}
         {project.id && (
           <div className={cardClass}>
-            <PortalLinkManager projectId={project.id} />
+            <PortalLinkManager projectId={project.id} canEdit={!!canEdit} />
           </div>
         )}
       </div>

@@ -25,9 +25,11 @@ const typeColors: Record<string, { bg: string; text: string; label: string }> = 
 interface AvailabilityCalendarProps {
   resourceId: string;
   resourceName: string;
+  /** Can change availability (the project's Manager/Owner) — otherwise read-only */
+  canEdit?: boolean;
 }
 
-export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityCalendarProps) {
+export function AvailabilityCalendar({ resourceId, resourceName, canEdit = false }: AvailabilityCalendarProps) {
   const queryClient = useQueryClient();
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
@@ -153,13 +155,13 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
           <button onClick={nextMonthFn} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" aria-label="Next month">
             <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400" />
           </button>
-          <button
+          {canEdit && <button
             onClick={() => setShowForm(!showForm)}
             className="ml-2 flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-md"
           >
             <Plus className="w-3 h-3" />
             Add Block
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -248,13 +250,13 @@ export function AvailabilityCalendar({ resourceId, resourceName }: AvailabilityC
                   {formatCalendarDate(e.dateTo, { month: 'short', day: 'numeric' }, 'en-US')}
                 </span>
                 {e.note && <span className="text-gray-500 dark:text-gray-400 truncate">{e.note}</span>}
-                <button
+                {canEdit && <button
                   onClick={() => deleteMutation.mutate(e.id)}
                   className="ml-auto p-0.5 text-gray-500 hover:text-red-500"
                   title="Delete"
                 >
                   <Trash2 className="w-3 h-3" />
-                </button>
+                </button>}
               </div>
             );
           })}
