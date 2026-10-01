@@ -87,6 +87,28 @@ describe('ChangeHistoryService', () => {
       expect(JSON.parse(insert[1][10])).toEqual(['Design: status In progress → Done, priority Medium → High']);
     });
 
+    it('a Schedule Review fix says what it did: the fix, what it added, and dates before → after (2026-10-01)', async () => {
+      query.mockImplementation((sql: string) => Promise.resolve(String(sql).includes('FROM tasks WHERE id IN') ? [
+        { id: 'go', name: 'Go-Live Complete', start_date: '2027-02-01', end_date: '2027-02-01' },
+        { id: 'hc', name: 'Hypercare & Monitoring', start_date: '2027-02-02', end_date: '2027-02-08' },
+        { id: 'inf', name: 'Infrastructure Setup', start_date: '2027-01-21', end_date: '2027-01-27' },
+      ] : []));
+      await changeHistoryService.record({ projectId: 'p-1', scheduleId: 's-1', kind: 'review_fix', ref: 'prop-1', summary: 'Applied 1 Schedule Review fix · 3 tasks moved', taskIds: ['go', 'hc', 'inf'],
+        undo: {
+          proposalId: 'prop-1',
+          fixes: ["Replace 'Go-Live & Monitoring' with: 1. Go-Live Complete (milestone)  2. Hypercare & Monitoring"],
+          added: ['go', 'hc'],
+          moved: [{ taskId: 'go', startDate: null, endDate: null }, { taskId: 'inf', startDate: '2027-01-20', endDate: '2027-01-26' }],
+        } });
+      const insert = query.mock.calls.find(([q]) => String(q).includes('INSERT INTO change_batches'))!;
+      expect(JSON.parse(insert[1][10])).toEqual([
+        "Applied: Replace 'Go-Live & Monitoring' with: 1. Go-Live Complete (milestone)  2. Hypercare & Monitoring",
+        'Added Go-Live Complete',
+        'Added Hypercare & Monitoring',
+        'Infrastructure Setup: start 20 Jan → 21 Jan, finish 26 Jan → 27 Jan',
+      ]);
+    });
+
     it('skips a change that touched nothing', async () => {
       expect(await changeHistoryService.record({ projectId: 'p', scheduleId: 's', kind: 'link', summary: 'x', taskIds: [], undo: {} })).toBeNull();
       expect(query).not.toHaveBeenCalled();

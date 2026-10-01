@@ -254,6 +254,9 @@ function pct(n: number, total: number): string {
   return total === 0 ? '0' : String(Math.round((n / total) * 100));
 }
 
+/** The verb (or phrase) that agrees with a count: agree(1, 'feeds', 'feed') → 'feeds' */
+function agree(n: number, one: string, many: string): string { return n === 1 ? one : many; }
+
 function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
@@ -346,7 +349,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     const latest = [...leaves].sort((a, b) => (ymd(b.endDate) || '0000').localeCompare(ymd(a.endDate) || '0000'))[0];
     const noSucc = leaves.filter(t => t.id !== latest?.id && !isMilestoneLike(t) && !(g.successorsOf.get(t.id) || []).length);
     if (noSucc.length > 0 && noSucc.length / n > 0.05) {
-      findings.push(make('R02', noSucc.map(t => t.id), `${plural(noSucc.length, 'task')} feed nothing: ${listNames(noSucc)}. If they slip, no downstream task moves.`));
+      findings.push(make('R02', noSucc.map(t => t.id), `${plural(noSucc.length, 'task')} ${agree(noSucc.length, 'feeds', 'feed')} nothing: ${listNames(noSucc)}. If they slip, no downstream task moves.`));
     }
   }
 
@@ -360,7 +363,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   // R05 — Milestone not flagged
   const msUnflagged = g.all.filter(t => !t.isMilestone && nameSaysMilestone(t.name) && !t.isSummary);
   if (msUnflagged.length > 0) {
-    findings.push(make('R05', msUnflagged.map(t => t.id), `${plural(msUnflagged.length, 'task')} are named as milestones but not marked as one: ${listNames(msUnflagged)}. They will not appear on the milestone timeline.`));
+    findings.push(make('R05', msUnflagged.map(t => t.id), `${plural(msUnflagged.length, 'task')} ${agree(msUnflagged.length, 'is named as a milestone', 'are named as milestones')} but not marked as one: ${listNames(msUnflagged)}. They will not appear on the milestone timeline.`));
   }
 
   // R06 — Dates outside project window
@@ -456,7 +459,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   }
   if (disagree.length > 0) {
     const hint = hoursLookLikeDays > 0 ? ` On ${hoursLookLikeDays} of them the hours field matches the calendar span, so hours probably hold days.` : '';
-    findings.push(make('R12', disagree.map(t => t.id), `${plural(disagree.length, 'task')} have estimates that disagree with their dates: ${listNames(disagree)}.${hint}`));
+    findings.push(make('R12', disagree.map(t => t.id), `${plural(disagree.length, 'task')} ${agree(disagree.length, 'has an estimate', 'have estimates')} that disagree with their dates: ${listNames(disagree)}.${hint}`));
   }
 
   // R13 — Very long task (limit depends on the kind of project; DCMA's 44 otherwise)
@@ -464,13 +467,13 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   const longTasks = leaves.filter(t => { const s = ymd(t.startDate); const e = ymd(t.endDate); return s && e && !isMilestoneLike(t) && !LEVEL_OF_EFFORT.test(t.name || '') && !t.recurrenceParentId && span(s, e) > longLimit; });
   if (longTasks.length > 0 && longTasks.length / Math.max(1, n) > 0.05) {
     const why = profile ? ` For ${profile.description}, work longer than ${longLimit} working days is usually broken down.` : '';
-    findings.push(make('R13', longTasks.map(t => t.id), `${plural(longTasks.length, 'task')} run longer than ${longLimit} working days as one task: ${listNames(longTasks)}.${why} Split them so progress can be measured.`));
+    findings.push(make('R13', longTasks.map(t => t.id), `${plural(longTasks.length, 'task')} ${agree(longTasks.length, 'runs', 'run')} longer than ${longLimit} working days as one task: ${listNames(longTasks)}.${why} Split them so progress can be measured.`));
   }
 
   // R14 — Hard constraints
   const hard = leaves.filter(t => t.constraintType && HARD_CONSTRAINTS.has(String(t.constraintType).toUpperCase()));
   if (hard.length > 0 && hard.length / Math.max(1, n) > 0.05) {
-    findings.push(make('R14', hard.map(t => t.id), `${plural(hard.length, 'task')} have hard date constraints that will fight the logic: ${listNames(hard)}.`));
+    findings.push(make('R14', hard.map(t => t.id), `${plural(hard.length, 'task')} ${agree(hard.length, 'has a hard date constraint', 'have hard date constraints')} that will fight the logic: ${listNames(hard)}.`));
   }
 
   // R15 / R16 — Float rules (need logic)
@@ -481,7 +484,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     }
     const excessive = leaves.filter(t => (input.floatByTask!.get(t.id) ?? 0) > EXCESSIVE_FLOAT_DAYS && !isMilestoneLike(t));
     if (excessive.length > 0 && excessive.length / Math.max(1, n) > 0.05) {
-      findings.push(make('R16', excessive.map(t => t.id), `${plural(excessive.length, 'task')} have more than ${EXCESSIVE_FLOAT_DAYS} working days of float: ${listNames(excessive)}. Either they are unlinked or the dates are loose.`));
+      findings.push(make('R16', excessive.map(t => t.id), `${plural(excessive.length, 'task')} ${agree(excessive.length, 'has', 'have')} more than ${EXCESSIVE_FLOAT_DAYS} working days of float: ${listNames(excessive)}. Either they are unlinked or the dates are loose.`));
     }
   } else {
     skipped.push({ ruleId: 'R15', rule: RULES.R15.name, reason: 'needs_logic' });

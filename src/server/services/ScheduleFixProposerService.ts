@@ -20,8 +20,7 @@ import {
   buildPhaseFixes,
   splitCandidates,
   planSplitDates,
-  type ProposedFix,
-} from './scheduleReview/fixProposer';
+  type ProposedFix, describeFix } from './scheduleReview/fixProposer';
 import { RULES_VERSION, findMissingPhases, type ReviewTask } from './scheduleReview/rules';
 import { profileFor } from './scheduleReview/domainProfiles';
 import { projectService } from './ProjectService';
@@ -488,7 +487,13 @@ export class ScheduleFixProposerService {
       ref: proposalId,
       summary: `Applied ${appliedCount} Schedule Review fix${appliedCount === 1 ? '' : 'es'}${recompute.tasksMoved ? ` · ${recompute.tasksMoved} task${recompute.tasksMoved === 1 ? '' : 's'} moved` : ''}`,
       taskIds: recompute.deltas.map(d => d.taskId).concat(applied.flatMap((a: any) => [a.taskId, a.newTaskId].filter(Boolean))),
-      undo: { proposalId },
+      // History shows what the fixes did (2026-10-01: it only listed task names)
+      undo: {
+        proposalId,
+        fixes: fixes.map(describeFix),
+        added: applied.filter((a: any) => a.op === 'delete_task').map((a: any) => a.taskId),
+        moved: recompute.deltas.map(d => ({ taskId: d.taskId, startDate: d.oldStart, endDate: d.oldEnd })),
+      },
     });
 
     auditLedgerService.append({

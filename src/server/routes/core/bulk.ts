@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { scheduleRecomputeService } from '../../services/ScheduleRecomputeService';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
@@ -288,6 +289,17 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       for (const parentId of parentsToRecompute) {
         scheduleService.recomputeParentRollup(parentId).catch(err =>
           logger.error('[Rollup] recomputeParentRollup error on bulk create:', err));
+      }
+
+      // New tasks given a predecessor start after it, like adding a link (2026-10-01)
+      const newIds = createdIds.filter(Boolean) as string[];
+      if (newIds.length > 0) {
+        const linked = await databaseService.query<{ task_id: string }>(
+          `SELECT DISTINCT task_id FROM task_dependencies WHERE task_id IN (${newIds.map(() => '?').join(',')})`, newIds);
+        if (linked.length > 0) {
+          await scheduleRecomputeService.recompute(body.scheduleId, { onlyFrom: linked.map(r => r.task_id) })
+            .catch(err => logger.error('[bulk create] re-plan after links failed', { error: (err as Error).message }));
+        }
       }
 
       queueReviewRerun(body.scheduleId);

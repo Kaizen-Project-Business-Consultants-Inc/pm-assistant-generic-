@@ -233,7 +233,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const user = request.user!;
       const { scheduleId } = request.params as { scheduleId: string };
       const data = createTaskSchema.omit({ scheduleId: true }).parse(request.body);
-      const task = await scheduleService.createTask({
+      const created = await scheduleService.createTask({
         scheduleId,
         ...data,
         dueDate: data.dueDate || undefined,
@@ -247,12 +247,21 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
         baselineCost: data.baselineCost ?? undefined,
         createdBy: user.userId,
       });
+      // A predecessor given when the task is created moves it (and anything after it) to start
+      // after that predecessor — the same rule as adding a link to an existing task (2026-10-01:
+      // a new linked task kept the project start date until something else re-planned).
+      let task = created;
+      let rescheduled: Awaited<ReturnType<typeof scheduleRecomputeService.recompute>>['deltas'] = [];
+      if ((created.dependencies || []).length > 0) {
+        rescheduled = (await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [created.id] })).deltas;
+        if (rescheduled.length > 0) task = (await scheduleService.findTaskById(created.id)) ?? created;
+      }
       // Look up schedule's projectId for scoped broadcast
       const schedule = await scheduleService.findById(scheduleId);
       WebSocketService.broadcast({ type: 'task_created', payload: { task } }, schedule?.projectId);
       webhookService.dispatch('task.created', { task }, user?.userId);
       automationEventBus.emit({ type: 'task.created', entityType: 'task', entityId: task.id, projectId: schedule?.projectId || '', userId: user.userId, payload: task, timestamp: new Date().toISOString() }).catch(() => {});
-      return reply.status(201).send({ task });
+      return reply.status(201).send({ task, rescheduled });
     } catch (error) {
       if (error instanceof DependencyValidationError) {
         return reply.status(400).send({ error: 'Validation error', message: error.message });

@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-02 (found while recording the Scheduling video)
+
+- **A task created with a predecessor now starts after it** (single create route + bulk create re-plan with `onlyFrom`); test `linkedTaskCreate.test.ts`.
+- **History for Schedule Review fixes**: records the fixes in words (`describeFix`), tasks added, dates before → after; old records keep the old line.
+- **Web Application template** rewritten (Waterfall, links on tasks, sign-off milestones) → review 94 "fit for control". `builtInTemplatesReview.test.ts` reviews every built-in template; other templates still get R02 "feeds nothing" because templates allow ONE predecessor per task — follow-up (multi-predecessor templates), floors ratchet at 50.
+- **Split wording**: "Go-Live & Monitoring" → Go-Live Complete + Hypercare & Monitoring (was "Approve Monitoring"). Review messages agree with counts ("1 task feeds").
+
+
 ## 2026-10-01 (People and generic roles)
 
 - Found asking "who's on DBJ-LMS": Parth was on task 4 but not on the Team, and 10 of 11 resources had no email (the form required one, but plan import and the API didn't). User decided: every person has an email (placeholder firstname.lastname@example.com for the 10 — changed from first_name@dummy.com: two Parths, and dummy.com is a real domain), default generic roles + PM can add, generics = unfilled demand never over-booked, Replace, saving never invites, R37. Mock approved ("yes").

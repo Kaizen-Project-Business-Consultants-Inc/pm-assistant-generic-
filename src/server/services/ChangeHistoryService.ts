@@ -366,9 +366,18 @@ async function describeChange(input: RecordInput): Promise<string[]> {
       for (const id of ids.filter(x => x !== undo.summaryId)) lines.push(`${nameOf(id)} → grouped under ${summary}`);
       break;
     }
-    case 'review_fix':
-      for (const id of ids) lines.push(`Changed by a Schedule Review fix: ${nameOf(id)}`);
+    case 'review_fix': {
+      if (!Array.isArray(undo.fixes)) {
+        // recorded before 2026-10-01: only the tasks were kept
+        for (const id of ids) lines.push(`Changed by a Schedule Review fix: ${nameOf(id)}`);
+        break;
+      }
+      for (const f of undo.fixes as string[]) lines.push(`Applied: ${f}`);
+      const added = new Set<string>(undo.added ?? []);
+      for (const id of added) if (byId.has(id)) lines.push(`Added ${nameOf(id)}`);
+      moved(((undo.moved ?? []) as Array<{ taskId: string; startDate: string | null; endDate: string | null }>).filter(m => !added.has(m.taskId)));
       break;
+    }
     case 'reassign': {
       const people = await databaseService.query<any>(
         'SELECT id, name FROM resources WHERE id IN (?, ?)', [undo.fromId ?? '', undo.toId ?? '']);

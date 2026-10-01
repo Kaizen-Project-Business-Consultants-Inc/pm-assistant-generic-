@@ -56,6 +56,24 @@ export interface SplitPart {
   days: number;
 }
 
+/** A fix in plain words — the wording the Propose fixes panel shows; History records it */
+export function describeFix(f: ProposedFix): string {
+  if (f.type === 'add_dependency') return `Link '${f.taskName}' after '${f.dependsOnTaskName}'`;
+  if (f.type === 'set_milestone') return `Flag '${f.taskName}' as a milestone`;
+  if (f.type === 'set_duration') return `Set '${f.taskName}' duration to ${f.newDuration} day${f.newDuration === 1 ? '' : 's'}`;
+  if (f.type === 'insert_buffer') return `Add a ${f.bufferDays}-day buffer before '${f.gateName}'`;
+  if (f.type === 'split_task') {
+    const steps = (f.parts ?? []).map((p, i) => `${i + 1}. ${p.name}${p.isMilestone ? ' (milestone)' : ''}`).join('  ');
+    return f.replace ? `Replace '${f.taskName}' with: ${steps}` : `Split '${f.taskName}' into: ${steps}`;
+  }
+  if (f.type === 'add_task') {
+    const where = f.afterTaskName ? ` after '${f.afterTaskName}'` : '';
+    const then = f.beforeTaskName ? `, before '${f.beforeTaskName}'` : '';
+    return `Add ${f.phaseLabel}: '${f.newTaskName}' (${f.newTaskDays} day${f.newTaskDays === 1 ? '' : 's'})${where}${then}`;
+  }
+  return `Group '${f.taskName}' under phase '${f.newParentName}'`;
+}
+
 /** Fixes at or above this confidence are pre-ticked in the UI. */
 export const DEFAULT_CHECK_THRESHOLD = 0.6;
 
@@ -432,6 +450,14 @@ export function milestoneSplitParts(name: string, span: number, nextPhase?: stri
   // "Final", "Project", "Stage" don't name a thing — fall back to the task's (or gate's) deliverables
   if (!deliverable.replace(/\b(final|project|stage|phase|deliverables?|the|of)\b/gi, '').trim()) {
     deliverable = taskNo ? `Task ${taskNo} Deliverables` : gate ? `Gate ${gate} Deliverables` : name.trim();
+  }
+  // Go-live is an event, not an approval: the moment it happens, then the work around it
+  // ("Go-Live & Monitoring" → "Go-Live Complete", then "Hypercare & Monitoring").
+  if (/\bgo[\s-]?live\b/i.test(name) && !gate) {
+    const rest = name.replace(/\bgo[\s-]?live\b/gi, ' ').replace(/\s*(&|\band\b|\+)\s*/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+    return rest
+      ? [{ name: 'Go-Live Complete', isMilestone: true, days: 0 }, { name: `Hypercare & ${rest}`, isMilestone: false, days: Math.max(1, span) }]
+      : [{ name: 'Go-Live Cutover', isMilestone: false, days: Math.max(1, span) }, { name: 'Go-Live Complete', isMilestone: true, days: 0 }];
   }
   const approveDays = Math.max(1, Math.min(5, Math.round(span * 0.3)));
   const parts: SplitPart[] = [];

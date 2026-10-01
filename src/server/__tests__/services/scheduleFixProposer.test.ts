@@ -294,6 +294,15 @@ describe('milestone lines that span days are split, not flagged (user rule, 2026
       .toEqual(['Approve Task 4 Deliverables', 'Task 4 Deliverables Approved', 'Gate 4 Approved']);
   });
 
+  it("a go-live line becomes the go-live moment and the work around it — not 'Approve Monitoring' (2026-10-01)", async () => {
+    const { milestoneSplitParts } = await import('../../services/scheduleReview/fixProposer');
+    expect(milestoneSplitParts('Go-Live & Monitoring', 5, null)).toEqual([
+      { name: 'Go-Live Complete', isMilestone: true, days: 0 },
+      { name: 'Hypercare & Monitoring', isMilestone: false, days: 5 },
+    ]);
+    expect(milestoneSplitParts('Go-Live', 3, null).map(p => [p.name, p.isMilestone])).toEqual([['Go-Live Cutover', false], ['Go-Live Complete', true]]);
+  });
+
   it('next step: the next phase, else the work waiting on the gate, else the next line', async () => {
     const { nextStepName } = await import('../../services/scheduleReview/fixProposer');
     const t = (id: string, name: string, extra: Record<string, unknown> = {}) =>
