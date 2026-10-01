@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-01 (Meeting Intelligence → From Teams — staging)
+
+- Mock approved ("build as shown"). The PM connects their own Microsoft account (delegated, read-only: Calendars.Read, OnlineMeetings.Read, OnlineMeetingTranscript.Read.All); IT admin approves once (link from the tab). Lists Teams meetings of the last 30 days with transcript status; who's who matches speakers by saved choice → member name → invitee email (T066 `meeting_speaker_links`, `meeting_analyses.source_ref`); analysis items carry saidBy/at. Never joins a meeting. Files: `services/integrations/TeamsMeetingsGraph.ts`, `services/TeamsMeetingImportService.ts`, `routes/integrations/teamsMeetings.ts`, callback branch in `routes/integrations/teams.ts`, `utils/oauthState.ts` (one-time state), `components/meeting/TeamsMeetingsTab.tsx`.
+- Results panel: risk titles and task-update changes were blank (read fields the analysis never sends) — fixed.
+- Needs before it works: Azure app permissions added by the user; prod has no Microsoft keys. Open: Slack/Teams-channel callbacks still trust a user id in the state (flagged). Auto pick-up explained, not built.
+
 ## 2026-09-30 (all on prod)
 
 - **Rate card** (T063): hourly rates by role with start dates; resources opt in ("Use rate card"); costs use the week's rate. Overtime rate now saves.

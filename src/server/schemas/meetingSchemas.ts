@@ -9,6 +9,8 @@ export const MeetingActionItemSchema = z.object({
   assignee: z.string().describe('Name of the person assigned'),
   dueDate: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
+  saidBy: z.string().optional().describe('Who raised it, as the speaker is named in the transcript; omit if the transcript has no speaker names'),
+  at: z.string().optional().describe('Transcript time it was said, e.g. 0:12:41; omit if unknown'),
 });
 
 export type MeetingActionItem = z.infer<typeof MeetingActionItemSchema>;
@@ -21,6 +23,7 @@ export const MeetingDecisionSchema = z.object({
   decision: z.string(),
   rationale: z.string().optional(),
   madeBy: z.string().optional(),
+  at: z.string().optional().describe('Transcript time the decision was made, e.g. 0:24:10; omit if unknown'),
 });
 
 export type MeetingDecision = z.infer<typeof MeetingDecisionSchema>;
@@ -33,6 +36,8 @@ export const MeetingRiskSchema = z.object({
   description: z.string(),
   severity: z.enum(['low', 'medium', 'high', 'critical']),
   mitigation: z.string().optional(),
+  saidBy: z.string().optional().describe('Who raised it, as the speaker is named in the transcript; omit if the transcript has no speaker names'),
+  at: z.string().optional().describe('Transcript time it was said, e.g. 0:12:41; omit if unknown'),
 });
 
 export type MeetingRisk = z.infer<typeof MeetingRiskSchema>;
@@ -45,6 +50,8 @@ export const MeetingIssueSchema = z.object({
   description: z.string(),
   severity: z.enum(['low', 'medium', 'high', 'critical']),
   impact: z.string().optional(),
+  saidBy: z.string().optional().describe('Who raised it, as the speaker is named in the transcript; omit if the transcript has no speaker names'),
+  at: z.string().optional().describe('Transcript time it was said, e.g. 0:12:41; omit if unknown'),
 });
 
 export type MeetingIssue = z.infer<typeof MeetingIssueSchema>;

@@ -1590,6 +1590,35 @@ class ApiService {
     return response.data;
   }
 
+  // Meeting Intelligence → From Teams (your own Microsoft account; PM of the project)
+  async getTeamsMeetingsStatus(): Promise<{ configured: boolean; connected: boolean }> {
+    return (await this.api.get('/teams-meetings/status')).data;
+  }
+
+  async getTeamsMeetingsInstallUrl(): Promise<{ url: string }> {
+    return (await this.api.get('/teams-meetings/install')).data;
+  }
+
+  async getTeamsAdminApprovalUrl(): Promise<{ url: string }> {
+    return (await this.api.get('/teams-meetings/admin-approval-url')).data;
+  }
+
+  async disconnectTeamsMeetings() {
+    return (await this.api.delete('/teams-meetings/connection')).data;
+  }
+
+  async listTeamsMeetings(projectId: string) {
+    return (await this.api.get('/teams-meetings/meetings', { params: { projectId } })).data;
+  }
+
+  async getTeamsMeetingSpeakers(projectId: string, eventId: string) {
+    return (await this.api.post('/teams-meetings/speakers', { projectId, eventId })).data;
+  }
+
+  async analyzeTeamsMeeting(data: { projectId: string; scheduleId: string; eventId: string; mapping: Record<string, string | null> }) {
+    return (await this.api.post('/teams-meetings/analyze', data)).data;
+  }
+
   async getMeetingHistory(projectId: string) {
     const response = await this.api.get(`/meeting-intelligence/project/${projectId}/history`);
     return response.data;

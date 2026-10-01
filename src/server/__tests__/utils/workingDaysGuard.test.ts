@@ -36,6 +36,7 @@ const BASELINE: Record<string, number> = {
   "services/FlowMetricsService.ts": 1,
   "services/InstantReportService.ts": 3,
   "services/integrations/GoogleCalendarAdapter.ts": 1,
+  "services/integrations/TeamsMeetingsGraph.ts": 1, // "Teams meetings from the last 30 days" calendar look-back, not a task date
   "services/lessonsLearned/index.ts": 1,
   "services/predictiveIntelligence.ts": 1,
   "services/ProjectStatusReportService.ts": 2,

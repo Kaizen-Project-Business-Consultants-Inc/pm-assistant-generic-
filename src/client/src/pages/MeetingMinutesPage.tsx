@@ -18,11 +18,13 @@ import {
   Brain,
   AlertTriangle,
   CheckCircle,
+  Users,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { MeetingResultPanel } from '../components/meeting/MeetingResultPanel';
 import { MeetingToRaidModal } from '../components/meeting/MeetingToRaidModal';
 import { SyncExternalMeetingModal } from '../components/meeting/SyncExternalMeetingModal';
+import { TeamsMeetingsTab } from '../components/meeting/TeamsMeetingsTab';
 import { mapAnalysisToRaidCandidates, RaidCandidate } from '../utils/meetingToRaidMapper';
 import { useProjectRole } from '../hooks/useProjectRole';
 import { ViewOnlyNote } from '../components/ui/ViewOnlyNote';
@@ -166,7 +168,7 @@ function useContinuousVoice(onTranscript: (text: string) => void) {
 // Component
 // ---------------------------------------------------------------------------
 
-type InputMode = 'paste' | 'upload';
+type InputMode = 'paste' | 'upload' | 'teams';
 
 export const MeetingMinutesPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -265,6 +267,21 @@ export const MeetingMinutesPage: React.FC = () => {
       }).catch(() => {});
     },
   });
+
+  /** From Teams: the analysis came back from the Teams tab — show it like Paste / Upload */
+  const handleTeamsAnalyzed = (result: any, title: string) => {
+    setIsSample(false);
+    setAnalysisResult(result);
+    queryClient.invalidateQueries({ queryKey: ['meetingHistory', selectedProjectId] });
+    apiService.createMeeting({
+      projectId: selectedProjectId,
+      title,
+      meetingType: 'ad_hoc',
+      status: 'completed',
+      scheduledDate: new Date().toISOString(),
+      durationMinutes: 60,
+    }).catch(() => {});
+  };
 
   const uploadTranscriptMutation = useMutation({
     mutationFn: (file: File) => apiService.uploadTranscriptFile(file, selectedProjectId, selectedScheduleId || ''),
@@ -496,6 +513,18 @@ export const MeetingMinutesPage: React.FC = () => {
                 <Upload className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
                 Upload
               </button>
+              <button
+                onClick={() => setInputMode('teams')}
+                className={`px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${
+                  inputMode === 'teams'
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+                From Teams
+                <span className="ml-1.5 rounded-full bg-primary-600 px-1.5 py-px text-xs font-bold text-white">NEW</span>
+              </button>
               <div className="ml-auto">
                 <button
                   onClick={() => { setSyncError(null); setSyncModalOpen(true); }}
@@ -509,7 +538,8 @@ export const MeetingMinutesPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Meeting title (optional) */}
+            {/* Meeting title (optional) — a Teams meeting brings its own */}
+            {inputMode !== 'teams' && (
             <div>
               <label htmlFor="meeting-title" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                 Meeting Title <span className="text-gray-500 font-normal">(optional)</span>
@@ -523,6 +553,18 @@ export const MeetingMinutesPage: React.FC = () => {
                 className="input w-full"
               />
             </div>
+            )}
+
+            {/* From Teams */}
+            {inputMode === 'teams' && (
+              <TeamsMeetingsTab
+                projectId={selectedProjectId}
+                schedules={schedules}
+                scheduleId={selectedScheduleId}
+                onScheduleChange={setSelectedScheduleId}
+                onAnalyzed={handleTeamsAnalyzed}
+              />
+            )}
 
             {/* Paste mode */}
             {inputMode === 'paste' && (

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plug,
@@ -12,6 +12,7 @@ import {
   ExternalLink,
   AlertCircle,
 } from 'lucide-react';
+import { useOAuthResult } from '../hooks/useOAuthResult';
 import { apiService } from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { IntegrationConfigModal } from '../components/integrations/IntegrationConfigModal';
@@ -227,10 +228,8 @@ export const IntegrationsPage: React.FC = () => {
    * when it finished. Without this the customer completes the install and the
    * card still says "Install" until they reload — which reads as a failure.
    */
-  useEffect(() => {
-    const handleResult = (data: any) => {
-      if (data?.type !== 'oauth-callback') return;
-      const label = PROVIDERS[data.provider]?.name ?? data.provider ?? 'The service';
+  useOAuthResult((data) => {
+      const label = PROVIDERS[data.provider ?? '']?.name ?? data.provider ?? 'The service';
       if (data.success) {
         queryClient.invalidateQueries({ queryKey: ['integrations'] });
         setBanner({
@@ -242,22 +241,7 @@ export const IntegrationsPage: React.FC = () => {
       } else if (data.error) {
         setBanner({ kind: 'error', text: `${label} was not connected: ${data.error}` });
       }
-    };
-    const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      handleResult(event.data);
-    };
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== 'oauth-callback-result' || !event.newValue) return;
-      try { handleResult(JSON.parse(event.newValue)); } catch { /* ignore */ }
-    };
-    window.addEventListener('message', onMessage);
-    window.addEventListener('storage', onStorage);
-    return () => {
-      window.removeEventListener('message', onMessage);
-      window.removeEventListener('storage', onStorage);
-    };
-  }, [queryClient]);
+  });
 
   // Render action buttons for a single integration
   const renderActions = (integ: Integration, providerKey: string, meta: ProviderMeta, compact = false) => (

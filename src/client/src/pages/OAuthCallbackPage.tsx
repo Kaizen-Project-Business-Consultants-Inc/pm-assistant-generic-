@@ -23,7 +23,7 @@ export function OAuthCallbackPage() {
       setMessage(ERROR_MESSAGES[error] ?? error);
     } else if (success === 'true') {
       setStatus('success');
-      setMessage(`${provider || 'Storage'} connected successfully`);
+      setMessage(params.get('message') || `${provider || 'Storage'} connected successfully`);
     } else {
       setStatus('loading');
       setMessage('Completing authorization...');

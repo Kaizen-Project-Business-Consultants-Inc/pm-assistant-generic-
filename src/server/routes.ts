@@ -111,6 +111,7 @@ import { apiKeyRoutes } from './routes/integrations/apiKeys';
 import { stripeRoutes } from './routes/integrations/stripe';
 import { slackRoutes } from './routes/integrations/slack';
 import { teamsRoutes } from './routes/integrations/teams';
+import { teamsMeetingsRoutes } from './routes/integrations/teamsMeetings';
 import { mcpProxyRoutes } from './routes/integrations/mcpProxy';
 import { storageConnectorRoutes, storageConnectorCallbackRoutes } from './routes/integrations/storageConnectors';
 import { googleCalendarRoutes } from './routes/integrations/calendar';
@@ -262,6 +263,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(stripeRoutes, { prefix: '/api/v1/stripe' });
   await fastify.register(slackRoutes, { prefix: '/api/v1/slack' });
   await fastify.register(teamsRoutes, { prefix: '/api/v1/teams' });
+  await fastify.register(teamsMeetingsRoutes, { prefix: '/api/v1/teams-meetings' });
   await fastify.register(mcpProxyRoutes, { prefix: '/mcp' });
   await fastify.register(storageConnectorRoutes, { prefix: '/api/v1/projects' });
   await fastify.register(storageConnectorCallbackRoutes, { prefix: '/api/v1' });

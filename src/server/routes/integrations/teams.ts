@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { config } from '../../config';
 import logger from '../../utils/logger';
+import { teamsMeetingImportService, TeamsImportError, TEAMS_MEETINGS_STATE } from '../../services/TeamsMeetingImportService';
 
 export async function teamsRoutes(fastify: FastifyInstance) {
   // GET /install — returns OAuth URL for Microsoft Teams install
@@ -31,7 +32,31 @@ export async function teamsRoutes(fastify: FastifyInstance) {
   fastify.get('/callback', {
     schema: { description: 'Microsoft Teams OAuth callback', tags: ['teams'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { code, state, error } = request.query as { code?: string; state?: string; error?: string };
+    const { code, state, error, admin_consent } = request.query as { code?: string; state?: string; error?: string; admin_consent?: string };
+
+    // The IT admin approved Kovarti for their company (link from Meeting Intelligence → From Teams)
+    if (state === 'admin-approval') {
+      const ok = !error && String(admin_consent).toLowerCase() === 'true';
+      return reply.redirect(ok
+        ? `${config.APP_URL}/oauth/callback?success=true&provider=msteams_meetings&message=${encodeURIComponent('Kovarti is approved for your company. Your project managers can now connect Teams in Meeting Intelligence.')}`
+        : `${config.APP_URL}/oauth/callback?error=${encodeURIComponent(error ? 'Microsoft did not approve Kovarti: ' + error : 'Approval was not completed.')}&provider=msteams_meetings`);
+    }
+
+    // Meeting transcripts connection — its own permissions, one-time state, same redirect address
+    if (state?.startsWith(`${TEAMS_MEETINGS_STATE}.`)) {
+      if (error || !code) {
+        const why = error === 'access_denied' ? 'You (or your IT admin) declined the permissions.' : (error || 'missing_params');
+        return reply.redirect(`${config.APP_URL}/oauth/callback?error=${encodeURIComponent(why)}&provider=msteams_meetings`);
+      }
+      try {
+        await teamsMeetingImportService.completeConnection(state, code, request.user?.userId);
+        return reply.redirect(`${config.APP_URL}/oauth/callback?success=true&provider=msteams_meetings&message=${encodeURIComponent('Teams is connected. Go back to Meeting Intelligence to pick a meeting.')}`);
+      } catch (err: any) {
+        logger.warn('Teams meetings connect failed', { error: err.message });
+        const msg = err instanceof TeamsImportError ? err.message : 'Microsoft did not complete the connection. Try again.';
+        return reply.redirect(`${config.APP_URL}/oauth/callback?error=${encodeURIComponent(msg)}&provider=msteams_meetings`);
+      }
+    }
 
     if (error) {
       return reply.redirect(`${config.APP_URL}/oauth/callback?error=${encodeURIComponent(error)}&provider=msteams`);

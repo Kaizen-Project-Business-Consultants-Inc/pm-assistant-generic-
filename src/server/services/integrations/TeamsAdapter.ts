@@ -42,7 +42,7 @@ function describeTeamsError(status: number, body: string): string {
 }
 
 export class TeamsAdapter {
-  buildOAuthUrl(state: string): string {
+  buildOAuthUrl(state: string, scopes: string = SCOPES): string {
     const clientId = config.MICROSOFT_CLIENT_ID;
     if (!clientId) throw new Error('MICROSOFT_CLIENT_ID not configured');
     const redirectUri = `${config.APP_URL}/api/v1/teams/callback`;
@@ -50,14 +50,14 @@ export class TeamsAdapter {
       client_id: clientId,
       response_type: 'code',
       redirect_uri: redirectUri,
-      scope: SCOPES,
+      scope: scopes,
       state,
       prompt: 'select_account',
     });
     return `${AUTH_BASE}/authorize?${params.toString()}`;
   }
 
-  async exchangeCode(code: string): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
+  async exchangeCode(code: string, scopes: string = SCOPES): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
     const clientId = config.MICROSOFT_CLIENT_ID;
     const clientSecret = config.MICROSOFT_CLIENT_SECRET;
     if (!clientId || !clientSecret) throw new Error('Microsoft OAuth not configured');
@@ -69,7 +69,7 @@ export class TeamsAdapter {
       code,
       redirect_uri: redirectUri,
       grant_type: 'authorization_code',
-      scope: SCOPES,
+      scope: scopes,
     });
 
     const resp = await fetch(`${AUTH_BASE}/token`, {
@@ -86,7 +86,7 @@ export class TeamsAdapter {
     return resp.json() as Promise<any>;
   }
 
-  async refreshAccessToken(refreshTokenValue: string): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
+  async refreshAccessToken(refreshTokenValue: string, scopes: string = SCOPES): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
     const clientId = config.MICROSOFT_CLIENT_ID;
     const clientSecret = config.MICROSOFT_CLIENT_SECRET;
     if (!clientId || !clientSecret) throw new Error('Microsoft OAuth not configured');
@@ -96,7 +96,7 @@ export class TeamsAdapter {
       client_secret: clientSecret,
       refresh_token: refreshTokenValue,
       grant_type: 'refresh_token',
-      scope: SCOPES,
+      scope: scopes,
     });
 
     const resp = await fetch(`${AUTH_BASE}/token`, {
@@ -137,7 +137,7 @@ export class TeamsAdapter {
    * of transparently refreshing — Slack's bot token never expires, so this
    * has no equivalent there; it is new behaviour, not a copy of anything.
    */
-  async ensureFreshToken(integrationId: string, teamsConfig: TeamsConfig): Promise<string | null> {
+  async ensureFreshToken(integrationId: string, teamsConfig: TeamsConfig, scopes: string = SCOPES): Promise<string | null> {
     const REFRESH_SKEW_MS = 60_000; // refresh a minute before actual expiry
     if (teamsConfig.accessToken && teamsConfig.expiresAt && teamsConfig.expiresAt - Date.now() > REFRESH_SKEW_MS) {
       return teamsConfig.accessToken;
@@ -145,7 +145,7 @@ export class TeamsAdapter {
     if (!teamsConfig.refreshToken) return null;
 
     try {
-      const token = await this.refreshAccessToken(teamsConfig.refreshToken);
+      const token = await this.refreshAccessToken(teamsConfig.refreshToken, scopes);
       const updated: TeamsConfig = {
         ...teamsConfig,
         accessToken: token.access_token,

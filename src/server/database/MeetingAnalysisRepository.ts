@@ -60,6 +60,22 @@ class MeetingAnalysisRepository {
     );
   }
 
+  /** Which outside meeting (e.g. "teams:<event id>") this analysis was made from */
+  setSourceRef(id: string, sourceRef: string): Promise<any> {
+    return databaseService.query('UPDATE meeting_analyses SET source_ref = ? WHERE id = ?', [sourceRef, id]);
+  }
+
+  /** source_ref -> newest analysis id, for the given refs in this project */
+  async findBySourceRefs(projectId: string, refs: string[]): Promise<Map<string, string>> {
+    if (refs.length === 0) return new Map();
+    const rows = await databaseService.query<{ id: string; source_ref: string }>(
+      `SELECT id, source_ref FROM meeting_analyses WHERE project_id = ? AND source_ref IN (${refs.map(() => '?').join(',')})
+       ORDER BY created_at ASC`,
+      [projectId, ...refs],
+    );
+    return new Map(rows.map(r => [r.source_ref, r.id]));
+  }
+
   updateMeetingId(id: string, meetingId: string | null): Promise<any> {
     return databaseService.query(
       'UPDATE meeting_analyses SET meeting_id = ? WHERE id = ?',

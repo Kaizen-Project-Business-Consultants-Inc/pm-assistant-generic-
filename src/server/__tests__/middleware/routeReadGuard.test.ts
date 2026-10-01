@@ -16,7 +16,7 @@ const READ_GATES = [
   'connectorInProject', 'contextScopeGate', 'orgAdminOnly', 'resourceManagerOnly', 'readableProjectIds', 'findAccessible',
   'findByUserId', 'requireWorkflowPM', 'requireCRPM', 'checklistTaskMember', 'bulkTasksMember', 'workflowReader',
   'executionReader', 'executionListReader', 'requestMember', 'adminOrPmo', 'contextScopeReadGate', 'queryProjectMember',
-  'historyAdmin', 'canSeeSchedule', 'integrationOwner', 'apiKeyService.listKeys',
+  'historyAdmin', 'canSeeSchedule', 'integrationOwner', 'apiKeyService.listKeys', 'teamsListPM',
 ];
 
 /** GETs that are fine without a gate token, grouped by why */
@@ -52,6 +52,7 @@ const READ_OK: Record<string, string[]> = {
   'reporting/dashboardData.ts': ['/overdue-tasks', '/issues-trend', '/milestones', '/cr-summary'],
   'resources/timeEntries.ts': ['/timesheet', '/submissions', '/pending-approvals', '/timesheet-status'],
   'integrations/integrations.ts': ['/'],
+  'integrations/teamsMeetings.ts': ['/status', '/install', '/admin-approval-url'], // your own Microsoft connection, no project data
   'integrations/webhooks.ts': ['/', '/:id/deliveries'],
   'core/feedback.ts': ['/mine', '/:id/screenshot'],
   // Shared across the organisation by design

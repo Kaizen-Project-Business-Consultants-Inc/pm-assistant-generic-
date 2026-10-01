@@ -127,6 +127,8 @@ When matching task updates to existing tasks, use the existingTaskId field with 
 
 When assigning people, use the exact names from the resource list below when possible.
 
+If the transcript names its speakers (lines like "[Dev Patel] (0:12:41)"), record who raised each action item, risk and issue (saidBy) and who made each decision (madeBy), using the speaker name exactly as written, and the time shown (at). When someone takes on an action themselves ("I'll send the spec"), that speaker is its assignee. Speakers marked "(not a project member)" may be guests: do not make them the assignee unless the transcript clearly gives it to them. If the transcript has no speaker names, leave saidBy and at empty — never guess.
+
 Respond in valid JSON matching the requested schema.`;
 
       const userMessage = `## Meeting Transcript

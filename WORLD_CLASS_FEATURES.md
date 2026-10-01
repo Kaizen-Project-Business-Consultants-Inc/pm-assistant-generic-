@@ -285,7 +285,7 @@ An agentic AI project management platform that combines the scheduling power of 
 
 ### 3.4 Meeting Intelligence Hub
 - Single-page flow at `/meetings` (sidebar: **Intelligence**, Brain icon) — no tabs
-- **Two input modes:** Paste (with voice recording toggle) and Upload (drag-and-drop `.txt`/`.vtt`/`.srt`)
+- **Three input modes:** Paste (with voice recording toggle), Upload (drag-and-drop `.txt`/`.vtt`/`.srt`) and **From Teams** (Oct 2026): pick one of your Teams meetings, Kovarti reads Teams' own transcript, matches speakers to project members (remembered per company), and every action, decision and risk shows who said it and when. No bot joins the call.
 - Auto-detects transcript format, extracts speaker attribution and timestamps
 - Optional meeting title field for labeling analyses
 - **Import Meeting** button — `SyncExternalMeetingModal` for importing meetings from Read.ai, Otter.ai, or any external platform (title, date, duration, location, attendees, summary, action items with auto-parsed "Name: Description" assignee format)

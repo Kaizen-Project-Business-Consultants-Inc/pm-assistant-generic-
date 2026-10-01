@@ -1352,3 +1352,7 @@ It switches itself off after an hour. Never point the checker or seed at prod.
 **Read-only buttons:** as qa.team (or during a support visit) there is no New Project, Start, Add Resource, New Change Request, New Workflow, Create Link, Add Block or Get Started card; as qa.pm they are all there.
 
 **Automated guards added this round:** `planFeatures.test`, `retiredSharedTables.test`, `collationGuard.test`, `momentVsDayGuard.test`, `adminFieldNames.test`, `snakeCaseReadsGuard.test`, `canChangeDataRoles.test`, `runCronJobRecord.test`, `goalKeyResultProgress.test`, `contextConfigIdentity.test`, `serverKeys.test`.
+
+### Meeting Intelligence → From Teams (Oct 2026)
+- Automated: `src/server/__tests__/services/teams/teamsMeetingImport.test.ts` — speaker list, who's-who matching (saved choice, name, invite email, guests), names sent to the AI, Graph calendar/transcript calls (ended meetings only, recurring-meeting transcript choice, 401/403 messages), one-time sign-in state (used once, forged state refused).
+- Manual (needs a Microsoft 365 account with Teams and the Azure permissions in docs/ADMIN_MANUAL.md): as the project PM open Intelligence → From Teams → Connect Teams; hold a short Teams meeting with transcription on; check it shows **Ready**, the who's-who list, and that results show "Said by". A team member must not see the tab; a meeting without transcription shows **No transcript**.

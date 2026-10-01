@@ -586,6 +586,13 @@ Agents can be promoted from Tier 2 (propose-only) to Tier 3 (auto-execute) when 
   revoked or expired), the fix is the same as any OAuth integration:
   disconnect and reconnect.
 
+### Teams meeting transcripts (Meeting Intelligence → From Teams, Oct 2026)
+- Same Azure app registration and the same redirect URI (`{APP_URL}/api/v1/teams/callback`) as the Teams channel connection — nothing new on the server.
+- **Add these delegated API permissions in the Azure portal** (Microsoft Graph): `Calendars.Read`, `OnlineMeetings.Read`, `OnlineMeetingTranscript.Read.All` (and `User.Read`, `offline_access`). `OnlineMeetingTranscript.Read.All` needs admin consent, so each customer's Microsoft 365 admin approves Kovarti once; the PM gets that link from the tab (**Copy link for your IT admin**, Microsoft's admin-consent page for this app).
+- Each PM connects their own account and only ever sees their own meetings. Kovarti reads transcripts after the meeting; it never joins or records one. Transcription must have been switched on in the meeting.
+- If a PM sees "Not allowed — ask the organizer", Teams is refusing the transcript to that user (commonly: not the organizer). Nothing to fix on our side.
+- Sites without `MICROSOFT_CLIENT_ID` show "Teams is not set up on this site yet" (production today).
+
 ### Sync Management
 - View sync status and last sync time under each integration.
 - Trigger manual sync or configure auto-sync intervals.

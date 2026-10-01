@@ -12,7 +12,13 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-interface ActionItem {
+/** Who said it and when — filled in when the transcript names its speakers (e.g. from Teams) */
+interface SaidBy {
+  saidBy?: string;
+  at?: string;
+}
+
+interface ActionItem extends SaidBy {
   description: string;
   assignee: string;
   dueDate: string;
@@ -22,18 +28,47 @@ interface ActionItem {
 interface Decision {
   decision: string;
   rationale: string;
+  madeBy?: string;
+  at?: string;
 }
 
-interface Risk {
-  risk: string;
+interface Risk extends SaidBy {
+  /** older sample data used `risk`; analyses use `description` */
+  risk?: string;
+  description?: string;
   severity: string;
   mitigation: string;
 }
 
 interface TaskUpdate {
-  type: 'create' | 'update' | 'reschedule';
+  type: 'create' | 'update' | 'update_status' | 'reschedule';
   taskName: string;
-  proposedChanges: string;
+  proposedChanges?: string;
+  newStatus?: string;
+  newStartDate?: string;
+  newEndDate?: string;
+  assignee?: string;
+  description?: string;
+}
+
+const STATUS_WORDS: Record<string, string> = { pending: 'Not started', in_progress: 'In progress', completed: 'Done', cancelled: 'Cancelled' };
+
+/** What the update would change, in words (the analysis sends fields, not a sentence) */
+function describeTaskUpdate(tu: TaskUpdate): string {
+  if (tu.proposedChanges) return tu.proposedChanges;
+  const parts: string[] = [];
+  if (tu.newStatus) parts.push(`Status → ${STATUS_WORDS[tu.newStatus] ?? tu.newStatus}`);
+  if (tu.newStartDate) parts.push(`Start → ${tu.newStartDate}`);
+  if (tu.newEndDate) parts.push(`End → ${tu.newEndDate}`);
+  if (tu.assignee) parts.push(`Assigned to ${tu.assignee}`);
+  if (parts.length === 0 && tu.description) parts.push(tu.description);
+  return parts.join(' · ');
+}
+
+/** "Dev Patel at 0:12:41" */
+function whoWhen(who?: string, at?: string): string {
+  if (!who) return '';
+  return at ? `${who} at ${at}` : who;
 }
 
 interface MeetingAnalysis {
@@ -105,13 +140,14 @@ function typeBadge(type: string) {
   const colors: Record<string, string> = {
     create: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
     update: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+    update_status: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
     reschedule: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
   };
   return (
     <span
       className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${colors[type] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}
     >
-      {type}
+      {type === 'update_status' ? 'status' : type}
     </span>
   );
 }
@@ -130,6 +166,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
 
   const taskUpdates = analysis.taskUpdates || [];
+  const hasSpeakers = (analysis.actionItems || []).some(a => !!a.saidBy);
 
   const toggleIndex = (idx: number) => {
     setSelectedIndices((prev) => {
@@ -212,6 +249,11 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                     <th className="text-center py-2 pl-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                       Priority
                     </th>
+                    {hasSpeakers && (
+                      <th className="text-left py-2 pl-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        Said by
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -221,6 +263,9 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                       <td className="py-2.5 px-3 text-gray-600 dark:text-gray-400">{item.assignee}</td>
                       <td className="py-2.5 px-3 text-gray-600 dark:text-gray-400">{item.dueDate}</td>
                       <td className="py-2.5 pl-3 text-center">{priorityBadge(item.priority)}</td>
+                      {hasSpeakers && (
+                        <td className="py-2.5 pl-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">{whoWhen(item.saidBy, item.at)}</td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -245,6 +290,9 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                       <span className="font-medium text-gray-600 dark:text-gray-300">Rationale:</span> {d.rationale}
                     </p>
+                    {d.madeBy && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Decided by {whoWhen(d.madeBy, d.at)}</p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -266,12 +314,15 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                      <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex-1">{r.risk}</h4>
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex-1">{r.risk || r.description}</h4>
                       {severityBadge(r.severity)}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                       <span className="font-medium text-gray-600 dark:text-gray-300">Mitigation:</span> {r.mitigation}
                     </p>
+                    {r.saidBy && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Raised by {whoWhen(r.saidBy, r.at)}</p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -322,7 +373,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                           </td>
                           <td className="py-2.5 px-3 text-center">{typeBadge(tu.type)}</td>
                           <td className="py-2.5 px-3 font-medium text-gray-900 dark:text-white">{tu.taskName}</td>
-                          <td className="py-2.5 pl-3 text-gray-600 dark:text-gray-400">{tu.proposedChanges}</td>
+                          <td className="py-2.5 pl-3 text-gray-600 dark:text-gray-400">{describeTaskUpdate(tu)}</td>
                         </tr>
                       ))}
                     </tbody>

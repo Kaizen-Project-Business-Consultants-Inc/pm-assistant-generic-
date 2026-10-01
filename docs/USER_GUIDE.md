@@ -1673,10 +1673,22 @@ Navigate to **Intelligence** in the sidebar (Brain icon) to reach the Meeting In
 
 #### Providing Transcript Input
 
-Choose one of two input modes at the top of the page:
+Choose one of three input modes at the top of the page:
 
 - **Paste** -- Type or paste a transcript directly into the text area. Click the microphone icon to use voice recording (browser Speech Recognition) and dictate into the field.
 - **Upload** -- Drag and drop a transcript file, or click to browse. Supported formats: `.txt` (Otter.ai), `.vtt` (Teams/Zoom), `.srt`. The system auto-detects the format, extracts speaker names and timestamps, and prepares the text for analysis.
+- **From Teams** -- Bring in the transcript Teams made of one of your meetings, with who said what. See below.
+
+#### From Teams: meeting transcripts with speaker names
+
+Kovarti reads the transcript Teams made of a meeting. It never joins or records a meeting. Only the project's PM sees this tab.
+
+1. **Connect once.** Open **From Teams** and click **Connect Teams**, then sign in with your Microsoft work account. Most companies need their IT admin to approve Kovarti one time: if Microsoft says you need approval, click **Copy link for your IT admin** and send them the link. After they approve, click Connect Teams again.
+2. **Pick the meeting.** The tab lists your Teams meetings from the last 30 days. **Ready** means Teams has a transcript; **No transcript** means nobody switched on transcription during the meeting (in Teams: **More → Record and transcribe → Start transcription**); **Not allowed** usually means only the meeting organizer can share it. **Already analyzed** meetings can be analyzed again.
+3. **Check who's who.** Kovarti matches each speaker to a project member by name, or by the email on the meeting invite. Choose for anyone it couldn't match (an outside guest or a meeting room is "Not a project member"). Kovarti remembers your choices for the next meeting.
+4. **Choose the schedule and click Analyze meeting.** You get the usual results, and each action item, decision and risk shows who said it and when (for example "Dev Patel at 0:12:41"), so owners are filled in for you. Nothing changes in the project until you click Send to RAID or Apply.
+
+Limits: Teams only (not Zoom or Google Meet yet); a room with one shared microphone appears as one speaker; **Disconnect Teams** at the top of the list removes your connection.
 
 #### Importing from External Platforms (Read.ai, Otter.ai, etc.)
 

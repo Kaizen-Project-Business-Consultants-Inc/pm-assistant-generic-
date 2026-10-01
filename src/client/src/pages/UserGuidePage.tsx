@@ -249,8 +249,10 @@ const sections: Section[] = [
     description:
       'Upload meeting transcripts and let AI extract key information.',
     items: [
-      'Upload or paste meeting transcripts',
-      'AI extracts action items, decisions, and risks',
+      'Upload or paste meeting transcripts — or pick a Teams meeting under From Teams',
+      'From Teams: connect your Microsoft account once (your IT admin approves Kovarti one time); Kovarti reads the Teams transcript and never joins the call',
+      "Check who's who: speakers are matched to project members, and your choices are remembered",
+      'AI extracts action items, decisions, and risks — showing who said each one and when',
       'Link extracted items directly to project tasks',
       'Search and review past meeting notes',
     ],
