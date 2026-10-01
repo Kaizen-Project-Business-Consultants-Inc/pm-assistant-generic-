@@ -58,8 +58,9 @@ export const GanttMinimap = React.memo(function GanttMinimap({
 
   return (
     <div
-      className="sticky bottom-2 float-right mr-2 z-30 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg cursor-pointer print:hidden"
-      style={{ width: MINIMAP_W, height: MINIMAP_H, marginTop: -MINIMAP_H - 12 }}
+      data-testid="gantt-minimap"
+      className="absolute bottom-5 right-5 z-30 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg cursor-pointer print:hidden"
+      style={{ width: MINIMAP_W, height: MINIMAP_H }}
       onMouseDown={handleMinimapMouse}
     >
       <svg width={MINIMAP_W} height={MINIMAP_H}>

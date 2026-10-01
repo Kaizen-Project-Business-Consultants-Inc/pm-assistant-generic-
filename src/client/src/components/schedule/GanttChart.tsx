@@ -2683,6 +2683,9 @@ export function GanttChart({
         {/* RIGHT: Gantt timeline                                          */}
         {/* ============================================================= */}
         {panelMode !== 'table' && (
+        // The minimap sits OUTSIDE the scrolling timeline, pinned to its bottom-right corner.
+        // Inside it, "sticky" never held and the minimap landed over the month labels.
+        <div className="relative flex-1 min-w-0 flex">
         <div
           ref={timelineRef}
           className="flex-1 overflow-x-auto overflow-y-auto"
@@ -2973,6 +2976,7 @@ export function GanttChart({
               )}
             </svg>
           </div>
+        </div>
 
           {/* Minimap */}
           {showMinimap && rows.length > 0 && (
