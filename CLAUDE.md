@@ -1,69 +1,12 @@
 # PM Assistant — Software Development Lifecycle (SDLC)
 
-> ## ✅ STAGING AND PROD IN SYNC — 2026-09-27
-> Big prod deploy on the user's "deploy prod" (app build 74e098e806d7 + MCP): the 24 Sep
-> bulk.ts tenant-isolation fix, **permissions Phase 1** (only a project's Manager/Owner
-> changes project data; Editor removed; fail-closed project checks; guard test
-> `routePermissionGuard.test.ts`), **billing fix** (invited members use the org's plan),
-> Schedule History + Undo, Morning Briefing by project with jump-to-row, notification/link
-> fixes, overdue tile, legibility pass, PMI-aligned RAID notifications. Migrations 120 and
-> T053–T057 were dry-run on a restored prod backup first (all OK), then applied.
-> **2026-09-28 (late): staging + prod in sync, build 1f60f30da6b8** — adds private-data PHASE 2
-> (every read route checks the project; `routeReadGuard.test.ts`), integration/API-key owner-only,
-> push skip without tenant. Earlier the same day: Permissions Phase 2,
-> private-data phase 1, dashboard cleanup (briefing Team/Yours, notifications = events), error
-> alert that works (5xx counted in Redis; cron jobs now connect to Redis — the signup-flood alert
-> never could fire before), empty briefing for no-org accounts, and new-signup "still being set up"
-> fix. **After every prod deploy run `scripts/prod-smoke.cjs`** (credentials in auto-memory).
-> **2026-09-29: prod = build 3f7555927eae** — Workload Heatmap counts real assignments (task %,
-> Assigned to, hours bookings) and the Gantt's Conflicts uses it; T059 overtime-rate columns on all
-> tenants; milestone splits replace the line; Group selected tasks. **Staging only:** Schedule
-> Review rules v1.4 (R34). Next: see auto-memory `todo.md` top section.
->
-> **Machine gotcha:** `node_modules` in root, `src/client` and `mcp-server` keep going
-> corrupt (`MODULE_NOT_FOUND` / esbuild platform errors) — `rm -rf node_modules && npm
-> install`. `deploy.sh --mcp` does not stop when the MCP build fails — check its output.
->
-> ## ✅ Registration-flood alert — DONE, LIVE ON STAGING + PROD (2026-09-24)
-> The signup-flood alert from the 2026-09-23 handover shipped:
-> `src/server/utils/registrationWatch.ts` counts attempts in Redis;
-> `AlertService.checkRegistrationFlood()` emails support@kovarti.com when one
-> address exceeds 20/hour or the site exceeds 50/hour overall. The failing test
-> (`AlertService.test.ts > "registers over and over"`) was a test-scoping bug, not
-> a code bug — three tests were nested inside `checkCronJobsRunning`'s `describe`
-> block and inherited its `alertsRaised` filter, which only matched cron-job
-> messages, so the flood alert's own log line never counted as raised. Moved to
-> their own `describe` block with the right filter.
->
-> **Also fixed in the same push:** server tests never loaded `.env` (only the real
-> app's entrypoint did via `dotenv/config`), so any test importing `config.ts`
-> unmocked failed config validation — this silently blocked `deploy.sh`'s test gate
-> for *any* change, not just this one. Fixed with `src/server/__tests__/setup.ts`.
->
-> **Staging and production are now IN SYNC** — both running build `ccea36fda5f6`,
-> verified independently (health check + build-hash match on both, not just the
-> deploy script's own success message). This promoted everything staging had
-> queued: no tenant database until email is verified, tighter signup limits, the
-> "Confirm your email" screen, and the CAPTCHA plumbing (still dormant — see below).
-> Full Playwright suite run against staging (never prod — some specs create/delete
-> real data): 59 passed, 1 skipped, 0 failed.
->
-> **CAPTCHA: still PARKED at the user's request**, despite the code now being on
-> both servers. Cloudflare Turnstile is fully built (server check, widget, startup
-> validation, `scripts/set-turnstile-credentials.sh`) but **switched off
-> everywhere** — no keys in either `.env`. It never worked in a real browser: first
-> the site's Content-Security-Policy blocked Cloudflare (fixed in nginx on staging),
-> then Cloudflare rejected the hostname (error 110200), then with new keys the
-> widget rendered nothing at all. **Do not restart this without the user asking.**
-> Turnstile refuses automated browsers, so Playwright can never test the happy
-> path — only a human can.
->
-> **⚠️ Two machine-only facts, not in this repo:**
-> 1. nginx config lives ONLY on the servers, and `sites-enabled/pm-app` is a
->    **separate file, not a symlink** to `sites-available`. Editing the obvious one
->    changes nothing. Staging's copy now allows `challenges.cloudflare.com`;
->    production's still does not.
-> 2. Production would need the same nginx change before the CAPTCHA could work there.
+## Machine gotchas (things the code can't tell you)
+- `node_modules` in root, `src/client` and `mcp-server` keep going corrupt (`MODULE_NOT_FOUND` / esbuild platform errors) — `rm -rf node_modules && npm install`.
+- `deploy.sh --mcp` deploys ONLY the MCP server and does not stop when the MCP build fails — check its output.
+- After every prod deploy run `scripts/prod-smoke.cjs` (credentials in auto-memory).
+- nginx config lives ONLY on the servers, and `sites-enabled/pm-app` is a **separate file, not a symlink** to `sites-available` — editing the obvious one changes nothing. Staging allows `challenges.cloudflare.com`; production does not.
+- CAPTCHA (Cloudflare Turnstile) is built but switched off everywhere (no keys in either `.env`). **Do not restart it without the user asking.** Playwright can't test its happy path — only a human can.
+- Current deploy state and history live in auto-memory (`MEMORY.md`, `todo.md`) and `git log`, not here.
 
 
 This document governs how every feature, bug fix, and change is developed. Claude acts as the full IT team: Business Analyst, Architect, Developer, QA Engineer, Technical Writer, and DevOps Engineer. Follow every phase in order. Do not skip phases.
@@ -208,41 +151,7 @@ No partial steps. No skipping phases. If a phase doesn't apply (e.g., no DB chan
 
 ## Feature Quality Checklists
 
-Before shipping any feature, run through the applicable checklist. These exist because past audit findings repeatedly caught the same categories of gaps.
-
-### Editable Content
-- [ ] Save and cancel paths: auto-save on blur, explicit save, Escape to cancel/revert
-- [ ] Unmount flush: if debounced save is pending and user navigates away, flush it
-- [ ] Conflict detection: if multiple users can edit the same data, use optimistic locking (send `expectedUpdatedAt`, handle 409)
-- [ ] Error feedback: show save failures with retry option, not silent swallowing
-- [ ] Input sanitization: server-side stripping of dangerous HTML on write
-- [ ] Output sanitization: DOMPurify on any `dangerouslySetInnerHTML`
-- [ ] Use a proper parser (e.g., `marked`) for markdown — never hand-rolled regex
-- [ ] Link clicks in rendered content should not trigger edit mode
-
-### Real-Time / WebSocket Features
-- [ ] Authorization: verify the user has access to the resource they're subscribing to (e.g., project membership on `presence:join`)
-- [ ] Scoped broadcast: send events only to clients that need them, not all connected clients
-- [ ] Scoped query invalidation: invalidate only the affected cache keys (e.g., `['tasks', scheduleId]`), not all cached data globally
-- [ ] Reconnect: re-establish subscriptions after WebSocket reconnect (server state is gone)
-- [ ] Connection limits: enforce per-user and global caps to prevent resource exhaustion
-- [ ] Keepalive: ping/pong heartbeat to detect and terminate stale connections
-
-### Accessibility (a11y)
-- [ ] Keyboard access: interactive elements need `tabIndex`, `role`, and `onKeyDown` (Enter/Space)
-- [ ] Screen readers: dynamic status indicators need `role="status"` and `aria-live="polite"`
-- [ ] Reduced motion: animations must respect `prefers-reduced-motion` / `motion-reduce:` classes
-- [ ] Focus management: modals trap focus, edit mode receives focus on entry
-
-### New Components
-- [ ] Check for existing shared primitives before building inline — search the codebase first
-- [ ] If two+ components need the same behavior, extract the shared piece *before* building both
-- [ ] Reorderable/draggable elements: integrate with existing grid/order systems, don't create parallel ones
-
-### SEO & Performance
-- [ ] SPA pages: provide `<noscript>` fallback or server-side prerender for crawlers
-- [ ] External dependencies: use `preconnect` / `preload` for third-party origins
-- [ ] Fonts: load non-render-blocking (`media="print"` with `onload` swap)
+Before shipping a feature, run the applicable checklist (editable content, real-time/WebSocket, accessibility, new components, SEO & performance) — they live in the `feature-quality-checklists` skill (`.claude/skills/feature-quality-checklists/SKILL.md`). Keyboard/screen-reader access and authorization on every subscription are never optional (see Lessons Learned 3 and 6).
 
 ---
 
