@@ -4,7 +4,7 @@ import { ROUTES, ROUTE_PATTERNS, routeTo } from './routes';
 import { useAuthStore, withoutCompany, isPersonalPath } from './stores/authStore';
 import { NoCompanyPage } from './pages/NoCompanyPage';
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
-import { AppUpdateBanner } from './components/AppUpdateBanner';
+import { AppUpdater } from './components/AppUpdater';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { apiService } from './services/api';
 import AppLayout from './components/layout/AppLayout';
@@ -156,7 +156,7 @@ function App() {
   return (
     <AccessibilityProvider>
     <Router>
-      <AppUpdateBanner />
+      <AppUpdater />
       <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
       <Routes>

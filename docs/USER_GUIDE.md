@@ -3993,4 +3993,4 @@ Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox s
 
 ### Getting new versions
 
-When a new version of Kovarti is released while you have it open, a purple banner appears at the top: **"A new version of Kovarti is ready."** The new version loads by itself the next time you move to another page, so nothing you are typing is lost — or click **Reload now**. You no longer need to press Ctrl+Shift+R.
+When a new version of Kovarti is released while you have it open, it loads by itself, with no message: the next time you move to another page, or when the tab has been in the background for a few minutes with nothing being edited. Nothing you are typing is lost, and you never need to press Ctrl+Shift+R.
