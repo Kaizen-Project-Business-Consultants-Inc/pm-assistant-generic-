@@ -3270,7 +3270,7 @@ Click **Review** in the Risks & Issues tab toolbar. RAID Review checks the whole
 
 Rows in the RAID list get a small flag for their most important high or medium finding (e.g. "Owner is a group"), visible to the Manager/Owner only. A check that doesn't fit a project — say, a client who insists on joint owners — can be **switched off for this project** from its finding (Managers/Owners); the review re-runs straight away.
 
-**Propose fixes** (Managers/Owners) lists changes you tick and apply: move an item to Actions, name one owner (from the project's people, the organisation's resources, or the people already named in the log), give an action a due date (suggested), set a risk's response strategy (Mitigate suggested when it has a mitigation plan). Clicking a line doesn't tick it; only the box does. **Apply selected** makes the changes; **Undo** puts every item back — if someone changed those items since, you're warned and can **Undo anyway**.
+**Propose fixes** (Managers/Owners) lists changes you tick and apply: move an item to Actions, name one owner (from the project's people, the organisation's resources, or the people already named in the log), give an action a due date (suggested), set a risk's response strategy (Mitigate suggested when it has a mitigation plan). Clicking a line doesn't tick it; only the box does. **Apply selected** makes the changes; **Undo** puts every item back — for the most recent fixes only, and only until something else in the register changes (the same rule as Schedule History). To reverse older fixes, change the items again by hand.
 
 Risks now have a **Response strategy** field, and closed items a **Closure reason**, in the item form; the register import fills both from matching columns.
 

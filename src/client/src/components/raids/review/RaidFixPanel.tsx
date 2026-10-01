@@ -35,7 +35,6 @@ export function RaidFixPanel({ projectId, onClose }: Props) {
   const [result, setResult] = useState<ApplyResult | null>(null);
   const [undone, setUndone] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [conflict, setConflict] = useState<string | null>(null);
   const [triedApply, setTriedApply] = useState(false);
 
   const fixesQuery = useQuery<RaidFixesResponse>({
@@ -76,21 +75,15 @@ export function RaidFixPanel({ projectId, onClose }: Props) {
   });
 
   const undoMutation = useMutation({
-    mutationFn: (force: boolean) => apiService.undoRaidReviewFixes(projectId, result!.batchId, force),
+    mutationFn: () => apiService.undoRaidReviewFixes(projectId, result!.batchId),
     onSuccess: (data) => {
       setError(null);
-      setConflict(null);
       setUndone(data.restored);
       refreshRaid();
       announce('Fixes undone');
     },
-    onError: (err: any) => {
-      if (err?.response?.status === 409) {
-        setConflict(getApiErrorMessage(err, 'Some of these items were changed after the fixes were applied.'));
-        return;
-      }
-      setError(getApiErrorMessage(err, 'Undo failed. Please try again.'));
-    },
+    // e.g. the register changed meanwhile — the server says why; nothing is overwritten
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Undo failed. Please try again.')),
   });
 
   // Focus + Escape — focus taken once, on open (onClose is a new function on every parent render)
@@ -220,21 +213,6 @@ export function RaidFixPanel({ projectId, onClose }: Props) {
             )}
           </div>
 
-          {conflict && undone === null && (
-            <div role="alert" className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-sm space-y-2">
-              <p>{conflict}</p>
-              <button
-                type="button"
-                onClick={() => undoMutation.mutate(true)}
-                disabled={undoMutation.isPending}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-60"
-              >
-                {undoMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Undo2 className="w-3.5 h-3.5" aria-hidden="true" />}
-                Undo anyway
-              </button>
-            </div>
-          )}
-
           {/* Fix list (hidden once applied). Only the box chooses a fix — clicking the text does not. */}
           {!applied && grouped.map(group => {
             const meta = KIND_META[group.kind];
@@ -279,7 +257,7 @@ export function RaidFixPanel({ projectId, onClose }: Props) {
               <span className="text-xs text-gray-500 dark:text-gray-400">Not what you wanted?</span>
               <button
                 type="button"
-                onClick={() => undoMutation.mutate(false)}
+                onClick={() => undoMutation.mutate()}
                 disabled={undoMutation.isPending}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60"
               >

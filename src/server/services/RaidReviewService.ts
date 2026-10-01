@@ -42,7 +42,7 @@ export class RaidReviewInputError extends Error {
   }
 }
 
-/** Undo refused: items were changed after the fixes (409 unless forced) */
+/** Undo refused: not the newest set of fixes, or the register changed since (409; there is no "undo anyway") */
 export class RaidUndoConflictError extends Error {
   constructor(public readonly changed: number, message: string, public readonly code = 'edited_since') {
     super(message);
@@ -300,22 +300,27 @@ export class RaidReviewService {
     return { batchId, applied: plans.length, summary };
   }
 
-  async undo(projectId: string, batchId: string, userId: string, force = false): Promise<{ restored: number }> {
+  /**
+   * Same rule as Schedule History (product owner, 2026-10-01): only the newest set of fixes on the
+   * project can be undone, and only while no RAID item has changed since. No "undo anyway".
+   */
+  async undo(projectId: string, batchId: string, userId: string): Promise<{ restored: number }> {
     const batch = await raidReviewRepository.findBatch(batchId);
     if (!batch || batch.projectId !== projectId) throw new RaidReviewNotFoundError('These fixes were not found.');
     if (batch.undoneAt) throw new RaidUndoConflictError(0, 'These fixes were already undone.', 'already_undone');
 
-    const items = (await Promise.all(batch.itemIds.map(id => riskRepository.findById(id))))
-      .filter((i): i is ProjectRisk => !!i && i.projectId === projectId);
-
-    const appliedAt = epoch(batch.createdAt);
-    const changed = items.filter(i => epoch(i.updatedAt) > appliedAt + EDIT_GRACE_MS).length;
-    if (changed > 0 && !force) {
+    const latest = await raidReviewRepository.findLatestBatchId(projectId);
+    const changedSince = await raidReviewRepository.itemsChangedSince(projectId, batch.createdAt, EDIT_GRACE_MS / 1000);
+    if (latest !== batchId || changedSince > 0) {
       throw new RaidUndoConflictError(
-        changed,
-        `${changed} of these items were changed after the fixes. Undo anyway to overwrite those later changes.`,
+        changedSince,
+        'Only the most recent fixes can be undone, and only until something else in the register changes. To reverse older fixes, change the items again by hand.',
+        'not_latest',
       );
     }
+
+    const items = (await Promise.all(batch.itemIds.map(id => riskRepository.findById(id))))
+      .filter((i): i is ProjectRisk => !!i && i.projectId === projectId);
 
     let restored = 0;
     for (const item of items) {

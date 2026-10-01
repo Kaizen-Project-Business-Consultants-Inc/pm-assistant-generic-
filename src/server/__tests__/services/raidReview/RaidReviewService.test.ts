@@ -20,6 +20,8 @@ const reviewRepo = {
   insertBatch: vi.fn(async () => {}),
   findBatch: vi.fn(),
   markUndone: vi.fn(async () => {}),
+  findLatestBatchId: vi.fn(async () => 'b1'),
+  itemsChangedSince: vi.fn(async () => 0),
 };
 const riskUpdate = vi.fn(async (id: string, data: any) => repo.update(id, data));
   return { items, repo, reviewRepo, riskUpdate };
@@ -133,18 +135,27 @@ describe('RaidReviewService', () => {
     expect(repo.update).toHaveBeenCalledWith('r10', { type: 'risk', recordId: 'R-099', sequenceNumber: 7 }, { resolveOwner: false });
   });
 
-  it('undo refuses (409) when items changed after the fixes, unless forced', async () => {
-    items.set('a1', { ...items.get('a1'), updatedAt: '2026-09-29 12:00:00' });
+  it('undo is refused once anything in the register changed since — there is no "undo anyway"', async () => {
+    reviewRepo.itemsChangedSince.mockResolvedValueOnce(1);
     reviewRepo.findBatch.mockResolvedValue({
       id: 'b1', projectId: 'p1', summary: 's', createdAt: '2026-09-29 09:00:02', undoneAt: null,
       itemIds: ['a1', 'r10'], previous: { a1: { dueDate: null }, r10: { ownerName: 'DBJ' } },
     });
     const err = await raidReviewService.undo('p1', 'b1', 'u1').catch(e => e);
     expect(err).toBeInstanceOf(RaidUndoConflictError);
-    expect(err.code).toBe('edited_since');
-    expect(err.message).toBe('1 of these items were changed after the fixes. Undo anyway to overwrite those later changes.');
+    expect(err.code).toBe('not_latest');
+    expect(err.message).toMatch(/Only the most recent fixes can be undone/);
     expect(repo.update).not.toHaveBeenCalled();
-    expect(await raidReviewService.undo('p1', 'b1', 'u1', true)).toEqual({ restored: 2 });
+  });
+
+  it('undo of older fixes is refused, even if their items were not touched', async () => {
+    reviewRepo.findLatestBatchId.mockResolvedValueOnce('b-newer');
+    reviewRepo.findBatch.mockResolvedValue({
+      id: 'b1', projectId: 'p1', summary: 's', createdAt: '2026-09-29 09:00:02', undoneAt: null,
+      itemIds: ['r10'], previous: { r10: { ownerName: 'DBJ' } },
+    });
+    await expect(raidReviewService.undo('p1', 'b1', 'u1')).rejects.toMatchObject({ code: 'not_latest' });
+    expect(repo.update).not.toHaveBeenCalled();
   });
 
   it('undo of an already-undone batch is refused', async () => {

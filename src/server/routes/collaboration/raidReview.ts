@@ -18,7 +18,6 @@ const applySchema = z.object({
   })).min(1).max(500),
 });
 
-const undoSchema = z.object({ force: z.boolean().optional() }).optional();
 
 const settingsSchema = z.object({ disabledRules: z.array(z.string().max(10)).max(50) });
 
@@ -89,8 +88,7 @@ export async function raidReviewRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, batchId } = request.params as { projectId: string; batchId: string };
-      const body = undoSchema.parse(request.body ?? undefined);
-      return await raidReviewService.undo(projectId, batchId, request.user!.userId, !!body?.force);
+      return await raidReviewService.undo(projectId, batchId, request.user!.userId);
     } catch (error) { return fail(reply, error, 'undo RAID fixes'); }
   });
 

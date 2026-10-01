@@ -1147,8 +1147,8 @@ class ApiService {
   }
 
   /** 409 { error: 'edited_since', message } unless force */
-  async undoRaidReviewFixes(projectId: string, batchId: string, force = false): Promise<{ restored: number }> {
-    const response = await this.api.post(`/projects/${projectId}/raid-review/fixes/${batchId}/undo`, force ? { force: true } : {});
+  async undoRaidReviewFixes(projectId: string, batchId: string): Promise<{ restored: number }> {
+    const response = await this.api.post(`/projects/${projectId}/raid-review/fixes/${batchId}/undo`, {});
     return response.data;
   }
 

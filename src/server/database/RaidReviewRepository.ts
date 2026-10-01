@@ -109,6 +109,21 @@ class RaidReviewRepository {
     };
   }
 
+  /** The project's most recent set of applied fixes (undone or not) */
+  async findLatestBatchId(projectId: string): Promise<string | null> {
+    const rows = await databaseService.query<any>(
+      'SELECT id FROM raid_fix_batches WHERE project_id = ? ORDER BY created_at DESC, id DESC LIMIT 1', [projectId]);
+    return rows[0]?.id ?? null;
+  }
+
+  /** Has any RAID item in the project been changed after this moment (+ grace)? */
+  async itemsChangedSince(projectId: string, since: unknown, graceSeconds: number): Promise<number> {
+    const rows = await databaseService.query<any>(
+      'SELECT COUNT(*) AS cnt FROM project_risks WHERE project_id = ? AND updated_at > DATE_ADD(?, INTERVAL ? SECOND)',
+      [projectId, since, graceSeconds]);
+    return Number(rows[0]?.cnt ?? 0);
+  }
+
   async markUndone(id: string, userId: string | null): Promise<void> {
     await databaseService.query(
       'UPDATE raid_fix_batches SET undone_at = CURRENT_TIMESTAMP, undone_by = ? WHERE id = ?',
