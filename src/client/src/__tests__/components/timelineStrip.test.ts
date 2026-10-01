@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { layoutTimelineStrip, monthTicks } from '../../components/schedule/gantt/timelineStrip';
+import { layoutTimelineStrip, monthTicks, placeLabels } from '../../components/schedule/gantt/timelineStrip';
 
 /** Timeline strip layout (2026-10-01): phases = top-level summaries, milestones, lanes. */
 const plan = [
@@ -27,7 +27,7 @@ describe('Timeline strip layout', () => {
   });
 
   it('milestones by flag or type, in date order', () => {
-    expect(layoutTimelineStrip(plan)!.milestones.map(m => m.name)).toEqual(['Gate 1 approved', 'Build complete']);
+    expect(layoutTimelineStrip(plan)!.milestones.map(m => m.names[0])).toEqual(['Gate 1 approved', 'Build complete']);
   });
 
   it('a plan with no summary tasks shows one project bar', () => {
@@ -36,14 +36,23 @@ describe('Timeline strip layout', () => {
     expect(l.phases.map(p => p.name)).toEqual(['My plan']);
   });
 
-  it('close milestones alternate label rows', () => {
+  it('milestones on the same day share one diamond', () => {
     const l = layoutTimelineStrip([
-      { id: 'x', name: 'Start', startDate: '2026-01-01', endDate: '2026-12-31' },
-      { id: 'm1', name: 'A', startDate: '2026-03-01', endDate: '2026-03-01', isMilestone: true },
-      { id: 'm2', name: 'B', startDate: '2026-03-05', endDate: '2026-03-05', isMilestone: true },
-      { id: 'm3', name: 'C', startDate: '2026-09-01', endDate: '2026-09-01', isMilestone: true },
+      { id: 'x', name: 'Plan', startDate: '2026-01-01', endDate: '2026-12-31' },
+      { id: 'm1', name: 'Task 4 approved', startDate: '2026-02-25', endDate: '2026-02-25', isMilestone: true },
+      { id: 'm2', name: 'Gate 4 approved', startDate: '2026-02-25', endDate: '2026-02-25', isMilestone: true },
+      { id: 'm3', name: 'UAT sign-off', startDate: '2026-02-25', endDate: '2026-02-25', isMilestone: true },
+      { id: 'm4', name: 'Go-live', startDate: '2026-03-10', endDate: '2026-03-10', isMilestone: true },
     ])!;
-    expect(l.milestones.map(m => m.labelRow)).toEqual([0, 1, 0]);
+    expect(l.milestones.map(m => m.names.length)).toEqual([3, 1]);
+  });
+
+  it('labels that would overlap are left for hover; a second row is used first', () => {
+    // three labels 100 wide starting 10 apart: row 0, row 1, then hover only; a far one goes back to row 0
+    expect(placeLabels([{ x: 0, width: 100 }, { x: 10, width: 100 }, { x: 20, width: 100 }, { x: 300, width: 100 }]))
+      .toEqual([0, 1, null, 0]);
+    // right-aligned labels end at x
+    expect(placeLabels([{ x: 500, width: 100 }, { x: 900, width: 100, anchorEnd: true }])).toEqual([0, 0]);
   });
 
   it('no dated tasks → nothing to draw; month ticks between start and end', () => {

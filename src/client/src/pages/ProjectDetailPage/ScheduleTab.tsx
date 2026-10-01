@@ -1306,10 +1306,14 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
             onThresholdsChange={handleThresholdsChange}
           />
         )}
+        {/* Task counts share this row with the chips (2026-10-01: one row less above the Gantt) */}
+        {tasks.length > 0 && filteredTasks.length > 0 && (
+          <div className="ml-auto"><ScheduleSummaryBar stats={taskStats} /></div>
+        )}
       </div>
 
-      {/* Row 2: Filters + Summary (merged) */}
-      {tasks.length > 0 && (showFilters || filteredTasks.length > 0) && (
+      {/* Row 2: the filter bar, when open */}
+      {tasks.length > 0 && showFilters && (
         <div className="flex items-center gap-3 flex-wrap mb-1">
           {showFilters && (
             <ScheduleFilterBar
@@ -1325,9 +1329,6 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
               hasActiveFilters={hasActiveFilters}
               onClearAll={clearAllFilters}
             />
-          )}
-          {filteredTasks.length > 0 && (
-            <ScheduleSummaryBar stats={taskStats} />
           )}
         </div>
       )}

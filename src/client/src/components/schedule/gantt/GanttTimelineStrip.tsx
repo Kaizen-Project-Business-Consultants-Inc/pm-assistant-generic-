@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import { layoutTimelineStrip, monthTicks, StripTask } from './timelineStrip';
+import { layoutTimelineStrip, monthTicks, placeLabels, textWidth, StripTask } from './timelineStrip';
 
 /**
  * Timeline strip (2026-10-01, replaces the minimap): the whole project on one line above the
@@ -34,7 +34,7 @@ export const GanttTimelineStrip = React.memo(function GanttTimelineStrip({ tasks
   const dateAt = (px: number) => new Date(layout.start.getTime() + ((px - PAD) / (W - 2 * PAD)) * span);
   const phasesTop = 22;
   const msTop = phasesTop + layout.lanes * (LANE_H + 4) + 4;
-  const H = msTop + 34;
+  const H = msTop + 30;
   const today = new Date();
   const todayIn = today >= layout.start && today <= layout.end;
 
@@ -59,13 +59,8 @@ export const GanttTimelineStrip = React.memo(function GanttTimelineStrip({ tasks
   const vx2 = view ? Math.min(W - PAD, x(view.end)) : 0;
 
   return (
-    <div id={TIMELINE_STRIP_ID} className="px-3 pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
-        <span className="text-xs font-semibold text-gray-900 dark:text-white">
-          {projectName ? `${projectName} · ` : ''}{fmt(layout.start, true)} → {fmt(layout.end, true)}
-        </span>
-        <span className="text-xs text-gray-500 dark:text-gray-400 print:hidden">Click a phase or milestone to jump there · drag to scroll</span>
-      </div>
+    <div id={TIMELINE_STRIP_ID} className="px-3 pt-1.5 pb-1 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+      title="Click a phase or milestone to jump there; drag across the strip to scroll">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -75,7 +70,9 @@ export const GanttTimelineStrip = React.memo(function GanttTimelineStrip({ tasks
         className="block select-none cursor-grab touch-none"
         onPointerDown={startDrag}
       >
-        {monthTicks(layout.start, layout.end).map(m => (
+        <text x={PAD} y={11} fontSize={10} className="fill-gray-500 dark:fill-gray-400">{fmt(layout.start)}</text>
+        <text x={W - PAD} y={11} fontSize={10} textAnchor="end" className="fill-gray-500 dark:fill-gray-400">{fmt(layout.end, true)}</text>
+        {monthTicks(layout.start, layout.end).filter(m => x(m) > PAD + 50 && x(m) < W - PAD - 90).map(m => (
           <g key={m.toISOString()}>
             <line x1={x(m)} x2={x(m)} y1={14} y2={H} className="stroke-gray-200 dark:stroke-gray-700" strokeWidth={1} />
             <text x={x(m) + 3} y={11} fontSize={10} className="fill-gray-500 dark:fill-gray-400">
@@ -85,8 +82,7 @@ export const GanttTimelineStrip = React.memo(function GanttTimelineStrip({ tasks
         ))}
 
         {view && vx2 > vx1 && (
-          <rect x={vx1} y={14} width={vx2 - vx1} height={H - 14} rx={3}
-            className="fill-primary-500/10 stroke-primary-500" strokeWidth={1.5} />
+          <path d={`M${vx1} 14 v4 H${vx2} v-4`} fill="none" className="stroke-primary-500" strokeWidth={2} />
         )}
 
         {layout.phases.map((p, i) => {
@@ -100,32 +96,40 @@ export const GanttTimelineStrip = React.memo(function GanttTimelineStrip({ tasks
               <title>{`${p.name}: ${fmt(p.start, true)} – ${fmt(p.end, true)}`}</title>
               <rect x={px1} y={y} width={pw} height={LANE_H} rx={4} fill={PHASE_COLORS[i % PHASE_COLORS.length]} strokeWidth={2} />
               <clipPath id={`tl-clip-${p.id}`}><rect x={px1} y={y} width={pw} height={LANE_H} /></clipPath>
-              <text x={px1 + 6} y={y + 14} fontSize={11} fontWeight={600} fill="#ffffff" clipPath={`url(#tl-clip-${p.id})`}>{p.name}</text>
+              {(() => {
+                const full = `${p.name} · ${fmt(p.start)} – ${fmt(p.end)}`;
+                const label = textWidth(full, 11) < pw - 12 ? full : textWidth(p.name, 11) < pw - 8 ? p.name : '';
+                return label ? <text x={px1 + 6} y={y + 14} fontSize={11} fontWeight={600} fill="#ffffff" clipPath={`url(#tl-clip-${p.id})`}>{label}</text> : null;
+              })()}
             </g>
           );
         })}
 
-        {layout.milestones.map(m => {
-          const mx = x(m.date);
-          const labelY = msTop + 14 + m.labelRow * 13;
-          const anchorEnd = mx > W - 160;
-          return (
+        {(() => {
+          const labels = layout.milestones.map(m => {
+            const text = m.names.length > 1 ? `${m.names.length} milestones · ${fmt(m.date)}` : `${m.names[0].length > 28 ? `${m.names[0].slice(0, 27)}…` : m.names[0]} · ${fmt(m.date)}`;
+            const mx = x(m.date);
+            return { m, mx, text, anchorEnd: mx > W - 160, width: textWidth(text, 10.5) };
+          });
+          const rows = placeLabels(labels.map(l => ({ x: l.anchorEnd ? l.mx - 9 : l.mx + 9, width: l.width, anchorEnd: l.anchorEnd })));
+          return labels.map(({ m, mx, text, anchorEnd }, i) => (
             <g key={m.id} data-jump role="button" tabIndex={0} className="cursor-pointer focus:outline-none"
-              onClick={() => onJump(m.date)} onKeyDown={keyJump(m.date)} aria-label={`Milestone ${m.name}, ${fmt(m.date)}. Jump there`}>
-              <title>{`${m.name} · ${fmt(m.date, true)}`}</title>
+              onClick={() => onJump(m.date)} onKeyDown={keyJump(m.date)}
+              aria-label={`Milestone${m.names.length > 1 ? 's' : ''} ${m.names.join(', ')}, ${fmt(m.date)}. Jump there`}>
+              <title>{`${fmt(m.date, true)}\n${m.names.join('\n')}`}</title>
               <path d={`M${mx} ${msTop} l6 6 -6 6 -6 -6z`} className="fill-blue-600 dark:fill-blue-400" />
-              <text x={anchorEnd ? mx - 9 : mx + 9} y={labelY} fontSize={10} textAnchor={anchorEnd ? 'end' : 'start'}
-                className="fill-gray-800 dark:fill-gray-200">
-                {(m.name.length > 28 ? `${m.name.slice(0, 27)}…` : m.name)} · {fmt(m.date)}
-              </text>
+              {rows[i] !== null && (
+                <text x={anchorEnd ? mx - 9 : mx + 9} y={msTop + 10 + (rows[i] as number) * 13} fontSize={10.5} textAnchor={anchorEnd ? 'end' : 'start'}
+                  className="fill-gray-800 dark:fill-gray-200">{text}</text>
+              )}
             </g>
-          );
-        })}
+          ));
+        })()}
 
         {todayIn && (
           <g>
+            <title>Today</title>
             <line x1={x(today)} x2={x(today)} y1={14} y2={H} stroke="#dc2626" strokeWidth={2} />
-            <text x={x(today) + 4} y={22} fontSize={9} fontWeight={700} fill="#dc2626">Today</text>
           </g>
         )}
       </svg>

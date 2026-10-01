@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import { ProjectSummaryLine } from '../components/project/ProjectSummaryLine';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useProjectRole } from '../hooks/useProjectRole';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,6 +18,7 @@ import {
   BookOpen,
   Loader2,
   CheckCircle,
+  ChevronUp,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useUIStore } from '../stores/uiStore';
@@ -86,6 +88,15 @@ export function ProjectDetailPage() {
     setSearchParams(tab === 'overview' ? {} : { tab }, { replace: true });
   };
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  // The four cards: always on Overview; on other tabs only after "Show details" (remembered here)
+  const [showDetails, setShowDetailsState] = useState<boolean>(() => {
+    try { return localStorage.getItem('project-show-details') === '1'; } catch { return false; }
+  });
+  const setShowDetails = (v: boolean) => {
+    setShowDetailsState(v);
+    try { localStorage.setItem('project-show-details', v ? '1' : '0'); } catch { /* private window */ }
+  };
+  const showCards = activeTab === 'overview' || showDetails;
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [showEditProject, setShowEditProject] = useState(false);
@@ -480,7 +491,41 @@ export function ProjectDetailPage() {
         </div>
       </div>
 
-      {/* Context Cards */}
+      {/* Summary: cards on Overview; one line on the other tabs unless "Show details" (2026-10-01) */}
+      {!showCards && (
+        <ProjectSummaryLine
+          items={[
+            methodology === 'agile'
+              ? { key: 'velocity', value: avgVelocity != null ? `${avgVelocity} pts` : '--', text: 'avg per sprint' }
+              : { key: 'progress', value: `${progress}%`, text: 'done' },
+            budgetAllocated > 0
+              ? { key: 'budget', value: `$${(budgetSpent / 1000).toFixed(0)}K`, text: `of $${(budgetAllocated / 1000).toFixed(0)}K` }
+              : { key: 'budget', value: 'No', text: 'budget set' },
+            daysRemaining !== null
+              ? { key: 'time', value: String(daysRemaining), text: daysRemaining === 1 ? 'day left' : 'days left' }
+              : { key: 'time', value: 'No', text: 'end date' },
+            {
+              key: 'risks', value: riskStats ? String(riskStats.openRisks || 0) : '—', text: 'risks open',
+              alert: riskStats?.critical > 0 ? `${riskStats.critical} critical` : undefined,
+            },
+            ...(methodology === 'agile' ? [{ key: 'sprints', value: String(sprintCount), text: sprintCount === 1 ? 'sprint' : 'sprints' }] : []),
+          ]}
+          onOpenOverview={() => setActiveTab('overview')}
+          onShowDetails={() => setShowDetails(true)}
+        />
+      )}
+      {showCards && activeTab !== 'overview' && (
+        <div className="flex justify-end -mb-2">
+          <button
+            type="button"
+            onClick={() => setShowDetails(false)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+          >
+            Hide details <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+      {showCards && (
       <div className={`grid grid-cols-2 gap-4 ${methodology === 'waterfall' ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`}>
         {methodology === 'agile' ? (
           <ContextCard
@@ -568,6 +613,7 @@ export function ProjectDetailPage() {
           />
         ) : null}
       </div>
+      )}
 
       {/* Readiness Bar */}
       <ProjectReadinessBar

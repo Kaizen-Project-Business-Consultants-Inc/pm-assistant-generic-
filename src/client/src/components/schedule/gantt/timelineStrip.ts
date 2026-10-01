@@ -3,7 +3,25 @@
  * phases as bars, milestones as diamonds, today — in the style of Microsoft Project's Timeline.
  * Pure layout; GanttTimelineStrip draws it.
  */
-import { toDate, DAY_MS } from './types';
+import { toDate } from './types';
+
+/** Rough text width in the strip's drawing units (≈ 0.55 em per character) */
+export const textWidth = (text: string, fontSize: number) => text.length * fontSize * 0.55;
+
+/**
+ * Place labels left to right; a label that would overlap the one before it (on its row) is left
+ * for hover. Two rows. Returns the row per label, or null = hover only.
+ */
+export function placeLabels(items: { x: number; width: number; anchorEnd?: boolean }[], rows = 2, gap = 8): (number | null)[] {
+  const rowEnds = Array<number>(rows).fill(-Infinity);
+  return items.map(({ x, width, anchorEnd }) => {
+    const left = anchorEnd ? x - width : x;
+    const r = rowEnds.findIndex(e => left >= e + gap);
+    if (r === -1) return null;
+    rowEnds[r] = left + width;
+    return r;
+  });
+}
 
 export interface StripTask {
   id: string;
@@ -16,7 +34,8 @@ export interface StripTask {
 }
 
 export interface StripPhase { id: string; name: string; start: Date; end: Date; lane: number }
-export interface StripMilestone { id: string; name: string; date: Date; labelRow: number }
+/** Milestones on the same day share one diamond ("3 milestones · 25 Feb"); names on hover */
+export interface StripMilestone { id: string; names: string[]; date: Date }
 export interface StripLayout {
   start: Date;
   end: Date;
@@ -53,18 +72,15 @@ export function layoutTimelineStrip(tasks: StripTask[], projectName = 'Project')
     p.lane = lane;
   }
 
-  // Milestone labels alternate rows when two are close, so names don't sit on top of each other
-  const span = Math.max(DAY_MS, end.getTime() - start.getTime());
-  const milestones: StripMilestone[] = [];
-  let lastX = -Infinity;
-  let row = 0;
-  for (const t of dated.filter(isMilestone).sort((a, b) => toDate(a.startDate)!.getTime() - toDate(b.startDate)!.getTime())) {
+  // One diamond per day; same-day milestones are grouped
+  const byDay = new Map<number, StripMilestone>();
+  for (const t of dated.filter(isMilestone)) {
     const date = toDate(t.endDate) ?? toDate(t.startDate)!;
-    const x = (date.getTime() - start.getTime()) / span;
-    row = x - lastX < 0.12 ? (row + 1) % 2 : 0;
-    lastX = x;
-    milestones.push({ id: t.id, name: t.name, date, labelRow: row });
+    const g = byDay.get(date.getTime());
+    if (g) g.names.push(t.name);
+    else byDay.set(date.getTime(), { id: t.id, names: [t.name], date });
   }
+  const milestones = [...byDay.values()].sort((a, b) => a.date.getTime() - b.date.getTime());
   return { start, end, phases, milestones, lanes: Math.max(1, laneEnds.length), noPhases };
 }
 

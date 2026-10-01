@@ -2996,6 +2996,11 @@ The **Timeline** button in the schedule toolbar shows the whole project on one l
 - **Today** line and month labels; a shaded box marks the dates the Gantt is showing.
 - **Click** a phase or milestone (or press Enter on it) to centre the Gantt on it; **drag** across the strip to scroll.
 - **Export → Timeline as image** (PNG) — shown only while the strip is on.
+- **Clean-up (2026-10-01):** no title line (start and end dates sit at the ends of the axis); the visible range is a bracket under the months, not a shaded box; milestones on the same day share one diamond (names in the tooltip); milestone labels are placed left to right on two rows and any label that would overlap is left for hover (`placeLabels`); phase bars show "name · start – end" when it fits.
+
+### Project page: summary line (2026-10-01)
+
+The Progress / Budget / Timeline / Risks cards show on **Overview** only. Other tabs show `ProjectSummaryLine` — one line ("9% done | $0K of $25K | 148 days left | 11 risks open · 1 critical"; agile: velocity and sprints) — whose figures open Overview; **Show details** restores the cards on all tabs (`localStorage project-show-details`), **Hide details** folds them. Schedule tab: the quick-filter pills and the task counts share one row; the filter bar gets its own row only when open.
 - Off by default; the choice is remembered per browser (`localStorage gantt-show-timeline`).
 ---
 
