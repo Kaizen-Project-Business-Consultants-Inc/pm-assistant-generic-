@@ -141,9 +141,9 @@ export function TeamTab({ projectId }: { projectId: string }) {
   const auditActivities = auditData?.activities || [];
 
   const roleColors: Record<string, string> = {
-    owner: 'bg-purple-100 text-purple-700',
-    manager: 'bg-blue-100 text-blue-700',
-    editor: 'bg-green-100 text-green-700',
+    owner: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200',
+    manager: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200',
+    editor: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200',
     viewer: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300',
   };
 
