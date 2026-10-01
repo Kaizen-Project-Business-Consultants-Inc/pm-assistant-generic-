@@ -9,6 +9,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { config } from '../../config';
 import logger from '../../utils/logger';
+import { issueOAuthState, finishOAuthState, OAuthStateUnavailableError } from '../../utils/oauthState';
 
 const sendSlackSchema = z.object({
   projectId: z.string().min(1),
@@ -28,10 +29,11 @@ export async function slackRoutes(fastify: FastifyInstance) {
           message: 'Slack is not set up on this site yet. Contact support and we will enable it.',
         });
       }
-      const state = require('crypto').randomBytes(16).toString('hex') + ':' + request.user!.userId;
+      const state = await issueOAuthState(request.user!.userId, 'slack');
       const url = slackAdapter.buildOAuthUrl(state);
       return { url, state };
     } catch (error: any) {
+      if (error instanceof OAuthStateUnavailableError) return reply.status(503).send({ error: 'unavailable', message: error.message });
       return reply.status(500).send({ error: error.message || 'Failed to generate install URL' });
     }
   });
@@ -57,8 +59,7 @@ export async function slackRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const userId = state.split(':')[1];
-      if (!userId) throw new Error('Invalid state');
+      const userId = await finishOAuthState(state, 'slack', request.user?.userId, 'Integrations');
 
       const data = await slackAdapter.exchangeCode(code);
       const integConfig: Record<string, any> = {

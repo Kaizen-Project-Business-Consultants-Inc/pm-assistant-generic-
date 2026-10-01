@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { scheduleService } from '../../services/ScheduleService';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
-import crypto from 'crypto';
+import { issueOAuthState, finishOAuthState } from '../../utils/oauthState';
 import { z } from 'zod';
 import { googleCalendarAdapter } from '../../services/integrations/GoogleCalendarAdapter';
 import { calendarSyncService } from '../../services/integrations/CalendarSyncService';
@@ -37,8 +37,7 @@ export async function googleCalendarRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const userId = state.split(':')[1];
-      if (!userId) throw new Error('Invalid state');
+      const userId = await finishOAuthState(state, 'gcal', request.user?.userId, 'Integrations');
 
       const redirectUri = `${config.APP_URL}/api/v1/calendar/callback`;
       const token = await googleCalendarAdapter.exchangeCode(code, redirectUri);
@@ -81,7 +80,12 @@ export async function googleCalendarRoutes(fastify: FastifyInstance) {
       return reply.status(501).send({ error: 'Google Calendar integration is not configured' });
     }
 
-    const state = crypto.randomBytes(16).toString('hex') + ':' + request.user!.userId;
+    let state: string;
+    try {
+      state = await issueOAuthState(request.user!.userId, 'gcal');
+    } catch (err) {
+      return reply.status(503).send({ error: 'unavailable', message: (err as Error).message });
+    }
     const redirectUri = `${config.APP_URL}/api/v1/calendar/callback`;
     const url = googleCalendarAdapter.buildAuthUrl({ redirectUri, state });
     return { url, state };

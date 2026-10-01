@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { config } from '../../config';
 import logger from '../../utils/logger';
+import { issueOAuthState, finishOAuthState, OAuthStateUnavailableError } from '../../utils/oauthState';
 import { teamsMeetingImportService, TeamsImportError, TEAMS_MEETINGS_STATE } from '../../services/TeamsMeetingImportService';
 
 export async function teamsRoutes(fastify: FastifyInstance) {
@@ -20,10 +21,11 @@ export async function teamsRoutes(fastify: FastifyInstance) {
           message: 'Microsoft Teams is not set up on this site yet. Contact support and we will enable it.',
         });
       }
-      const state = require('crypto').randomBytes(16).toString('hex') + ':' + request.user!.userId;
+      const state = await issueOAuthState(request.user!.userId, 'teams');
       const url = teamsAdapter.buildOAuthUrl(state);
       return { url, state };
     } catch (error: any) {
+      if (error instanceof OAuthStateUnavailableError) return reply.status(503).send({ error: 'unavailable', message: error.message });
       return reply.status(500).send({ error: error.message || 'Failed to generate install URL' });
     }
   });
@@ -66,8 +68,7 @@ export async function teamsRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const userId = state.split(':')[1];
-      if (!userId) throw new Error('Invalid state');
+      const userId = await finishOAuthState(state, 'teams', request.user?.userId, 'Integrations');
 
       const token = await teamsAdapter.exchangeCode(code);
       const integConfig: Record<string, any> = {

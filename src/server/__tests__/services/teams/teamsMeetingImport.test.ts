@@ -14,7 +14,7 @@ vi.mock('../../../services/RedisService', () => {
 
 import { distinctSpeakers, matchSpeakers, applySpeakerNames, sourceRefFor } from '../../../services/TeamsMeetingImportService';
 import { toMeeting, listRecentTeamsMeetings, findTranscript, TeamsCalendarMeeting } from '../../../services/integrations/TeamsMeetingsGraph';
-import { issueOAuthState, consumeOAuthState } from '../../../utils/oauthState';
+import { issueOAuthState, consumeOAuthState, finishOAuthState } from '../../../utils/oauthState';
 import { parseVtt, segmentsToTranscript } from '../../../utils/transcriptParser';
 
 const VTT = `WEBVTT
@@ -157,6 +157,17 @@ describe('sign-in state', () => {
     expect(await consumeOAuthState(s, 'slack')).toBeNull();
     expect(await consumeOAuthState(s, 'teams-meetings')).toBe('user-1');
     expect(await consumeOAuthState(s, 'teams-meetings')).toBeNull();
+  });
+
+  it('finishing: only the person who started it, signed in, and only once', async () => {
+    const s1 = await issueOAuthState('user-1', 'slack');
+    await expect(finishOAuthState(s1, 'slack', 'user-2', 'Integrations')).rejects.toThrow('Sign in to Kovarti in this browser, then connect again from Integrations.');
+    await expect(finishOAuthState(s1, 'slack', 'user-1', 'Integrations')).rejects.toThrow('This sign-in link has expired'); // the failed try used it up
+    const s2 = await issueOAuthState('user-1', 'slack');
+    await expect(finishOAuthState(s2, 'slack', undefined, 'Integrations')).rejects.toThrow('Sign in to Kovarti');
+    const s3 = await issueOAuthState('user-1', 'gcal');
+    expect(await finishOAuthState(s3, 'gcal', 'user-1', 'Integrations')).toBe('user-1');
+    await expect(finishOAuthState(`x:user-1`, 'gcal', 'user-1', 'Integrations')).rejects.toThrow('expired');
   });
 
   it('a forged state that just names a user is refused', async () => {

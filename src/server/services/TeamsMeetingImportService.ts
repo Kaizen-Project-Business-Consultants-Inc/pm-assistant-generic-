@@ -1,5 +1,5 @@
 import { config } from '../config';
-import { issueOAuthState, consumeOAuthState } from '../utils/oauthState';
+import { issueOAuthState, finishOAuthState } from '../utils/oauthState';
 import logger from '../utils/logger';
 import { integrationRepository, parseConfig } from '../database/IntegrationRepository';
 import { meetingAnalysisRepository } from '../database/MeetingAnalysisRepository';
@@ -111,10 +111,11 @@ class TeamsMeetingImportService {
    * Kovarti in this browser must be the one who started it (that is also what picks their company).
    */
   async completeConnection(state: string, code: string, signedInUserId: string | undefined): Promise<void> {
-    const startedBy = await consumeOAuthState(state, TEAMS_MEETINGS_STATE);
-    if (!startedBy) throw new TeamsImportError('state', 'This sign-in link has expired. Start again from Meeting Intelligence.');
-    if (!signedInUserId || signedInUserId !== startedBy) {
-      throw new TeamsImportError('signed_out', 'Sign in to Kovarti in this browser, then connect again from Meeting Intelligence.');
+    let startedBy: string;
+    try {
+      startedBy = await finishOAuthState(state, TEAMS_MEETINGS_STATE, signedInUserId, 'Meeting Intelligence');
+    } catch (err) {
+      throw new TeamsImportError('state', (err as Error).message);
     }
     const token = await teamsAdapter.exchangeCode(code, TEAMS_MEETING_SCOPES);
     await this.saveConnection(startedBy, token);
