@@ -1356,3 +1356,7 @@ It switches itself off after an hour. Never point the checker or seed at prod.
 ### Meeting Intelligence → From Teams (Oct 2026)
 - Automated: `src/server/__tests__/services/teams/teamsMeetingImport.test.ts` — speaker list, who's-who matching (saved choice, name, invite email, guests), names sent to the AI, Graph calendar/transcript calls (ended meetings only, recurring-meeting transcript choice, 401/403 messages), one-time sign-in state (used once, forged state refused).
 - Manual (needs a Microsoft 365 account with Teams and the Azure permissions in docs/ADMIN_MANUAL.md): as the project PM open Intelligence → From Teams → Connect Teams; hold a short Teams meeting with transcription on; check it shows **Ready**, the who's-who list, and that results show "Said by". A team member must not see the tab; a meeting without transcription shows **No transcript**.
+
+### Meeting Coach (Oct 2026)
+- Automated: `src/server/__tests__/services/meetingCoach.test.ts` (owner matching incl. two Toms, working-day due dates, scorecard counts/tips/trend) and the "Meeting Coach step" test in `MeetingIntelligenceService.test.ts` (owner ids from the AI ignored, scorecard saved, meeting date in the prompt).
+- Manual on staging as qa.pm: paste a transcript with "That's an action for Tom… by Friday", "Let's log that as a risk", plus an unlabelled problem; check Called out vs AI spotted, the flags, Add called-out items → RAID log (owner set, duplicates skipped on a second click), and the scorecard. As qa.team: results visible, no Add buttons.

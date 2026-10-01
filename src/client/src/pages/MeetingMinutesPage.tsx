@@ -19,13 +19,16 @@ import {
   AlertTriangle,
   CheckCircle,
   Users,
+  ClipboardList,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { MeetingResultPanel } from '../components/meeting/MeetingResultPanel';
 import { MeetingToRaidModal } from '../components/meeting/MeetingToRaidModal';
 import { SyncExternalMeetingModal } from '../components/meeting/SyncExternalMeetingModal';
 import { TeamsMeetingsTab } from '../components/meeting/TeamsMeetingsTab';
-import { mapAnalysisToRaidCandidates, RaidCandidate } from '../utils/meetingToRaidMapper';
+import { MeetingCoachReview } from '../components/meeting/MeetingCoachReview';
+import { ChairsCard } from '../components/meeting/ChairsCard';
+import { mapAnalysisToRaidCandidates, RaidCandidate, toSendToRaidPayload } from '../utils/meetingToRaidMapper';
 import { useProjectRole } from '../hooks/useProjectRole';
 import { ViewOnlyNote } from '../components/ui/ViewOnlyNote';
 
@@ -204,6 +207,9 @@ export const MeetingMinutesPage: React.FC = () => {
   const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
+  // Meeting Coach
+  const [chairsCardOpen, setChairsCardOpen] = useState(false);
+
   // History state
   const [historySearch, setHistorySearch] = useState('');
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
@@ -329,21 +335,7 @@ export const MeetingMinutesPage: React.FC = () => {
 
   const sendToRaidMutation = useMutation({
     mutationFn: ({ analysisId, items }: { analysisId: string; items: RaidCandidate[] }) =>
-      apiService.sendToRaid(analysisId, selectedProjectId, items.map(c => ({
-        type: c.type,
-        title: c.title,
-        description: c.description,
-        category: c.category,
-        severity: c.severity,
-        probability: c.probability,
-        impact: c.impact,
-        mitigationPlan: c.mitigationPlan,
-        dueDate: c.dueDate,
-        rationale: c.rationale,
-        decidedBy: c.decidedBy,
-        actionType: c.actionType,
-        impactAssessment: c.impactAssessment,
-      }))),
+      apiService.sendToRaid(analysisId, selectedProjectId, items.map(toSendToRaidPayload)),
     onSuccess: () => {
       setRaidModalOpen(false);
       setRaidCandidates([]);
@@ -453,15 +445,27 @@ export const MeetingMinutesPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <Brain className="w-6 h-6 text-primary-500" />
-          Meeting Intelligence
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Analyze meeting transcripts with AI and import findings into your RAID log.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Brain className="w-6 h-6 text-primary-500" />
+            Meeting Intelligence
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Analyze meeting transcripts with AI and import findings into your RAID log.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setChairsCardOpen(true)}
+          className="btn btn-primary text-sm flex items-center gap-2"
+        >
+          <ClipboardList className="w-4 h-4" aria-hidden="true" />
+          Chair's card
+          <span className="rounded-full bg-white/25 px-1.5 py-px text-xs font-bold">NEW</span>
+        </button>
       </div>
+      <ChairsCard isOpen={chairsCardOpen} onClose={() => setChairsCardOpen(false)} />
 
       {/* Project selector */}
       <div className="max-w-xs">
@@ -782,6 +786,8 @@ export const MeetingMinutesPage: React.FC = () => {
                 </h2>
                 {canEdit && (
                 <div className="flex items-center gap-2">
+                  {/* Analyses with the Meeting Coach review add to RAID from there */}
+                  {!analysisResult.coach && (
                   <button
                     onClick={() => handleSendToRaid(analysisResult)}
                     disabled={isSample}
@@ -791,6 +797,7 @@ export const MeetingMinutesPage: React.FC = () => {
                     <Shield className="w-3.5 h-3.5 text-indigo-500" />
                     Send to RAID
                   </button>
+                  )}
                   {analysisResult.meetingId && (
                     <button
                       onClick={() => {
@@ -807,6 +814,15 @@ export const MeetingMinutesPage: React.FC = () => {
                 </div>
                 )}
               </div>
+
+              {analysisResult.coach && (
+                <MeetingCoachReview
+                  analysis={analysisResult}
+                  projectId={selectedProjectId}
+                  canEdit={canEdit}
+                  isSample={isSample}
+                />
+              )}
 
               <MeetingResultPanel
                 analysis={analysisResult}

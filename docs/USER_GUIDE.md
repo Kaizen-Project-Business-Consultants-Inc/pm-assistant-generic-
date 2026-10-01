@@ -1690,6 +1690,22 @@ Kovarti reads the transcript Teams made of a meeting. It never joins or records 
 
 Limits: Teams only (not Zoom or Google Meet yet); a room with one shared microphone appears as one speaker; **Disconnect Teams** at the top of the list removes your connection.
 
+#### Meeting Coach: call items out in the meeting
+
+Meetings produce better records when people say out loud what something is. Click **Chair's card** (top right of Meeting Intelligence) for a one-page prompt you can keep beside Teams or print:
+
+- Call items out in plain words: "That's an action for Tom", "Let's log that as a risk", "That's an issue", "Decision: we go live on 9 November", "Dependency: we need the API keys first". Any natural wording works ("Tom, can you take that?").
+- For every action ask "Who owns it?" and "By when?"; for a risk, "Who's watching it?". In the last two minutes, read the actions back.
+
+After you analyze the meeting (Paste, Upload or From Teams), the results open with two lists:
+
+- **Called out in the meeting:** items someone labelled out loud, ticked for you. The owner and due date come from what was said: "Friday" becomes that Friday, moved to the next working day if it's a day off. If no owner or date was said, or a name fits two people ("Tom"), it's flagged and you choose.
+- **AI spotted:** items the AI noticed but nobody labelled. They're not ticked; you decide.
+
+Only the project's PM sees the **Add N called-out items to RAID** and **Add selected** buttons. Items already in the RAID log are skipped, and each item keeps its owner. Nothing is added until you click.
+
+Below the lists, the **Meeting scorecard** shows how many items were called out vs. spotted, how many actions had an owner and a date, how many risks had an owner, and tips for next time. After a few meetings it also shows the trend. It coaches the meeting; it never names who did badly.
+
 #### Importing from External Platforms (Read.ai, Otter.ai, etc.)
 
 Click the **Import Meeting** button (top-right of the input tabs area) to open the import modal. This lets you bring in meeting data from Read.ai, Otter.ai, or any other meeting platform:

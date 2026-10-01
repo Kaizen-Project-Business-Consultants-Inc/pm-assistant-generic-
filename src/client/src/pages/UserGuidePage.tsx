@@ -253,6 +253,8 @@ const sections: Section[] = [
       'From Teams: connect your Microsoft account once (your IT admin approves Kovarti one time); Kovarti reads the Teams transcript and never joins the call',
       "Check who's who: speakers are matched to project members, and your choices are remembered",
       'AI extracts action items, decisions, and risks — showing who said each one and when',
+      "Meeting Coach: open the Chair's card, call items out in the meeting (\"that's an action for Tom\"), and they come back ticked with owner and date",
+      'Only the PM adds items to RAID; the scorecard shows gaps (no owner, no date) and tips for next time',
       'Link extracted items directly to project tasks',
       'Search and review past meeting notes',
     ],

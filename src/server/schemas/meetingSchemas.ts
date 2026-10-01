@@ -7,8 +7,13 @@ import { z } from 'zod';
 export const MeetingActionItemSchema = z.object({
   description: z.string(),
   assignee: z.string().describe('Name of the person assigned'),
-  dueDate: z.string().optional(),
+  dueDate: z.string().optional().describe('YYYY-MM-DD, worked out from what was said and the meeting date ("Friday" = the Friday of the meeting week, or the next one if already past); omit if no date was said — never invent one'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
+  calledOut: z.boolean().default(false).describe('true only if someone in the meeting explicitly labelled it (e.g. "that\'s an action for Tom", "log that as a risk", "decision:"); false if you inferred it'),
+  quote: z.string().optional().describe('The few words that show it, copied from the transcript (max ~20 words)'),
+  ownerUserId: z.string().optional(),
+  ownerName: z.string().optional(),
+  ownerChoices: z.array(z.object({ userId: z.string(), name: z.string() })).optional(),
   saidBy: z.string().optional().describe('Who raised it, as the speaker is named in the transcript; omit if the transcript has no speaker names'),
   at: z.string().optional().describe('Transcript time it was said, e.g. 0:12:41; omit if unknown'),
 });
@@ -23,6 +28,8 @@ export const MeetingDecisionSchema = z.object({
   decision: z.string(),
   rationale: z.string().optional(),
   madeBy: z.string().optional(),
+  calledOut: z.boolean().default(false).describe('true only if someone in the meeting explicitly labelled it (e.g. "that\'s an action for Tom", "log that as a risk", "decision:"); false if you inferred it'),
+  quote: z.string().optional().describe('The few words that show it, copied from the transcript (max ~20 words)'),
   at: z.string().optional().describe('Transcript time the decision was made, e.g. 0:24:10; omit if unknown'),
 });
 
@@ -36,6 +43,12 @@ export const MeetingRiskSchema = z.object({
   description: z.string(),
   severity: z.enum(['low', 'medium', 'high', 'critical']),
   mitigation: z.string().optional(),
+  calledOut: z.boolean().default(false).describe('true only if someone in the meeting explicitly labelled it (e.g. "that\'s an action for Tom", "log that as a risk", "decision:"); false if you inferred it'),
+  quote: z.string().optional().describe('The few words that show it, copied from the transcript (max ~20 words)'),
+  owner: z.string().optional().describe('Who owns / watches it, if the meeting said so; omit otherwise'),
+  ownerUserId: z.string().optional(),
+  ownerName: z.string().optional(),
+  ownerChoices: z.array(z.object({ userId: z.string(), name: z.string() })).optional(),
   saidBy: z.string().optional().describe('Who raised it, as the speaker is named in the transcript; omit if the transcript has no speaker names'),
   at: z.string().optional().describe('Transcript time it was said, e.g. 0:12:41; omit if unknown'),
 });
@@ -50,6 +63,12 @@ export const MeetingIssueSchema = z.object({
   description: z.string(),
   severity: z.enum(['low', 'medium', 'high', 'critical']),
   impact: z.string().optional(),
+  calledOut: z.boolean().default(false).describe('true only if someone in the meeting explicitly labelled it (e.g. "that\'s an action for Tom", "log that as a risk", "decision:"); false if you inferred it'),
+  quote: z.string().optional().describe('The few words that show it, copied from the transcript (max ~20 words)'),
+  owner: z.string().optional().describe('Who owns / watches it, if the meeting said so; omit otherwise'),
+  ownerUserId: z.string().optional(),
+  ownerName: z.string().optional(),
+  ownerChoices: z.array(z.object({ userId: z.string(), name: z.string() })).optional(),
   saidBy: z.string().optional().describe('Who raised it, as the speaker is named in the transcript; omit if the transcript has no speaker names'),
   at: z.string().optional().describe('Transcript time it was said, e.g. 0:12:41; omit if unknown'),
 });
@@ -64,6 +83,14 @@ export const MeetingDependencySchema = z.object({
   description: z.string(),
   dependsOn: z.string().optional(),
   blockedItem: z.string().optional(),
+  calledOut: z.boolean().default(false).describe('true only if someone in the meeting explicitly labelled it (e.g. "that\'s an action for Tom", "log that as a risk", "decision:"); false if you inferred it'),
+  quote: z.string().optional().describe('The few words that show it, copied from the transcript (max ~20 words)'),
+  owner: z.string().optional().describe('Who owns / watches it, if the meeting said so; omit otherwise'),
+  ownerUserId: z.string().optional(),
+  ownerName: z.string().optional(),
+  ownerChoices: z.array(z.object({ userId: z.string(), name: z.string() })).optional(),
+  saidBy: z.string().optional(),
+  at: z.string().optional(),
 });
 
 export type MeetingDependency = z.infer<typeof MeetingDependencySchema>;
@@ -120,6 +147,8 @@ export const MeetingAnalysisSchema = z.object({
   taskUpdates: z.array(MeetingTaskUpdateSchema),
   appliedItems: z.array(z.number()),
   createdAt: z.string(),
+  /** Meeting Coach scorecard (analyses since Oct 2026) */
+  coach: z.any().optional(),
 });
 
 export type MeetingAnalysis = z.infer<typeof MeetingAnalysisSchema>;

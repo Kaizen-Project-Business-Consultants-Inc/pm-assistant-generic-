@@ -115,6 +115,7 @@ Upload meeting notes or transcripts; AI extracts action items and updates tasks.
 - Matches assignees to known resources by name and role
 - Confidence scoring on each extraction
 - Validates output against `MeetingAIResponseSchema`
+- **Meeting Coach (Oct 2026):** every item carries `calledOut` (true only when someone explicitly labelled it in the meeting, any natural wording) and a short `quote`. The prompt gives the meeting date and weekday so spoken dates ("by Friday") become YYYY-MM-DD; with no date said, dueDate stays empty. Owner ids are never taken from the model: names are resolved to project members in `meetingCoach.resolveOwner`, and ambiguous first names become a PM choice. The scorecard is deterministic (`buildScorecard`), not AI.
 - **Speaker attribution (Oct 2026):** when the transcript names its speakers (`[Name] (H:MM:SS)` lines — Teams VTT uploads and Meeting Intelligence → From Teams), the AI fills `saidBy`/`at` on action items, risks and issues and `madeBy`/`at` on decisions, using the names exactly as written; a speaker who takes an action on themselves becomes its assignee; speakers marked "(not a project member)" are not made assignees unless clearly given the task; with no speaker names the fields stay empty (never guessed). From Teams rewrites speakers to the confirmed project member names before analysis.
 
 ---

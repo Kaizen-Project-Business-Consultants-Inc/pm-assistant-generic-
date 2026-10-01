@@ -60,6 +60,20 @@ class MeetingAnalysisRepository {
     );
   }
 
+  /** Meeting Coach scorecard for this analysis */
+  setCoach(id: string, coach: unknown): Promise<any> {
+    return databaseService.query('UPDATE meeting_analyses SET coach = ? WHERE id = ?', [JSON.stringify(coach), id]);
+  }
+
+  /** The project's earlier scorecards, newest first */
+  async recentCoach(projectId: string, limit = 7): Promise<{ calledOut: number; aiOnly: number }[]> {
+    const rows = await databaseService.query<{ coach: any }>(
+      `SELECT coach FROM meeting_analyses WHERE project_id = ? AND coach IS NOT NULL ORDER BY created_at DESC LIMIT ${Number(limit)}`,
+      [projectId],
+    );
+    return rows.map(r => (typeof r.coach === 'string' ? JSON.parse(r.coach) : r.coach)).filter(Boolean);
+  }
+
   /** Which outside meeting (e.g. "teams:<event id>") this analysis was made from */
   setSourceRef(id: string, sourceRef: string): Promise<any> {
     return databaseService.query('UPDATE meeting_analyses SET source_ref = ? WHERE id = ?', [sourceRef, id]);

@@ -4,7 +4,9 @@ import { resourceService, Resource } from './ResourceService';
 import { config } from '../config';
 import logger from '../utils/logger';
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
-import { utcDay } from '../utils/workingDays';
+import { utcDay, weekdaysOnly } from '../utils/workingDays';
+import { projectMemberService } from './ProjectMemberService';
+import { resolveOwner, workingDue, buildScorecard } from './meetingCoach';
 import { meetingAnalysisRepository } from '../database/MeetingAnalysisRepository';
 import { ragService } from './RagService';
 import {
@@ -39,6 +41,7 @@ function rowToMeetingAnalysis(row: any): MeetingAnalysis {
     dependencies: parseJson(row.dependencies),
     taskUpdates: parseJson(row.task_updates),
     appliedItems: parseJson(row.applied_items),
+    coach: row.coach ? parseJson(row.coach) : undefined,
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
   };
 }
@@ -85,7 +88,11 @@ export class MeetingIntelligenceService {
     scheduleId: string,
     userId?: string,
     meetingId?: string,
+    /** YYYY-MM-DD the meeting took place (Teams knows it; otherwise today) — for "by Friday" */
+    meetingDate?: string,
   ): Promise<MeetingAnalysis> {
+    const meetingDay = meetingDate && /^\d{4}-\d{2}-\d{2}$/.test(meetingDate) ? meetingDate : new Date().toISOString().slice(0, 10);
+    const weekday = new Date(`${meetingDay}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
     // 1. Gather context: existing tasks
     const existingTasks = await scheduleService.findTasksByScheduleId(scheduleId);
     const schedule = await scheduleService.findById(scheduleId);
@@ -126,6 +133,11 @@ You must identify:
 When matching task updates to existing tasks, use the existingTaskId field with the task ID from the context below. For new tasks, leave existingTaskId empty.
 
 When assigning people, use the exact names from the resource list below when possible.
+
+MEETING COACH — called out vs. spotted. The meeting took place on ${weekday} ${meetingDay}.
+- Set calledOut = true only when someone explicitly labelled the item in the meeting, in any natural wording: "that's an action for Tom", "Tom, can you take that?", "let's log that as a risk", "put that down as an issue", "decision: we go live on the 9th", "dependency: we need the API keys first". Everything you inferred yourself is calledOut = false. Include a short quote showing it.
+- Owners: for actions use assignee; for risks, issues and dependencies use owner — only if the meeting said who. Use the person's name as spoken ("Tom" is fine).
+- Due dates: when a date was said ("by Friday", "next Tuesday", "end of the month"), give it as YYYY-MM-DD counted from the meeting date. If no date was said, leave dueDate empty. Never invent owners or dates.
 
 If the transcript names its speakers (lines like "[Dev Patel] (0:12:41)"), record who raised each action item, risk and issue (saidBy) and who made each decision (madeBy), using the speaker name exactly as written, and the time shown (at). When someone takes on an action themselves ("I'll send the spec"), that speaker is its assignee. Speakers marked "(not a project member)" may be guests: do not make them the assignee unless the transcript clearly gives it to them. If the transcript has no speaker names, leave saidBy and at empty — never guess.
 
@@ -173,6 +185,25 @@ Analyze this meeting transcript and extract all actionable information.`;
         update.existingTaskId || this.findMatchingTaskId(update, existingTasks),
     }));
 
+    // 5b. Meeting Coach: names → project people, dates → working days, the scorecard
+    // Owner ids/choices are worked out here, never taken from the AI's reply
+    const NO_OWNER = { ownerUserId: undefined, ownerName: undefined, ownerChoices: undefined };
+    const members = (await projectMemberService.findByProjectId(projectId))
+      .filter(m => !m.userId.startsWith('pending_'))
+      .map(m => ({ userId: m.userId, name: m.userName }));
+    const isWorking = await scheduleService.workingDayTest(scheduleId).catch(() => weekdaysOnly);
+    aiResponse.actionItems = aiResponse.actionItems.map(item => ({
+      ...item, ...NO_OWNER, ...resolveOwner(item.assignee, members), dueDate: workingDue(item.dueDate, isWorking),
+    }));
+    aiResponse.risks = aiResponse.risks.map(r => ({ ...r, ...NO_OWNER, ...resolveOwner(r.owner, members) }));
+    aiResponse.issues = (aiResponse.issues || []).map(i => ({ ...i, ...NO_OWNER, ...resolveOwner(i.owner, members) }));
+    aiResponse.dependencies = (aiResponse.dependencies || []).map(d => ({ ...d, ...NO_OWNER, ...resolveOwner(d.owner, members) }));
+    const previousCoach = await meetingAnalysisRepository.recentCoach(projectId).catch(() => []);
+    const coach = buildScorecard({
+      actionItems: aiResponse.actionItems, risks: aiResponse.risks, issues: aiResponse.issues || [],
+      decisions: aiResponse.decisions, dependencies: aiResponse.dependencies || [],
+    }, previousCoach);
+
     // 6. Store and return
     const analysis: MeetingAnalysis = {
       id: `ma-${Math.random().toString(36).substr(2, 9)}`,
@@ -188,9 +219,12 @@ Analyze this meeting transcript and extract all actionable information.`;
       taskUpdates: aiResponse.taskUpdates,
       appliedItems: [],
       createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      coach,
     };
 
     await this.persistAnalysis(analysis);
+    await meetingAnalysisRepository.setCoach(analysis.id, coach).catch(err =>
+      logger.warn('Meeting Coach: could not save the scorecard', { error: (err as Error).message }));
 
     // Link to meeting if provided
     if (meetingId) {

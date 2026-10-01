@@ -11,6 +11,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
+import { projectMemberService } from '../../services/ProjectMemberService';
 import { fileAttachmentService } from '../../services/FileAttachmentService';
 import { parseTranscriptFile } from '../../utils/transcriptParser';
 
@@ -271,6 +272,9 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
     decidedBy: z.string().optional(),
     actionType: z.enum(['preventive', 'corrective', 'improvement']).optional(),
     impactAssessment: z.string().max(5000).optional(),
+    /** Meeting Coach: the owner the meeting named — a project member, or just a name */
+    ownerId: z.string().max(64).optional(),
+    ownerName: z.string().max(255).optional(),
   });
 
   const sendToRaidSchema = z.object({
@@ -292,8 +296,11 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
       }
 
       const imported: any[] = [];
+      // An owner must be on this project; anyone else is kept as a name only
+      const memberIds = new Set((await projectMemberService.findByProjectId(parsed.projectId)).map(m => m.userId));
 
       for (const item of parsed.items) {
+        const ownerId = item.ownerId && memberIds.has(item.ownerId) ? item.ownerId : undefined;
         const risk = await riskService.create({
           projectId: parsed.projectId,
           type: item.type,
@@ -309,6 +316,8 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
           decidedBy: item.decidedBy,
           actionType: item.actionType,
           impactAssessment: item.impactAssessment,
+          ownerId,
+          ownerName: ownerId ? undefined : item.ownerName,
           source: 'meeting',
           createdBy: userId,
         });

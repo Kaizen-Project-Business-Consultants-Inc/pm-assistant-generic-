@@ -216,7 +216,7 @@ class TeamsMeetingImportService {
 
     const day = meeting.start.slice(0, 10);
     const transcript = `Meeting: ${meeting.subject} (${day}, Microsoft Teams)\n\n${segmentsToTranscript(applySpeakerNames(segments, clean, memberNames))}`;
-    const analysis = await meetingIntelligenceService.analyzeTranscript(transcript, projectId, scheduleId, userId);
+    const analysis = await meetingIntelligenceService.analyzeTranscript(transcript, projectId, scheduleId, userId, undefined, day);
     await meetingAnalysisRepository.setSourceRef(analysis.id, sourceRefFor(eventId)).catch(err =>
       logger.warn('Teams import: could not record source meeting', { error: (err as Error).message }));
     return analysis;

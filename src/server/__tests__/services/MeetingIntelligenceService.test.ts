@@ -11,6 +11,8 @@ vi.mock('../../database/MeetingAnalysisRepository', () => {
     findByProject: vi.fn().mockResolvedValue([]),
     updateAppliedItems: vi.fn().mockResolvedValue(undefined),
     updateMeetingId: vi.fn().mockResolvedValue(undefined),
+    setCoach: vi.fn().mockResolvedValue(undefined),
+    recentCoach: vi.fn().mockResolvedValue([]),
   };
   return { meetingAnalysisRepository: mockRepo };
 });
@@ -31,8 +33,18 @@ vi.mock('../../services/ScheduleService', () => ({
     updateTask: vi.fn().mockResolvedValue({}),
     cascadeReschedule: vi.fn().mockResolvedValue({ affectedTasks: [] }),
     logActivity: vi.fn().mockResolvedValue(undefined),
+    workingDayTest: vi.fn().mockResolvedValue((d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6),
   },
   Task: {},
+}));
+
+vi.mock('../../services/ProjectMemberService', () => ({
+  projectMemberService: {
+    findByProjectId: vi.fn().mockResolvedValue([
+      { userId: 'u-dp', userName: 'Dev Patel', email: 'dev@x.example', role: 'manager' },
+      { userId: 'pending_abc', userName: 'Invited Ivy', email: 'ivy@x.example', role: 'viewer' },
+    ]),
+  },
 }));
 
 vi.mock('../../services/ResourceService', () => ({
@@ -695,5 +707,28 @@ describe('MeetingIntelligenceService', () => {
         expect.objectContaining({ createdBy: 'meeting-intelligence' }),
       );
     });
+  });
+});
+
+describe('Meeting Coach step in analyzeTranscript', () => {
+  it('called-out items keep the flag; owners become project members; dates land on working days; the scorecard is saved', async () => {
+    const { claudeService } = await import('../../services/claudeService');
+    (claudeService.completeWithJsonSchema as any).mockResolvedValueOnce({ data: {
+      summary: 's',
+      actionItems: [
+        { description: 'Send the spec', assignee: 'Dev', dueDate: '2026-10-03', priority: 'high', calledOut: true, ownerUserId: 'someone-else' },
+        { description: 'Tidy the backlog', assignee: 'Unassigned', priority: 'low', calledOut: false },
+      ],
+      decisions: [], risks: [{ description: 'Vendor may slip', severity: 'high', calledOut: true }],
+      issues: [], dependencies: [], taskUpdates: [],
+    } });
+    const a = await new MeetingIntelligenceService().analyzeTranscript('[Dev Patel] (0:01:00)\nI will send the spec by Saturday.', 'p1', 'sch-1', 'u1', undefined, '2026-09-29');
+    const [send, tidy] = a.actionItems as any[];
+    expect(send).toMatchObject({ calledOut: true, ownerUserId: 'u-dp', ownerName: 'Dev Patel', dueDate: '2026-10-05' }); // Saturday → Monday; the AI's own id ignored
+    expect(tidy.ownerUserId).toBeUndefined();
+    expect((a as any).coach).toMatchObject({ calledOut: 2, aiOnly: 1, actions: { total: 2, withOwnerAndDate: 1 }, risks: { total: 1, withOwner: 0 } });
+    expect(mockAnalysisRepo.setCoach).toHaveBeenCalledWith(a.id, (a as any).coach);
+    const prompt = (claudeService.completeWithJsonSchema as any).mock.calls.at(-1)[0].systemPrompt;
+    expect(prompt).toContain('The meeting took place on Tuesday 2026-09-29');
   });
 });
