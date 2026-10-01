@@ -37,7 +37,8 @@ export const createResourceSchema = z.object({
   role: z.string().optional(),
   // Required for a person and absent for a generic role (2026-10-01) — ResourceService
   // enforces it for every caller, so it's checked there, not only here
-  email: z.string().email().optional(),
+  // '' is let through so the service can say what to do ("use a generic role"), not "invalid email"
+  email: z.string().trim().email().or(z.literal('')).optional(),
   isGeneric: z.boolean().optional(),
   capacityHoursPerWeek: z.number().positive().default(40),
   skills: z.array(skillSchema).default([]),
