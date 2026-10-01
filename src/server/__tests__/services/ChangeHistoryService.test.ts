@@ -75,6 +75,16 @@ describe('ChangeHistoryService', () => {
       expect(JSON.parse(insert[1][10])).toEqual(['Linked Design Review → Build Sprint 1', 'Build Sprint 1: start 12 Oct → 19 Oct, finish 23 Oct → 30 Oct']);
     });
 
+    it('says it in plain words, not system codes', async () => {
+      query.mockImplementation((sql: string) => Promise.resolve(String(sql).includes('FROM tasks WHERE id IN') ? [
+        { id: 't1', name: 'Design', status: 'completed', priority: 'high' },
+      ] : []));
+      await changeHistoryService.record({ projectId: 'p-1', scheduleId: 's-1', kind: 'bulk_update', summary: 'Edited 1 task', taskIds: ['t1'],
+        undo: { previous: [{ id: 't1', values: { status: 'in_progress', priority: 'medium' } }] } });
+      const insert = query.mock.calls.find(([q]) => String(q).includes('INSERT INTO change_batches'))!;
+      expect(JSON.parse(insert[1][10])).toEqual(['Design: status In progress → Done, priority Medium → High']);
+    });
+
     it('skips a change that touched nothing', async () => {
       expect(await changeHistoryService.record({ projectId: 'p', scheduleId: 's', kind: 'link', summary: 'x', taskIds: [], undo: {} })).toBeNull();
       expect(query).not.toHaveBeenCalled();

@@ -6,6 +6,7 @@ import { restoreTaskDates } from './ScheduleRecomputeService';
 import { auditLedgerService } from './AuditLedgerService';
 import { queueReviewRerun } from './scheduleReview/autoRerun';
 import logger from '../utils/logger';
+import { TASK_STATUS_LABEL } from '../constants/taskStatus';
 
 /**
  * Schedule History — one line per GROUP change, with an Undo that works later (the
@@ -313,7 +314,16 @@ async function describeChange(input: RecordInput): Promise<string[]> {
   const byId = new Map(rows.map((r: any) => [r.id, r]));
   const nameOf = (id: string) => byId.get(id)?.name ?? 'a task';
   const lines: string[] = [];
-  const show = (col: string, v: unknown) => (col === 'start_date' || col === 'end_date' ? shortDay(v) : v == null || v === '' ? '—' : String(v));
+  // Plain words, not system codes: "In progress → Done", "High", "Yes", "40%"
+  const show = (col: string, v: unknown): string => {
+    if (col === 'start_date' || col === 'end_date') return shortDay(v);
+    if (v == null || v === '') return '—';
+    if (col === 'status') return TASK_STATUS_LABEL[String(v)] ?? String(v);
+    if (col === 'priority') return String(v).charAt(0).toUpperCase() + String(v).slice(1);
+    if (col === 'is_milestone') return Number(v) ? 'Yes' : 'No';
+    if (col === 'progress_percentage') return `${v}%`;
+    return String(v);
+  };
   const moved = (list: Array<{ taskId: string; startDate: string | null; endDate: string | null }>) => {
     for (const m of list) {
       const now = byId.get(m.taskId); if (!now) continue;

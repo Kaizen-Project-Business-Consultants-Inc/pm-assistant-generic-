@@ -11,7 +11,7 @@ import { type IsWorking, weekdaysOnly, utcDay, ymdOf, finishFor } from '../../ut
 import { queueReviewRerun } from '../../services/scheduleReview/autoRerun';
 import { changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues } from '../../services/ChangeHistoryService';
 
-const STATUS_LABEL: Record<string, string> = { pending: 'Not started', in_progress: 'In progress', completed: 'Done', cancelled: 'Cancelled' };
+import { TASK_STATUS_LABEL as STATUS_LABEL } from '../../constants/taskStatus';
 const FIELD_LABEL: Record<string, string> = {
   name: 'name', startDate: 'start', endDate: 'finish', estimatedDays: 'duration', progressPercentage: 'progress',
   status: 'status', priority: 'priority', assignedTo: 'owner', dependency: 'predecessor', dependencyType: 'link type',
