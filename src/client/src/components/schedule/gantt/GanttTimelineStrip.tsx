@@ -34,7 +34,7 @@ export const GanttTimelineStrip = React.memo(function GanttTimelineStrip({ tasks
   const dateAt = (px: number) => new Date(layout.start.getTime() + ((px - PAD) / (W - 2 * PAD)) * span);
   const phasesTop = 22;
   const msTop = phasesTop + layout.lanes * (LANE_H + 4) + 4;
-  const H = msTop + 30;
+  const H = msTop + 32;
   const today = new Date();
   const todayIn = today >= layout.start && today <= layout.end;
 
@@ -119,7 +119,7 @@ export const GanttTimelineStrip = React.memo(function GanttTimelineStrip({ tasks
               <title>{`${fmt(m.date, true)}\n${m.names.join('\n')}`}</title>
               <path d={`M${mx} ${msTop} l6 6 -6 6 -6 -6z`} className="fill-blue-600 dark:fill-blue-400" />
               {rows[i] !== null && (
-                <text x={anchorEnd ? mx - 9 : mx + 9} y={msTop + 10 + (rows[i] as number) * 13} fontSize={10.5} textAnchor={anchorEnd ? 'end' : 'start'}
+                <text x={anchorEnd ? mx - 9 : mx + 9} y={msTop + 10 + (rows[i] as number) * 15} fontSize={10.5} textAnchor={anchorEnd ? 'end' : 'start'}
                   className="fill-gray-800 dark:fill-gray-200">{text}</text>
               )}
             </g>
