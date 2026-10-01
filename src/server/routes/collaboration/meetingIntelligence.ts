@@ -207,7 +207,7 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
-      const analyses = meetingIntelligenceService.getProjectHistory(projectId);
+      const analyses = await meetingIntelligenceService.getProjectHistory(projectId);
       return reply.send({ data: analyses });
     } catch (err) {
       fastify.log.error({ err }, 'Failed to fetch meeting analysis history');

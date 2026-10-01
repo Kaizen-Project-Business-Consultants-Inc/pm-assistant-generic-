@@ -97,8 +97,11 @@ export class MeetingIntelligenceService {
     const existingTasks = await scheduleService.findTasksByScheduleId(scheduleId);
     const schedule = await scheduleService.findById(scheduleId);
 
-    // 2. Gather resources for assignee matching
+    // 2. Gather resources for assignee matching, and the project's members (Meeting Coach owners)
     const resources = await resourceService.findAllResources();
+    const members = (await projectMemberService.findByProjectId(projectId))
+      .filter(m => !m.userId.startsWith('pending_'))
+      .map(m => ({ userId: m.userId, name: m.userName }));
 
     // 3. Build context strings
     const taskContext = existingTasks
@@ -136,7 +139,7 @@ When assigning people, use the exact names from the resource list below when pos
 
 MEETING COACH — called out vs. spotted. The meeting took place on ${weekday} ${meetingDay}.
 - Set calledOut = true only when someone explicitly labelled the item in the meeting, in any natural wording: "that's an action for Tom", "Tom, can you take that?", "let's log that as a risk", "put that down as an issue", "decision: we go live on the 9th", "dependency: we need the API keys first". Everything you inferred yourself is calledOut = false. Include a short quote showing it.
-- Owners: for actions use assignee; for risks, issues and dependencies use owner — only if the meeting said who. Use the person's name as spoken ("Tom" is fine).
+- Owners: for actions use assignee; for risks, issues and dependencies use owner — only if the meeting said who. Write the name EXACTLY as spoken ("Tom", "QA"), or that project member's full name only when exactly one project member fits. Never replace it with a different person or a name from the resource list that wasn't said.
 - Due dates: when a date was said ("by Friday", "next Tuesday", "end of the month"), give it as YYYY-MM-DD counted from the meeting date. If no date was said, leave dueDate empty. Never invent owners or dates.
 
 If the transcript names its speakers (lines like "[Dev Patel] (0:12:41)"), record who raised each action item, risk and issue (saidBy) and who made each decision (madeBy), using the speaker name exactly as written, and the time shown (at). When someone takes on an action themselves ("I'll send the spec"), that speaker is its assignee. Speakers marked "(not a project member)" may be guests: do not make them the assignee unless the transcript clearly gives it to them. If the transcript has no speaker names, leave saidBy and at empty — never guess.
@@ -154,6 +157,9 @@ ${taskContext || '(No existing tasks)'}
 ## Available Team Resources
 ${resourceContext || '(No resources listed)'}
 
+## Project Members
+${members.map(m => `- ${sanitizeForPrompt(m.name)}`).join('\n') || '(none listed)'}
+
 Analyze this meeting transcript and extract all actionable information.`;
 
       const result = await claudeService.completeWithJsonSchema<MeetingAIResponse>({
@@ -168,6 +174,9 @@ Analyze this meeting transcript and extract all actionable information.`;
       // Fallback: return a mock analysis when AI is unavailable
       aiResponse = this.buildFallbackResponse(transcript);
     }
+
+    // Meeting Coach owners come from the name as the AI heard it, before resource matching rewrites it
+    const spokenAssignee = aiResponse.actionItems.map(item => item.assignee);
 
     // 5. Post-process: match assignee names to known resources (fuzzy)
     aiResponse.actionItems = aiResponse.actionItems.map((item) => ({
@@ -188,12 +197,9 @@ Analyze this meeting transcript and extract all actionable information.`;
     // 5b. Meeting Coach: names → project people, dates → working days, the scorecard
     // Owner ids/choices are worked out here, never taken from the AI's reply
     const NO_OWNER = { ownerUserId: undefined, ownerName: undefined, ownerChoices: undefined };
-    const members = (await projectMemberService.findByProjectId(projectId))
-      .filter(m => !m.userId.startsWith('pending_'))
-      .map(m => ({ userId: m.userId, name: m.userName }));
     const isWorking = await scheduleService.workingDayTest(scheduleId).catch(() => weekdaysOnly);
-    aiResponse.actionItems = aiResponse.actionItems.map(item => ({
-      ...item, ...NO_OWNER, ...resolveOwner(item.assignee, members), dueDate: workingDue(item.dueDate, isWorking),
+    aiResponse.actionItems = aiResponse.actionItems.map((item, i) => ({
+      ...item, ...NO_OWNER, ...resolveOwner(spokenAssignee[i], members), dueDate: workingDue(item.dueDate, isWorking),
     }));
     aiResponse.risks = aiResponse.risks.map(r => ({ ...r, ...NO_OWNER, ...resolveOwner(r.owner, members) }));
     aiResponse.issues = (aiResponse.issues || []).map(i => ({ ...i, ...NO_OWNER, ...resolveOwner(i.owner, members) }));

@@ -248,7 +248,7 @@ export const MeetingMinutesPage: React.FC = () => {
 
   const projects: Project[] = projectsData?.data || projectsData?.projects || [];
   const schedules: Schedule[] = schedulesData?.schedules || [];
-  const history: HistoryEntry[] = historyData?.history || historyData?.analyses || [];
+  const history: HistoryEntry[] = historyData?.data || historyData?.history || historyData?.analyses || [];
 
   const filteredHistory = historySearch.trim()
     ? history.filter(h => (h.summary || '').toLowerCase().includes(historySearch.toLowerCase()))
