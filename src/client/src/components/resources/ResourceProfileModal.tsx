@@ -74,7 +74,7 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 text-center">
                   <TrendingUp className="w-4 h-4 mx-auto text-green-500 mb-1" />
                   <p className={`text-lg font-bold ${summary.utilization > 100 ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{summary.utilization}%</p>
-                  <p className="text-xs text-gray-500">Utilization</p>
+                  <p className="text-xs text-gray-500" title={`${summary.totalAllocatedHours}h booked this week`}>Utilization this week</p>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 text-center">
                   <User className="w-4 h-4 mx-auto text-amber-500 mb-1" />

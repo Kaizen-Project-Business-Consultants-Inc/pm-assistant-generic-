@@ -103,3 +103,29 @@ export function finishFor(start: Date, days: number, isWorking: IsWorking): Date
   if (n <= 0) return start;
   return shiftWorking(onOrAfterWorking(start, isWorking), n - 1, isWorking);
 }
+
+/** Monday of the week holding this calendar day ('YYYY-MM-DD' in, 'YYYY-MM-DD' out) */
+export function mondayOf(ymd: string): string {
+  const d = new Date(`${ymd.slice(0, 10)}T00:00:00Z`);
+  return ymdOf(plusDays(d, -((d.getUTCDay() + 6) % 7)));
+}
+
+/** The Mondays of every week from `start` to `end` (at most two years of them) */
+export function mondaysBetween(start: string, end: string): string[] {
+  const out: string[] = [];
+  const last = new Date(`${end.slice(0, 10)}T00:00:00Z`);
+  for (let c = new Date(`${mondayOf(start)}T00:00:00Z`); c <= last && out.length < 104; c = plusDays(c, 7)) out.push(ymdOf(c));
+  return out;
+}
+
+/** Working days of [start, end] that fall in the week starting `weekStart` (a Monday) */
+export function workingDaysInWeek(start: string, end: string, weekStart: string, isWorking: IsWorking = weekdaysOnly): number {
+  const ws = new Date(`${weekStart.slice(0, 10)}T00:00:00Z`);
+  const s = new Date(`${start.slice(0, 10)}T00:00:00Z`);
+  const e = new Date(`${(end < start ? start : end).slice(0, 10)}T00:00:00Z`);
+  const from = s > ws ? s : ws;
+  const weekEnd = plusDays(ws, 6);
+  const to = e < weekEnd ? e : weekEnd;
+  if (to < from) return 0;
+  return workingDaysAfter(plusDays(from, -1), to, isWorking);
+}

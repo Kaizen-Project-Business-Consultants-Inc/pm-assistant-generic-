@@ -229,8 +229,11 @@ export class ResourceRepository extends BaseRepository<Resource> {
    * count. One booking per task and person: an hours booking beats a %, a % beats "Assigned to".
    * Derived rows have ids "task:<id>" / "owner:<taskId>" — they are not deletable bookings.
    */
-  async findEffectiveAssignments(filter: { scheduleIds?: string[]; resourceId?: string; from?: string; to?: string } = {}): Promise<ResourceAssignment[]> {
+  async findEffectiveAssignments(filter: { scheduleIds?: string[]; resourceId?: string; from?: string; to?: string; includeDone?: boolean } = {}): Promise<ResourceAssignment[]> {
     if (filter.scheduleIds && filter.scheduleIds.length === 0) return [];
+    // Finished and cancelled work no longer takes anyone's time (2026-10-01) — except where the
+    // caller asks about the past (who worked on a project, last weeks' planned hours)
+    const openOnly = filter.includeDone ? '' : ` AND COALESCE(t.status, '') NOT IN ('completed', 'cancelled')`;
     const where: string[] = [];
     const params: any[] = [];
     if (filter.scheduleIds) { where.push(`t.schedule_id IN (${filter.scheduleIds.map(() => '?').join(',')})`); params.push(...filter.scheduleIds); }
@@ -239,7 +242,7 @@ export class ResourceRepository extends BaseRepository<Resource> {
     const liveTask = `t.start_date IS NOT NULL AND t.end_date IS NOT NULL
       AND COALESCE(t.is_milestone, 0) = 0 AND COALESCE(t.is_summary, 0) = 0
       AND NOT EXISTS (SELECT 1 FROM tasks c WHERE c.parent_task_id = t.id)
-      AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0`;
+      AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0${openOnly}`;
     const extra = where.length ? ` AND ${where.join(' AND ')}` : '';
     const byResource = filter.resourceId ? ' AND r.id = ?' : '';
     const rp = filter.resourceId ? [filter.resourceId] : [];
@@ -249,7 +252,8 @@ export class ResourceRepository extends BaseRepository<Resource> {
          FROM resource_assignments ra
          JOIN schedules s ON s.id = ra.schedule_id
          JOIN projects p ON p.id = s.project_id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
-        WHERE 1 = 1${filter.resourceId ? ' AND ra.resource_id = ?' : ''}${filter.scheduleIds ? ` AND ra.schedule_id IN (${filter.scheduleIds.map(() => '?').join(',')})` : ''}${filter.to ? ' AND ra.start_date <= ?' : ''}${filter.from ? ' AND ra.end_date >= ?' : ''}`,
+         LEFT JOIN tasks t ON t.id = ra.task_id
+        WHERE 1 = 1${openOnly}${filter.resourceId ? ' AND ra.resource_id = ?' : ''}${filter.scheduleIds ? ` AND ra.schedule_id IN (${filter.scheduleIds.map(() => '?').join(',')})` : ''}${filter.to ? ' AND ra.start_date <= ?' : ''}${filter.from ? ' AND ra.end_date >= ?' : ''}`,
       [...rp, ...(filter.scheduleIds ?? []), ...(filter.to ? [filter.to] : []), ...(filter.from ? [filter.from] : [])],
     );
     const onTask = await this.queryRaw(

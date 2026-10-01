@@ -62,6 +62,19 @@ describe('findEffectiveAssignments (workload, histogram, forecast, Gantt Conflic
     expect(String(taskSql)).toContain('parent_task_id = t.id');
   });
 
+  it('leaves out finished and cancelled work — in all three kinds of booking — unless asked for the past', async () => {
+    results([], [], []);
+    await resourceRepository.findEffectiveAssignments({ resourceId: 'anna' });
+    const live = vi.mocked(databaseService.query).mock.calls.map(([sql]) => String(sql));
+    expect(live).toHaveLength(3);
+    for (const sql of live) expect(sql).toContain("NOT IN ('completed', 'cancelled')");
+
+    vi.mocked(databaseService.query).mockReset();
+    results([], [], []);
+    await resourceRepository.findEffectiveAssignments({ resourceId: 'anna', includeDone: true });
+    for (const [sql] of vi.mocked(databaseService.query).mock.calls) expect(String(sql)).not.toContain("NOT IN ('completed', 'cancelled')");
+  });
+
   it('no schedules → no queries', async () => {
     expect(await resourceRepository.findEffectiveAssignments({ scheduleIds: [] })).toEqual([]);
     expect(databaseService.query).not.toHaveBeenCalled();

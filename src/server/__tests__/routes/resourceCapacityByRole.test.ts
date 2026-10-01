@@ -53,6 +53,8 @@ describe('GET /resources/capacity-by-role', () => {
     const morning = await run('2026-09-30T08:00:00Z');
     const evening = await run('2026-09-30T22:00:00Z');
     expect(evening).toEqual(morning);
-    expect(morning).toEqual({ headers: ['2026-09-28', '2026-10-05', '2026-10-12'], allocated: [10, 20, 0] });
+    // The booking ending this Monday covers one of this week's five working days: 10 h/week → 2 h
+    // (2026-10-01: a week counts only the days a booking covers; it used to count all 10 h)
+    expect(morning).toEqual({ headers: ['2026-09-28', '2026-10-05', '2026-10-12'], allocated: [2, 20, 0] });
   });
 });

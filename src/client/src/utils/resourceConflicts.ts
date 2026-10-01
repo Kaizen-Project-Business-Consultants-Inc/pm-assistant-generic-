@@ -12,6 +12,7 @@ export interface ConflictTask {
   startDate?: string | null;
   endDate?: string | null;
   isMilestone?: boolean | null;
+  status?: string | null;
   assignedTo?: string | null;
   assignments?: Array<{ resourceId: string }>;
 }
@@ -24,8 +25,8 @@ const weekLabel = (s: string) =>
 
 /**
  * taskId → one line per overloaded person, e.g. "Anna Lee 140% (week of 12 Oct)" — the worst
- * week the task touches, plus how many other over-100% weeks it touches. Headings and milestones
- * are never flagged.
+ * week the task touches, plus how many other over-100% weeks it touches. Headings, milestones and
+ * finished or cancelled tasks are never flagged.
  */
 export function findResourceConflicts(
   tasks: ConflictTask[],
@@ -42,6 +43,8 @@ export function findResourceConflicts(
 
   for (const t of tasks) {
     if (!t.startDate || !t.endDate || t.isMilestone || headingIds.has(t.id)) continue;
+    // Finished and cancelled work takes nobody's time any more
+    if (t.status === 'completed' || t.status === 'cancelled') continue;
     const people = new Set((t.assignments ?? []).map(a => a.resourceId));
     if (t.assignedTo) people.add(t.assignedTo);
     const start = day(t.startDate);

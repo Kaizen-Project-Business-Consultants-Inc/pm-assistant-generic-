@@ -18,7 +18,8 @@ import { taskAssignmentService } from '../../services/TaskAssignmentService';
 import { resourceReplaceService } from '../../services/ResourceReplaceService';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
-import { utcDay } from '../../utils/workingDays';
+import { utcDay, mondayOf } from '../../utils/workingDays';
+import { hoursInWeek, calendarsFor } from '../../services/weeklyLoad';
 
 const skillSchema = z.union([
   z.string(),
@@ -429,7 +430,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     const { projectId } = request.params as { projectId: string };
     const schedules = await scheduleService.findByProjectId(projectId);
     if (schedules.length === 0) return { people: [] };
-    const bookings = await resourceService.findEffectiveAssignments({ scheduleIds: schedules.map((s) => s.id) });
+    // Anyone who has worked on the project counts, finished tasks included
+    const bookings = await resourceService.findEffectiveAssignments({ scheduleIds: schedules.map((s) => s.id), includeDone: true });
     const tasksBy = new Map<string, Set<string>>();
     for (const b of bookings) {
       if (!tasksBy.has(b.resourceId)) tasksBy.set(b.resourceId, new Set());
@@ -628,8 +630,11 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       });
     }
 
-    // Compute summary
-    const totalAllocatedHours = assignments.reduce((s, a) => s + a.hoursPerWeek, 0);
+    // This week's load: the working days of this week each booking covers (it used to add up
+    // every booking the person has, months apart or not)
+    const thisMonday = mondayOf(utcDay(new Date()).toISOString());
+    const calOf = await calendarsFor(assignments.map(a => a.scheduleId), (sid) => scheduleService.workingDayTest(sid));
+    const totalAllocatedHours = Math.round(assignments.reduce((s, a) => s + hoursInWeek(a, thisMonday, calOf(a.scheduleId)), 0) * 10) / 10;
     const utilization = resource.capacityHoursPerWeek > 0
       ? Math.round((totalAllocatedHours / resource.capacityHoursPerWeek) * 100)
       : 0;
@@ -651,6 +656,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     // People only — a generic role adds no capacity (its work is unfilled demand)
     const resources = (await resourceService.findAllResources()).filter((r) => !r.isGeneric);
     const allAssignments = await resourceService.findEffectiveAssignments();
+    const calOf = await calendarsFor(allAssignments.map(a => a.scheduleId), (id) => scheduleService.workingDayTest(id));
 
     const DAY_MS = 86_400_000;
     const WEEK_MS = 7 * DAY_MS;
@@ -679,14 +685,11 @@ export async function resourceRoutes(fastify: FastifyInstance) {
 
       const weeklyData = weeks.map(weekStart => {
         const weekEnd = new Date(weekStart.getTime() + WEEK_MS);
+        // Only the working days each booking covers that week count
+        const wk = weekStart.toISOString().slice(0, 10);
         let allocated = 0;
-        for (const a of roleAssignments) {
-          const aStart = new Date(a.startDate).getTime();
-          const aEnd = new Date(a.endDate).getTime();
-          if (aStart < weekEnd.getTime() && aEnd >= weekStart.getTime()) {
-            allocated += a.hoursPerWeek;
-          }
-        }
+        for (const a of roleAssignments) allocated += hoursInWeek(a, wk, calOf(a.scheduleId));
+        allocated = Math.round(allocated * 10) / 10;
         const surplus = totalCapacity - allocated;
         return {
           weekStart: weekStart.toISOString().slice(0, 10),

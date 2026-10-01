@@ -464,6 +464,8 @@ All major list endpoints use a shared pagination schema (`paginationSchema.ts`) 
 
 The resource workload endpoint aggregates task assignments across projects to produce a per-resource, per-week demand profile. Over-allocated weeks are flagged.
 
+**Partial weeks and finished work (Oct 2026).** Every weekly total goes through `services/weeklyLoad.ts` `hoursInWeek`: a booking's weekly hours ÷ 5 for each working day it covers in that week, on its plan's calendar (`scheduleService.workingDayTest`, Mon–Fri fallback) — the same per-day rule as the Resource Histogram and Levelling. Before, any week a booking touched counted in full (a task on one Friday added 40 h). `findEffectiveAssignments` leaves out completed and cancelled tasks unless called with `includeDone` (used for "who worked on this project" and past weeks' planned hours). Applies to project/global workload, `checkLoad`, assignment warnings (now week by week, naming the busiest week), the Replace check, capacity by role, the bottleneck breakdown, skill match (busiest week during the task) and the resource profile (this week's load). Guard: `weeklyLoad.test.ts` fails if any file adds `hoursPerWeek` into a total directly.
+
 **Cost rollup:** For each resource with a `costRateHourly` rate, the workload computation multiplies allocated hours × rate per week to produce per-resource and per-project cost totals. The `GET /api/v1/resources/workload/:projectId` response includes:
 - `costRateHourly` and `totalCost` per resource
 - `cost` per weekly entry

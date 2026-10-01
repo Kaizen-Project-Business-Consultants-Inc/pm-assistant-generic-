@@ -14,6 +14,9 @@ import {
   SkillMatch,
 } from '../schemas/resourceOptimizerSchemas';
 import { z } from 'zod';
+import { hoursInWeek } from './weeklyLoad';
+import { weekdaysOnly, mondaysBetween } from '../utils/workingDays';
+
 
 export class ResourceOptimizerService {
 
@@ -182,6 +185,7 @@ export class ResourceOptimizerService {
 
     // Get assignments for this schedule to compute available capacity
     const assignments = await resourceService.findEffectiveAssignments({ scheduleIds: [scheduleId] });
+    const isWorking = await scheduleService.workingDayTest(scheduleId).catch(() => weekdaysOnly);
 
     const matches: SkillMatch[] = [];
 
@@ -232,16 +236,12 @@ export class ResourceOptimizerService {
       let currentAllocated = 0;
 
       if (task.startDate && task.endDate) {
-        const taskStart = new Date(task.startDate).getTime();
-        const taskEnd = new Date(task.endDate).getTime();
-
-        for (const a of resourceAssignments) {
-          const aStart = new Date(a.startDate).getTime();
-          const aEnd = new Date(a.endDate).getTime();
-          // Check overlap
-          if (aStart < taskEnd && aEnd >= taskStart) {
-            currentAllocated += a.hoursPerWeek;
-          }
+        // Their busiest week during the task, each booking counting only the days it covers
+        const start = String(task.startDate).slice(0, 10);
+        const end = String(task.endDate).slice(0, 10);
+        for (const wk of mondaysBetween(start, end)) {
+          const h = resourceAssignments.reduce((n, a) => n + hoursInWeek(a, wk, isWorking), 0);
+          currentAllocated = Math.max(currentAllocated, Math.round(h * 10) / 10);
         }
       }
 
@@ -283,17 +283,20 @@ export class ResourceOptimizerService {
     for (const schedule of schedules) {
       const assignments = await resourceService.findEffectiveAssignments({ scheduleIds: [schedule.id] });
       const resourceAssignments = assignments.filter((a) => a.resourceId === resourceId);
+      const isWorkingFor = await scheduleService.workingDayTest(schedule.id).catch(() => weekdaysOnly);
 
       for (const assignment of resourceAssignments) {
         const aStart = new Date(assignment.startDate).getTime();
         const aEnd = new Date(assignment.endDate).getTime();
 
-        if (aStart < weekEnd && aEnd >= weekDate) {
+        // Only the days of that week the task covers
+        const hours = aStart < weekEnd && aEnd >= weekDate ? hoursInWeek(assignment, String(weekStart).slice(0, 10), isWorkingFor) : 0;
+        if (hours > 0) {
           const task = await scheduleService.findTaskById(assignment.taskId);
           contributing.push({
             taskId: assignment.taskId,
             taskName: task?.name || assignment.taskId,
-            hoursPerWeek: assignment.hoursPerWeek,
+            hoursPerWeek: hours,
           });
         }
       }

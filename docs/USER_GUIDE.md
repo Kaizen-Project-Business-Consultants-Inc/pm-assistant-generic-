@@ -862,7 +862,9 @@ Every resource is either a **person** or a **generic role**.
 
 ### Workload Heatmap
 
-The workload heatmap shows resource utilization across time. It counts every way a person is booked (September 2026): a person and % on a task (50% of a 40-hour week is 20 hours), the task's **Assigned to** person (100%), and hours-per-week bookings made here. One booking per task and person — an hours booking wins over a %, a % over Assigned to. Headings, milestones, undated tasks, archived projects and the sample project don't count. (Before this, only the hours-per-week bookings counted, so the Heatmap was usually empty.)
+The workload heatmap shows resource utilization across time. It counts every way a person is booked (September 2026): a person and % on a task (50% of a 40-hour week is 20 hours), the task's **Assigned to** person (100%), and hours-per-week bookings made here. One booking per task and person — an hours booking wins over a %, a % over Assigned to. Headings, milestones, undated tasks, archived projects and the sample project don't count.
+
+**Only the days a task covers count (October 2026).** A week counts a fifth of the weekly hours for each working day the task covers that week, on the project's calendar — a task that ends on a Monday adds one day to that week, not a whole week. **Finished and cancelled tasks no longer count** towards anyone's load (the person's past weeks in Trends still show what was planned). The same rule is used everywhere load is shown: Workload Heatmap, the Gantt's Conflicts, the warning while you assign someone, Capacity Forecast, capacity by role and the person's profile (which now shows *Utilization this week*). (Before this, only the hours-per-week bookings counted, so the Heatmap was usually empty.)
 
 - **Green** -- Under-allocated (available capacity).
 - **Yellow** -- Optimally allocated.

@@ -7,6 +7,8 @@ import { timeEntryRepository } from '../database/TimeEntryRepository';
 import { rateCardService, ratesOn } from './RateCardService';
 import { databaseService } from '../database/connection';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
+import { hoursInWeek, calendarsFor } from './weeklyLoad';
+import { type IsWorking, weekdaysOnly } from '../utils/workingDays';
 
 export interface SkillWithProficiency {
   name: string;
@@ -212,7 +214,7 @@ export class ResourceService {
   }
 
   /** Every booking of people's time (hours bookings, people + % on tasks, "Assigned to") — see the repository */
-  async findEffectiveAssignments(filter: { scheduleIds?: string[]; resourceId?: string; from?: string; to?: string } = {}): Promise<ResourceAssignment[]> {
+  async findEffectiveAssignments(filter: { scheduleIds?: string[]; resourceId?: string; from?: string; to?: string; includeDone?: boolean } = {}): Promise<ResourceAssignment[]> {
     return resourceRepository.findEffectiveAssignments(filter);
   }
 
@@ -232,7 +234,9 @@ export class ResourceService {
     // A generic role stands for however many people the work needs — it's never over-booked
     if (resource.isGeneric) return { resourceId: resource.id, resourceName: resource.name, overWeeks: [] };
     const mine = (resource.capacityHoursPerWeek || 40) * Math.max(0, Math.min(100, input.allocationPct)) / 100;
-    const overWeeks = await this.overWeeks(resource, [{ taskId: input.excludeTaskId ?? '', startDate: input.startDate, endDate: input.endDate, hoursPerWeek: mine }]);
+    const task = input.excludeTaskId ? await scheduleService.findTaskById(input.excludeTaskId).catch(() => null) : null;
+    const isWorking = task?.scheduleId ? await scheduleService.workingDayTest(task.scheduleId).catch(() => weekdaysOnly) : weekdaysOnly;
+    const overWeeks = await this.overWeeks(resource, [{ taskId: input.excludeTaskId ?? '', startDate: input.startDate, endDate: input.endDate, hoursPerWeek: mine }], isWorking);
     return { resourceId: resource.id, resourceName: resource.name, overWeeks };
   }
 
@@ -253,11 +257,12 @@ export class ResourceService {
     const moving = (await resourceRepository.findEffectiveAssignments({ resourceId: from.id, scheduleIds: [input.scheduleId] }))
       .filter(a => wanted.has(a.taskId))
       .map(a => ({ taskId: a.taskId, startDate: a.startDate, endDate: a.endDate, hoursPerWeek: a.hoursPerWeek * scale }));
-    return { resourceId: to.id, resourceName: to.name, overWeeks: await this.overWeeks(to, moving) };
+    const isWorking = await scheduleService.workingDayTest(input.scheduleId).catch(() => weekdaysOnly);
+    return { resourceId: to.id, resourceName: to.name, overWeeks: await this.overWeeks(to, moving, isWorking) };
   }
 
   /** Weeks over 100% for this person: their live bookings (minus the tasks in `extra`) plus `extra` */
-  private async overWeeks(resource: Resource, extra: Array<{ taskId: string; startDate: string; endDate: string; hoursPerWeek: number }>) {
+  private async overWeeks(resource: Resource, extra: Array<{ taskId: string; startDate: string; endDate: string; hoursPerWeek: number }>, isWorking: IsWorking = weekdaysOnly) {
     const overWeeks: Array<{ weekStart: string; utilization: number; hours: number; capacity: number; otherTaskIds: string[] }> = [];
     if (extra.length === 0) return overWeeks;
     const start = extra.map(e => e.startDate.slice(0, 10)).sort()[0];
@@ -278,12 +283,14 @@ export class ResourceService {
       [{ id: resource.id, capacityHoursPerWeek: resource.capacityHoursPerWeek, calendarTemplateId: resource.calendarTemplateId }],
       weekStarts.map(w => new Date(at(w))),
     );
+    // Each booking counts only the working days it covers that week, on its plan's calendar
+    const calOf = await calendarsFor(others.map(a => a.scheduleId), (id) => scheduleService.workingDayTest(id));
     const inWeek = (w: string, wEnd: string) => (a: { startDate: string; endDate: string }) => a.startDate.slice(0, 10) <= wEnd && a.endDate.slice(0, 10) >= w;
     for (const w of weekStarts) {
       const wEnd = iso(at(w) + 6 * DAY);
-      const hits = others.filter(inWeek(w, wEnd));
-      const added = extra.filter(inWeek(w, wEnd));
-      const hours = Math.round((hits.reduce((s, a) => s + a.hoursPerWeek, 0) + added.reduce((s, a) => s + a.hoursPerWeek, 0)) * 10) / 10;
+      const hits = others.filter(inWeek(w, wEnd)).filter(a => hoursInWeek(a, w, calOf(a.scheduleId)) > 0);
+      const added = extra.filter(inWeek(w, wEnd)).filter(a => hoursInWeek(a, w, isWorking) > 0);
+      const hours = Math.round((hits.reduce((s, a) => s + hoursInWeek(a, w, calOf(a.scheduleId)), 0) + added.reduce((s, a) => s + hoursInWeek(a, w, isWorking), 0)) * 10) / 10;
       const capacity = capacityMap.get(resource.id)?.get(w) ?? resource.capacityHoursPerWeek;
       const utilization = capacity > 0 ? Math.round((hours / capacity) * 100) : (hours > 0 ? 999 : 0);
       if (utilization > 100) overWeeks.push({ weekStart: w, utilization, hours, capacity, // what else is in that week: their other work, plus the other added tasks it overlaps
@@ -297,25 +304,21 @@ export class ResourceService {
     hoursPerWeek: number;
     startDate: string;
     endDate: string;
-    excludeAssignmentId?: string;
+    /** The task being booked: the person's existing booking on it is replaced, not added to */
+    taskId?: string;
   }): Promise<{ warnings: string[] }> {
     const warnings: string[] = [];
     const resource = await resourceRepository.findById(data.resourceId);
     if (!resource) return { warnings };
     if (resource.isGeneric) return { warnings };
 
-    const overlapping = (await resourceRepository.findEffectiveAssignments({
-      resourceId: data.resourceId, from: data.startDate, to: data.endDate,
-    })).filter(a => a.id !== data.excludeAssignmentId);
-
-    const existingHours = overlapping.reduce((sum, a) => sum + a.hoursPerWeek, 0);
-    const totalHours = existingHours + data.hoursPerWeek;
-    const capacity = resource.capacityHoursPerWeek;
-
-    if (totalHours > capacity) {
-      const pct = Math.round((totalHours / capacity) * 100);
+    // Week by week, each booking counting only the working days it covers (an hours booking
+    // across months used to be added to every other booking in the range, overlapping or not)
+    const over = await this.overWeeks(resource, [{ taskId: data.taskId ?? '', startDate: data.startDate, endDate: data.endDate, hoursPerWeek: data.hoursPerWeek }]);
+    if (over.length > 0) {
+      const worst = over.reduce((m, w) => (w.utilization > m.utilization ? w : m));
       warnings.push(
-        `Resource '${resource.name}' would be allocated ${totalHours}h/week against ${capacity}h capacity (${pct}% utilization) during ${data.startDate} to ${data.endDate}`,
+        `Resource '${resource.name}' would be allocated ${worst.hours}h against ${worst.capacity}h capacity (${worst.utilization}% utilization) in the week of ${worst.weekStart}${over.length > 1 ? ` and ${over.length - 1} other week${over.length === 2 ? '' : 's'}` : ''}`,
       );
     }
 
@@ -354,6 +357,7 @@ export class ResourceService {
     if (scheduleIds.length === 0) return [];
 
     const projectAssignments = await resourceRepository.findEffectiveAssignments({ scheduleIds });
+    const calOf = await calendarsFor(projectAssignments.map(a => a.scheduleId), (id) => scheduleService.workingDayTest(id));
 
     const DAY_MS = 86_400_000;
     const WEEK_MS = 7 * DAY_MS;
@@ -433,13 +437,11 @@ export class ResourceService {
         const weekEnd = new Date(weekStart.getTime() + WEEK_MS);
         let allocated = 0;
 
-        for (const a of resAssignments) {
-          const aStart = new Date(a.startDate).getTime();
-          const aEnd = new Date(a.endDate).getTime();
-          if (aStart < weekEnd.getTime() && aEnd >= weekStart.getTime()) {
-            allocated += a.hoursPerWeek;
-          }
-        }
+        // Only the working days each booking covers this week count (one day of a 40 h/week
+        // task is 8 h, not 40)
+        const wk = weekStart.toISOString().slice(0, 10);
+        for (const a of resAssignments) allocated += hoursInWeek(a, wk, calOf(a.scheduleId));
+        allocated = Math.round(allocated * 10) / 10;
 
         const weekKey = weekStart.toISOString().slice(0, 10);
         const actual = actualByWeek?.get(weekKey) ?? 0;
@@ -505,6 +507,7 @@ export class ResourceService {
 
   async computeGlobalWorkload(generic = false): Promise<ResourceWorkload[]> {
     const allAssignments = await resourceRepository.findEffectiveAssignments();
+    const calOf = await calendarsFor(allAssignments.map(a => a.scheduleId), (id) => scheduleService.workingDayTest(id));
     if (allAssignments.length === 0) return [];
 
     const DAY_MS = 86_400_000;
@@ -578,13 +581,11 @@ export class ResourceService {
         const weekEnd = new Date(weekStart.getTime() + WEEK_MS);
         let allocated = 0;
 
-        for (const a of resAssignments) {
-          const aStart = new Date(a.startDate).getTime();
-          const aEnd = new Date(a.endDate).getTime();
-          if (aStart < weekEnd.getTime() && aEnd >= weekStart.getTime()) {
-            allocated += a.hoursPerWeek;
-          }
-        }
+        // Only the working days each booking covers this week count (one day of a 40 h/week
+        // task is 8 h, not 40)
+        const wk = weekStart.toISOString().slice(0, 10);
+        for (const a of resAssignments) allocated += hoursInWeek(a, wk, calOf(a.scheduleId));
+        allocated = Math.round(allocated * 10) / 10;
 
         const weekKey = weekStart.toISOString().slice(0, 10);
         const actual = actualByWeek?.get(weekKey) ?? 0;
@@ -641,7 +642,9 @@ export class ResourceService {
     const lastWeekEnd = new Date(weekStarts[weekStarts.length - 1].getTime() + WEEK_MS).toISOString().slice(0, 10);
 
     // Get all assignments overlapping the date range
-    const assignments = await resourceRepository.findEffectiveAssignments({ resourceId, from: firstWeek, to: lastWeekEnd });
+    // Past weeks: what was planned then, finished work included
+    const assignments = await resourceRepository.findEffectiveAssignments({ resourceId, from: firstWeek, to: lastWeekEnd, includeDone: true });
+    const calOf = await calendarsFor(assignments.map(a => a.scheduleId), (id) => scheduleService.workingDayTest(id));
 
     // Get actual hours if user linked
     let actualByWeek: Map<string, number> | null = null;
@@ -657,13 +660,9 @@ export class ResourceService {
       const weekEnd = new Date(ws.getTime() + WEEK_MS);
       let planned = 0;
 
-      for (const a of assignments) {
-        const aStart = new Date(a.startDate).getTime();
-        const aEnd = new Date(a.endDate).getTime();
-        if (aStart < weekEnd.getTime() && aEnd >= ws.getTime()) {
-          planned += a.hoursPerWeek;
-        }
-      }
+      const wk = ws.toISOString().slice(0, 10);
+      for (const a of assignments) planned += hoursInWeek(a, wk, calOf(a.scheduleId));
+      planned = Math.round(planned * 10) / 10;
 
       const weekKey = ws.toISOString().slice(0, 10);
       const actual = actualByWeek?.get(weekKey) ?? 0;

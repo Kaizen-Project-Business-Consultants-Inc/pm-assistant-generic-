@@ -18,6 +18,15 @@ describe('findResourceConflicts (Gantt Conflicts = Workload Heatmap numbers)', (
     expect(out.get('t1')).toEqual([expect.stringMatching(/^Anna Lee 140% \(week of .*12.*\) \+1 more week$/)]);
   });
 
+  it('never flags finished or cancelled work (it takes nobody\'s time any more)', () => {
+    const out = findResourceConflicts([
+      { id: 'done', status: 'completed', startDate: '2026-10-14', endDate: '2026-10-21', assignments: [{ resourceId: 'anna' }] },
+      { id: 'off', status: 'cancelled', startDate: '2026-10-14', endDate: '2026-10-21', assignedTo: 'anna' },
+      { id: 'open', status: 'in_progress', startDate: '2026-10-14', endDate: '2026-10-21', assignedTo: 'anna' },
+    ], workload, new Set());
+    expect([...out.keys()]).toEqual(['open']);
+  });
+
   it('counts "Assigned to" as well as the task\'s people', () => {
     const out = findResourceConflicts([{ id: 't2', startDate: '2026-10-19', endDate: '2026-10-20', assignedTo: 'anna' }], workload, new Set());
     expect(out.get('t2')?.[0]).toMatch(/^Anna Lee 120%/);

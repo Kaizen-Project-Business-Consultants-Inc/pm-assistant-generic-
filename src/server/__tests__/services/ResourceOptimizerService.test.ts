@@ -19,6 +19,8 @@ vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
     findTaskById: (...args: any[]) => mockFindTaskById(...args),
     findByProjectId: (...args: any[]) => mockFindByProjectId(...args),
+    // Monday–Friday plans
+    workingDayTest: async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6,
   },
 }));
 

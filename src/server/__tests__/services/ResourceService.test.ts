@@ -39,6 +39,9 @@ vi.mock('../../database/ResourceRepository', () => {
 vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
     findByProjectId: vi.fn().mockResolvedValue([]),
+    findTaskById: vi.fn().mockResolvedValue(null),
+    // Monday–Friday plans
+    workingDayTest: vi.fn().mockResolvedValue((d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6),
   },
 }));
 
@@ -430,9 +433,9 @@ describe('ResourceService', () => {
         endDate: '2026-02-06',
       });
       expect(result.warnings).toHaveLength(1);
-      expect(result.warnings[0]).toContain('45h/week');
-      expect(result.warnings[0]).toContain('40h capacity');
-      expect(result.warnings[0]).toContain('113%');
+      // Week by week now (2026-10-01): the busiest week, and how many others are over
+      expect(result.warnings[0]).toContain('45h against 40h capacity (113% utilization) in the week of 2026-01-12'); // 6 Jan is a Tuesday: that first week has 4 days, 36 h
+      expect(result.warnings[0]).toMatch(/and \d+ other weeks/);
     });
 
     it('returns warning when exactly at capacity boundary exceeded', async () => {
@@ -465,20 +468,18 @@ describe('ResourceService', () => {
       expect(result.warnings).toEqual([]);
     });
 
-    it('passes excludeAssignmentId to repository', async () => {
+    it("doesn't count the person's existing booking on the same task (the new one replaces it)", async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
-      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([{ ...sampleAssignment, taskId: 't1', hoursPerWeek: 30 }]);
+      const result = await service.checkAssignmentConflicts({ resourceId: 'r1', taskId: 't1', hoursPerWeek: 20, startDate: '2026-01-06', endDate: '2026-02-06' });
+      expect(result.warnings).toEqual([]);
+    });
 
-      await service.checkAssignmentConflicts({
-        resourceId: 'r1',
-        hoursPerWeek: 10,
-        startDate: '2026-01-06',
-        endDate: '2026-02-06',
-        excludeAssignmentId: 'a-exclude',
-      });
-      expect(mockRepo.findEffectiveAssignments).toHaveBeenCalledWith(
-        { resourceId: 'r1', from: '2026-01-06', to: '2026-02-06' },
-      );
+    it('only counts bookings in the same week — a booking in March is no conflict for one in January', async () => {
+      mockRepo.findById.mockResolvedValueOnce(sampleResource);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([{ ...sampleAssignment, taskId: 't9', hoursPerWeek: 40, startDate: '2026-03-02', endDate: '2026-03-06' }]);
+      const result = await service.checkAssignmentConflicts({ resourceId: 'r1', hoursPerWeek: 20, startDate: '2026-01-06', endDate: '2026-02-06' });
+      expect(result.warnings).toEqual([]);
     });
 
     it('sums hours from multiple overlapping assignments', async () => {
@@ -495,7 +496,7 @@ describe('ResourceService', () => {
         endDate: '2026-02-06',
       });
       expect(result.warnings).toHaveLength(1);
-      expect(result.warnings[0]).toContain('45h/week');
+      expect(result.warnings[0]).toContain('45h against 40h');
     });
   });
 
@@ -516,7 +517,7 @@ describe('ResourceService', () => {
     it('creates assignment even with over-allocation warnings', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
       mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
-        { ...sampleAssignment, hoursPerWeek: 30 },
+        { ...sampleAssignment, taskId: 't-other', hoursPerWeek: 30 },
       ]);
       mockRepo.createAssignment.mockResolvedValueOnce(sampleAssignment);
 
@@ -740,10 +741,12 @@ describe('ResourceService', () => {
       ]);
       const res = await service.checkLoad({ resourceId: 'r1', startDate: '2026-10-14', endDate: '2026-10-27', allocationPct: 50 });
       expect(res!.resourceName).toBe('Alice Smith');
+      // This booking (20 h/week) counts only its own days: Wed–Fri of the first week (12 h),
+      // the whole second week (20 h), Mon–Tue of the third (8 h)
       expect(res!.overWeeks.map(w => [w.weekStart, w.utilization, w.otherTaskIds])).toEqual([
-        ['2026-10-12', 250, ['kickoff', 'report']],
+        ['2026-10-12', 230, ['kickoff', 'report']],
         ['2026-10-19', 250, ['kickoff', 'report']],
-        ['2026-10-26', 150, ['report']],
+        ['2026-10-26', 120, ['report']],
       ]);
     });
 
@@ -758,8 +761,9 @@ describe('ResourceService', () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
       mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
       mockAvailabilityService.getEffectiveCapacityBatch.mockResolvedValueOnce(new Map([['r1', new Map([['2026-12-21', 16]])]]));
-      const res = await service.checkLoad({ resourceId: 'r1', startDate: '2026-12-21', endDate: '2026-12-24', allocationPct: 50 });
-      expect(res!.overWeeks).toEqual([{ weekStart: '2026-12-21', utilization: 125, hours: 20, capacity: 16, otherTaskIds: [] }]);
+      // Mon–Thu full time = 32 h, against a 16 h holiday week
+      const res = await service.checkLoad({ resourceId: 'r1', startDate: '2026-12-21', endDate: '2026-12-24', allocationPct: 100 });
+      expect(res!.overWeeks).toEqual([{ weekStart: '2026-12-21', utilization: 200, hours: 32, capacity: 16, otherTaskIds: [] }]);
       mockRepo.findById.mockResolvedValueOnce(null);
       expect(await service.checkLoad({ resourceId: 'x', startDate: '2026-12-21', endDate: '2026-12-24', allocationPct: 50 })).toBeNull();
     });
