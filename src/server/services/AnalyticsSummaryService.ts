@@ -1,4 +1,5 @@
 import { analyticsSummaryRepository } from '../database/AnalyticsSummaryRepository';
+import { readableProjectIds } from '../utils/readableProjects';
 import { utcDay } from '../utils/workingDays';
 
 // ---------------------------------------------------------------------------
@@ -47,11 +48,15 @@ class AnalyticsSummaryService {
   // -----------------------------------------------------------------------
   // Full portfolio summary for a user
   // -----------------------------------------------------------------------
-  async getSummary(userId: string): Promise<AnalyticsSummary> {
-    const projectCondition = `(p.created_by = ?)`;
-    const projectParams: any[] = [userId];
-
-    return this.buildSummary(projectCondition, projectParams);
+  async getSummary(userId: string, role: string): Promise<AnalyticsSummary> {
+    // The projects you can read — created, member of, or the sample project — the same rule as
+    // the dashboard list and the Morning Briefing (2026-10-01: "created by you" only, so the
+    // Overdue tile said 0 above a briefing listing 5 late tasks on the sample project)
+    const readable = await readableProjectIds({ userId, role });
+    if (readable === 'all') return this.getSummaryAll();
+    const ids = [...readable];
+    if (ids.length === 0) return this.buildSummary('1 = 0', []);
+    return this.buildSummary(`(p.id IN (${ids.map(() => '?').join(',')}))`, ids);
   }
 
   // -----------------------------------------------------------------------

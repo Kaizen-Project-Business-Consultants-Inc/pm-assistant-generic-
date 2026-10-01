@@ -20,7 +20,7 @@ export async function analyticsSummaryRoutes(fastify: FastifyInstance) {
 
       const summary = isGlobal
         ? await analyticsSummaryService.getSummaryAll()
-        : await analyticsSummaryService.getSummary(user.userId);
+        : await analyticsSummaryService.getSummary(user.userId, user.role);
       return { summary };
     } catch (error) {
       logger.error('Get analytics summary error', { error });

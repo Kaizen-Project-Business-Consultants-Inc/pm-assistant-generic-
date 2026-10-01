@@ -3,6 +3,7 @@ import { databaseService } from '../../database/connection';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import logger from '../../utils/logger';
+import { readableProjectIds } from '../../utils/readableProjects';
 
 interface SearchQuery {
   q: string;
@@ -21,6 +22,12 @@ export async function searchRoutes(fastify: FastifyInstance) {
       if (!q || q.length < 2) return { results: [], total: 0, queryMs: 0 };
       const term = `%${q}%`;
       const startTime = Date.now();
+      // Project data comes from the projects you can read — created, member of, or the sample
+      // project (2026-10-01: "created by you" only, so a PM added to a project couldn't find its tasks)
+      const readable = await readableProjectIds(user);
+      const readIds = readable === 'all' ? null : [...readable];
+      const inReadable = (col: string) => readIds === null ? '1 = 1' : readIds.length ? `${col} IN (${readIds.map(() => '?').join(',')})` : '1 = 0';
+      const readParams = readIds ?? [];
 
       // Determine which entity types to search
       const requestedTypes = type ? type.split(',').map(t => t.trim().toLowerCase()) : null;
@@ -34,11 +41,11 @@ export async function searchRoutes(fastify: FastifyInstance) {
       const [projects, tasks, goals, lessons, resources, changeRequests, raidItems, sprints, comments] = await Promise.all([
         shouldSearch('project') ? databaseService.query<any>(
           `SELECT id, name, description, status FROM projects
-           WHERE (name LIKE ? OR description LIKE ?) AND created_by = ?
+           WHERE (name LIKE ? OR description LIKE ?) AND ${inReadable('id')}
            ${statusFilter ? 'AND status = ?' : ''}
            ${projectFilter ? 'AND id = ?' : ''}
            LIMIT 10`,
-          [term, term, user.userId, ...(statusFilter ? [statusFilter] : []), ...(projectFilter ? [projectFilter] : [])]
+          [term, term, ...readParams, ...(statusFilter ? [statusFilter] : []), ...(projectFilter ? [projectFilter] : [])]
         ) : Promise.resolve([]),
 
         shouldSearch('task') ? databaseService.query<any>(
@@ -48,11 +55,11 @@ export async function searchRoutes(fastify: FastifyInstance) {
            FROM tasks t
            JOIN schedules s ON t.schedule_id = s.id
            JOIN projects p ON s.project_id = p.id
-           WHERE (t.name LIKE ? OR t.description LIKE ?) AND p.created_by = ?
+           WHERE (t.name LIKE ? OR t.description LIKE ?) AND ${inReadable('p.id')}
            ${statusFilter ? 'AND t.status = ?' : ''}
            ${projectFilter ? 'AND s.project_id = ?' : ''}
            LIMIT 10`,
-          [term, term, user.userId, ...(statusFilter ? [statusFilter] : []), ...(projectFilter ? [projectFilter] : [])]
+          [term, term, ...readParams, ...(statusFilter ? [statusFilter] : []), ...(projectFilter ? [projectFilter] : [])]
         ) : Promise.resolve([]),
 
         shouldSearch('goal') ? databaseService.query<any>(
@@ -79,11 +86,11 @@ export async function searchRoutes(fastify: FastifyInstance) {
           `SELECT cr.id, cr.title as name, cr.description, cr.status, cr.project_id, p.name as project_name
            FROM change_requests cr
            JOIN projects p ON cr.project_id = p.id
-           WHERE (cr.title LIKE ? OR cr.description LIKE ?) AND p.created_by = ?
+           WHERE (cr.title LIKE ? OR cr.description LIKE ?) AND ${inReadable('p.id')}
            ${statusFilter ? 'AND cr.status = ?' : ''}
            ${projectFilter ? 'AND cr.project_id = ?' : ''}
            LIMIT 5`,
-          [term, term, user.userId, ...(statusFilter ? [statusFilter] : []), ...(projectFilter ? [projectFilter] : [])]
+          [term, term, ...readParams, ...(statusFilter ? [statusFilter] : []), ...(projectFilter ? [projectFilter] : [])]
         ).catch((error) => { logger.warn('Search change requests query failed', { error }); return []; }) : Promise.resolve([]),
 
         shouldSearch('risk') ? databaseService.query<any>(
@@ -91,11 +98,11 @@ export async function searchRoutes(fastify: FastifyInstance) {
                   r.project_id, p.name as project_name
            FROM project_risks r
            JOIN projects p ON r.project_id = p.id
-           WHERE (r.title LIKE ? OR r.description LIKE ?) AND p.created_by = ?
+           WHERE (r.title LIKE ? OR r.description LIKE ?) AND ${inReadable('p.id')}
            ${statusFilter ? 'AND r.status = ?' : ''}
            ${projectFilter ? 'AND r.project_id = ?' : ''}
            LIMIT 10`,
-          [term, term, user.userId, ...(statusFilter ? [statusFilter] : []), ...(projectFilter ? [projectFilter] : [])]
+          [term, term, ...readParams, ...(statusFilter ? [statusFilter] : []), ...(projectFilter ? [projectFilter] : [])]
         ).catch((error) => { logger.warn('Search RAID items query failed', { error }); return []; }) : Promise.resolve([]),
 
         shouldSearch('sprint') ? databaseService.query<any>(
@@ -104,11 +111,11 @@ export async function searchRoutes(fastify: FastifyInstance) {
            FROM sprints sp
            JOIN schedules s ON sp.schedule_id = s.id
            JOIN projects p ON s.project_id = p.id
-           WHERE (sp.name LIKE ? OR sp.goal LIKE ?) AND p.created_by = ?
+           WHERE (sp.name LIKE ? OR sp.goal LIKE ?) AND ${inReadable('p.id')}
            ${statusFilter ? 'AND sp.status = ?' : ''}
            ${projectFilter ? 'AND s.project_id = ?' : ''}
            LIMIT 5`,
-          [term, term, user.userId, ...(statusFilter ? [statusFilter] : []), ...(projectFilter ? [projectFilter] : [])]
+          [term, term, ...readParams, ...(statusFilter ? [statusFilter] : []), ...(projectFilter ? [projectFilter] : [])]
         ).catch((error) => { logger.warn('Search sprints query failed', { error }); return []; }) : Promise.resolve([]),
 
         shouldSearch('comment') ? databaseService.query<any>(
@@ -118,10 +125,10 @@ export async function searchRoutes(fastify: FastifyInstance) {
            JOIN tasks t ON tc.task_id = t.id
            JOIN schedules s ON t.schedule_id = s.id
            JOIN projects p ON s.project_id = p.id
-           WHERE tc.text LIKE ? AND p.created_by = ?
+           WHERE tc.text LIKE ? AND ${inReadable('p.id')}
            ${projectFilter ? 'AND s.project_id = ?' : ''}
            LIMIT 5`,
-          [term, user.userId, ...(projectFilter ? [projectFilter] : [])]
+          [term, ...readParams, ...(projectFilter ? [projectFilter] : [])]
         ).catch((error) => { logger.warn('Search comments query failed', { error }); return []; }) : Promise.resolve([]),
       ]);
 

@@ -10,6 +10,9 @@ const mockGetOverdueCountAtDate = vi.fn();
 const mockGetCompletedInRange = vi.fn();
 const mockGetAvgHealthScoreAtDate = vi.fn();
 
+// The projects user-1 can read (created, member of, or the sample project)
+const readable = vi.hoisted(() => vi.fn(async () => new Set(['p-1', 'p-sample'])));
+vi.mock('../../utils/readableProjects', () => ({ readableProjectIds: readable }));
 vi.mock('../../database/AnalyticsSummaryRepository', () => ({
   analyticsSummaryRepository: {
     findProjects: (...args: any[]) => mockFindProjects(...args),
@@ -96,15 +99,16 @@ describe('AnalyticsSummaryService', () => {
     it('calls findProjects with user filter', async () => {
       mockFindProjects.mockResolvedValue([]);
 
-      await analyticsSummaryService.getSummary('user-1');
+      await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
-      expect(mockFindProjects).toHaveBeenCalledWith('(p.created_by = ?)', ['user-1']);
+      // the projects you can read — not only the ones you created (2026-10-01)
+      expect(mockFindProjects).toHaveBeenCalledWith('(p.id IN (?,?))', ['p-1', 'p-sample']);
     });
 
     it('returns correct structure for empty portfolio', async () => {
       mockFindProjects.mockResolvedValue([]);
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.portfolio.totalProjects).toBe(0);
       expect(result.portfolio.byStatus).toEqual({});
@@ -157,7 +161,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.portfolio.totalProjects).toBe(3);
       expect(result.portfolio.byStatus).toEqual({ active: 2, completed: 1 });
@@ -175,7 +179,7 @@ describe('AnalyticsSummaryService', () => {
       mockGetWeeklyCompletionTrends.mockResolvedValue([]);
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       // (3 completed + 2 done) / 10 total = 50%
       expect(result.portfolio.avgProgress).toBe(50);
@@ -189,7 +193,7 @@ describe('AnalyticsSummaryService', () => {
       mockGetWeeklyCompletionTrends.mockResolvedValue([]);
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.portfolio.avgProgress).toBe(0);
     });
@@ -205,7 +209,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.budget.totalAllocated).toBe(30000);
       expect(result.budget.totalSpent).toBe(20000);
@@ -219,7 +223,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.budget.utilizationPercent).toBe(0);
     });
@@ -231,7 +235,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.budget.totalAllocated).toBe(0);
       expect(result.budget.totalSpent).toBe(0);
@@ -245,7 +249,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.budget.projectsOverBudget).toHaveLength(1);
       expect(result.budget.projectsOverBudget[0]).toEqual({
@@ -265,7 +269,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.portfolio.atRiskProjects).toHaveLength(1);
       expect(result.portfolio.atRiskProjects[0].reason).toContain('85%');
@@ -278,7 +282,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.portfolio.atRiskProjects).toHaveLength(0);
     });
@@ -294,7 +298,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       // elapsed ~50%, progress 0%, 0 < 50-20=30, so at-risk
       expect(result.portfolio.atRiskProjects).toHaveLength(1);
@@ -314,7 +318,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       // Should only appear once (budget flagged first, schedule skipped)
       expect(result.portfolio.atRiskProjects).toHaveLength(1);
@@ -331,7 +335,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       // elapsed ~9%, less than 30% threshold
       expect(result.portfolio.atRiskProjects).toHaveLength(0);
@@ -347,7 +351,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.portfolio.atRiskProjects).toHaveLength(0);
     });
@@ -363,7 +367,7 @@ describe('AnalyticsSummaryService', () => {
           ]);
           mockEmptyTasks();
           mockTrendIndicators();
-          return (await analyticsSummaryService.getSummary('user-1')).portfolio.atRiskProjects[0]?.reason;
+          return (await analyticsSummaryService.getSummary('user-1', 'project_manager')).portfolio.atRiskProjects[0]?.reason;
         } finally {
           vi.useRealTimers();
         }
@@ -392,7 +396,7 @@ describe('AnalyticsSummaryService', () => {
       ]);
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.tasks.total).toBe(10);
       expect(result.tasks.byStatus).toEqual({
@@ -411,7 +415,7 @@ describe('AnalyticsSummaryService', () => {
     it('skips task queries when no projects exist', async () => {
       mockFindProjects.mockResolvedValue([]);
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(mockGetTaskStatusCounts).not.toHaveBeenCalled();
       expect(mockGetOverdueCount).not.toHaveBeenCalled();
@@ -431,7 +435,7 @@ describe('AnalyticsSummaryService', () => {
       mockGetCompletedInRange.mockResolvedValue(0);
       mockGetAvgHealthScoreAtDate.mockResolvedValue(null);
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.trendIndicators).toBeDefined();
       expect(result.trendIndicators!.overdueTasksTrend).toBe('improving');
@@ -447,7 +451,7 @@ describe('AnalyticsSummaryService', () => {
       mockGetCompletedInRange.mockResolvedValue(0);
       mockGetAvgHealthScoreAtDate.mockResolvedValue(null);
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.trendIndicators!.overdueTasksTrend).toBe('declining');
     });
@@ -462,7 +466,7 @@ describe('AnalyticsSummaryService', () => {
       mockGetCompletedInRange.mockResolvedValue(0);
       mockGetAvgHealthScoreAtDate.mockResolvedValue(null);
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.trendIndicators!.overdueTasksTrend).toBe('stable');
     });
@@ -477,7 +481,7 @@ describe('AnalyticsSummaryService', () => {
         .mockResolvedValueOnce(5); // last week
       mockGetAvgHealthScoreAtDate.mockResolvedValue(null);
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.trendIndicators!.completionRateTrend).toBe('improving');
     });
@@ -491,7 +495,7 @@ describe('AnalyticsSummaryService', () => {
         .mockResolvedValueOnce(8); // last week
       mockGetAvgHealthScoreAtDate.mockResolvedValue(null);
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.trendIndicators!.completionRateTrend).toBe('declining');
     });
@@ -505,7 +509,7 @@ describe('AnalyticsSummaryService', () => {
         .mockResolvedValueOnce(80) // now
         .mockResolvedValueOnce(70); // week ago
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.trendIndicators!.healthTrend).toBe('improving');
     });
@@ -519,7 +523,7 @@ describe('AnalyticsSummaryService', () => {
         .mockResolvedValueOnce(60) // now
         .mockResolvedValueOnce(70); // week ago
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.trendIndicators!.healthTrend).toBe('declining');
     });
@@ -533,7 +537,7 @@ describe('AnalyticsSummaryService', () => {
         .mockResolvedValueOnce(72) // now
         .mockResolvedValueOnce(70); // week ago
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.trendIndicators!.healthTrend).toBe('stable');
     });
@@ -545,7 +549,7 @@ describe('AnalyticsSummaryService', () => {
       mockGetCompletedInRange.mockResolvedValue(0);
       mockGetAvgHealthScoreAtDate.mockResolvedValue(null);
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.trendIndicators!.healthTrend).toBe('stable');
     });
@@ -556,7 +560,7 @@ describe('AnalyticsSummaryService', () => {
       mockGetOverdueCountAtDate.mockRejectedValue(new Error('DB error'));
       // The Promise.all will reject, but the catch block swallows it
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.trendIndicators).toBeUndefined();
     });
@@ -564,7 +568,7 @@ describe('AnalyticsSummaryService', () => {
     it('omits trend indicators when no projects', async () => {
       mockFindProjects.mockResolvedValue([]);
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.trendIndicators).toBeUndefined();
     });
@@ -575,7 +579,7 @@ describe('AnalyticsSummaryService', () => {
     it('returns a valid ISO date string', async () => {
       mockFindProjects.mockResolvedValue([]);
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(() => new Date(result.generatedAt)).not.toThrow();
       expect(new Date(result.generatedAt).toISOString()).toBe(result.generatedAt);
@@ -598,7 +602,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       // end < start => the condition `end > start` is false, so schedule risk check is skipped
       expect(result.portfolio.atRiskProjects).toHaveLength(0);
@@ -611,7 +615,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.portfolio.atRiskProjects).toHaveLength(0);
     });
@@ -623,7 +627,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       // 80/100 = 0.8, not > 0.8, so NOT at risk
       expect(result.portfolio.atRiskProjects).toHaveLength(0);
@@ -636,7 +640,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.portfolio.atRiskProjects).toHaveLength(1);
     });
@@ -651,7 +655,7 @@ describe('AnalyticsSummaryService', () => {
       mockEmptyTasks();
       mockTrendIndicators();
 
-      const result = await analyticsSummaryService.getSummary('user-1');
+      const result = await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
       expect(result.portfolio.totalProjects).toBe(4);
       expect(result.portfolio.byStatus).toEqual({ active: 2, completed: 1, on_hold: 1 });
@@ -660,4 +664,17 @@ describe('AnalyticsSummaryService', () => {
       expect(result.budget.projectsOverBudget).toHaveLength(2);
     });
   });
+
+describe('dashboard tiles: which projects (2026-10-01)', () => {
+  it('no readable projects → an empty portfolio, never everything', async () => {
+    readable.mockResolvedValueOnce(new Set());
+    await analyticsSummaryService.getSummary('user-1', 'project_manager');
+    expect(mockFindProjects).toHaveBeenLastCalledWith('1 = 0', []);
+  });
+  it('admin / PMO / executive: every project', async () => {
+    readable.mockResolvedValueOnce('all' as any);
+    await analyticsSummaryService.getSummary('user-1', 'pmo');
+    expect(mockFindProjects).toHaveBeenLastCalledWith('1=1', []);
+  });
+});
 });
