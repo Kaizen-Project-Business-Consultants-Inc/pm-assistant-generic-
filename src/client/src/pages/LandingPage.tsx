@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PricingSection } from '../components/pricing/PricingCards';
 import { KovartiMark } from '../components/ui/KovartiMark';
+import { TourVideoButton } from '../components/landing/TourVideo';
 
 function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(() => {
@@ -734,6 +735,7 @@ export const LandingPage: React.FC = () => {
                 See how it works
               </a>
             </div>
+            <TourVideoButton />
             {/* Launch offer banner */}
             <a
               href="#pricing"

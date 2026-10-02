@@ -731,6 +731,7 @@ All endpoints require admin role authentication.
 - **Logo (Oct 2026):** the **Enso K** — a K inside an open brush circle — shared by Kovarti and its parent company, Kaizen Project & Business Consultants Inc. Full colour is navy `#0f1b33` with a sky-blue `#0ea5e9` circle. The app's own colours stay teal; only the logo is shared.
 - **In the app** it is one component, `src/client/src/components/ui/KovartiMark.tsx` (single colour, follows the text colour), used by the sidebar, sign-in, onboarding and the public pages; a test fails if the old lightbulb mark comes back.
 - **Static files** in `src/client/public/`: `pwa-icon.svg` (browser tab), `pwa-192x192.png` / `pwa-512x512.png` (installed app), `apple-touch-icon.png`, `og-image.png` (the picture shown when a kovarti.com link is shared). The installed-app theme colour is navy.
+- **Feature tour video (Oct 2026):** the home page's **Watch the 80-second tour** button (`src/client/src/components/landing/TourVideo.tsx`) plays `public/videos/kovarti-tour-vertical.mp4` on phones and portrait screens and `kovarti-tour-wide.mp4` elsewhere (narrated, AI voice). To replace the tour, overwrite those files (and the `.jpg` posters) with the same names; masters are in the owner's `Downloads/Kovarti-Feature-Tour`.
 - **LinkedIn:** company page linkedin.com/company/kaizen-pbc; Kovarti is a Showcase page under it (linkedin.com/showcase/kovarti).
 - **Master files** (wordmarks, LinkedIn logos and banners, every logo option considered) are kept outside the repo in the owner's `Downloads/Kovarti-Brand` folder.
 
