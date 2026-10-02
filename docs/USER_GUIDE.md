@@ -866,7 +866,7 @@ Every resource is either a **person** or a **generic role**.
 
 ### Team Planner (October 2026)
 
-**Resources → Team Planner** (marked *New*) shows everyone on the projects you manage down the side and the weeks across — like Microsoft Project's Team Planner. Each person's row adds up **all** their work, on every project, at their real weekly hours (working days only), so you see straight away who is over in which week (a red "48h · over by 8h").
+**Resources → Team Planner** (marked *New*) shows your company's people down the side — those with work on the projects you manage first, then everyone else who can take work — and the weeks across — like Microsoft Project's Team Planner. Each person's row adds up **all** their work, on every project, at their real weekly hours (working days only), so you see straight away who is over in which week (a red "48h · over by 8h").
 
 - **Blocks** are the tasks each person is on, coloured by project. Work on projects that aren't yours is grey and can't be moved; you only see its name if you can open that project.
 - **No one assigned** (top lane) lists open tasks on your projects with nobody on them. **Generic roles** show their work as dashed blocks — work that still needs a person.

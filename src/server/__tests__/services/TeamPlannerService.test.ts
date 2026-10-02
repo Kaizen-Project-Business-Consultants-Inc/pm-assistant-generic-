@@ -204,20 +204,21 @@ describe('TeamPlannerService — applying a drop', () => {
 });
 
 describe('TeamPlannerService — the board', () => {
-  it('shows only the people on projects you manage, counts all their work, and hides the names of projects you can\'t open', async () => {
+  it('shows the team with work on your projects first, counts all their work, and hides the names of projects you can\'t open', async () => {
     readableProjectIds.mockResolvedValue(new Set(['p-mine', 'p-shared']));
     checkProjectRoleFor.mockImplementation(async (_v: any, pid: string) => ({ ok: pid === 'p-mine' }));
     bookings = [
       booking('peter', 't-uat', 12, '2026-10-19', '2026-11-06', 's1'),
       booking('peter', 't-mary', 12, '2026-10-12', '2026-10-30', 's-mary'),
       booking('peter', 't-shared', 8, '2026-10-12', '2026-10-16', 's-shared'),
-      booking('parth', 't-elsewhere', 40, '2026-10-12', '2026-10-16', 's-mary'), // not on my projects: not on my board
+      booking('parth', 't-elsewhere', 40, '2026-10-12', '2026-10-16', 's-mary'), // nothing on my projects: still on the board, after Peter
     ];
     findEffectiveAssignments.mockImplementation(async (f: any) => bookings.filter(b => !f.scheduleIds || f.scheduleIds.includes(b.scheduleId)));
     query.mockImplementation(async (sql: string, params: any[]) => {
       if (sql.includes('archived_at IS NULL AND COALESCE(is_demo, 0) = 0') && sql.includes('WHERE id IN')) return params.map(id => ({ id }));
       if (sql.startsWith('SELECT id, name FROM projects')) return [{ id: 'p-mine', name: 'DBJ-Loans' }];
       if (sql.startsWith('SELECT id FROM schedules')) return [{ id: 's1' }];
+      if (sql.includes('FROM resources WHERE COALESCE(is_active')) return [{ id: 'parth' }];
       if (sql.includes('FROM tasks t') && sql.includes('NOT EXISTS (SELECT 1 FROM task_assignments')) return [];
       if (sql.includes('FROM schedules s JOIN projects p')) return [
         { id: 's1', project_id: 'p-mine', project_name: 'DBJ-Loans' },
@@ -233,7 +234,10 @@ describe('TeamPlannerService — the board', () => {
     });
     const b = await teamPlannerService.board({ userId: 'u-pm', role: 'project_manager' }, '2026-10-14', 4);
     expect(b.weeks).toEqual(['2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02']);
-    expect(b.people.map(p => p.name)).toEqual(['Peter']);
+    // everyone who can take work is on the board, people with work on your projects first
+    expect(b.people.map(p => p.name)).toEqual(['Peter', 'Parth']);
+    expect(b.people[1].load).toEqual([40, 0, 0, 0]);
+    expect(b.people[1].blocks[0]).toMatchObject({ editable: false, taskName: null, projectName: null });
     const peterRow = b.people[0];
     expect(peterRow.load).toEqual([20, 24, 24, 12]);
     const byTask = Object.fromEntries(peterRow.blocks.map(x => [x.taskId, x]));

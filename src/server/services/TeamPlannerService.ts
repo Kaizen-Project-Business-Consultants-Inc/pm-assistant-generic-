@@ -157,7 +157,11 @@ export class TeamPlannerService {
 
     const onMine = await resourceRepository.findEffectiveAssignments({ scheduleIds: mySchedules, from: first, to: lastDay });
     const unassigned = await this.unassignedTasks(mySchedules, first, lastDay);
-    const resourceIds = [...new Set(onMine.map(a => a.resourceId))];
+    // Everyone in the company who can take work (so a task can go to someone with nothing yet),
+    // plus the generic roles holding work on these projects
+    const pool = await databaseService.query<{ id: string }>(
+      `SELECT id FROM resources WHERE COALESCE(is_active, 1) = 1 AND COALESCE(is_generic, 0) = 0 LIMIT 500`);
+    const resourceIds = [...new Set([...onMine.map(a => a.resourceId), ...pool.map(r => r.id)])];
     const resources = resourceIds.length ? await resourceRepository.findByIds(resourceIds) : [];
     const realPeople = new Set(resources.filter(r => !r.isGeneric).map(r => r.id));
     // The same people's work everywhere else in these weeks (generic roles are this company's demand on these projects only)
@@ -221,7 +225,11 @@ export class TeamPlannerService {
         id: r.id, name: r.name, role: r.role ?? null, isGeneric: !!r.isGeneric, capacity, load,
         blocks: [...merged.values()].sort((a, b) => a.startDate.localeCompare(b.startDate)),
       };
-    }).sort((a, b) => Number(a.isGeneric) - Number(b.isGeneric) || a.name.localeCompare(b.name));
+    })
+      // people with work on your projects first, then the rest of the team, generic roles last
+      .sort((a, b) => Number(a.isGeneric) - Number(b.isGeneric)
+        || Number(!a.blocks.some(x => x.editable)) - Number(!b.blocks.some(x => x.editable))
+        || a.name.localeCompare(b.name));
 
     return {
       weeks,
