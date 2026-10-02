@@ -130,9 +130,34 @@ export async function runAllTenantMigrations(): Promise<void> {
   for (const org of orgs) {
     try {
       await runTenantMigrations(org.dbName);
+      await backfillLineManagers(org.dbName, org.ownerUserId);
     } catch (error) {
       logger.error(`[tenant-migration] Failed for tenant ${org.slug}`, { error, dbName: org.dbName });
       // Continue with other tenants — don't let one failure block all
     }
+  }
+}
+
+/**
+ * Every person needs a line manager (T070, 2026-10-02). Anyone without one gets the company
+ * owner, marked "set by default" so the Resources page asks someone to confirm or change it.
+ * Idempotent — only touches people still without one; generic roles never get one.
+ */
+export async function backfillLineManagers(dbName: string, ownerUserId: string | null | undefined): Promise<number> {
+  if (!ownerUserId) return 0;
+  const pool = databaseService.getPool();
+  if (!pool) return 0;
+  const conn = await pool.getConnection();
+  try {
+    const [result] = await conn.query(
+      `UPDATE \`${dbName}\`.resources SET line_manager_user_id = ?, line_manager_default = 1
+        WHERE line_manager_user_id IS NULL AND COALESCE(is_generic, 0) = 0`,
+      [ownerUserId],
+    ) as any;
+    const n = Number(result?.affectedRows ?? 0);
+    if (n > 0) logger.info(`[tenant-migration] ${dbName}: gave ${n} people the company owner as line manager (to check)`);
+    return n;
+  } finally {
+    conn.release();
   }
 }

@@ -240,6 +240,49 @@ describe('ResourceService', () => {
     });
   });
 
+  describe('every person has a line manager (2026-10-02)', () => {
+    const { id: _id, ...person } = sampleResource;
+    it('no line manager given → the company owner, marked "set by default"', async () => {
+      mockDb.queryControlPlane.mockResolvedValueOnce([{ owner_user_id: 'owner-1' }]);
+      mockRepo.create.mockResolvedValueOnce(sampleResource);
+      await service.createResource(person);
+      expect(mockRepo.create).toHaveBeenCalledWith(expect.objectContaining({ lineManagerUserId: 'owner-1', lineManagerIsDefault: true }));
+    });
+
+    it('a chosen line manager must be an active user of the company', async () => {
+      mockDb.queryControlPlane.mockResolvedValueOnce([]); // not in this company
+      await expect(service.createResource({ ...person, lineManagerUserId: 'stranger' })).rejects.toThrow(/isn't an active user/);
+      mockDb.queryControlPlane.mockResolvedValueOnce([{ id: 'u-old', is_active: 0 }]);
+      await expect(service.createResource({ ...person, lineManagerUserId: 'u-old' })).rejects.toThrow(/isn't an active user/);
+      expect(mockRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("nobody is their own line manager — except the company owner", async () => {
+      mockDb.queryControlPlane.mockResolvedValueOnce([{ id: 'u-peter', is_active: 1 }]).mockResolvedValueOnce([{ owner_user_id: 'owner-1' }]);
+      await expect(service.createResource({ ...person, userId: 'u-peter', lineManagerUserId: 'u-peter' })).rejects.toThrow(/own line manager/);
+      mockDb.queryControlPlane.mockResolvedValueOnce([{ id: 'owner-1', is_active: 1 }]).mockResolvedValueOnce([{ owner_user_id: 'owner-1' }]);
+      mockRepo.create.mockResolvedValueOnce(sampleResource);
+      await expect(service.createResource({ ...person, userId: 'owner-1', lineManagerUserId: 'owner-1' })).resolves.toBeTruthy();
+    });
+
+    it('saving the line manager confirms it; it can never be removed', async () => {
+      mockRepo.findById.mockResolvedValueOnce({ ...sampleResource, lineManagerUserId: 'owner-1', lineManagerIsDefault: true }).mockResolvedValueOnce(sampleResource);
+      mockDb.queryControlPlane.mockResolvedValueOnce([{ id: 'u-mary', is_active: 1 }]);
+      mockRepo.updateResource.mockResolvedValueOnce(true);
+      await service.updateResource('r1', { lineManagerUserId: 'u-mary' });
+      expect(mockRepo.updateResource).toHaveBeenCalledWith('r1', { lineManagerUserId: 'u-mary', lineManagerIsDefault: false });
+
+      mockRepo.findById.mockResolvedValueOnce(sampleResource);
+      await expect(service.updateResource('r1', { lineManagerUserId: null })).rejects.toThrow(/Choose a line manager/);
+    });
+
+    it('generic roles never have one', async () => {
+      mockRepo.create.mockResolvedValueOnce({ ...sampleResource, isGeneric: true });
+      await service.createResource({ ...person, isGeneric: true, lineManagerUserId: 'owner-1' });
+      expect(mockRepo.create).toHaveBeenCalledWith(expect.objectContaining({ lineManagerUserId: null, lineManagerIsDefault: false }));
+    });
+  });
+
   describe('peopleNeeded (unfilled demand)', () => {
     it("counts full-time people for a week's hours", () => {
       expect(peopleNeeded(0, 40)).toBe(0);
@@ -255,14 +298,15 @@ describe('ResourceService', () => {
     it('creates resource and returns it', async () => {
       mockRepo.create.mockResolvedValueOnce(sampleResource);
       const { id, ...data } = sampleResource;
+      mockDb.queryControlPlane.mockResolvedValueOnce([{ owner_user_id: 'owner-1' }]); // the default line manager
       const result = await service.createResource(data);
       expect(result).toEqual(sampleResource);
-      expect(mockRepo.create).toHaveBeenCalledWith(data);
+      expect(mockRepo.create).toHaveBeenCalledWith({ ...data, lineManagerUserId: 'owner-1', lineManagerIsDefault: true });
     });
 
     it('attempts autoLinkUser after creation (fire-and-forget)', async () => {
       mockRepo.create.mockResolvedValueOnce(sampleResource);
-      mockDb.queryControlPlane.mockResolvedValueOnce([{ id: 'u1' }]);
+      mockDb.queryControlPlane.mockResolvedValueOnce([{ owner_user_id: 'owner-1' }]).mockResolvedValueOnce([{ id: 'u1' }]);
 
       const { id, ...data } = sampleResource;
       await service.createResource(data);
@@ -972,20 +1016,24 @@ describe('ResourceService', () => {
     });
 
     it('does nothing when no organizationId in request context', async () => {
-      mockGetRequestContext.mockReturnValueOnce(null);
+      mockGetRequestContext.mockReturnValue(null);
       mockRepo.create.mockResolvedValueOnce(sampleResource);
 
       const { id, ...data } = sampleResource;
-      await service.createResource(data);
-      await new Promise(r => setTimeout(r, 10));
+      try {
+        await service.createResource(data);
+        await new Promise(r => setTimeout(r, 10));
+      } finally {
+        mockGetRequestContext.mockReturnValue({ organizationId: 'org1' });
+      }
 
-      // Should not attempt queryControlPlane
+      // Should not attempt queryControlPlane (no company: no owner lookup, no linking)
       expect(mockDb.queryControlPlane).not.toHaveBeenCalled();
     });
 
     it('links user when email matches a user in the organization', async () => {
       mockRepo.create.mockResolvedValueOnce(sampleResource);
-      mockDb.queryControlPlane.mockResolvedValueOnce([{ id: 'u-matched' }]);
+      mockDb.queryControlPlane.mockResolvedValueOnce([{ owner_user_id: 'owner-1' }]).mockResolvedValueOnce([{ id: 'u-matched' }]);
 
       const { id, ...data } = sampleResource;
       await service.createResource(data);
@@ -999,7 +1047,7 @@ describe('ResourceService', () => {
 
     it('does not crash when autoLinkUser throws (fire-and-forget)', async () => {
       mockRepo.create.mockResolvedValueOnce(sampleResource);
-      mockDb.queryControlPlane.mockRejectedValueOnce(new Error('DB down'));
+      mockDb.queryControlPlane.mockResolvedValueOnce([{ owner_user_id: 'owner-1' }]).mockRejectedValueOnce(new Error('DB down'));
 
       const { id, ...data } = sampleResource;
       // Should not throw

@@ -72,6 +72,9 @@ interface Resource {
   calendarTemplateId?: string | null;
   /** A stand-in role ("Generic Developer"), not a person */
   isGeneric?: boolean;
+  /** Approves their timesheets; set to the company owner by default until someone checks it */
+  lineManagerUserId?: string | null;
+  lineManagerIsDefault?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +138,7 @@ export function ResourceManagementPage() {
   const [formRole, setFormRole] = useState('');
   const [isCustomRole, setIsCustomRole] = useState(false);
   const [formEmail, setFormEmail] = useState('');
+  const [formLineManager, setFormLineManager] = useState('');
   const [formCapacity, setFormCapacity] = useState('40');
   const [formCostRate, setFormCostRate] = useState('');
   const [formUseRateCard, setFormUseRateCard] = useState(false);
@@ -207,6 +211,21 @@ export function ResourceManagementPage() {
     enabled: !isResourcesSample,
   });
   const allocationsMap: Record<string, Array<{ projectId: string; projectName: string; scheduleName: string; totalHoursPlanned: number; taskCount: number }>> = allocationsData?.allocations || {};
+
+  // Company users — who can be a line manager (anyone with a login, PMs included)
+  const { data: orgMembersData } = useQuery({
+    queryKey: ['org-members'],
+    queryFn: () => apiService.getOrgMembers(),
+    enabled: !isResourcesSample,
+  });
+  const lineManagers: Array<{ id: string; name: string; role: string }> = useMemo(
+    () => ((orgMembersData?.members || []) as any[])
+      .filter(m => m.isActive !== false)
+      .map(m => ({ id: m.id, name: m.fullName || m.username || m.email, role: m.role }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [orgMembersData],
+  );
+  const managerName = (id?: string | null) => lineManagers.find(m => m.id === id)?.name || (id ? 'Former user' : '');
 
   // Invites — for resource status column
   const { data: invitesData } = useQuery({
@@ -307,6 +326,7 @@ export function ResourceManagementPage() {
     setFormRole('');
     setIsCustomRole(false);
     setFormEmail('');
+    setFormLineManager('');
     setFormCapacity('40');
     setFormCostRate('');
     setFormUseRateCard(false);
@@ -323,6 +343,7 @@ export function ResourceManagementPage() {
     setFormRole(r.role);
     setIsCustomRole(!RESOURCE_ROLES.includes(r.role));
     setFormEmail(r.email);
+    setFormLineManager(r.lineManagerUserId || '');
     setFormCapacity(String(r.capacityHoursPerWeek || 40));
     setFormCostRate(r.costRateHourly != null ? String(r.costRateHourly) : '');
     setFormUseRateCard(!!r.useRateCard);
@@ -337,6 +358,7 @@ export function ResourceManagementPage() {
       name: formName,
       role: formRole,
       email: formEmail,
+      lineManagerUserId: formLineManager,
       capacityHoursPerWeek: parseInt(formCapacity) || 40,
       costRateHourly: costRate,
       useRateCard: formUseRateCard,
@@ -562,6 +584,14 @@ export function ResourceManagementPage() {
                   </p>
                 </div>
                 <div>
+                  <label htmlFor="resource-line-manager" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Line manager (required)</label>
+                  <select id="resource-line-manager" required aria-describedby="resource-line-manager-hint" value={formLineManager} onChange={(e) => setFormLineManager(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">Choose…</option>
+                    {lineManagers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                  <p id="resource-line-manager-hint" className="mt-1 text-xs text-gray-500 dark:text-gray-400">Approves their weekly timesheet. Anyone with a login, a PM too.</p>
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hours/Week</label>
                   <input type="number" value={formCapacity} onChange={(e) => setFormCapacity(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="1" max="80" />
                 </div>
@@ -608,7 +638,7 @@ export function ResourceManagementPage() {
               <div className="flex justify-end">
                 <button
                   onClick={handleSaveResource}
-                  disabled={!formName.trim() || !formRole.trim() || !formEmail.trim() || createResourceMutation.isPending || updateResourceMutation.isPending}
+                  disabled={!formName.trim() || !formRole.trim() || !formEmail.trim() || !formLineManager || createResourceMutation.isPending || updateResourceMutation.isPending}
                   className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
                 >
                   {(createResourceMutation.isPending || updateResourceMutation.isPending) ? 'Saving...' : editingResource ? 'Update' : 'Create'}
@@ -671,6 +701,7 @@ export function ResourceManagementPage() {
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Department</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Skills</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Email</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Line manager</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Allocations</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Status</th>
                     <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Hours/Wk</th>
@@ -715,6 +746,16 @@ export function ResourceManagementPage() {
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span>{r.email}</span>
                           {isPlaceholderEmail(r.email) && <PlaceholderEmailBadge />}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span>{managerName(r.lineManagerUserId) || '—'}</span>
+                          {r.lineManagerIsDefault && (
+                            canChange
+                              ? <button onClick={() => openEdit(r)} className="inline-flex items-center rounded-full border border-amber-500 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-500/70 dark:bg-amber-900/30 dark:text-amber-200" title="Given the company owner automatically. Open to confirm or change.">Set by default — check</button>
+                              : <span className="inline-flex items-center rounded-full border border-amber-500 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:border-amber-500/70 dark:bg-amber-900/30 dark:text-amber-200">Set by default</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3">

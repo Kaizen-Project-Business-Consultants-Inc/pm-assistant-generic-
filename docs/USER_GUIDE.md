@@ -843,6 +843,10 @@ The Budget tab within each project provides comprehensive expense tracking and b
 2. Add team members by assigning them to the project.
 3. Set each resource's role, availability, and hourly rate.
 
+### Line managers (October 2026)
+
+Every person on the Resources list has a **line manager** — the one person who approves their weekly timesheet. Anyone with a login can be a line manager, a PM included. Choose it in **Add person** / **Edit person** (it's required). People who were on the list before got the company owner as their line manager, shown with an orange **Set by default — check** tag; open the person and save to confirm, or pick someone else. Nobody can be their own line manager (except the company owner, who has no one above them). Generic roles have none.
+
 ### People and generic roles (October 2026)
 
 Every resource is either a **person** or a **generic role**.

@@ -41,6 +41,8 @@ export const createResourceSchema = z.object({
   // '' is let through so the service can say what to do ("use a generic role"), not "invalid email"
   email: z.string().trim().email().or(z.literal('')).optional(),
   isGeneric: z.boolean().optional(),
+  // Who approves their timesheets — required for a person (the company owner if left out)
+  lineManagerUserId: z.string().min(1).nullable().optional(),
   capacityHoursPerWeek: z.number().positive().default(40),
   skills: z.array(skillSchema).default([]),
   isActive: z.boolean().default(true),

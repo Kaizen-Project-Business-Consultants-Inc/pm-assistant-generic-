@@ -37,12 +37,18 @@ export interface Resource {
   /** A stand-in role ("Generic Developer"): no email, no login, never on a Team list, not
    *  counted as over-booked — the PM swaps in a real person later. Set when created only. */
   isGeneric?: boolean;
+  /** The user who approves this person's weekly timesheet (any user with a login, a PM too).
+   *  Every person has one; generic roles never do. */
+  lineManagerUserId?: string | null;
+  /** Given the company owner automatically — the Resources page asks someone to check it */
+  lineManagerIsDefault?: boolean;
 }
 
 /** A resource the rules refuse (a person without an email) — the caller's mistake, a 400 */
 export class ResourceValidationError extends Error {}
 
 export const EMAIL_REQUIRED_MESSAGE = 'Add an email. If this is a stand-in for someone not yet known, use a generic role instead.';
+export const LINE_MANAGER_REQUIRED_MESSAGE = 'Choose a line manager — the person who approves their timesheets.';
 
 export interface ResourceAssignment {
   id: string;
@@ -138,6 +144,26 @@ export class ResourceService {
     return resourceRepository.findAllPaginated(limit, offset, group);
   }
 
+  /** The company owner — the default line manager */
+  private async companyOwnerId(): Promise<string | null> {
+    const orgId = getRequestContext()?.organizationId;
+    if (!orgId) return null;
+    const [org] = await databaseService.queryControlPlane<{ owner_user_id: string }>('SELECT owner_user_id FROM organizations WHERE id = ? LIMIT 1', [orgId]);
+    return org?.owner_user_id ?? null;
+  }
+
+  /** A line manager is an active user of this company; nobody manages themselves except the owner */
+  private async assertLineManager(lineManagerUserId: string, ownUserId: string | null): Promise<void> {
+    const orgId = getRequestContext()?.organizationId;
+    if (!orgId) return; // system jobs outside a company (scripts) — nothing to check against
+    const [user] = await databaseService.queryControlPlane<{ id: string; is_active: number }>(
+      'SELECT id, is_active FROM users WHERE id = ? AND organization_id = ? LIMIT 1', [lineManagerUserId, orgId]);
+    if (!user || !Number(user.is_active)) throw new ResourceValidationError("That line manager isn't an active user of your company. Choose someone with a login.");
+    if (ownUserId && ownUserId === lineManagerUserId && ownUserId !== await this.companyOwnerId()) {
+      throw new ResourceValidationError("Someone can't be their own line manager — they'd approve their own timesheets. Choose someone else.");
+    }
+  }
+
   async findResourcesByIds(ids: string[]): Promise<Resource[]> {
     return resourceRepository.findByIds(ids);
   }
@@ -148,8 +174,17 @@ export class ResourceService {
 
   async createResource(data: Omit<Resource, 'id'>): Promise<Resource> {
     // Every person has an email; a generic role never does (and never links to a login)
-    if (data.isGeneric) data = { ...data, email: '', userId: null };
+    if (data.isGeneric) data = { ...data, email: '', userId: null, lineManagerUserId: null, lineManagerIsDefault: false };
     else if (!data.email?.trim()) throw new ResourceValidationError(EMAIL_REQUIRED_MESSAGE);
+    // Every person has a line manager: the one chosen (checked), else the company owner, to check
+    if (!data.isGeneric) {
+      if (data.lineManagerUserId) {
+        await this.assertLineManager(data.lineManagerUserId, data.userId ?? null);
+        data = { ...data, lineManagerIsDefault: false };
+      } else {
+        data = { ...data, lineManagerUserId: await this.companyOwnerId(), lineManagerIsDefault: true };
+      }
+    }
     const resource = await resourceRepository.create(data);
     this.autoLinkUser(resource.id, resource.email).catch(() => {});
     return resource;
@@ -162,8 +197,16 @@ export class ResourceService {
     // Whether a resource is a person or a generic role is fixed when it's created
     const { isGeneric: _ignored, ...rest } = data;
     data = rest;
-    if (existing.isGeneric) { delete data.email; delete data.userId; }
+    if (existing.isGeneric) { delete data.email; delete data.userId; delete data.lineManagerUserId; }
     else if ('email' in data && !data.email?.trim()) throw new ResourceValidationError(EMAIL_REQUIRED_MESSAGE);
+    // Changing or confirming the line manager: it must be a user of this company, and it can't be
+    // removed. Saving it (even unchanged) counts as checked.
+    delete data.lineManagerIsDefault;
+    if (!existing.isGeneric && 'lineManagerUserId' in data) {
+      if (!data.lineManagerUserId) throw new ResourceValidationError(LINE_MANAGER_REQUIRED_MESSAGE);
+      await this.assertLineManager(data.lineManagerUserId, data.userId !== undefined ? data.userId : existing.userId);
+      data.lineManagerIsDefault = false;
+    }
 
     const changed = await resourceRepository.updateResource(id, data);
     if (!changed) return existing;
