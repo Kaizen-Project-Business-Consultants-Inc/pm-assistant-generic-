@@ -729,10 +729,9 @@ All endpoints require admin role authentication.
 ## 20. Analytics
 
 ### Google Analytics (GA4)
-- GA4 tracking is embedded directly in `src/client/index.html` using measurement ID **G-F99Q92ED7M**.
-- Page views are tracked automatically on all pages via the standard GA4 script tag.
-- No environment variable or server-side configuration is needed.
-- To disable analytics, remove the GA4 script block from `index.html` and rebuild.
+- Measurement ID **G-46RCPEQRE5**, loaded by `src/client/src/components/CookieConsentBanner.tsx` only after the visitor clicks **Accept** on the cookie banner (Decline = no tracking).
+- **Live site only** (Oct 2026): analytics and the cookie banner run on `kovarti.com` / `www.kovarti.com` and nowhere else — staging, local runs, tests and the demo-video recorder no longer land in the reports. The host list is `ANALYTICS_HOSTS` in that file.
+- Reports: analytics.google.com (Realtime, Acquisition, Pages and screens). No environment variable or server-side configuration is needed.
 
 ---
 

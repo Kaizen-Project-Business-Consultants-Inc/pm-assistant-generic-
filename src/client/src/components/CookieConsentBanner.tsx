@@ -4,7 +4,15 @@ import { Link } from 'react-router-dom';
 const CONSENT_KEY = 'kovarti_analytics_consent';
 const GA_ID = 'G-46RCPEQRE5';
 
+/**
+ * Analytics runs on the live site only (2026-10-02): staging, test runs and the demo-video
+ * recorder were landing in the same Google Analytics reports as real visitors.
+ */
+const ANALYTICS_HOSTS = ['kovarti.com', 'www.kovarti.com'];
+export const analyticsEnabled = (hostname: string = window.location.hostname) => ANALYTICS_HOSTS.includes(hostname);
+
 function loadGA4() {
+  if (!analyticsEnabled()) return;
   if (document.querySelector(`script[src*="googletagmanager"]`)) return;
   window.dataLayer = window.dataLayer || [];
   window.gtag = function () { window.dataLayer!.push(arguments); };
@@ -27,6 +35,8 @@ export function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    // No analytics here, so nothing to ask about
+    if (!analyticsEnabled()) return;
     const consent = localStorage.getItem(CONSENT_KEY);
     if (consent === 'accepted') {
       loadGA4();
