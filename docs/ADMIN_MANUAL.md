@@ -728,9 +728,11 @@ All endpoints require admin role authentication.
 
 ## 19a. Branding
 
-- **Logo (Oct 2026):** the "Gantt K" — a K built from schedule bars — in teal `#0d9488` (Tailwind `primary-600`). In the app it is one component, `src/client/src/components/ui/KovartiMark.tsx`, used by the sidebar, sign-in, onboarding and the public pages; a test fails if the old lightbulb mark comes back.
-- **Static files** in `src/client/public/`: `pwa-icon.svg` (browser tab), `pwa-192x192.png` / `pwa-512x512.png` (installed app), `apple-touch-icon.png`, `og-image.png` (the picture shown when a kovarti.com link is shared). The installed-app theme colour is teal.
-- **Master files** (wordmarks, LinkedIn logo and banner, all eight logo options considered) are kept outside the repo in the owner's `Downloads/Kovarti-Brand` folder.
+- **Logo (Oct 2026):** the **Enso K** — a K inside an open brush circle — shared by Kovarti and its parent company, Kaizen Project & Business Consultants Inc. Full colour is navy `#0f1b33` with a sky-blue `#0ea5e9` circle. The app's own colours stay teal; only the logo is shared.
+- **In the app** it is one component, `src/client/src/components/ui/KovartiMark.tsx` (single colour, follows the text colour), used by the sidebar, sign-in, onboarding and the public pages; a test fails if the old lightbulb mark comes back.
+- **Static files** in `src/client/public/`: `pwa-icon.svg` (browser tab), `pwa-192x192.png` / `pwa-512x512.png` (installed app), `apple-touch-icon.png`, `og-image.png` (the picture shown when a kovarti.com link is shared). The installed-app theme colour is navy.
+- **LinkedIn:** company page linkedin.com/company/kaizen-pbc; Kovarti is a Showcase page under it (linkedin.com/showcase/kovarti).
+- **Master files** (wordmarks, LinkedIn logos and banners, every logo option considered) are kept outside the repo in the owner's `Downloads/Kovarti-Brand` folder.
 
 ## 20. Analytics
 

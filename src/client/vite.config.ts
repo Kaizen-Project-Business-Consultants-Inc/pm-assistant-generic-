@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => ({
         name: 'Kovarti PM',
         short_name: 'Kovarti PM',
         description: 'AI-Powered Project Management Platform',
-        theme_color: '#0d9488',
+        theme_color: '#0f1b33',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',
