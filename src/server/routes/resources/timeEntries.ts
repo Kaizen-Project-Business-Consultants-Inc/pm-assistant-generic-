@@ -372,6 +372,8 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       if (!allowed) return;
 
       const body = updateTimeEntrySchema.parse(request.body ?? {});
+      // Neither the day it's on nor a day it moves to may be in a closed month
+      await weeklyTimesheetService.assertDayOpen(existing.date);
       if (body.date) await weeklyTimesheetService.assertWeekOpen(existing.userId, body.date);
       const entry = await timeEntryService.update(id, body);
       automationEventBus.emit({ type: 'time_entry.updated', entityType: 'time_entry', entityId: id, projectId: entry?.projectId || '', userId: user.userId, payload: entry, timestamp: new Date().toISOString() }).catch(() => {});
@@ -399,6 +401,12 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
       if (!allowed) return;
 
+      try {
+        await weeklyTimesheetService.assertDayOpen(existing.date);
+      } catch (e) {
+        if (e instanceof TimesheetError) return reply.status(e.statusCode).send({ error: e.message, message: e.message });
+        throw e;
+      }
       automationEventBus.emit({ type: 'time_entry.deleted', entityType: 'time_entry', entityId: id, projectId: existing.projectId, userId: user.userId, payload: { id }, timestamp: new Date().toISOString() }).catch(() => {});
       await timeEntryService.delete(id);
       return { message: 'Time entry deleted' };

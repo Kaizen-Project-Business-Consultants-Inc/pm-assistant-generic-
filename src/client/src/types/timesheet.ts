@@ -24,6 +24,9 @@ export interface TimesheetLine {
 export interface WeekView {
   weekStart: string;
   days: string[];
+  /** Days of this week in a closed (locked) month */
+  lockedDays: string[];
+  lockNote: string | null;
   status: SheetStatus;
   sheet: { id: string; status: SheetStatus; submittedAt: string | null; reviewedAt: string | null; rejectionReason: string | null } | null;
   approver: { userId: string; name: string } | null;

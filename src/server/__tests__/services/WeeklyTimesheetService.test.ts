@@ -26,10 +26,13 @@ const notify = vi.fn().mockResolvedValue({});
 vi.mock('../../services/NotificationService', () => ({ notificationService: { create: (...a: any[]) => notify(...a) } }));
 const applyToTasks = vi.fn().mockResolvedValue({ tasks: 1, projects: 1 });
 vi.mock('../../services/ApprovedTimeService', () => ({ approvedTimeService: { applyToTasks: (...a: any[]) => applyToTasks(...a) } }));
+// "Today" is pinned so the month lock doesn't change the tests as time passes
+vi.mock('../../services/StatusDateService', () => ({ organizationTimezone: async () => 'UTC' }));
+vi.mock('../../utils/calendarDate', () => ({ today: () => '2026-10-02' }));
 vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ({ organizationId: 'org1' }) }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
-import { weeklyTimesheetService, TimesheetError } from '../../services/WeeklyTimesheetService';
+import { weeklyTimesheetService, TimesheetError, isMonthLocked, lockDateFor, lockMessage } from '../../services/WeeklyTimesheetService';
 
 const OWNER = 'owner-1';
 /** Answers for the shared database: the company owner, and user names */
@@ -60,6 +63,33 @@ describe('WeeklyTimesheetService', () => {
       expect(await weeklyTimesheetService.approverFor('u-peter')).toBe(OWNER);
       query.mockResolvedValueOnce([{ id: 'r', line_manager_user_id: OWNER }]);
       expect(await weeklyTimesheetService.approverFor(OWNER)).toBe(OWNER);
+    });
+  });
+
+  describe('months lock on the 5th of the next month', () => {
+    it('September locks on 5 October; December on 5 January', () => {
+      expect(lockDateFor('2026-09-17')).toBe('2026-10-05');
+      expect(lockDateFor('2026-12-31')).toBe('2027-01-05');
+      expect(isMonthLocked('2026-09-30', '2026-10-04')).toBe(false);
+      expect(isMonthLocked('2026-09-30', '2026-10-05')).toBe(true);
+      expect(isMonthLocked('2026-10-01', '2026-10-05')).toBe(false);
+      expect(lockMessage('2026-09-17')).toMatch(/^September 2026 is closed \(it locked on 5 Oct\)/);
+    });
+
+    it("no hours can be added or changed in a closed month — even in a week that's still a draft", async () => {
+      // today is pinned to 2 Oct 2026: August (locked 5 Sep) is closed, September isn't yet
+      await expect(weeklyTimesheetService.assertDayOpen('2026-08-31')).rejects.toThrow(/August 2026 is closed/);
+      await expect(weeklyTimesheetService.assertWeekOpen('u-peter', '2026-08-31')).rejects.toMatchObject({ statusCode: 409 });
+      query.mockResolvedValueOnce([]); // no timesheet for the week yet
+      await expect(weeklyTimesheetService.assertWeekOpen('u-peter', '2026-09-30')).resolves.toBeUndefined();
+    });
+
+    it('the week view marks the closed days and says why', async () => {
+      findEffectiveAssignments.mockResolvedValue([]);
+      query.mockResolvedValue([]);
+      const view = await weeklyTimesheetService.weekView('u-peter', '2026-08-31'); // Mon 31 Aug – Sun 6 Sep
+      expect(view.lockedDays).toEqual(['2026-08-31']);
+      expect(view.lockNote).toMatch(/August 2026 is closed/);
     });
   });
 

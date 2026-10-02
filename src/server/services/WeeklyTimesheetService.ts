@@ -8,6 +8,8 @@ import { hoursInWeek, calendarsFor } from './weeklyLoad';
 import { approvedTimeService } from './ApprovedTimeService';
 import { mondayOf, weekEndOf, workingDaysBetween, daysOfWeek } from '../utils/workingDays';
 import { getRequestContext } from '../middleware/requestContext';
+import { organizationTimezone } from './StatusDateService';
+import { today as calendarToday } from '../utils/calendarDate';
 import logger from '../utils/logger';
 
 /**
@@ -20,6 +22,28 @@ import logger from '../utils/logger';
  */
 
 export type SheetStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+
+/**
+ * Months lock automatically (user, 2026-10-02): a month's hours can't be added, changed or
+ * removed from the 5th of the next month — September locks on 5 October. Days are the
+ * company's calendar days (its time zone).
+ */
+export const MONTH_LOCK_DAY = 5;
+const pad = (n: number) => String(n).padStart(2, '0');
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** The day a month locks: the MONTH_LOCK_DAY of the following month */
+export function lockDateFor(day: string): string {
+  const y = Number(day.slice(0, 4)); const m = Number(day.slice(5, 7));
+  return m === 12 ? `${y + 1}-01-${pad(MONTH_LOCK_DAY)}` : `${y}-${pad(m + 1)}-${pad(MONTH_LOCK_DAY)}`;
+}
+export function isMonthLocked(day: string, today: string): boolean {
+  return today.slice(0, 10) >= lockDateFor(day.slice(0, 10));
+}
+export function lockMessage(day: string): string {
+  const lock = lockDateFor(day);
+  return `${MONTHS[Number(day.slice(5, 7)) - 1]} ${day.slice(0, 4)} is closed (it locked on ${Number(lock.slice(8, 10))} ${MONTHS[Number(lock.slice(5, 7)) - 1].slice(0, 3)}). Hours in a closed month can't be added, changed or removed.`;
+}
 
 export class TimesheetError extends Error {
   constructor(message: string, public statusCode = 400) { super(message); }
@@ -48,6 +72,9 @@ export interface TimesheetLine {
 export interface WeekView {
   weekStart: string;
   days: string[];
+  /** Days of this week in a closed (locked) month */
+  lockedDays: string[];
+  lockNote: string | null;
   status: SheetStatus;
   sheet: { id: string; status: SheetStatus; submittedAt: string | null; reviewedAt: string | null; rejectionReason: string | null } | null;
   approver: { userId: string; name: string } | null;
@@ -179,8 +206,12 @@ export class WeeklyTimesheetService {
     const names = await this.userNames([approverId, ...flags.map((f: any) => f.flagged_by)]);
     const iso = (v: unknown) => (v ? new Date(v as string).toISOString() : null);
 
+    const todayKey = await this.companyToday();
+    const lockedDays = days.filter(d => isMonthLocked(d, todayKey));
     return {
       weekStart, days,
+      lockedDays,
+      lockNote: lockedDays.length ? lockMessage(lockedDays[0]) : null,
       status: sheetStatus,
       sheet: row ? { id: row.id, status: row.status, submittedAt: iso(row.submitted_at), reviewedAt: iso(row.reviewed_at), rejectionReason: row.rejection_reason ?? null } : null,
       approver: approverId ? { userId: approverId, name: names.get(approverId) ?? 'Line manager' } : null,
@@ -192,8 +223,20 @@ export class WeeklyTimesheetService {
     };
   }
 
-  /** Can hours be added or changed in this week? Not once it's submitted or approved. */
+  /** Today in the company's time zone */
+  async companyToday(): Promise<string> {
+    const zone = await organizationTimezone(getRequestContext()?.organizationId).catch(() => 'UTC');
+    return calendarToday(zone);
+  }
+
+  /** Refuse any change to hours on a day whose month is closed */
+  async assertDayOpen(date: string): Promise<void> {
+    if (isMonthLocked(date, await this.companyToday())) throw new TimesheetError(lockMessage(date), 409);
+  }
+
+  /** Can hours be added or changed on this day? Not in a closed month, nor once its week is sent or approved. */
   async assertWeekOpen(userId: string, date: string): Promise<void> {
+    await this.assertDayOpen(date);
     const { weekStart } = this.weekOf(date);
     const row = await this.sheetRow(userId, weekStart);
     if (row?.status === 'submitted') throw new TimesheetError('This week has been sent for approval. Recall it first to change your hours.', 409);

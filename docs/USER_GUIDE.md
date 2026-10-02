@@ -1297,6 +1297,7 @@ Each time log entry records:
 2. The week shows **Waiting for approval** and can't be changed. To change it, click **Recall to change** (only while it hasn't been decided).
 3. If it's **Sent back**, a red note gives the reason. Fix the hours and submit the week again.
 4. A week that's waiting or approved takes no new hours.
+5. **Months lock automatically on the 5th of the next month** — September's hours can't be added, changed or removed from 5 October. Closed days are greyed out with a note. (Hours already entered can still be submitted and approved.)
 
 ### Approving timesheets (line managers)
 

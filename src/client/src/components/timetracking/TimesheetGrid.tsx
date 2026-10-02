@@ -96,6 +96,9 @@ export function TimesheetGrid() {
           <span><strong>Sent back:</strong> {week.sheet.rejectionReason} Fix the hours and send the week again.</span>
         </div>
       )}
+      {week?.lockNote && (
+        <p role="status" className="rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200">{week.lockNote}</p>
+      )}
       {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
@@ -124,7 +127,7 @@ export function TimesheetGrid() {
                     <div className="px-2 py-2 text-center text-gray-600 dark:text-gray-300">{line.plannedThisWeek > 0 ? h(line.plannedThisWeek) : '—'}</div>
                     {week.days.map(d => {
                       const cell = line.days[d];
-                      const locked = !editable || cell?.status === 'approved';
+                      const locked = !editable || cell?.status === 'approved' || week.lockedDays.includes(d);
                       return (
                         <div key={d} className={`px-1 py-1 ${isWeekend(d) ? 'bg-gray-50 dark:bg-gray-900/30' : ''}`}>
                           <label className="sr-only" htmlFor={`h-${line.taskId}-${d}`}>{line.taskName}, {dayLabel(d)}</label>
