@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { LOGO_SVG_PATH, SALES_EMAIL } from '../constants/branding';
+import { SALES_EMAIL } from '../constants/branding';
 import { PricingSection } from '../components/pricing/PricingCards';
 import { useSEO } from '../hooks/useSEO';
+import { KovartiMark } from '../components/ui/KovartiMark';
 
 
 const features = [
@@ -737,10 +738,8 @@ export const PrelaunchLandingPage: React.FC = () => {
       <nav className="border-b border-white/5 backdrop-blur-md bg-slate-950/60 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-900">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={LOGO_SVG_PATH} />
-              </svg>
+            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-900">
+              <KovartiMark className="w-5 h-5 text-white" />
             </div>
             <span className="text-lg font-bold">Kovarti PM</span>
           </Link>
@@ -912,10 +911,8 @@ export const PrelaunchLandingPage: React.FC = () => {
       <footer className="border-t border-white/5 py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-purple-600 rounded flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={LOGO_SVG_PATH} />
-              </svg>
+            <div className="w-6 h-6 bg-primary-600 rounded flex items-center justify-center">
+              <KovartiMark className="w-4 h-4 text-white" />
             </div>
             <span className="text-sm font-semibold text-white">Kovarti</span>
           </div>

@@ -48,6 +48,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { apiService } from '../../services/api';
 import { FeedbackModal } from '../feedback/FeedbackModal';
 import { roleLabel } from '../../constants/branding';
+import { KovartiMark } from '../ui/KovartiMark';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -309,7 +310,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
       <div className="flex items-center h-16 px-4 flex-shrink-0 border-b border-white/10">
         <div className="flex items-center min-w-0">
           <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
-            <span className="text-sm font-bold text-white tracking-tight">K</span>
+            <KovartiMark className="w-5 h-5 text-white" />
           </div>
           <div
             className={`

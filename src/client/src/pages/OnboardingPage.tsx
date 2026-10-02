@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { User, Briefcase, BarChart3, Users, CheckCircle, ArrowRight, ArrowLeft, SkipForward, CreditCard, Mail, Plus, X, Building2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
+import { KovartiMark } from '../components/ui/KovartiMark';
 
 const ROLE_OPTIONS = [
   { value: 'project_manager', label: 'Project Manager', icon: Briefcase, description: 'Plan, schedule, and deliver projects' },
@@ -273,7 +274,7 @@ export const OnboardingPage: React.FC = () => {
             <>
               <div className="text-center mb-6">
                 <div className="mx-auto w-12 h-12 bg-primary-100 dark:bg-primary-900/40 rounded-xl flex items-center justify-center mb-4">
-                  <span className="text-xl font-bold text-primary-600 dark:text-primary-400">K</span>
+                  <KovartiMark className="w-7 h-7 text-primary-600 dark:text-primary-400" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome to Kovarti PM</h2>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Tell us about yourself to personalize your experience</p>

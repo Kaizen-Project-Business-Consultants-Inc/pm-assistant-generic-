@@ -3,8 +3,9 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Mail } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
-import { LOGO_SVG_PATH, SUPPORT_EMAIL } from '../constants/branding';
+import { SUPPORT_EMAIL } from '../constants/branding';
 import { useSEO } from '../hooks/useSEO';
+import { KovartiMark } from '../components/ui/KovartiMark';
 
 export const LoginPage: React.FC = () => {
   useSEO({
@@ -130,19 +131,7 @@ export const LoginPage: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <div className="mx-auto w-12 h-12 bg-primary-100 dark:bg-primary-900/40 rounded-xl flex items-center justify-center mb-4">
-              <svg
-                className="w-7 h-7 text-primary-600 dark:text-primary-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d={LOGO_SVG_PATH}
-                />
-              </svg>
+              <KovartiMark className="w-7 h-7 text-primary-600 dark:text-primary-400" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kovarti PM</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
