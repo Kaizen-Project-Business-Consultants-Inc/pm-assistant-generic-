@@ -152,6 +152,8 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
       }
       return { message: 'Proposal rejected successfully' };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Reject proposal error', { error });
       return reply.status(500).send({
         error: 'Internal server error',
@@ -177,6 +179,8 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
       }
       return { message: 'Proposal modified successfully' };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Modify proposal error', { error });
       return reply.status(500).send({
         error: 'Internal server error',

@@ -81,6 +81,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
       const stats = await agentScheduler.runScan(body.projectId);
       return { message: 'Agent scan completed', stats };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Agent trigger error:', error);
       return reply.status(500).send({ error: 'Agent scan failed' });
     }

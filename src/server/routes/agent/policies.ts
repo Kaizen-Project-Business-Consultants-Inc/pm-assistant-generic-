@@ -80,6 +80,8 @@ export async function policyRoutes(fastify: FastifyInstance) {
       });
       return reply.status(201).send({ policy });
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Create policy error', { error });
       return reply.status(500).send({ error: 'Internal server error' });
     }
@@ -98,6 +100,8 @@ export async function policyRoutes(fastify: FastifyInstance) {
       }
       return { policy };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Update policy error', { error });
       return reply.status(500).send({ error: 'Internal server error' });
     }

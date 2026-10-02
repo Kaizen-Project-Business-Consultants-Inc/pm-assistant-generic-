@@ -179,6 +179,8 @@ export async function userRoutes(fastify: FastifyInstance) {
         notificationTypePreferences: updated?.notificationTypePreferences ?? null,
       };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Update notification preferences error', { error });
       return reply.status(500).send({ error: 'Internal server error' });
     }
@@ -206,6 +208,8 @@ export async function userRoutes(fastify: FastifyInstance) {
         locale: updated?.locale ?? 'en',
       };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Update user preferences error', { error });
       return reply.status(500).send({ error: 'Internal server error' });
     }
@@ -236,6 +240,8 @@ export async function userRoutes(fastify: FastifyInstance) {
       await userService.updateAccessibilityPrefs(userId, parsed);
       return { preferences: parsed };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Update accessibility preferences error', { error });
       return reply.status(500).send({ error: 'Internal server error' });
     }

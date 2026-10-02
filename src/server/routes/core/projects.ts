@@ -345,6 +345,8 @@ export async function projectRoutes(fastify: FastifyInstance) {
       teamsEventDispatcher.dispatchToTeams('project.updated', { project }, id);
       return { project };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Update project status error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to update project status' });
     }

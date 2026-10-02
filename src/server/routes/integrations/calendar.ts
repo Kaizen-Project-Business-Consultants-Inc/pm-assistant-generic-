@@ -159,6 +159,8 @@ export async function googleCalendarRoutes(fastify: FastifyInstance) {
       );
       return { message: 'Task linked to calendar' };
     } catch (err) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (err instanceof z.ZodError) throw err;
       logger.error('Link task error', { error: err });
       return reply.status(500).send({ error: 'Failed to link task to calendar' });
     }
@@ -205,6 +207,8 @@ export async function googleCalendarRoutes(fastify: FastifyInstance) {
 
       return { message: 'Settings updated' };
     } catch (err) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (err instanceof z.ZodError) throw err;
       logger.error('Calendar settings error', { error: err });
       return reply.status(500).send({ error: 'Failed to update settings' });
     }

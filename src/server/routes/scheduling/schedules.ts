@@ -184,6 +184,8 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
       return { schedule };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Update schedule error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to update schedule' });
     }
@@ -263,6 +265,8 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       automationEventBus.emit({ type: 'task.created', entityType: 'task', entityId: task.id, projectId: schedule?.projectId || '', userId: user.userId, payload: task, timestamp: new Date().toISOString() }).catch(() => {});
       return reply.status(201).send({ task, rescheduled });
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       if (error instanceof DependencyValidationError) {
         return reply.status(400).send({ error: 'Validation error', message: error.message });
       }
@@ -353,6 +357,8 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
 
       return { task, cascadedChanges, rescheduled };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       if (error instanceof DependencyValidationError) {
         return reply.status(400).send({ error: 'Validation error', message: error.message });
       }

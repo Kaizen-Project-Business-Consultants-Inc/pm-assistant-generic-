@@ -729,6 +729,8 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       return { message: 'If an unverified account with that email exists, a new verification link has been sent.' };
     } catch (error: any) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Resend verification error', { message: error?.message, stack: error?.stack });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to resend verification email' });
     }
@@ -763,6 +765,8 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       return { message: 'If an account with that email exists, a password reset link has been sent.' };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Forgot password error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Password reset request failed' });
     }
@@ -800,6 +804,8 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       return { message: 'Password reset successful. You can now log in with your new password.' };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Reset password error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Password reset failed' });
     }

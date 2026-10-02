@@ -480,6 +480,8 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       }
       return { updated };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Batch status update error', { error });
       return reply.status(500).send({ error: 'Failed to batch update task status' });
     }
@@ -536,6 +538,8 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       queueReviewRerun(body.scheduleId);
       return { deleted: existing.length };
     } catch (error) {
+      // Bad input is the caller's mistake: the app's error handler answers 400 with the field
+      if (error instanceof z.ZodError) throw error;
       logger.error('Bulk delete tasks error', { error });
       return reply.status(500).send({ error: 'Failed to bulk delete tasks' });
     }
