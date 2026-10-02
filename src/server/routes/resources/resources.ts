@@ -786,11 +786,12 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 }
 
-function generateSampleResources() {
+/** Trial accounts' sample people — the same shape as real ones (skills with a level; a person, not a generic role) */
+export function generateSampleResources() {
   return [
     { id: 'sample-r1', name: 'Jane Smith', role: 'Project Manager', email: 'jane@example.com', capacityHoursPerWeek: 40, skills: ['Leadership', 'Agile', 'Risk Management'], isActive: true, costRateHourly: 95 },
     { id: 'sample-r2', name: 'John Doe', role: 'Senior Developer', email: 'john@example.com', capacityHoursPerWeek: 40, skills: ['React', 'TypeScript', 'Node.js'], isActive: true, costRateHourly: 85 },
     { id: 'sample-r3', name: 'Sarah Kim', role: 'QA Engineer', email: 'sarah@example.com', capacityHoursPerWeek: 35, skills: ['Test Automation', 'Selenium', 'Performance Testing'], isActive: true, costRateHourly: 70 },
     { id: 'sample-r4', name: 'Alex Chen', role: 'UX Designer', email: 'alex@example.com', capacityHoursPerWeek: 30, skills: ['Figma', 'User Research', 'Prototyping'], isActive: true, costRateHourly: 75 },
-  ];
+  ].map(r => ({ ...r, skills: normalizeSkills(r.skills), isGeneric: false, lineManagerUserId: null, lineManagerIsDefault: false }));
 }

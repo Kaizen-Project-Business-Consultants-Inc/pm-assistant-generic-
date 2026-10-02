@@ -394,7 +394,8 @@ export function ResourceManagementPage() {
 
   const allSkills = useMemo(() => {
     const names = new Set<string>();
-    resources.forEach(r => { (r.skills || []).forEach(s => { if (s.name.trim()) names.add(s.name.trim()); }); });
+    // a skill is { name, level }; tolerate a bare name (older sample data crashed this page for trial accounts)
+    resources.forEach(r => { (r.skills || []).forEach((s: any) => { const n = String((typeof s === 'string' ? s : s?.name) ?? '').trim(); if (n) names.add(n); }); });
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [resources]);
 
