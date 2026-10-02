@@ -147,3 +147,13 @@ export function daysOfWeek(weekStart: string): string[] {
   const s = new Date(`${weekStart.slice(0, 10)}T00:00:00Z`);
   return Array.from({ length: 7 }, (_, i) => ymdOf(plusDays(s, i)));
 }
+
+/** `ymd` moved by `n` calendar days (negative = earlier) */
+export function addCalendarDays(ymd: string, n: number): string {
+  return ymdOf(plusDays(new Date(`${ymd.slice(0, 10)}T00:00:00Z`), n));
+}
+
+/** Calendar days from `a` to `b` ('YYYY-MM-DD'; negative when b is earlier) */
+export function calendarDaysBetween(a: string, b: string): number {
+  return Math.round((Date.parse(`${b.slice(0, 10)}T00:00:00Z`) - Date.parse(`${a.slice(0, 10)}T00:00:00Z`)) / DAY_MS);
+}

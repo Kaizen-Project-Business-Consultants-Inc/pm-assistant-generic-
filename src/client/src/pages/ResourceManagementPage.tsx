@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, AlertTriangle, ChevronDown, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, Lock, LineChart, Calendar, FileInput } from 'lucide-react';
+import { Users, AlertTriangle, ChevronDown, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, Lock, LineChart, Calendar, CalendarRange, FileInput } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { UtilizationTrendChart } from '../components/resources/UtilizationTrendChart';
 import { CalendarTemplateManager } from '../components/resources/CalendarTemplateManager';
 import { ResourceRequestList } from '../components/resources/ResourceRequestList';
 import { ResourceRequestApprovalPanel } from '../components/resources/ResourceRequestApprovalPanel';
+import { TeamPlanner } from '../components/resources/TeamPlanner';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -113,7 +114,7 @@ function formatWeek(dateStr: string): string {
   return formatCalendarDate(dateStr, { month: 'short', day: 'numeric' });
 }
 
-type TabKey = 'team' | 'workload' | 'histogram' | 'forecast' | 'trends' | 'templates' | 'requests';
+type TabKey = 'team' | 'planner' | 'workload' | 'histogram' | 'forecast' | 'trends' | 'templates' | 'requests';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -127,7 +128,7 @@ export function ResourceManagementPage() {
   const [selectedProjectId, setSelectedProjectId] = useState(tabFromUrl === 'workload' ? '__all__' : '');
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [activeTab, setActiveTab] = useState<TabKey>(
-    tabFromUrl && ['team', 'workload', 'histogram', 'forecast', 'trends', 'templates', 'requests'].includes(tabFromUrl) ? tabFromUrl as TabKey : 'team',
+    tabFromUrl && ['team', 'planner', 'workload', 'histogram', 'forecast', 'trends', 'templates', 'requests'].includes(tabFromUrl) ? tabFromUrl as TabKey : 'team',
   );
   const [showResourceForm, setShowResourceForm] = useState(false);
   // Generic roles ("Generic Developer") have their own small form: a name and a role, no email
@@ -465,6 +466,8 @@ export function ResourceManagementPage() {
         <div className="flex gap-4 sm:gap-6 min-w-max">
           {([
             { key: 'team' as const, label: 'Team', icon: Users },
+            // Team Planner moves work, so it's only for people who can change things (hide, don't disable)
+            ...(canChange ? [{ key: 'planner' as const, label: 'Team Planner', icon: CalendarRange, isNew: true }] : []),
             { key: 'workload' as const, label: 'Workload Heatmap', icon: BarChart3 },
             { key: 'histogram' as const, label: 'Resource Histogram', icon: Clock },
             { key: 'forecast' as const, label: 'Capacity Forecast', icon: TrendingUp },
@@ -480,6 +483,7 @@ export function ResourceManagementPage() {
               <tab.icon className="w-4 h-4" />
               <span className="hidden sm:inline">{tab.label}</span>
               <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
+              {'isNew' in tab && tab.isNew && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-primary-600 text-white text-xs font-semibold leading-none">New</span>}
             </button>
           ))}
         </div>
@@ -1239,6 +1243,9 @@ export function ResourceManagementPage() {
           )}
         </div>
       )}
+
+      {/* Team Planner tab */}
+      {activeTab === 'planner' && canChange && <TeamPlanner />}
 
       {/* Calendar Templates tab */}
       {activeTab === 'templates' && (

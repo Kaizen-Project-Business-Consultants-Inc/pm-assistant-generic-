@@ -62,6 +62,25 @@ describe('ScheduleRecomputeService', () => {
     expect(res.deltas[0]).toMatchObject({ taskId: 'B', movedDays: 7 });
   });
 
+  it('moves: a task put on new dates takes its successors with it, never before its predecessor', async () => {
+    const fs = (id: string) => [{ dependencyId: id, dependencyType: 'FS', lagDays: 0 }];
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-07' });
+    const B = task({ id: 'B', startDate: '2026-10-08', endDate: '2026-10-09', dependencies: fs('A') });
+    const C = task({ id: 'C', startDate: '2026-10-12', endDate: '2026-10-13', dependencies: fs('B') });
+    findTasksByScheduleId.mockResolvedValue([A, B, C]);
+    const { scheduleRecomputeService } = await import('../../services/ScheduleRecomputeService');
+    // B one week later (Thu 15 – Fri 16): C (was Mon 12) must follow to Mon 19 – Tue 20
+    const later = await scheduleRecomputeService.recompute('s1', { onlyFrom: ['B'], dryRun: true, moves: { B: { startDate: '2026-10-15', endDate: '2026-10-16' } } });
+    expect(later.deltas.map(d => [d.taskId, d.oldStart, d.newStart, d.newEnd])).toEqual([
+      ['B', '2026-10-08', '2026-10-15', '2026-10-16'],
+      ['C', '2026-10-12', '2026-10-19', '2026-10-20'],
+    ]);
+    expect(updateDates).not.toHaveBeenCalled(); // dry run
+    // B asked to start Mon 5 (before A finishes Wed 7): it starts Thu 8 — as early as A allows — so nothing moves
+    const earlier = await scheduleRecomputeService.recompute('s1', { onlyFrom: ['B'], dryRun: true, moves: { B: { startDate: '2026-10-05', endDate: '2026-10-06' } } });
+    expect(earlier.deltas).toEqual([]);
+  });
+
   it('with onlyFrom, moves the linked task and its successors but not unrelated violations', async () => {
     const fs = (id: string) => [{ dependencyId: id, dependencyType: 'FS', lagDays: 0 }];
     // Newly linked: B waits on A. C follows B. X waits on W and was ALREADY too early — not our change.

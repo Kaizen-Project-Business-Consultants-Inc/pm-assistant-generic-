@@ -8,7 +8,7 @@ import { calendarService } from './CalendarService';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, finishFor } from '../utils/workingDays';
 
 /** Why dates moved — recorded on every task.reschedule audit entry */
-export type RescheduleReason = 'link_added' | 'schedule_review_fix' | 'undo' | 'calendar_change' | 'days_off_cleanup' | 'ai_reschedule';
+export type RescheduleReason = 'link_added' | 'schedule_review_fix' | 'undo' | 'calendar_change' | 'days_off_cleanup' | 'ai_reschedule' | 'team_planner';
 
 /**
  * One audit entry per moved task (action `task.reschedule`), with before/after dates.
@@ -86,6 +86,12 @@ export interface RecomputeOptions {
   respan?: boolean;
   /** Override the project calendar: `isWorking` = the calendar to plan on, `wasWorking` = the one lengths were planned on */
   calendar?: { isWorking?: IsWorking; wasWorking?: IsWorking };
+  /**
+   * Tasks being moved to new dates as part of this change (Team Planner: "move 1 week later").
+   * Each is put on its new dates first — still no earlier than its predecessors allow — and its
+   * successors follow. Use with `onlyFrom` = these tasks.
+   */
+  moves?: Record<string, { startDate: string; endDate: string }>;
 }
 
 export interface RecomputeResult {
@@ -184,6 +190,14 @@ export class ScheduleRecomputeService {
     const newStart = new Map<string, Date | null>();
     const newEnd = new Map<string, Date | null>();
     for (const n of nodes.values()) { newStart.set(n.id, n.start); newEnd.set(n.id, n.end); }
+    // Moved tasks: plan them from their new dates (deltas still compare with the dates they had)
+    const moved = new Map<string, { start: Date; end: Date }>();
+    for (const [id, m] of Object.entries(opts.moves ?? {})) {
+      const n = nodes.get(id);
+      const ms = parse(m.startDate); const me = parse(m.endDate);
+      if (!n || n.pinned || n.isSummary || !ms || !me) continue;
+      moved.set(id, { start: ms, end: me });
+    }
 
     for (const id of order) {
       const n = nodes.get(id)!;
@@ -217,14 +231,18 @@ export class ScheduleRecomputeService {
       }
 
       // Re-spanning (calendar change / days-off clean-up): a task on a day off moves on
-      const cur = n.start && respan ? onOrAfterWorking(n.start, isWorking) : n.start;
+      const mv = moved.get(id);
+      const cur = mv ? mv.start : n.start && respan ? onOrAfterWorking(n.start, isWorking) : n.start;
       let ns: Date | null;
       if (required && cur) ns = required > cur ? required : cur; // only push later
       else if (required) ns = required;
       else ns = cur;
       if (!ns) continue; // nothing to anchor from
       // Not pushed: keep its dates exactly as they are (unless re-spanning to a new calendar)
-      if (!respan && cur && n.end && ns.getTime() === cur.getTime()) continue;
+      if (!respan && cur && n.end && ns.getTime() === cur.getTime()) {
+        if (mv) { newStart.set(id, mv.start); newEnd.set(id, mv.end); }
+        continue;
+      }
 
       newStart.set(id, ns);
       newEnd.set(id, finishFor(ns, dur, isWorking));

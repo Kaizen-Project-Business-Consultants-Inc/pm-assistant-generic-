@@ -1306,6 +1306,24 @@ class ApiService {
     return response.data as { replaced: number; changeId: string | null };
   }
 
+  /** Team Planner: everyone on the viewer's projects, week by week, across all their work */
+  async getTeamPlanner(from: string, weeks = 8) {
+    const response = await this.api.get('/resources/planner', { params: { from, weeks } });
+    return response.data as import('../types/teamPlanner').PlannerBoard;
+  }
+
+  /** What a Team Planner drop would do — nothing is saved */
+  async checkPlannerMove(body: import('../types/teamPlanner').PlannerMoveInput) {
+    const response = await this.api.post('/resources/planner/check', body);
+    return response.data as import('../types/teamPlanner').PlannerPreview;
+  }
+
+  /** Apply a Team Planner drop — one Schedule History change, undoable */
+  async plannerMove(body: import('../types/teamPlanner').PlannerMoveInput) {
+    const response = await this.api.post('/resources/planner/move', body);
+    return response.data as { changeId: string | null; summary: string };
+  }
+
   async getResourceWorkload(projectId: string) {
     const response = await this.api.get(`/resources/workload/${projectId}`);
     return response.data;

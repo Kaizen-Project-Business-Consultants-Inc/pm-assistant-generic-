@@ -24,6 +24,7 @@ import { TASK_STATUS_LABEL } from '../constants/taskStatus';
  *  - calendar      put the dates back (a working-calendar change, or the days-off clean-up;
  *                  the calendar itself stays as it is)
  *  - reassign      the old resource back on the tasks ("Replace Generic Developer with …")
+ *  - planner_move  a Team Planner drop: the person back, the dates (and hours bookings) back
  * Bulk delete and import are not covered yet.
  *
  * Product owner, 2026-10-01: History is a RECORD. Each entry says what it did, before -> after.
@@ -32,7 +33,7 @@ import { TASK_STATUS_LABEL } from '../constants/taskStatus';
  * built on it stays. There is no "undo anyway".
  */
 
-export type ChangeKind = 'link' | 'bulk_update' | 'bulk_status' | 'bulk_create' | 'review_fix' | 'ai_reschedule' | 'group' | 'calendar' | 'reassign';
+export type ChangeKind = 'link' | 'bulk_update' | 'bulk_status' | 'bulk_create' | 'review_fix' | 'ai_reschedule' | 'group' | 'calendar' | 'reassign' | 'planner_move';
 
 /** Columns bulk update may change — the only ones we read before and write back on undo */
 export const BULK_UPDATE_COLUMNS: Record<string, string> = {
@@ -266,6 +267,11 @@ class ChangeHistoryService {
         restored = await resourceReplaceService.undo(scheduleId, payload);
         break;
       }
+      case 'planner_move': {
+        const { teamPlannerService } = await import('./TeamPlannerService');
+        restored = await teamPlannerService.undo(scheduleId, payload);
+        break;
+      }
       default:
         throw new ChangeStateError(`Cannot undo a "${row.kind}" change`);
     }
@@ -383,6 +389,17 @@ async function describeChange(input: RecordInput): Promise<string[]> {
         'SELECT id, name FROM resources WHERE id IN (?, ?)', [undo.fromId ?? '', undo.toId ?? '']);
       const who = (id: string) => people.find((p: any) => p.id === id)?.name ?? 'someone';
       for (const id of ids) lines.push(`${nameOf(id)}: ${who(undo.fromId)} → ${who(undo.toId)}`);
+      break;
+    }
+    case 'planner_move': {
+      const r = undo.reassign;
+      if (r) {
+        const people = await databaseService.query<any>(
+          'SELECT id, name FROM resources WHERE id IN (?, ?)', [r.fromId ?? '', r.toId ?? '']);
+        const who = (id: string | null) => (id ? people.find((p: any) => p.id === id)?.name ?? 'someone' : 'no one');
+        lines.push(`${nameOf(ids[0])}: ${who(r.fromId)} → ${who(r.toId)}`);
+      }
+      moved(undo.moved ?? []);
       break;
     }
   }

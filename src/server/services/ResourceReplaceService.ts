@@ -14,7 +14,8 @@ import logger from '../utils/logger';
  */
 
 export interface ReplaceUndo {
-  fromId: string;
+  /** null: the task had no one (Team Planner's "No one assigned" lane) — undo empties it again */
+  fromId: string | null;
   toId: string;
   /** task_assignments rows moved from → to (undo moves them back) */
   movedPeople: string[];
@@ -57,40 +58,7 @@ export class ResourceReplaceService {
     const taskIds = onPlan.map((t) => t.taskId).filter((id) => !wanted || wanted.has(id));
     if (taskIds.length === 0) return { replaced: 0, changeId: null };
 
-    const undo: ReplaceUndo = { fromId: from.id, toId: to.id, movedPeople: [], removedPeople: [], assignedTo: [], movedBookings: [] };
-    await databaseService.transaction(async (conn) => {
-      const ph = placeholders(taskIds.length);
-      const people = await databaseService.queryOn<any>(conn,
-        `SELECT ta.*, EXISTS (SELECT 1 FROM task_assignments x WHERE x.task_id = ta.task_id AND x.resource_id = ?) AS already
-           FROM task_assignments ta WHERE ta.resource_id = ? AND ta.task_id IN (${ph})`,
-        [to.id, from.id, ...taskIds]);
-      for (const p of people) {
-        if (Number(p.already)) {
-          // The new person is already on this task: one line for them is enough
-          await databaseService.queryOn(conn, 'DELETE FROM task_assignments WHERE id = ?', [p.id]);
-          undo.removedPeople.push({ id: p.id, task_id: p.task_id, allocation_pct: Number(p.allocation_pct), role_on_task: p.role_on_task ?? null, hours_planned: p.hours_planned != null ? Number(p.hours_planned) : null });
-        } else {
-          await databaseService.queryOn(conn, 'UPDATE task_assignments SET resource_id = ? WHERE id = ?', [to.id, p.id]);
-          undo.movedPeople.push(p.id);
-        }
-      }
-      const owned = await databaseService.queryOn<{ id: string }>(conn,
-        `SELECT id FROM tasks WHERE assigned_to = ? AND id IN (${ph})`, [from.id, ...taskIds]);
-      undo.assignedTo = owned.map((r) => r.id);
-      if (undo.assignedTo.length) {
-        await databaseService.queryOn(conn,
-          `UPDATE tasks SET assigned_to = ? WHERE id IN (${placeholders(undo.assignedTo.length)})`, [to.id, ...undo.assignedTo]);
-      }
-      const bookings = await databaseService.queryOn<{ id: string }>(conn,
-        `SELECT id FROM resource_assignments WHERE resource_id = ? AND schedule_id = ? AND task_id IN (${ph})`, [from.id, input.scheduleId, ...taskIds]);
-      undo.movedBookings = bookings.map((r) => r.id);
-      if (undo.movedBookings.length) {
-        await databaseService.queryOn(conn,
-          `UPDATE resource_assignments SET resource_id = ? WHERE id IN (${placeholders(undo.movedBookings.length)})`, [to.id, ...undo.movedBookings]);
-      }
-      // The plan changed: History's "nothing changed since" check and caches key off this
-      await databaseService.queryOn(conn, `UPDATE tasks SET updated_at = NOW() WHERE id IN (${ph})`, taskIds);
-    });
+    const undo = await this.swap(input.scheduleId, from.id, to.id, taskIds);
 
     const changeId = await changeHistoryService.record({
       projectId: input.projectId,
@@ -115,7 +83,64 @@ export class ResourceReplaceService {
     return { replaced: taskIds.length, changeId };
   }
 
-  /** History's Undo for a 'reassign' change: everything back to the old resource */
+  /**
+   * Move one resource's place on these tasks to another (people + %, "Assigned to", hours
+   * bookings) in one transaction, and return what Undo needs. Records nothing — callers do
+   * (Replace records a 'reassign' change; the Team Planner its own 'planner_move').
+   */
+  async swap(scheduleId: string, fromId: string, toId: string, taskIds: string[]): Promise<ReplaceUndo> {
+    const undo: ReplaceUndo = { fromId, toId, movedPeople: [], removedPeople: [], assignedTo: [], movedBookings: [] };
+    if (taskIds.length === 0) return undo;
+    await databaseService.transaction(async (conn) => {
+      const ph = placeholders(taskIds.length);
+      const people = await databaseService.queryOn<any>(conn,
+        `SELECT ta.*, EXISTS (SELECT 1 FROM task_assignments x WHERE x.task_id = ta.task_id AND x.resource_id = ?) AS already
+           FROM task_assignments ta WHERE ta.resource_id = ? AND ta.task_id IN (${ph})`,
+        [toId, fromId, ...taskIds]);
+      for (const p of people) {
+        if (Number(p.already)) {
+          // The new person is already on this task: one line for them is enough
+          await databaseService.queryOn(conn, 'DELETE FROM task_assignments WHERE id = ?', [p.id]);
+          undo.removedPeople.push({ id: p.id, task_id: p.task_id, allocation_pct: Number(p.allocation_pct), role_on_task: p.role_on_task ?? null, hours_planned: p.hours_planned != null ? Number(p.hours_planned) : null });
+        } else {
+          await databaseService.queryOn(conn, 'UPDATE task_assignments SET resource_id = ? WHERE id = ?', [toId, p.id]);
+          undo.movedPeople.push(p.id);
+        }
+      }
+      const owned = await databaseService.queryOn<{ id: string }>(conn,
+        `SELECT id FROM tasks WHERE assigned_to = ? AND id IN (${ph})`, [fromId, ...taskIds]);
+      undo.assignedTo = owned.map((r) => r.id);
+      if (undo.assignedTo.length) {
+        await databaseService.queryOn(conn,
+          `UPDATE tasks SET assigned_to = ? WHERE id IN (${placeholders(undo.assignedTo.length)})`, [toId, ...undo.assignedTo]);
+      }
+      const bookings = await databaseService.queryOn<{ id: string }>(conn,
+        `SELECT id FROM resource_assignments WHERE resource_id = ? AND schedule_id = ? AND task_id IN (${ph})`, [fromId, scheduleId, ...taskIds]);
+      undo.movedBookings = bookings.map((r) => r.id);
+      if (undo.movedBookings.length) {
+        await databaseService.queryOn(conn,
+          `UPDATE resource_assignments SET resource_id = ? WHERE id IN (${placeholders(undo.movedBookings.length)})`, [toId, ...undo.movedBookings]);
+      }
+      // The plan changed: History's "nothing changed since" check and caches key off this
+      await databaseService.queryOn(conn, `UPDATE tasks SET updated_at = NOW() WHERE id IN (${ph})`, taskIds);
+    });
+    return undo;
+  }
+
+  /** Put someone on a task that had no one ("No one assigned" lane): it becomes their task at 100% */
+  async assign(scheduleId: string, taskId: string, toId: string): Promise<ReplaceUndo> {
+    const undo: ReplaceUndo = { fromId: null, toId, movedPeople: [], removedPeople: [], assignedTo: [], movedBookings: [] };
+    await databaseService.transaction(async (conn) => {
+      const free = await databaseService.queryOn<{ id: string }>(conn,
+        `SELECT id FROM tasks WHERE id = ? AND schedule_id = ? AND (assigned_to IS NULL OR assigned_to = '') FOR UPDATE`, [taskId, scheduleId]);
+      if (free.length === 0) throw new ResourceValidationError('Someone was put on this task meanwhile. Refresh and try again.');
+      await databaseService.queryOn(conn, 'UPDATE tasks SET assigned_to = ?, updated_at = NOW() WHERE id = ?', [toId, taskId]);
+      undo.assignedTo.push(taskId);
+    });
+    return undo;
+  }
+
+  /** History's Undo for a 'reassign' change: everything back to the old resource (or no one, after an assign) */
   async undo(scheduleId: string, u: ReplaceUndo): Promise<number> {
     const taskIds = new Set<string>();
     await databaseService.transaction(async (conn) => {

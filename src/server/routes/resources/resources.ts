@@ -16,6 +16,7 @@ import { databaseService } from '../../database/connection';
 import { inviteService } from '../../services/InviteService';
 import { taskAssignmentService } from '../../services/TaskAssignmentService';
 import { resourceReplaceService } from '../../services/ResourceReplaceService';
+import { teamPlannerService } from '../../services/TeamPlannerService';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
 import { utcDay, mondayOf } from '../../utils/workingDays';
@@ -157,6 +158,21 @@ const scheduleQueryPM = requireProjectAccess('manager', {
 });
 const bodySchedulePM = requireProjectAccess('manager', {
   resolve: async (req) => projectsOfSchedules([(req.body as { scheduleId?: string } | undefined)?.scheduleId]),
+});
+
+// Team Planner drops: the PM of the dragged task's project
+const plannerTaskPM = requireProjectAccess('manager', {
+  resolve: async (req) => {
+    const taskId = (req.body as { taskId?: unknown } | undefined)?.taskId;
+    return typeof taskId === 'string' && taskId ? teamPlannerService.projectOfTask(taskId) : null;
+  },
+});
+
+const plannerMoveSchema = z.object({
+  taskId: z.string().min(1),
+  fromResourceId: z.string().min(1).nullable(),
+  toResourceId: z.string().min(1).nullable(),
+  weeks: z.number().int().min(-52).max(52),
 });
 
 export async function resourceRoutes(fastify: FastifyInstance) {
@@ -302,6 +318,41 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       });
     } catch (error) {
       if (error instanceof ResourceValidationError) return reply.status(400).send({ error: 'Not replaced', message: error.message });
+      throw error;
+    }
+  });
+
+  // GET /resources/planner?from=YYYY-MM-DD&weeks=8 — Team Planner: everyone on the viewer's
+  // projects, week by week, across all their work (only projects the viewer manages; other
+  // projects' work is hours only, named only if the viewer can open that project)
+  fastify.get('/planner', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { from, weeks } = request.query as { from?: string; weeks?: string };
+    if (from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) return reply.status(400).send({ error: 'Validation error', message: 'from must be a date (YYYY-MM-DD)' });
+    const start = from ?? new Date().toISOString().slice(0, 10);
+    return teamPlannerService.board(request.user!, start, Number(weeks) || 8);
+  });
+
+  // POST /resources/planner/check — what a drop would do (nothing is saved)
+  fastify.post('/planner/check', { preHandler: [requireScope('read'), plannerTaskPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const parsed = plannerMoveSchema.safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Validation error', message: 'Send taskId, fromResourceId, toResourceId and weeks' });
+    try {
+      return await teamPlannerService.preview(parsed.data);
+    } catch (error) {
+      if (error instanceof ResourceValidationError) return reply.status(400).send({ error: 'Not possible', message: error.message });
+      throw error;
+    }
+  });
+
+  // POST /resources/planner/move — apply a drop: one Schedule History change, undoable
+  fastify.post('/planner/move', { preHandler: [requireScope('write'), requireFeature('resources'), plannerTaskPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const parsed = plannerMoveSchema.safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Validation error', message: 'Send taskId, fromResourceId, toResourceId and weeks' });
+    try {
+      const { changeId, summary } = await teamPlannerService.apply(parsed.data);
+      return { changeId, summary };
+    } catch (error) {
+      if (error instanceof ResourceValidationError) return reply.status(400).send({ error: 'Not moved', message: error.message });
       throw error;
     }
   });

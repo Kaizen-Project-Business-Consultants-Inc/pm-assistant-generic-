@@ -65,7 +65,7 @@ const READ_OK: Record<string, string[]> = {
   'core/projectGroups.ts': ['/'],
   'reporting/reportBuilder.ts': ['/templates', '/templates/:id'], // report layouts; data is filtered when generated
   // The resource pool: hours and capacity only (other projects' names/costs are hidden in the handlers)
-  'resources/resources.ts': ['/', '/skills', '/by-skill', '/:id/delete-impact', '/:id/utilization-history', '/capacity-by-role'],
+  'resources/resources.ts': ['/', '/skills', '/by-skill', '/:id/delete-impact', '/:id/utilization-history', '/capacity-by-role', '/planner'], // planner: only projects the viewer manages, others hours-only unless readable (TeamPlannerService)
   'resources/rateCard.ts': ['/'], // company rate card, not project data; rate-card managers only
   'resources/availability.ts': ['/:resourceId/availability'],
   'resources/calendarTemplates.ts': ['/', '/:id'],
@@ -87,6 +87,7 @@ const READ_OK: Record<string, string[]> = {
 /** Reads sent as POSTs: each must check the project it reads */
 const READ_POSTS: Array<[string, string, string]> = [
   ['resources/resources.ts', '/load-check', 'readableProjectIds'],
+  ['resources/resources.ts', '/planner/check', 'plannerTaskPM'],
   ['ai/nlQuery.ts', '/', 'checkProjectRole'],
   ['ai/rag.ts', '/search', 'readableFor'],
   ['ai/aiChat.ts', '/message', 'chatContextMember'],

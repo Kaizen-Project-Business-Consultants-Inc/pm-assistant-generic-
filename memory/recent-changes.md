@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-02 (d) — Team Planner
+
+- **Resources → Team Planner** (PMs): people × weeks, all projects counted; drag a task to another person or week; check before saving (hours before → after, dates, linked tasks, finish shift, cost, logged hours stay); one History change (`planner_move`), undoable. Overload warns, never refuses (user, 2026-10-02). Team members/viewers/executives don't get the tab.
+- `ScheduleRecomputeService.recompute` takes `moves` (put tasks on new dates, successors follow, never before a predecessor). `ResourceReplaceService.swap/assign` split out of `replace`.
+- **Known gap, not fixed:** hours bookings (`resource_assignments`) don't follow their task when its dates change elsewhere (Gantt drag, link re-flow). The planner moves them; other paths don't.
+
 ## 2026-10-02 (c) — the two older issues
 
 - **Template link gaps**: `lagDays` on a template task's main link (was: `offsetDays` on a linked task silently ignored, so "SS + 15" was SS + 0). 28 built-in links converted, capped at 10 (R17 long-lag rule); Save as template stores the first link's lag. Old saved templates: offset on a linked task still means "absolute position", ignored as before.

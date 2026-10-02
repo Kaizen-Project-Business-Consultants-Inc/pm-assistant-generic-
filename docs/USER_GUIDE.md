@@ -864,6 +864,19 @@ Every resource is either a **person** or a **generic role**.
 
 **Resource Histogram and Level Resources (Sep 2026)** use the same bookings as the Workload Heatmap, by working day: each person's hours per day (a % on the task, Assigned To at 100%, hours bookings — weekly hours ÷ 5, Monday–Friday), including their other live projects, against their own day (weekly capacity ÷ 5, lower in a week with time off). People are shown by name. **Level Resources** delays non-critical tasks within their float, choosing the smallest delay that clears the most over-capacity days; work on other projects never moves. Tasks that still overload someone get a suggested replacement with matching skills **and room on those days**.
 
+### Team Planner (October 2026)
+
+**Resources → Team Planner** (marked *New*) shows everyone on the projects you manage down the side and the weeks across — like Microsoft Project's Team Planner. Each person's row adds up **all** their work, on every project, at their real weekly hours (working days only), so you see straight away who is over in which week (a red "48h · over by 8h").
+
+- **Blocks** are the tasks each person is on, coloured by project. Work on projects that aren't yours is grey and can't be moved; you only see its name if you can open that project.
+- **No one assigned** (top lane) lists open tasks on your projects with nobody on them. **Generic roles** show their work as dashed blocks — work that still needs a person.
+- **Drag a block up or down** onto another person to give it to them. **Drag it left or right** to move it to another week. Dropping a task with no one on a person gives it to them.
+- **Nothing changes until you confirm.** A check shows both people's weeks before → after, the new dates (same number of working days), which tasks linked after it move too, whether the project finishes later, the planned cost at the new person's rate, and that hours already logged stay with the person who did them. If someone would go over their hours you're warned, but you can still make the move.
+- A task that has started can be given to someone else, but its dates stay. A task can't move earlier than the task it waits for allows.
+- Every move is saved in the schedule's **History** with **Undo** (the Undo button also appears right after the move).
+- **Keyboard:** Tab to a block and press Enter — the same check opens, and you pick the person and the week there. Use ‹ › to see earlier or later weeks, and *Projects* to look at one project.
+- Only people who manage projects see the Team Planner; team members and viewers don't.
+
 ### Workload Heatmap
 
 The workload heatmap shows resource utilization across time. It counts every way a person is booked (September 2026): a person and % on a task (50% of a 40-hour week is 20 hours), the task's **Assigned to** person (100%), and hours-per-week bookings made here. One booking per task and person — an hours booking wins over a %, a % over Assigned to. Headings, milestones, undated tasks, archived projects and the sample project don't count.
