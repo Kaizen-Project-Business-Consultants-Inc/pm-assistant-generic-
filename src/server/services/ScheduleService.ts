@@ -84,6 +84,11 @@ export interface Task {
   dependencyLagDays?: number;
   budgetAllocated?: number;
   actualCost?: number;
+  /** From approved timesheets (never typed): hours and their cost at each person's rate */
+  labourHours?: number;
+  labourCost?: number;
+  /** Typed-in costs (vendors, materials); actualCost = labourCost + otherCost */
+  otherCost?: number;
   isSummary?: boolean;
   constraintType?: 'ASAP' | 'ALAP' | 'SNET' | 'SNLT' | 'FNET' | 'FNLT' | 'MSO' | 'MFO';
   constraintDate?: string;
@@ -894,6 +899,7 @@ export class ScheduleService {
       createdBy: 'created_by',
       budgetAllocated: 'budget_allocated',
       actualCost: 'actual_cost',
+      otherCost: 'other_cost',
       constraintType: 'constraint_type',
       constraintDate: 'constraint_date',
       workHours: 'work_hours',
@@ -901,6 +907,24 @@ export class ScheduleService {
     };
 
     const toDateStr = TaskRepository.toDateStr;
+
+    // Cost = labour (approved timesheets, never typed) + other costs. A typed actual cost (the
+    // task form, the API) sets the other costs to what's over the labour.
+    delete (data as any).labourCost;
+    delete (data as any).labourHours;
+    if ((data as any).otherCost !== undefined || data.actualCost !== undefined) {
+      const labour = oldTask.labourCost ?? 0;
+      const typed = (data as any).otherCost !== undefined ? (data as any).otherCost : data.actualCost;
+      if (typed === null && labour === 0) {
+        (data as any).otherCost = null; data.actualCost = null as any;
+      } else {
+        const other = (data as any).otherCost !== undefined
+          ? Math.max(0, Number((data as any).otherCost) || 0)
+          : Math.max(0, (Number(data.actualCost) || 0) - labour);
+        (data as any).otherCost = other;
+        data.actualCost = Math.round((other + labour) * 100) / 100;
+      }
+    }
 
     // Auto-compute endDate when startDate + estimatedDays are known but endDate is missing
     const effectiveStart = data.startDate ?? oldTask.startDate;

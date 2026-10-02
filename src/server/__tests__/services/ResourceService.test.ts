@@ -715,8 +715,12 @@ describe('ResourceService', () => {
       ]);
 
       const result = await service.computeWorkload('p1');
+      // This project's approved hours only — not the person's time on other projects
       expect(mockTimeEntryRepo.sumHoursByUserAndWeekRange).toHaveBeenCalledWith(
-        'u1', expect.any(String), expect.any(String),
+        'u1', expect.any(String), expect.any(String), 'p1',
+      );
+      expect(mockTimeEntryRepo.sumHoursByRateTypeAndWeekRange).toHaveBeenCalledWith(
+        'u1', expect.any(String), expect.any(String), 'p1',
       );
 
       // Check that actual hours are populated for the relevant week

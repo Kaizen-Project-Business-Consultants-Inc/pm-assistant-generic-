@@ -492,10 +492,12 @@ export class ResourceService {
       if (resource.userId) {
         const firstWeek = weeks[0].toISOString().slice(0, 10);
         const lastWeekEnd = new Date(weeks[weeks.length - 1].getTime() + WEEK_MS).toISOString().slice(0, 10);
-        const actuals = await timeEntryRepository.sumHoursByUserAndWeekRange(resource.userId, firstWeek, lastWeekEnd);
+        // This project's approved hours and their cost — not the person's other projects (it used
+        // to take all their time, so a project's cost included work logged elsewhere)
+        const actuals = await timeEntryRepository.sumHoursByUserAndWeekRange(resource.userId, firstWeek, lastWeekEnd, projectId);
         actualByWeek = new Map(actuals.map(a => [a.weekStart, a.totalHours]));
         // Fetch rate-type breakdown for cost calculation
-        const rateBreakdown = await timeEntryRepository.sumHoursByRateTypeAndWeekRange(resource.userId, firstWeek, lastWeekEnd);
+        const rateBreakdown = await timeEntryRepository.sumHoursByRateTypeAndWeekRange(resource.userId, firstWeek, lastWeekEnd, projectId);
         rateByWeek = new Map(rateBreakdown.map(r => [r.weekStart, { standard: r.standardHours, overtime: r.overtimeHours }]));
       }
 

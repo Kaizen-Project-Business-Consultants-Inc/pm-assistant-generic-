@@ -138,6 +138,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
 
   const budgetAllocated = project?.budgetAllocated || project?.budget_allocated || 0;
   const budgetSpent = project?.budgetSpent || project?.budget_spent || 0;
+  const labourCost: number = project?.labourCost || 0;
   const currency = project?.currency || 'USD';
 
   const { data: expensesData, isLoading: expensesLoading } = useQuery({
@@ -301,6 +302,10 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Spent</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalSpend, currency)}</p>
+              {/* Labour comes from approved timesheets; other costs are typed in; expenses below */}
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                Labour (approved time) {formatCurrency(labourCost, currency)} · other costs {formatCurrency(Math.max(0, budgetSpent - labourCost), currency)}{totalExpenses > 0 ? ` · expenses ${formatCurrency(totalExpenses, currency)}` : ''}
+              </p>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Remaining</p>

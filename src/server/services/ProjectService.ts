@@ -26,7 +26,10 @@ export interface Project {
   status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   budgetAllocated?: number;
+  /** Total spent: labourCost (approved timesheets) + otherCosts (typed in) */
   budgetSpent: number;
+  labourCost?: number;
+  otherCosts?: number;
   currency: string;
   location?: string;
   locationLat?: number;
@@ -164,6 +167,18 @@ export class ProjectService {
       }
     }
 
+    // Spending = labour (from approved timesheets, never typed) + other costs. A typed total
+    // (budgetSpent, from older screens and the API) sets the other costs to what's over labour.
+    data = { ...data };
+    delete (data as any).labourCost;
+    if ((data as any).otherCosts !== undefined || data.budgetSpent !== undefined) {
+      const labour = existing.labourCost ?? 0;
+      const other = (data as any).otherCosts !== undefined
+        ? Math.max(0, Number((data as any).otherCosts) || 0)
+        : Math.max(0, (Number(data.budgetSpent) || 0) - labour);
+      (data as any).otherCosts = other;
+      data.budgetSpent = Math.round((other + labour) * 100) / 100;
+    }
     const updated = await projectRepository.update(id, data as Record<string, any>);
     if (!updated) return existing; // no fields to update
 

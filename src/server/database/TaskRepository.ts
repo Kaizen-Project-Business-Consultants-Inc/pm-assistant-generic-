@@ -50,7 +50,11 @@ function rowToTask(row: any): Task {
     isMilestone: row.is_milestone === 1 || row.is_milestone === true,
     dependencyLagDays: row.dependency_lag_days != null ? Number(row.dependency_lag_days) : 0,
     budgetAllocated: row.budget_allocated != null ? Number(row.budget_allocated) : undefined,
+    // Actual cost = labour from approved timesheets + other costs (typed in) — T072
     actualCost: row.actual_cost != null ? Number(row.actual_cost) : undefined,
+    labourHours: row.labour_hours != null ? Number(row.labour_hours) : 0,
+    labourCost: row.labour_cost != null ? Number(row.labour_cost) : 0,
+    otherCost: row.other_cost != null ? Number(row.other_cost) : (row.actual_cost != null ? Number(row.actual_cost) : undefined),
     isSummary: row.is_summary === 1 || row.is_summary === true,
     constraintType: row.constraint_type || 'ASAP',
     constraintDate: row.constraint_date ? String(row.constraint_date).slice(0, 10) : undefined,

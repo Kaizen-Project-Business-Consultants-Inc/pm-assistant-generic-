@@ -1305,6 +1305,18 @@ Each time log entry records:
 3. Click **Approve week**, or type a reason and click **Send back to <name>**. The person is notified either way.
 4. You can't approve your own timesheet (only the company owner, who has no one above them).
 
+### What approval does to the plan and the budget
+
+When a line manager approves a week, every task it touched is updated straight away:
+
+- **Labour** — the approved hours, each at the person's rate on the day it was worked (their own rate or the rate card; overtime at the overtime rate).
+- **Actual cost** = labour + **other costs** (whatever was typed in: vendors, materials, licences). In the task form the box is now **Other costs**, with the labour shown underneath — nothing you typed before is lost; it became the other costs.
+- **% complete** = approved hours ÷ planned hours, stopping at **99%** until the task is marked done. Tasks with no planned hours (milestones, unassigned work) keep the % you type.
+- A task that hadn't started moves to **In progress**, and its **actual start** is the first day worked.
+- The project's **Total Spent** (Financials) = labour + other costs + expenses, with the split shown under the figure.
+
+Only approved hours count — hours still waiting for approval aren't in any cost, budget or workload "actual".
+
 ### Hours waiting for approval (PMs)
 
 On a project's **Time** tab, its PM sees **Waiting for approval**: who has hours on this project waiting, by week, against the hours planned. Only this project's hours are shown — never the person's other projects. Hours waiting aren't in the project's costs until approved. Click **Flag this line** to send the line manager a note (e.g. "these 2 h belong to Data cleanup") before they decide.

@@ -328,6 +328,7 @@ const sections: Section[] = [
       'Type hours into each day; "Task so far" (time left, %) is worked out for you from approved hours',
       'Click "Submit week" — it goes to your line manager, who approves or sends it back with a reason',
       'Line managers: Timesheets → To approve. PMs: the project Time tab shows hours waiting, and "Flag this line"',
+      'Approving updates each task: labour cost at the person\'s rate, % complete (stops at 99% until done), actual start; project spend = labour + other costs',
       'Use prev/next arrows to move between weeks',
       'Switch to "Project Summary" tab to see actual vs. estimated hours per task',
     ],

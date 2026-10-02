@@ -5,6 +5,7 @@ import { scheduleService } from './ScheduleService';
 import { projectMemberService } from './ProjectMemberService';
 import { notificationService } from './NotificationService';
 import { hoursInWeek, calendarsFor } from './weeklyLoad';
+import { approvedTimeService } from './ApprovedTimeService';
 import { mondayOf, weekEndOf, workingDaysBetween, daysOfWeek } from '../utils/workingDays';
 import { getRequestContext } from '../middleware/requestContext';
 import logger from '../utils/logger';
@@ -275,6 +276,12 @@ export class WeeklyTimesheetService {
       }
       await databaseService.queryOn(conn, `UPDATE timesheets SET status = 'approved', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?`, [reviewerId, sheetId]);
     });
+    // The plan and budgets follow the approved hours: task labour, cost, % and start; project spend
+    if (entries.length) {
+      const touched = await databaseService.query<{ task_id: string }>(
+        `SELECT DISTINCT task_id FROM time_entries WHERE id IN (${ph(entries.length)})`, entries.map(e => e.id));
+      await approvedTimeService.applyToTasks(touched.map(t => t.task_id));
+    }
     notificationService.create({
       userId: row.user_id, type: 'timesheet_approved', severity: 'low',
       title: 'Timesheet approved', message: `Your timesheet for the week of ${weekStart} has been approved.`,

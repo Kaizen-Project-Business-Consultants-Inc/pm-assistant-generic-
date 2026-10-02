@@ -123,15 +123,19 @@ class TimeEntryRepository {
     return rows.map(rowToDTO);
   }
 
-  async sumHoursByUserAndWeekRange(userId: string, startDate: string, endDate: string): Promise<{ weekStart: string; totalHours: number }[]> {
+  /**
+   * A person's APPROVED hours per week (2026-10-02: only approved time counts; drafts and hours
+   * waiting for approval don't). `projectId` limits it to one project.
+   */
+  async sumHoursByUserAndWeekRange(userId: string, startDate: string, endDate: string, projectId?: string): Promise<{ weekStart: string; totalHours: number }[]> {
     const rows = await databaseService.query(
       `SELECT DATE_SUB(date, INTERVAL ((DAYOFWEEK(date) + 5) % 7) DAY) AS week_start,
               SUM(hours) AS total_hours
        FROM time_entries
-       WHERE user_id = ? AND date >= ? AND date < ?
+       WHERE user_id = ? AND date >= ? AND date < ? AND status = 'approved'${projectId ? ' AND project_id = ?' : ''}
        GROUP BY week_start
        ORDER BY week_start`,
-      [userId, startDate, endDate],
+      projectId ? [userId, startDate, endDate, projectId] : [userId, startDate, endDate],
     );
     return rows.map((r: any) => ({
       weekStart: String(r.week_start).slice(0, 10),
@@ -155,16 +159,17 @@ class TimeEntryRepository {
     }));
   }
 
-  async sumHoursByRateTypeAndWeekRange(userId: string, startDate: string, endDate: string): Promise<{ weekStart: string; standardHours: number; overtimeHours: number }[]> {
+  /** Approved hours per week split by rate type; `projectId` limits it to one project (its cost is its own) */
+  async sumHoursByRateTypeAndWeekRange(userId: string, startDate: string, endDate: string, projectId?: string): Promise<{ weekStart: string; standardHours: number; overtimeHours: number }[]> {
     const rows = await databaseService.query(
       `SELECT DATE_SUB(date, INTERVAL ((DAYOFWEEK(date) + 5) % 7) DAY) AS week_start,
               SUM(CASE WHEN COALESCE(rate_type, 'standard') = 'standard' THEN hours ELSE 0 END) AS standard_hours,
               SUM(CASE WHEN rate_type = 'overtime' THEN hours ELSE 0 END) AS overtime_hours
        FROM time_entries
-       WHERE user_id = ? AND date >= ? AND date < ?
+       WHERE user_id = ? AND date >= ? AND date < ? AND status = 'approved'${projectId ? ' AND project_id = ?' : ''}
        GROUP BY week_start
        ORDER BY week_start`,
-      [userId, startDate, endDate],
+      projectId ? [userId, startDate, endDate, projectId] : [userId, startDate, endDate],
     );
     return rows.map((r: any) => ({
       weekStart: String(r.week_start).slice(0, 10),

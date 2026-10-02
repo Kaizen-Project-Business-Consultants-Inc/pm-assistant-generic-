@@ -19,7 +19,10 @@ function rowToProject(row: any): Project {
     status: row.status,
     priority: row.priority,
     budgetAllocated: row.budget_allocated != null ? Number(row.budget_allocated) : undefined,
+    // Total spent = labour from approved timesheets + other costs (typed in) — T072
     budgetSpent: Number(row.budget_spent),
+    labourCost: row.labour_cost != null ? Number(row.labour_cost) : 0,
+    otherCosts: row.other_costs != null ? Number(row.other_costs) : Number(row.budget_spent ?? 0),
     currency: row.currency,
     location: row.location ?? undefined,
     locationLat: row.location_lat != null ? Number(row.location_lat) : undefined,
@@ -49,6 +52,7 @@ const PROJECT_COLUMN_MAP: Record<string, string> = {
   priority: 'priority',
   budgetAllocated: 'budget_allocated',
   budgetSpent: 'budget_spent',
+  otherCosts: 'other_costs',
   currency: 'currency',
   location: 'location',
   locationLat: 'location_lat',

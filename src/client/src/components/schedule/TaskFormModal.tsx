@@ -52,7 +52,8 @@ export interface TaskFormData {
   isMilestone: boolean;
   predecessors: PredecessorEntry[];
   budgetAllocated: string;
-  actualCost: string;
+  /** Typed-in costs (vendors, materials). Labour comes from approved timesheets. */
+  otherCost: string;
   constraintType: string;
   constraintDate: string;
   workHours: string;
@@ -231,7 +232,7 @@ export function TaskFormModal({
     isMilestone: false,
     predecessors: [],
     budgetAllocated: '',
-    actualCost: '',
+    otherCost: '',
     constraintType: 'ASAP',
     constraintDate: '',
     workHours: '',
@@ -273,7 +274,7 @@ export function TaskFormModal({
         isMilestone: task.isMilestone || false,
         predecessors: deps,
         budgetAllocated: task.budgetAllocated != null ? String(task.budgetAllocated) : '',
-        actualCost: task.actualCost != null ? String(task.actualCost) : '',
+        otherCost: (task as any).otherCost != null ? String((task as any).otherCost) : task.actualCost != null ? String(task.actualCost) : '',
         constraintType: task.constraintType || 'ASAP',
         constraintDate: task.constraintDate || '',
         workHours: task.workHours != null ? String(task.workHours) : '',
@@ -735,18 +736,26 @@ export function TaskFormModal({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Actual Cost ($)</label>
+              <label htmlFor="task-other-cost" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Other costs ($)</label>
               <input
+                id="task-other-cost"
                 type="number"
-                name="actualCost"
-                value={form.actualCost}
+                name="otherCost"
+                value={form.otherCost}
                 onChange={handleChange}
                 disabled={isSummary}
                 min="0"
                 step="0.01"
                 placeholder="0.00"
+                aria-describedby="task-labour-cost"
                 className="input w-full"
               />
+              {/* Labour comes from approved timesheets and is never typed */}
+              <p id="task-labour-cost" className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                {task && ((task as any).labourHours ?? 0) > 0
+                  ? <>Labour from approved time: <strong className="text-gray-800 dark:text-gray-200">${Number((task as any).labourCost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ({(task as any).labourHours}h) · actual cost ${Number(task.actualCost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</>
+                  : 'Vendors, materials, licences. Labour is added from approved timesheets.'}
+              </p>
             </div>
           </div>
 

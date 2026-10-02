@@ -24,6 +24,8 @@ const hasRole = vi.fn();
 vi.mock('../../services/ProjectMemberService', () => ({ projectMemberService: { hasRole: (...a: any[]) => hasRole(...a) } }));
 const notify = vi.fn().mockResolvedValue({});
 vi.mock('../../services/NotificationService', () => ({ notificationService: { create: (...a: any[]) => notify(...a) } }));
+const applyToTasks = vi.fn().mockResolvedValue({ tasks: 1, projects: 1 });
+vi.mock('../../services/ApprovedTimeService', () => ({ approvedTimeService: { applyToTasks: (...a: any[]) => applyToTasks(...a) } }));
 vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ({ organizationId: 'org1' }) }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
@@ -162,10 +164,13 @@ describe('WeeklyTimesheetService', () => {
       query.mockImplementation((sql: string) => {
         if (sql.includes('FROM timesheets WHERE id')) return Promise.resolve([sheet]);
         if (sql.includes("status = 'submitted'")) return Promise.resolve([{ id: 'e1' }, { id: 'e2' }]);
+        if (sql.includes('SELECT DISTINCT task_id FROM time_entries')) return Promise.resolve([{ task_id: 't-api' }, { task_id: 't-mig' }]);
         return Promise.resolve([]);
       });
       const r = await weeklyTimesheetService.approve('ts1', 'u-michael');
       expect(r.approvedEntryIds).toEqual(['e1', 'e2']);
+      // the plan and budgets follow: the tasks the week touched are updated
+      expect(applyToTasks).toHaveBeenCalledWith(['t-api', 't-mig']);
       const upd = queryOn.mock.calls.find(([, sql]) => String(sql).includes("SET status = 'approved', approved_by"))!;
       expect(upd[2]).toEqual(['u-michael', 'e1', 'e2']);
       expect(notify).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u-peter', type: 'timesheet_approved' }));
