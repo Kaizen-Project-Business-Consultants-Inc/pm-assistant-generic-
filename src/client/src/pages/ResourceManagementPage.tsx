@@ -483,7 +483,7 @@ export function ResourceManagementPage() {
               <tab.icon className="w-4 h-4" />
               <span className="hidden sm:inline">{tab.label}</span>
               <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
-              {'isNew' in tab && tab.isNew && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-primary-600 text-white text-xs font-semibold leading-none">New</span>}
+              {'isNew' in tab && tab.isNew && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-primary-700 text-white dark:bg-primary-300 dark:text-gray-900 text-xs font-semibold leading-none">New</span>}
             </button>
           ))}
         </div>
