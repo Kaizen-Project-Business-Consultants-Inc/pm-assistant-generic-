@@ -10,8 +10,15 @@ vi.mock('../../services/ScheduleService', () => ({
     findByProjectId: (...args: any[]) => mockFindByProjectId(...args),
     findTasksByScheduleIds: (...args: any[]) => mockFindTasksByScheduleIds(...args),
     findTasksByScheduleId: (...args: any[]) => mockFindTasksByScheduleId(...args),
+    // Monday–Friday plans
+    workingDayTest: async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6,
   },
 }));
+
+const mockReadable = vi.fn();
+vi.mock('../../utils/readableProjects', () => ({ readableProjectIds: (...a: any[]) => mockReadable(...a) }));
+const mockDbQuery = vi.fn();
+vi.mock('../../database/connection', () => ({ databaseService: { query: (...a: any[]) => mockDbQuery(...a) } }));
 
 const mockProjectFindById = vi.fn();
 vi.mock('../../services/ProjectService', () => ({
@@ -29,10 +36,12 @@ vi.mock('../../services/CriticalPathService', () => ({
 
 const mockFindAllResources = vi.fn();
 const mockComputeWorkload = vi.fn();
+const mockFindEffective = vi.fn();
 vi.mock('../../services/ResourceService', () => ({
   resourceService: {
     findAllResources: (...args: any[]) => mockFindAllResources(...args),
     computeWorkload: (...args: any[]) => mockComputeWorkload(...args),
+    findEffectiveAssignments: (...args: any[]) => mockFindEffective(...args),
   },
 }));
 
@@ -718,67 +727,62 @@ describe('InstantReportService', () => {
   });
 
   // ── overallocatedReport ──────────────────────────────────────────
-  describe('overallocated-resources', () => {
+  describe('overallocated-resources (all projects counted, 2026-10-02)', () => {
+    const wk = (weekStart: string, thisProject: number, otherProjects: number, capacity = 40) => {
+      const allocated = thisProject + otherProjects;
+      return { weekStart, allocated, thisProject, otherProjects, capacity, utilization: Math.round((allocated / capacity) * 100) };
+    };
+    const viewer = { userId: 'u1', role: 'member' };
     beforeEach(() => {
       mockProjectFindById.mockResolvedValue(makeProject());
+      mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1', 'Main')]);
+      mockReadable.mockResolvedValue(new Set(['proj-1', 'proj-B']));
+      mockFindEffective.mockResolvedValue([
+        { id: 'b1', resourceId: 'r1', taskId: 't-here', scheduleId: 'sch-1', hoursPerWeek: 40, startDate: '2026-01-12', endDate: '2026-01-16' },
+        { id: 'b2', resourceId: 'r1', taskId: 't-B', scheduleId: 'sch-B', hoursPerWeek: 16, startDate: '2026-01-12', endDate: '2026-01-16' },
+        { id: 'b3', resourceId: 'r1', taskId: 't-C', scheduleId: 'sch-C', hoursPerWeek: 8, startDate: '2026-01-12', endDate: '2026-01-16' },
+      ]);
+      mockDbQuery.mockResolvedValue([
+        { id: 't-here', name: 'Build API', project_id: 'proj-1', project_name: 'Test Project' },
+        { id: 't-B', name: 'Design review', project_id: 'proj-B', project_name: 'Bank portal' },
+        { id: 't-C', name: 'Secret work', project_id: 'proj-C', project_name: 'Confidential' },
+      ]);
     });
 
-    it('filters to only overallocated resources', async () => {
+    it('lists people over 100% in a week they work on this project — not those over only in other weeks', async () => {
       mockComputeWorkload.mockResolvedValue([
-        makeWorkloadEntry('r1', { isOverAllocated: true, averageUtilization: 120, weeks: [{ weekStart: '2026-01-05', allocated: 48, capacity: 40, utilization: 120 }] }),
-        makeWorkloadEntry('r2', { isOverAllocated: false, averageUtilization: 50 }),
+        makeWorkloadEntry('r1', { isOverAllocated: true, weeks: [wk('2026-01-05', 0, 48), wk('2026-01-12', 40, 24)] }),
+        makeWorkloadEntry('r2', { isOverAllocated: false, weeks: [wk('2026-01-12', 20, 0)] }),
       ]);
-
-      await service.generate('overallocated-resources', 'proj-1');
-
-      const callArg = mockRenderOverallocatedReport.mock.calls[0][0];
-      expect(callArg.resources).toHaveLength(1);
-      expect(callArg.resources[0].resourceName).toBe('Resource r1');
+      await service.generate('overallocated-resources', 'proj-1', viewer);
+      const { resources } = mockRenderOverallocatedReport.mock.calls[0][0];
+      expect(resources).toHaveLength(1);
+      // the week of 5 Jan (120%, all of it elsewhere) isn't this plan's to fix
+      expect(resources[0]).toMatchObject({ resourceName: 'Resource r1', busiestWeek: '2026-01-12', totalUtilization: 160, thisProjectUtilization: 100, otherProjectsUtilization: 60, weeksOver: 1, capacityHoursPerWeek: 40 });
     });
 
-    it('finds peak utilization week', async () => {
-      mockComputeWorkload.mockResolvedValue([
-        makeWorkloadEntry('r1', {
-          isOverAllocated: true,
-          averageUtilization: 110,
-          weeks: [
-            { weekStart: '2026-01-05', allocated: 40, capacity: 40, utilization: 100 },
-            { weekStart: '2026-01-12', allocated: 52, capacity: 40, utilization: 130 },
-            { weekStart: '2026-01-19', allocated: 44, capacity: 40, utilization: 110 },
-          ],
-        }),
-      ]);
-
-      await service.generate('overallocated-resources', 'proj-1');
-
-      const callArg = mockRenderOverallocatedReport.mock.calls[0][0];
-      expect(callArg.resources[0].peakUtilization).toBe(130);
-      expect(callArg.resources[0].peakWeek).toBe('2026-01-12');
+    it("names this project's tasks, other projects the viewer is on, and hides the rest", async () => {
+      mockComputeWorkload.mockResolvedValue([makeWorkloadEntry('r1', { isOverAllocated: true, weeks: [wk('2026-01-12', 40, 24)] })]);
+      await service.generate('overallocated-resources', 'proj-1', viewer);
+      const week = mockRenderOverallocatedReport.mock.calls[0][0].resources[0].weeks[0];
+      expect(week.thisTasks).toEqual([{ name: 'Build API', hours: 40 }]);
+      expect(week.otherWork).toEqual([{ label: 'Bank portal', hours: 16 }, { label: 'Work on another project', hours: 8 }]);
+      expect(JSON.stringify(week)).not.toContain('Confidential');
+      expect(JSON.stringify(week)).not.toContain('Secret work');
     });
 
-    it('uses first week capacity for capacityHoursPerWeek', async () => {
-      mockComputeWorkload.mockResolvedValue([
-        makeWorkloadEntry('r1', {
-          isOverAllocated: true,
-          weeks: [{ weekStart: '2026-01-05', allocated: 50, capacity: 35, utilization: 142 }],
-        }),
-      ]);
-
-      await service.generate('overallocated-resources', 'proj-1');
-
-      const callArg = mockRenderOverallocatedReport.mock.calls[0][0];
-      expect(callArg.resources[0].capacityHoursPerWeek).toBe(35);
+    it('an admin sees every project named', async () => {
+      mockReadable.mockResolvedValue('all');
+      mockComputeWorkload.mockResolvedValue([makeWorkloadEntry('r1', { isOverAllocated: true, weeks: [wk('2026-01-12', 40, 24)] })]);
+      await service.generate('overallocated-resources', 'proj-1', { userId: 'a', role: 'admin' });
+      const week = mockRenderOverallocatedReport.mock.calls[0][0].resources[0].weeks[0];
+      expect(week.otherWork.map((o: any) => o.label)).toEqual(['Bank portal', 'Confidential']);
     });
 
-    it('defaults capacity to 40 when no weeks', async () => {
-      mockComputeWorkload.mockResolvedValue([
-        makeWorkloadEntry('r1', { isOverAllocated: true, weeks: [] }),
-      ]);
-
-      await service.generate('overallocated-resources', 'proj-1');
-
-      const callArg = mockRenderOverallocatedReport.mock.calls[0][0];
-      expect(callArg.resources[0].capacityHoursPerWeek).toBe(40);
+    it('nobody over → an empty list', async () => {
+      mockComputeWorkload.mockResolvedValue([makeWorkloadEntry('r1', { isOverAllocated: false, weeks: [wk('2026-01-12', 20, 0)] })]);
+      await service.generate('overallocated-resources', 'proj-1', viewer);
+      expect(mockRenderOverallocatedReport.mock.calls[0][0].resources).toEqual([]);
     });
   });
 

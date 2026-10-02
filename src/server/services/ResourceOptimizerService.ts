@@ -49,7 +49,8 @@ export class ResourceOptimizerService {
       });
 
       for (const week of futureWeeks) {
-        if (week.utilization > 100) {
+        // A bottleneck for this project: over 100% (all projects counted) in a week they work here
+        if (week.utilization > 100 && (week.thisProject ?? 1) > 0) {
           // Determine severity based on how far over capacity
           let severity: 'warning' | 'critical' | 'severe';
           if (week.utilization > 150) {
@@ -66,6 +67,10 @@ export class ResourceOptimizerService {
             projectId,
             week.weekStart,
           );
+          // Their other projects' hours that week, without naming those projects
+          if ((week.otherProjects ?? 0) > 0) {
+            contributingTasks.push({ taskId: '', taskName: 'Work on other projects', hoursPerWeek: week.otherProjects! });
+          }
 
           bottlenecks.push({
             resourceId: workload.resourceId,

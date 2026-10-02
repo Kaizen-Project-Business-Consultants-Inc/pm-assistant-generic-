@@ -563,6 +563,39 @@ describe('ResourceService', () => {
   // ===== Workload computation =====
 
   describe('computeWorkload', () => {
+    it("counts the person's other projects too, keeps the split, costs only this project, and is 'over' only in weeks they work here", async () => {
+      mockScheduleService.findByProjectId.mockResolvedValueOnce([{ id: 's1' }]);
+      // This project: the week of 12 Jan only, full time
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([{ ...sampleAssignment, scheduleId: 's1', hoursPerWeek: 40, startDate: '2026-01-12', endDate: '2026-01-16' }]);
+      mockRepo.findByIds.mockResolvedValueOnce([sampleResource]); // $75/h
+      mockAvailabilityService.getEffectiveCapacityBatch.mockResolvedValueOnce(new Map([['r1', new Map()]]));
+      // Another project: 24 h/week for weeks of 12 and 19 Jan (19 Jan has no work here)
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
+        { ...sampleAssignment, id: 'x', taskId: 'other', scheduleId: 's-other', hoursPerWeek: 24, startDate: '2026-01-12', endDate: '2026-01-23' },
+        { ...sampleAssignment, id: 'y', taskId: 'mine', scheduleId: 's1', hoursPerWeek: 40, startDate: '2026-01-12', endDate: '2026-01-16' }, // this project's own: not counted twice
+      ]);
+
+      const [w] = await service.computeWorkload('p1');
+      const jan12 = w.weeks.find(x => x.weekStart === '2026-01-12')!;
+      expect(jan12).toMatchObject({ thisProject: 40, otherProjects: 24, allocated: 64, utilization: 160, cost: 3000 });
+      const jan19 = w.weeks.find(x => x.weekStart === '2026-01-19');
+      if (jan19) expect(jan19).toMatchObject({ thisProject: 0, otherProjects: 24 });
+      expect(w.isOverAllocated).toBe(true);
+    });
+
+    it("isn't 'over' here when the only overloaded week has no work on this project", async () => {
+      mockScheduleService.findByProjectId.mockResolvedValueOnce([{ id: 's1' }]);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([{ ...sampleAssignment, scheduleId: 's1', hoursPerWeek: 20, startDate: '2026-01-12', endDate: '2026-01-16' }]);
+      mockRepo.findByIds.mockResolvedValueOnce([sampleResource]);
+      mockAvailabilityService.getEffectiveCapacityBatch.mockResolvedValueOnce(new Map([['r1', new Map()]]));
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([
+        { ...sampleAssignment, id: 'x', taskId: 'other', scheduleId: 's-other', hoursPerWeek: 60, startDate: '2026-01-19', endDate: '2026-01-23' },
+      ]);
+      const [w] = await service.computeWorkload('p1');
+      expect(w.weeks.some(x => x.utilization > 100)).toBe(true); // 150% in the week of 19 Jan…
+      expect(w.isOverAllocated).toBe(false);                      // …but nothing of this project's is in it
+    });
+
     it('returns empty array when project has no schedules', async () => {
       mockScheduleService.findByProjectId.mockResolvedValueOnce([]);
       const result = await service.computeWorkload('p1');

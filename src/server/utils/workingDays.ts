@@ -129,3 +129,8 @@ export function workingDaysInWeek(start: string, end: string, weekStart: string,
   if (to < from) return 0;
   return workingDaysAfter(plusDays(from, -1), to, isWorking);
 }
+
+/** The Sunday ending the week that starts on `weekStart` */
+export function weekEndOf(weekStart: string): string {
+  return ymdOf(plusDays(new Date(`${weekStart.slice(0, 10)}T00:00:00Z`), 6));
+}

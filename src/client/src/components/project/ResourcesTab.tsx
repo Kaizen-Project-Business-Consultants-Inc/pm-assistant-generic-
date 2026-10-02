@@ -22,7 +22,10 @@ interface SkillWithProficiency {
 
 interface WorkloadWeek {
   weekStart: string;
+  /** All of the person's projects that week; the split is below */
   allocated: number;
+  thisProject?: number;
+  otherProjects?: number;
   actual: number;
   capacity: number;
   utilization: number;
@@ -686,7 +689,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                               <div
                                 className="mx-auto w-14 h-10 rounded flex flex-col items-center justify-center text-white"
                                 style={{ backgroundColor: utilColor(pct), opacity: pct === 0 ? 0.15 : 0.85 }}
-                                title={`Allocated: ${w.allocated}h\nActual: ${actual}h\nCapacity: ${w.capacity}h\nUtilization: ${pct}%${w.cost > 0 ? `\nCost: $${w.cost.toLocaleString()}` : ''}`}
+                                title={`Allocated: ${w.allocated}h${w.otherProjects ? ` (this project ${w.thisProject ?? 0}h, other projects ${w.otherProjects}h)` : ''}\nActual: ${actual}h\nCapacity: ${w.capacity}h\nUtilization: ${pct}%${w.cost > 0 ? `\nCost: $${w.cost.toLocaleString()}` : ''}`}
                               >
                                 {pct > 0 ? (
                                   <>

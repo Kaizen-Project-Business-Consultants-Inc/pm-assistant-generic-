@@ -8,7 +8,7 @@ import { rateCardService, ratesOn } from './RateCardService';
 import { databaseService } from '../database/connection';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
 import { hoursInWeek, calendarsFor } from './weeklyLoad';
-import { type IsWorking, weekdaysOnly } from '../utils/workingDays';
+import { type IsWorking, weekdaysOnly, mondayOf } from '../utils/workingDays';
 
 export interface SkillWithProficiency {
   name: string;
@@ -59,7 +59,11 @@ export interface ResourceAssignment {
 
 export interface WeeklyUtilization {
   weekStart: string;
+  /** All the person's booked hours that week — this project and every other live one */
   allocated: number;
+  /** Project workload only: the part on this project, and the part on other projects */
+  thisProject?: number;
+  otherProjects?: number;
   actual: number;
   capacity: number;
   utilization: number;
@@ -74,6 +78,9 @@ export interface ResourceWorkload {
   totalCost: number;
   weeks: WeeklyUtilization[];
   averageUtilization: number;
+  /** Project workload only: the average share of the person's week that is this project's */
+  projectAverageUtilization?: number;
+  /** Project workload: over 100% (all projects counted) in a week they work on THIS project */
   isOverAllocated: boolean;
 }
 
@@ -349,7 +356,13 @@ export class ResourceService {
 
   // --- Workload computation ---
 
-  /** People's weekly load on this project; `generic` = the generic roles' load instead (unfilled demand) */
+  /**
+   * The weekly load of the people working on this project, counting ALL their live projects
+   * (2026-10-02, user: "count all projects"): a person has one week however it's split. Each week
+   * keeps the split (`thisProject` / `otherProjects` hours); cost stays this project's only; a
+   * person is over-allocated here only in a week they also work on this project.
+   * `generic` = the generic roles' load on this project instead (unfilled demand, this project only).
+   */
   async computeWorkload(projectId: string, generic = false): Promise<ResourceWorkload[]> {
     const schedules = await scheduleService.findByProjectId(projectId);
     const scheduleIds = schedules.map((s) => s.id);
@@ -375,8 +388,9 @@ export class ResourceService {
       maxDate = now + 12 * WEEK_MS;
     }
 
-    const startWeek = new Date(minDate);
-    startWeek.setDate(startWeek.getDate() - ((startWeek.getDay() + 6) % 7));
+    // Monday of the first week, as a calendar day (local-time maths here used to start weeks on a
+    // Tuesday on any machine west of UTC)
+    const startWeek = new Date(`${mondayOf(new Date(minDate).toISOString())}T00:00:00Z`);
 
     const weeks: Date[] = [];
     for (let t = startWeek.getTime(); t <= maxDate; t += WEEK_MS) {
@@ -392,6 +406,16 @@ export class ResourceService {
     // Batch-load all resources in one query
     const resources = await resourceRepository.findByIds(involvedResourceIds);
     const resourceMap = new Map(resources.map(r => [r.id, r]));
+
+    // The same people's work on other projects in these weeks (not for generic roles: their
+    // demand is this project's)
+    const here = new Set(scheduleIds);
+    const people = new Set(resources.filter(r => !r.isGeneric).map(r => r.id));
+    const firstDay = weeks[0].toISOString().slice(0, 10);
+    const lastDay = new Date(weeks[weeks.length - 1].getTime() + 6 * DAY_MS).toISOString().slice(0, 10);
+    const elsewhere = generic || people.size === 0 ? [] : (await resourceRepository.findEffectiveAssignments({ from: firstDay, to: lastDay }))
+      .filter(a => people.has(a.resourceId) && !here.has(a.scheduleId));
+    const calOther = await calendarsFor(elsewhere.map(a => a.scheduleId), (id) => scheduleService.workingDayTest(id));
     // Rates can change over time (rate card): each week is costed at that week's rate
     const rateCard = await rateCardService.listSafe();
     const todayKey = new Date().toISOString().slice(0, 10);
@@ -411,9 +435,11 @@ export class ResourceService {
       if (!!resource.isGeneric !== generic) continue;
 
       const resAssignments = projectAssignments.filter((a) => a.resourceId === resId);
+      const resElsewhere = elsewhere.filter((a) => a.resourceId === resId);
       const baseCapacity = resource.capacityHoursPerWeek;
       const rate = ratesOn(resource, todayKey, rateCard).standard;
       let totalUtilization = 0;
+      let projectUtilization = 0;
       let totalCost = 0;
       let isOverAllocated = false;
 
@@ -435,21 +461,27 @@ export class ResourceService {
       const weeklyData: WeeklyUtilization[] = [];
       for (const weekStart of weeks) {
         const weekEnd = new Date(weekStart.getTime() + WEEK_MS);
-        let allocated = 0;
-
         // Only the working days each booking covers this week count (one day of a 40 h/week
         // task is 8 h, not 40)
         const wk = weekStart.toISOString().slice(0, 10);
-        for (const a of resAssignments) allocated += hoursInWeek(a, wk, calOf(a.scheduleId));
-        allocated = Math.round(allocated * 10) / 10;
+        let thisProject = 0;
+        for (const a of resAssignments) thisProject += hoursInWeek(a, wk, calOf(a.scheduleId));
+        let otherProjects = 0;
+        for (const a of resElsewhere) otherProjects += hoursInWeek(a, wk, calOther(a.scheduleId));
+        thisProject = Math.round(thisProject * 10) / 10;
+        otherProjects = Math.round(otherProjects * 10) / 10;
+        const allocated = Math.round((thisProject + otherProjects) * 10) / 10;
 
         const weekKey = weekStart.toISOString().slice(0, 10);
         const actual = actualByWeek?.get(weekKey) ?? 0;
 
         const capacity = resCapacityMap?.get(weekKey) ?? baseCapacity;
         const utilization = capacity > 0 ? Math.round((allocated / capacity) * 100) : 0;
-        if (utilization > 100) isOverAllocated = true;
+        // Over-booked HERE only in a week they also work on this project — otherwise this plan
+        // can't change it
+        if (utilization > 100 && thisProject > 0) isOverAllocated = true;
         totalUtilization += utilization;
+        projectUtilization += capacity > 0 ? Math.round((thisProject / capacity) * 100) : 0;
 
         // Cost: use rate-type breakdown if available, otherwise fall back to allocated * rate
         let weeklyCost = 0;
@@ -458,13 +490,16 @@ export class ResourceService {
         if (weekRate && rb && (rb.standard > 0 || rb.overtime > 0)) {
           weeklyCost = Math.round((rb.standard * weekRate + rb.overtime * (weekOvertime ?? weekRate)) * 100) / 100;
         } else if (weekRate) {
-          weeklyCost = Math.round(allocated * weekRate * 100) / 100;
+          // The money is this project's: only its own hours are costed
+          weeklyCost = Math.round(thisProject * weekRate * 100) / 100;
         }
         totalCost += weeklyCost;
 
         weeklyData.push({
           weekStart: weekKey,
           allocated,
+          thisProject,
+          otherProjects,
           actual,
           capacity,
           utilization,
@@ -482,6 +517,7 @@ export class ResourceService {
         totalCost,
         weeks: weeklyData,
         averageUtilization: weeks.length > 0 ? Math.round(totalUtilization / weeks.length) : 0,
+        projectAverageUtilization: weeks.length > 0 ? Math.round(projectUtilization / weeks.length) : 0,
         isOverAllocated,
       });
     }
@@ -526,8 +562,9 @@ export class ResourceService {
       maxDate = now + 12 * WEEK_MS;
     }
 
-    const startWeek = new Date(minDate);
-    startWeek.setDate(startWeek.getDate() - ((startWeek.getDay() + 6) % 7));
+    // Monday of the first week, as a calendar day (local-time maths here used to start weeks on a
+    // Tuesday on any machine west of UTC)
+    const startWeek = new Date(`${mondayOf(new Date(minDate).toISOString())}T00:00:00Z`);
 
     const weeks: Date[] = [];
     for (let t = startWeek.getTime(); t <= maxDate; t += WEEK_MS) {
@@ -628,10 +665,8 @@ export class ResourceService {
 
     const DAY_MS = 86_400_000;
     const WEEK_MS = 7 * DAY_MS;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const currentWeekStart = new Date(today);
-    currentWeekStart.setDate(currentWeekStart.getDate() - ((currentWeekStart.getDay() + 6) % 7));
+    // This week's Monday as a calendar day (local-time maths gave a different day off UTC)
+    const currentWeekStart = new Date(`${mondayOf(new Date().toISOString())}T00:00:00Z`);
 
     const weekStarts: Date[] = [];
     for (let i = numWeeks - 1; i >= 0; i--) {

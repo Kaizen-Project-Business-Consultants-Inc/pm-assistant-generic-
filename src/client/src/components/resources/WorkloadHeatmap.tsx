@@ -5,6 +5,9 @@ import { formatCalendarDate } from '../../utils/dateUtils';
 interface WeeklyUtilization {
   weekStart: string;
   allocated: number;
+  /** Project heatmap: the part on this project / on other projects (all projects are counted) */
+  thisProject?: number;
+  otherProjects?: number;
   actual?: number;
   capacity: number;
   utilization: number;
@@ -126,7 +129,7 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                         <td key={i} className="px-1 py-1 text-center">
                           <div
                             className={`rounded px-1 py-1 ${bg} ${text} font-medium`}
-                            title={`${rw.resourceName} — Week of ${formatWeek(w.weekStart)}\nAllocated: ${w.allocated}h\nActual: ${actual}h\nCapacity: ${w.capacity}h\nUtilization: ${w.utilization}%${w.cost && w.cost > 0 ? `\nCost: $${w.cost.toLocaleString()}` : ''}`}
+                            title={`${rw.resourceName} — Week of ${formatWeek(w.weekStart)}\nAllocated: ${w.allocated}h${w.otherProjects ? ` (this project ${w.thisProject ?? 0}h, other projects ${w.otherProjects}h)` : ''}\nActual: ${actual}h\nCapacity: ${w.capacity}h\nUtilization: ${w.utilization}%${w.cost && w.cost > 0 ? `\nCost: $${w.cost.toLocaleString()}` : ''}`}
                           >
                             {w.utilization > 0 ? (
                               <div className="leading-tight">
@@ -147,7 +150,7 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
 
         {/* Legend */}
         <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4 flex-wrap text-xs text-gray-500 dark:text-gray-400">
-          <span className="font-medium">Cells show actual/allocated hours.</span>
+          <span className="font-medium">Cells show actual/allocated hours, counting all of a person's projects (hover a cell for the split).</span>
           <span className="border-l border-gray-300 dark:border-gray-600 pl-3 font-medium">Utilization:</span>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800" />

@@ -26,7 +26,10 @@ import {
   renderOverbudgetResourcesReport,
 } from '../utils/instantReportRenderer';
 import logger from '../utils/logger';
-import { utcDay } from '../utils/workingDays';
+import { utcDay, weekEndOf } from '../utils/workingDays';
+import { hoursInWeek, calendarsFor } from './weeklyLoad';
+import { readableProjectIds } from '../utils/readableProjects';
+import { databaseService } from '../database/connection';
 
 const REPORT_TITLES: Record<string, string> = {
   'milestone-report': 'Milestone Report',
@@ -45,7 +48,7 @@ const REPORT_TITLES: Record<string, string> = {
 };
 
 export class InstantReportService {
-  async generate(reportType: string, projectId: string): Promise<{ html: string; title: string }> {
+  async generate(reportType: string, projectId: string, viewer?: { userId: string; role: string }): Promise<{ html: string; title: string }> {
     const project = await projectService.findById(projectId);
     if (!project) throw new Error('Project not found');
 
@@ -68,7 +71,7 @@ export class InstantReportService {
       case 'resource-cost-overview':
         return { html: await this.resourceCostReport(projectId, projectName), title };
       case 'overallocated-resources':
-        return { html: await this.overallocatedReport(projectId, projectName), title };
+        return { html: await this.overallocatedReport(projectId, projectName, viewer), title };
       case 'cost-overview':
         return { html: await this.costOverviewReport(projectId, projectName), title };
       case 'earned-value-summary':
@@ -308,7 +311,8 @@ export class InstantReportService {
         .filter(w => w.costRateHourly != null || w.totalCost > 0)
         .slice(0, 200)
         .map(w => {
-          const totalAllocatedHours = w.weeks.reduce((s, wk) => s + wk.allocated, 0);
+          // This project's hours only — the money is this project's
+          const totalAllocatedHours = Math.round(w.weeks.reduce((s, wk) => s + (wk.thisProject ?? wk.allocated), 0) * 10) / 10;
           return {
             resourceName: w.resourceName,
             role: w.role,
@@ -321,31 +325,76 @@ export class InstantReportService {
     });
   }
 
-  private async overallocatedReport(projectId: string, projectName: string): Promise<string> {
-    const workload = await resourceService.computeWorkload(projectId);
-    const overallocated = workload
-      .filter(w => w.isOverAllocated)
-      .slice(0, 200)
-      .map(w => {
-        let peakUtilization = 0;
-        let peakWeek = '';
-        for (const wk of w.weeks) {
-          if (wk.utilization > peakUtilization) {
-            peakUtilization = wk.utilization;
-            peakWeek = wk.weekStart;
-          }
+  /**
+   * People over 100% — counting ALL their live projects — in a week they work on this project
+   * (2026-10-02). Each over week shows this project's tasks, and their other work: named when the
+   * viewer is on that project, otherwise "work on another project" with hours only.
+   */
+  private async overallocatedReport(projectId: string, projectName: string, viewer?: { userId: string; role: string }): Promise<string> {
+    const workload = (await resourceService.computeWorkload(projectId)).filter(w => w.isOverAllocated).slice(0, 200);
+    const here = new Set((await scheduleService.findByProjectId(projectId)).map(s => s.id));
+    const readable = viewer ? await readableProjectIds(viewer) : new Set<string>();
+
+    const resources = [];
+    for (const w of workload) {
+      const overWeeks = w.weeks.filter(wk => wk.utilization > 100 && (wk.thisProject ?? 0) > 0);
+      if (overWeeks.length === 0) continue;
+      const busiest = overWeeks.reduce((m, wk) => (wk.utilization > m.utilization ? wk : m));
+
+      // What fills each over week, booking by booking
+      const first = overWeeks[0].weekStart;
+      const last = weekEndOf(overWeeks[overWeeks.length - 1].weekStart);
+      const bookings = await resourceService.findEffectiveAssignments({ resourceId: w.resourceId, from: first, to: last });
+      const calOf = await calendarsFor(bookings.map(b => b.scheduleId), (id) => scheduleService.workingDayTest(id));
+      const info = await this.taskAndProjectNames(bookings.map(b => b.taskId));
+
+      const weeks = overWeeks.map(wk => {
+        const items = bookings
+          .map(b => ({ b, hours: hoursInWeek(b, wk.weekStart, calOf(b.scheduleId)) }))
+          .filter(x => x.hours > 0);
+        const thisTasks = items.filter(x => here.has(x.b.scheduleId))
+          .map(x => ({ name: info.get(x.b.taskId)?.taskName ?? 'Task', hours: Math.round(x.hours * 10) / 10 }));
+        const others = new Map<string, { label: string; hours: number }>();
+        for (const x of items.filter(x => !here.has(x.b.scheduleId))) {
+          const pid = info.get(x.b.taskId)?.projectId ?? '';
+          const named = readable === 'all' || readable.has(pid);
+          const key = named ? pid : '__hidden__';
+          const label = named ? (info.get(x.b.taskId)?.projectName ?? 'Another project') : 'Work on another project';
+          const o = others.get(key) ?? { label, hours: 0 };
+          o.hours = Math.round((o.hours + x.hours) * 10) / 10;
+          others.set(key, o);
         }
-        return {
-          resourceName: w.resourceName,
-          role: w.role,
-          averageUtilization: w.averageUtilization,
-          peakUtilization,
-          peakWeek,
-          capacityHoursPerWeek: w.weeks.length > 0 ? w.weeks[0].capacity : 40,
-        };
+        return { weekStart: wk.weekStart, utilization: wk.utilization, thisProjectHours: wk.thisProject ?? 0, thisTasks, otherWork: [...others.values()] };
       });
 
-    return renderOverallocatedReport({ projectName, resources: overallocated });
+      const pct = (h: number | undefined) => (busiest.capacity > 0 ? Math.round(((h ?? 0) / busiest.capacity) * 100) : 0);
+      resources.push({
+        resourceName: w.resourceName,
+        role: w.role,
+        capacityHoursPerWeek: busiest.capacity,
+        busiestWeek: busiest.weekStart,
+        totalUtilization: busiest.utilization,
+        thisProjectUtilization: pct(busiest.thisProject),
+        otherProjectsUtilization: pct(busiest.otherProjects),
+        weeksOver: overWeeks.length,
+        weeks,
+      });
+    }
+
+    return renderOverallocatedReport({ projectName, resources });
+  }
+
+  /** taskId → task name, project id and project name, in one query */
+  private async taskAndProjectNames(taskIds: string[]): Promise<Map<string, { taskName: string; projectId: string; projectName: string }>> {
+    const ids = [...new Set(taskIds.filter(Boolean))];
+    const out = new Map<string, { taskName: string; projectId: string; projectName: string }>();
+    if (ids.length === 0) return out;
+    const rows = await databaseService.query<{ id: string; name: string; project_id: string; project_name: string }>(
+      `SELECT t.id, t.name, p.id AS project_id, p.name AS project_name
+         FROM tasks t JOIN schedules s ON s.id = t.schedule_id JOIN projects p ON p.id = s.project_id
+        WHERE t.id IN (${ids.map(() => '?').join(',')})`, ids);
+    for (const r of rows) out.set(r.id, { taskName: r.name, projectId: r.project_id, projectName: r.project_name });
+    return out;
   }
 
   private async costOverviewReport(projectId: string, projectName: string): Promise<string> {

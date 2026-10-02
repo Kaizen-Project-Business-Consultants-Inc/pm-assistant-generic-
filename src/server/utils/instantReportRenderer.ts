@@ -549,47 +549,93 @@ export interface OverallocatedReportData {
   resources: Array<{
     resourceName: string;
     role: string;
-    averageUtilization: number;
-    peakUtilization: number;
-    peakWeek: string;
     capacityHoursPerWeek: number;
+    /** Busiest week they work on this project, all projects counted */
+    busiestWeek: string;
+    totalUtilization: number;
+    thisProjectUtilization: number;
+    otherProjectsUtilization: number;
+    weeksOver: number;
+    weeks: Array<{
+      weekStart: string;
+      utilization: number;
+      thisProjectHours: number;
+      thisTasks: Array<{ name: string; hours: number }>;
+      /** Other projects: named when the viewer is on them, else "Work on another project" */
+      otherWork: Array<{ label: string; hours: number }>;
+    }>;
   }>;
 }
 
+/** "12 Oct 2026" for a calendar day — never shifted by a time zone */
+function dayLabel(ymd: string): string {
+  const d = new Date(`${ymd.slice(0, 10)}T00:00:00Z`);
+  return isNaN(d.getTime()) ? ymd : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+const MAX_WEEKS_LISTED = 8;
+
 export function renderOverallocatedReport(data: OverallocatedReportData): string {
   const { resources } = data;
+  const subtitle = 'People over 100% in a week they work on this project — counting all their projects';
   if (resources.length === 0) {
-    return wrapReport('OVERALLOCATED RESOURCES', 'Resources exceeding capacity', data.projectName, new Date().toLocaleDateString('en-US'), emptyState('No overallocated resources found. All resources are within their weekly capacity.'));
+    return wrapReport('OVERALLOCATED RESOURCES', subtitle, data.projectName, new Date().toLocaleDateString('en-US'), emptyState('Nobody is over 100% in a week they work on this project, counting all their projects.'));
   }
 
+  const RED = 'color: #b91c1c; font-weight: 700;';
   const rows = resources.map(r => `
     <tr>
       <td style="${TD} font-weight: 600;">${escapeHtml(r.resourceName)}</td>
       <td style="${TD}">${escapeHtml(r.role || '—')}</td>
       <td style="${TD} text-align: center;">${r.capacityHoursPerWeek}h</td>
-      <td style="${TD} text-align: center; color: #dc2626; font-weight: 700;">${Math.round(r.averageUtilization)}%</td>
-      <td style="${TD} text-align: center; color: #dc2626; font-weight: 700;">${Math.round(r.peakUtilization)}%</td>
-      <td style="${TD} text-align: center;">${formatDate(r.peakWeek)}</td>
+      <td style="${TD} text-align: center;">${dayLabel(r.busiestWeek)}</td>
+      <td style="${TD} text-align: center; ${RED}">${r.totalUtilization}%</td>
+      <td style="${TD} text-align: center;">${r.thisProjectUtilization}%</td>
+      <td style="${TD} text-align: center;${r.otherProjectsUtilization > 0 ? ' font-weight: 700;' : ' color: #4b5563;'}">${r.otherProjectsUtilization > 0 ? `${r.otherProjectsUtilization}%` : '—'}</td>
+      <td style="${TD} text-align: center;">${r.weeksOver}</td>
     </tr>`).join('');
+
+  const causedHere = resources.filter(r => r.otherProjectsUtilization === 0).length;
+  const summary = causedHere === resources.length
+    ? `In ${resources.length === 1 ? 'this case' : `all ${resources.length}`}, <strong>this project alone</strong> causes it — their other projects add nothing in those weeks.`
+    : causedHere === 0
+      ? 'In every case their other projects add to this one — see the split below.'
+      : `For ${causedHere}, this project alone causes it; for ${resources.length - causedHere}, their other projects add to it.`;
+
+  const weekBlocks = resources.map(r => {
+    const lines = r.weeks.slice(0, MAX_WEEKS_LISTED).map(w => {
+      const tasks = w.thisTasks.map(t => `${escapeHtml(t.name)} (${t.hours}h)`).join(', ');
+      const other = w.otherWork.map(o => `<strong>${escapeHtml(o.label)} ${o.hours}h</strong>`).join(' · ');
+      return `<div style="font-size: 12px; margin: 3px 0;">Week of ${dayLabel(w.weekStart)} · <span style="${RED}">${w.utilization}%</span> · this project ${w.thisProjectHours}h${tasks ? `: ${tasks}` : ''}${other ? ` · ${other}` : ''}</div>`;
+    }).join('');
+    const more = r.weeks.length > MAX_WEEKS_LISTED ? `<div style="font-size: 12px; color: #4b5563;">…and ${r.weeks.length - MAX_WEEKS_LISTED} more week${r.weeks.length - MAX_WEEKS_LISTED === 1 ? '' : 's'}</div>` : '';
+    return `<div style="border: 1px solid #d1d5db; border-radius: 4px; padding: 8px 10px; margin: 0 0 8px;">
+      <div style="font-size: 13px; font-weight: 700; color: ${BODY_TEXT}; margin-bottom: 2px;">${escapeHtml(r.resourceName)} — ${r.weeksOver} week${r.weeksOver === 1 ? '' : 's'} over</div>${lines}${more}</div>`;
+  }).join('');
 
   const body = `
     ${sectionHeading('SUMMARY')}
-    <p style="font-size: 13px; color: ${BODY_TEXT}; margin: 0 0 16px;">${resources.length} resource${resources.length !== 1 ? 's' : ''} overallocated — exceeding weekly capacity.</p>
-    ${sectionHeading('OVERALLOCATED RESOURCES')}
+    <p style="font-size: 13px; color: ${BODY_TEXT}; margin: 0 0 16px;">${resources.length} ${resources.length === 1 ? 'person is' : 'people are'} over 100% in weeks they work on this project. ${summary}</p>
+    ${sectionHeading('OVERALLOCATED PEOPLE')}
     <table style="width: 100%; border-collapse: collapse;">
       <thead><tr>
-        <th style="${TH}">Resource</th>
+        <th style="${TH}">Person</th>
         <th style="${TH} width: 120px;">Role</th>
-        <th style="${TH} text-align: center; width: 80px;">Capacity</th>
-        <th style="${TH} text-align: center; width: 90px;">Avg Util.</th>
-        <th style="${TH} text-align: center; width: 90px;">Peak Util.</th>
-        <th style="${TH} text-align: center; width: 100px;">Peak Week</th>
+        <th style="${TH} text-align: center; width: 70px;">Capacity</th>
+        <th style="${TH} text-align: center; width: 100px;">Busiest week</th>
+        <th style="${TH} text-align: center; width: 60px;">Total</th>
+        <th style="${TH} text-align: center; width: 80px;">This project</th>
+        <th style="${TH} text-align: center; width: 90px;">Other projects</th>
+        <th style="${TH} text-align: center; width: 70px;">Weeks over</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <p style="font-size: 11px; color: #6b7280; margin: 6px 0 0;">Consider resource leveling or redistributing assignments to reduce overallocation.</p>`;
+    ${sectionHeading('WEEK BY WEEK')}
+    ${weekBlocks}
+    <p style="font-size: 11px; color: #4b5563; margin: 10px 0 0;">Counts every live project (not archived ones or the sample project). Each task counts only the working days it covers that week; finished and cancelled tasks don't count. Generic roles appear under Unfilled demand, not here. Other projects are named only if you're on them.</p>
+    <p style="font-size: 11px; color: #4b5563; margin: 4px 0 0;">To fix: move or re-level this project's tasks (Level Resources), lower the person's % on a task, or hand work to someone with room.</p>`;
 
-  return wrapReport('OVERALLOCATED RESOURCES', 'Resources exceeding capacity', data.projectName, new Date().toLocaleDateString('en-US'), body);
+  return wrapReport('OVERALLOCATED RESOURCES', subtitle, data.projectName, new Date().toLocaleDateString('en-US'), body);
 }
 
 // ---------------------------------------------------------------------------

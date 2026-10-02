@@ -307,7 +307,8 @@ export class CrossProjectIntelligenceAgent {
     try {
       const workloads = await resourceService.computeWorkload(project.id);
       resourceCount = workloads.length;
-      overAllocatedResources = workloads.filter(w => w.isOverAllocated || w.averageUtilization > 100).length;
+      // Over 100% (all projects counted) in a week they work on this project
+      overAllocatedResources = workloads.filter(w => w.isOverAllocated).length;
     } catch {
       // Resource data optional
     }

@@ -190,7 +190,8 @@ export class ResourceOptimizationAgent {
     }
 
     const overAllocated = workloads
-      .filter(w => w.isOverAllocated || w.averageUtilization > 100)
+      // Over 100% (all projects counted) in a week they work on this project
+      .filter(w => w.isOverAllocated)
       .map(w => ({
         resourceId: w.resourceId,
         resourceName: w.resourceName,

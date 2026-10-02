@@ -410,6 +410,7 @@ const sections: Section[] = [
     items: [
       'A person counts at their % on a task (50% of 40 h = 20 h a week); "Assigned To" alone counts as 100%',
       "A week counts only the days a task covers (a task ending on Monday adds one day, not a week); finished and cancelled tasks don't count",
+      "A person's load counts all their projects; the Overallocated Resources report shows how much is this project and how much is elsewhere",
       'Resources → Workload Heatmap: everyone\'s weekly load across all live projects',
       'While you assign someone in the task form, a warning appears if it takes them over 100% that week',
       'Gantt → Conflicts: highlights bars whose person is over 100% that week; hover the "!" for who and when',

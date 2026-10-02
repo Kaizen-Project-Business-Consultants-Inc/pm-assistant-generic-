@@ -16,6 +16,12 @@
 - **Split wording**: "Go-Live & Monitoring" → Go-Live Complete + Hypercare & Monitoring (was "Approve Monitoring"). Review messages agree with counts ("1 task feeds").
 
 
+## 2026-10-02 (Workload counts all projects)
+
+- User: "count all projects. why would you not" → mock approved. `computeWorkload(projectId)` adds people's other live projects (`thisProject`/`otherProjects` per week, cost this project only, `projectAverageUtilization` for portfolio, over only in weeks with work here). Overallocated Resources report rebuilt (split columns, week by week, other projects named only if the viewer is on them). Heatmap tooltips show the split. Weeks start on UTC Mondays (were local-time — Tuesday west of UTC).
+- Seen, not mine: `AutoRescheduleService.test` "zero-progress … double remaining" fails on Fridays (relative days vs working days) — other session's area.
+- Not changed, raise: project cost from timesheets (`sumHoursByRateTypeAndWeekRange`) takes the person's time on ALL projects for each week, not this project's.
+
 ## 2026-10-01 (People and generic roles)
 
 - Found asking "who's on DBJ-LMS": Parth was on task 4 but not on the Team, and 10 of 11 resources had no email (the form required one, but plan import and the API didn't). User decided: every person has an email (placeholder firstname.lastname@example.com for the 10 — changed from first_name@dummy.com: two Parths, and dummy.com is a real domain), default generic roles + PM can add, generics = unfilled demand never over-booked, Replace, saving never invites, R37. Mock approved ("yes").

@@ -19,7 +19,8 @@ export async function instantReportRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = generateSchema.parse(request.body);
 
-    const result = await instantReportService.generate(body.reportType, body.projectId);
+    // The viewer decides which other projects can be named (Overallocated Resources)
+    const result = await instantReportService.generate(body.reportType, body.projectId, request.user!);
 
     return {
       html: result.html,

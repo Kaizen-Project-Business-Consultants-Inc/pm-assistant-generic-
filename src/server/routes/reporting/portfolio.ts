@@ -139,7 +139,9 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
             };
             resourceMap.set(w.resourceId, agg);
           }
-          agg.projects.push({ projectId, projectName, averageUtilization: w.averageUtilization });
+          // Each project's own share — the totals now include every project, so adding them up
+          // project by project would count other work twice
+          agg.projects.push({ projectId, projectName, averageUtilization: w.projectAverageUtilization ?? w.averageUtilization });
         }
       }
 
