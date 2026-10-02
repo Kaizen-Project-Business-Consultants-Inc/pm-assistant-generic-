@@ -149,6 +149,11 @@ export class ProjectService {
     return project;
   }
 
+  /** Forget the cached copy after a change made outside update() (e.g. spend from approved time) */
+  async invalidateCache(id: string): Promise<void> {
+    await cachedProject.invalidate(id).catch(() => {});
+  }
+
   async update(id: string, data: Partial<Omit<Project, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>>, userId?: string): Promise<Project | null> {
     const existing = await this.findById(id, userId);
     if (!existing) return null;

@@ -5,6 +5,7 @@ import { rateCardService, ratesOn } from './RateCardService';
 import { calendarsFor } from './weeklyLoad';
 import { workingDaysBetween } from '../utils/workingDays';
 import { queueReviewRerun } from './scheduleReview/autoRerun';
+import { projectService } from './ProjectService';
 import logger from '../utils/logger';
 
 /**
@@ -106,6 +107,8 @@ export class ApprovedTimeService {
                            WHERE s.project_id = p.id AND COALESCE(t.is_summary, 0) = 0),
          p.budget_spent = ROUND(COALESCE(p.other_costs, 0) + p.labour_cost, 2)
        WHERE p.id = ?`, [projectId]);
+    // The project is cached for a few minutes; without this, screens showed the old spend
+    await projectService.invalidateCache(projectId);
   }
 }
 

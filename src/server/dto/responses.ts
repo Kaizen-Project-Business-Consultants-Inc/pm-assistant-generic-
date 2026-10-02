@@ -34,6 +34,9 @@ export interface ProjectDTO {
   priority: string;
   budgetAllocated?: number;
   budgetSpent: number;
+  /** Of the spend: labour from approved timesheets, and other costs typed in */
+  labourCost: number;
+  otherCosts?: number;
   currency: string;
   location?: string;
   locationLat?: number;
@@ -62,6 +65,9 @@ export function toProjectDTO(row: Record<string, any>): ProjectDTO {
     priority: row.priority,
     budgetAllocated: row.budgetAllocated ?? row.budget_allocated ?? undefined,
     budgetSpent: row.budgetSpent ?? row.budget_spent ?? 0,
+    // Spent = labour (approved timesheets) + other costs (typed in) — T072
+    labourCost: row.labourCost ?? (row.labour_cost != null ? Number(row.labour_cost) : 0),
+    otherCosts: row.otherCosts ?? (row.other_costs != null ? Number(row.other_costs) : undefined),
     currency: row.currency ?? 'USD',
     location: row.location ?? undefined,
     locationLat: row.locationLat ?? row.location_lat ?? undefined,

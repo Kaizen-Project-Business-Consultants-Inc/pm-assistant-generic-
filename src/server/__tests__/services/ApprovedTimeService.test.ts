@@ -16,6 +16,8 @@ vi.mock('../../services/RateCardService', async () => {
   const real = await vi.importActual<any>('../../services/RateCardService');
   return { ratesOn: real.ratesOn, rateCardService: { listSafe: (...a: any[]) => listSafe(...a) } };
 });
+const invalidateCache = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../services/ProjectService', () => ({ projectService: { invalidateCache: (...a: any[]) => invalidateCache(...a) } }));
 vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: vi.fn() }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
@@ -104,6 +106,7 @@ describe('ApprovedTimeService — what approved hours do to the plan', () => {
     expect(proj[0]).toContain('p.budget_spent = ROUND(COALESCE(p.other_costs, 0) + p.labour_cost, 2)');
     expect(proj[0]).toContain('COALESCE(t.is_summary, 0) = 0'); // summary tasks aren't counted twice
     expect(proj[1]).toEqual(['p1']);
+    expect(invalidateCache).toHaveBeenCalledWith('p1'); // screens must not show the cached old spend
   });
 
   it('nothing to do for no tasks', async () => {
