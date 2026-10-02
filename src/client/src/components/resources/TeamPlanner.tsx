@@ -25,7 +25,7 @@ interface Drag { block: PlannerBlock; grabIdx: number }
 interface Pending { block: PlannerBlock; toId: string | null; weeks: number }
 
 /**
- * Team Planner (Resources → Team Planner): everyone on your projects down the side, weeks across,
+ * Team Planner (Resources → Team Planner): the company's people down the side (those on your projects first), weeks across,
  * every person's row adding up ALL their work. Drag a block onto another person (it becomes theirs)
  * or another week (it moves, and the tasks linked after it follow); a check shows what that does
  * before anything is saved, and the change goes in Schedule History with Undo. Keyboard: Enter on a
@@ -158,7 +158,7 @@ export function TeamPlanner() {
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[16rem]">
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">Team Planner</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Everyone on your projects, week by week, across all their work. Drag a block to another person or another week — you'll see what it does before anything changes.</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Your team week by week, counting all their work on every project — people on your projects first. Drag a block to another person or another week; you'll see what it does before anything changes.</p>
         </div>
         <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
           <span className="block mb-1">Projects</span>
