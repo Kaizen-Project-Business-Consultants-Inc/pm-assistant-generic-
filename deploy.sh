@@ -122,6 +122,28 @@ if [ -n "$(git status --porcelain -- src mcp-server/src package.json package-loc
   fi
   echo "⚠ Deploying UNSAVED changes to staging (--allow-dirty)"
 fi
+# ── Never deploy an older copy ──
+# Two sessions deploy from this machine. On 2026-10-02 one deployed prod from a copy that lacked
+# the other's commits and removed the Team Planner that had just been released. So: the code
+# being deployed must contain everything on origin/master, and prod must deploy exactly what is
+# pushed (an unpushed commit would be wiped by the next deploy from origin/master).
+if git fetch -q origin master 2>/dev/null; then
+  if ! git merge-base --is-ancestor origin/master HEAD; then
+    echo "✗ This copy is missing $(git rev-list --count HEAD..origin/master) saved change(s) from origin/master — deploying it would take them off $ENV (nothing was deployed):"
+    git log --oneline HEAD..origin/master | head -10
+    echo "  Pull first, or release from a clean worktree: git worktree add ../pm-release origin/master"
+    exit 1
+  fi
+  if [ "$ENV" = "prod" ] && ! git merge-base --is-ancestor HEAD origin/master; then
+    echo "✗ $(git rev-list --count origin/master..HEAD) commit(s) here are not pushed — push them first, so prod runs only what is saved on origin/master (nothing was deployed)."
+    exit 1
+  fi
+elif [ "$ENV" = "prod" ]; then
+  echo "✗ Couldn't reach origin to check this copy is up to date — nothing was deployed."
+  exit 1
+else
+  echo "⚠ Couldn't reach origin to check this copy is up to date (staging: deploying anyway)"
+fi
 assert_source_unchanged() {
   if [ "$(source_state)" != "$SOURCE_STATE_AT_START" ]; then
     echo "✗ Files changed while this deploy was building — aborting before upload (nothing was deployed)."
