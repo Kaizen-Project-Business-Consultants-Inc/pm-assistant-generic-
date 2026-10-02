@@ -937,7 +937,13 @@ export class ScheduleService {
     const progressFromHours = (await this.progressFromHoursTaskIds([id])).has(id);
     if (progressFromHours) {
       if (data.status === 'completed') data.progressPercentage = 100;
-      else delete data.progressPercentage;
+      else if (oldTask.status === 'completed' && data.status) {
+        // Reopened: back to what the approved hours say — in the SAME save, so a workflow like
+        // "auto-complete at 100%" never sees the old 100% and marks it done again
+        const { approvedTimeService } = await import('./ApprovedTimeService');
+        const pct = await approvedTimeService.progressFor(id).catch(() => null);
+        if (pct != null) data.progressPercentage = pct; else delete data.progressPercentage;
+      } else delete data.progressPercentage;
     }
 
     // Auto-compute endDate when startDate + estimatedDays are known but endDate is missing
@@ -1113,13 +1119,6 @@ export class ScheduleService {
       }
     }
 
-    // Reopened after being done: its % goes back to what the approved hours say
-    if (progressFromHours && oldTask.status === 'completed' && data.status && data.status !== 'completed') {
-      const { approvedTimeService } = await import('./ApprovedTimeService');
-      await approvedTimeService.applyToTasks([id]).catch(err => logger.warn('[Progress] recompute after reopening failed', { id, error: err?.message }));
-      queueReviewRerun(oldTask.scheduleId);
-      return (await this.findTaskById(id)) ?? updated;
-    }
     queueReviewRerun(oldTask.scheduleId);
     return updated;
   }

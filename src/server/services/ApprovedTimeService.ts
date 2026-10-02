@@ -99,6 +99,18 @@ export class ApprovedTimeService {
     return { tasks: tasks.length, projects: projects.size };
   }
 
+  /** % complete from approved hours for one task as if it were open (approved ÷ planned, max 99); null if nothing planned */
+  async progressFor(taskId: string): Promise<number | null> {
+    const [t] = await databaseService.query<any>('SELECT id, schedule_id FROM tasks WHERE id = ?', [taskId]);
+    if (!t) return null;
+    const [row] = await databaseService.query<{ total: number }>(
+      `SELECT COALESCE(SUM(hours), 0) AS total FROM time_entries WHERE status = 'approved' AND task_id = ?`, [taskId]);
+    const bookings = (await resourceService.findEffectiveAssignments({ scheduleIds: [t.schedule_id], includeDone: true })).filter(b => b.taskId === taskId);
+    const cal = (await calendarsFor([t.schedule_id], (id) => scheduleService.workingDayTest(id)))(t.schedule_id);
+    const planned = bookings.reduce((n, b) => n + (b.hoursPerWeek / 5) * workingDaysBetween(b.startDate, b.endDate, cal), 0);
+    return planned > 0 ? Math.min(99, Math.round((Number(row?.total ?? 0) / planned) * 100)) : null;
+  }
+
   /** A project's money spent = its tasks' labour + its other costs */
   async applyToProject(projectId: string): Promise<void> {
     await databaseService.query(
