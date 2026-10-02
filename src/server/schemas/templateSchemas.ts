@@ -10,6 +10,8 @@ export const templateTaskSchema = z.object({
   parentRefId: z.string().nullable().default(null),
   dependencyRefId: z.string().nullable().default(null),
   dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).default('FS'),
+  /** Working days after the predecessor (FS: after it finishes; SS: after it starts) */
+  lagDays: z.number().min(0).optional(),
   /** Further predecessors beyond dependencyRefId (2026-10-02: a task waiting on two others lost one link) */
   moreDependencies: z.array(z.object({
     refId: z.string(),

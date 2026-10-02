@@ -403,6 +403,15 @@ describe('TemplateService', () => {
     };
     const tt = (o: any) => ({ description: '', priority: 'medium', parentRefId: null, dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: false, ...o });
 
+    it("a link's gap is kept: 'starts 3 working days after A starts' (2026-10-02: it was ignored)", async () => {
+      const get = await apply([
+        tt({ refId: 'a', name: 'A', estimatedDays: 10 }),
+        tt({ refId: 'b', name: 'B', estimatedDays: 2, dependencyRefId: 'a', dependencyType: 'SS', lagDays: 3 }),
+      ], '2026-10-05');
+      expect(ymd(get('B').startDate)).toBe('2026-10-08');
+      expect(get('B').dependencies).toEqual([{ dependencyId: get('A').id, dependencyType: 'SS', lagDays: 3 }]);
+    });
+
     it('a task with more than one predecessor is linked to all of them and starts after the later one (2026-10-02)', async () => {
       const get = await apply([
         tt({ refId: 'a', name: 'A', estimatedDays: 2 }),
@@ -465,6 +474,7 @@ describe('TemplateService', () => {
       const c = tpl.tasks.find(t => t.name === 'C')!;
       expect(c.dependencyRefId).toBe(ref('A'));
       expect(c.moreDependencies).toEqual([{ refId: ref('B'), dependencyType: 'SS', lagDays: 1 }]);
+      expect(c.lagDays).toBeUndefined(); // the first link had no gap
       await service.delete(tpl.id);
     });
 

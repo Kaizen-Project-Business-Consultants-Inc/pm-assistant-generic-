@@ -336,8 +336,11 @@ describe('AutoRescheduleService', () => {
       ]);
       const result = await service.detectDelays('sch-1');
       expect(result.length).toBe(1);
-      expect(result[0].delayDays).toBeGreaterThanOrEqual(4);
-      expect(result[0].delayDays).toBeLessThanOrEqual(6);
+      // ~5 calendar days late, counted in working days — depends on which weekdays they cover
+      // (a fixed 4–6 failed whenever a weekend fell in that window)
+      const expected = wd(daysFromNow(5), daysFromNow(10));
+      expect(result[0].delayDays).toBeGreaterThanOrEqual(expected - 1);
+      expect(result[0].delayDays).toBeLessThanOrEqual(expected + 1);
     });
 
     it('flags an overdue task with no progress (used to be dropped)', async () => {

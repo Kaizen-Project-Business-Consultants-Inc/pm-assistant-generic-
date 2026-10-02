@@ -343,7 +343,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     const earliest = [...leaves].sort((a, b) => (ymd(a.startDate) || '9999').localeCompare(ymd(b.startDate) || '9999') || (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
     const noPred = leaves.filter(t => t.id !== earliest?.id && (t.dependencies || []).filter(d => g.byId.has(d.dependencyId)).length === 0);
     if (noPred.length > 0 && noPred.length / n > 0.05) {
-      findings.push(make('R01', noPred.map(t => t.id), `${plural(noPred.length, 'task')} (${pct(noPred.length, n)}%) have no predecessor: ${listNames(noPred)}. Nothing tells the schedule what must finish first.`));
+      findings.push(make('R01', noPred.map(t => t.id), `${plural(noPred.length, 'task')} (${pct(noPred.length, n)}%) ${agree(noPred.length, 'has', 'have')} no predecessor: ${listNames(noPred)}. Nothing tells the schedule what must finish first.`));
     }
     // R02 — Missing successor (exclude latest-finishing leaf and milestones)
     const latest = [...leaves].sort((a, b) => (ymd(b.endDate) || '0000').localeCompare(ymd(a.endDate) || '0000'))[0];
@@ -494,7 +494,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   // R17 — Leads and long lags
   const laggy = g.all.filter(t => (t.dependencies || []).some(d => (d.lagDays ?? 0) < 0 || (d.lagDays ?? 0) > LONG_LAG_DAYS));
   if (laggy.length > 0) {
-    findings.push(make('R17', laggy.map(t => t.id), `${plural(laggy.length, 'task')} use a lead or a lag over ${LONG_LAG_DAYS} working days: ${listNames(laggy)}. Make the wait a task so it can be tracked.`));
+    findings.push(make('R17', laggy.map(t => t.id), `${plural(laggy.length, 'task')} ${agree(laggy.length, 'uses', 'use')} a lead or a lag over ${LONG_LAG_DAYS} working days: ${listNames(laggy)}. Make the wait a task so it can be tracked.`));
   }
 
   // R18 — No baseline
@@ -579,7 +579,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   const staleCutoff = new Date(input.today.getTime() - STALE_DAYS * DAY_MS);
   const stale = leaves.filter(t => norm(t.status) === 'in_progress' && t.updatedAt && new Date(t.updatedAt) < staleCutoff);
   if (stale.length > 0) {
-    findings.push(make('R24', stale.map(t => t.id), `${plural(stale.length, 'task')} in progress have not been touched in ${STALE_DAYS} days: ${listNames(stale)}.`));
+    findings.push(make('R24', stale.map(t => t.id), `${plural(stale.length, 'task')} in progress ${agree(stale.length, 'has', 'have')} not been touched in ${STALE_DAYS} days: ${listNames(stale)}.`));
   }
 
   // R25 — Phase without children

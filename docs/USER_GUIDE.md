@@ -1912,7 +1912,7 @@ Templates let you save and reuse project structures.
 1. Open a project with a well-defined schedule.
 2. Click the **Actions** dropdown (top-right of the project header) and select **Save as Template**.
 3. Enter a template name and description.
-4. The template captures the full task hierarchy, dependencies, durations, and structure (but not specific dates or assignments). Durations and each task's position are stored in **working days** (Sep 2026). A task that waits on several others keeps **all** its links (Oct 2026; before, only the first was saved).
+4. The template captures the full task hierarchy, dependencies, durations, and structure (but not specific dates or assignments). Durations and each task's position are stored in **working days** (Sep 2026). A task that waits on several others keeps **all** its links, and each link keeps its gap ("starts 3 days after Design starts") (Oct 2026; before, only the first link was saved and gaps were lost).
 
 ### Using a Template
 
@@ -2763,7 +2763,7 @@ Tick what you want and **Apply**; **Undo** reverses everything, including dates.
 
 **Linked tasks start after their predecessor.** When you add a task and give it a predecessor (in the task form, or several tasks at once), it is placed after that predecessor straight away, and anything waiting on it moves too, on working days. **History** now shows what a Schedule Review fix did: each fix in words, the tasks it added, and every date it moved, before → after.
 
-**Built-in templates.** The **Web Application Development** template (Waterfall) passes Kovarti's own Schedule Review: links sit on tasks, every task leads somewhere, and there are sign-off milestones — Requirements Signed Off, Design Approved, UAT Signed Off, Go-Live Complete. Assign owners after creating the project.
+**Built-in templates.** Every built-in template passes Kovarti's own Schedule Review (Oct 2026): no links on phases, every task leads somewhere, real sign-off milestones, and overlapping work starts a set number of working days after the work it follows (at most 10). For example, the **Web Application Development** template (Waterfall): links sit on tasks, every task leads somewhere, and there are sign-off milestones — Requirements Signed Off, Design Approved, UAT Signed Off, Go-Live Complete. Assign owners after creating the project.
 
 When you apply fixes that add links between tasks, Kovarti also **re-flows the dates** so each task starts after the tasks it now depends on. Anything already finished, or with real start/finish dates recorded, stays exactly where it is. The panel tells you how many tasks moved and how much the project finish shifted, and warns you if a lot of the plan moved a long way, so you can undo if it is not what you expected.
 

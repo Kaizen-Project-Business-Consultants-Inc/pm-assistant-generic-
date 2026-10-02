@@ -1,12 +1,17 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-02 (c) — the two older issues
+
+- **Template link gaps**: `lagDays` on a template task's main link (was: `offsetDays` on a linked task silently ignored, so "SS + 15" was SS + 0). 28 built-in links converted, capped at 10 (R17 long-lag rule); Save as template stores the first link's lag. Old saved templates: offset on a linked task still means "absolute position", ignored as before.
+- Review messages agree with counts for R01, R17, R24 too ("1 task has / uses").
+- `AutoRescheduleService` zero-progress test counted calendar days as working days — fails whenever a weekend fell in the window; now computes working days (checked pinned to all 7 weekdays).
+
 ## 2026-10-02 (b) — gaps found while recording the Scheduling video
 
 - **Propose fixes links the next step after a task that feeds nothing** (R02): next leaf in the same phase that starts after it finishes, else the next in the plan; never a loop; pre-ticked.
 - **Templates take more than one predecessor** (`moreDependencies`); applying links all and starts after the latest; **Save as template keeps every link** (was first only).
 - **All 18 built-in templates pass Schedule Review** structurally (88–94; only R13 long tasks remain on construction/consulting): no links on phases, nothing feeds nothing, multi-day "milestones" split, IT sign-off milestones added. Guards: per-template score floors + "template length covers its plan".
 - **Timeline strip**: a first-row milestone label never runs through another diamond.
-- Open: template `offsetDays` on a linked task is ignored (an "SS + 15" link is really SS + 0) — pre-existing; `AutoRescheduleService` zero-progress test fails depending on today's date — pre-existing.
 
 ## 2026-10-02 (found while recording the Scheduling video)
 

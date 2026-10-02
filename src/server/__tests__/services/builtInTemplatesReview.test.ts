@@ -17,7 +17,7 @@ const START = utcDay('2026-10-05');
 
 /** The main predecessor, then any more (as applying the template links them) */
 const links = (t: any) => [
-  ...(t.dependencyRefId ? [{ dependencyId: t.dependencyRefId, dependencyType: t.dependencyType || 'FS', lagDays: 0 }] : []),
+  ...(t.dependencyRefId ? [{ dependencyId: t.dependencyRefId, dependencyType: t.dependencyType || 'FS', lagDays: t.lagDays || 0 }] : []),
   ...(t.moreDependencies ?? []).map((d: any) => ({ dependencyId: d.refId, dependencyType: d.dependencyType || 'FS', lagDays: d.lagDays || 0 })),
 ];
 
