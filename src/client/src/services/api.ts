@@ -2332,7 +2332,7 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   /** Timesheets waiting for me as line manager */
   async getTimesheetApprovals() {
     const response = await this.api.get('/time-entries/approvals');
-    return response.data as { timesheets: import('../types/timesheet').PendingTimesheet[] };
+    return response.data as { timesheets: import('../types/timesheet').PendingTimesheet[]; isApprover: boolean };
   }
 
   async getTimesheet(id: string) {

@@ -61,6 +61,16 @@ describe('WeeklyTimesheetService', () => {
     });
   });
 
+  describe('"To approve" shows only for approvers', () => {
+    it('line managers and the company owner yes; everyone else no', async () => {
+      query.mockResolvedValueOnce([{ n: 2 }]);
+      expect(await weeklyTimesheetService.isApprover('u-michael')).toBe(true);
+      query.mockResolvedValueOnce([{ n: 0 }]);
+      expect(await weeklyTimesheetService.isApprover('u-peter')).toBe(false);
+      expect(await weeklyTimesheetService.isApprover(OWNER)).toBe(true);
+    });
+  });
+
   describe('the week', () => {
     it('runs Monday to Sunday whatever day is given', () => {
       expect(weeklyTimesheetService.weekOf('2026-10-15')).toMatchObject({ weekStart: '2026-10-12', weekEnd: '2026-10-18' });

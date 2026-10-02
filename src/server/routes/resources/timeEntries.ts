@@ -172,7 +172,12 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   // GET /approvals — timesheets waiting for me as line manager
   fastify.get('/approvals', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      return { timesheets: await weeklyTimesheetService.pendingFor(request.user!.userId) };
+      const [timesheets, isApprover] = await Promise.all([
+        weeklyTimesheetService.pendingFor(request.user!.userId),
+        weeklyTimesheetService.isApprover(request.user!.userId),
+      ]);
+      // "To approve" shows only for line managers (hide controls a role can never use)
+      return { timesheets, isApprover: isApprover || timesheets.length > 0 };
     } catch (error) { return timesheetError(reply, error, 'Failed to load timesheets to approve'); }
   });
 

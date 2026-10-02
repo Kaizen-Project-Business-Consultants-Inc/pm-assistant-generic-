@@ -25,6 +25,11 @@ export function TimesheetPage() {
   const [logHours, setLogHours] = useState('');
   const [logDescription, setLogDescription] = useState('');
 
+  // Line managers only: their queue of timesheets to approve
+  const { data: approvalsData } = useQuery({ queryKey: ['timesheet-approvals'], queryFn: () => apiService.getTimesheetApprovals() });
+  const isApprover = !!approvalsData?.isApprover;
+  const approvalCount = approvalsData?.timesheets.length ?? 0;
+
   const { data: projectsData, isError: projectsError } = useQuery({
     queryKey: ['projects'],
     queryFn: () => apiService.getProjects(),
@@ -189,13 +194,13 @@ export function TimesheetPage() {
         >
           <BarChart3 className="w-4 h-4" /> Project Summary
         </button>
-        <button
+        {isApprover && <button
           onClick={() => setTab('approvals')}
           className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-md transition-colors
             ${tab === 'approvals' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm dark:shadow-gray-900/30' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:text-white'}`}
         >
-          <ClipboardCheck className="w-4 h-4" /> To approve
-        </button>
+          <ClipboardCheck className="w-4 h-4" /> To approve{approvalCount > 0 ? ` (${approvalCount})` : ''}
+        </button>}
       </div>
 
       {tab === 'my-timesheet' && (
@@ -246,7 +251,7 @@ export function TimesheetPage() {
         </div>
       )}
 
-      {tab === 'approvals' && (
+      {tab === 'approvals' && isApprover && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Pending Timesheet Approvals</h3>
           <TimesheetApprovalPanel />

@@ -298,6 +298,13 @@ export class WeeklyTimesheetService {
     }).catch(err => logger.warn('[Timesheet] notify rejected failed', { error: err?.message }));
   }
 
+  /** Is this user anyone's line manager (or the company owner)? Decides whether "To approve" shows. */
+  async isApprover(userId: string): Promise<boolean> {
+    if (userId === await this.companyOwnerId()) return true;
+    const [row] = await databaseService.query<{ n: number }>('SELECT COUNT(*) AS n FROM resources WHERE line_manager_user_id = ?', [userId]);
+    return Number(row?.n ?? 0) > 0;
+  }
+
   /** The line manager's queue: timesheets waiting for them (the company owner also sees ones whose approver has left) */
   async pendingFor(reviewerId: string): Promise<Array<{ id: string; userId: string; userName: string; weekStart: string; totalHours: number; projectCount: number; flagCount: number; submittedAt: string }>> {
     const owner = await this.companyOwnerId();
