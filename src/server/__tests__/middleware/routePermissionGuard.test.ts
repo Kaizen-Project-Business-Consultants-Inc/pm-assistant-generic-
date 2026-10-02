@@ -262,6 +262,16 @@ const NON_PROJECT: Record<string, string[]> = {
     "POST /export/docx",
     "POST /render"
   ],
+  // Weekly timesheets (2026-10-02): personal, approved by the person's line manager, not a
+  // project role. The service checks: only the person submits/recalls their own week; only the
+  // sheet's line manager (or the company owner) approves/sends back; only the task's project PM flags.
+  "resources/timeEntries.ts": [
+    "POST /timesheets/:id/approve",
+    "POST /timesheets/:id/flags",
+    "POST /timesheets/:id/reject",
+    "POST /week/recall",
+    "POST /week/submit"
+  ],
   // Company rate card: not project data; admin / PMO / PM / company owner only (rateCardManagerOnly)
   "resources/rateCard.ts": [
     "DELETE /:id",

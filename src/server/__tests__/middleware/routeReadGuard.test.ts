@@ -51,7 +51,8 @@ const READ_OK: Record<string, string[]> = {
   'reporting/analyticsSummary.ts': ['/summary'],
   'reporting/briefing.ts': ['/daily'],
   'reporting/dashboardData.ts': ['/overdue-tasks', '/issues-trend', '/milestones', '/cr-summary'],
-  'resources/timeEntries.ts': ['/timesheet', '/submissions', '/pending-approvals', '/timesheet-status'],
+  // Weekly timesheets are personal, not project data: my week, and the line manager's queue / one sheet (the service checks it's theirs)
+  'resources/timeEntries.ts': ['/timesheet', '/week', '/approvals', '/timesheets/:id'],
   'integrations/integrations.ts': ['/'],
   'integrations/teamsMeetings.ts': ['/status', '/install', '/admin-approval-url'], // your own Microsoft connection, no project data
   'integrations/webhooks.ts': ['/', '/:id/deliveries'],

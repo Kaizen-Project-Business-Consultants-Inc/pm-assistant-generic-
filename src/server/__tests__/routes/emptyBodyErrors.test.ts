@@ -44,10 +44,10 @@ const monteCarlo = vi.hoisted(() => ({ runSimulation: vi.fn() }));
 vi.mock('../../services/MonteCarloService', () => ({ monteCarloService: monteCarlo }));
 vi.mock('../../services/UserService', () => ({ userService: { findById: vi.fn(async () => ({ subscriptionTier: 'sme' })) } }));
 
-vi.mock('../../services/TimeEntryService', () => ({ timeEntryService: { create: vi.fn(), submitTimesheet: vi.fn() } }));
+vi.mock('../../services/TimeEntryService', () => ({ timeEntryService: { create: vi.fn() } }));
+vi.mock('../../services/WeeklyTimesheetService', () => ({ weeklyTimesheetService: { reject: vi.fn(), flag: vi.fn(), assertWeekOpen: vi.fn() }, TimesheetError: class TimesheetError extends Error { statusCode = 400; } }));
 vi.mock('../../services/TimeAnomalyService', () => ({ timeAnomalyService: {} }));
 vi.mock('../../database/TimeEntryRepository', () => ({ timeEntryRepository: {} }));
-vi.mock('../../database/TimesheetSubmissionRepository', () => ({ timesheetSubmissionRepository: {} }));
 vi.mock('../../services/automation/AutomationEventBus', () => ({ automationEventBus: { emit: vi.fn(async () => {}) } }));
 vi.mock('../../services/ScheduleService', () => ({ scheduleService: { findById: vi.fn(), findTaskById: vi.fn() } }));
 
@@ -120,10 +120,13 @@ describe('routes answer an empty or incomplete body with a clear 4xx, not a cras
     expect(res.json().message).toBe('Choose the task you worked on.');
   });
 
-  it('timesheet submit with an empty body → 400', async () => {
-    const res = await send('POST', '/api/v1/time-entries/submit', {});
+  it('sending a timesheet back, or flagging a line, with an empty body → 400 saying what is missing', async () => {
+    const res = await send('POST', '/api/v1/time-entries/timesheets/ts-1/reject', {});
     expect(res.statusCode).toBe(400);
-    expect(res.json().message).toMatch(/which project/);
+    expect(res.json().message).toMatch(/reason/);
+    const flag = await send('POST', '/api/v1/time-entries/timesheets/ts-1/flags', {});
+    expect(flag.statusCode).toBe(400);
+    expect(flag.json().message).toMatch(/task line/);
   });
 
   it('intake: submitting to a form that does not exist → 404; reviewing without a decision → 400', async () => {

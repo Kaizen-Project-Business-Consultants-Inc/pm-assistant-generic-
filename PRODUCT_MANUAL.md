@@ -742,33 +742,25 @@ Aggregated time entry views per user per week, suitable for approval workflows a
 
 Compare logged hours against task estimated effort to identify underestimation patterns and improve future planning accuracy.
 
-### Timesheet Approval Workflow
+### Timesheet Approval Workflow (weekly, line manager — Oct 2026)
 
-Time entries follow a formal approval lifecycle before they are considered finalized:
+**One timesheet per person per week, all projects, one approver: the person's line manager** (`resources.line_manager_user_id`, T070; the company owner if none). Hours stay in `time_entries` (`draft` → `submitted` → `approved` / `rejected`); the week's state is in `timesheets` (T071: user, week_start Monday, status, approver_user_id, total_hours, submitted/reviewed, rejection_reason; unique per user and week). `timesheet_flags` holds PMs' notes on a task line. `WeeklyTimesheetService` does the work; `timesheet_submissions` (per project, approved by PMs) is no longer written — hours already waiting there were moved to weekly timesheets on first boot (`moveWaitingTimesheets`).
 
-**Status flow:** `draft` → `submitted` → `approved` or `rejected`. Rejected entries revert to `draft` so the user can correct and resubmit.
+**The week view** (`GET /time-entries/week?date=`): a line per task the person is planned on that week (`findEffectiveAssignments` for their resource) or has hours on — planned this week (`hoursInWeek` on the plan's calendar), hours per day, worked; and for the task: the person's planned share (`hoursPerWeek ÷ 5 × working days`), approved hours, remaining (never below 0), over plan by (approved + this week's unapproved − planned), % (stops at 99 until the task is completed).
 
-**Submission granularity:** All entries for a given user within a specific week and project are submitted together as a single submission. Users cannot submit individual lines in isolation.
+| Method | Endpoint | Who |
+|--------|----------|-----|
+| GET | `/time-entries/week?date=` | the person (own week) |
+| POST | `/time-entries/week/submit` `{date}` | the person — refused with no hours or if already waiting/approved |
+| POST | `/time-entries/week/recall` `{date}` | the person, while waiting |
+| GET | `/time-entries/approvals` | the line manager's queue (company owner also sees sheets with no approver) |
+| GET | `/time-entries/timesheets/:id` | its approver, the person, the company owner |
+| POST | `/time-entries/timesheets/:id/approve` | its approver or the company owner; never one's own (except the owner) |
+| POST | `/time-entries/timesheets/:id/reject` `{reason}` | same; reason required |
+| POST | `/time-entries/timesheets/:id/flags` `{taskId, note}` | a PM (manager) of that task's project, while waiting |
+| GET | `/time-entries/project/:projectId/pending` | the project's PM — this project's waiting hours only |
 
-**API endpoints:**
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/time-entries/submit` | Submit a week+project timesheet |
-| POST | `/time-entries/recall/:submissionId` | Recall a submitted (unreviewed) timesheet |
-| GET | `/time-entries/submissions` | User's own submission history |
-| GET | `/time-entries/pending-approvals` | Manager's queue of pending submissions |
-| POST | `/time-entries/approve/:submissionId` | Approve a submission |
-| POST | `/time-entries/reject/:submissionId` | Reject a submission (reason required) |
-| GET | `/time-entries/timesheet-status` | Weekly view enriched with submission status |
-
-**Mutation guard:** `PUT` and `DELETE` on individual time entries return `409 Conflict` if the entry status is `submitted` or `approved`. Draft and rejected entries remain editable — rejected entries can be corrected and resubmitted without needing a recall.
-
-**Authorization:** Only project managers and owners can approve or reject submissions. Users may only recall their own submissions.
-
-**Notifications:** Submission triggers a `timesheet_submitted` notification to project managers. Approval sends `timesheet_approved` to the user. Rejection sends `timesheet_rejected` (high severity) with the rejection reason.
-
-**Database:** Migration `T019_timesheet_approval.sql` adds `status`, `approved_by`, and `approved_at` columns to `time_entries` and creates the `timesheet_submissions` table.
+**Guards:** creating an entry in a waiting/approved week, or moving one into it, is refused (409, plain message); editing/deleting submitted or approved entries stays refused. **Notifications:** `timesheet_submitted` to the approver, `timesheet_flagged` to the approver, `timesheet_approved` / `timesheet_rejected` (with the reason) to the person.
 
 ### AI Time Module
 

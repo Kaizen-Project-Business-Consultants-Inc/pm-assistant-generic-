@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { timeEntryService } from '../../services/TimeEntryService';
 import { timeAnomalyService } from '../../services/TimeAnomalyService';
 import { timeEntryRepository } from '../../database/TimeEntryRepository';
-import { timesheetSubmissionRepository } from '../../database/TimesheetSubmissionRepository';
+import { weeklyTimesheetService, TimesheetError } from '../../services/WeeklyTimesheetService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
@@ -14,10 +14,21 @@ import { scheduleService } from '../../services/ScheduleService';
 import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
 
-const submitTimesheetSchema = z.object({
-  projectId: z.string({ message: 'Say which project the timesheet is for (projectId).' }).min(1, 'Say which project the timesheet is for (projectId).'),
-  weekStart: z.string({ message: 'Say which week to submit (weekStart, e.g. 2026-09-28).' }).min(1, 'Say which week to submit (weekStart, e.g. 2026-09-28).'),
+const flagSchema = z.object({
+  taskId: z.string({ message: 'Say which task line you are flagging.' }).min(1, 'Say which task line you are flagging.'),
+  note: z.string({ message: 'Say what is wrong with the line.' }).trim().min(1, 'Say what is wrong with the line.').max(1000, 'Keep the note under 1000 characters.'),
 });
+
+/** A calendar day from the query/body, else today (UTC) */
+function dayOrToday(date?: string): string {
+  return date && /^\d{4}-\d{2}-\d{2}/.test(date) ? date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+}
+
+function timesheetError(reply: FastifyReply, error: unknown, fallback: string) {
+  if (error instanceof TimesheetError) return reply.status(error.statusCode).send({ error: error.message, message: error.message });
+  logger.error(fallback, { error });
+  return reply.status(500).send({ error: fallback, message: `${fallback}. Try again in a minute.` });
+}
 
 const rejectTimesheetSchema = z.object({
   reason: z.string({ message: 'Give a reason for sending the timesheet back.' }).min(1, 'Give a reason for sending the timesheet back.').max(2000, 'Keep the reason under 2000 characters.'),
@@ -56,11 +67,14 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       if (!schedule || schedule.projectId !== body.projectId || !task || task.scheduleId !== body.scheduleId) {
         return reply.status(400).send({ error: 'mismatch', message: "That task isn't in this project's schedule." });
       }
+      // Hours can't be added to a week that's been sent for approval or approved
+      await weeklyTimesheetService.assertWeekOpen(user.userId, body.date);
       const entry = await timeEntryService.create({ ...body, userId: user.userId });
       automationEventBus.emit({ type: 'time_entry.created', entityType: 'time_entry', entityId: entry.id, projectId: body.projectId, userId: user.userId, payload: entry, timestamp: new Date().toISOString() }).catch(() => {});
       return { entry };
     } catch (error) {
       if (error instanceof z.ZodError) return sendValidationError(reply, error);
+      if (error instanceof TimesheetError) return reply.status(error.statusCode).send({ error: error.message, message: error.message });
       logger.error('Create time entry error', { error });
       return reply.status(500).send({ error: 'Failed to create time entry' });
     }
@@ -127,124 +141,85 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // POST /submit — submit timesheet for approval (any member can submit their own)
-  fastify.post('/submit', { preHandler: [requireScope('write'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // ── Weekly timesheets (2026-10-02): one per person per week, approved by their line manager ──
+
+  // GET /week?date= — my week: a line per task (planned this week, hours by day, task so far)
+  fastify.get('/week', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { date } = request.query as { date?: string };
     try {
-      const user = request.user!;
-      const body = submitTimesheetSchema.parse(request.body ?? {});
-      const submission = await timeEntryService.submitTimesheet(user.userId, body.projectId, body.weekStart);
-      automationEventBus.emit({ type: 'timesheet.submitted', entityType: 'timesheet', entityId: submission.id, projectId: body.projectId, userId: user.userId, payload: submission, timestamp: new Date().toISOString() }).catch(() => {});
-      return { submission };
-    } catch (error: any) {
-      if (error instanceof z.ZodError) return sendValidationError(reply, error);
-      if (error.statusCode) return reply.status(error.statusCode).send({ error: error.message });
-      logger.error('Submit timesheet error', { error });
-      return reply.status(500).send({ error: 'Failed to submit timesheet' });
-    }
+      return await weeklyTimesheetService.weekView(request.user!.userId, dayOrToday(date));
+    } catch (error) { return timesheetError(reply, error, 'Failed to load the timesheet'); }
   });
 
-  // POST /recall/:submissionId — recall submitted timesheet (own submission, viewer level)
-  fastify.post('/recall/:submissionId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // POST /week/submit { date } — send my week to my line manager
+  fastify.post('/week/submit', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { date } = (request.body ?? {}) as { date?: string };
     try {
-      const user = request.user!;
-      const { submissionId } = request.params as { submissionId: string };
-
-      const sub = await timesheetSubmissionRepository.findById(submissionId);
-      if (!sub) return reply.status(404).send({ error: 'Submission not found' });
-
-      const allowed = await checkEntityProjectAccess(sub.projectId, user.userId, user.role, 'viewer', reply);
-      if (!allowed) return;
-
-      await timeEntryService.recallTimesheet(submissionId, user.userId);
-      return { message: 'Timesheet recalled' };
-    } catch (error: any) {
-      if (error.statusCode) return reply.status(error.statusCode).send({ error: error.message });
-      logger.error('Recall timesheet error', { error });
-      return reply.status(500).send({ error: 'Failed to recall timesheet' });
-    }
+      const view = await weeklyTimesheetService.submit(request.user!.userId, dayOrToday(date));
+      automationEventBus.emit({ type: 'timesheet.submitted', entityType: 'timesheet', entityId: view.sheet?.id ?? '', projectId: '', userId: request.user!.userId, payload: { weekStart: view.weekStart, totalHours: view.totals.worked }, timestamp: new Date().toISOString() }).catch(() => {});
+      return view;
+    } catch (error) { return timesheetError(reply, error, 'Failed to submit the timesheet'); }
   });
 
-  // GET /submissions — user's submission history
-  fastify.get('/submissions', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // POST /week/recall { date } — take my week back while it's waiting for approval
+  fastify.post('/week/recall', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { date } = (request.body ?? {}) as { date?: string };
     try {
-      const user = request.user!;
-      const { startDate, endDate } = request.query as { startDate?: string; endDate?: string };
-      const submissions = await timeEntryService.getSubmissions(user.userId, startDate, endDate);
-      return { submissions };
-    } catch (error) {
-      logger.error('Get submissions error', { error });
-      return reply.status(500).send({ error: 'Failed to fetch submissions' });
-    }
+      return await weeklyTimesheetService.recall(request.user!.userId, dayOrToday(date));
+    } catch (error) { return timesheetError(reply, error, 'Failed to recall the timesheet'); }
   });
 
-  // GET /pending-approvals — manager's pending approvals
-  fastify.get('/pending-approvals', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // GET /approvals — timesheets waiting for me as line manager
+  fastify.get('/approvals', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const user = request.user!;
-      const submissions = await timeEntryService.getPendingApprovals(user.userId);
-      return { submissions };
-    } catch (error) {
-      logger.error('Get pending approvals error', { error });
-      return reply.status(500).send({ error: 'Failed to fetch pending approvals' });
-    }
+      return { timesheets: await weeklyTimesheetService.pendingFor(request.user!.userId) };
+    } catch (error) { return timesheetError(reply, error, 'Failed to load timesheets to approve'); }
   });
 
-  // POST /approve/:submissionId — approve submission (manager level)
-  fastify.post('/approve/:submissionId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // GET /timesheets/:id — one timesheet (its approver, its owner, or the company owner)
+  fastify.get('/timesheets/:id', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const user = request.user!;
-      const { submissionId } = request.params as { submissionId: string };
-
-      const sub = await timesheetSubmissionRepository.findById(submissionId);
-      if (!sub) return reply.status(404).send({ error: 'Submission not found' });
-
-      const allowed = await checkEntityProjectAccess(sub.projectId, user.userId, user.role, 'manager', reply);
-      if (!allowed) return;
-
-      await timeEntryService.approveTimesheet(submissionId, user.userId);
-      return { message: 'Timesheet approved' };
-    } catch (error: any) {
-      if (error.statusCode) return reply.status(error.statusCode).send({ error: error.message });
-      logger.error('Approve timesheet error', { error });
-      return reply.status(500).send({ error: 'Failed to approve timesheet' });
-    }
+      return await weeklyTimesheetService.sheetDetail((request.params as { id: string }).id, request.user!.userId);
+    } catch (error) { return timesheetError(reply, error, 'Failed to load the timesheet'); }
   });
 
-  // POST /reject/:submissionId — reject submission (manager level)
-  fastify.post('/reject/:submissionId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // POST /timesheets/:id/approve — the line manager approves the week
+  fastify.post('/timesheets/:id/approve', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const user = request.user!;
-      const { submissionId } = request.params as { submissionId: string };
+      const result = await weeklyTimesheetService.approve((request.params as { id: string }).id, request.user!.userId);
+      return { message: 'Timesheet approved', approved: result.approvedEntryIds.length };
+    } catch (error) { return timesheetError(reply, error, 'Failed to approve the timesheet'); }
+  });
 
-      const sub = await timesheetSubmissionRepository.findById(submissionId);
-      if (!sub) return reply.status(404).send({ error: 'Submission not found' });
-
-      const allowed = await checkEntityProjectAccess(sub.projectId, user.userId, user.role, 'manager', reply);
-      if (!allowed) return;
-
+  // POST /timesheets/:id/reject { reason } — the line manager sends the week back
+  fastify.post('/timesheets/:id/reject', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
       const body = rejectTimesheetSchema.parse(request.body ?? {});
-      await timeEntryService.rejectTimesheet(submissionId, user.userId, body.reason);
-      return { message: 'Timesheet rejected' };
-    } catch (error: any) {
+      await weeklyTimesheetService.reject((request.params as { id: string }).id, request.user!.userId, body.reason);
+      return { message: 'Timesheet sent back' };
+    } catch (error) {
       if (error instanceof z.ZodError) return sendValidationError(reply, error);
-      if (error.statusCode) return reply.status(error.statusCode).send({ error: error.message });
-      logger.error('Reject timesheet error', { error });
-      return reply.status(500).send({ error: 'Failed to reject timesheet' });
+      return timesheetError(reply, error, 'Failed to send the timesheet back');
     }
   });
 
-  // GET /timesheet-status — enhanced weekly timesheet with submission status
-  fastify.get('/timesheet-status', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // POST /timesheets/:id/flags { taskId, note } — a project's PM flags a line for the line manager
+  fastify.post('/timesheets/:id/flags', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const user = request.user!;
-      const { weekStart } = request.query as { weekStart: string };
-      if (!weekStart) return reply.status(400).send({ error: 'weekStart is required' });
-      const result = await timeEntryService.getWeeklyTimesheetStatus(user.userId, weekStart);
-      return result;
+      const body = flagSchema.parse(request.body ?? {});
+      await weeklyTimesheetService.flag((request.params as { id: string }).id, body.taskId, body.note, request.user!.userId);
+      return { message: 'Flag sent to the line manager' };
     } catch (error) {
-      logger.error('Get timesheet status error', { error });
-      return reply.status(500).send({ error: 'Failed to fetch timesheet status' });
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
+      return timesheetError(reply, error, 'Failed to flag the line');
     }
+  });
+
+  // GET /project/:projectId/pending — hours waiting for approval on this project (its PM)
+  fastify.get('/project/:projectId/pending', { preHandler: [requireScope('read'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      return { pending: await weeklyTimesheetService.projectPending((request.params as { projectId: string }).projectId) };
+    } catch (error) { return timesheetError(reply, error, 'Failed to load pending hours'); }
   });
 
   // GET /burndown/:projectId — burndown forecast
@@ -392,11 +367,13 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       if (!allowed) return;
 
       const body = updateTimeEntrySchema.parse(request.body ?? {});
+      if (body.date) await weeklyTimesheetService.assertWeekOpen(existing.userId, body.date);
       const entry = await timeEntryService.update(id, body);
       automationEventBus.emit({ type: 'time_entry.updated', entityType: 'time_entry', entityId: id, projectId: entry?.projectId || '', userId: user.userId, payload: entry, timestamp: new Date().toISOString() }).catch(() => {});
       return { entry };
     } catch (error: any) {
       if (error instanceof z.ZodError) return sendValidationError(reply, error);
+      if (error instanceof TimesheetError) return reply.status(error.statusCode).send({ error: error.message, message: error.message });
       if (error.statusCode === 409) return reply.status(409).send({ error: error.message });
       logger.error('Update time entry error', { error });
       return reply.status(500).send({ error: 'Failed to update time entry' });

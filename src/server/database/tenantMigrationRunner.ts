@@ -131,6 +131,7 @@ export async function runAllTenantMigrations(): Promise<void> {
     try {
       await runTenantMigrations(org.dbName);
       await backfillLineManagers(org.dbName, org.ownerUserId);
+      await moveWaitingTimesheets(org.dbName);
     } catch (error) {
       logger.error(`[tenant-migration] Failed for tenant ${org.slug}`, { error, dbName: org.dbName });
       // Continue with other tenants — don't let one failure block all
@@ -156,6 +157,34 @@ export async function backfillLineManagers(dbName: string, ownerUserId: string |
     ) as any;
     const n = Number(result?.affectedRows ?? 0);
     if (n > 0) logger.info(`[tenant-migration] ${dbName}: gave ${n} people the company owner as line manager (to check)`);
+    return n;
+  } finally {
+    conn.release();
+  }
+}
+
+/**
+ * Hours already waiting for approval under the old per-project timesheets get a weekly
+ * timesheet (T071), sent to the person's line manager (or, with none, the company owner's
+ * queue), so nothing waiting is lost. Idempotent: one timesheet per person and week.
+ */
+export async function moveWaitingTimesheets(dbName: string): Promise<number> {
+  const pool = databaseService.getPool();
+  if (!pool) return 0;
+  const conn = await pool.getConnection();
+  try {
+    const [result] = await conn.query(
+      `INSERT IGNORE INTO \`${dbName}\`.timesheets (id, user_id, week_start, status, approver_user_id, total_hours, submitted_at)
+       SELECT UUID(), te.user_id, DATE_SUB(te.date, INTERVAL WEEKDAY(te.date) DAY) AS ws, 'submitted',
+              (SELECT r.line_manager_user_id FROM \`${dbName}\`.resources r
+                WHERE r.user_id = te.user_id AND COALESCE(r.is_generic, 0) = 0 ORDER BY r.created_at LIMIT 1),
+              SUM(te.hours), NOW()
+         FROM \`${dbName}\`.time_entries te
+        WHERE te.status = 'submitted'
+        GROUP BY te.user_id, ws`,
+    ) as any;
+    const n = Number(result?.affectedRows ?? 0);
+    if (n > 0) logger.info(`[tenant-migration] ${dbName}: ${n} waiting timesheet week(s) moved to line managers`);
     return n;
   } finally {
     conn.release();

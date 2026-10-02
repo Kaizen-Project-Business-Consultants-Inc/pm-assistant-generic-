@@ -324,7 +324,10 @@ const sections: Section[] = [
     items: [
       'Open any task and click "Log Time" to record hours, date, and description',
       'Mark entries as billable or non-billable',
-      'Navigate to Timesheets from the sidebar for a weekly grid view',
+      'Navigate to Timesheets from the sidebar: one week, all your projects, with the hours planned for you on each task',
+      'Type hours into each day; "Task so far" (time left, %) is worked out for you from approved hours',
+      'Click "Submit week" — it goes to your line manager, who approves or sends it back with a reason',
+      'Line managers: Timesheets → To approve. PMs: the project Time tab shows hours waiting, and "Flag this line"',
       'Use prev/next arrows to move between weeks',
       'Switch to "Project Summary" tab to see actual vs. estimated hours per task',
     ],

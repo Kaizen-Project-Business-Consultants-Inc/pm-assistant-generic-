@@ -9,6 +9,8 @@ import { TimeBurndownChart } from '../timetracking/TimeBurndownChart';
 import { TimeTrendChart } from '../timetracking/TimeTrendChart';
 import { UtilizationHeatmap } from '../timetracking/UtilizationHeatmap';
 import { ProjectTimesheetGrid } from '../timetracking/ProjectTimesheetGrid';
+import { ProjectPendingTime } from '../timetracking/ProjectPendingTime';
+import { useProjectRole } from '../../hooks/useProjectRole';
 import { TimeAnomalyPanel } from './TimeAnomalyPanel';
 import { WeeklyReviewPanel } from './WeeklyReviewPanel';
 import { formatCalendarDate } from '../../utils/dateUtils';
@@ -35,6 +37,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export function TimeTrackingTab({ projectId }: { projectId: string }) {
+  const { canEdit: canManageTime } = useProjectRole(projectId);
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
   const [subTab, setSubTab] = useState<SubTab>('timesheet');
@@ -176,6 +179,9 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="mt-6 space-y-6">
+      {/* Hours waiting for the line manager's approval — the project's PM can flag a line */}
+      {canManageTime && <ProjectPendingTime projectId={projectId} />}
+
       {/* Sub-tab navigation */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="border-b border-gray-200 dark:border-gray-700">

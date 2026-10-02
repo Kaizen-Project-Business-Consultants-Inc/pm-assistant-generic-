@@ -1253,16 +1253,15 @@ Additional responsive improvements were made across several pages:
 
 ## 11. Time Tracking
 
-### My Timesheet
+### My Timesheet (one week, all your projects)
 
-1. Navigate to **Timesheets** in the sidebar.
-2. The **My Timesheet** tab shows a weekly grid grouped by project and task.
-3. Project names and task names are displayed (not internal IDs).
-4. Log hours for each task by day:
-   - Enter hours in the grid cells.
-   - Add optional notes for each entry.
-5. Deleting a time entry requires confirmation before removal.
-6. The system tracks total hours per task and per day.
+1. Navigate to **Timesheets** in the sidebar. **My Timesheet** shows one week — Monday to Sunday — with a line for every task you're planned on that week or have logged time on, grouped by project.
+2. Each line shows **Planned this week** (your share of the task's plan for this week, spread over its working days — a 40-hour task over two weeks shows 20 h a week), a box for each day, your **Actual** total, and **Task so far**:
+   - "24h of 40h left · 40%" — worked out from your *approved* hours; you never enter time left.
+   - "0h left · 99% until marked done" — you've used the plan, but the PM hasn't marked the task done.
+   - **Over plan by 2h** (red) — you've gone past the hours planned for you.
+3. Type your hours straight into the day boxes; they save when you leave the box (empty or 0 removes the hours).
+4. Use **Log Time** for a task that isn't listed.
 
 ### Logging Time from the Timesheet Page
 
@@ -1292,35 +1291,23 @@ Each time log entry records:
 - Date of work.
 - Optional description/notes.
 
-### Submitting a Timesheet for Approval
+### Submitting your week
 
-Once you have logged your hours for a week, you can submit them to your project manager for approval.
+1. When the week is done, click **Submit week to <your line manager>**. The whole week — every project — goes to one person: your **line manager** (set on your Resources entry).
+2. The week shows **Waiting for approval** and can't be changed. To change it, click **Recall to change** (only while it hasn't been decided).
+3. If it's **Sent back**, a red note gives the reason. Fix the hours and submit the week again.
+4. A week that's waiting or approved takes no new hours.
 
-1. Navigate to **Timesheets** in the sidebar and open the **My Timesheet** tab.
-2. Your entries appear grouped by project. Each entry shows a status badge: **gray** = draft, **blue** = submitted, **green** = approved, **red** = rejected.
-3. Submitted and approved entries display a lock icon and cannot be edited. Rejected entries remain editable so you can correct them directly.
-4. Click **Submit for Approval** on a project group to submit all draft entries for that week and project together.
-5. A blue status banner appears at the top confirming the submission is pending review.
+### Approving timesheets (line managers)
 
-**If your timesheet is rejected:**
+1. Open **Timesheets → To approve**. You see the weekly timesheets of the people you're line manager for, oldest first, with any **flags from a PM**.
+2. Pick one: each line shows the project, task, planned and worked hours; lines over plan are red, flagged lines amber with the PM's note.
+3. Click **Approve week**, or type a reason and click **Send back to <name>**. The person is notified either way.
+4. You can't approve your own timesheet (only the company owner, who has no one above them).
 
-- A red banner appears with the rejection reason provided by your manager.
-- Rejected entries stay in **rejected** status but are fully editable — you can update hours, descriptions, and dates directly.
-- Fix the entries and click **Submit for Approval** again to resubmit.
+### Hours waiting for approval (PMs)
 
-**Recalling a submission:**
-
-- If your manager has not yet reviewed the submission, click the **Recall** button on the project group.
-- Entries revert to **draft** and you can edit them before resubmitting.
-
-### Approving Timesheets (Managers)
-
-Project managers and owners see an **Approvals** tab on the Timesheet page.
-
-1. Click the **Approvals** tab to open the **Timesheet Approval Panel**.
-2. The panel lists all pending submissions across your projects, showing the submitter, project, week, total hours, and individual entries.
-3. To approve: click **Approve**. The submitter receives an approval notification.
-4. To reject: click **Reject**, enter a reason (required), and confirm. The submitter receives a high-severity notification with your reason and their entries revert to draft for correction.
+On a project's **Time** tab, its PM sees **Waiting for approval**: who has hours on this project waiting, by week, against the hours planned. Only this project's hours are shown — never the person's other projects. Hours waiting aren't in the project's costs until approved. Click **Flag this line** to send the line manager a note (e.g. "these 2 h belong to Data cleanup") before they decide.
 
 ### Time Anomalies (Managers/Owners)
 

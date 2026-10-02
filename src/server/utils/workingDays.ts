@@ -134,3 +134,16 @@ export function workingDaysInWeek(start: string, end: string, weekStart: string,
 export function weekEndOf(weekStart: string): string {
   return ymdOf(plusDays(new Date(`${weekStart.slice(0, 10)}T00:00:00Z`), 6));
 }
+
+/** Working days from `start` to `end`, both included ('YYYY-MM-DD'; an end before the start counts the start day) */
+export function workingDaysBetween(start: string, end: string, isWorking: IsWorking = weekdaysOnly): number {
+  const s = new Date(`${start.slice(0, 10)}T00:00:00Z`);
+  const e = new Date(`${(end < start ? start : end).slice(0, 10)}T00:00:00Z`);
+  return workingDaysAfter(plusDays(s, -1), e, isWorking);
+}
+
+/** The seven calendar days of the week starting `weekStart` */
+export function daysOfWeek(weekStart: string): string[] {
+  const s = new Date(`${weekStart.slice(0, 10)}T00:00:00Z`);
+  return Array.from({ length: 7 }, (_, i) => ymdOf(plusDays(s, i)));
+}

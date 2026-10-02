@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Clock, BarChart3, Plus, ChevronLeft, ChevronRight, X, ClipboardCheck } from 'lucide-react';
+import { Clock, BarChart3, Plus, X, ClipboardCheck } from 'lucide-react';
 import { apiService } from '../services/api';
-import { toLocalDate, formatCalendarDate } from '../utils/dateUtils';
+import { toLocalDate } from '../utils/dateUtils';
 import { TimesheetGrid } from '../components/timetracking/TimesheetGrid';
 import { TimesheetApprovalPanel } from '../components/timetracking/TimesheetApprovalPanel';
 import { ActualVsEstimatedChart } from '../components/timetracking/ActualVsEstimatedChart';
@@ -69,7 +69,7 @@ export function TimesheetPage() {
       description: logDescription || undefined,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['timesheet-status'] });
+      queryClient.invalidateQueries({ queryKey: ['my-week'] });
       setShowLogForm(false);
       setLogTaskId('');
       setLogHours('');
@@ -168,7 +168,7 @@ export function TimesheetPage() {
             </button>
           </div>
           {logTimeMutation.isError && (
-            <p className="text-xs text-red-600">Failed to save time entry. Please try again.</p>
+            <p role="alert" className="text-xs text-red-600 dark:text-red-300">{(logTimeMutation.error as any)?.response?.data?.message || 'Failed to save time entry. Please try again.'}</p>
           )}
         </div>
       )}
@@ -194,13 +194,13 @@ export function TimesheetPage() {
           className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-md transition-colors
             ${tab === 'approvals' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm dark:shadow-gray-900/30' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:text-white'}`}
         >
-          <ClipboardCheck className="w-4 h-4" /> Approvals
+          <ClipboardCheck className="w-4 h-4" /> To approve
         </button>
       </div>
 
       {tab === 'my-timesheet' && (
         <div className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 ${isMobile ? 'p-3' : 'p-6'}`}>
-          {isMobile ? <MobileTimesheetView /> : <TimesheetGrid />}
+          <TimesheetGrid />
         </div>
       )}
 
@@ -252,96 +252,6 @@ export function TimesheetPage() {
           <TimesheetApprovalPanel />
         </div>
       )}
-    </div>
-  );
-}
-
-function MobileTimesheetView() {
-  const [weekStart, setWeekStart] = useState(() => {
-    const d = new Date();
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    d.setDate(diff);
-    return toLocalDate(d);
-  });
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['timesheet', weekStart],
-    queryFn: () => apiService.getWeeklyTimesheet(weekStart),
-  });
-
-  const entries: any[] = data?.entries || [];
-  const days: string[] = data?.days || [];
-
-  const navigateWeek = (offset: number) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + offset * 7);
-    setWeekStart(toLocalDate(d));
-  };
-
-  // Group entries by day
-  const dayMap = new Map<string, { date: string; entries: any[]; total: number }>();
-  for (const day of days) {
-    dayMap.set(day, { date: day, entries: [], total: 0 });
-  }
-  for (const e of entries) {
-    const d = e.date?.substring(0, 10);
-    if (dayMap.has(d)) {
-      dayMap.get(d)!.entries.push(e);
-      dayMap.get(d)!.total += Number(e.hours) || 0;
-    }
-  }
-
-  const dayList = Array.from(dayMap.values());
-
-  const formatDay = (dateStr: string) => {
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  };
-
-  return (
-    <div className="space-y-3">
-      {/* Week navigation */}
-      <div className="flex items-center justify-between">
-        <button onClick={() => navigateWeek(-1)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200" aria-label="Previous week">
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-          Week of {formatCalendarDate(weekStart + 'T00:00:00', { month: 'short', day: 'numeric' }, 'en-US')}
-        </span>
-        <button onClick={() => navigateWeek(1)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200" aria-label="Next week">
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-
-      {isLoading && (
-        <div className="flex justify-center py-8">
-          <div className="w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
-        </div>
-      )}
-
-      {!isLoading && dayList.map((day) => (
-        <div key={day.date} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{formatDay(day.date)}</span>
-            <span className={`text-sm font-semibold ${day.total > 0 ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'}`}>
-              {day.total.toFixed(1)}h
-            </span>
-          </div>
-          {day.entries.length > 0 ? (
-            <div className="space-y-1">
-              {day.entries.map((e: any) => (
-                <div key={e.id} className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span className="truncate flex-1">{e.taskName || e.task_name || 'Task'}</span>
-                  <span className="ml-2 font-medium">{Number(e.hours).toFixed(1)}h</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-gray-500 dark:text-gray-400">No entries</p>
-          )}
-        </div>
-      ))}
     </div>
   );
 }
