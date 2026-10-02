@@ -1310,11 +1310,12 @@ Each time log entry records:
 
 When a line manager approves a week, every task it touched is updated straight away:
 
-- **Labour** — the approved hours, each at the person's rate on the day it was worked (their own rate or the rate card; overtime at the overtime rate).
-- **Actual cost** = labour + **other costs** (whatever was typed in: vendors, materials, licences). In the task form the box is now **Other costs**, with the labour shown underneath — nothing you typed before is lost; it became the other costs.
+- **Actual cost** = the approved hours, each at the person's rate on the day it was worked (their own rate or the rate card; overtime at the overtime rate). A task's cost is **work effort × rate** — it's never typed.
+- **Planned cost** (the task's budget) = its planned hours × each person's rate, worked out by the app and kept up to date when dates, people or rates change. Work still on a generic role is priced at the rate card for its role.
+- **Non-labour costs** (licences, vendors, materials) go in the project's **Financials → Expenses**. Costs that used to be typed on tasks were moved there automatically, each labelled "Moved from task …", so no money disappeared.
 - **% complete** = approved hours ÷ planned hours, stopping at **99%** until the task is marked done. Tasks with no planned hours (milestones, unassigned work) keep the % you type.
 - A task that hadn't started moves to **In progress**, and its **actual start** is the first day worked.
-- The project's **Total Spent** (Financials) = labour + other costs + expenses, with the split shown under the figure.
+- The project's **Total Spent** (Financials) = labour (approved hours × rate) + expenses, with the split shown under the figure.
 
 Only approved hours count — hours still waiting for approval aren't in any cost, budget or workload "actual".
 

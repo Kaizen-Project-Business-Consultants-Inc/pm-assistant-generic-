@@ -77,8 +77,6 @@ export const createTaskSchema = z.object({
   dependencies: z.array(taskDependencySchema).max(20).optional(),
   budgetAllocated: z.number().min(0).optional(),
   actualCost: z.number().min(0).optional(),
-  // Typed-in costs (vendors, materials); labour is added from approved timesheets
-  otherCost: z.number().min(0).nullable().optional(),
   constraintType: z.enum(['ASAP', 'ALAP', 'SNET', 'SNLT', 'FNET', 'FNLT', 'MSO', 'MFO']).optional(),
   constraintDate: z.string().optional(),
   workHours: z.number().min(0).optional(),
@@ -238,8 +236,6 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const created = await scheduleService.createTask({
         scheduleId,
         ...data,
-        // A new task has no labour yet: its cost is just what's typed
-        actualCost: data.actualCost ?? data.otherCost ?? undefined,
         dueDate: data.dueDate || undefined,
         startDate: data.startDate || undefined,
         endDate: data.endDate || undefined,

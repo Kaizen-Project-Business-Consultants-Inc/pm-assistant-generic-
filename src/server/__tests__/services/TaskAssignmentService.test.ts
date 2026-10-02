@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // --- Mocks (must be before imports) ---
 
+vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: vi.fn() }));
+
 vi.mock('../../database/connection', () => ({
   databaseService: {
     query: vi.fn().mockResolvedValue([]),
@@ -204,6 +206,7 @@ describe('TaskAssignmentService', () => {
     });
 
     it('returns the result of getForTask after setting', async () => {
+      mockQuery.mockResolvedValueOnce([{ schedule_id: 's1' }] as any); // the task's plan, to refresh its planned cost
       mockQuery.mockResolvedValueOnce([sampleRow] as any);
 
       const result = await service.setAssignments('t1', [{ resourceId: 'r1' }]);

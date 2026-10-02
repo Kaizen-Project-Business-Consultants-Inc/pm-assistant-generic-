@@ -304,7 +304,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalSpend, currency)}</p>
               {/* Labour comes from approved timesheets; other costs are typed in; expenses below */}
               <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                Labour (approved time) {formatCurrency(labourCost, currency)} · other costs {formatCurrency(Math.max(0, budgetSpent - labourCost), currency)}{totalExpenses > 0 ? ` · expenses ${formatCurrency(totalExpenses, currency)}` : ''}
+                Labour (approved hours × rate) {formatCurrency(labourCost, currency)}{budgetSpent - labourCost > 0 ? ` · other costs ${formatCurrency(budgetSpent - labourCost, currency)}` : ''} · expenses {formatCurrency(totalExpenses, currency)}
               </p>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">

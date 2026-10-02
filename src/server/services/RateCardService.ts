@@ -88,6 +88,7 @@ export class RateCardService {
       'INSERT INTO rate_card (id, role, hourly_rate, overtime_rate, effective_from, created_by) VALUES (?, ?, ?, ?, ?, ?)',
       [id, role, input.hourlyRate, input.overtimeRate ?? null, input.effectiveFrom, userId],
     );
+    this.repriceLater();
     return (await this.find(id))!;
   }
 
@@ -99,12 +100,20 @@ export class RateCardService {
       'UPDATE rate_card SET role = ?, hourly_rate = ?, overtime_rate = ?, effective_from = ? WHERE id = ?',
       [role, input.hourlyRate, input.overtimeRate ?? null, input.effectiveFrom, id],
     );
+    this.repriceLater();
     return this.find(id);
   }
 
   async remove(id: string): Promise<boolean> {
     const result: any = await databaseService.query('DELETE FROM rate_card WHERE id = ?', [id]);
+    this.repriceLater();
     return (result?.affectedRows ?? 0) > 0;
+  }
+
+  /** Task budgets are planned hours × rate: a rate card change re-prices every plan, in the background */
+  private repriceLater(): void {
+    import('./TaskBudgetService').then(({ taskBudgetService }) => taskBudgetService.queueAll())
+      .catch(() => { /* best effort — budgets also refresh on the next change to each plan */ });
   }
 
   private async find(id: string): Promise<RateCardEntry | null> {

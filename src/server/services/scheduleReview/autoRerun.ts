@@ -35,18 +35,23 @@ let deps: Promise<[
   typeof import('../ScheduleReviewService'),
   typeof import('../ScheduleService'),
   typeof import('../WebSocketService'),
+  typeof import('../TaskBudgetService'),
 ]> | null = null;
 const loadDeps = () => (deps ??= Promise.all([
   import('../ScheduleReviewService'),
   import('../ScheduleService'),
   import('../WebSocketService'),
+  import('../TaskBudgetService'),
 ]));
 
 async function runNow(scheduleId: string, userId: string | null): Promise<void> {
   try {
-    const [{ scheduleReviewService }, { scheduleService }, { WebSocketService }] = await loadDeps();
+    const [{ scheduleReviewService }, { scheduleService }, { WebSocketService }, { taskBudgetService }] = await loadDeps();
     const schedule = await scheduleService.findById(scheduleId);
     if (!schedule) return; // deleted in the meantime
+    // Task budgets follow the plan: planned hours × rate (2026-10-02)
+    await taskBudgetService.recalcSchedule(scheduleId).catch((err: any) =>
+      logger.warn('[TaskBudget] recalc after change failed', { scheduleId, error: err?.message }));
     await scheduleReviewService.run(scheduleId, 'auto', userId);
     WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId, reviewUpdated: true } }, schedule.projectId);
   } catch (err: any) {

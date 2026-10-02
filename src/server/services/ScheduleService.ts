@@ -764,8 +764,8 @@ export class ScheduleService {
           data.recurrenceRule || null,
           data.recurrenceParentId || null,
           data.isRecurrenceTemplate ? 1 : 0,
-          data.budgetAllocated ?? null,
-          data.actualCost ?? null,
+          null, // budget: worked out from planned hours × rate (TaskBudgetService)
+          null, // actual cost: from approved hours × rate (ApprovedTimeService)
           data.constraintType || 'ASAP',
           toDateStr(data.constraintDate) || null,
           data.workHours ?? null,
@@ -908,23 +908,10 @@ export class ScheduleService {
 
     const toDateStr = TaskRepository.toDateStr;
 
-    // Cost = labour (approved timesheets, never typed) + other costs. A typed actual cost (the
-    // task form, the API) sets the other costs to what's over the labour.
-    delete (data as any).labourCost;
-    delete (data as any).labourHours;
-    if ((data as any).otherCost !== undefined || data.actualCost !== undefined) {
-      const labour = oldTask.labourCost ?? 0;
-      const typed = (data as any).otherCost !== undefined ? (data as any).otherCost : data.actualCost;
-      if (typed === null && labour === 0) {
-        (data as any).otherCost = null; data.actualCost = null as any;
-      } else {
-        const other = (data as any).otherCost !== undefined
-          ? Math.max(0, Number((data as any).otherCost) || 0)
-          : Math.max(0, (Number(data.actualCost) || 0) - labour);
-        (data as any).otherCost = other;
-        data.actualCost = Math.round((other + labour) * 100) / 100;
-      }
-    }
+    // A task's money is worked out, never typed (2026-10-02): budget = planned hours × rate
+    // (TaskBudgetService), actual cost = approved hours × rate (ApprovedTimeService). Typed
+    // values from any caller — old screens, the API, AI tools — are ignored.
+    for (const k of ['budgetAllocated', 'actualCost', 'otherCost', 'labourCost', 'labourHours']) delete (data as any)[k];
 
     // Auto-compute endDate when startDate + estimatedDays are known but endDate is missing
     const effectiveStart = data.startDate ?? oldTask.startDate;

@@ -51,9 +51,6 @@ export interface TaskFormData {
   isRecurrenceTemplate: boolean;
   isMilestone: boolean;
   predecessors: PredecessorEntry[];
-  budgetAllocated: string;
-  /** Typed-in costs (vendors, materials). Labour comes from approved timesheets. */
-  otherCost: string;
   constraintType: string;
   constraintDate: string;
   workHours: string;
@@ -231,8 +228,6 @@ export function TaskFormModal({
     dependencyLagDays: '',
     isMilestone: false,
     predecessors: [],
-    budgetAllocated: '',
-    otherCost: '',
     constraintType: 'ASAP',
     constraintDate: '',
     workHours: '',
@@ -273,8 +268,6 @@ export function TaskFormModal({
         dependencyLagDays: task.dependencyLagDays?.toString() || '',
         isMilestone: task.isMilestone || false,
         predecessors: deps,
-        budgetAllocated: task.budgetAllocated != null ? String(task.budgetAllocated) : '',
-        otherCost: (task as any).otherCost != null ? String((task as any).otherCost) : task.actualCost != null ? String(task.actualCost) : '',
         constraintType: task.constraintType || 'ASAP',
         constraintDate: task.constraintDate || '',
         workHours: task.workHours != null ? String(task.workHours) : '',
@@ -719,43 +712,18 @@ export function TaskFormModal({
             )}
           </div>
 
-          {/* Budget */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Money: worked out, never typed — budget = planned hours × rate, actual = approved hours × rate.
+              Non-labour costs (licences, vendors) go in the project's Financials → Expenses. */}
+          <div className="grid grid-cols-2 gap-4" aria-live="polite">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Budget ($)</label>
-              <input
-                type="number"
-                name="budgetAllocated"
-                value={form.budgetAllocated}
-                onChange={handleChange}
-                disabled={isSummary}
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                className="input w-full"
-              />
+              <div className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Planned cost</div>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{task?.budgetAllocated != null ? `$${Number(task.budgetAllocated).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Planned hours × each person's rate</p>
             </div>
             <div>
-              <label htmlFor="task-other-cost" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Other costs ($)</label>
-              <input
-                id="task-other-cost"
-                type="number"
-                name="otherCost"
-                value={form.otherCost}
-                onChange={handleChange}
-                disabled={isSummary}
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                aria-describedby="task-labour-cost"
-                className="input w-full"
-              />
-              {/* Labour comes from approved timesheets and is never typed */}
-              <p id="task-labour-cost" className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                {task && ((task as any).labourHours ?? 0) > 0
-                  ? <>Labour from approved time: <strong className="text-gray-800 dark:text-gray-200">${Number((task as any).labourCost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ({(task as any).labourHours}h) · actual cost ${Number(task.actualCost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</>
-                  : 'Vendors, materials, licences. Labour is added from approved timesheets.'}
-              </p>
+              <div className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Actual cost</div>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{task?.actualCost != null ? `$${Number(task.actualCost).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}{task && ((task as any).labourHours ?? 0) > 0 ? <span className="font-normal text-gray-600 dark:text-gray-400"> ({(task as any).labourHours}h approved)</span> : null}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Approved hours × rate. Other costs: Financials → Expenses.</p>
             </div>
           </div>
 

@@ -88,14 +88,13 @@ describe('ApprovedTimeService — what approved hours do to the plan', () => {
     expect(taskUpdate()[1][4]).toBeNull();
   });
 
-  it('cost keeps whatever was typed (other costs) and adds the labour; nothing typed is lost', async () => {
+  it('task cost is work effort × rate only: actual cost = labour (non-labour costs are project expenses)', async () => {
     db();
     await approvedTimeService.applyToTasks(['t1']);
-    const [sql] = taskUpdate();
-    // other_cost is fixed from the old figures BEFORE labour changes (SET runs left to right)
-    expect(sql.indexOf('other_cost = COALESCE(other_cost, GREATEST(COALESCE(actual_cost, 0) - labour_cost, 0))'))
-      .toBeLessThan(sql.indexOf('labour_cost = ?'));
-    expect(sql).toContain('ROUND(other_cost + ?, 2)');
+    const [sql, params] = taskUpdate();
+    expect(sql).toContain('other_cost = 0');
+    expect(sql).toContain('actual_cost = CASE WHEN ? = 0 THEN NULL ELSE ROUND(?, 2) END');
+    expect(params.slice(2, 4)).toEqual([910, 910]);
   });
 
   it('rolls up the summary task, and sets project spend = labour + other costs', async () => {

@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { queueReviewRerun } from './scheduleReview/autoRerun';
 import { databaseService } from '../database/connection';
 import { resourceRepository } from '../database/ResourceRepository';
 import { toDateString, addDays, isWeekend } from '../utils/calendarDate';
@@ -75,6 +76,9 @@ export class TaskAssignmentService {
         await q('UPDATE tasks SET assigned_to = NULL WHERE id = ?', [taskId]);
       }
     });
+    // Who's on the task changes its planned cost (and its review): refresh both shortly
+    const [t] = await databaseService.query<{ schedule_id: string }>('SELECT schedule_id FROM tasks WHERE id = ?', [taskId]);
+    queueReviewRerun(t?.schedule_id);
     return this.getForTask(taskId);
   }
 

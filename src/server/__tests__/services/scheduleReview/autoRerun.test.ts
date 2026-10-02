@@ -6,6 +6,8 @@ const broadcast = vi.fn();
 vi.mock('../../../services/ScheduleReviewService', () => ({ scheduleReviewService: { run } }));
 vi.mock('../../../services/ScheduleService', () => ({ scheduleService: { findById } }));
 vi.mock('../../../services/WebSocketService', () => ({ WebSocketService: { broadcast } }));
+const recalcSchedule = vi.fn().mockResolvedValue(0);
+vi.mock('../../../services/TaskBudgetService', () => ({ taskBudgetService: { recalcSchedule } }));
 vi.mock('../../../middleware/requestContext', () => ({ getRequestContext: () => ({ userId: 'u-1' }), getRequestId: () => 'r-1' }));
 vi.mock('../../../utils/logger', () => ({ default: { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 
@@ -24,6 +26,7 @@ describe('queueReviewRerun', () => {
     await flush();
     expect(run).toHaveBeenCalledTimes(1);
     expect(run).toHaveBeenCalledWith('s1', 'auto', 'u-1');
+    expect(recalcSchedule).toHaveBeenCalledWith('s1'); // task budgets follow the plan (planned hours × rate)
     expect(broadcast).toHaveBeenCalledWith(
       { type: 'schedule_updated', payload: { scheduleId: 's1', reviewUpdated: true } }, 'p1');
   });

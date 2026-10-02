@@ -13,7 +13,8 @@ import logger from '../utils/logger';
  * approves a week, for every task the week touched:
  *  - labour hours = all approved hours on the task; labour cost = each hour at the person's rate
  *    on the day it was worked (rate card or own rate; overtime rate for overtime hours);
- *  - actual cost = labour + other costs (whatever was typed in) — summary tasks roll it up;
+ *  - actual cost = labour (work effort × rate; non-labour costs are project expenses) —
+ *    summary tasks roll it up;
  *  - % complete = approved ÷ planned hours, stopping at 99% until the PM marks it done (tasks
  *    with no planned hours keep the PM's %); a task not started moves to in progress; the actual
  *    start is the first day worked;
@@ -78,9 +79,9 @@ export class ApprovedTimeService {
       // SET runs left to right: other_cost is fixed from the old figures before labour changes
       await databaseService.query(
         `UPDATE tasks SET
-           other_cost = COALESCE(other_cost, GREATEST(COALESCE(actual_cost, 0) - labour_cost, 0)),
+           other_cost = 0,
            labour_hours = ?, labour_cost = ?,
-           actual_cost = CASE WHEN ? = 0 AND actual_cost IS NULL THEN NULL ELSE ROUND(other_cost + ?, 2) END,
+           actual_cost = CASE WHEN ? = 0 THEN NULL ELSE ROUND(?, 2) END,
            progress_percentage = COALESCE(?, progress_percentage),
            status = COALESCE(?, status),
            actual_start_date = COALESCE(actual_start_date, ?)
