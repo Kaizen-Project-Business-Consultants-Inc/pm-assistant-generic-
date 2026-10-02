@@ -837,6 +837,25 @@ export class ScheduleService {
     return task;
   }
 
+  /**
+   * Tasks whose % complete comes from approved hours: dated, not a heading or milestone, with
+   * someone planned on them (Assigned to, a person + %, or an hours booking). Their % can't be
+   * typed — only marking them done changes it (to 100%).
+   */
+  async progressFromHoursTaskIds(taskIds: string[]): Promise<Set<string>> {
+    const ids = [...new Set(taskIds.filter(Boolean))];
+    if (ids.length === 0) return new Set();
+    const rows = await databaseService.query<{ id: string }>(
+      `SELECT t.id FROM tasks t
+        WHERE t.id IN (${ids.map(() => '?').join(',')})
+          AND t.start_date IS NOT NULL AND t.end_date IS NOT NULL
+          AND COALESCE(t.is_milestone, 0) = 0 AND COALESCE(t.is_summary, 0) = 0
+          AND (EXISTS (SELECT 1 FROM resources r WHERE r.id = t.assigned_to)
+               OR EXISTS (SELECT 1 FROM task_assignments ta WHERE ta.task_id = t.id)
+               OR EXISTS (SELECT 1 FROM resource_assignments ra WHERE ra.task_id = t.id))`, ids);
+    return new Set(rows.map(r => r.id));
+  }
+
   async updateTask(id: string, data: Partial<Omit<Task, 'id' | 'scheduleId' | 'createdAt' | 'updatedAt'>>): Promise<Task | null> {
     const oldTask = await this.findTaskById(id);
     if (!oldTask) return null;
@@ -912,6 +931,14 @@ export class ScheduleService {
     // (TaskBudgetService), actual cost = approved hours × rate (ApprovedTimeService). Typed
     // values from any caller — old screens, the API, AI tools — are ignored.
     for (const k of ['budgetAllocated', 'actualCost', 'otherCost', 'labourCost', 'labourHours']) delete (data as any)[k];
+
+    // Progress on a task with planned hours is the system's (approved ÷ planned, 99% until done —
+    // user, 2026-10-02): a typed % is ignored; marking it done sets 100%.
+    const progressFromHours = (await this.progressFromHoursTaskIds([id])).has(id);
+    if (progressFromHours) {
+      if (data.status === 'completed') data.progressPercentage = 100;
+      else delete data.progressPercentage;
+    }
 
     // Auto-compute endDate when startDate + estimatedDays are known but endDate is missing
     const effectiveStart = data.startDate ?? oldTask.startDate;
@@ -1086,6 +1113,13 @@ export class ScheduleService {
       }
     }
 
+    // Reopened after being done: its % goes back to what the approved hours say
+    if (progressFromHours && oldTask.status === 'completed' && data.status && data.status !== 'completed') {
+      const { approvedTimeService } = await import('./ApprovedTimeService');
+      await approvedTimeService.applyToTasks([id]).catch(err => logger.warn('[Progress] recompute after reopening failed', { id, error: err?.message }));
+      queueReviewRerun(oldTask.scheduleId);
+      return (await this.findTaskById(id)) ?? updated;
+    }
     queueReviewRerun(oldTask.scheduleId);
     return updated;
   }

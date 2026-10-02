@@ -354,6 +354,14 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         .readPrevious(body.updates.map(u => u.id).filter(Boolean), changedColumns)
         .catch(() => []);
 
+      // % on tasks with planned hours is the system's: ignored here too; done = 100%
+      const fromHours = await scheduleService.progressFromHoursTaskIds(body.updates.map(u => u.id).filter(Boolean));
+      for (const u of body.updates) {
+        if (!fromHours.has(u.id)) continue;
+        if (u.status === 'completed') u.progressPercentage = 100;
+        else delete u.progressPercentage;
+      }
+
       await databaseService.transaction(async (connection) => {
         for (const u of body.updates) {
           try {

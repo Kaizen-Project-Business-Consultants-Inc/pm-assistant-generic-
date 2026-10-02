@@ -332,6 +332,7 @@ const sections: Section[] = [
       'A task\'s cost is work effort × rate: planned cost = planned hours × rate, actual cost = approved hours × rate — never typed',
       'Licences, vendors and materials go in Financials → Expenses',
       'Approving updates each task: actual cost, % complete (stops at 99% until done), actual start',
+      'On tasks with planned hours the % is calculated, not typed — use Mark done to finish a task',
       'Use prev/next arrows to move between weeks',
       'Switch to "Project Summary" tab to see actual vs. estimated hours per task',
     ],

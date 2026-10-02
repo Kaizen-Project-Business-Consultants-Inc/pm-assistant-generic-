@@ -1,4 +1,5 @@
 import { useMemo, useRef, useEffect, useState, useCallback, Fragment } from 'react';
+import { progressFromHours } from '../../utils/progressFromHours';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { findResourceConflicts, type WorkloadRow } from '../../utils/resourceConflicts';
@@ -1171,6 +1172,8 @@ export function GanttChart({
   }, [rows, getGanttCellText]);
 
   const startEditing = useCallback((taskId: string, field: EditableField, task: GanttTask) => {
+    // % complete from approved hours can't be typed (mark the task done instead)
+    if (field === 'progressPercentage' && progressFromHours(task as any)) return;
     if (!onTaskUpdate || drag) return;
     setEditingCell({ taskId, field });
     setEditValue(getTaskFieldValue(task, field));

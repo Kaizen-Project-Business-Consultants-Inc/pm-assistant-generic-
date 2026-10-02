@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ResourceLoadWarning } from '../resources/ResourceLoadWarning';
 import { ResourcePickList, ResourceOptionGroups } from '../resources/ResourcePickList';
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
+import { progressFromHours } from '../../utils/progressFromHours';
 import { X, Save, Trash2, Sparkles, ChevronDown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { GanttTask } from './GanttChart';
@@ -348,6 +349,11 @@ export function TaskFormModal({
   const { data: resourceData } = useQuery({ queryKey: ['resources'], queryFn: () => apiService.getResources(), staleTime: 60_000 });
   const resourceList: { id: string; name: string; role: string; userId?: string | null; email?: string; isGeneric?: boolean }[] = resourceData?.resources || [];
   const assignedResource = findResourceForAssignee(resourceList, form.assignedTo);
+  // % complete on a task with planned hours comes from approved hours: shown, not typed
+  const lockedProgress = !isSummary && progressFromHours({
+    startDate: form.startDate, endDate: form.endDate, isMilestone: form.isMilestone,
+    assignedTo: form.assignedTo, assignments: form.assignments.filter(a => a.resourceId),
+  });
   const assignedResourceId = assignedResource?.id ?? '';
   // Picked someone whose email is still a placeholder? They won't hear about this task
   const unreachable = [assignedResource, ...form.assignments.map(a => resourceList.find(r => r.id === a.resourceId))]
@@ -556,6 +562,23 @@ export function TaskFormModal({
 
           {/* Progress + Estimated Days */}
           <div className="grid grid-cols-2 gap-4">
+            {lockedProgress ? (
+            <div>
+              <div className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Progress: {form.status === 'completed' ? 100 : form.progressPercentage}%</div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                From approved hours{task && ((task as any).labourHours ?? 0) > 0 ? ` (${(task as any).labourHours}h so far)` : ''} — 99% until it's marked done.
+              </p>
+              {form.status !== 'completed' && (
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, status: 'completed', progressPercentage: 100 }))}
+                  className="mt-1.5 px-3 py-1.5 rounded-md border border-primary-600 dark:border-primary-400 text-xs font-semibold text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/30"
+                >
+                  Mark done
+                </button>
+              )}
+            </div>
+            ) : (
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Progress: {form.progressPercentage}%
@@ -576,6 +599,7 @@ export function TaskFormModal({
                 <span>100%</span>
               </div>
             </div>
+            )}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Est. Duration (days)

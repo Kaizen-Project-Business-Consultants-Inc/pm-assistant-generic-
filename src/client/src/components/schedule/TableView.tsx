@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { progressFromHours } from '../../utils/progressFromHours';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle, GripVertical } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
@@ -661,6 +662,8 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   }, [visibleColumns, visibleSorted, getCellText, setColWidths]);
 
   const startEditing = useCallback((taskId: string, field: EditableField, task: GanttTask) => {
+    // % complete from approved hours can't be typed (mark the task done instead)
+    if (field === 'progressPercentage' && progressFromHours(task as any)) return;
     if (!onTaskUpdate) return; // read-only mode
     if (task.isSummary && SUMMARY_ROLLUP_FIELDS.has(field)) return;
     setEditingCell({ taskId, field });

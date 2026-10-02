@@ -1313,7 +1313,7 @@ When a line manager approves a week, every task it touched is updated straight a
 - **Actual cost** = the approved hours, each at the person's rate on the day it was worked (their own rate or the rate card; overtime at the overtime rate). A task's cost is **work effort × rate** — it's never typed.
 - **Planned cost** (the task's budget) = its planned hours × each person's rate, worked out by the app and kept up to date when dates, people or rates change. Work still on a generic role is priced at the rate card for its role.
 - **Non-labour costs** (licences, vendors, materials) go in the project's **Financials → Expenses**. Costs that used to be typed on tasks were moved there automatically, each labelled "Moved from task …", so no money disappeared.
-- **% complete** = approved hours ÷ planned hours, stopping at **99%** until the task is marked done. Tasks with no planned hours (milestones, unassigned work) keep the % you type.
+- **% complete** = approved hours ÷ planned hours, stopping at **99%** until the task is marked done. On those tasks the % **can't be typed** — the task form shows it with a **Mark done** button (100%), and the Gantt/table % cells don't open. Reopening a done task puts the % back to what the approved hours say. Tasks with no planned hours (milestones, unassigned work) keep the % you type.
 - A task that hadn't started moves to **In progress**, and its **actual start** is the first day worked.
 - The project's **Total Spent** (Financials) = labour (approved hours × rate) + expenses, with the split shown under the figure.
 

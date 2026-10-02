@@ -66,6 +66,23 @@ describe('ScheduleService', () => {
     vi.clearAllMocks();
   });
 
+  describe('progressFromHoursTaskIds (% complete comes from approved hours)', () => {
+    it('picks dated, non-heading, non-milestone tasks with someone planned on them', async () => {
+      mockQuery.mockResolvedValueOnce([{ id: 't1' }]);
+      const set = await service.progressFromHoursTaskIds(['t1', 't2', 't1']);
+      expect([...set]).toEqual(['t1']);
+      const [sql, params] = mockQuery.mock.calls[0];
+      expect(params).toEqual(['t1', 't2']);
+      for (const part of ['start_date IS NOT NULL', 'end_date IS NOT NULL', 'is_milestone', 'is_summary', 'r.id = t.assigned_to', 'FROM task_assignments', 'FROM resource_assignments']) {
+        expect(String(sql)).toContain(part);
+      }
+    });
+    it('no tasks → no query', async () => {
+      expect((await service.progressFromHoursTaskIds([])).size).toBe(0);
+      expect(mockQuery).not.toHaveBeenCalled();
+    });
+  });
+
   describe('findByProjectId', () => {
     it('returns schedules for project', async () => {
       mockQuery.mockResolvedValueOnce([sampleScheduleRow]);
