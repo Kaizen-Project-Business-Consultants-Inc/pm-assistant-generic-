@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-02 (b) — gaps found while recording the Scheduling video
+
+- **Propose fixes links the next step after a task that feeds nothing** (R02): next leaf in the same phase that starts after it finishes, else the next in the plan; never a loop; pre-ticked.
+- **Templates take more than one predecessor** (`moreDependencies`); applying links all and starts after the latest; **Save as template keeps every link** (was first only).
+- **All 18 built-in templates pass Schedule Review** structurally (88–94; only R13 long tasks remain on construction/consulting): no links on phases, nothing feeds nothing, multi-day "milestones" split, IT sign-off milestones added. Guards: per-template score floors + "template length covers its plan".
+- **Timeline strip**: a first-row milestone label never runs through another diamond.
+- Open: template `offsetDays` on a linked task is ignored (an "SS + 15" link is really SS + 0) — pre-existing; `AutoRescheduleService` zero-progress test fails depending on today's date — pre-existing.
+
 ## 2026-10-02 (found while recording the Scheduling video)
 
 - **A task created with a predecessor now starts after it** (single create route + bulk create re-plan with `onlyFrom`); test `linkedTaskCreate.test.ts`.

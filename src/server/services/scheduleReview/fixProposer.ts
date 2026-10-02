@@ -315,6 +315,50 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
     }));
   }
 
+  // --- R02 "feeds nothing": link the next step after it (2026-10-02: the review flagged it
+  // but offered no fix, so the PM had to find the edit form) ---
+  const r02 = findings.find(f => f.ruleId === 'R02');
+  if (r02) {
+    const proposed = new Set(fixes.map(f => f.id));
+    const day = (d?: string | null) => (d ? String(d).slice(0, 10) : '');
+    for (const taskId of r02.taskIds) {
+      const t = byId.get(taskId);
+      const tEnd = day(t?.endDate);
+      if (!t || !tEnd) continue;
+      // everything t already waits on, directly or not — linking one of those after t would loop
+      const upstream = new Set<string>();
+      const stack = [t.id];
+      while (stack.length) {
+        for (const d of byId.get(stack.pop()!)?.dependencies || []) {
+          if (!upstream.has(d.dependencyId)) { upstream.add(d.dependencyId); stack.push(d.dependencyId); }
+        }
+      }
+      const next = leaves
+        .filter(c => c.id !== t.id && !upstream.has(c.id) && day(c.startDate) > tEnd)
+        .sort((a, b) =>
+          Number(b.parentTaskId === t.parentTaskId) - Number(a.parentTaskId === t.parentTaskId)
+          || day(a.startDate).localeCompare(day(b.startDate))
+          || (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
+      if (!next) continue;
+      const id = `add_dependency:${next.id}:${t.id}`;
+      if (proposed.has(id)) continue;
+      proposed.add(id);
+      fixes.push(build({
+        id,
+        type: 'add_dependency',
+        // it already starts after t finishes, so the link moves nothing today — pre-ticked
+        confidence: 0.75,
+        reason: `'${t.name}' feeds nothing; '${next.name}' is the next step and starts after it finishes.`,
+        taskId: next.id,
+        taskName: next.name,
+        dependsOnTaskId: t.id,
+        dependsOnTaskName: t.name,
+        dependencyType: 'FS',
+        lagDays: 0,
+      }));
+    }
+  }
+
   return fixes;
 }
 

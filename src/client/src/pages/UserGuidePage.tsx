@@ -106,7 +106,7 @@ const sections: Section[] = [
       'Click Review in the schedule toolbar (it also re-runs by itself shortly after you edit)',
       'Findings point to the rows involved: missing links, long tasks, milestones with a duration, overloaded people, and more',
       'A milestone takes zero days — name it as the outcome ("Design Approved"); name tasks verb + object ("Review Design")',
-      'Propose fixes suggests changes you can tick and apply, e.g. splitting a "gate" that spans days into Review → Approve → Approved',
+      'Propose fixes suggests changes you can tick and apply, e.g. splitting a "gate" that spans days into Review → Approve → Approved, or linking the next step after a task that feeds nothing',
       'Click a suggestion to see its rows: they turn amber in the schedule. Only the tick box chooses the fix',
       'Every applied fix can be undone in one step',
     ],

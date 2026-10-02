@@ -55,6 +55,14 @@ describe('Timeline strip layout', () => {
     expect(placeLabels([{ x: 500, width: 100 }, { x: 900, width: 100, anchorEnd: true }])).toEqual([0, 0]);
   });
 
+  it("a first-row label never runs through another milestone's diamond — it drops to the second row (2026-10-02)", () => {
+    // diamonds at 100 and 150; the first label (109..259) would cross the one at 150
+    const diamonds = [{ left: 92, right: 108 }, { left: 142, right: 158 }];
+    expect(placeLabels([{ x: 109, width: 150 }, { x: 159, width: 60 }], 2, 8, diamonds)).toEqual([1, 0]);
+    // its own diamond (to its left) does not block it
+    expect(placeLabels([{ x: 109, width: 30 }], 2, 8, diamonds)).toEqual([0]);
+  });
+
   it('no dated tasks → nothing to draw; month ticks between start and end', () => {
     expect(layoutTimelineStrip([{ id: 'z', name: 'Undated' }])).toBeNull();
     expect(monthTicks(new Date(2026, 5, 12), new Date(2026, 8, 3)).map(d => d.getMonth())).toEqual([6, 7, 8]);

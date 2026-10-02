@@ -26,6 +26,12 @@ const createTemplateSchema = z.object({
     parentRefId: z.string().nullable().default(null),
     dependencyRefId: z.string().nullable().default(null),
     dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).default('FS'),
+    /** Further predecessors beyond dependencyRefId (2026-10-02: a task waiting on two others lost one link) */
+    moreDependencies: z.array(z.object({
+      refId: z.string(),
+      dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).default('FS'),
+      lagDays: z.number().default(0),
+    })).optional(),
     offsetDays: z.number().default(0),
     skills: z.array(z.string()).default([]),
     isSummary: z.boolean().default(false),

@@ -92,6 +92,27 @@ describe('proposeFixesDeterministic', () => {
     expect(buf).toHaveLength(0);
   });
 
+  it("a task that feeds nothing (R02) gets a link to the next step — same phase first, never a loop (2026-10-02)", () => {
+    seq = 0;
+    const integ = task({ id: 'i', name: 'Integration', parentTaskId: 'dev', startDate: '2026-11-24', endDate: '2026-12-02' });
+    const sec = task({ id: 's', name: 'Security Review', parentTaskId: 'qa', startDate: '2026-12-03', endDate: '2026-12-09', dependencies: [{ dependencyId: 'i' }] });
+    const launch = task({ id: 'l', name: 'Launch prep', parentTaskId: 'go', startDate: '2026-12-10', endDate: '2026-12-11' });
+    const uat = task({ id: 'u', name: 'User Acceptance Testing', parentTaskId: 'qa', startDate: '2026-12-14', endDate: '2026-12-18' });
+    const tasks = [task({ id: 'dev', name: 'Development' }), task({ id: 'qa', name: 'Testing' }), task({ id: 'go', name: 'Go-live' }), integ, sec, launch, uat];
+    const deps = proposeFixesDeterministic([finding('R02', ['s'])], tasks).filter(f => f.id === 'add_dependency:u:s');
+    expect(deps).toHaveLength(1);
+    expect(deps[0]).toMatchObject({ taskId: 'u', dependsOnTaskId: 's', dependencyType: 'FS', defaultChecked: true });
+
+    // the only later task already sits upstream of it → no proposal (would loop)
+    seq = 0;
+    const a = task({ id: 'a', name: 'A', startDate: '2026-12-01', endDate: '2026-12-02' });
+    const b = task({ id: 'b', name: 'B', startDate: '2026-12-10', endDate: '2026-12-11' });
+    const c = task({ id: 'c', name: 'C', startDate: '2026-12-03', endDate: '2026-12-04', dependencies: [{ dependencyId: 'b' }] });
+    a.dependencies = [{ dependencyId: 'c' }];
+    const loop = proposeFixesDeterministic([finding('R02', ['a'])], [a, b, c]).filter(f => /feeds nothing/.test(f.reason));
+    expect(loop).toHaveLength(0);
+  });
+
   it('pre-ticks a dependency when the dates already run in sequence, unticks it when they overlap', () => {
     seq = 0;
     const a = task({ id: 'a', name: 'A', startDate: '2026-10-01', endDate: '2026-10-05' });

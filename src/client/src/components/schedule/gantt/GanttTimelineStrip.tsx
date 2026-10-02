@@ -111,7 +111,11 @@ export const GanttTimelineStrip = React.memo(function GanttTimelineStrip({ tasks
             const mx = x(m.date);
             return { m, mx, text, anchorEnd: mx > W - 160, width: textWidth(text, 10.5) };
           });
-          const rows = placeLabels(labels.map(l => ({ x: l.anchorEnd ? l.mx - 9 : l.mx + 9, width: l.width, anchorEnd: l.anchorEnd })));
+          const rows = placeLabels(
+            labels.map(l => ({ x: l.anchorEnd ? l.mx - 9 : l.mx + 9, width: l.width, anchorEnd: l.anchorEnd })),
+            2, 8,
+            labels.map(l => ({ left: l.mx - 8, right: l.mx + 8 })), // each diamond, with a little room
+          );
           return labels.map(({ m, mx, text, anchorEnd }, i) => (
             <g key={m.id} data-jump role="button" tabIndex={0} className="cursor-pointer focus:outline-none"
               onClick={() => onJump(m.date)} onKeyDown={keyJump(m.date)}

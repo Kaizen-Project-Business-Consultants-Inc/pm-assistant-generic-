@@ -403,6 +403,17 @@ describe('TemplateService', () => {
     };
     const tt = (o: any) => ({ description: '', priority: 'medium', parentRefId: null, dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: false, ...o });
 
+    it('a task with more than one predecessor is linked to all of them and starts after the later one (2026-10-02)', async () => {
+      const get = await apply([
+        tt({ refId: 'a', name: 'A', estimatedDays: 2 }),
+        tt({ refId: 'b', name: 'B', estimatedDays: 5 }),
+        tt({ refId: 'c', name: 'C', estimatedDays: 1, dependencyRefId: 'a', moreDependencies: [{ refId: 'b', dependencyType: 'FS', lagDays: 0 }, { refId: 'a', dependencyType: 'FS', lagDays: 0 }] }),
+      ], '2026-10-05');
+      const c = get('C');
+      expect(c.dependencies.map((d: any) => d.dependencyId)).toEqual([get('A').id, get('B').id]); // each once
+      expect(ymd(c.startDate)).toBe('2026-10-12'); // B ends Fri 9 Oct → Mon 12
+    });
+
     it('counts offsets, durations and FS links in working days on the project calendar', async () => {
       // Mon 12 Oct 2026 is a holiday on the project calendar
       mockWorkingDayTest.mockResolvedValue((d: Date) => weekdaysOnly(d) && ymd(d) !== '2026-10-12');
@@ -439,6 +450,25 @@ describe('TemplateService', () => {
   });
 
   describe('saveFromProject working days', () => {
+    it('keeps every link of a task, not just the first (2026-10-02)', async () => {
+      mockWorkingDayTest.mockResolvedValue(weekdaysOnly);
+      mockProjectFindById.mockResolvedValue({ id: 'p', name: 'Src', projectType: 'it', category: 'x' });
+      mockScheduleFindByProjectId.mockResolvedValue([{ id: 's', startDate: '2026-10-01' }]);
+      mockScheduleFindTasksByScheduleIds.mockResolvedValue([
+        { id: 'a', scheduleId: 's', name: 'A', startDate: '2026-10-01', endDate: '2026-10-01', dependencies: [] },
+        { id: 'b', scheduleId: 's', name: 'B', startDate: '2026-10-01', endDate: '2026-10-02', dependencies: [] },
+        { id: 'c', scheduleId: 's', name: 'C', startDate: '2026-10-05', endDate: '2026-10-05',
+          dependencies: [{ dependencyId: 'a', dependencyType: 'FS' }, { dependencyId: 'b', dependencyType: 'SS', lagDays: 1 }, { dependencyId: 'gone', dependencyType: 'FS' }] },
+      ]);
+      const tpl = await service.saveFromProject({ projectId: 'p', templateName: 'T', description: '', tags: [], userId: 'u' });
+      const ref = (n: string) => tpl.tasks.find(t => t.name === n)!.refId;
+      const c = tpl.tasks.find(t => t.name === 'C')!;
+      expect(c.dependencyRefId).toBe(ref('A'));
+      expect(c.moreDependencies).toEqual([{ refId: ref('B'), dependencyType: 'SS', lagDays: 1 }]);
+      await service.delete(tpl.id);
+    });
+
+
     it('stores offsets and durations as working days on the source calendar', async () => {
       mockWorkingDayTest.mockResolvedValue((d: Date) => weekdaysOnly(d) && ymd(d) !== '2026-10-12');
       mockProjectFindById.mockResolvedValue({ id: 'p', name: 'Src', projectType: 'it', category: 'x' });

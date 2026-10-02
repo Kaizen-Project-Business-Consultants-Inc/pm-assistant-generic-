@@ -11,12 +11,21 @@ export const textWidth = (text: string, fontSize: number) => text.length * fontS
 /**
  * Place labels left to right; a label that would overlap the one before it (on its row) is left
  * for hover. Two rows. Returns the row per label, or null = hover only.
+ * `row0Blocked`: spans a label on the first row must not cross — the first row sits level with
+ * the diamonds, and a label ran through the next diamond (2026-10-02).
  */
-export function placeLabels(items: { x: number; width: number; anchorEnd?: boolean }[], rows = 2, gap = 8): (number | null)[] {
+export function placeLabels(
+  items: { x: number; width: number; anchorEnd?: boolean }[],
+  rows = 2,
+  gap = 8,
+  row0Blocked: { left: number; right: number }[] = [],
+): (number | null)[] {
   const rowEnds = Array<number>(rows).fill(-Infinity);
   return items.map(({ x, width, anchorEnd }) => {
     const left = anchorEnd ? x - width : x;
-    const r = rowEnds.findIndex(e => left >= e + gap);
+    const right = left + width;
+    const crosses = row0Blocked.some(b => left < b.right && right > b.left);
+    const r = rowEnds.findIndex((e, i) => left >= e + gap && !(i === 0 && crosses));
     if (r === -1) return null;
     rowEnds[r] = left + width;
     return r;
