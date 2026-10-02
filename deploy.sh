@@ -53,6 +53,59 @@ for arg in "$@"; do
   esac
 done
 
+# ── One deploy at a time ──
+# 2026-10-02: two sessions deployed staging at the same moment; one replaced the server's
+# dist/ while the other was copying into it ("cp: cannot stat … migrations"), leaving the app
+# running on files that were half gone. Two locks: one in this folder (both sessions build into
+# the same dist/), one on the server (a deploy from another machine). A second deploy waits up
+# to 30 minutes for the first; a lock older than 45 minutes is treated as left behind by a
+# deploy that died, and taken over.
+LOCAL_LOCK="$(pwd)/.deploy.lock"
+REMOTE_LOCK="/tmp/pm-deploy.lock"
+LOCK_NOTE="$ENV $* — $(hostname) pid $$ at $(date -u +%H:%M:%SZ)"
+HAVE_LOCAL_LOCK=false
+HAVE_REMOTE_LOCK=false
+release_locks() {
+  if [ "$HAVE_REMOTE_LOCK" = true ]; then do_ssh "rm -rf $REMOTE_LOCK" 2>/dev/null || true; fi
+  if [ "$HAVE_LOCAL_LOCK" = true ]; then rm -rf "$LOCAL_LOCK"; fi
+}
+trap release_locks EXIT
+# A stopped deploy (Ctrl+C, killed) must still let go of its locks
+trap 'exit 130' INT TERM HUP
+acquire_local_lock() {
+  local waited=0
+  until mkdir "$LOCAL_LOCK" 2>/dev/null; do
+    if [ -n "$(find "$LOCAL_LOCK" -maxdepth 0 -mmin +45 2>/dev/null)" ]; then
+      echo "⚠ Taking over a deploy lock left from: $(cat "$LOCAL_LOCK/owner" 2>/dev/null || echo unknown)"
+      rm -rf "$LOCAL_LOCK"; continue
+    fi
+    if [ $waited -ge 1800 ]; then echo "✗ Another deploy has been running for 30+ minutes ($(cat "$LOCAL_LOCK/owner" 2>/dev/null)) — nothing was deployed."; exit 1; fi
+    [ $((waited % 60)) -eq 0 ] && echo "… waiting for another deploy to finish: $(cat "$LOCAL_LOCK/owner" 2>/dev/null || echo unknown)"
+    sleep 10; waited=$((waited + 10))
+  done
+  echo "$LOCK_NOTE" > "$LOCAL_LOCK/owner"
+  HAVE_LOCAL_LOCK=true
+}
+acquire_remote_lock() {
+  local waited=0 rc
+  while true; do
+    rc=0; do_ssh "mkdir $REMOTE_LOCK 2>/dev/null && echo '$LOCK_NOTE' > $REMOTE_LOCK/owner" || rc=$?
+    [ $rc -eq 0 ] && break
+    # 255 = ssh couldn't reach the server — that's not "someone else is deploying"
+    if [ $rc -eq 255 ]; then echo "✗ Can't reach the $ENV server — nothing was deployed."; exit 1; fi
+    if [ -n "$(do_ssh "find $REMOTE_LOCK -maxdepth 0 -mmin +45 2>/dev/null")" ]; then
+      echo "⚠ Taking over the server's deploy lock left from: $(do_ssh "cat $REMOTE_LOCK/owner 2>/dev/null" || echo unknown)"
+      do_ssh "rm -rf $REMOTE_LOCK"; continue
+    fi
+    if [ $waited -ge 1800 ]; then echo "✗ Another deploy to $ENV has been running for 30+ minutes — nothing was deployed."; exit 1; fi
+    [ $((waited % 60)) -eq 0 ] && echo "… waiting for another deploy to $ENV to finish: $(do_ssh "cat $REMOTE_LOCK/owner 2>/dev/null" || echo unknown)"
+    sleep 10; waited=$((waited + 10))
+  done
+  HAVE_REMOTE_LOCK=true
+}
+acquire_local_lock
+acquire_remote_lock
+
 # ── Deploy only what is saved (committed) ──
 # The build reads the working files, not a commit. On 2026-09-30 a prod deploy running in
 # the background picked up a half-written, unapproved migration (T063) that was being

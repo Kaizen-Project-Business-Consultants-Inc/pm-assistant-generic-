@@ -180,6 +180,8 @@ ssh -i "~/.ssh/ssh-key-2026-07-08 (1).key" ubuntu@147.5.127.99 \
 
 Or use the deploy script: `bash deploy.sh <staging|prod>` (preferred).
 
+**One deploy at a time (Oct 2026).** `deploy.sh` takes a lock in the project folder (`.deploy.lock/`, ignored by git) and one on the server (`/tmp/pm-deploy.lock`). A second deploy — another session on this machine, or anyone else deploying to the same server — prints "waiting for another deploy to finish: <who, when>" and waits up to 30 minutes, then gives up without deploying. A lock older than 45 minutes is treated as left by a deploy that died and is taken over. Locks are released when a deploy finishes, fails or is stopped. An unreachable server is reported as such, not as "locked". (Two sessions deploying staging at once on 2026-10-02 left the app running on half-replaced files.)
+
 **Log retention (Sep 2026):** every deploy installs `deploy/journald/pm-retention.conf` (90 days, 2 GB) into `/etc/systemd/journald.conf.d/` and fails if the policy isn't in effect.
 
 **The deploy script only ships saved work (Sep 2026).** It builds from the working files, so it refuses to start if anything that ships (`src/`, `mcp-server/src`, `package*.json`, `deploy/`) has uncommitted changes, and checks again just before uploading that nothing changed while it was building. Staging only: `--allow-dirty` deploys unsaved changes anyway. Why: a prod deploy running in the background once picked up a half-written migration that was being created at the same moment.
