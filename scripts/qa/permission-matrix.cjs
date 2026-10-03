@@ -3,7 +3,7 @@
  * compares the answer with the rules the product owner set (Sep 2026):
  *   - only a project's Manager/Owner (and admin/PMO) change project data;
  *   - a team member reads the projects they're on, and may change only their own work:
- *     own time entries, own stand-ups / retro notes / votes, own meeting action items,
+ *     own time entries, own stand-ups / retro notes / votes,
  *     status / progress / comments on RAID items they own;
  *   - PM-only tools (RAID Review) are refused to everyone else, reads included;
  *   - nobody sees a project they're not on — neither a colleague in the same company nor
@@ -51,7 +51,7 @@ const SKIP = [
 ];
 // Things a team member may change (their own work, their own settings) — "ALLOWED", not failures
 const TEAM_OWN_WORK = [
-  /\/time-entries/, /\/standups?/, /\/retro/, /\/votes?/, /\/meeting-action-items\/:id/,
+  /\/time-entries/, /\/standups?/, /\/retro/, /\/votes?/,
   /\/risks\/:riskId(\/(comments|updates|progress))?$/, /\/notifications/, /\/feedback/,
   /\/ai-chat/, /\/users\/me/, /\/profile/, /\/preferences/, /\/timesheets?/, /\/favourite$/, /\/telemetry\//,
 ];

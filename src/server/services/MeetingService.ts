@@ -4,7 +4,6 @@ import { meetingActionItemRepository } from '../database/MeetingActionItemReposi
 import { meetingAnalysisRepository } from '../database/MeetingAnalysisRepository';
 import { auditLedgerService } from './AuditLedgerService';
 import { deadLetterService } from './DeadLetterService';
-import logger from '../utils/logger';
 
 class MeetingService {
   async createMeeting(projectId: string, data: {
@@ -135,54 +134,6 @@ class MeetingService {
     if (!analysis) throw new Error('Analysis not found');
 
     await meetingAnalysisRepository.updateMeetingId(analysisId, meetingId);
-  }
-
-  async importActionItemsFromAnalysis(
-    meetingId: string,
-    analysisId: string,
-    userId: string,
-  ): Promise<number> {
-    const meeting = await meetingRepository.findById(meetingId);
-    if (!meeting) throw new Error('Meeting not found');
-
-    const analysis = await meetingAnalysisRepository.findById(analysisId);
-    if (!analysis) throw new Error('Analysis not found');
-
-    let actionItems: any[];
-    try {
-      actionItems = typeof analysis.action_items === 'string'
-        ? JSON.parse(analysis.action_items)
-        : analysis.action_items;
-    } catch {
-      actionItems = [];
-    }
-
-    if (!Array.isArray(actionItems) || actionItems.length === 0) return 0;
-
-    let imported = 0;
-    for (const item of actionItems) {
-      try {
-        await meetingActionItemRepository.create({
-          meetingId,
-          projectId: meeting.projectId,
-          description: item.description || String(item),
-          assigneeName: item.assignee || null,
-          dueDate: item.dueDate || null,
-          priority: item.priority || 'medium',
-          source: 'ai_extracted',
-          sourceAnalysisId: analysisId,
-          createdBy: userId,
-        });
-        imported++;
-      } catch (err) {
-        logger.warn('Failed to import action item from analysis', {
-          analysisId,
-          error: (err as Error).message,
-        });
-      }
-    }
-
-    return imported;
   }
 }
 

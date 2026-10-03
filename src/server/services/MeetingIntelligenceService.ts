@@ -42,6 +42,7 @@ function rowToMeetingAnalysis(row: any): MeetingAnalysis {
     taskUpdates: parseJson(row.task_updates),
     appliedItems: parseJson(row.applied_items),
     coach: row.coach ? parseJson(row.coach) : undefined,
+    meetingId: row.meeting_id ?? null,
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
   };
 }

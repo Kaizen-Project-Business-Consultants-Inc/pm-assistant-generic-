@@ -10,10 +10,11 @@ interface RecentChange {
   count: number;
 }
 
+/** An overdue RAID action the user owns */
 export interface DigestActionItem {
   title: string;
   dueDate: string;
-  meetingTitle: string;
+  projectName: string;
 }
 
 export interface DigestMeeting {
@@ -176,7 +177,7 @@ export class DigestService {
       upcomingDeadlines: upcomingDeadlines.map(t => ({ name: t.name, dueDate: t.end_date?.substring(0, 10) || '' })),
       unreadCount,
       recentChanges,
-      actionItems: actionItems.map(a => ({ title: a.title, dueDate: a.due_date?.substring(0, 10) || '', meetingTitle: a.meeting_title || '' })),
+      actionItems: actionItems.map(a => ({ title: a.title, dueDate: a.due_date?.substring(0, 10) || '', projectName: a.project_name || '' })),
       upcomingMeetings: upcomingMeetings.map(m => ({ title: m.title, scheduledDate: m.scheduled_date?.substring(0, 10) || '', meetingType: m.meeting_type || '' })),
       activeSprints: activeSprints.map(s => ({
         name: s.name,

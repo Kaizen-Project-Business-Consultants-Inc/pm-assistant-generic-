@@ -285,7 +285,7 @@ export class EmailService {
     upcomingDeadlines: Array<{ name: string; dueDate: string }>;
     unreadCount: number;
     recentChanges: Array<{ category: string; action: string; count: number }> | number;
-    actionItems?: Array<{ title: string; dueDate: string; meetingTitle: string }>;
+    actionItems?: Array<{ title: string; dueDate: string; projectName: string }>;
     upcomingMeetings?: Array<{ title: string; scheduledDate: string; meetingType: string }>;
     activeSprints?: Array<{ name: string; pending: number; inProgress: number; completed: number; total: number }>;
   }): Promise<void> {
@@ -318,12 +318,12 @@ export class EmailService {
       bodyHtml += '</ul></div>';
     }
 
-    // Meeting Action Items
+    // Overdue RAID actions the user owns
     if (digest.actionItems && digest.actionItems.length > 0) {
       bodyHtml += `<div style="${sectionStyle} background: #faf5ff; border-left: 4px solid #7c3aed;">`;
-      bodyHtml += `<h3 style="color: #7c3aed; margin: 0 0 8px 0;">Overdue Action Items (${digest.actionItems.length})</h3><ul style="color: #4b5563; margin: 0;">`;
+      bodyHtml += `<h3 style="color: #7c3aed; margin: 0 0 8px 0;">Overdue actions in RAID (${digest.actionItems.length})</h3><ul style="color: #4b5563; margin: 0;">`;
       for (const a of digest.actionItems.slice(0, 10)) {
-        bodyHtml += `<li>${escapeHtml(a.title)} <span style="color: #9ca3af;">(due ${escapeHtml(a.dueDate)}${a.meetingTitle ? ` — ${escapeHtml(a.meetingTitle)}` : ''})</span></li>`;
+        bodyHtml += `<li>${escapeHtml(a.title)} <span style="color: #9ca3af;">(due ${escapeHtml(a.dueDate)}${a.projectName ? ` — ${escapeHtml(a.projectName)}` : ''})</span></li>`;
       }
       bodyHtml += '</ul></div>';
     }

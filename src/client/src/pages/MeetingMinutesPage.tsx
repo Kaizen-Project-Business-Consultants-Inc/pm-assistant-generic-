@@ -363,7 +363,10 @@ export const MeetingMinutesPage: React.FC = () => {
       setSyncError(null);
       queryClient.invalidateQueries({ queryKey: ['meetingHistory', selectedProjectId] });
       queryClient.invalidateQueries({ queryKey: ['meetings', selectedProjectId] });
-      queryClient.invalidateQueries({ queryKey: ['meetingActionItems'] });
+      // Its actions went into the RAID log
+      queryClient.invalidateQueries({ queryKey: ['risks', selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-risks', selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-risks-stats', selectedProjectId] });
     },
     onError: (err: any) => {
       setSyncError(err?.response?.data?.error || err?.message || 'Failed to import meeting');
@@ -989,7 +992,12 @@ export const MeetingMinutesPage: React.FC = () => {
       {/* Sync success toast */}
       {syncExternalMutation.isSuccess && (
         <div role="alert" className="fixed bottom-4 right-4 z-50 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-xs text-green-700 dark:text-green-300 shadow-lg">
-          Meeting imported successfully with {(syncExternalMutation.data as any)?.actionItems?.length || 0} action item(s)
+          {(() => {
+            const n = (syncExternalMutation.data as any)?.actionItems?.length || 0;
+            return n > 0
+              ? `Meeting imported. ${n} action${n === 1 ? '' : 's'} added to RAID.`
+              : 'Meeting imported.';
+          })()}
         </div>
       )}
 

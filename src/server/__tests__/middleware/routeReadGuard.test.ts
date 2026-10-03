@@ -46,7 +46,6 @@ const READ_OK: Record<string, string[]> = {
   'ai/intelligence.ts': ['/anomalies', '/cross-project'],
   'ai/narratives.ts': ['/portfolio'],
   'ai/predictions.ts': ['/dashboard'],
-  'collaboration/meetingActionItems.ts': ['/my'],
   'core/search.ts': ['/'],
   'reporting/analyticsSummary.ts': ['/summary'],
   'reporting/briefing.ts': ['/daily'],

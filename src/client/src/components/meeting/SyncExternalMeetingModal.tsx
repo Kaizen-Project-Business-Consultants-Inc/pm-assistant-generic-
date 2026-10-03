@@ -234,7 +234,7 @@ export const SyncExternalMeetingModal: React.FC<SyncExternalMeetingModalProps> =
           {/* Action Items */}
           <div>
             <label htmlFor="sync-actions" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Action Items <span className="text-gray-500 font-normal">(one per line, optional &quot;Name: Description&quot; format)</span>
+              Actions <span className="text-gray-500 font-normal">(one per line, optional &quot;Name: Description&quot; format — each is added to the project&apos;s RAID log)</span>
             </label>
             <textarea
               id="sync-actions"
@@ -246,7 +246,7 @@ export const SyncExternalMeetingModal: React.FC<SyncExternalMeetingModalProps> =
             />
             {actionItemsText.trim() && (
               <p className="text-xs text-gray-500 mt-1">
-                {parseActionItems(actionItemsText).length} action item(s) detected
+                {(() => { const n = parseActionItems(actionItemsText).length; return `${n} action${n === 1 ? '' : 's'} will be added to RAID`; })()}
               </p>
             )}
           </div>

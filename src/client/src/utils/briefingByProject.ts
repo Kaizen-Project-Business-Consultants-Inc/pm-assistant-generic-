@@ -116,9 +116,9 @@ export function buildProjectBriefings(
   const mineTasks: any[] = briefing.mine?.tasks ?? [];
   const mineRaid: any[] = briefing.mine?.raidItems ?? [];
   const mineIds = new Set<string>([...mineTasks.map(t => t.id), ...mineRaid.map(r => r.id)]);
-  const moved = new Map<string, { late: number; blocked: number; due: number }>();
-  const bump = (projectId: string, k: 'late' | 'blocked' | 'due') => {
-    const m = moved.get(projectId) ?? { late: 0, blocked: 0, due: 0 };
+  const moved = new Map<string, { late: number; blocked: number; due: number; risks: number }>();
+  const bump = (projectId: string, k: 'late' | 'blocked' | 'due' | 'risks') => {
+    const m = moved.get(projectId) ?? { late: 0, blocked: 0, due: 0, risks: 0 };
     m[k]++;
     moved.set(projectId, m);
   };
@@ -171,6 +171,8 @@ export function buildProjectBriefings(
     const p = ensure(item.projectId, item.projectName, item.projectCode);
     if (mineIds.has(item.id)) {
       if (item.type === 'blocked_task') { bump(item.projectId, 'blocked'); blockedMine.set(item.id, waitingOn(item.detail)); }
+      // An overdue action or open issue you own (RAID ids) is under Yours — take it off the team count too
+      else bump(item.projectId, 'risks');
       continue;
     }
     if (item.type === 'blocked_task') {
@@ -310,13 +312,13 @@ export function buildProjectBriefings(
   const result: ProjectBriefing[] = [];
   for (const p of byId.values()) {
     const c = p.counts;
-    const mv = moved.get(p.id) ?? { late: 0, blocked: 0, due: 0 };
+    const mv = moved.get(p.id) ?? { late: 0, blocked: 0, due: 0, risks: 0 };
     const yours = yoursBy.get(p.id) ?? emptyYours(p.id);
     const lateCount = Math.max((c?.overdue ?? 0) - mv.late, p.late.length);
     const blockedCount = Math.max((c?.blocked ?? 0) - mv.blocked, p.blocked.length);
     const newRisks = (briefing.recentHighRisks ?? []).filter((r: any) => r.projectId === p.id && !mineIds.has(r.id)).length;
     const recentChanges = (briefing.raidChanges ?? []).filter((r: any) => r.projectId === p.id).length;
-    const riskTotal = Math.max((c?.openIssues ?? 0) + (c?.overdueActions ?? 0) + newRisks + recentChanges, p.risks.length);
+    const riskTotal = Math.max((c?.openIssues ?? 0) + (c?.overdueActions ?? 0) - mv.risks + newRisks + recentChanges, p.risks.length);
     const dueCount = Math.max((c?.dueSoon ?? 0) - mv.due, p.due.length);
     const base = `/project/${p.id}`;
     const sections: BriefingSection[] = [

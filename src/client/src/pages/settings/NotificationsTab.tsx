@@ -29,7 +29,7 @@ const DEFAULT_TYPE_PREFS: TypePreferences = Object.fromEntries(
 const DIGEST_SECTIONS = [
   { key: 'overdue', label: 'Overdue Tasks' },
   { key: 'deadlines', label: 'Upcoming Deadlines' },
-  { key: 'action_items', label: 'Meeting Action Items' },
+  { key: 'action_items', label: 'Overdue actions (RAID)' },
   { key: 'meetings', label: 'Upcoming Meetings' },
   { key: 'sprint', label: 'Sprint Status' },
   { key: 'changes', label: 'Recent Changes' },

@@ -104,6 +104,26 @@ describe('DigestService', () => {
       );
     });
 
+    it('lists the overdue RAID actions the user owns, with their project', async () => {
+      const user = makeUser();
+
+      mockQuery.mockResolvedValueOnce([user]); // findEligibleUsers
+      mockBuildDigest({ actionItems: [{ title: 'Send revised plan', due_date: '2026-09-20', project_name: 'DBJ-Loans' }] });
+      mockQuery.mockResolvedValueOnce(undefined); // updateLastSent
+
+      const count = await service.sendPendingDigests();
+
+      expect(count).toBe(1);
+      expect(mockSendDigestEmail).toHaveBeenCalledWith('alice@example.com', 'Alice Smith', expect.objectContaining({
+        actionItems: [{ title: 'Send revised plan', dueDate: '2026-09-20', projectName: 'DBJ-Loans' }],
+      }));
+      const actionSql = mockQuery.mock.calls.map((c: any[]) => String(c[0])).find(q => q.includes("pr.type = 'action'"));
+      expect(actionSql).toBeDefined();
+      expect(actionSql).toContain('FROM project_risks pr');
+      expect(actionSql).toContain('pr.owner_id = ?');
+      expect(actionSql).not.toContain('meeting_action_items');
+    });
+
     it('returns 0 and sends no email when no users are found', async () => {
       mockQuery.mockResolvedValueOnce([]); // no users
 

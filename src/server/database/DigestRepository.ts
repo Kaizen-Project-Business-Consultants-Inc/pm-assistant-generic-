@@ -33,14 +33,20 @@ class DigestRepository {
     }));
   }
 
-  async findOverdueActionItems(userId: string, now: string, limit = 20): Promise<Array<{ title: string; due_date: string; meeting_title: string }>> {
+  /**
+   * Overdue RAID actions the user owns (meeting actions live in the RAID log too). `now` may be a
+   * date-time; only its calendar day counts, so an action due today is not yet overdue.
+   */
+  async findOverdueActionItems(userId: string, now: string, limit = 20): Promise<Array<{ title: string; due_date: string; project_name: string }>> {
     try {
-      return await databaseService.query<{ title: string; due_date: string; meeting_title: string }>(
-        `SELECT ai.title, ai.due_date, m.title AS meeting_title
-         FROM meeting_action_items ai
-         LEFT JOIN meetings m ON m.id = ai.meeting_id
-         WHERE ai.assignee_user_id = ? AND ai.due_date < ? AND ai.status NOT IN ('completed', 'cancelled')
-         ORDER BY ai.due_date ASC LIMIT ?`,
+      return await databaseService.query<{ title: string; due_date: string; project_name: string }>(
+        `SELECT pr.title, pr.due_date, p.name AS project_name
+         FROM project_risks pr
+         JOIN projects p ON p.id = pr.project_id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
+         WHERE pr.type = 'action' AND pr.owner_id = ?
+           AND pr.due_date < DATE(?)
+           AND pr.status NOT IN ('completed', 'closed', 'cancelled', 'deferred')
+         ORDER BY pr.due_date ASC LIMIT ?`,
         [userId, now, limit],
       );
     } catch { return []; }
