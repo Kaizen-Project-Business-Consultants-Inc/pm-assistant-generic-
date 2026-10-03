@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { proposalEvent } from '../domainEvents';
 import { actionProposalRepository, ProposalRow, ActionRow } from '../../database/ActionProposalRepository';
 import { autonomyService } from './AutonomyService';
 import logger from '../../utils/logger';
@@ -186,16 +187,15 @@ export class ActionProposalService {
     const proposal = (await this.getById(id))!;
 
     // Fire proposal_created workflow trigger (fire-and-forget)
-    import('../DagWorkflowService').then(({ dagWorkflowService }) =>
-      dagWorkflowService.evaluateProposalEvent('proposal_created', {
+    // Workflows with proposal triggers react (via the startup wiring — step 1E)
+    proposalEvent('proposal_created', {
         proposalId: id,
         projectId: proposal.projectId,
         agentId: proposal.agentId,
         confidenceScore: proposal.confidenceScore,
         riskLevel: proposal.riskLevel,
         title: proposal.title,
-      })
-    ).catch(err => logger.error(`[ActionProposalService] Workflow trigger failed for ${id}:`, err));
+    });
 
     // Tier 3 auto-execute: if agent is promoted, execute immediately
     this.tryAutoExecute(proposal).catch(err =>

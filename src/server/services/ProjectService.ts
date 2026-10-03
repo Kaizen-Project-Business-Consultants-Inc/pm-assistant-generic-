@@ -7,7 +7,7 @@ import { userService } from './UserService';
 import { auditLedgerService } from './AuditLedgerService';
 import { policyEngineService } from './PolicyEngineService';
 import logger from '../utils/logger';
-import { dagWorkflowService } from './DagWorkflowService';
+import { projectChanged } from './domainEvents';
 import { deadLetterService } from './DeadLetterService';
 import type { ProjectType } from '../constants/projectTypes';
 
@@ -204,14 +204,10 @@ export class ProjectService {
     if ('budgetSpent' in data && data.budgetSpent !== existing.budgetSpent) {
       const budgetAllocated = updated.budgetAllocated ?? 0;
       const utilization = budgetAllocated > 0 ? (updated.budgetSpent / budgetAllocated) * 100 : 0;
-      dagWorkflowService.evaluateProjectChange(id, 'budget_update', {
-        budgetAllocated, budgetSpent: updated.budgetSpent, utilization,
-      }).catch(err => logger.error('[Workflow] evaluateProjectChange error:', err));
+      projectChanged(id, 'budget_update', { budgetAllocated, budgetSpent: updated.budgetSpent, utilization });
     }
     if ('status' in data && data.status !== existing.status) {
-      dagWorkflowService.evaluateProjectChange(id, 'project_status_change', {
-        oldStatus: existing.status, newStatus: updated.status,
-      }).catch(err => logger.error('[Workflow] evaluateProjectChange error:', err));
+      projectChanged(id, 'project_status_change', { oldStatus: existing.status, newStatus: updated.status });
     }
 
     return updated;

@@ -6,6 +6,8 @@ import { registerUndoHandler } from './ChangeHistoryService';
 import { scheduleFixProposerService } from './ScheduleFixProposerService';
 import { resourceReplaceService } from './ResourceReplaceService';
 import { teamPlannerService } from './TeamPlannerService';
+import { dagWorkflowService } from './DagWorkflowService';
+import { scheduleService } from './ScheduleService';
 import logger from '../utils/logger';
 
 /**
@@ -33,6 +35,20 @@ export function registerDomainListeners(): void {
   });
   // RAID changed → RAID Review re-runs
   onDomainEvent('raid.changed', e => queueRaidReviewRerun(e.projectId));
+
+  // Workflows react to task, project and agent-proposal changes (step 1E) — fire-and-forget, as before
+  onDomainEvent('task.changed', e => {
+    dagWorkflowService.evaluateTaskChange(e.task, e.oldTask, scheduleService).catch(err =>
+      logger.error('[Workflow] evaluateTaskChange error:', err));
+  });
+  onDomainEvent('project.changed', e => {
+    dagWorkflowService.evaluateProjectChange(e.projectId, e.changeType, e.data).catch(err =>
+      logger.error('[Workflow] evaluateProjectChange error:', err));
+  });
+  onDomainEvent('proposal.event', e => {
+    dagWorkflowService.evaluateProposalEvent(e.eventType, e.data).catch(err =>
+      logger.error('[Workflow] evaluateProposalEvent error:', err));
+  });
 
   // Schedule History: the features that know how to put their own changes back (step 1D)
   registerUndoHandler('review_fix', async (scheduleId, _p, c) => { await scheduleFixProposerService.undo(scheduleId, c.ref ?? '', c.userId); return 0; });

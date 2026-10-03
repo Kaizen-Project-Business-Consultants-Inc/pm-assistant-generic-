@@ -1,4 +1,5 @@
 import { actionProposalService, Proposal, ProposalAction } from './ActionProposalService';
+import { proposalEvent } from '../domainEvents';
 import { scheduleService } from '../ScheduleService';
 import { auditLedgerService } from '../AuditLedgerService';
 import { notificationService } from '../NotificationService';
@@ -149,16 +150,15 @@ export class ActionExecutor {
     });
 
     // Fire proposal_executed workflow trigger (fire-and-forget)
-    import('../DagWorkflowService').then(({ dagWorkflowService }) =>
-      dagWorkflowService.evaluateProposalEvent('proposal_executed', {
+    // Workflows with proposal triggers react (via the startup wiring — step 1E)
+    proposalEvent('proposal_executed', {
         proposalId,
         projectId: proposal.projectId,
         agentId: proposal.agentId,
         confidenceScore: proposal.confidenceScore,
         riskLevel: proposal.riskLevel,
         title: proposal.title,
-      })
-    ).catch(err => logger.error(`[ActionExecutor] Workflow trigger failed for ${proposalId}:`, err));
+    });
 
     return {
       success: true,

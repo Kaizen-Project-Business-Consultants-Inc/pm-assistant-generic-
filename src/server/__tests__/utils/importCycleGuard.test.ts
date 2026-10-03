@@ -24,7 +24,10 @@ const CEILING = {
   // Step 1B ("something changed" notices, services/domainEvents.ts): 80 / 31, RAID knot gone.
   // Step 1C (database layer stops calling business logic): 74 / 28, Embedding pair gone.
   // Step 1D (History undo handlers; single delete-with-history moved into History): 30 / 13.
-  server: { tangledLinks: 30, filesInTangles: 13 },
+  // Step 1E (task / project / proposal changes reach workflows by notice): 7 / 5 — two small knots
+  // left: ScheduleService ↔ ResourceService ↔ ApprovedTimeService, and the agents'
+  // ActionExecutor ↔ ActionProposalService.
+  server: { tangledLinks: 7, filesInTangles: 5 },
   client: { tangledLinks: 5, filesInTangles: 5 },
 };
 

@@ -20,10 +20,13 @@ vi.mock('../../services/ChangeHistoryService', () => ({
 vi.mock('../../services/ScheduleFixProposerService', () => ({ scheduleFixProposerService: { undo: undo.fix } }));
 vi.mock('../../services/ResourceReplaceService', () => ({ resourceReplaceService: { undo: undo.replace } }));
 vi.mock('../../services/TeamPlannerService', () => ({ teamPlannerService: { undo: undo.planner } }));
+const wf = vi.hoisted(() => ({ task: vi.fn(async () => {}), project: vi.fn(async () => {}), proposal: vi.fn(async () => {}), schedule: { marker: 'scheduleService' } }));
+vi.mock('../../services/DagWorkflowService', () => ({ dagWorkflowService: { evaluateTaskChange: wf.task, evaluateProjectChange: wf.project, evaluateProposalEvent: wf.proposal } }));
+vi.mock('../../services/ScheduleService', () => ({ scheduleService: wf.schedule }));
 
 import {
   onDomainEvent, publishDomainEvent, planChanged, personRatesChanged, rateCardChanged, raidChanged,
-  listenerCounts, _resetDomainEventsForTests,
+  taskChanged, projectChanged, proposalEvent, listenerCounts, _resetDomainEventsForTests,
 } from '../../services/domainEvents';
 import { registerDomainListeners, _resetDomainListenersForTests } from '../../services/domainListeners';
 import { asyncLocalStorage, getRequestContext } from '../../middleware/requestContext';
@@ -90,6 +93,27 @@ describe('startup wiring: every notice reaches its reaction', () => {
     raidChanged('p1');
     expect(reactions.queueRaidReviewRerun).toHaveBeenCalledWith('p1');
   });
+  it('a task change reaches the workflows, with the old task and the schedule service (step 1E)', () => {
+    const task = { id: 't1' } as any, old = { id: 't1', status: 'pending' } as any;
+    taskChanged(task, old);
+    expect(wf.task).toHaveBeenCalledWith(task, old, wf.schedule);
+    taskChanged(task, null);
+    expect(wf.task).toHaveBeenLastCalledWith(task, null, wf.schedule);
+  });
+  it('a project budget or status change reaches the workflows', () => {
+    projectChanged('p1', 'project_status_change', { oldStatus: 'planning', newStatus: 'active' });
+    expect(wf.project).toHaveBeenCalledWith('p1', 'project_status_change', { oldStatus: 'planning', newStatus: 'active' });
+  });
+  it('an agent proposal event reaches the workflows', () => {
+    const data = { proposalId: 'pr1', projectId: 'p1', agentId: 'a1', confidenceScore: 0.9, riskLevel: 'low', title: 'x' };
+    proposalEvent('proposal_created', data);
+    expect(wf.proposal).toHaveBeenCalledWith('proposal_created', data);
+  });
+  it('a workflow that fails never breaks the change that posted the notice', () => {
+    wf.task.mockRejectedValueOnce(new Error('boom'));
+    expect(() => taskChanged({ id: 't1' } as any, null)).not.toThrow();
+  });
+
   it('Schedule History gets the undo for every change another feature makes (step 1D)', async () => {
     expect([...undo.registered.keys()].sort()).toEqual(['planner_move', 'reassign', 'review_fix']);
     await undo.registered.get('review_fix')!('s1', {}, { ref: 'prop-1', userId: 'u1' });
@@ -102,7 +126,7 @@ describe('startup wiring: every notice reaches its reaction', () => {
 
   it('registering twice does not double the reactions', () => {
     registerDomainListeners();
-    expect(listenerCounts()).toEqual({ 'plan.changed': 1, 'person.rates.changed': 1, 'ratecard.changed': 1, 'raid.changed': 1 });
+    expect(listenerCounts()).toEqual({ 'plan.changed': 1, 'person.rates.changed': 1, 'ratecard.changed': 1, 'raid.changed': 1, 'task.changed': 1, 'project.changed': 1, 'proposal.event': 1 });
     publishDomainEvent({ type: 'plan.changed', scheduleId: 's1' });
     expect(reactions.queueReviewRerun).toHaveBeenCalledTimes(1);
   });
@@ -146,7 +170,20 @@ describe('guard', () => {
       'services/RateCardService.ts': /rateCardChanged\(/,
       'services/RiskService.ts': /raidChanged\(/,
       'routes/collaboration/risks.ts': /raidChanged\(/,
+      'services/ProjectService.ts': /projectChanged\([^)]*'budget_update'[\s\S]*projectChanged\([^)]*'project_status_change'/,
+      'services/agents/ActionProposalService.ts': /proposalEvent\('proposal_created'/,
+      'services/agents/ActionExecutor.ts': /proposalEvent\('proposal_executed'/,
     };
+    expect(src('services/ScheduleService.ts').match(/taskChanged\(/g)?.length, 'task created + task updated').toBe(2);
     for (const [file, re] of Object.entries(posts)) expect(src(file), file).toMatch(re);
+  });
+});
+
+describe('guard (step 1E)', () => {
+  const SERVER = resolve(__dirname, '..', '..');
+  it('the project, schedule and agent code never call the workflow engine directly — they post a notice', () => {
+    for (const f of ['services/ScheduleService.ts', 'services/ProjectService.ts', 'services/agents/ActionProposalService.ts', 'services/agents/ActionExecutor.ts']) {
+      expect(readFileSync(join(SERVER, f), 'utf-8'), f).not.toMatch(/DagWorkflowService/);
+    }
   });
 });

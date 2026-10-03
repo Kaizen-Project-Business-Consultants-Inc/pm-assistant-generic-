@@ -4,7 +4,6 @@ import { databaseService } from '../database/connection';
 import { scheduleRepository } from '../database/ScheduleRepository';
 import { taskRepository, TaskRepository } from '../database/TaskRepository';
 import { auditLedgerService } from './AuditLedgerService';
-import { dagWorkflowService } from './DagWorkflowService';
 import logger from '../utils/logger';
 import { deadLetterService } from './DeadLetterService';
 import { notificationService } from './NotificationService';
@@ -14,7 +13,7 @@ import { resourceService } from './ResourceService';
 import { userService } from './UserService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import { findDependencyCycle } from '../utils/dependencyCycle';
-import { planChanged } from './domainEvents';
+import { planChanged, taskChanged } from './domainEvents';
 import { loginForAssignee } from '../utils/assigneeLogins';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { inclusiveDaySpan } from '../utils/calendarDate';
@@ -817,9 +816,8 @@ export class ScheduleService {
       source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
-    dagWorkflowService.evaluateTaskChange(task, null, this).catch(err =>
-      logger.error('[Workflow] evaluateTaskChange error:', err)
-    );
+    // Workflows with task triggers react (via the startup wiring — step 1E)
+    taskChanged(task, null);
 
     // Notify assignee of new task assignment — "assigned to" is a person from Resources; tell their login
     if (data.assignedTo) {
@@ -1091,9 +1089,7 @@ export class ScheduleService {
       source: getActorSource(),
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
-    dagWorkflowService.evaluateTaskChange(updated, oldTask, this).catch(err =>
-      logger.error('[Workflow] evaluateTaskChange error:', err)
-    );
+    taskChanged(updated, oldTask);
 
     // Notify on reassignment
     const updaterId = getRequestContext()?.userId || data.createdBy || oldTask.createdBy;

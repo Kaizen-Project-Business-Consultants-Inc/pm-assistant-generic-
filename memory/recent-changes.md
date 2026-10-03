@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — Workflows by notice (code health step 1E)
+ScheduleService (task create/update), ProjectService (budget spend / status) and the agents' ActionProposalService/ActionExecutor (proposal created/executed) post notices instead of importing DagWorkflowService; domainListeners.ts wires them to the workflow engine. Tangles 30→7 links, 13→5 files (target ≤8 met). Left: ScheduleService↔ResourceService↔ApprovedTimeService and ActionExecutor↔ActionProposalService (agents off; the other session is slimming agents next).
+
 ## 2026-10-03 — History undo handlers (code health step 1D)
 ChangeHistoryService no longer imports the review-fix proposer, resource replace or Team Planner: they register their undo at startup (registerUndoHandler in domainListeners.ts). Single delete-with-history moved from ScheduleService into ChangeHistoryService.deleteTaskWithHistory (ScheduleService.removeTask takes History's copy step), so ScheduleService no longer imports History. Tangles 74→30 links, 28→13 files. Missing wiring → clear 'can't be undone right now', nothing marked undone (tested).
 
