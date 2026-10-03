@@ -74,6 +74,28 @@ export async function checkProjectRole(request: FastifyRequest, projectId: strin
   return checkProjectRoleFor(request.user!, projectId, minRole);
 }
 
+/**
+ * Which of these projects the user may CHANGE (Manager or Owner, or admin/PMO) — the same rule as
+ * checkProjectRoleFor(…, 'manager'), worked out for a whole list with one membership query, so a
+ * list screen can hide change buttons per project (2026-10-03: the dashboard showed "Start" on
+ * projects where a PM was only a Viewer; the server refused the click).
+ */
+export async function editableProjectIds(
+  user: { userId: string; role: string; isGuest?: boolean },
+  projects: Array<{ id: string; createdBy?: string | null }>,
+): Promise<Set<string>> {
+  if (!user.isGuest && GLOBAL_FULL_ACCESS.includes(user.role)) return new Set(projects.map(p => p.id));
+  if (!user.isGuest && GLOBAL_READ_ONLY.includes(user.role)) return new Set();
+  const memberships = await projectMemberService.findByUserId(user.userId);
+  const roleOf = new Map(memberships.map(m => [m.projectId, m.role as ProjectRole]));
+  const out = new Set<string>();
+  for (const p of projects) {
+    const role = roleOf.get(p.id) ?? (p.createdBy === user.userId ? 'owner' : undefined);
+    if (role && ROLE_HIERARCHY[role] >= ROLE_HIERARCHY.manager) out.add(p.id);
+  }
+  return out;
+}
+
 /** The same rule for callers without a web request (the AI tool runner, agents). */
 export async function checkProjectRoleFor(
   user: { userId: string; role: string; isGuest?: boolean },

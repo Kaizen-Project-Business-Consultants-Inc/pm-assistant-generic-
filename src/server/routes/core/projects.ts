@@ -5,7 +5,7 @@ import { projectService } from '../../services/ProjectService';
 import { authMiddleware } from '../../middleware/auth';
 import { getActorSource } from '../../middleware/requestContext';
 import { requireScope } from '../../middleware/requireScope';
-import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { requireProjectAccess, editableProjectIds } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
@@ -131,7 +131,10 @@ export async function projectRoutes(fastify: FastifyInstance) {
       const projectDTOs = rows.map(toProjectDTO);
       const projectIds = projectDTOs.map((p: any) => p.id);
       const favMap = await favouriteProjectRepository.isFavouriteMap(user.userId, projectIds);
-      const enriched = projectDTOs.map((p: any) => ({ ...p, isFavourite: !!favMap[p.id] }));
+      // canEdit: whether the caller may change THIS project (its Manager/Owner, or admin/PMO) — list
+      // screens hide change buttons from it rather than from the organisation role
+      const editable = await editableProjectIds(user, projectDTOs);
+      const enriched = projectDTOs.map((p: any) => ({ ...p, isFavourite: !!favMap[p.id], canEdit: editable.has(p.id) }));
       const page = Math.floor(offset / limit) + 1;
       return paginate(enriched, total, page, limit);
     } catch (error) {

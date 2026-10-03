@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — leftovers list (items 6 and 4)
+
+- **deploy.sh**: a failed MCP build now stops the deploy (`cd x && build && cd ..` never tripped `set -e`; now a subshell); the remote `npm install | tail` uses pipefail.
+- **Prod e2e**: `e2e/prod-helpers.ts` reads SMOKE_CREDENTIALS (was the deleted mike_todo account); `prod-smoke.spec.ts` reuses the saved session — 10/10 pass on kovarti.com (all timed out before).
+- **Dashboard Start button**: GET /projects now returns `canEdit` per project (`editableProjectIds()` in requireProjectAccess.ts, one membership query, same rule as `checkProjectRoleFor(…,'manager')` — test proves they agree). Start shows only where you are the project's Manager/Owner (or admin/PMO).
+
 ## 2026-10-02 (d) — Team Planner
 
 - **Resources → Team Planner** (PMs): people × weeks, all projects counted; drag a task to another person or week; check before saving (hours before → after, dates, linked tasks, finish shift, cost, logged hours stay); one History change (`planner_move`), undoable. Overload warns, never refuses (user, 2026-10-02). Team members/viewers/executives don't get the tab.

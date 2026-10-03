@@ -19,6 +19,8 @@ export interface ProjectRow {
   startDate?: string;
   endDate?: string;
   healthScore?: number;
+  /** Whether you may change this project (its Manager/Owner, or admin/PMO) — from GET /projects */
+  canEdit?: boolean;
 }
 
 type SortKey =
@@ -338,7 +340,8 @@ export function ProjectTable({ projects }: Props) {
 
                 {/* Start button */}
                 <td className="px-3 py-3 whitespace-nowrap">
-                  {project.status === 'planning' && canChange && (
+                  {/* only where you can change THIS project (its Manager/Owner) — the server refuses others */}
+                  {project.status === 'planning' && canChange && project.canEdit !== false && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
