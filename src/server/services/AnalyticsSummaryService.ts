@@ -44,6 +44,9 @@ export interface AnalyticsSummary {
 // Service
 // ---------------------------------------------------------------------------
 
+/** Portfolio totals leave the read-only sample project out; its own summary still shows its numbers. */
+const NOT_SAMPLE = 'COALESCE(p.is_demo, 0) = 0';
+
 class AnalyticsSummaryService {
   // -----------------------------------------------------------------------
   // Full portfolio summary for a user
@@ -56,14 +59,15 @@ class AnalyticsSummaryService {
     if (readable === 'all') return this.getSummaryAll();
     const ids = [...readable];
     if (ids.length === 0) return this.buildSummary('1 = 0', []);
-    return this.buildSummary(`(p.id IN (${ids.map(() => '?').join(',')}))`, ids);
+    // ...but the sample project never counts in the totals (it stays on the project list)
+    return this.buildSummary(`(p.id IN (${ids.map(() => '?').join(',')})) AND ${NOT_SAMPLE}`, ids);
   }
 
   // -----------------------------------------------------------------------
   // Full portfolio summary across all projects (no user filter)
   // -----------------------------------------------------------------------
   async getSummaryAll(): Promise<AnalyticsSummary> {
-    return this.buildSummary('1=1', []);
+    return this.buildSummary(NOT_SAMPLE, []);
   }
 
   // -----------------------------------------------------------------------

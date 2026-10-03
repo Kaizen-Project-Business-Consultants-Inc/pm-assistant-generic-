@@ -35,7 +35,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
               DATEDIFF(CURDATE(), t.end_date) AS overdueDays
        FROM tasks t
        JOIN schedules s ON t.schedule_id = s.id
-       JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+       JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
        ${memberJoin}
        ${viewerJoin}
        WHERE t.status NOT IN ('completed','done','cancelled') AND t.end_date < CURDATE()
@@ -66,7 +66,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
       `SELECT YEARWEEK(t.created_at, 1) AS yw, COUNT(*) AS cnt
        FROM tasks t
        JOIN schedules s ON t.schedule_id = s.id
-       JOIN projects p ON s.project_id = p.id
+       JOIN projects p ON s.project_id = p.id AND COALESCE(p.is_demo, 0) = 0
        ${memberJoin}
        WHERE t.created_at >= DATE_SUB(CURDATE(), INTERVAL ? WEEK)
        GROUP BY yw`,
@@ -77,7 +77,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
       `SELECT YEARWEEK(t.updated_at, 1) AS yw, COUNT(*) AS cnt
        FROM tasks t
        JOIN schedules s ON t.schedule_id = s.id
-       JOIN projects p ON s.project_id = p.id
+       JOIN projects p ON s.project_id = p.id AND COALESCE(p.is_demo, 0) = 0
        ${memberJoin}
        WHERE t.status IN ('completed','done')
          AND t.updated_at >= DATE_SUB(CURDATE(), INTERVAL ? WEEK)
@@ -139,7 +139,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
               DATEDIFF(t.end_date, CURDATE()) AS daysUntil
        FROM tasks t
        JOIN schedules s ON t.schedule_id = s.id
-       JOIN projects p ON s.project_id = p.id
+       JOIN projects p ON s.project_id = p.id AND COALESCE(p.is_demo, 0) = 0
        ${memberJoin}
        ${viewerJoin}
        WHERE t.is_milestone = 1
@@ -168,7 +168,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
       databaseService.query<any>(
         `SELECT cr.status, COUNT(*) AS cnt
          FROM change_requests cr
-         JOIN projects p ON cr.project_id = p.id
+         JOIN projects p ON cr.project_id = p.id AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          GROUP BY cr.status`,
         params,
@@ -176,7 +176,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
       databaseService.query<any>(
         `SELECT cr.category, COUNT(*) AS cnt
          FROM change_requests cr
-         JOIN projects p ON cr.project_id = p.id
+         JOIN projects p ON cr.project_id = p.id AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          GROUP BY cr.category`,
         params,
@@ -185,7 +185,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
         `SELECT cr.id, cr.title, cr.priority, cr.created_at AS createdAt,
                 p.name AS projectName, p.id AS projectId
          FROM change_requests cr
-         JOIN projects p ON cr.project_id = p.id
+         JOIN projects p ON cr.project_id = p.id AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE cr.status IN ('pending','in_review')
          ORDER BY cr.created_at ASC

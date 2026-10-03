@@ -126,7 +126,8 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
   } else {
     const allProjects = await projectService.findAll();
     projects = allProjects.filter(
-      (p) => p.status === 'active' || p.status === 'planning',
+      // the read-only sample project is never scanned
+      (p) => !p.isDemo && (p.status === 'active' || p.status === 'planning'),
     );
   }
 

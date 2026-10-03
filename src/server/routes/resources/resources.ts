@@ -21,6 +21,7 @@ import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
 import { utcDay, mondayOf } from '../../utils/workingDays';
 import { hoursInWeek, calendarsFor } from '../../services/weeklyLoad';
+import { isExamplePerson } from '../../utils/sampleData';
 
 const skillSchema = z.union([
   z.string(),
@@ -706,8 +707,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
 
   // GET /resources/capacity-by-role — Capacity planning by role (#5)
   fastify.get('/capacity-by-role', { preHandler: [requireScope('read')] }, async (_request: FastifyRequest, _reply: FastifyReply) => {
-    // People only — a generic role adds no capacity (its work is unfilled demand)
-    const resources = (await resourceService.findAllResources()).filter((r) => !r.isGeneric);
+    // People only — a generic role adds no capacity (its work is unfilled demand), nor do the
+    // sample project's example people
+    const resources = (await resourceService.findAllResources()).filter((r) => !r.isGeneric && !isExamplePerson(r));
     const allAssignments = await resourceService.findEffectiveAssignments();
     const calOf = await calendarsFor(allAssignments.map(a => a.scheduleId), (id) => scheduleService.workingDayTest(id));
 

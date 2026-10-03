@@ -142,9 +142,10 @@ export class AIContextBuilder {
   async buildPortfolioContext(opts?: { userId?: string; role?: string }): Promise<PortfolioContext> {
     // No user = a background job; a person sees all projects only as admin/PMO/executive
     const isAdmin = !opts?.userId || GLOBAL_READ_ROLES.includes(opts?.role ?? '');
-    const projects = isAdmin
+    const projects = (isAdmin
       ? await this.projectService.findAll()
-      : await this.projectService.findByUserId(opts!.userId!);
+      : await this.projectService.findByUserId(opts!.userId!))
+      .filter((p) => !p.isDemo); // the sample project never counts in portfolio totals
 
     const byStatus: Record<string, number> = {};
     const byPriority: Record<string, number> = {};

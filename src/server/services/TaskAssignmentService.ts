@@ -236,7 +236,7 @@ export class TaskAssignmentService {
        FROM task_assignments ta
        JOIN tasks t ON ta.task_id = t.id
        JOIN schedules s ON t.schedule_id = s.id
-       JOIN projects p ON s.project_id = p.id
+       JOIN projects p ON s.project_id = p.id AND COALESCE(p.is_demo, 0) = 0
        WHERE t.status NOT IN ('completed', 'cancelled')
        GROUP BY ta.resource_id, p.id, p.name, s.name`,
     );

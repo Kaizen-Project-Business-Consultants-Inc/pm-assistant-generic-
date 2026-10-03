@@ -861,7 +861,7 @@ export class PredictiveIntelligenceService {
     try {
       const allProjects = userId ? await projectService.findAccessible({ userId, role: userRole ?? '' }) : await projectService.findAll();
       const projectWithCoords = allProjects.find(
-        (p) => p.locationLat && p.locationLon,
+        (p) => !p.isDemo && p.locationLat && p.locationLon,
       );
       if (projectWithCoords) {
         const weather = await dataProviderManager.getWeather(

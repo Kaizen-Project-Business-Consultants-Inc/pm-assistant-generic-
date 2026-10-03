@@ -632,7 +632,7 @@ export class AIActionExecutor {
 
   private async getProjectsDueToday(context: ActionContext): Promise<ActionResult> {
     const today = new Date().toISOString().slice(0, 10);
-    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
+    const projects = (await projectService.findAccessible({ userId: context.userId, role: context.userRole })).filter((p) => !p.isDemo); // the sample project never counts
     const due = projects.filter(
       (p) =>
         p.endDate &&
@@ -650,7 +650,7 @@ export class AIActionExecutor {
 
   private async getOverdueProjects(context: ActionContext): Promise<ActionResult> {
     const today = new Date().toISOString().slice(0, 10);
-    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
+    const projects = (await projectService.findAccessible({ userId: context.userId, role: context.userRole })).filter((p) => !p.isDemo); // the sample project never counts
     const overdue = projects.filter(
       (p) =>
         p.endDate &&
@@ -691,7 +691,7 @@ export class AIActionExecutor {
 
   private async getOverdueTasks(context: ActionContext): Promise<ActionResult> {
     const today = new Date().toISOString().slice(0, 10);
-    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
+    const projects = (await projectService.findAccessible({ userId: context.userId, role: context.userRole })).filter((p) => !p.isDemo); // the sample project never counts
     const projectMap = new Map(projects.map(p => [p.id, p]));
 
     const allSchedules = await scheduleService.findByProjectIds(projects.map(p => p.id));
@@ -733,7 +733,7 @@ export class AIActionExecutor {
 
   private async getHighRiskProjects(context: ActionContext): Promise<ActionResult> {
     const today = new Date().toISOString().slice(0, 10);
-    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
+    const projects = (await projectService.findAccessible({ userId: context.userId, role: context.userRole })).filter((p) => !p.isDemo); // the sample project never counts
 
     const highRisk = projects
       .filter((p) => p.status !== 'completed' && p.status !== 'cancelled')
@@ -766,7 +766,7 @@ export class AIActionExecutor {
 
   private async getPortfolioSummary(context: ActionContext): Promise<ActionResult> {
     const today = new Date().toISOString().slice(0, 10);
-    const projects = await projectService.findAccessible({ userId: context.userId, role: context.userRole });
+    const projects = (await projectService.findAccessible({ userId: context.userId, role: context.userRole })).filter((p) => !p.isDemo); // the sample project never counts
 
     const byStatus: Record<string, number> = {};
     let totalBudget = 0;
