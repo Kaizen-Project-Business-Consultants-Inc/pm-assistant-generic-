@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { User, Briefcase, BarChart3, Users, CheckCircle, ArrowRight, ArrowLeft, SkipForward, CreditCard, Mail, Plus, X, Building2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 import { apiService } from '../services/api';
 import { KovartiMark } from '../components/ui/KovartiMark';
 
@@ -56,6 +57,9 @@ export const OnboardingPage: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [projectName, setProjectName] = useState('');
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+  // Optional read-only sample project (Oct 2026): offered only to someone who may load it
+  const [canOfferSample, setCanOfferSample] = useState(false);
+  const [wantSample, setWantSample] = useState(false);
 
   // SME team setup state
   const isSme = user?.subscriptionTier === 'sme';
@@ -167,12 +171,36 @@ export const OnboardingPage: React.FC = () => {
     return 0;
   }).slice(0, 6);
 
+  useEffect(() => {
+    if (step !== STEP_PROJECT) return;
+    let cancelled = false;
+    apiService.getSampleProject()
+      .then(r => { if (!cancelled) setCanOfferSample(r.canManage && !r.loaded); })
+      .catch(() => { if (!cancelled) setCanOfferSample(false); });
+    return () => { cancelled = true; };
+  }, [step, STEP_PROJECT]);
+
+  /** Load the sample if it was ticked. False (with a message) when that failed, so the step stays put. */
+  const loadSampleIfWanted = async (): Promise<boolean> => {
+    if (!wantSample || !canOfferSample) return true;
+    try {
+      await apiService.loadSampleProject();
+      setCanOfferSample(false);
+      return true;
+    } catch (err) {
+      setWantSample(false);
+      setError(getApiErrorMessage(err, 'The sample project could not be added. Untick it to carry on — you can load it later in Settings → Sample project.'));
+      return false;
+    }
+  };
+
   const handleCreateProject = async () => {
     if (!selectedTemplate || !projectName.trim()) return;
     setError(null);
     setIsLoading(true);
 
     try {
+      if (!(await loadSampleIfWanted())) return;
       const result = await apiService.applyTemplate({
         templateId: selectedTemplate,
         projectName: projectName.trim(),
@@ -190,8 +218,15 @@ export const OnboardingPage: React.FC = () => {
     }
   };
 
-  const handleSkipProject = () => {
-    setStep(STEP_DONE);
+  const handleSkipProject = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      if (!(await loadSampleIfWanted())) return;
+      setStep(STEP_DONE);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleAddInvite = () => {
@@ -609,12 +644,33 @@ export const OnboardingPage: React.FC = () => {
                 </div>
               )}
 
+              {canOfferSample && (
+                <label className="mt-4 flex items-start gap-3 rounded-xl border-2 border-dashed border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-900/20 p-4 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={wantSample}
+                    onChange={(e) => setWantSample(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                  />
+                  <span className="text-left">
+                    <span className="block text-sm font-semibold text-gray-900 dark:text-white">
+                      Explore a sample project first
+                      <span className="ml-2 align-middle rounded-full bg-teal-600 px-2 py-0.5 text-xs font-bold text-white">New</span>
+                    </span>
+                    <span className="mt-1 block text-xs text-gray-600 dark:text-gray-300">
+                      Adds a read-only "Sample Web App Development" with example people, timesheets and costs, so you can see every feature filled in. It never counts in your totals, and you can remove it any time in Settings.
+                    </span>
+                  </span>
+                </label>
+              )}
+
               <button
                 type="button"
                 onClick={handleSkipProject}
+                disabled={isLoading}
                 className="w-full mt-3 flex justify-center items-center gap-1.5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
               >
-                <SkipForward className="w-4 h-4" /> I'll create a project later
+                <SkipForward className="w-4 h-4" /> {wantSample && canOfferSample ? 'Just the sample for now' : "I'll create a project later"}
               </button>
             </>
           )}

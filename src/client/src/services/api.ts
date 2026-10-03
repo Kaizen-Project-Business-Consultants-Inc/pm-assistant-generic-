@@ -329,6 +329,19 @@ class ApiService {
     return (await this.api.post(`/projects/${projectId}/working-calendar/apply`, change)).data;
   }
 
+  /** Settings → Sample project: is the read-only example loaded, and may this user change that */
+  async getSampleProject(): Promise<{ loaded: boolean; canManage: boolean }> {
+    return (await this.api.get('/sample-project')).data;
+  }
+
+  async removeSampleProject(): Promise<{ loaded: false; removed: number }> {
+    return (await this.api.post('/sample-project/remove')).data;
+  }
+
+  async loadSampleProject(): Promise<{ loaded: true }> {
+    return (await this.api.post('/sample-project/load')).data;
+  }
+
   async getCompanyHolidays(): Promise<{ holidays: CompanyHoliday[]; canEdit: boolean }> {
     return (await this.api.get('/company-holidays')).data;
   }

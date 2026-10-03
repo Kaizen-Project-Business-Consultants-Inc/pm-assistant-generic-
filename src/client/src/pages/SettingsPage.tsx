@@ -13,6 +13,7 @@ import {
   CalendarDays,
   DollarSign,
   Eye,
+  FlaskConical,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { ProfileTab } from './settings/ProfileTab';
@@ -27,13 +28,15 @@ import { AIContextTab } from './settings/AIContextTab';
 import { HolidaysTab } from './settings/HolidaysTab';
 import { RateCardTab } from './settings/RateCardTab';
 import { SupportVisitsTab } from './settings/SupportVisitsTab';
+import { SampleProjectTab } from './settings/SampleProjectTab';
 
-type Tab = 'profile' | 'team' | 'holidays' | 'rate-card' | 'support-visits' | 'notifications' | 'display' | 'accessibility' | 'ai-context' | 'api-keys' | 'webhooks' | 'danger';
+type Tab = 'profile' | 'team' | 'holidays' | 'sample-project' | 'rate-card' | 'support-visits' | 'notifications' | 'display' | 'accessibility' | 'ai-context' | 'api-keys' | 'webhooks' | 'danger';
 
 const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
   { id: 'team', label: 'Team', icon: <Users className="w-4 h-4" /> },
   { id: 'holidays', label: 'Company holidays', icon: <CalendarDays className="w-4 h-4" /> },
+  { id: 'sample-project', label: 'Sample project', icon: <FlaskConical className="w-4 h-4" /> },
   { id: 'rate-card', label: 'Rate card', icon: <DollarSign className="w-4 h-4" /> },
   { id: 'support-visits', label: 'Support visits', icon: <Eye className="w-4 h-4" /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
@@ -57,8 +60,11 @@ export const SettingsPage: React.FC = () => {
   // Rates are pay information: the same people who manage the team manage the rate card
   // Support visits: the company owner (or PMO) sees every time Kovarti support looked in
   const canSeeSupportVisits = !!user && (user.organization?.isOwner === true || user.role === 'pmo');
+  // Sample project: the company owner or an admin/PMO loads and removes it (same rule as the server)
+  const canManageSample = !!user && !user.isGuest && (user.organization?.isOwner === true || ['admin', 'pmo'].includes(user.role));
   const tabs = ALL_TABS.filter(t =>
     t.id === 'support-visits' ? canSeeSupportVisits
+      : t.id === 'sample-project' ? canManageSample
       : (t.id !== 'team' && t.id !== 'rate-card') || canManageTeam);
 
   const setActiveTab = (tab: Tab) => {
@@ -102,6 +108,7 @@ export const SettingsPage: React.FC = () => {
         {activeTab === 'profile' && <ProfileTab />}
         {activeTab === 'team' && canManageTeam && <TeamTab />}
         {activeTab === 'holidays' && <HolidaysTab />}
+        {activeTab === 'sample-project' && canManageSample && <SampleProjectTab />}
         {activeTab === 'rate-card' && canManageTeam && <RateCardTab />}
         {activeTab === 'support-visits' && canSeeSupportVisits && <SupportVisitsTab />}
         {activeTab === 'notifications' && <NotificationsTab />}

@@ -1100,3 +1100,9 @@ Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully 
 - Propose fixes with approval and one-step undo (move to Actions, one named owner, due date, response strategy)
 - Response strategy and closure reason fields; the register import fills them
 - **Benchmark:** PMI Risk Management practice, PRINCE2 RAID logs; not offered by MS Project / Smartsheet out of the box
+
+### Optional Sample Project (Oct 2026)
+- New companies start clean; "Explore a sample project first" in setup, or Settings → Sample project, loads a read-only example with people, timesheets and costs
+- One-click removal with an in-page confirmation; removes only the sample's rows and what points at them, in one transaction
+- Owner/admin only (others never see it); excluded from every company-wide total while loaded
+- **Benchmark:** Asana/monday.com ship sample projects that must be deleted by hand and count in workload; Kovarti keeps it out of totals and removes it in one step

@@ -32,6 +32,7 @@ import { scheduleReviewRoutes } from './routes/scheduling/scheduleReview';
 import { scheduleFixRoutes } from './routes/scheduling/scheduleFix';
 import { changeHistoryRoutes } from './routes/scheduling/changeHistory';
 import { calendarRoutes, companyHolidayRoutes } from './routes/scheduling/calendars';
+import { sampleProjectRoutes } from './routes/core/sampleProject';
 
 // AI
 import { aiChatRoutes } from './routes/ai/aiChat';
@@ -183,6 +184,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(changeHistoryRoutes, { prefix: '/api/v1/schedules' });
   await fastify.register(calendarRoutes);
   await fastify.register(companyHolidayRoutes);
+  await fastify.register(sampleProjectRoutes);
 
   // AI
   await fastify.register(aiChatRoutes, { prefix: '/api/v1/ai-chat' });

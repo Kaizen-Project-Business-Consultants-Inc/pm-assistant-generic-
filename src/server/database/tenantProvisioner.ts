@@ -43,6 +43,15 @@ export async function provisionTenantDatabase(orgId: string): Promise<void> {
   // Seed starter templates
   await seedStarterTemplates(dbName);
 
+  // New companies start clean (Oct 2026): the sample project (seeded by T033 with example people,
+  // timesheets and costs) is removed here; the owner can load it from setup or Settings.
+  try {
+    const { sampleProjectService } = await import('../services/SampleProjectService');
+    await sampleProjectService.remove(dbName);
+  } catch (err) {
+    logger.warn('[provisioner] could not remove the sample project — the owner can remove it in Settings', { dbName, err: (err as Error).message });
+  }
+
   // Mark as provisioned
   await organizationRepository.update(orgId, { isProvisioned: true });
   // Members' cached organisation still says "not provisioned" — clear it

@@ -150,6 +150,14 @@ All endpoints require project membership enforced by `requireProjectAccess`.
 - Holidays differ by province and company, so the list starts empty.
 - One-time clean-up after the first deploy with working calendars: `dist/server/scripts/moveTasksOffDaysOff.js` (see DEPLOYMENT_GUIDE.md checklist).
 
+
+### Sample Project (optional since October 2026)
+- Every company database is created by the tenant migrations, which include the read-only sample "Sample Web App Development" (`T033`, project id `demo-sample-webapp`, every row id starting `demo-`). **New companies have it removed straight after provisioning** (`tenantProvisioner.ts` → `SampleProjectService.remove`), so they start clean.
+- **Existing companies keep their sample** until their owner or an admin presses **Remove…** in **Settings → Sample project**. **Load** re-runs the seed (INSERT IGNORE, so it is safe twice). The setup wizard offers the same Load as "Explore a sample project first".
+- Who may: the company owner, admin or PMO (`/api/v1/sample-project`, `…/remove`, `…/load`); everyone else gets 403. Kovarti support never loads or removes it for a customer (admin is read-only on customer data).
+- Removing deletes, in one transaction, every row pointing at the sample project, its schedules, its tasks or its example people (found through `information_schema`), then the seed's own `demo-` rows. Nothing without a `demo-` link is touched.
+- While loaded, the sample is excluded from company-wide totals (portfolio, dashboard, budgets/EVM, capacity and workload, Team Planner, briefing, alerts, reports).
+
 ---
 
 ## 4. System Configuration

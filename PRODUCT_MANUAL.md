@@ -3261,6 +3261,8 @@ New users on Trial, Consultant Basic, and Consultant Pro tiers see a **3-step on
 | **Step 2 — Template Picker** | Template selection step where the user picks a methodology-matched template or skips. Templates are sorted by relevance to the chosen methodology — all templates remain visible (up to 6) rather than filtered, so the user always sees options. Hybrid methodology matches all templates. |
 | **Step 3 — Done** | Completion screen with navigation links to Dashboard, Projects, and Mjuzi AI Chat. |
 
+**Optional sample project (October 2026):** below the templates, the company owner or an admin sees **Explore a sample project first**. Ticked, the read-only "Sample Web App Development" is loaded (`POST /api/v1/sample-project/load`) when they continue — with a template or with *Just the sample for now*. New companies no longer get the sample automatically; it is loaded and removed in **Settings → Sample project** (`SampleProjectTab.tsx`, `GET /api/v1/sample-project` → `{loaded, canManage}`, `POST …/remove`). Removal deletes everything that points at the sample's project, schedules, tasks or example people in one transaction (`SampleProjectService`). Existing companies keep their sample until removed. While loaded it never counts in company-wide totals.
+
 All three steps are fully reachable. A previous redirect bug that sent users away from the wizard after Step 1 (before Steps 2 and 3 could be shown) has been fixed.
 
 After creating a project in Step 2, the user is taken to the project's **Overview** tab (not the Gantt chart), which is the appropriate starting point for a brand-new project.

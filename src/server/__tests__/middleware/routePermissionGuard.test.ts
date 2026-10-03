@@ -272,6 +272,11 @@ const NON_PROJECT: Record<string, string[]> = {
     "POST /week/recall",
     "POST /week/submit"
   ],
+  // Sample project: the company's read-only example, loaded/removed by the company owner or admin/PMO only (ownerOnly)
+  "core/sampleProject.ts": [
+    "POST /api/v1/sample-project/load",
+    "POST /api/v1/sample-project/remove"
+  ],
   // Company rate card: not project data; admin / PMO / PM / company owner only (rateCardManagerOnly)
   "resources/rateCard.ts": [
     "DELETE /:id",

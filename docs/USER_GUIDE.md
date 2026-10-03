@@ -87,6 +87,7 @@ A **3-step wizard** guides you through initial setup:
 **Step 2 — Create Your First Project (optional)**
 - Pick a project template from the library to pre-populate tasks, milestones, and dependencies. Templates are sorted to match your methodology choice, and up to 6 are shown.
 - You can skip this step — just click **Skip** to go straight to the confirmation screen. You can always create a project manually from the Projects page later.
+- **Explore a sample project first** (company owner or admin, October 2026): tick this to add a read-only example, "Sample Web App Development", with made-up people, timesheets and costs, so you can see every feature filled in. It never counts in your totals, reports or workload, and you can remove it any time in **Settings → Sample project**. New companies start without it.
 
 **Step 3 — You're all set**
 - A confirmation screen shows your trial details (start date, end date, and what's included).
@@ -2495,6 +2496,7 @@ Navigate to **Settings** to configure:
 - **Language** -- Select your preferred display language (English, French, or Spanish). The change applies instantly without a page reload.
 - **Time Zone** -- Set your IANA timezone (e.g., `America/Toronto`). All dates in the application are displayed in this timezone.
 - **Company holidays** -- The company's holiday list, grouped by year. Every project treats these as days off. The company owner or an admin adds one (date + name, **+ Add holiday**) or removes one; the preview shows how many tasks move in how many projects before anything is saved. See [Working Calendar and Company Holidays](#working-calendar-and-company-holidays).
+- **Sample project** (company owner, admin or PMO) -- Shows whether the read-only example "Sample Web App Development" is loaded. **Remove…** asks you to confirm, then deletes the sample project and its example people, sprints, meetings, timesheets and costs; your own projects are not touched. **Load** adds it back. While it is loaded it is left out of every total, report and workload. Other people never see this tab.
 - **Rate card** -- Hourly cost rates by role, each with its start date (admins, PMO and project managers only). See [Rate Card](#rate-card).
 - **Support visits** (company owner and PMO) -- Every time Kovarti support looked at your workspace to help with a problem: when, how long and the reason given. Support visits are **read-only** — support can see your projects but can never change anything — and last at most 30 minutes. A visit happening right now is marked **Happening now**.
 

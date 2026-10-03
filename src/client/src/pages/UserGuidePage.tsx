@@ -60,6 +60,7 @@ const sections: Section[] = [
       'Log in and explore the main dashboard',
       'View project summaries, upcoming deadlines, and key metrics at a glance',
       'Use the sidebar to navigate between features',
+      'Want to see every feature filled in? Tick "Explore a sample project first" in setup, or load it later in Settings → Sample project (company owner or admin). It is read-only, never counts in your totals, and can be removed any time',
     ],
   },
   {

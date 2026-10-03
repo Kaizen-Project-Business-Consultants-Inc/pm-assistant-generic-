@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — Sample project is optional
+New companies start without the read-only sample (provisioner removes it). Settings → Sample project (owner/admin/PMO) loads and removes it, with in-page confirmation; setup wizard offers "Explore a sample project first". SampleProjectService removes everything pointing at the sample's project/schedules/tasks/example people in one transaction. Existing companies keep theirs until removed.
+
 ## 2026-10-03 — leftovers list (items 6 and 4)
 
 - **deploy.sh**: a failed MCP build now stops the deploy (`cd x && build && cd ..` never tripped `set -e`; now a subshell); the remote `npm install | tail` uses pipefail.
