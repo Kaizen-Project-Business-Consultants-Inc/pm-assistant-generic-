@@ -101,11 +101,12 @@ export class ProjectRepository extends BaseRepository<Project> {
     return this.mapRows(rows);
   }
 
+  /** Live projects this person has (trial limit) — the sample project never counts */
   async countByUser(userId: string): Promise<number> {
     const rows = await this.queryRaw(
       `SELECT COUNT(DISTINCT p.id) as count FROM projects p
        LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
-       WHERE (p.created_by = ? OR pm.user_id IS NOT NULL OR p.is_demo = 1) AND p.archived_at IS NULL`,
+       WHERE (p.created_by = ? OR pm.user_id IS NOT NULL) AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0`,
       [userId, userId],
     );
     return Number(rows[0]?.count ?? 0);

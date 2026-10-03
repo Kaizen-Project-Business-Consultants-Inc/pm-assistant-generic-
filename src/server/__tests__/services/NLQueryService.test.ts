@@ -26,6 +26,7 @@ vi.mock('../../services/ScheduleService', () => ({
     findTasksByScheduleIds: vi.fn(),
     findTasksByScheduleId: vi.fn(),
     findAllTasks: vi.fn(),
+    findByProjectIds: vi.fn(),
   },
 }));
 vi.mock('../../services/ResourceService', () => ({
@@ -522,6 +523,26 @@ describe('NLQueryService', () => {
       expect(result.taskStatusBreakdown.completed).toBe(1);
       expect(result.taskStatusBreakdown.in_progress).toBe(1);
       expect(result.averageTaskProgress).toBe(75);
+    });
+
+    it('aggregate_portfolio_stats — the sample project and its tasks never count', async () => {
+      mockFindAll.mockResolvedValue([
+        { id: 'p1', status: 'active', priority: 'high', projectType: 'software', budgetAllocated: 1000, budgetSpent: 100 },
+        { id: 'demo-sample-webapp', isDemo: true, status: 'active', priority: 'high', projectType: 'it', budgetAllocated: 250000, budgetSpent: 112500 },
+      ]);
+      (scheduleService.findByProjectIds as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 'demo-sch-1' }]);
+      mockFindAllTasks.mockResolvedValue([
+        { scheduleId: 's1', status: 'in_progress', progressPercentage: 40 },
+        { scheduleId: 'demo-sch-1', status: 'completed', progressPercentage: 100 },
+      ]);
+
+      const result = JSON.parse(await executeToolFn('aggregate_portfolio_stats', {}));
+
+      expect(scheduleService.findByProjectIds).toHaveBeenCalledWith(['demo-sample-webapp']);
+      expect(result.totalProjects).toBe(1);
+      expect(result.totalBudgetAllocated).toBe(1000);
+      expect(result.totalTasks).toBe(1);
+      expect(result.taskStatusBreakdown.completed).toBeUndefined();
     });
 
     it('aggregate_portfolio_stats — handles empty portfolio', async () => {

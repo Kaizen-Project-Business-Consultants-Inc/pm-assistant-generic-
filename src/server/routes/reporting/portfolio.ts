@@ -20,7 +20,7 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
     try {
       const user = request.user!;
       const userId = user.userId;
-      const projects = await projectService.findByUserId(userId);
+      const projects = (await projectService.findByUserId(userId)).filter(p => !p.isDemo); // the sample project never counts
 
       // Batch: 3 queries total instead of 1 + N + N×M
       const projectIds = projects.map(p => p.id);
@@ -94,7 +94,7 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
-      const projects = await projectService.findByUserId(user.userId);
+      const projects = (await projectService.findByUserId(user.userId)).filter(p => !p.isDemo); // the sample project never counts
       const activeProjects = projects.filter(p => p.status === 'active' || p.status === 'planning');
 
       // Fetch workload for each active project in parallel
@@ -207,7 +207,7 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
         return JSON.parse(cached);
       }
 
-      const projects = await projectService.findByUserId(userId);
+      const projects = (await projectService.findByUserId(userId)).filter(p => !p.isDemo); // the sample project never counts
       const activeProjects = projects.filter(p => p.status === 'active' || p.status === 'planning');
 
       if (activeProjects.length === 0) {

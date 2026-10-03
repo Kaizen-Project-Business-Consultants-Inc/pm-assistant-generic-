@@ -18,7 +18,7 @@ export async function runWeeklyReviewPack(): Promise<number> {
   let projects: any[];
   try {
     projects = await databaseService.query(
-      `SELECT id, name FROM projects WHERE status IN ('active', 'in_progress', 'planning') LIMIT 200`,
+      `SELECT id, name FROM projects WHERE status IN ('active', 'in_progress', 'planning') AND COALESCE(is_demo, 0) = 0 LIMIT 200`,
     );
   } catch {
     return 0;

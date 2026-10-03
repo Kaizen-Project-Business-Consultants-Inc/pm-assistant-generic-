@@ -16,6 +16,7 @@ import {
 import { z } from 'zod';
 import { hoursInWeek } from './weeklyLoad';
 import { weekdaysOnly, mondaysBetween } from '../utils/workingDays';
+import { isExamplePerson } from '../utils/sampleData';
 
 
 export class ResourceOptimizerService {
@@ -31,8 +32,8 @@ export class ResourceOptimizerService {
   ): Promise<ResourceForecastResult> {
     // 1. Get workloads from ResourceService
     const workloads = await resourceService.computeWorkload(projectId);
-    // Generic roles are placeholders, not people who could take work
-    const allResources = (await resourceService.findAllResources()).filter((r) => !r.isGeneric);
+    // Generic roles are placeholders, not people who could take work; nor are the sample's example people
+    const allResources = (await resourceService.findAllResources()).filter((r) => !r.isGeneric && !isExamplePerson(r));
 
     // 2. Detect upcoming bottlenecks: weeks where utilization > 100%
     const bottlenecks: BottleneckPrediction[] = [];
@@ -180,8 +181,8 @@ export class ResourceOptimizerService {
     }
 
     // Get all active resources
-    // Generic roles are placeholders, not people who could take work
-    const allResources = (await resourceService.findAllResources()).filter((r) => !r.isGeneric);
+    // Generic roles are placeholders, not people who could take work; nor are the sample's example people
+    const allResources = (await resourceService.findAllResources()).filter((r) => !r.isGeneric && !isExamplePerson(r));
     const activeResources = allResources.filter((r) => r.isActive);
 
     // Build keyword set from task name and description

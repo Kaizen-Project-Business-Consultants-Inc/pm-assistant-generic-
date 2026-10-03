@@ -147,7 +147,8 @@ class DailyBriefingService {
 
     // Every section joins projects with `p.archived_at IS NULL`: an archived project must not
     // appear — the briefing used to link straight into archived projects, so a PM could work in
-    // one without knowing it was archived (it was hidden from the Projects list).
+    // one without knowing it was archived (it was hidden from the Projects list). The read-only
+    // sample project is left out the same way (`COALESCE(p.is_demo, 0) = 0`): it never counts.
     const [
       proposals,
       changeRequests,
@@ -176,7 +177,7 @@ class DailyBriefingService {
       // Pending proposals
       databaseService.query<any>(
         `SELECT COUNT(*) AS cnt FROM agent_proposals ap
-         JOIN projects p ON ap.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON ap.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE ap.status = 'pending'`,
         [...memberParams]
@@ -186,7 +187,7 @@ class DailyBriefingService {
         `SELECT cr.id, cr.title, p.name AS projectName, p.id AS projectId,
                 COALESCE(p.project_code, '') AS projectCode, cr.priority
          FROM change_requests cr
-         JOIN projects p ON cr.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON cr.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE cr.status IN ('pending', 'in_review')
          ORDER BY cr.created_at DESC LIMIT ${ITEM_CAP}`,
@@ -207,7 +208,7 @@ class DailyBriefingService {
                 ${resourceSelect}
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${resourceJoin}
          ${assignedJoin}
          ${memberJoin}
@@ -227,7 +228,7 @@ class DailyBriefingService {
                 ${resourceSelect}
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${resourceJoin}
          ${assignedJoin}
          ${memberJoin}
@@ -246,7 +247,7 @@ class DailyBriefingService {
                 ${resourceSelect}
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${resourceJoin}
          ${assignedJoin}
          ${memberJoin}
@@ -262,7 +263,7 @@ class DailyBriefingService {
                 COALESCE(p.project_code, '') AS projectCode, pr.severity, pr.type,
                 pr.owner_id AS ownerId, ores.name AS ownerResourceName, pr.owner_name AS ownerText
          FROM project_risks pr
-         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          LEFT JOIN resources ores ON ores.id = pr.owner_resource_id
          ${memberJoin}
          WHERE pr.severity IN ('critical', 'high')
@@ -279,7 +280,7 @@ class DailyBriefingService {
                 DATEDIFF(t.end_date, CURDATE()) AS daysUntil
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${assignedJoin}
          ${memberJoin}
          WHERE t.is_milestone = 1
@@ -295,7 +296,7 @@ class DailyBriefingService {
                 DATEDIFF(CURDATE(), mai.due_date) AS overdueDays,
                 mai.assignee_name AS resourceName
          FROM meeting_action_items mai
-         JOIN projects p ON mai.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON mai.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE mai.due_date < CURDATE()
            AND mai.status NOT IN ('completed', 'cancelled')
@@ -314,7 +315,7 @@ class DailyBriefingService {
          JOIN tasks t ON td.task_id = t.id
          JOIN tasks pred ON td.dependency_id = pred.id
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${resourceJoin}
          ${assignedJoin}
          ${memberJoin}
@@ -331,7 +332,7 @@ class DailyBriefingService {
         `SELECT pr.id, pr.title, pr.severity, p.id AS projectId, p.name AS projectName,
                 COALESCE(p.project_code, '') AS projectCode
          FROM project_risks pr
-         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE pr.type = 'issue'
            AND pr.status NOT IN ('resolved', 'closed', 'cancelled', 'mitigated')
@@ -355,7 +356,7 @@ class DailyBriefingService {
         `SELECT p.id AS projectId, COUNT(*) AS cnt
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${assignedJoin}
          ${memberJoin}
          WHERE t.end_date < CURDATE()
@@ -368,7 +369,7 @@ class DailyBriefingService {
         `SELECT p.id AS projectId, COUNT(*) AS cnt
          FROM tasks t
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${assignedJoin}
          ${memberJoin}
          WHERE t.end_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
@@ -383,7 +384,7 @@ class DailyBriefingService {
          JOIN tasks t ON td.task_id = t.id
          JOIN tasks pred ON td.dependency_id = pred.id
          JOIN schedules s ON t.schedule_id = s.id
-         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${assignedJoin}
          ${memberJoin}
          WHERE td.dependency_type = 'FS'
@@ -397,7 +398,7 @@ class DailyBriefingService {
       databaseService.query<any>(
         `SELECT p.id AS projectId, COUNT(*) AS cnt
          FROM project_risks pr
-         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE pr.type = 'issue'
            AND pr.status NOT IN ('resolved', 'closed', 'cancelled', 'mitigated')
@@ -408,7 +409,7 @@ class DailyBriefingService {
       databaseService.query<any>(
         `SELECT p.id AS projectId, COUNT(*) AS cnt
          FROM meeting_action_items mai
-         JOIN projects p ON mai.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON mai.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE mai.due_date < CURDATE()
            AND mai.status NOT IN ('completed', 'cancelled')
@@ -423,7 +424,7 @@ class DailyBriefingService {
                   ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY t.end_date, t.id) AS rn
            FROM tasks t
            JOIN schedules s ON t.schedule_id = s.id
-           JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL
+           JOIN projects p ON s.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
            ${memberJoin}
            WHERE t.is_milestone = 1
              AND t.end_date >= CURDATE()
@@ -438,7 +439,7 @@ class DailyBriefingService {
                 al.field_name AS fieldName, al.action_type AS actionType, al.new_value AS newValue, al.created_at AS at
          FROM raid_activity_log al
          JOIN project_risks pr ON pr.id = al.raid_item_id
-         JOIN projects p ON al.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON al.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE al.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
            AND (
@@ -500,7 +501,7 @@ class DailyBriefingService {
       databaseService.query<any>(
         `SELECT ap.id, ap.title, ap.project_id AS projectId, ap.risk_level AS riskLevel, ap.created_at AS createdAt
          FROM agent_proposals ap
-         JOIN projects p ON ap.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON ap.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE ap.status = 'pending'
          ORDER BY ap.created_at DESC LIMIT ${ITEM_CAP}`,

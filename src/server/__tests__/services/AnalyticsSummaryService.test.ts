@@ -101,8 +101,9 @@ describe('AnalyticsSummaryService', () => {
 
       await analyticsSummaryService.getSummary('user-1', 'project_manager');
 
-      // the projects you can read — not only the ones you created (2026-10-01)
-      expect(mockFindProjects).toHaveBeenCalledWith('(p.id IN (?,?))', ['p-1', 'p-sample']);
+      // the projects you can read — not only the ones you created (2026-10-01) — but the sample
+      // project never counts in the totals (2026-10-03)
+      expect(mockFindProjects).toHaveBeenCalledWith('(p.id IN (?,?)) AND COALESCE(p.is_demo, 0) = 0', ['p-1', 'p-sample']);
     });
 
     it('returns correct structure for empty portfolio', async () => {
@@ -130,12 +131,12 @@ describe('AnalyticsSummaryService', () => {
 
   // ── getSummaryAll ─────────────────────────────────────────────────
   describe('getSummaryAll', () => {
-    it('calls findProjects with no user filter (1=1)', async () => {
+    it('calls findProjects with no user filter — every project except the sample', async () => {
       mockFindProjects.mockResolvedValue([]);
 
       await analyticsSummaryService.getSummaryAll();
 
-      expect(mockFindProjects).toHaveBeenCalledWith('1=1', []);
+      expect(mockFindProjects).toHaveBeenCalledWith('COALESCE(p.is_demo, 0) = 0', []);
     });
   });
 
@@ -671,10 +672,15 @@ describe('dashboard tiles: which projects (2026-10-01)', () => {
     await analyticsSummaryService.getSummary('user-1', 'project_manager');
     expect(mockFindProjects).toHaveBeenLastCalledWith('1 = 0', []);
   });
-  it('admin / PMO / executive: every project', async () => {
+  it('admin / PMO / executive: every project except the sample', async () => {
     readable.mockResolvedValueOnce('all' as any);
     await analyticsSummaryService.getSummary('user-1', 'pmo');
-    expect(mockFindProjects).toHaveBeenLastCalledWith('1=1', []);
+    expect(mockFindProjects).toHaveBeenLastCalledWith('COALESCE(p.is_demo, 0) = 0', []);
+  });
+  it("one project's own summary still counts the sample when it IS the sample", async () => {
+    mockFindProjects.mockResolvedValue([]);
+    await analyticsSummaryService.getProjectSummary('demo-sample-webapp');
+    expect(mockFindProjects).toHaveBeenLastCalledWith('(p.id = ?)', ['demo-sample-webapp']);
   });
 });
 });

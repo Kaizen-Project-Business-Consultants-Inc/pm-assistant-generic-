@@ -214,6 +214,15 @@ class ReportBuilderService {
       }
     }
 
+    // The read-only sample project never counts in reports, nor do its example people — unless the
+    // report is about the sample itself (projectId filter)
+    if (dataSource === 'resources') conditions.push(`id NOT LIKE 'demo-%'`);
+    else if (!filters?.projectId) {
+      conditions.push(dataSource === 'projects' || dataSource === 'budgets' ? 'COALESCE(is_demo, 0) = 0'
+        : dataSource === 'tasks' ? 'schedule_id NOT IN (SELECT ds.id FROM schedules ds JOIN projects dp ON dp.id = ds.project_id WHERE dp.is_demo = 1)'
+        : '(project_id IS NULL OR project_id NOT IN (SELECT id FROM projects WHERE is_demo = 1))');
+    }
+
     if (!filters) return { whereClause: conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '', whereParams: params };
 
     if (filters.projectId) {

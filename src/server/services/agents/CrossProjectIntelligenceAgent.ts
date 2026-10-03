@@ -216,7 +216,8 @@ export class CrossProjectIntelligenceAgent {
    */
   async gatherIndicators(): Promise<PortfolioIndicators> {
     const allProjects = await projectService.findAll();
-    const activeProjects = allProjects.filter(p => p.status === 'active' || p.status === 'planning');
+    // The sample project never counts in portfolio indicators
+    const activeProjects = allProjects.filter(p => !p.isDemo && (p.status === 'active' || p.status === 'planning'));
 
     const snapshots: ProjectHealthSnapshot[] = [];
     const resourceBottlenecks: PortfolioIndicators['resourceBottlenecks'] = [];

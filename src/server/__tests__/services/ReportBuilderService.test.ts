@@ -190,6 +190,30 @@ describe('ReportBuilderService', () => {
     });
   });
 
+  describe('the sample project never counts (2026-10-03)', () => {
+    const where = (dataSource: string, filters?: any) =>
+      (reportBuilderService as any).buildWhereClause(dataSource, filters, 'all').whereClause as string;
+
+    it('leaves the sample out of every cross-project data source', () => {
+      expect(where('projects')).toContain('COALESCE(is_demo, 0) = 0');
+      expect(where('budgets')).toContain('COALESCE(is_demo, 0) = 0');
+      expect(where('tasks')).toContain('schedule_id NOT IN (SELECT ds.id FROM schedules ds JOIN projects dp ON dp.id = ds.project_id WHERE dp.is_demo = 1)');
+      for (const ds of ['time_entries', 'raid_items', 'meetings', 'action_items']) {
+        expect(where(ds)).toContain('(project_id IS NULL OR project_id NOT IN (SELECT id FROM projects WHERE is_demo = 1))');
+      }
+    });
+
+    it("leaves the sample's example people out of the resource pool", () => {
+      expect(where('resources')).toContain(`id NOT LIKE 'demo-%'`);
+      expect(where('resources', { projectId: 'demo-sample-webapp' })).toContain(`id NOT LIKE 'demo-%'`);
+    });
+
+    it('a report about one project (the sample included) shows that project', () => {
+      expect(where('projects', { projectId: 'demo-sample-webapp' })).not.toContain('is_demo');
+      expect(where('tasks', { projectId: 'demo-sample-webapp' })).not.toContain('is_demo');
+    });
+  });
+
   // -------------------------------------------------------------------------
   // executeTableQuery — headers and rows
   // -------------------------------------------------------------------------

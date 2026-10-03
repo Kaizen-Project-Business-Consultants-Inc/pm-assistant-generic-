@@ -2,6 +2,9 @@
 
 ## 2026-10-03 — Sample project is optional
 New companies start without the read-only sample (provisioner removes it). Settings → Sample project (owner/admin/PMO) loads and removes it, with in-page confirmation; setup wizard offers "Explore a sample project first". SampleProjectService removes everything pointing at the sample's project/schedules/tasks/example people in one transaction. Existing companies keep theirs until removed.
+## 2026-10-03 — the sample project never counts in totals
+
+- **Sample out of totals** (branch `sample-out-of-totals`): every cross-project total now leaves the read-only sample (`is_demo`) and its example people (`demo-%`) out — Morning Briefing (all sections, not just the project list), dashboard widgets, portfolio overview/resources/analytics, analytics tiles, report builder (+ scheduled reports), portfolio AI context (AI dashboard, anomalies, cross-project), Mjuzi portfolio/overdue/high-risk tools, NL portfolio stats, portfolio narrative, cross-project agent + agent scans, weekly review pack, project allocations, capacity by role, optimizer suggestions, and the trial 3-project limit. Project lists still show the sample; its own pages keep its numbers. Guard: `__tests__/services/sampleOutOfTotalsGuard.test.ts`; helper `utils/sampleData.ts`.
 
 ## 2026-10-03 — leftovers list (items 6 and 4)
 
