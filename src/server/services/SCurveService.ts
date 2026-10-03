@@ -16,6 +16,19 @@ export interface SCurveDataPoint {
   ac: number;
 }
 
+/**
+ * When to sample the curve: every week from the start, plus the status date itself — the
+ * "current" EVM figures are read at the status date, and a weekly point could be up to six days
+ * old (2026-10-03: an expense on the status date didn't show in AC).
+ */
+function sampleTimes(start: number, end: number, step: number, asOf: string): number[] {
+  const times: number[] = [];
+  for (let t = start; t <= end + step; t += step) times.push(t);
+  const at = utcDay(asOf).getTime();
+  if (at > start && at < end && !times.includes(at)) times.push(at);
+  return times.sort((a, b) => a - b);
+}
+
 export class SCurveService {
   async computeSCurveData(projectId: string): Promise<SCurveDataPoint[]> {
     const project = await projectService.findById(projectId);
@@ -76,7 +89,7 @@ export class SCurveService {
     // Generate weekly data points
     const weekMs = WEEK_MS;
     const dataPoints: SCurveDataPoint[] = [];
-    for (let time = projectStart; time <= projectEnd + weekMs; time += weekMs) {
+    for (const time of sampleTimes(projectStart, projectEnd, weekMs, asOf)) {
       const weekEnd = Math.min(time, projectEnd);
 
       let pv = 0; // Planned Value: cumulative planned spend by this date
@@ -172,7 +185,7 @@ export class SCurveService {
       });
     }
 
-    for (let time = projectStart; time <= projectEnd + weekMs; time += weekMs) {
+    for (const time of sampleTimes(projectStart, projectEnd, weekMs, asOf)) {
       const weekEnd = Math.min(time, projectEnd);
 
       // PV: cumulative committed points for sprints ended by this date

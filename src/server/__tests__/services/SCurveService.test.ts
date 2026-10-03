@@ -303,6 +303,20 @@ describe('SCurveService', () => {
       expect(result.every(p => p.ac <= 10000)).toBe(true);
     });
 
+    it("has a point on the status date, so today's figures include today's spend", async () => {
+      mockFindById.mockResolvedValue(makeProject({ budgetAllocated: 100000 }));
+      mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1')]);
+      mockFindTasksByScheduleIds.mockResolvedValue([makeTask('t1', { startDate: '2026-01-05', endDate: '2026-02-27' })]);
+      mockCostTimeline.mockResolvedValueOnce({ undated: 0, byDay: [{ date: '2026-01-15', amount: 700 }] });
+      mockStatusDate.mockResolvedValueOnce('2026-01-15'); // a Thursday — not a weekly sample day
+
+      const result = await service.computeSCurveData('proj-1');
+      const point = result.find(p => p.date === '2026-01-15');
+      expect(point).toBeDefined();
+      expect(point!.ac).toBe(700);
+      expect(result.map(p => p.date)).toEqual([...result.map(p => p.date)].sort());
+    });
+
     it('never counts spend after the status date', async () => {
       mockFindById.mockResolvedValue(makeProject({ budgetAllocated: 100000 }));
       mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1')]);
