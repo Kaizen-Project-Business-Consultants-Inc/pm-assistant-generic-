@@ -1106,3 +1106,10 @@ Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully 
 - One-click removal with an in-page confirmation; removes only the sample's rows and what points at them, in one transaction
 - Owner/admin only (others never see it); excluded from every company-wide total while loaded
 - **Benchmark:** Asana/monday.com ship sample projects that must be deleted by hand and count in workload; Kovarti keeps it out of totals and removes it in one step
+
+### Project Sponsor & PM-Controlled Escalation (Oct 2026)
+- Each project names its sponsor — with a login (read-only Viewer) or without (emailed)
+- Critical risks and issues prompt the PM "Escalate to sponsor?"; nothing is sent automatically
+- The PM escalates any RAID item with their own note; recorded on the item, tagged for everyone
+- **Benchmark:** PMI/PRINCE2 escalation to the sponsor/project board when tolerances are threatened; most tools either auto-notify executives (noise) or leave escalation to email outside the log
+

@@ -4,6 +4,7 @@ import { X, Send, Ban, RotateCcw, Clock, MessageSquare, ArrowRightLeft, Pencil, 
 import { apiService } from '../../services/api';
 import { formatCalendarDate } from '../../utils/dateUtils';
 import { responseStrategyLabel, isClosedStatus } from '../raids/review/raidReviewHelpers';
+import { SponsorEscalation } from './SponsorEscalation';
 
 interface RAIDDetailPanelProps {
   projectId: string;
@@ -11,6 +12,8 @@ interface RAIDDetailPanelProps {
   onClose: () => void;
   onEdit: (item: any) => void;
   members: any[];
+  /** The project's Manager/Owner: may escalate to the sponsor */
+  canEdit?: boolean;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -73,7 +76,7 @@ function formatTimestamp(d: string) {
   return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }: RAIDDetailPanelProps) {
+export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members, canEdit = false }: RAIDDetailPanelProps) {
   const queryClient = useQueryClient();
   const [commentText, setCommentText] = useState('');
   const [sendingUpdate, setSendingUpdate] = useState(false);
@@ -284,6 +287,8 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members }:
               </span>
             )}
           </div>
+
+          <SponsorEscalation projectId={projectId} item={item} canEdit={canEdit} onChanged={invalidateAll} />
 
           {/* Cancel reason */}
           {item.cancelReason && (

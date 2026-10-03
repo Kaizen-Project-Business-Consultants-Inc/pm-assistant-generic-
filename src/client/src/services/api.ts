@@ -651,6 +651,27 @@ class ApiService {
     return response.data;
   }
 
+  /** Project sponsor (Oct 2026): who it is; who the PM can pick; set/clear; escalate a RAID item */
+  async getProjectSponsor(projectId: string): Promise<{ sponsor: ProjectSponsor | null }> {
+    return (await this.api.get(`/projects/${projectId}/sponsor`)).data;
+  }
+
+  async getSponsorCandidates(projectId: string): Promise<{ candidates: ProjectSponsor[] }> {
+    return (await this.api.get(`/projects/${projectId}/sponsor/candidates`)).data;
+  }
+
+  async setProjectSponsor(projectId: string, choice: { userId?: string | null; resourceId?: string | null }): Promise<{ sponsor: ProjectSponsor | null }> {
+    return (await this.api.put(`/projects/${projectId}/sponsor`, choice)).data;
+  }
+
+  async escalateRaidItem(projectId: string, riskId: string, note: string) {
+    return (await this.api.post(`/projects/${projectId}/risks/${riskId}/escalate`, { note })).data;
+  }
+
+  async dismissEscalationPrompt(projectId: string, riskId: string) {
+    return (await this.api.post(`/projects/${projectId}/risks/${riskId}/escalation-prompt/dismiss`)).data;
+  }
+
   async getRiskItem(projectId: string, riskId: string) {
     const response = await this.api.get(`/projects/${projectId}/risks/${riskId}`);
     return response.data;
@@ -4230,6 +4251,9 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
 }
 
 export const apiService = new ApiService();
+
+/** A project's sponsor: a person with a login ('user') or without one ('person', emailed) */
+export interface ProjectSponsor { kind: 'user' | 'person'; id: string; name: string; email?: string }
 
 export interface CompanyHoliday { id: string; date: string; name: string }
 export interface WorkingCalendarData {

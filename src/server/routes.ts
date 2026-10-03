@@ -76,6 +76,7 @@ import { meetingActionItemRoutes } from './routes/collaboration/meetingActionIte
 import { lessonsLearnedRoutes } from './routes/collaboration/lessonsLearned';
 import { intakeFormRoutes } from './routes/collaboration/intakeForms';
 import { riskRoutes } from './routes/collaboration/risks';
+import { sponsorRoutes } from './routes/collaboration/sponsor';
 import { raidReviewRoutes } from './routes/collaboration/raidReview';
 import { goalRoutes } from './routes/goals';
 import { automationRoutes } from './routes/automation/automations';
@@ -228,6 +229,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(lessonsLearnedRoutes, { prefix: '/api/v1/lessons-learned' });
   await fastify.register(intakeFormRoutes, { prefix: '/api/v1/intake' });
   await fastify.register(riskRoutes, { prefix: '/api/v1/projects' });
+  await fastify.register(sponsorRoutes, { prefix: '/api/v1/projects' });
   await fastify.register(raidReviewRoutes, { prefix: '/api/v1/projects' });
   await fastify.register(goalRoutes, { prefix: '/api/v1/goals' });
   await fastify.register(automationRoutes, { prefix: '/api/v1/projects' });

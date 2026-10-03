@@ -3017,6 +3017,16 @@ Following PMI practice (the PM is accountable for the RAID log; each item's owne
 - **Owners without a login** (a subcontractor recorded as a resource) are emailed when an item is assigned to them or escalated, if the resource has an email address.
 - Nobody is notified about their own change. Escalations to High/Critical are also emailed to people who have email notifications on.
 
+### Escalating to the project sponsor (October 2026)
+
+Each project can name its **sponsor** — the person who signs off budget and scope. The project's Manager/Owner sets it in **Edit project → Sponsor**: anyone in your company with a login, or a person from your Resources list who has no login but has an email address. A sponsor with a login is added to the project as a **Viewer**, so they can read what you escalate; they never change anything.
+
+**Nothing reaches the sponsor by itself — the PM is in total control:**
+- When a risk or issue is logged as **Critical**, or raised to Critical, the item shows the PM a prompt: *"This is now Critical. Does the sponsor need to know or decide?"* with **Escalate to sponsor…** and **Not now**. *Not now* hides the prompt for that item.
+- **Escalate to sponsor…** asks for a short note (what you need from them), then **Send to sponsor**. A sponsor with a login gets a notification and an email with a link to the item; one without a login gets the email. Your note is added to the item's updates.
+- The PM can escalate any RAID item, at any severity, from the item's details. Escalated items show an **Escalated to sponsor** tag (with the date) to everyone on the project.
+- No sponsor set? The button says where to set one. Team members and viewers never see the prompt or the button.
+
 ### More room on the project page
 
 The four summary cards (Progress, Budget, Timeline, Risks) always show on a project's **Overview** tab. On every other tab (Schedule, Team, Risks & Issues and so on) they shrink to one line under the project name, for example **9% done | $0K of $25K | 148 days left | 11 risks open · 1 critical**, so the work area starts higher. Click a figure to open Overview. Click **Show details** to bring the cards back on those tabs too, and **Hide details** to fold them away again; Kovarti remembers your choice in this browser. On the Schedule tab the quick filters (Due, Late, At Risk…) and the task counts now share one row.

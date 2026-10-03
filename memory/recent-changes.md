@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — Project sponsor + PM-controlled RAID escalation
+T074. Edit project → Sponsor (company user → added as Viewer, or a resource with an email). Critical risk/issue shows the PM a prompt; only the PM escalates, with a note (RAID update + notification/email to the sponsor). Nothing automatic (user's rule). SponsorService, routes/collaboration/sponsor.ts, SponsorEscalation.tsx.
+
 ## 2026-10-03 — Sample project is optional
 New companies start without the read-only sample (provisioner removes it). Settings → Sample project (owner/admin/PMO) loads and removes it, with in-page confirmation; setup wizard offers "Explore a sample project first". SampleProjectService removes everything pointing at the sample's project/schedules/tasks/example people in one transaction. Existing companies keep theirs until removed.
 ## 2026-10-03 — the sample project never counts in totals

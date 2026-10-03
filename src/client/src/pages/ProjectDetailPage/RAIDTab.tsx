@@ -921,6 +921,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
           onClose={() => setSelectedRaidId(null)}
           onEdit={(item) => { openEdit(item); }}
           members={members}
+          canEdit={canEdit}
         />
       )}
 

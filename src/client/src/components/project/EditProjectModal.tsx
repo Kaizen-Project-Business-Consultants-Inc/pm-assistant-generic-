@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { X, Trash2 } from 'lucide-react';
+import { apiService } from '../../services/api';
+import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { AccessibleModal } from '../ui/AccessibleModal';
 import { PROJECT_TYPE_OPTIONS } from '../../constants/projectTypes';
 
@@ -53,9 +56,34 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
     (project.statusDate || project.status_date || '').slice(0, 10)
   );
   const [location, setLocation] = useState(project.location || '');
+  // Sponsor (Oct 2026): saved through its own endpoint; "user:<id>" | "person:<id>" | ""
+  const projectId: string | undefined = project.id;
+  const sponsorQ = useQuery({ queryKey: ['project-sponsor', projectId], queryFn: () => apiService.getProjectSponsor(projectId!), enabled: !!projectId });
+  const candidatesQ = useQuery({ queryKey: ['sponsor-candidates', projectId], queryFn: () => apiService.getSponsorCandidates(projectId!), enabled: !!projectId });
+  const currentSponsor = sponsorQ.data?.sponsor ? `${sponsorQ.data.sponsor.kind}:${sponsorQ.data.sponsor.id}` : '';
+  const [sponsor, setSponsor] = useState<string | null>(null);
+  useEffect(() => { if (sponsor === null && sponsorQ.isSuccess) setSponsor(currentSponsor); }, [sponsorQ.isSuccess, currentSponsor, sponsor]);
+  const [sponsorError, setSponsorError] = useState<string | null>(null);
+  const [sponsorSaving, setSponsorSaving] = useState(false);
+  const candidates = candidatesQ.data?.candidates ?? [];
+  const withLogin = candidates.filter(c => c.kind === 'user');
+  const withoutLogin = candidates.filter(c => c.kind === 'person');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (projectId && sponsor !== null && sponsor !== currentSponsor) {
+      setSponsorError(null); setSponsorSaving(true);
+      try {
+        const [kind, id] = sponsor ? sponsor.split(':') : ['', ''];
+        await apiService.setProjectSponsor(projectId, kind === 'user' ? { userId: id } : kind === 'person' ? { resourceId: id } : { userId: null, resourceId: null });
+        sponsorQ.refetch();
+      } catch (err) {
+        setSponsorError(getApiErrorMessage(err, 'The sponsor could not be saved. Please try again.'));
+        setSponsorSaving(false);
+        return;
+      }
+      setSponsorSaving(false);
+    }
     const data: Partial<ProjectData> = {};
 
     if (name !== project.name) data.name = name;
@@ -199,6 +227,30 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
           </p>
         </div>
 
+        {projectId && (
+          <div>
+            <label className={labelClass} htmlFor="project-sponsor">Sponsor</label>
+            <select id="project-sponsor" value={sponsor ?? ''} onChange={(e) => setSponsor(e.target.value)}
+              disabled={sponsor === null} className={inputClass} aria-describedby="project-sponsor-help">
+              <option value="">No sponsor</option>
+              {withLogin.length > 0 && (
+                <optgroup label="People with a login">
+                  {withLogin.map(c => <option key={c.id} value={`user:${c.id}`}>{c.name}</option>)}
+                </optgroup>
+              )}
+              {withoutLogin.length > 0 && (
+                <optgroup label="People without a login (emailed)">
+                  {withoutLogin.map(c => <option key={c.id} value={`person:${c.id}`}>{c.name}{c.email ? ` · ${c.email}` : ''}</option>)}
+                </optgroup>
+              )}
+            </select>
+            <p id="project-sponsor-help" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Who signs off budget and scope. They hear only what you choose to escalate from the RAID log, and never change anything. A sponsor with a login can read this project.
+            </p>
+            {sponsorError && <p role="alert" className="mt-1 text-sm text-red-700 dark:text-red-300">{sponsorError}</p>}
+          </div>
+        )}
+
         <div>
           <label className={labelClass}>Location</label>
           <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. New York, NY" className={inputClass} />
@@ -208,8 +260,8 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             Cancel
           </button>
-          <button type="submit" disabled={saving || !name.trim()} className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50">
-            {saving ? 'Saving…' : 'Save Changes'}
+          <button type="submit" disabled={saving || sponsorSaving || !name.trim()} className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50">
+            {saving || sponsorSaving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </form>

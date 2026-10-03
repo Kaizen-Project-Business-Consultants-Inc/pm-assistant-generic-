@@ -59,6 +59,11 @@ export interface ProjectRisk {
   responseStrategy: RaidResponseStrategy | null;
   /** Why the item was closed (T061) */
   closureReason: string | null;
+  /** When the PM escalated it to the project's sponsor, and who (T074) */
+  escalatedAt: string | null;
+  escalatedBy: string | null;
+  /** The PM answered "Not now" to the Critical prompt (T074) */
+  escalationPromptDismissedAt: string | null;
 }
 
 export const RAID_RESPONSE_STRATEGIES = ['avoid', 'mitigate', 'transfer', 'accept', 'escalate'] as const;
@@ -148,6 +153,9 @@ function mapRow(row: any): ProjectRisk {
     sourceMeeting: row.source_meeting ?? null,
     ownerName: row.owner_name ?? null,
     responseStrategy: row.response_strategy ?? null,
+    escalatedAt: row.escalated_at ?? null,
+    escalatedBy: row.escalated_by ?? null,
+    escalationPromptDismissedAt: row.escalation_prompt_dismissed_at ?? null,
     closureReason: row.closure_reason ?? null,
   };
 }
@@ -237,6 +245,9 @@ const COLUMN_MAP: Record<string, string> = {
   ownerName: 'owner_name',
   responseStrategy: 'response_strategy',
   closureReason: 'closure_reason',
+  escalatedAt: 'escalated_at',
+  escalatedBy: 'escalated_by',
+  escalationPromptDismissedAt: 'escalation_prompt_dismissed_at',
   // Only RAID Review's "move to another type" (and its undo) renumbers an item
   recordId: 'record_id',
   sequenceNumber: 'sequence_number',

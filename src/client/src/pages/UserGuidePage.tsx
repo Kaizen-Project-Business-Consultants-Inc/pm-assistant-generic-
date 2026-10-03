@@ -140,6 +140,7 @@ const sections: Section[] = [
       'Rows in the list are flagged with their most important problem',
       'Propose fixes: tick the changes you want (move to Actions, name one owner, set a due date or response strategy) and apply; Undo puts them back',
       'Switch a check off for one project if it doesn\'t fit (e.g. agreed joint owners)',
+      'Name the project sponsor in Edit project → Sponsor. A Critical risk or issue prompts you "Escalate to sponsor?" — nothing is sent unless you press Send, with your own note',
     ],
   },
   {
