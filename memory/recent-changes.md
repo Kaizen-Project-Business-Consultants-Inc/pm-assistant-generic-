@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — Logged errors keep their message
+utils/logger.ts serializeErrors (before the PII mask, all three formats): an Error in log metadata now gives name, message, code/errno/sqlState, short stack — never the SQL text. Before: {"error":{"name":"Error"}} (~330 call sites), which hid the sample-removal bug and the staging portfolio/resources 500. Test: loggerErrors.test.ts.
+
 ## 2026-10-03 — Workflows by notice (code health step 1E)
 ScheduleService (task create/update), ProjectService (budget spend / status) and the agents' ActionProposalService/ActionExecutor (proposal created/executed) post notices instead of importing DagWorkflowService; domainListeners.ts wires them to the workflow engine. Tangles 30→7 links, 13→5 files (target ≤8 met). Left: ScheduleService↔ResourceService↔ApprovedTimeService and ActionExecutor↔ActionProposalService (agents off; the other session is slimming agents next).
 

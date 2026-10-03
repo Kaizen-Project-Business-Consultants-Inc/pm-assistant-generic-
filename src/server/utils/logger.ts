@@ -70,6 +70,39 @@ const addRequestId = winston.format((info) => {
   return info;
 });
 
+/**
+ * An Error logged as metadata (`logger.error('…', { error })`) used to come out as
+ * {"error":{"name":"Error"}} — the PII mask copies own fields, and an Error's message and stack
+ * aren't own enumerable fields. Turn errors into plain fields first (2026-10-03: two staging bugs
+ * were hidden this way). Values still go through the PII mask afterwards. The SQL text and
+ * values of a database error are left out (they can carry customer data).
+ */
+export function errorToJson(e: Error): Record<string, unknown> {
+  const x = e as Error & { code?: unknown; errno?: unknown; sqlState?: unknown; status?: unknown; statusCode?: unknown };
+  return {
+    name: e.name,
+    message: e.message,
+    ...(x.code !== undefined ? { code: x.code } : {}),
+    ...(x.errno !== undefined ? { errno: x.errno } : {}),
+    ...(x.sqlState !== undefined ? { sqlState: x.sqlState } : {}),
+    ...((x.statusCode ?? x.status) !== undefined ? { statusCode: x.statusCode ?? x.status } : {}),
+    ...(e.stack ? { stack: e.stack.split('\n').slice(0, 6).join('\n') } : {}),
+  };
+}
+
+export const serializeErrors = winston.format((info) => {
+  for (const key of Object.keys(info)) {
+    const v = (info as Record<string, unknown>)[key];
+    if (v instanceof Error) (info as Record<string, unknown>)[key] = errorToJson(v);
+    else if (v && typeof v === 'object' && !Array.isArray(v)) {
+      for (const [k, inner] of Object.entries(v as Record<string, unknown>)) {
+        if (inner instanceof Error) (v as Record<string, unknown>)[k] = errorToJson(inner);
+      }
+    }
+  }
+  return info;
+});
+
 const piiMask = winston.format((info) => {
   if (info.message) info.message = maskPii(info.message) as string;
   // Mask any extra metadata fields (spread into the info object)
@@ -93,6 +126,7 @@ const rotateTransport = new DailyRotateFile({
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
     addRequestId(),
+    serializeErrors(),
     piiMask(),
     winston.format.json(),
   ),
@@ -109,6 +143,7 @@ const errorRotateTransport = new DailyRotateFile({
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
     addRequestId(),
+    serializeErrors(),
     piiMask(),
     winston.format.json(),
   ),
@@ -120,6 +155,7 @@ const logger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
     addRequestId(),
+    serializeErrors(),
     piiMask(),
     winston.format.json()
   ),
